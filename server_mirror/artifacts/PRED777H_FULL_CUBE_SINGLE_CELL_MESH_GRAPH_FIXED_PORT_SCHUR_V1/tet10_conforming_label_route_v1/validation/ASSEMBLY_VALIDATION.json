@@ -1,0 +1,69 @@
+{
+ "k": 1,
+ "size": 0.05,
+ "S": "/root/autodl-tmp/_claude_diag/step2/G0/gates/S_TET10_k1_hxt.npy",
+ "mono_tet10_dof": 709056,
+ "carrier_nodes": 2787,
+ "results": {
+  "tension_x": {
+   "compliance_monolithic": 12.937860462561488,
+   "compliance_fixed_port": 12.10887988185013,
+   "compliance_rel_diff": -0.06407400845836864,
+   "compliance_monolithic_x2_constrained": 12.335853967920523,
+   "constrained_vs_free": -0.04653060653907981,
+   "assembled_vs_constrained": -0.018399543854899725,
+   "interface_disp_rel_l2": 0.00923121522905078,
+   "loaded_face_disp_rel_l2": 0.08453946799440247
+  },
+  "shear_y": {
+   "compliance_monolithic": 136.73231841537483,
+   "compliance_fixed_port": 135.74112153863385,
+   "compliance_rel_diff": -0.007249177723512745,
+   "compliance_monolithic_x2_constrained": 136.64117147247293,
+   "constrained_vs_free": -0.0006666086259504711,
+   "assembled_vs_constrained": -0.006586960021931598,
+   "interface_disp_rel_l2": 0.007765622079570888,
+   "loaded_face_disp_rel_l2": 0.007209287702439923
+  },
+  "bending_z": {
+   "compliance_monolithic": 0.71761425950914,
+   "compliance_fixed_port": 0.6544854088621016,
+   "compliance_rel_diff": -0.08797045182772656,
+   "compliance_monolithic_x2_constrained": 0.6710887073639924,
+   "constrained_vs_free": -0.06483365057011536,
+   "assembled_vs_constrained": -0.024740840249134588,
+   "interface_disp_rel_l2": 0.008215318167684149,
+   "loaded_face_disp_rel_l2": 0.04269409111500222
+  },
+  "wave_8H": {
+   "compliance_monolithic": 1.0380105198245029,
+   "compliance_fixed_port": 0.7626086694168559,
+   "compliance_rel_diff": -0.26531701283163234,
+   "compliance_monolithic_x2_constrained": 0.8167410928529593,
+   "constrained_vs_free": -0.21316684440631084,
+   "assembled_vs_constrained": -0.06627855988856068,
+   "interface_disp_rel_l2": 0.023583577220172652,
+   "loaded_face_disp_rel_l2": 0.28179804735600594
+  },
+  "wave_4H": {
+   "compliance_monolithic": 0.273496505813913,
+   "compliance_fixed_port": 0.18149095395761905,
+   "compliance_rel_diff": -0.33640485308026025,
+   "compliance_monolithic_x2_constrained": 0.19111915906197866,
+   "constrained_vs_free": -0.30120072834855116,
+   "assembled_vs_constrained": -0.05037802150038362,
+   "interface_disp_rel_l2": 0.05098598564573459,
+   "loaded_face_disp_rel_l2": 0.31499125270351735
+  },
+  "wave_2H": {
+   "compliance_monolithic": 0.050188071319532394,
+   "compliance_fixed_port": 0.024258079553268662,
+   "compliance_rel_diff": -0.5166564700439523,
+   "compliance_monolithic_x2_constrained": 0.024967709348916137,
+   "constrained_vs_free": -0.5025170584867822,
+   "assembled_vs_constrained": -0.028421902295104995,
+   "interface_disp_rel_l2": 0.01236717941112069,
+   "loaded_face_disp_rel_l2": 0.4397849219963755
+  }
+ }
+}

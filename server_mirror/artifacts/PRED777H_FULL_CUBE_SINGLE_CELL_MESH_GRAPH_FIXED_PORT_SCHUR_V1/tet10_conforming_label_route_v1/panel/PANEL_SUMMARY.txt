@@ -1,0 +1,8 @@
+case  set          q modes pairs repro_all repro_netgen conv_all conv_netgen ref
+G0    gates     4614   759     6    0.0050       0.0035   0.0082      0.0075 k2_del
+G1    gates     3078   504     6    0.0050       0.0031   0.0085      0.0070 k2_del
+G2    gates      153    24     6    0.0211       0.0037   0.0210      0.0044 k2_del
+G2    gates_k2   153    24     6    0.0073       0.0033   0.0109      0.0065 k3_del
+G3    gates     4614   759     6    0.0050       0.0035   0.0082      0.0075 k2_del
+G4    gates     4422   711     6    0.0049       0.0037   0.0082      0.0075 k2_del
+G5    gates     1476   207     6    0.0032       0.0023   0.0077      0.0074 k2_del

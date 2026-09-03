@@ -1,0 +1,123 @@
+{
+ "case_id": "G2_conforming_k2",
+ "q": 153,
+ "lowfreq_mode_count": 24,
+ "tags": [
+  "k2_del",
+  "k2_frontal",
+  "k2_hxt",
+  "k2_hxt_nong"
+ ],
+ "gates": {
+  "TET4": {
+   "pairwise": {},
+   "max_lowfreq_frobenius": null,
+   "max_whitened_frobenius": null,
+   "max_raw_frobenius": null,
+   "reproducibility_status": null
+  },
+  "TET10": {
+   "pairwise": {
+    "k2_del|k2_frontal": {
+     "raw_frobenius": 0.010053409099906766,
+     "whitened_frobenius": 0.013377271022025827,
+     "lowfreq_frobenius": 0.002749828688348193,
+     "lowfreq_energy_ratio_p50": 0.001024214386625033,
+     "lowfreq_energy_ratio_p95abs": 0.00296334367393869,
+     "lowfreq_energy_ratio_max_abs": 0.0029996680621353633,
+     "lowfreq_mode_count": 24
+    },
+    "k2_del|k2_hxt": {
+     "raw_frobenius": 0.006716333314246251,
+     "whitened_frobenius": 0.008611333241651411,
+     "lowfreq_frobenius": 0.0009599780093314284,
+     "lowfreq_energy_ratio_p50": -0.00033047991265444665,
+     "lowfreq_energy_ratio_p95abs": 0.001020700865338453,
+     "lowfreq_energy_ratio_max_abs": 0.0010676362419880236,
+     "lowfreq_mode_count": 24
+    },
+    "k2_del|k2_hxt_nong": {
+     "raw_frobenius": 0.01652392759938845,
+     "whitened_frobenius": 0.022489057778131837,
+     "lowfreq_frobenius": 0.004822523096657143,
+     "lowfreq_energy_ratio_p50": -0.0011872173122978724,
+     "lowfreq_energy_ratio_p95abs": 0.004018079224276883,
+     "lowfreq_energy_ratio_max_abs": 0.0060559721107882325,
+     "lowfreq_mode_count": 24
+    },
+    "k2_frontal|k2_hxt": {
+     "raw_frobenius": 0.011757396050683946,
+     "whitened_frobenius": 0.01483788022563711,
+     "lowfreq_frobenius": 0.003264115002959273,
+     "lowfreq_energy_ratio_p50": -0.001537055216149552,
+     "lowfreq_energy_ratio_p95abs": 0.0033491465876299698,
+     "lowfreq_energy_ratio_max_abs": 0.0033574187551955736,
+     "lowfreq_mode_count": 24
+    },
+    "k2_frontal|k2_hxt_nong": {
+     "raw_frobenius": 0.023057374644921292,
+     "whitened_frobenius": 0.031041772951855635,
+     "lowfreq_frobenius": 0.007293182654415969,
+     "lowfreq_energy_ratio_p50": -0.0022299025486004487,
+     "lowfreq_energy_ratio_p95abs": 0.006982345925818367,
+     "lowfreq_energy_ratio_max_abs": 0.008616470393613351,
+     "lowfreq_mode_count": 24
+    },
+    "k2_hxt|k2_hxt_nong": {
+     "raw_frobenius": 0.014670168455083857,
+     "whitened_frobenius": 0.020980570667458565,
+     "lowfreq_frobenius": 0.004463201026731666,
+     "lowfreq_energy_ratio_p50": -0.000768609487629468,
+     "lowfreq_energy_ratio_p95abs": 0.00400122499237876,
+     "lowfreq_energy_ratio_max_abs": 0.005663477564346708,
+     "lowfreq_mode_count": 24
+    }
+   },
+   "max_lowfreq_frobenius": 0.007293182654415969,
+   "max_whitened_frobenius": 0.031041772951855635,
+   "max_raw_frobenius": 0.023057374644921292,
+   "reproducibility_status": "FAIL",
+   "convergence_vs_reference": {
+    "k2_del": {
+     "raw_frobenius": 0.018967873994610508,
+     "whitened_frobenius": 0.026642737524254775,
+     "lowfreq_frobenius": 0.006109808034362772,
+     "lowfreq_energy_ratio_p50": 0.0024826414040224343,
+     "lowfreq_energy_ratio_p95abs": 0.006619408610254007,
+     "lowfreq_energy_ratio_max_abs": 0.00707838121751192,
+     "lowfreq_mode_count": 24
+    },
+    "k2_frontal": {
+     "raw_frobenius": 0.01294113992591824,
+     "whitened_frobenius": 0.018326773121033018,
+     "lowfreq_frobenius": 0.003825183671330547,
+     "lowfreq_energy_ratio_p50": 0.0014586935984668425,
+     "lowfreq_energy_ratio_p95abs": 0.004488428769142017,
+     "lowfreq_energy_ratio_max_abs": 0.004637122921375081,
+     "lowfreq_mode_count": 24
+    },
+    "k2_hxt": {
+     "raw_frobenius": 0.020758599523669246,
+     "whitened_frobenius": 0.0280196037474334,
+     "lowfreq_frobenius": 0.006522631445636464,
+     "lowfreq_energy_ratio_p50": 0.0029870095280390974,
+     "lowfreq_energy_ratio_p95abs": 0.007394165357587523,
+     "lowfreq_energy_ratio_max_abs": 0.007472365342647835,
+     "lowfreq_mode_count": 24
+    },
+    "k2_hxt_nong": {
+     "raw_frobenius": 0.03403532405708087,
+     "whitened_frobenius": 0.04744360980105977,
+     "lowfreq_frobenius": 0.010854081495413483,
+     "lowfreq_energy_ratio_p50": 0.0036849159761653816,
+     "lowfreq_energy_ratio_p95abs": 0.009739426800577267,
+     "lowfreq_energy_ratio_max_abs": 0.01320635656999003,
+     "lowfreq_mode_count": 24
+    }
+   },
+   "max_lowfreq_vs_reference": 0.010854081495413483,
+   "convergence_status": "PASS",
+   "tet4_vs_tet10_same_mesh": {}
+  }
+ }
+}
