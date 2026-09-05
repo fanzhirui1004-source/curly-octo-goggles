@@ -1,0 +1,599 @@
+From 831e1db5dadb43a88d430ffa3a9db2e21b5b3af2 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Sat, 5 Sep 2026 19:44:29 +0800
+Subject: [PATCH 23/23] sheet route: sparse symmetric assembled solve in the
+ block validation, support mask and numerical rank in the label, panel results
+
+The block validation held the assembled carrier operator as a dense matrix and took its full eigendecomposition
+(65 GB for 3 x 3 x 2), which took the machine down twice; it is now block sparse, factorised by symmetric Pardiso on
+the upper triangle (in-core when it fits), the four smallest eigenvalues by shift-invert.  2 x 2 x 2 and 3 x 3 x 2
+coarse panels with the repaired labels: assembly error on service loads below 1e-3 at both sizes, interface
+displacement error not growing; the 2 x 2 x 2 assembly error fell by 3x to 200x with the sliver fix.
+
+Every label now ships support_mask, numerical_rank at 1e-14 and 1e-10 lambda_max and rank_thresholds, and the
+receipt schur.support (decision of record: the null space is a lower bound and there is no spectral gap).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X77H1Uihff2oEyM5T4qg7v
+---
+ .../STEP8_SLIVER_REPORT.md                    |  36 +++
+ .../panels/q222c_SHEET_BLOCK_VALIDATION.json  | 213 ++++++++++++++++++
+ .../panels/q332d_SHEET_BLOCK_VALIDATION.json  | 213 ++++++++++++++++++
+ .../produce_sheet_label.py                    |  12 +-
+ .../sheet_block_validation.py                 |  24 +-
+ 5 files changed, 492 insertions(+), 6 deletions(-)
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q222c_SHEET_BLOCK_VALIDATION.json
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q332d_SHEET_BLOCK_VALIDATION.json
+
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md
+index e4fcb1e..bc4c469 100644
+--- a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md
+@@ -92,6 +92,42 @@ five of them); merging such near-duplicate chain vertices is a follow-up.
+ Per-cell cost of the fix: none measurable (the surface stage does a few collapses; the volume mesh is unchanged in
+ size).  The 24 tests of the sheet surface, cut carrier and sliver repair pass.
+ 
++
++**Assembly.**  The 2 x 2 x 2 coarse panel (`sheet_block_validation`, n_per_unit 32, remesh 0.06) re-run with the
++repaired cell labels: the monolithic and the constrained-monolithic compliances are unchanged to every printed digit
++(the block mesh does not go through the cell-label surface path), and the assembled-versus-constrained difference
++on the service loads fell from 8.9e-4 / 8.6e-4 / 1.1e-3 (tension, shear, bending) to 2.7e-4 / 5.1e-5 / 5.1e-6.  A
++good part of what was booked as "assembly error" was this artefact.  The 8H and 4H sinusoidal port loads moved from
++2.7e-3 / 1.3e-2 to 7.3e-3 / 1.5e-2, same order, at the coarse preset.
++
++**Block validation script.**  Its assembled carrier operator was a dense matrix with a dense eigendecomposition (65 GB
++for 3 x 3 x 2), which took the machine down twice; it is now block sparse, factorised by symmetric Pardiso on the upper
++triangle (in-core when it fits), with the four smallest eigenvalues by shift-invert.
++
++
++## 7. Track D: interface error on panel-shaped blocks (coarse preset)
++
++`sheet_block_validation` at n_per_unit 32, remesh 0.06, size_max 0.09, with the repaired cell labels; loads on the
++x = N face, x = 0 fixed.  "asm / constr" is the assembled-labels compliance against the constrained-monolithic
++control (same carrier coupling, one body), the assembly error proper; "constr / free" is the contract cost at this
++coarse preset; "interface L2" is the relative L2 difference of the displacement on the internal x-interfaces,
++assembled against constrained.
++
++| load | 2 x 2 x 2 (8 cells): asm / constr, constr / free, interface L2 | 3 x 3 x 2 (18 cells): asm / constr, constr / free, interface L2 |
++|---|---|---|
++| tension x | +2.7e-4, -8.2e-3, 6.0e-3 | +7.6e-4, -5.7e-3, 4.0e-3 |
++| shear y | +5.1e-5, -2.1e-3, 2.2e-3 | +4.8e-4, -1.6e-3, 1.6e-3 |
++| bending z | +5.1e-6, -9.2e-3, 5.0e-3 | +6.4e-4, -6.6e-3, 2.1e-3 |
++| wave 16H | +1.3e-3, -2.0e-2, 1.5e-2 | +1.8e-3, -1.7e-2, 1.1e-2 |
++| wave 8H | +7.3e-3, -1.5e-1, 1.5e-1 | +7.8e-3, -1.5e-1, 1.1e-1 |
++| wave 4H | +1.5e-2, -3.0e-1, 2.5e-1 | +1.8e-2, -3.0e-1, 1.7e-1 |
++
++The assembly error on service loads stays below 1e-3 from 8 to 18 cells and the interface displacement error does not
++grow; the short-wave port loads cost 1 % to 2 % of assembly error at any size, against a 15 % to 30 % contract cost
++at this coarse preset (0.4 % to 4.5 % at the production preset, step 7).  Sizes: 3 x 3 x 2 is 1.04e6 Tet10 dof
++monolithic (factorised in 25 s) and 85 365 assembled carrier dof with 4.2e8 upper nonzeros (symmetric Pardiso, 44 s).
++The 4 x 4 x 2 panel follows.
++
+ ## 6. Consequences for the route
+ 
+ * lambda_max is not the operator scale; the "operator scale dynamic range 11.2x" of the production statistics was
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q222c_SHEET_BLOCK_VALIDATION.json b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q222c_SHEET_BLOCK_VALIDATION.json
+new file mode 100644
+index 0000000..21aa925
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q222c_SHEET_BLOCK_VALIDATION.json
+@@ -0,0 +1,213 @@
++{
++ "shape": [
++  2,
++  2,
++  2
++ ],
++ "cut_plane_block_frame": null,
++ "empty_cells": [],
++ "carrier_n": 32,
++ "cells": 8,
++ "surface": {
++  "resolution_effective": {
++   "n_per_unit": 32,
++   "remesh_size": 0.06,
++   "requested": {
++    "n_per_unit": 32,
++    "remesh_size": 0.06
++   },
++   "wall_thickness_min": 0.12864340893175147
++  },
++  "marching_cubes": {
++   "vertices": 94440,
++   "triangles": 184592,
++   "h": 0.03125
++  },
++  "projection": {
++   "max_level_residual_before": 0.0044710055187408,
++   "max_level_residual_after": 2.9976021664879227e-15
++  },
++  "sheet_remesh": {
++   "size": 0.06,
++   "remeshed": {
++    "vertices": 13567,
++    "triangles": 25786
++   },
++   "crossing_vertices": 548,
++   "patches_flattened": 0,
++   "patch_vertices_flattened": 0,
++   "patches_left": 0,
++   "tangent_edges_flattened": 0,
++   "flat_dropped": 0,
++   "line_edges_collapsed": 0,
++   "flat_dropped_late": 6,
++   "short_edges_collapsed": 247,
++   "needles": {
++    "collapsed": 0,
++    "flipped": 0,
++    "remaining_below": 0,
++    "min_quality": 0.11776028870527544
++   },
++   "nonmanifold_dropped": 0,
++   "edges_with_3_or_more_triangles": 0,
++   "boundary_vertices_off_plane": 0,
++   "self_intersecting_triangles": 0,
++   "self_intersection_candidates": 0,
++   "fold_pairs": 0,
++   "vertices": 11592,
++   "triangles": 21724,
++   "min_quality": 0.14714647909426937,
++   "max_level_residual": 2.7755575615628914e-15
++  },
++  "flat_sheet_triangles": {
++   "dropped": 0,
++   "lifted": 0
++  },
++  "flat_sheet_triangles_before_caps": 0,
++  "tangent_edges_flattened_before_caps": 0,
++  "clipped": {
++   "vertices": 11592,
++   "triangles": 21724
++  },
++  "sheet_orientation": {
++   "outward_triangles": 21724,
++   "inward_triangles": 0
++  },
++  "cap_feature_size": 0.012,
++  "cap_needles": {
++   "remaining": 0,
++   "min_angle_degrees": 3.5157086500643215,
++   "apex_collapsed": 0,
++   "apex_moved": 0
++  },
++  "cap_classification_conflicts": 0,
++  "cap_level_disagreements": 0,
++  "t_junction_splits": 0,
++  "degenerate_triangles_dropped": 0,
++  "components": {
++   "components": 1,
++   "dropped": 0,
++   "dropped_area": 0.0
++  },
++  "watertight": {
++   "edges": 61203,
++   "non_two_manifold_edges": 0
++  },
++  "self_intersecting_triangles": 0,
++  "self_intersection_candidates": 0,
++  "closed_surface_fold_pairs": 1,
++  "vertices_outside_box": 0,
++  "surface_quality": {
++   "min": 0.04725415909094148,
++   "p01": 0.25679557145322485,
++   "below_0.3": 584,
++   "triangles": 40802
++  },
++  "carrier_nodes_on_surface": {
++   "box_x_min": 0,
++   "box_x_max": 0,
++   "box_y_min": 0,
++   "box_y_max": 0,
++   "box_z_min": 0,
++   "box_z_max": 0
++  },
++  "carrier_nodes_not_on_surface": 0,
++  "volume": 3.2227418521008957,
++  "seconds": 81.49597498774529,
++  "active_ports": [
++   "box_x_min",
++   "box_x_max",
++   "box_y_min",
++   "box_y_max",
++   "box_z_min",
++   "box_z_max"
++  ]
++ },
++ "mesh": {
++  "mesh_path": "/root/autodl-tmp/_claude_diag/tonight/D/q222c/block.mesh",
++  "node_count": 27049,
++  "tet_count": 95759,
++  "material_volume": 3.222741852100891,
++  "min_dihedral_degrees": 2.657507562414281,
++  "tets_below_5deg": 26,
++  "tets_below_10deg": 242,
++  "seconds": 7.449179794639349,
++  "carrier_nodes_preserved": 0,
++  "algorithm3d": 10,
++  "nonmanifold_facets": 0,
++  "sliver_smooth": null
++ },
++ "interface_pairs": 12,
++ "interface_active_mismatch": 0,
++ "zero_stiffness_carrier_nodes": 2488,
++ "assembled_smallest_eigenvalues": [
++  8.397978703135161e-06,
++  8.409626761736388e-06,
++  9.010080158263862e-06,
++  9.034298291325222e-06
++ ],
++ "results": {
++  "tension_x": {
++   "compliance_monolithic": 6.011029369271961,
++   "compliance_assembled": 5.963390501136266,
++   "compliance_constrained": 5.961809067754934,
++   "assembled_vs_free": -0.007925242950770128,
++   "constrained_vs_free": -0.008188331564080942,
++   "assembled_vs_constrained": 0.00026526065550913636,
++   "interface_disp_rel_l2_vs_free": 0.0060067844204830054,
++   "interface_disp_rel_l2_vs_constrained": 0.006035071420037818
++  },
++  "shear_y": {
++   "compliance_monolithic": 35.26466086434539,
++   "compliance_assembled": 35.19082947514704,
++   "compliance_constrained": 35.18902440883697,
++   "assembled_vs_free": -0.0020936367283485025,
++   "constrained_vs_free": -0.0021448229943107355,
++   "assembled_vs_constrained": 5.1296287419067e-05,
++   "interface_disp_rel_l2_vs_free": 0.0023679152300242956,
++   "interface_disp_rel_l2_vs_constrained": 0.002222547705227685
++  },
++  "bending_z": {
++   "compliance_monolithic": 1.6056478067567523,
++   "compliance_assembled": 1.5908605786973673,
++   "compliance_constrained": 1.5908525359651455,
++   "assembled_vs_free": -0.009209509082352074,
++   "constrained_vs_free": -0.009214518108732528,
++   "assembled_vs_constrained": 5.0556114032929145e-06,
++   "interface_disp_rel_l2_vs_free": 0.00533037931024765,
++   "interface_disp_rel_l2_vs_constrained": 0.004959539836077348
++  },
++  "wave_16H": {
++   "compliance_monolithic": 1.197952732386411,
++   "compliance_assembled": 1.175409291441301,
++   "compliance_constrained": 1.1739310456555119,
++   "assembled_vs_free": -0.018818305877730035,
++   "constrained_vs_free": -0.020052282599703375,
++   "assembled_vs_constrained": 0.0012592270996323318,
++   "interface_disp_rel_l2_vs_free": 0.015150605577512662,
++   "interface_disp_rel_l2_vs_constrained": 0.015022362614031738
++  },
++  "wave_8H": {
++   "compliance_monolithic": 0.06639829341496899,
++   "compliance_assembled": 0.056962285981034685,
++   "compliance_constrained": 0.05655214628019532,
++   "assembled_vs_free": -0.14211219820006737,
++   "constrained_vs_free": -0.14828915968123246,
++   "assembled_vs_constrained": 0.007252416182531141,
++   "interface_disp_rel_l2_vs_free": 0.14965055914484374,
++   "interface_disp_rel_l2_vs_constrained": 0.14896718636628287
++  },
++  "wave_4H": {
++   "compliance_monolithic": 0.032019394284003355,
++   "compliance_assembled": 0.022721823354542876,
++   "compliance_constrained": 0.02237927488918138,
++   "assembled_vs_free": -0.29037310471876965,
++   "constrained_vs_free": -0.30107126041538224,
++   "assembled_vs_constrained": 0.015306504212390326,
++   "interface_disp_rel_l2_vs_free": 0.24668115641817914,
++   "interface_disp_rel_l2_vs_constrained": 0.24691611614001965
++  }
++ },
++ "block_tet10_dof": 510870,
++ "global_carrier_nodes": 17280
++}
+\ No newline at end of file
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q332d_SHEET_BLOCK_VALIDATION.json b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q332d_SHEET_BLOCK_VALIDATION.json
+new file mode 100644
+index 0000000..11db6c4
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/panels/q332d_SHEET_BLOCK_VALIDATION.json
+@@ -0,0 +1,213 @@
++{
++ "shape": [
++  3,
++  3,
++  2
++ ],
++ "cut_plane_block_frame": null,
++ "empty_cells": [],
++ "carrier_n": 32,
++ "cells": 18,
++ "surface": {
++  "resolution_effective": {
++   "n_per_unit": 32,
++   "remesh_size": 0.06,
++   "requested": {
++    "n_per_unit": 32,
++    "remesh_size": 0.06
++   },
++   "wall_thickness_min": 0.12864340893175147
++  },
++  "marching_cubes": {
++   "vertices": 192204,
++   "triangles": 377328,
++   "h": 0.03125
++  },
++  "projection": {
++   "max_level_residual_before": 0.0044710055187410225,
++   "max_level_residual_after": 5.551115123125783e-15
++  },
++  "sheet_remesh": {
++   "size": 0.06,
++   "remeshed": {
++    "vertices": 28886,
++    "triangles": 55529
++   },
++   "crossing_vertices": 964,
++   "patches_flattened": 0,
++   "patch_vertices_flattened": 0,
++   "patches_left": 0,
++   "tangent_edges_flattened": 0,
++   "flat_dropped": 0,
++   "line_edges_collapsed": 0,
++   "flat_dropped_late": 7,
++   "short_edges_collapsed": 422,
++   "needles": {
++    "collapsed": 0,
++    "flipped": 0,
++    "remaining_below": 0,
++    "min_quality": 0.11665552690488215
++   },
++   "nonmanifold_dropped": 0,
++   "edges_with_3_or_more_triangles": 0,
++   "boundary_vertices_off_plane": 0,
++   "self_intersecting_triangles": 0,
++   "self_intersection_candidates": 0,
++   "fold_pairs": 0,
++   "vertices": 25458,
++   "triangles": 48420,
++   "min_quality": 0.14212109456810224,
++   "max_level_residual": 4.551914400963142e-15
++  },
++  "flat_sheet_triangles": {
++   "dropped": 0,
++   "lifted": 0
++  },
++  "flat_sheet_triangles_before_caps": 0,
++  "tangent_edges_flattened_before_caps": 0,
++  "clipped": {
++   "vertices": 25458,
++   "triangles": 48420
++  },
++  "sheet_orientation": {
++   "outward_triangles": 48420,
++   "inward_triangles": 0
++  },
++  "cap_feature_size": 0.012,
++  "cap_needles": {
++   "remaining": 0,
++   "min_angle_degrees": 2.759490175039053,
++   "apex_collapsed": 0,
++   "apex_moved": 0
++  },
++  "cap_classification_conflicts": 0,
++  "cap_level_disagreements": 0,
++  "t_junction_splits": 0,
++  "degenerate_triangles_dropped": 0,
++  "components": {
++   "components": 1,
++   "dropped": 0,
++   "dropped_area": 0.0
++  },
++  "watertight": {
++   "edges": 122577,
++   "non_two_manifold_edges": 0
++  },
++  "self_intersecting_triangles": 0,
++  "self_intersection_candidates": 0,
++  "closed_surface_fold_pairs": 6,
++  "vertices_outside_box": 0,
++  "surface_quality": {
++   "min": 0.04725415909094148,
++   "p01": 0.2758567820296315,
++   "below_0.3": 1002,
++   "triangles": 81718
++  },
++  "carrier_nodes_on_surface": {
++   "box_x_min": 0,
++   "box_x_max": 0,
++   "box_y_min": 0,
++   "box_y_max": 0,
++   "box_z_min": 0,
++   "box_z_max": 0
++  },
++  "carrier_nodes_not_on_surface": 0,
++  "volume": 7.251562213764242,
++  "seconds": 246.512199126184,
++  "active_ports": [
++   "box_x_min",
++   "box_x_max",
++   "box_y_min",
++   "box_y_max",
++   "box_z_min",
++   "box_z_max"
++  ]
++ },
++ "mesh": {
++  "mesh_path": "/root/autodl-tmp/_claude_diag/tonight/D/q332d/block.mesh",
++  "node_count": 54536,
++  "tet_count": 195775,
++  "material_volume": 7.251562213764235,
++  "min_dihedral_degrees": 2.6851619197406364,
++  "tets_below_5deg": 45,
++  "tets_below_10deg": 483,
++  "seconds": 16.171777728945017,
++  "carrier_nodes_preserved": 0,
++  "algorithm3d": 10,
++  "nonmanifold_facets": 0,
++  "sliver_smooth": null
++ },
++ "interface_pairs": 33,
++ "interface_active_mismatch": 0,
++ "zero_stiffness_carrier_nodes": 5109,
++ "assembled_smallest_eigenvalues": [
++  2.573993824088878e-06,
++  4.370201126951864e-06,
++  8.920213103500564e-06,
++  9.01369668228217e-06
++ ],
++ "results": {
++  "tension_x": {
++   "compliance_monolithic": 13.066700266861908,
++   "compliance_assembled": 13.002150104816549,
++   "compliance_constrained": 12.992227736442704,
++   "assembled_vs_free": -0.004940050718777345,
++   "constrained_vs_free": -0.005699413692688116,
++   "assembled_vs_constrained": 0.0007637157056610278,
++   "interface_disp_rel_l2_vs_free": 0.003858131900171352,
++   "interface_disp_rel_l2_vs_constrained": 0.003955459045221448
++  },
++  "shear_y": {
++   "compliance_monolithic": 76.67560870267825,
++   "compliance_assembled": 76.58747357319862,
++   "compliance_constrained": 76.5504716926928,
++   "assembled_vs_free": -0.0011494545784616061,
++   "constrained_vs_free": -0.0016320315169676691,
++   "assembled_vs_constrained": 0.0004833658067369129,
++   "interface_disp_rel_l2_vs_free": 0.001435691440191693,
++   "interface_disp_rel_l2_vs_constrained": 0.0015811898407515138
++  },
++  "bending_z": {
++   "compliance_monolithic": 3.447822140435375,
++   "compliance_assembled": 3.4272317701692874,
++   "compliance_constrained": 3.425033357998215,
++   "assembled_vs_free": -0.005971993167689149,
++   "constrained_vs_free": -0.006609616595327661,
++   "assembled_vs_constrained": 0.0006418659152438444,
++   "interface_disp_rel_l2_vs_free": 0.0022302828512857807,
++   "interface_disp_rel_l2_vs_constrained": 0.0021089179791318217
++  },
++  "wave_16H": {
++   "compliance_monolithic": 1.5135522297323019,
++   "compliance_assembled": 1.4905744475491205,
++   "compliance_constrained": 1.4878351876900588,
++   "assembled_vs_free": -0.01518136059780728,
++   "constrained_vs_free": -0.016991182423081286,
++   "assembled_vs_constrained": 0.0018411043654065207,
++   "interface_disp_rel_l2_vs_free": 0.010577654565080538,
++   "interface_disp_rel_l2_vs_constrained": 0.010610561207875163
++  },
++  "wave_8H": {
++   "compliance_monolithic": 0.10047385436336032,
++   "compliance_assembled": 0.08658845583569295,
++   "compliance_constrained": 0.08591899744377232,
++   "assembled_vs_free": -0.1381991227036169,
++   "constrained_vs_free": -0.14486213365470024,
++   "assembled_vs_constrained": 0.0077917388684469735,
++   "interface_disp_rel_l2_vs_free": 0.10741031914276779,
++   "interface_disp_rel_l2_vs_constrained": 0.1058620569149687
++  },
++  "wave_4H": {
++   "compliance_monolithic": 0.04788450103011037,
++   "compliance_assembled": 0.03409396260700294,
++   "compliance_constrained": 0.03348630979581896,
++   "assembled_vs_free": -0.28799586769079555,
++   "constrained_vs_free": -0.30068583622157097,
++   "assembled_vs_constrained": 0.01814630560635422,
++   "interface_disp_rel_l2_vs_free": 0.17167821734392777,
++   "interface_disp_rel_l2_vs_constrained": 0.17087684406078849
++  }
++ },
++ "block_tet10_dof": 1037334,
++ "global_carrier_nodes": 36000
++}
+\ No newline at end of file
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index 69b1a76..7ef1135 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -153,6 +153,15 @@ def main() -> int:
+                         "min_eigenvalue": float(eig[0]), "max_eigenvalue": float(eig[-1]), "inactive_block_max": sch.inactive_block_max,
+                         "top_mode_mass_on_4_nodes": sch.top_mode_mass_on_4_nodes, "top_mode_nodes_above_1pct": sch.top_mode_nodes_above_1pct}
+ 
++    # ---- support mask and numerical rank (decision of record 2026-09-05: the null space is a lower bound, no gap) ----
++    # a carrier node the mesh trace never loads has an exactly zero row; the rank at two declared thresholds is shipped
++    # because there is no spectral gap and any single threshold is a convention (see STEP6 report, section 8)
++    n_nodes = S_active.shape[0] // 3
++    row_norm = np.linalg.norm(S_active.reshape(n_nodes, 3, -1), axis=(1, 2)); support_mask = row_norm > 1e-12 * max(float(row_norm.max()), 1e-300)
++    rank_1e14 = int((eig > 1e-14 * eig[-1]).sum()); rank_1e10 = int((eig > 1e-10 * eig[-1]).sum())
++    receipt["schur"]["support"] = {"supported_nodes": int(support_mask.sum()), "unsupported_nodes": int((~support_mask).sum()),
++                                  "rank_at_1e-14": rank_1e14, "rank_at_1e-10": rank_1e10, "null_dim_lower_bound": int(6 + 3 * (~support_mask).sum()),
++                                  "null_dim_at_1e-14": int(S_active.shape[0] - rank_1e14), "null_dim_at_1e-10": int(S_active.shape[0] - rank_1e10)}
+     # ---- carrier norms for the training loss ----
+     mass, lap = pipe.carrier_norms(layout, port, active)
+     ids = np.asarray(port.active_global_carrier_ids)[active]
+@@ -169,7 +178,8 @@ def main() -> int:
+              carrier_port_membership=membership, rigid_basis=rigid, active_ports=np.asarray(list(port.active_global_port_ids)),
+              carrier_mass_coo=np.vstack([mass_c.row, mass_c.col]).astype(np.int32), carrier_mass_values=mass_c.data,
+              carrier_laplacian_coo=np.vstack([lap_c.row, lap_c.col]).astype(np.int32), carrier_laplacian_values=lap_c.data,
+-             carrier_scalar_count=np.asarray([mass.shape[0]]), material_volume=np.asarray([mesh.material_volume]))
++             carrier_scalar_count=np.asarray([mass.shape[0]]), material_volume=np.asarray([mesh.material_volume]),
++             support_mask=support_mask, numerical_rank=np.asarray([rank_1e14, rank_1e10]), rank_thresholds=np.asarray([1e-14, 1e-10]))
+     receipt["schur"]["storage"] = {"format": "upper_triangle_float32", "entries": int(len(iu[0])), "bytes": int(4 * len(iu[0])),
+                                    "float32_rounding_relative": float(np.abs(S_active[iu] - S_active[iu].astype(np.float32)).max() / np.abs(S_active).max())}
+ 
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+index a140596..d471954 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_block_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -197,9 +197,13 @@ def main() -> int:
+     for off, port, active, Ss, lay2c in ((off, *labels[off]) for off, _, _ in cells):
+         cc = np.asarray(port.carrier_coordinates)[active]; maps[off] = np.array([gid(p + np.array(off, dtype=float)) for p in cc])
+         m_ = np.full(len(active), -1); m_[active] = np.arange(int(active.sum())); c2s[off] = m_
+-    nG = len(gc); gcoords = np.asarray(gc); KG = np.zeros((3 * nG, 3 * nG))
++    # the assembled carrier operator is block sparse (one dense q x q block per cell): kept sparse, because the dense
++    # matrix of a 3 x 3 x 2 block is 65 GB and its eigendecomposition took the machine down (2026-09-05)
++    nG = len(gc); gcoords = np.asarray(gc); rows_, cols_, vals_ = [], [], []
+     for off, _, _ in cells:
+-        mm = maps[off]; Sm = labels[off][2]; idx = (3 * mm[:, None] + np.arange(3)).ravel(); KG[np.ix_(idx, idx)] += Sm
++        mm = maps[off]; Sm = np.asarray(labels[off][2]); idx = (3 * mm[:, None] + np.arange(3)).ravel()
++        ii, jj = np.meshgrid(idx, idx, indexing="ij"); rows_.append(ii.ravel()); cols_.append(jj.ravel()); vals_.append(Sm.ravel())
++    KG = sp.coo_matrix((np.concatenate(vals_), (np.concatenate(rows_), np.concatenate(cols_))), shape=(3 * nG, 3 * nG)).tocsr(); del rows_, cols_, vals_
+     # interface consistency: for every internal interface the two cells' active node sets on it must coincide
+     mism = 0; pairs = 0
+     for off, _, _ in cells:
+@@ -293,10 +297,20 @@ def main() -> int:
+     Kff = K[free][:, free].tocsr(); sol = pypardiso.PyPardisoSolver(); sol.set_iparm(1, 1); sol.set_iparm(2, 3); t0 = time.perf_counter(); sol.factorize(Kff); print(f"monolithic factorized {time.perf_counter()-t0:.0f}s ({Kff.shape[0]} dof)", flush=True)
+     # ---- (b) assembled ----
+     fixedG = np.zeros(3 * nG, bool); fixedG[(3 * np.where(np.abs(gcoords[:, 0]) < 1e-9)[0][:, None] + np.arange(3)).ravel()] = True; freeG = ~fixedG
+-    dg = np.diag(KG); zero_nodes = np.where((dg.reshape(-1, 3) <= 1e-12 * dg.max()).all(axis=1))[0]; rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))   # carrier nodes the band only grazes carry a negligible support: removed from the free system like the unsupported ones
++    dg = KG.diagonal(); zero_nodes = np.where((dg.reshape(-1, 3) <= 1e-12 * dg.max()).all(axis=1))[0]; rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))   # carrier nodes the band only grazes carry a negligible support: removed from the free system like the unsupported ones
+     if len(zero_nodes):
+         zmask = np.zeros(3 * nG, bool); zmask[(3 * zero_nodes[:, None] + np.arange(3)).ravel()] = True; freeG &= ~zmask
+-    KGf = KG[np.ix_(freeG, freeG)]; evs = np.linalg.eigvalsh(KGf)[:4]; rep["assembled_smallest_eigenvalues"] = evs.tolist()
++    # symmetric indefinite Pardiso on the upper triangle (half the storage of the nonsymmetric mode; the 3 x 3 x 2 block's
++    # 1.3e9 dense-block nonzeros ran the nonsymmetric factorization out of memory), in-core if it fits, out-of-core otherwise
++    KGf = sp.triu(KG[freeG][:, freeG].tocsr(), format="csr"); solG = pypardiso.PyPardisoSolver(mtype=-2); solG.set_iparm(1, 1); solG.set_iparm(2, 3); solG.set_iparm(60, 1)
++    t0 = time.perf_counter(); solG.factorize(KGf); print(f"assembled system factorized {time.perf_counter()-t0:.0f}s ({KGf.shape[0]} dof, {KGf.nnz} upper nonzeros)", flush=True)
++    try:   # smallest eigenvalues by shift-invert through the Pardiso factorization (a diagnostic: the free assembled system must be positive definite)
++        from scipy.sparse.linalg import LinearOperator, eigsh
++        OPinv = LinearOperator(KGf.shape, matvec=lambda x: solG.solve(KGf, np.asarray(x, dtype=np.float64).ravel()), dtype=np.float64)
++        evs = np.sort(eigsh(KGf, k=4, sigma=0.0, which="LM", OPinv=OPinv, return_eigenvectors=False, tol=1e-8))
++    except Exception as exc:
++        evs = np.full(4, np.nan); rep["assembled_eigenvalue_error"] = str(exc)[:200]
++    rep["assembled_smallest_eigenvalues"] = evs.tolist()
+     print(f"assembled carrier system: {nG} nodes, zero-stiffness nodes {len(zero_nodes)}, smallest eigenvalues {evs}", flush=True)
+     # ---- (c) constrained monolithic: every external port-face fine node tied to the carrier ----
+     tied = {}
+@@ -340,7 +354,7 @@ def main() -> int:
+     interior = np.where((np.abs(gcoords[:, 0] - np.round(gcoords[:, 0])) < 1e-9) & (gcoords[:, 0] > 1e-9) & (gcoords[:, 0] < shape[0] - 1e-9))[0]   # nodes on internal x-interfaces
+     results = {}
+     for name, (fF, fG) in loads.items():
+-        uF = np.zeros(3 * n10); uF[free] = sol.solve(Kff, fF[free]); uG = np.zeros(3 * nG); uG[freeG] = np.linalg.solve(KGf, fG[freeG])
++        uF = np.zeros(3 * n10); uF[free] = sol.solve(Kff, fF[free]); uG = np.zeros(3 * nG); uG[freeG] = solG.solve(KGf, fG[freeG])
+         fc_ = Tc.T @ fF; zc = np.zeros(Tc.shape[1]); zc[freec] = solc.solve(Kcf, fc_[freec]); uC = Tc @ zc
+         cm, ca, cc = float(fF @ uF), float(fG @ uG), float(fF @ uC)
+         results[name] = {"compliance_monolithic": cm, "compliance_assembled": ca, "compliance_constrained": cc, "assembled_vs_free": ca / cm - 1, "constrained_vs_free": cc / cm - 1,
+-- 
+2.34.1
+

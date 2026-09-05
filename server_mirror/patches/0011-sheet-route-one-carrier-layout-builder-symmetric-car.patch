@@ -1,7 +1,7 @@
 From ff9d147ee33dcb6c688a3e8b7c0a8c93ef98b8f6 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 13:16:03 +0800
-Subject: [PATCH 11/22] sheet route: one carrier layout builder, symmetric
+Subject: [PATCH 11/23] sheet route: one carrier layout builder, symmetric
  carrier by default
 
 Every entry point of the sheet route (production command, prototype driver,

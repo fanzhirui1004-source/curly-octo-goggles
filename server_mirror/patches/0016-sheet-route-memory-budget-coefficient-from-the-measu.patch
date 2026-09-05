@@ -1,7 +1,7 @@
 From 5819d127263e69c1823f91ffc96f8b61700a3aa2 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 18:23:47 +0800
-Subject: [PATCH 16/22] sheet route: memory budget coefficient from the
+Subject: [PATCH 16/23] sheet route: memory budget coefficient from the
  measured Schur peak
 
 Sixty production labels through the budgeted queue put the peak RSS of

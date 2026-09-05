@@ -1,7 +1,7 @@
 From 3e8c45017c943397389c4b848fc7d58cc3e19464 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 16:28:45 +0800
-Subject: [PATCH 14/22] sheet surface: near-plane treatment decided by topology
+Subject: [PATCH 14/23] sheet surface: near-plane treatment decided by topology
  and material side
 
 The census of record left three surface failures and their diagnosis

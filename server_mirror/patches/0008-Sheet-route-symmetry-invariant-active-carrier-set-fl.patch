@@ -1,7 +1,7 @@
 From 1cdb3d52e086ba20d2e00da8b90100d3e14551dc Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 11:32:07 +0800
-Subject: [PATCH 08/22] Sheet route: symmetry-invariant active carrier set,
+Subject: [PATCH 08/23] Sheet route: symmetry-invariant active carrier set,
  float32 upper-triangle labels, N x N x N block and rotation checks,
  population generator
 

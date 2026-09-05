@@ -1,0 +1,213 @@
+{
+ "shape": [
+  3,
+  3,
+  2
+ ],
+ "cut_plane_block_frame": null,
+ "empty_cells": [],
+ "carrier_n": 32,
+ "cells": 18,
+ "surface": {
+  "resolution_effective": {
+   "n_per_unit": 32,
+   "remesh_size": 0.06,
+   "requested": {
+    "n_per_unit": 32,
+    "remesh_size": 0.06
+   },
+   "wall_thickness_min": 0.12864340893175147
+  },
+  "marching_cubes": {
+   "vertices": 192204,
+   "triangles": 377328,
+   "h": 0.03125
+  },
+  "projection": {
+   "max_level_residual_before": 0.0044710055187410225,
+   "max_level_residual_after": 5.551115123125783e-15
+  },
+  "sheet_remesh": {
+   "size": 0.06,
+   "remeshed": {
+    "vertices": 28886,
+    "triangles": 55529
+   },
+   "crossing_vertices": 964,
+   "patches_flattened": 0,
+   "patch_vertices_flattened": 0,
+   "patches_left": 0,
+   "tangent_edges_flattened": 0,
+   "flat_dropped": 0,
+   "line_edges_collapsed": 0,
+   "flat_dropped_late": 7,
+   "short_edges_collapsed": 422,
+   "needles": {
+    "collapsed": 0,
+    "flipped": 0,
+    "remaining_below": 0,
+    "min_quality": 0.11665552690488215
+   },
+   "nonmanifold_dropped": 0,
+   "edges_with_3_or_more_triangles": 0,
+   "boundary_vertices_off_plane": 0,
+   "self_intersecting_triangles": 0,
+   "self_intersection_candidates": 0,
+   "fold_pairs": 0,
+   "vertices": 25458,
+   "triangles": 48420,
+   "min_quality": 0.14212109456810224,
+   "max_level_residual": 4.551914400963142e-15
+  },
+  "flat_sheet_triangles": {
+   "dropped": 0,
+   "lifted": 0
+  },
+  "flat_sheet_triangles_before_caps": 0,
+  "tangent_edges_flattened_before_caps": 0,
+  "clipped": {
+   "vertices": 25458,
+   "triangles": 48420
+  },
+  "sheet_orientation": {
+   "outward_triangles": 48420,
+   "inward_triangles": 0
+  },
+  "cap_feature_size": 0.012,
+  "cap_needles": {
+   "remaining": 0,
+   "min_angle_degrees": 2.759490175039053,
+   "apex_collapsed": 0,
+   "apex_moved": 0
+  },
+  "cap_classification_conflicts": 0,
+  "cap_level_disagreements": 0,
+  "t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 122577,
+   "non_two_manifold_edges": 0
+  },
+  "self_intersecting_triangles": 0,
+  "self_intersection_candidates": 0,
+  "closed_surface_fold_pairs": 6,
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.04725415909094148,
+   "p01": 0.2758567820296315,
+   "below_0.3": 1002,
+   "triangles": 81718
+  },
+  "carrier_nodes_on_surface": {
+   "box_x_min": 0,
+   "box_x_max": 0,
+   "box_y_min": 0,
+   "box_y_max": 0,
+   "box_z_min": 0,
+   "box_z_max": 0
+  },
+  "carrier_nodes_not_on_surface": 0,
+  "volume": 7.251562213764242,
+  "seconds": 246.512199126184,
+  "active_ports": [
+   "box_x_min",
+   "box_x_max",
+   "box_y_min",
+   "box_y_max",
+   "box_z_min",
+   "box_z_max"
+  ]
+ },
+ "mesh": {
+  "mesh_path": "/root/autodl-tmp/_claude_diag/tonight/D/q332d/block.mesh",
+  "node_count": 54536,
+  "tet_count": 195775,
+  "material_volume": 7.251562213764235,
+  "min_dihedral_degrees": 2.6851619197406364,
+  "tets_below_5deg": 45,
+  "tets_below_10deg": 483,
+  "seconds": 16.171777728945017,
+  "carrier_nodes_preserved": 0,
+  "algorithm3d": 10,
+  "nonmanifold_facets": 0,
+  "sliver_smooth": null
+ },
+ "interface_pairs": 33,
+ "interface_active_mismatch": 0,
+ "zero_stiffness_carrier_nodes": 5109,
+ "assembled_smallest_eigenvalues": [
+  2.573993824088878e-06,
+  4.370201126951864e-06,
+  8.920213103500564e-06,
+  9.01369668228217e-06
+ ],
+ "results": {
+  "tension_x": {
+   "compliance_monolithic": 13.066700266861908,
+   "compliance_assembled": 13.002150104816549,
+   "compliance_constrained": 12.992227736442704,
+   "assembled_vs_free": -0.004940050718777345,
+   "constrained_vs_free": -0.005699413692688116,
+   "assembled_vs_constrained": 0.0007637157056610278,
+   "interface_disp_rel_l2_vs_free": 0.003858131900171352,
+   "interface_disp_rel_l2_vs_constrained": 0.003955459045221448
+  },
+  "shear_y": {
+   "compliance_monolithic": 76.67560870267825,
+   "compliance_assembled": 76.58747357319862,
+   "compliance_constrained": 76.5504716926928,
+   "assembled_vs_free": -0.0011494545784616061,
+   "constrained_vs_free": -0.0016320315169676691,
+   "assembled_vs_constrained": 0.0004833658067369129,
+   "interface_disp_rel_l2_vs_free": 0.001435691440191693,
+   "interface_disp_rel_l2_vs_constrained": 0.0015811898407515138
+  },
+  "bending_z": {
+   "compliance_monolithic": 3.447822140435375,
+   "compliance_assembled": 3.4272317701692874,
+   "compliance_constrained": 3.425033357998215,
+   "assembled_vs_free": -0.005971993167689149,
+   "constrained_vs_free": -0.006609616595327661,
+   "assembled_vs_constrained": 0.0006418659152438444,
+   "interface_disp_rel_l2_vs_free": 0.0022302828512857807,
+   "interface_disp_rel_l2_vs_constrained": 0.0021089179791318217
+  },
+  "wave_16H": {
+   "compliance_monolithic": 1.5135522297323019,
+   "compliance_assembled": 1.4905744475491205,
+   "compliance_constrained": 1.4878351876900588,
+   "assembled_vs_free": -0.01518136059780728,
+   "constrained_vs_free": -0.016991182423081286,
+   "assembled_vs_constrained": 0.0018411043654065207,
+   "interface_disp_rel_l2_vs_free": 0.010577654565080538,
+   "interface_disp_rel_l2_vs_constrained": 0.010610561207875163
+  },
+  "wave_8H": {
+   "compliance_monolithic": 0.10047385436336032,
+   "compliance_assembled": 0.08658845583569295,
+   "compliance_constrained": 0.08591899744377232,
+   "assembled_vs_free": -0.1381991227036169,
+   "constrained_vs_free": -0.14486213365470024,
+   "assembled_vs_constrained": 0.0077917388684469735,
+   "interface_disp_rel_l2_vs_free": 0.10741031914276779,
+   "interface_disp_rel_l2_vs_constrained": 0.1058620569149687
+  },
+  "wave_4H": {
+   "compliance_monolithic": 0.04788450103011037,
+   "compliance_assembled": 0.03409396260700294,
+   "compliance_constrained": 0.03348630979581896,
+   "assembled_vs_free": -0.28799586769079555,
+   "constrained_vs_free": -0.30068583622157097,
+   "assembled_vs_constrained": 0.01814630560635422,
+   "interface_disp_rel_l2_vs_free": 0.17167821734392777,
+   "interface_disp_rel_l2_vs_constrained": 0.17087684406078849
+  }
+ },
+ "block_tet10_dof": 1037334,
+ "global_carrier_nodes": 36000
+}

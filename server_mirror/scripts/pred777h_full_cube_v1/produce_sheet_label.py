@@ -153,6 +153,15 @@ def main() -> int:
                         "min_eigenvalue": float(eig[0]), "max_eigenvalue": float(eig[-1]), "inactive_block_max": sch.inactive_block_max,
                         "top_mode_mass_on_4_nodes": sch.top_mode_mass_on_4_nodes, "top_mode_nodes_above_1pct": sch.top_mode_nodes_above_1pct}
 
+    # ---- support mask and numerical rank (decision of record 2026-09-05: the null space is a lower bound, no gap) ----
+    # a carrier node the mesh trace never loads has an exactly zero row; the rank at two declared thresholds is shipped
+    # because there is no spectral gap and any single threshold is a convention (see STEP6 report, section 8)
+    n_nodes = S_active.shape[0] // 3
+    row_norm = np.linalg.norm(S_active.reshape(n_nodes, 3, -1), axis=(1, 2)); support_mask = row_norm > 1e-12 * max(float(row_norm.max()), 1e-300)
+    rank_1e14 = int((eig > 1e-14 * eig[-1]).sum()); rank_1e10 = int((eig > 1e-10 * eig[-1]).sum())
+    receipt["schur"]["support"] = {"supported_nodes": int(support_mask.sum()), "unsupported_nodes": int((~support_mask).sum()),
+                                  "rank_at_1e-14": rank_1e14, "rank_at_1e-10": rank_1e10, "null_dim_lower_bound": int(6 + 3 * (~support_mask).sum()),
+                                  "null_dim_at_1e-14": int(S_active.shape[0] - rank_1e14), "null_dim_at_1e-10": int(S_active.shape[0] - rank_1e10)}
     # ---- carrier norms for the training loss ----
     mass, lap = pipe.carrier_norms(layout, port, active)
     ids = np.asarray(port.active_global_carrier_ids)[active]
@@ -169,7 +178,8 @@ def main() -> int:
              carrier_port_membership=membership, rigid_basis=rigid, active_ports=np.asarray(list(port.active_global_port_ids)),
              carrier_mass_coo=np.vstack([mass_c.row, mass_c.col]).astype(np.int32), carrier_mass_values=mass_c.data,
              carrier_laplacian_coo=np.vstack([lap_c.row, lap_c.col]).astype(np.int32), carrier_laplacian_values=lap_c.data,
-             carrier_scalar_count=np.asarray([mass.shape[0]]), material_volume=np.asarray([mesh.material_volume]))
+             carrier_scalar_count=np.asarray([mass.shape[0]]), material_volume=np.asarray([mesh.material_volume]),
+             support_mask=support_mask, numerical_rank=np.asarray([rank_1e14, rank_1e10]), rank_thresholds=np.asarray([1e-14, 1e-10]))
     receipt["schur"]["storage"] = {"format": "upper_triangle_float32", "entries": int(len(iu[0])), "bytes": int(4 * len(iu[0])),
                                    "float32_rounding_relative": float(np.abs(S_active[iu] - S_active[iu].astype(np.float32)).max() / np.abs(S_active).max())}
 

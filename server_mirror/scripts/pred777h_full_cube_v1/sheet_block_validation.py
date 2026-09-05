@@ -197,9 +197,13 @@ def main() -> int:
     for off, port, active, Ss, lay2c in ((off, *labels[off]) for off, _, _ in cells):
         cc = np.asarray(port.carrier_coordinates)[active]; maps[off] = np.array([gid(p + np.array(off, dtype=float)) for p in cc])
         m_ = np.full(len(active), -1); m_[active] = np.arange(int(active.sum())); c2s[off] = m_
-    nG = len(gc); gcoords = np.asarray(gc); KG = np.zeros((3 * nG, 3 * nG))
+    # the assembled carrier operator is block sparse (one dense q x q block per cell): kept sparse, because the dense
+    # matrix of a 3 x 3 x 2 block is 65 GB and its eigendecomposition took the machine down (2026-09-05)
+    nG = len(gc); gcoords = np.asarray(gc); rows_, cols_, vals_ = [], [], []
     for off, _, _ in cells:
-        mm = maps[off]; Sm = labels[off][2]; idx = (3 * mm[:, None] + np.arange(3)).ravel(); KG[np.ix_(idx, idx)] += Sm
+        mm = maps[off]; Sm = np.asarray(labels[off][2]); idx = (3 * mm[:, None] + np.arange(3)).ravel()
+        ii, jj = np.meshgrid(idx, idx, indexing="ij"); rows_.append(ii.ravel()); cols_.append(jj.ravel()); vals_.append(Sm.ravel())
+    KG = sp.coo_matrix((np.concatenate(vals_), (np.concatenate(rows_), np.concatenate(cols_))), shape=(3 * nG, 3 * nG)).tocsr(); del rows_, cols_, vals_
     # interface consistency: for every internal interface the two cells' active node sets on it must coincide
     mism = 0; pairs = 0
     for off, _, _ in cells:
@@ -293,10 +297,20 @@ def main() -> int:
     Kff = K[free][:, free].tocsr(); sol = pypardiso.PyPardisoSolver(); sol.set_iparm(1, 1); sol.set_iparm(2, 3); t0 = time.perf_counter(); sol.factorize(Kff); print(f"monolithic factorized {time.perf_counter()-t0:.0f}s ({Kff.shape[0]} dof)", flush=True)
     # ---- (b) assembled ----
     fixedG = np.zeros(3 * nG, bool); fixedG[(3 * np.where(np.abs(gcoords[:, 0]) < 1e-9)[0][:, None] + np.arange(3)).ravel()] = True; freeG = ~fixedG
-    dg = np.diag(KG); zero_nodes = np.where((dg.reshape(-1, 3) <= 1e-12 * dg.max()).all(axis=1))[0]; rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))   # carrier nodes the band only grazes carry a negligible support: removed from the free system like the unsupported ones
+    dg = KG.diagonal(); zero_nodes = np.where((dg.reshape(-1, 3) <= 1e-12 * dg.max()).all(axis=1))[0]; rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))   # carrier nodes the band only grazes carry a negligible support: removed from the free system like the unsupported ones
     if len(zero_nodes):
         zmask = np.zeros(3 * nG, bool); zmask[(3 * zero_nodes[:, None] + np.arange(3)).ravel()] = True; freeG &= ~zmask
-    KGf = KG[np.ix_(freeG, freeG)]; evs = np.linalg.eigvalsh(KGf)[:4]; rep["assembled_smallest_eigenvalues"] = evs.tolist()
+    # symmetric indefinite Pardiso on the upper triangle (half the storage of the nonsymmetric mode; the 3 x 3 x 2 block's
+    # 1.3e9 dense-block nonzeros ran the nonsymmetric factorization out of memory), in-core if it fits, out-of-core otherwise
+    KGf = sp.triu(KG[freeG][:, freeG].tocsr(), format="csr"); solG = pypardiso.PyPardisoSolver(mtype=-2); solG.set_iparm(1, 1); solG.set_iparm(2, 3); solG.set_iparm(60, 1)
+    t0 = time.perf_counter(); solG.factorize(KGf); print(f"assembled system factorized {time.perf_counter()-t0:.0f}s ({KGf.shape[0]} dof, {KGf.nnz} upper nonzeros)", flush=True)
+    try:   # smallest eigenvalues by shift-invert through the Pardiso factorization (a diagnostic: the free assembled system must be positive definite)
+        from scipy.sparse.linalg import LinearOperator, eigsh
+        OPinv = LinearOperator(KGf.shape, matvec=lambda x: solG.solve(KGf, np.asarray(x, dtype=np.float64).ravel()), dtype=np.float64)
+        evs = np.sort(eigsh(KGf, k=4, sigma=0.0, which="LM", OPinv=OPinv, return_eigenvectors=False, tol=1e-8))
+    except Exception as exc:
+        evs = np.full(4, np.nan); rep["assembled_eigenvalue_error"] = str(exc)[:200]
+    rep["assembled_smallest_eigenvalues"] = evs.tolist()
     print(f"assembled carrier system: {nG} nodes, zero-stiffness nodes {len(zero_nodes)}, smallest eigenvalues {evs}", flush=True)
     # ---- (c) constrained monolithic: every external port-face fine node tied to the carrier ----
     tied = {}
@@ -340,7 +354,7 @@ def main() -> int:
     interior = np.where((np.abs(gcoords[:, 0] - np.round(gcoords[:, 0])) < 1e-9) & (gcoords[:, 0] > 1e-9) & (gcoords[:, 0] < shape[0] - 1e-9))[0]   # nodes on internal x-interfaces
     results = {}
     for name, (fF, fG) in loads.items():
-        uF = np.zeros(3 * n10); uF[free] = sol.solve(Kff, fF[free]); uG = np.zeros(3 * nG); uG[freeG] = np.linalg.solve(KGf, fG[freeG])
+        uF = np.zeros(3 * n10); uF[free] = sol.solve(Kff, fF[free]); uG = np.zeros(3 * nG); uG[freeG] = solG.solve(KGf, fG[freeG])
         fc_ = Tc.T @ fF; zc = np.zeros(Tc.shape[1]); zc[freec] = solc.solve(Kcf, fc_[freec]); uC = Tc @ zc
         cm, ca, cc = float(fF @ uF), float(fG @ uG), float(fF @ uC)
         results[name] = {"compliance_monolithic": cm, "compliance_assembled": ca, "compliance_constrained": cc, "assembled_vs_free": ca / cm - 1, "constrained_vs_free": cc / cm - 1,

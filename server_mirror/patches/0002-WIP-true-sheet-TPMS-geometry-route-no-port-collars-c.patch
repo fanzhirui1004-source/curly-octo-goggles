@@ -1,7 +1,7 @@
 From 739bbcd0f6b7af9e4abbc04f57371a0647f62361 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Thu, 3 Sep 2026 23:07:14 +0800
-Subject: [PATCH 02/22] WIP: true sheet-TPMS geometry route (no port collars):
+Subject: [PATCH 02/23] WIP: true sheet-TPMS geometry route (no port collars):
  closed carrier-conforming surface, Gmsh Tet10 labels
 
 - sheet_solid_surface.py: marching cubes of |phi|-tau, exact clipping by box and cut planes, pymeshlab isotropic

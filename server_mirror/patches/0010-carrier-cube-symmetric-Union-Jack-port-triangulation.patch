@@ -1,7 +1,7 @@
 From 534c56b8b131c8b1070f573674f5347a4d05c8f4 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 13:12:07 +0800
-Subject: [PATCH 10/22] carrier: cube-symmetric (Union Jack) port triangulation
+Subject: [PATCH 10/23] carrier: cube-symmetric (Union Jack) port triangulation
 
 The rotation check showed a 3 % low-frequency residual between a cell and
 its cube-symmetry image, unchanged by mesh refinement.  A same-mesh

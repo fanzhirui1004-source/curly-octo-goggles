@@ -92,6 +92,42 @@ five of them); merging such near-duplicate chain vertices is a follow-up.
 Per-cell cost of the fix: none measurable (the surface stage does a few collapses; the volume mesh is unchanged in
 size).  The 24 tests of the sheet surface, cut carrier and sliver repair pass.
 
+
+**Assembly.**  The 2 x 2 x 2 coarse panel (`sheet_block_validation`, n_per_unit 32, remesh 0.06) re-run with the
+repaired cell labels: the monolithic and the constrained-monolithic compliances are unchanged to every printed digit
+(the block mesh does not go through the cell-label surface path), and the assembled-versus-constrained difference
+on the service loads fell from 8.9e-4 / 8.6e-4 / 1.1e-3 (tension, shear, bending) to 2.7e-4 / 5.1e-5 / 5.1e-6.  A
+good part of what was booked as "assembly error" was this artefact.  The 8H and 4H sinusoidal port loads moved from
+2.7e-3 / 1.3e-2 to 7.3e-3 / 1.5e-2, same order, at the coarse preset.
+
+**Block validation script.**  Its assembled carrier operator was a dense matrix with a dense eigendecomposition (65 GB
+for 3 x 3 x 2), which took the machine down twice; it is now block sparse, factorised by symmetric Pardiso on the upper
+triangle (in-core when it fits), with the four smallest eigenvalues by shift-invert.
+
+
+## 7. Track D: interface error on panel-shaped blocks (coarse preset)
+
+`sheet_block_validation` at n_per_unit 32, remesh 0.06, size_max 0.09, with the repaired cell labels; loads on the
+x = N face, x = 0 fixed.  "asm / constr" is the assembled-labels compliance against the constrained-monolithic
+control (same carrier coupling, one body), the assembly error proper; "constr / free" is the contract cost at this
+coarse preset; "interface L2" is the relative L2 difference of the displacement on the internal x-interfaces,
+assembled against constrained.
+
+| load | 2 x 2 x 2 (8 cells): asm / constr, constr / free, interface L2 | 3 x 3 x 2 (18 cells): asm / constr, constr / free, interface L2 |
+|---|---|---|
+| tension x | +2.7e-4, -8.2e-3, 6.0e-3 | +7.6e-4, -5.7e-3, 4.0e-3 |
+| shear y | +5.1e-5, -2.1e-3, 2.2e-3 | +4.8e-4, -1.6e-3, 1.6e-3 |
+| bending z | +5.1e-6, -9.2e-3, 5.0e-3 | +6.4e-4, -6.6e-3, 2.1e-3 |
+| wave 16H | +1.3e-3, -2.0e-2, 1.5e-2 | +1.8e-3, -1.7e-2, 1.1e-2 |
+| wave 8H | +7.3e-3, -1.5e-1, 1.5e-1 | +7.8e-3, -1.5e-1, 1.1e-1 |
+| wave 4H | +1.5e-2, -3.0e-1, 2.5e-1 | +1.8e-2, -3.0e-1, 1.7e-1 |
+
+The assembly error on service loads stays below 1e-3 from 8 to 18 cells and the interface displacement error does not
+grow; the short-wave port loads cost 1 % to 2 % of assembly error at any size, against a 15 % to 30 % contract cost
+at this coarse preset (0.4 % to 4.5 % at the production preset, step 7).  Sizes: 3 x 3 x 2 is 1.04e6 Tet10 dof
+monolithic (factorised in 25 s) and 85 365 assembled carrier dof with 4.2e8 upper nonzeros (symmetric Pardiso, 44 s).
+The 4 x 4 x 2 panel follows.
+
 ## 6. Consequences for the route
 
 * lambda_max is not the operator scale; the "operator scale dynamic range 11.2x" of the production statistics was

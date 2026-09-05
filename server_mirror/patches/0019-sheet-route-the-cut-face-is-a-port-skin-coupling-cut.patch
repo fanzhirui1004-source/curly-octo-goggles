@@ -1,7 +1,7 @@
 From e1a465a683bdfcc4dfad2784919e3f5cfda017fc Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 23:59:57 +0800
-Subject: [PATCH 19/22] sheet route: the cut face is a port (skin coupling),
+Subject: [PATCH 19/23] sheet route: the cut face is a port (skin coupling),
  cut-face trace deliverable, Gmsh manifold check
 
 The cut surface carries load (a skin is attached to it), so it is a port like the box faces: the cut cap is built on

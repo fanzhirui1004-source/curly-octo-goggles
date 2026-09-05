@@ -1,7 +1,7 @@
 From 953c07d546c353f08262c45fd6e17cb36c9525e9 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 23:29:40 +0800
-Subject: [PATCH 18/22] sheet route: cut-face carrier conditioning (merge +
+Subject: [PATCH 18/23] sheet route: cut-face carrier conditioning (merge +
  symmetric fans + near-degenerate gate)
 
 Every cut-face carrier node is a crossing of the cut plane with a background grid line, for any orientation (160
