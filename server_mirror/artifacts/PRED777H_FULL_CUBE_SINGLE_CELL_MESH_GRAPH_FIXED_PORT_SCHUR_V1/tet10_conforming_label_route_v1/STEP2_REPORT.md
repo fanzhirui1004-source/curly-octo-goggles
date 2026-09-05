@@ -1,5 +1,9 @@
 # Step 2 report: boundary-conforming fixed ports (Gmsh route), v4 (2026-09-03)
 
+NOTE (2026-09-03, after the panel): the cell geometry carries 1/32 solid plates on all box faces (46% of the G0 material),
+which are not part of the intended sheet-TPMS design. All numbers below are pipeline properties on that geometry; see
+ADDENDUM_04 section 0 for the consequences and the route to the true geometry.
+
 Construction: port faces triangulated by the carrier trace layout, midpoint-refined k times (k=1: 1/32, k=2: 1/64);
 cavity surfaces from the coherent polyhedral OFF with polyhedron-preserving tangential smoothing (deviation 3e-16,
 cavity volume change 4e-4 relative; G0 volume mesh min dihedral 10.5 deg, no tets below 10 deg). Gmsh volume mesh,
@@ -73,6 +77,6 @@ resolution, which is the property the NN needs.
 ## 4. Production
 - `produce_tet10_label.py --stratum {full,thin,near_empty}`: create-only output, SHA-256 receipts, rigid residual and
   PSD checks, Pardiso above 1M internal dof. G2 (near_empty) 3 s; G5 (thin) bit-identical across two runs;
-  G0 (full, k=2, size 0.035): running at freeze time (k=2, size 0.035, ~750k Tet10 dof, SuperLU); receipt appended in a follow-up commit.
+  G0 (full, k=2, size 0.035): k=2 reference label PASS (753k Tet10 dof, rigid residual 5e-14, 105 min with SuperLU); the production setting for full cells is k=1 (decision 2026-09-03, see section 5).
 - Pardiso path verified against SuperLU on G2 k=2: max |dS|/max|S| = 5e-15 (Tet10), 1e-15 (Tet4).
 - Unit tests: tests/pred777h_full_cube_v1/test_tet10_label.py (6), plus the patch-0001 gate tests (37 passed).

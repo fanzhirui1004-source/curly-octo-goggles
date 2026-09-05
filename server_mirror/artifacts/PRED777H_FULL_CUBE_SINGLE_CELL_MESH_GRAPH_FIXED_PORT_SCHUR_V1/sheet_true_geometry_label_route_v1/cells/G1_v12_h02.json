@@ -1,0 +1,220 @@
+{
+ "case_id": "G1_v12_h02",
+ "carrier_n": 32,
+ "surface": {
+  "marching_cubes": {
+   "vertices": 38354,
+   "triangles": 75096,
+   "h": 0.015625
+  },
+  "projection": {
+   "max_level_residual_before": 0.0011936661613008437,
+   "max_level_residual_after": 1.6653345369377348e-15
+  },
+  "flat_sheet_triangles": {
+   "dropped": 30,
+   "lifted": 0
+  },
+  "boundary_collapse": {
+   "collapsed": 352,
+   "non_two_manifold_edges_open": 677
+  },
+  "flat_after_remesh": {
+   "dropped": 0,
+   "lifted": 0
+  },
+  "boundary_collapse_2": 0,
+  "boundary_resnap": 0,
+  "post_remesh_cleanup": {
+   "dropped_flat": 0,
+   "dropped_nonmanifold": 0
+  },
+  "corner_restores": 0,
+  "boundary_vertices_off_plane": 0,
+  "sheet_remesh": {
+   "vertices": 6689,
+   "triangles": 12737,
+   "size": 0.02,
+   "max_level_residual": 1.1657341758564144e-15,
+   "non_two_manifold_edges_open": 641
+  },
+  "clipped": {
+   "vertices": 6689,
+   "triangles": 12737
+  },
+  "active_carrier_nodes": {
+   "box_x_max": 165,
+   "box_x_min": 168,
+   "box_y_min": 310,
+   "box_z_max": 163,
+   "box_z_min": 166
+  },
+  "caps": {
+   "box_x_min": {
+    "chains": 2,
+    "open_chains": 2,
+    "triangles": 744,
+    "area": 0.08833453842283007,
+    "edge_splits": 21
+   },
+   "box_x_max": {
+    "chains": 2,
+    "open_chains": 2,
+    "triangles": 760,
+    "area": 0.08831743990199378,
+    "edge_splits": 21
+   },
+   "box_y_min": {
+    "chains": 2,
+    "open_chains": 0,
+    "triangles": 1510,
+    "area": 0.1756971981758021,
+    "edge_splits": 53
+   },
+   "box_y_max": {
+    "chains": 0,
+    "open_chains": 0,
+    "triangles": 0,
+    "area": 0.0,
+    "edge_splits": 0
+   },
+   "box_z_min": {
+    "chains": 2,
+    "open_chains": 2,
+    "triangles": 753,
+    "area": 0.089047652779282,
+    "edge_splits": 20
+   },
+   "box_z_max": {
+    "chains": 2,
+    "open_chains": 2,
+    "triangles": 746,
+    "area": 0.08760873313503095,
+    "edge_splits": 23
+   },
+   "cut_0": {
+    "chains": 4,
+    "open_chains": 0,
+    "triangles": 331,
+    "area": 0.17711307911482457,
+    "edge_splits": 0
+   }
+  },
+  "line_t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 26604,
+   "non_two_manifold_edges": 0
+  },
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.006659883066333658,
+   "p01": 0.15380111877669078,
+   "below_0.3": 799,
+   "triangles": 17736
+  },
+  "surface_quality_by_label": {
+   "box_x_max": {
+    "min": 0.018669449458536092,
+    "below_0.3": 129,
+    "n": 760
+   },
+   "box_x_min": {
+    "min": 0.027759435311911447,
+    "below_0.3": 124,
+    "n": 744
+   },
+   "box_y_min": {
+    "min": 0.006659883066333658,
+    "below_0.3": 256,
+    "n": 1510
+   },
+   "box_z_max": {
+    "min": 0.006742660254066882,
+    "below_0.3": 133,
+    "n": 746
+   },
+   "box_z_min": {
+    "min": 0.0121909460875147,
+    "below_0.3": 133,
+    "n": 753
+   },
+   "cut_0": {
+    "min": 0.1620056279313622,
+    "below_0.3": 7,
+    "n": 331
+   },
+   "tpms_free": {
+    "min": 0.0215846837893034,
+    "below_0.3": 17,
+    "n": 12892
+   }
+  },
+  "volume": 0.11384939817774968,
+  "seconds": 5.2987424321472645,
+  "active_ports": [
+   "box_x_min",
+   "box_x_max",
+   "box_y_min",
+   "box_z_min",
+   "box_z_max",
+   "cut_0"
+  ],
+  "seconds_total": 5.334663204848766
+ },
+ "mesh": {
+  "mesh_path": "/root/autodl-tmp/_claude_diag/sheet/G1_v12_h02/mesh.mesh",
+  "node_count": 13502,
+  "tet_count": 51633,
+  "material_volume": 0.11384939817774968,
+  "min_dihedral_degrees": 0.3134014733757624,
+  "tets_below_5deg": 108,
+  "tets_below_10deg": 342,
+  "seconds": 5.508395284414291,
+  "carrier_nodes_preserved": 561
+ },
+ "active_set": {
+  "active": 972,
+  "support": 890,
+  "support_outside_active": 0,
+  "active_without_support": 82
+ },
+ "fixed_port": {
+  "q": 9411,
+  "carrier_scalar_nodes": 3137,
+  "supported_carrier_nodes": 972,
+  "fine_port_nodes": 2600,
+  "affine_reproduction_error": 2.220446049250313e-16,
+  "partition_of_unity_error": 0.0,
+  "zero_support_columns": 2247,
+  "active_ports": [
+   "box_x_max",
+   "box_x_min",
+   "box_y_min",
+   "box_z_max",
+   "box_z_min"
+  ],
+  "seconds": 13.548879321664572
+ },
+ "schur": {
+  "timing": {
+   "tet10_promotion": 0.6371944770216942,
+   "assembly": 5.9186624474823475,
+   "solver": 2.0,
+   "schur_total": 59.510854963213205,
+   "fine_dof": 262515.0,
+   "internal_dof": 233388.0
+  },
+  "rigid_residual": 3.00026546907548e-15,
+  "q_supported": 2916,
+  "unsupported_block_max": 0.0,
+  "min_eig_supported": -1.5970223660688568e-17,
+  "max_eig_supported": 0.042333462080802166,
+  "rigid_residual_supported": 3.010653567303753e-15
+ }
+}

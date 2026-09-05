@@ -1,0 +1,1035 @@
+From c20557e130d0d8c15be0483eca94f908120b0711 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 08:22:22 +0800
+Subject: [PATCH 06/22] Sheet route code review: dead code removed, shared
+ label pipeline, route contract, population generator
+
+- sheet_solid_surface.py: remove the marching-cubes-only path and eight functions dead since Step 4 (resnap,
+  corner restoration, flat-triangle lifting/flipping, even-odd test, boundary-only collapse, line T-junctions,
+  smoothing branch); remesh_size is a required parameter; every closed shell is oriented by its own volume sign;
+  scalar 2-D cross (NumPy 2 deprecation)
+- sheet_label_pipeline.py: compile_port / schur_label / carrier_norms shared by produce_sheet_label.py and
+  run_sheet_solid_prototype.py (operators identical to the bit before and after)
+- sheet_contract.py: SheetSolidContract (no collar, carrier 1/32, presets, thickness scaling, gates, solver) carried
+  by every production receipt; FullCubeContract (V1 collar route) untouched
+- produce_sheet_label.py: Gmsh failures reported as MESH_FAIL; block validation and prototype updated
+- make_sheet_population.py: Sobol population over graded thickness (corner spread <= 0.47, rho 0.1-0.5) and
+  vertical cuts (theta in [0, 45 deg], offset across the cell), with anchors and a coverage table
+- review notes and production timing/memory table in artifacts/.../sheet_true_geometry_label_route_v1/
+---
+ .../CODE_REVIEW_2026-09-04.md                 |  37 +++
+ .../PRODUCTION_TIMING_NOTE.md                 |  14 +
+ .../make_sheet_population.py                  | 133 ++++++++
+ .../produce_sheet_label.py                    |  73 ++---
+ .../run_sheet_solid_prototype.py              |  41 +--
+ .../sheet_block_validation.py                 |   6 +-
+ .../sheet_contract.py                         |  35 +++
+ .../sheet_label_pipeline.py                   |  88 ++++++
+ .../sheet_solid_surface.py                    | 290 +++---------------
+ .../test_sheet_solid_surface.py               |   4 +-
+ 10 files changed, 392 insertions(+), 329 deletions(-)
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/CODE_REVIEW_2026-09-04.md
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/PRODUCTION_TIMING_NOTE.md
+ create mode 100644 scripts/pred777h_full_cube_v1/make_sheet_population.py
+ create mode 100644 src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+ create mode 100644 src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/CODE_REVIEW_2026-09-04.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/CODE_REVIEW_2026-09-04.md
+new file mode 100644
+index 0000000..511e6df
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/CODE_REVIEW_2026-09-04.md
+@@ -0,0 +1,37 @@
++# Code review of the sheet label route, 2026-09-04
++
++Scope: `sheet_solid_surface.py`, `tet10_label.py`, `produce_sheet_label.py`, `run_sheet_solid_prototype.py`,
++`sheet_block_validation.py`, the tests.  Goal: errors, duplication, production hygiene.  Every change below leaves
++the produced surfaces and operators byte-identical (checked on the five convergence cells and on a production G0 label).
++
++## Findings and what was done
++| # | finding | action |
++|---|---|---|
++| 1 | Schur solved for every layout carrier column although a third of them have no fine support (their coupling column is zero) | skip unsupported columns in the Pardiso solve; operator identical to the bit, 75 s -> 33 s on G0 fast (Step 4) |
++| 2 | Eight functions and the whole marching-cubes-only path (no remesh) were dead after Step 4: `resnap_boundary_to_planes`, `restore_plane_corners`, `flip_flat_triangles`, `_even_odd_inside`, `collapse_short_boundary_edges`, `handle_flat_triangles`, `snap_near_plane`, `split_line_t_junctions` (subsumed by `split_all_t_junctions`), plus the `smooth=True` branch and the `project`/`snap_fraction`/`flat_mode` switches | removed; `remesh_size` is now a required, defaulted parameter; module 1634 -> 1428 lines |
++| 3 | `orient_outward` flipped the whole surface by the total signed volume; with several closed shells (a cut can leave separate pieces, 5 of 342 stress cells) one inside-out shell could pass unnoticed | every shell is flipped by its own volume sign |
++| 4 | The port-and-Schur block (adapter, fixed port, geometric active set, superset check, Schur, rigid/eigenvalue gates) was written twice (production command and prototype driver) with slightly different reporting | new `sheet_label_pipeline.py` (`compile_port`, `schur_label`, `carrier_norms`) used by both; the prototype's operator equals the panel's to the bit |
++| 5 | The route had no frozen contract of its own; `contract.FullCubeContract` still describes the V1 collar route (collar on, 1/16 grid) and is used by that route's population/publication code, so it must not be edited | new `sheet_contract.SheetSolidContract` (no collar, carrier 1/32, presets, thickness scaling, gates, solver); every production receipt carries it |
++| 6 | Gmsh ran in the production process: a Gmsh segmentation fault killed the worker (seen once in the stress population) | child process with one HXT retry (Step 4) |
++| 7 | 2-D `np.cross` in the exact triangle test is deprecated in NumPy 2 | scalar helper |
++| 8 | `produce_sheet_label.py` let a `RuntimeError` from Gmsh propagate as a traceback | reported as `MESH_FAIL` with the log tail |
++| 9 | The block-validation script passed a removed keyword | updated; it builds through the same `_remesh_and_clip` path as production |
++
++## Looked at and left alone
++- `compile_fixed_port` point location lives in the vendored `cctpms` prolongation builder (about 10 % of a label);
++  not touched.
++- `dense_fixed_port_schur` still builds the full-layout dense Schur (18438^2 doubles, 2.7 GB on a tau = 0.4 cell)
++  before slicing to the active block; the peak memory of a production label is dominated by the Pardiso factors
++  (13-19 GB, see the production timing table), so this was not restructured.
++- `smooth_on_polyhedron`, `carrier_shell` (conforming_port_mesh.py) stay for the V1 conforming route and the block
++  validation.
++
++## Checks after the review changes
++- 15 unit tests pass (surface 9, tet10 6).
++- Surfaces of G0/G1/G3/G4/G5 at three resolutions rebuilt with the reviewed module: md5 identical to the committed
++  panel.
++- Prototype driver after the refactor: operator identical to the panel's (max |dS| = 0).
++- Production command after the refactor: operator identical to the pre-refactor production label (see below).
++- Production command before vs after the refactor (the pre-review script from b462307 with only the removed keyword
++  dropped, same module, run one after the other on an idle machine): every array of `FIXED_PORT_SCHUR_TET10.npz`
++  identical to the bit (the 2e-15 seen between two contended runs is MKL thread scheduling, not code).
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/PRODUCTION_TIMING_NOTE.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/PRODUCTION_TIMING_NOTE.md
+new file mode 100644
+index 0000000..31b97d5
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/PRODUCTION_TIMING_NOTE.md
+@@ -0,0 +1,14 @@
++# Production timing and memory of one sheet label (production preset 1/64 + 0.02, carrier 1/32, Tet10, Pardiso)
++
++Measured on the 64-core / 377 GB development box with four labels running at once, 8 threads each
++(`/usr/bin/time -v`; CPU share is what the job actually got under that contention):
++
++| cell | rho | tets | fine Tet10 dof | q_active | surface+Gmsh | port | Schur | total wall | peak RSS | CPU share |
++|---|---|---|---|---|---|---|---|---|---|---|
++| G0 uncut | 0.229 | 106.6k | 539k | 5643 | 23 s | 36 s | 92 s | 3 min 09 s | 19.2 GB | 309 % |
++| thin uncut | 0.100 | 68.2k | 380k | 3744 | 22 s | 27 s | 41 s | 2 min 06 s | 13.0 GB | 212 % |
++| thick uncut | 0.500 | 171.4k | 814k | 10101 | 32 s | 60 s | 314 s | 7 min 43 s | 31.6 GB | 472 % |
++| G5 cut (rho 0.019) | 0.019 | 8.4k | 46k | 882 | 4 s | 3 s | 3 s | 30 s | 1.4 GB | 146 % |
++
++Peak memory is the Pardiso factorization of the internal block plus the dense layout Schur (18438^2 doubles = 2.7 GB
++on a tau = 0.4 cell, 30294^2 = 7.3 GB on the thick cell): roughly 35 MB per 1000 fine dof.
+diff --git a/scripts/pred777h_full_cube_v1/make_sheet_population.py b/scripts/pred777h_full_cube_v1/make_sheet_population.py
+new file mode 100644
+index 0000000..a2987c7
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/make_sheet_population.py
+@@ -0,0 +1,133 @@
++#!/usr/bin/env python3
++"""Sheet-TPMS label population: space-filling random design over graded thickness and vertical cuts (2026-09-04).
++
++Design of record (discussion of 2026-09-04):
++- corners tau_1..tau_8 in [TAU_MIN, TAU_MAX] = [0.1755, 0.8775] (rho 0.10-0.50 by C = 1.755 rho, Hao 2023);
++- corner field = mean + linear gradient g.(x - c) + higher trilinear modes; |g| = DTAU_MAX * u^2 (u uniform, so
++  small gradients dominate), direction uniform on the sphere, 10 % of the cells forced into |g| in [0.85, 1] DTAU_MAX,
++  higher modes up to 20 % of |g|; a draw with any corner outside the range or a corner spread above DTAU_MAX is
++  redrawn (rejection);
++- DTAU_MAX = 0.47 (= the largest in-cell spread a density filter of radius 1.5 cells can produce);
++- cut cells: vertical plane n = (cos theta, sin theta, 0), theta uniform in [0, 45 deg] (the other orientations are
++  reached by the 48 cube symmetries), offset uniform over the range of n.x on the cell, retained side n.x <= c;
++- Sobol sequence (scrambled, fixed seed) over (mean, u, dir1, dir2, m1, m2, m3[, theta, c]);
++- fixed anchors: uniform rho 0.1/0.2/0.3/0.4/0.5, axis and diagonal top-gradient cells, centre cuts at 0 and 45 deg.
++Writes <out>/<case>/geometry_material_manifest.json (frozen manifest format), <out>/POPULATION.jsonl and
++<out>/COVERAGE.json (bin occupancy over mean x gradient x theta x offset).
++"""
++from __future__ import annotations
++
++import argparse, json, sys
++from fractions import Fraction
++from pathlib import Path
++
++import numpy as np
++from scipy.stats import qmc
++
++TAU_MIN, TAU_MAX = 0.1755, 0.8775
++DTAU_MAX = 0.47
++
++
++def frac(x: float, den: int = 10000) -> Fraction:
++    return Fraction(x).limit_denominator(den)
++
++
++def fp(v: Fraction) -> dict:
++    return {"numerator": v.numerator, "denominator": v.denominator}
++
++
++def write_case(out_root: Path, cid: str, corners, plane, meta: dict) -> dict:
++    vals = [frac(c) for c in corners]
++    payload = {"cell_id": cid, "parent_world_cut_id": "NO_CUT" if plane is None else f"CUT_{cid}",
++               "global_thickness_field": {"field_id": f"POP_{cid}", "origin": [fp(Fraction(0))] * 3, "cell_size": [fp(Fraction(1))] * 3,
++                                          "cell_shape": [1, 1, 1], "vertex_values": [fp(v) for v in vals]},
++               "cell_placement": {"translation": [fp(Fraction(0))] * 3},
++               "cut_plane": None if plane is None else {"plane_id": "cut_0", "semantic_id": "cut_0", "inside_relation": "a*x+b*y+c*z<=d",
++                                                        "raw_coefficients": {k: fp(frac(v)) for k, v in zip("abcd", plane)}}}
++    d = out_root / cid; d.mkdir(parents=True, exist_ok=True)
++    (d / "geometry_material_manifest.json").write_text(json.dumps(payload, indent=1))
++    rec = {"case": cid, "tau_corners": [float(v) for v in vals], "cut_plane": None if plane is None else [float(frac(v)) for v in plane], **meta}
++    return rec
++
++
++def corners_from(mean: float, g: np.ndarray, modes: np.ndarray) -> np.ndarray:
++    out = []
++    for i in range(2):
++        for j in range(2):
++            for k in range(2):
++                x = np.array([i, j, k]) - 0.5
++                out.append(mean + g @ x + modes[0] * x[0] * x[1] * 4 + modes[1] * x[1] * x[2] * 4 + modes[2] * x[0] * x[2] * 4)
++    return np.asarray(out)
++
++
++def draw_field(row: np.ndarray, force_top: bool) -> tuple[np.ndarray, dict] | None:
++    mean = TAU_MIN + row[0] * (TAU_MAX - TAU_MIN)
++    u = row[1]; mag = DTAU_MAX * (0.85 + 0.15 * u if force_top else u * u)
++    cosphi = 2 * row[2] - 1; sinphi = np.sqrt(max(0.0, 1 - cosphi * cosphi)); az = 2 * np.pi * row[3]
++    direction = np.array([sinphi * np.cos(az), sinphi * np.sin(az), cosphi])
++    g = mag * direction
++    modes = 0.2 * mag * (2 * row[4:7] - 1)
++    corners = corners_from(mean, g, modes)
++    if corners.min() < TAU_MIN or corners.max() > TAU_MAX or corners.max() - corners.min() > DTAU_MAX:
++        return None
++    return corners, {"tau_mean": float(mean), "gradient": g.tolist(), "gradient_magnitude": float(mag), "higher_modes": modes.tolist(),
++                     "corner_span": float(corners.max() - corners.min()), "forced_top_gradient": bool(force_top)}
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--out", type=Path, required=True); ap.add_argument("--n-uncut", type=int, default=700); ap.add_argument("--n-cut", type=int, default=1300)
++    ap.add_argument("--seed", type=int, default=20260904); ap.add_argument("--prefix", default="pop")
++    a = ap.parse_args(); out = a.out; out.mkdir(parents=True, exist_ok=True); records = []
++    # anchors
++    for k, rho in enumerate((0.1, 0.2, 0.3, 0.4, 0.5)):
++        tau = min(max(1.755 * rho, TAU_MIN), TAU_MAX)
++        records.append(write_case(out, f"{a.prefix}_anchor_rho{int(rho * 100):02d}", [tau] * 8, None, {"kind": "anchor_uniform", "tau_mean": tau, "gradient_magnitude": 0.0, "corner_span": 0.0}))
++    for name, direction in (("axis_x", np.array([1.0, 0, 0])), ("diag", np.array([1.0, 1.0, 1.0]) / np.sqrt(3))):
++        g = DTAU_MAX * direction; mean = 0.5 * (TAU_MIN + TAU_MAX); corners = np.clip(corners_from(mean, g, np.zeros(3)), TAU_MIN, TAU_MAX)
++        records.append(write_case(out, f"{a.prefix}_anchor_grad_{name}", corners, None, {"kind": "anchor_gradient", "tau_mean": mean, "gradient_magnitude": float(DTAU_MAX), "corner_span": float(corners.max() - corners.min())}))
++    for name, (na, nb) in (("theta00", (1.0, 0.0)), ("theta45", (1.0, 1.0))):
++        records.append(write_case(out, f"{a.prefix}_anchor_cut_{name}", [0.4] * 8, (na, nb, 0.0, 0.5 * (na + nb)), {"kind": "anchor_cut", "tau_mean": 0.4, "gradient_magnitude": 0.0, "corner_span": 0.0, "theta_deg": 45.0 if nb else 0.0, "offset_fraction": 0.5}))
++    # Sobol designs
++    for kind, n, dims in (("uncut", a.n_uncut, 7), ("cut", a.n_cut, 9)):
++        sampler = qmc.Sobol(d=dims, scramble=True, seed=a.seed + (1 if kind == "cut" else 0))
++        made = 0; tried = 0
++        while made < n:
++            rows = sampler.random(256)
++            for row in rows:
++                if made >= n:
++                    break
++                tried += 1
++                force_top = (tried % 10 == 0)
++                drawn = draw_field(row[:7], force_top)
++                if drawn is None:
++                    continue
++                corners, meta = drawn; meta["kind"] = kind
++                plane = None
++                if kind == "cut":
++                    theta = row[7] * np.pi / 4; na, nb = float(np.cos(theta)), float(np.sin(theta)); rng = na + nb
++                    c = row[8] * rng; plane = (na, nb, 0.0, c); meta.update({"theta_deg": float(np.degrees(theta)), "offset_fraction": float(row[8])})
++                records.append(write_case(out, f"{a.prefix}_{kind}_{made:04d}", corners, plane, meta)); made += 1
++        print(f"{kind}: {made} cells from {tried} draws (rejection rate {1 - made / tried:.2f})")
++    (out / "POPULATION.jsonl").write_text("\n".join(json.dumps(r) for r in records) + "\n")
++    # coverage: mean (5 bins) x gradient (3 bins) x theta (3 bins) x offset (4 bins), cut cells; mean x gradient for uncut
++    mean_edges = np.linspace(TAU_MIN, TAU_MAX, 6); grad_edges = np.array([0, 0.1, 0.3, DTAU_MAX + 1e-9]); theta_edges = np.array([0, 15, 30, 45.01]); off_edges = np.linspace(0, 1, 5)
++    cov = {"cut": {}, "uncut": {}}
++    for r in records:
++        if r.get("kind") not in ("cut", "uncut"):
++            continue
++        im = int(np.clip(np.searchsorted(mean_edges, r["tau_mean"], side="right") - 1, 0, 4)); ig = int(np.clip(np.searchsorted(grad_edges, r["gradient_magnitude"], side="right") - 1, 0, 2))
++        if r["kind"] == "cut":
++            it = int(np.clip(np.searchsorted(theta_edges, r["theta_deg"], side="right") - 1, 0, 2)); io = int(np.clip(np.searchsorted(off_edges, r["offset_fraction"], side="right") - 1, 0, 3))
++            key = f"mean{im}_grad{ig}_theta{it}_off{io}"
++        else:
++            key = f"mean{im}_grad{ig}"
++        cov[r["kind"]][key] = cov[r["kind"]].get(key, 0) + 1
++    summary = {kind: {"bins": len(v), "min_occupancy": min(v.values()) if v else 0, "max_occupancy": max(v.values()) if v else 0, "cells": sum(v.values())} for kind, v in cov.items()}
++    (out / "COVERAGE.json").write_text(json.dumps({"summary": summary, "bins": cov, "edges": {"mean": mean_edges.tolist(), "gradient": grad_edges.tolist(), "theta_deg": theta_edges.tolist(), "offset_fraction": off_edges.tolist()}}, indent=1))
++    print(json.dumps(summary)); print(len(records), "cells written to", out)
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index 6497e34..2e10796 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -23,9 +23,9 @@ sys.path.insert(0, str(ROOT / "src"))
+ P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
+ from importlib import import_module  # noqa: E402
+ 
+-adapter = import_module(f"{P}.cgal_mesh3_adapter"); fpa = import_module(f"{P}.fixed_port_adapter")
+ fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot")
+-t10 = import_module(f"{P}.tet10_label"); sss = import_module(f"{P}.sheet_solid_surface")
++sss = import_module(f"{P}.sheet_solid_surface"); pipe = import_module(f"{P}.sheet_label_pipeline")
++SheetSolidContract = import_module(f"{P}.sheet_contract").SheetSolidContract
+ from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout  # noqa: E402
+ 
+ # surface grid, sheet remesh target, interior element size
+@@ -49,13 +49,6 @@ def git_head() -> str:
+         return "unknown"
+ 
+ 
+-def carrier_norms(layout, port, active: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+-    """P1 mass and Laplace-Beltrami matrices of the ACTIVE carrier complex (the training loss is defined with them)."""
+-    M, L = t10.carrier_mass_and_laplacian(layout, port)
+-    idx = np.where(active)[0]
+-    return M[np.ix_(idx, idx)], L[np.ix_(idx, idx)]
+-
+-
+ def main() -> int:
+     ap = argparse.ArgumentParser()
+     ap.add_argument("--case-id", required=True)
+@@ -80,7 +73,7 @@ def main() -> int:
+                      "resolution": {"preset": a.resolution, **preset, "carrier_n": a.carrier_n, "algorithm3d": a.algorithm3d},
+                      "execution": {"workers": a.workers, "threads": a.threads, "column_chunk": a.chunk,
+                                    "omp_num_threads": os.environ.get("OMP_NUM_THREADS"), "mkl_cbwr": os.environ.get("MKL_CBWR")},
+-                     "contract": "SHEET_SOLID_NO_COLLAR", "timing": {}}
++                     "contract": SheetSolidContract().as_dict(), "timing": {}}
+ 
+     _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
+     charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
+@@ -108,58 +101,40 @@ def main() -> int:
+ 
+     # ---- surface and volume mesh ----
+     t0 = time.perf_counter()
+-    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=preset["n_per_unit"], remesh_size=preset["remesh_size"], smooth=False)
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=preset["n_per_unit"], remesh_size=preset["remesh_size"])
+     receipt["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps", "non_manifold_examples", "surface_quality_by_label", "remesh_attempts")}
+     if surf.report["watertight"]["non_two_manifold_edges"]:
+         raise SystemExit(f"{a.case_id}: surface is not watertight ({surf.report['watertight']})")
+     if surf.report["self_intersecting_triangles"]:
+         raise SystemExit(f"{a.case_id}: surface self-intersects ({surf.report.get('self_intersection_examples')})")
+     sss.write_off(out / "SHEET_SOLID_SURFACE.off", surf.V, surf.F)
+-    mesh = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=preset["size_max"], algorithm3d=a.algorithm3d, threads=a.threads)
++    try:
++        mesh = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=preset["size_max"], algorithm3d=a.algorithm3d, threads=a.threads)
++    except RuntimeError as exc:
++        raise SystemExit(f"{a.case_id}: MESH_FAIL {exc}")
+     receipt["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in mesh.__dict__.items()}
+     receipt["timing"]["surface_and_mesh"] = time.perf_counter() - t0
+ 
+     # ---- fixed port on the geometric active set (P is never modified) ----
+-    t0 = time.perf_counter()
+-    from dataclasses import replace as dc_replace
+-    art = adapter.mesh_artifact_from_cgal_medit(out / "mesh.mesh", geometry=dc_replace(geom, cut_plane=None), mesher_version="5.4",
+-                                                mesher_parameters={"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False,
+-                                                                   "semantic_plane_tolerance": 1e-10},
+-                                                plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
+-    port = fpa.compile_fixed_port(art, spec, layout)
+-    active = sss.geometric_active_mask(geom, layout, port)
+-    check = sss.verify_active_superset(port, active)
+-    cert = port.certificates
+-    receipt["fixed_port"] = {"carrier_scalar_nodes": int(len(active)), "active_carrier_nodes": int(active.sum()),
+-                             "q_active": int(3 * active.sum()), "fine_port_nodes": int(port.scalar_fine_to_carrier.shape[0]),
+-                             "active_set_check": check, "active_ports": list(port.active_global_port_ids),
+-                             "partition_of_unity_error": float(cert["maximum_partition_of_unity_error"]),
+-                             "affine_reproduction_error": float(cert["maximum_affine_reproduction_error"]),
+-                             "deterministic_replay_sha256": cert["deterministic_replay_sha256"]}
+-    if check["support_outside_active"]:
+-        raise SystemExit(f"{a.case_id}: mesh port support escapes the geometric active set: {check}")
+-    receipt["timing"]["fixed_port"] = time.perf_counter() - t0
+-
+-    # ---- Tet10 fixed-port Schur ----
+-    t0 = time.perf_counter()
+-    S, timing = t10.dense_fixed_port_schur(art, port, element="TET10", workers=a.workers, column_chunk_size=a.chunk)
+-    receipt["schur_timing"] = timing; receipt["timing"]["schur"] = time.perf_counter() - t0
+-    keep = np.repeat(active, 3)
+-    S_active = np.ascontiguousarray(S[np.ix_(keep, keep)])
+-    rigid = np.ascontiguousarray(port.rigid_basis[keep])
+-    scale = float(np.abs(S_active).max())
+-    rigid_residual = float(np.linalg.norm(S_active @ rigid) / max(np.linalg.norm(S_active), 1e-300))
+-    eig = np.linalg.eigvalsh(S_active)
++    try:
++        stage = pipe.compile_port(out / "mesh.mesh", geom, spec, layout)
++    except RuntimeError as exc:
++        raise SystemExit(f"{a.case_id}: {exc}")
++    port, active, check = stage.port, stage.active, stage.check
++    receipt["fixed_port"] = stage.summary; receipt["timing"]["fixed_port"] = stage.seconds
++
++    # ---- Tet10 fixed-port Schur with the operator gates ----
++    try:
++        sch = pipe.schur_label(stage, workers=a.workers, column_chunk_size=a.chunk)
++    except RuntimeError as exc:
++        raise SystemExit(f"{a.case_id}: {exc}")
++    S_active, rigid, eig, rigid_residual = sch.schur_active, sch.rigid_active, sch.eigenvalues, sch.rigid_residual
++    receipt["schur_timing"] = sch.timing; receipt["timing"]["schur"] = sch.seconds
+     receipt["schur"] = {"q_active": int(S_active.shape[0]), "rigid_residual_relative": rigid_residual,
+-                        "min_eigenvalue": float(eig[0]), "max_eigenvalue": float(eig[-1]),
+-                        "inactive_block_max": float(np.abs(S[np.ix_(~keep, ~keep)]).max()) if (~keep).any() else 0.0}
+-    if rigid_residual > 1.0e-10:
+-        raise SystemExit(f"{a.case_id}: rigid-body residual {rigid_residual:.2e} exceeds 1e-10")
+-    if eig[0] < -1.0e-8 * eig[-1]:
+-        raise SystemExit(f"{a.case_id}: Schur operator is not positive semidefinite (min eigenvalue {eig[0]:.3e})")
++                        "min_eigenvalue": float(eig[0]), "max_eigenvalue": float(eig[-1]), "inactive_block_max": sch.inactive_block_max}
+ 
+     # ---- carrier norms for the training loss ----
+-    mass, lap = carrier_norms(layout, port, active)
++    mass, lap = pipe.carrier_norms(layout, port, active)
+     ids = np.asarray(port.active_global_carrier_ids)[active]
+     coords = np.asarray(port.carrier_coordinates)[active]
+     membership = np.asarray([",".join(m) for m in port.carrier_port_membership], dtype=object)[active].astype(str)
+diff --git a/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+index f0a8539..2802803 100644
+--- a/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
++++ b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+@@ -7,8 +7,8 @@ import numpy as np
+ ROOT = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(ROOT / "src"))
+ P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
+ from importlib import import_module
+-adapter = import_module(f"{P}.cgal_mesh3_adapter"); fpa = import_module(f"{P}.fixed_port_adapter"); fcb = import_module(f"{P}.full_cube_backend")
+-snap = import_module(f"{P}.mesher_neutral_snapshot"); t10 = import_module(f"{P}.tet10_label"); sss = import_module(f"{P}.sheet_solid_surface")
++fcb = import_module(f"{P}.full_cube_backend"); pipe = import_module(f"{P}.sheet_label_pipeline")
++snap = import_module(f"{P}.mesher_neutral_snapshot"); sss = import_module(f"{P}.sheet_solid_surface")
+ 
+ def build_layout(spec, charts, carrier_n: int):
+     """Carrier trace layout with a (carrier_n x carrier_n) P1 grid per face (the frozen contract uses 16)."""
+@@ -20,46 +20,29 @@ def build_layout(spec, charts, carrier_n: int):
+ def main() -> int:
+     ap = argparse.ArgumentParser()
+     ap.add_argument("--case-id", required=True); ap.add_argument("--geometry-manifest", type=Path, required=True); ap.add_argument("--output-dir", type=Path, required=True)
+-    ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--no-project", action="store_true"); ap.add_argument("--snap-fraction", type=float, default=0.2); ap.add_argument("--remesh-size", type=float, default=None); ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=10)
+-    ap.add_argument("--no-netgen", action="store_true"); ap.add_argument("--no-smooth", action="store_true"); ap.add_argument("--cap-max-area", type=float, default=None)
++    ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--remesh-size", type=float, default=0.02); ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=10)
++    ap.add_argument("--no-netgen", action="store_true"); ap.add_argument("--no-smooth", action="store_true", help="ignored (kept for old panel scripts)"); ap.add_argument("--cap-max-area", type=float, default=None)
+     ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8); ap.add_argument("--skip-schur", action="store_true"); ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--no-carrier-edges", action="store_true", help="constrain only carrier nodes (not edges) in the cap triangulation")
+     a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True); rep: dict = {"case_id": a.case_id}
+     _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
+     charts, *_ = fcb.compile_full_cube_geometry_inputs(spec); layout = build_layout(spec, charts, a.carrier_n); rep["carrier_n"] = a.carrier_n
+     t0 = time.perf_counter()
+-    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, smooth=not a.no_smooth, project=not a.no_project, snap_fraction=a.snap_fraction, remesh_size=a.remesh_size, cap_max_area=a.cap_max_area, constrain_carrier_edges=not a.no_carrier_edges)
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, cap_max_area=a.cap_max_area, constrain_carrier_edges=not a.no_carrier_edges)
+     sss.write_off(out / "SHEET_SOLID_SURFACE.off", surf.V, surf.F); rep["surface"] = surf.report; rep["surface"]["seconds_total"] = time.perf_counter() - t0
+     print("surface:", json.dumps({k: v for k, v in surf.report.items() if k != "caps"}, default=float)); print("caps:", json.dumps(surf.report["caps"], default=float), flush=True)
+     if surf.report["watertight"]["non_two_manifold_edges"] != 0:
+         (out / "SHEET_PROTOTYPE_REPORT.json").write_text(json.dumps(rep, indent=1, default=float)); print("surface not watertight, stop"); return 1
+     m = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, netgen_optimize=not a.no_netgen, threads=a.threads)
+     rep["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}; print("mesh:", json.dumps(rep["mesh"], default=float), flush=True)
+-    mp = {"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False, "semantic_plane_tolerance": 1e-10}
+-    t0 = time.perf_counter()
+-    from dataclasses import replace as dc_replace
+-    geom_ports = dc_replace(geom, cut_plane=None)  # the cut surface is a FREE surface of the part, never a port
+-    art = adapter.mesh_artifact_from_cgal_medit(out / "mesh.mesh", geometry=geom_ports, mesher_version="5.4", mesher_parameters=mp, plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
+-    port = fpa.compile_fixed_port(art, spec, layout)
+-    active_geo = sss.geometric_active_mask(geom, layout, port)
+-    chk = sss.verify_active_superset(port, active_geo); rep["active_set"] = chk; print("active_set:", chk, flush=True)
+-    if chk["support_outside_active"]:
+-        raise SystemExit(f"geometric active set is not a superset of the mesh support: {chk}")
+-    Sc = port.scalar_fine_to_carrier; support = active_geo
+-    cert = port.certificates
+-    rep["fixed_port"] = {"q": int(port.q), "carrier_scalar_nodes": int(Sc.shape[1]), "supported_carrier_nodes": int(support.sum()), "fine_port_nodes": int(Sc.shape[0]),
+-                         "affine_reproduction_error": float(cert["maximum_affine_reproduction_error"]), "partition_of_unity_error": float(cert["maximum_partition_of_unity_error"]),
+-                         "zero_support_columns": int(cert["zero_support_active_carrier_column_count"]), "active_ports": list(port.active_global_port_ids), "seconds": time.perf_counter() - t0}
+-    print("fixed_port:", json.dumps(rep["fixed_port"], default=float), flush=True)
++    stage = pipe.compile_port(out / "mesh.mesh", geom, spec, layout); rep["active_set"] = stage.check; print("active_set:", stage.check, flush=True)
++    support = stage.active; rep["fixed_port"] = {**stage.summary, "seconds": stage.seconds}; print("fixed_port:", json.dumps(rep["fixed_port"], default=float), flush=True)
+     np.save(out / "carrier_support.npy", support)
+     if not a.skip_schur:
+-        S, timing = t10.dense_fixed_port_schur(art, port, element="TET10", workers=a.workers)
+-        np.save(out / "S_TET10.npy", S)
+-        keep = np.repeat(support, 3); Ss = S[np.ix_(keep, keep)]; np.save(out / "S_TET10_supported.npy", Ss)
+-        rig = port.rigid_basis[keep]
+-        rep["schur"] = {"timing": timing, "rigid_residual": float(np.linalg.norm(S @ port.rigid_basis) / np.linalg.norm(S)), "q_supported": int(Ss.shape[0]),
+-                        "unsupported_block_max": float(np.abs(S[np.ix_(~keep, ~keep)]).max()) if (~keep).any() else 0.0}
+-        ev = np.linalg.eigvalsh(Ss); rep["schur"]["min_eig_supported"] = float(ev[0]); rep["schur"]["max_eig_supported"] = float(ev[-1])
+-        rep["schur"]["rigid_residual_supported"] = float(np.linalg.norm(Ss @ rig) / np.linalg.norm(Ss)); print("schur:", json.dumps(rep["schur"], default=float), flush=True)
++        sch = pipe.schur_label(stage, workers=a.workers)
++        np.save(out / "S_TET10_supported.npy", sch.schur_active)
++        rep["schur"] = {"timing": sch.timing, "q_supported": int(sch.schur_active.shape[0]), "unsupported_block_max": sch.inactive_block_max,
++                        "min_eig_supported": float(sch.eigenvalues[0]), "max_eig_supported": float(sch.eigenvalues[-1]), "rigid_residual_supported": sch.rigid_residual}
++        print("schur:", json.dumps(rep["schur"], default=float), flush=True)
+     (out / "SHEET_PROTOTYPE_REPORT.json").write_text(json.dumps(rep, indent=1, default=float)); return 0
+ 
+ if __name__ == "__main__":
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+index d73acc5..fd0ac9d 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_block_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -53,7 +53,7 @@ class BlockGeom:
+ 
+ def cell_label(spec, geom, layout, out, a):
+     """Sheet label of one cell: surface -> mesh -> fixed port -> Tet10 Schur on the geometric active set."""
+-    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, smooth=not a.no_smooth)
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size)
+     if surf.report["watertight"]["non_two_manifold_edges"]: raise SystemExit(f"cell surface not watertight: {out}")
+     m = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads)
+     mp = {"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False, "semantic_plane_tolerance": 1e-10}
+@@ -72,7 +72,7 @@ def cell_label(spec, geom, layout, out, a):
+ 
+ def main() -> int:
+     ap = argparse.ArgumentParser(); ap.add_argument("--geometry-manifest", type=Path, required=True);     ap.add_argument("--output-dir", type=Path, required=True); ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--remesh-size", type=float, default=0.03)
+-    ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=1); ap.add_argument("--no-smooth", action="store_true"); ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
++    ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=1); ap.add_argument("--no-smooth", action="store_true", help="ignored"); ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
+     a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True); rep = {}
+     _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
+     charts, *_ = fcb.compile_full_cube_geometry_inputs(spec); layout = build_layout(spec, charts, a.carrier_n); rep["carrier_n"] = a.carrier_n
+@@ -109,7 +109,7 @@ def main() -> int:
+     pc = {"box_x_min": face_constraint("box_x_min", (0,)), "box_x_max": face_constraint("box_x_max", (1,))}
+     for src in ("box_y_min", "box_y_max", "box_z_min", "box_z_max"): pc[src] = face_constraint(src, (0, 1))
+     bg = BlockGeom(spec, geom); t0 = time.perf_counter()
+-    surf = sss.build_sheet_solid_surface(bg, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, port_constraints=pc, smooth=not a.no_smooth)
++    surf = sss.build_sheet_solid_surface(bg, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, port_constraints=pc)
+     rep["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps",)}; print("block surface:", json.dumps({k: v for k, v in rep["surface"].items() if k not in ("caps", "non_manifold_examples", "surface_quality_by_label", "marching_cubes")}, default=float), flush=True)
+     if surf.report["watertight"]["non_two_manifold_edges"]: raise SystemExit("block surface not watertight")
+     m = sss.mesh_sheet_solid(surf, out / "block.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads); rep["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+new file mode 100644
+index 0000000..3b6f5c9
+--- /dev/null
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+@@ -0,0 +1,35 @@
++"""Frozen constants of the sheet-TPMS true-geometry label route (no port collars).
++
++This is a separate contract from ``contract.FullCubeContract`` (the V1 collar route, still frozen for its own
++artifacts).  Every production receipt carries ``SheetSolidContract().as_dict()``.
++"""
++from __future__ import annotations
++
++from dataclasses import asdict, dataclass
++
++
++@dataclass(frozen=True)
++class SheetSolidContract:
++    schema: str = "pred777h_sheet_solid_label_contract_v1"
++    material: str = "abs(phi) <= tau(x), phi = sum cos(2 pi x_i) (Schwarz P), tau trilinear from the global P1 thickness field"
++    domain: str = "unit cube clipped by the world cut plane; the cut surface is a free surface, never a port"
++    port_collar_enabled: bool = False
++    carrier_grid_per_face: int = 32                      # P1 carrier 1/32 on every box face (decision of record 2026-09-03)
++    carrier_active_rule: str = "geometric superset: vertices of carrier triangles the band reaches within level tolerance 0.05"
++    empty_volume: float = 1.0e-6                        # material volume below which a cell carries no label (status EMPTY)
++    floating_fragments: str = "connected components touching no port face are removed"
++    resolution_presets: tuple = (("reference", 96, 0.015, 0.03), ("production", 64, 0.02, 0.04), ("fast", 48, 0.03, 0.05))
++    thickness_scaling: str = "t_min = 0.184 tau_min; remesh size <= 0.6 t_min; marching-cubes grid >= 3 cells per t_min"
++    surface_gates: str = "watertight, zero verified self-intersections, zero cap-classification conflicts, boundary on planes"
++    element: str = "TET10 (straight-sided promotion of the Gmsh Tet4 mesh), E = 1, nu = 0.3"
++    schur_solver: str = "MKL Pardiso on the internal block, supported carrier columns only"
++    operator_gates: str = "rigid-body residual <= 1e-10, min eigenvalue >= -1e-8 lambda_max, mesh port support inside the geometric active set"
++    density_law_reference: str = "Hao 2023 Table 2.2: C = 1.755 rho (tau = 0.4 -> rho = 0.228; measured 0.2286)"
++
++    def as_dict(self) -> dict[str, object]:
++        payload = asdict(self)
++        payload["resolution_presets"] = {name: {"n_per_unit": n, "remesh_size": h, "size_max": s} for name, n, h, s in self.resolution_presets}
++        return payload
++
++
++__all__ = ["SheetSolidContract"]
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+new file mode 100644
+index 0000000..185b326
+--- /dev/null
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -0,0 +1,88 @@
++"""Shared label stages of the sheet route: Gmsh mesh -> fixed port on the geometric active set -> Tet10 Schur.
++
++Used by the production command (produce_sheet_label.py) and the prototype driver, so the two cannot drift apart.
++"""
++from __future__ import annotations
++
++import time
++from dataclasses import dataclass, replace as dc_replace
++from pathlib import Path
++
++import numpy as np
++
++from . import cgal_mesh3_adapter as adapter
++from . import fixed_port_adapter as fpa
++from . import sheet_solid_surface as sss
++from . import tet10_label as t10
++
++MESHER_PARAMETERS = {"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False, "semantic_plane_tolerance": 1e-10}
++
++
++@dataclass
++class PortStage:
++    artifact: object
++    port: object
++    active: np.ndarray            # geometric active mask over the layout carrier scalar nodes
++    check: dict
++    summary: dict
++    seconds: float
++
++
++def compile_port(mesh_path: Path, geometry, spec, layout) -> PortStage:
++    """Fixed port of a sheet-solid mesh on the geometric active carrier set (P is never modified).  Raises when the
++    mesh port support escapes the geometric active set."""
++    t0 = time.perf_counter()
++    art = adapter.mesh_artifact_from_cgal_medit(mesh_path, geometry=dc_replace(geometry, cut_plane=None), mesher_version="5.4",
++                                                mesher_parameters=MESHER_PARAMETERS, plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
++    port = fpa.compile_fixed_port(art, spec, layout)
++    active = sss.geometric_active_mask(geometry, layout, port)
++    check = sss.verify_active_superset(port, active)
++    if check["support_outside_active"]:
++        raise RuntimeError(f"mesh port support escapes the geometric active set: {check}")
++    cert = port.certificates
++    summary = {"carrier_scalar_nodes": int(len(active)), "active_carrier_nodes": int(active.sum()), "q_active": int(3 * active.sum()),
++               "fine_port_nodes": int(port.scalar_fine_to_carrier.shape[0]), "active_set_check": check, "active_ports": list(port.active_global_port_ids),
++               "partition_of_unity_error": float(cert["maximum_partition_of_unity_error"]),
++               "affine_reproduction_error": float(cert["maximum_affine_reproduction_error"]),
++               "deterministic_replay_sha256": cert["deterministic_replay_sha256"]}
++    return PortStage(artifact=art, port=port, active=active, check=check, summary=summary, seconds=time.perf_counter() - t0)
++
++
++@dataclass
++class SchurStage:
++    schur_active: np.ndarray      # q_active x q_active, symmetric
++    rigid_active: np.ndarray      # q_active x 6
++    eigenvalues: np.ndarray
++    rigid_residual: float
++    inactive_block_max: float
++    timing: dict
++    seconds: float
++
++
++def schur_label(stage: PortStage, *, workers: int = 8, column_chunk_size: int = 1024, rigid_tolerance: float = 1.0e-10,
++                eigenvalue_tolerance: float = 1.0e-8) -> SchurStage:
++    """Tet10 fixed-port Schur restricted to the active carrier nodes, with the operator gates (rigid-body residual,
++    positive semidefiniteness).  Raises on a gate failure."""
++    t0 = time.perf_counter()
++    S, timing = t10.dense_fixed_port_schur(stage.artifact, stage.port, element="TET10", workers=workers, column_chunk_size=column_chunk_size)
++    keep = np.repeat(stage.active, 3)
++    S_active = np.ascontiguousarray(S[np.ix_(keep, keep)]); rigid = np.ascontiguousarray(stage.port.rigid_basis[keep])
++    rigid_residual = float(np.linalg.norm(S_active @ rigid) / max(np.linalg.norm(S_active), 1e-300))
++    eig = np.linalg.eigvalsh(S_active)
++    inactive = float(np.abs(S[np.ix_(~keep, ~keep)]).max()) if (~keep).any() else 0.0
++    if rigid_residual > rigid_tolerance:
++        raise RuntimeError(f"rigid-body residual {rigid_residual:.2e} exceeds {rigid_tolerance:g}")
++    if eig[0] < -eigenvalue_tolerance * eig[-1]:
++        raise RuntimeError(f"Schur operator is not positive semidefinite (min eigenvalue {eig[0]:.3e})")
++    return SchurStage(schur_active=S_active, rigid_active=rigid, eigenvalues=eig, rigid_residual=rigid_residual, inactive_block_max=inactive,
++                      timing=timing, seconds=time.perf_counter() - t0)
++
++
++def carrier_norms(layout, port, active: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
++    """P1 mass and Laplace-Beltrami matrices of the ACTIVE carrier complex (the training loss is defined with them)."""
++    M, L = t10.carrier_mass_and_laplacian(layout, port)
++    idx = np.where(active)[0]
++    return M[np.ix_(idx, idx)], L[np.ix_(idx, idx)]
++
++
++__all__ = ["MESHER_PARAMETERS", "PortStage", "SchurStage", "carrier_norms", "compile_port", "schur_label"]
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index e3b6d18..2c22541 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -10,8 +10,7 @@ Material = { |phi(x)| <= tau(x) } clipped by the unit box and the world cut plan
+    band is re-triangulated by constrained Delaunay (`triangle`) with the carrier trace nodes and edges as constraints
+    (so every fine port node lies on a carrier node, a carrier edge or inside a carrier triangle); on the cut plane the
+    band is triangulated without constraints;
+-4. consistent outward orientation, watertightness check, optional tangential smoothing of the sheet part with all
+-   plane vertices frozen;
++4. consistent outward orientation per closed shell, watertightness and verified self-intersection checks;
+ 5. Gmsh volume mesh (discrete surfaces, boundary preserved), MEDIT output.
+ """
+ from __future__ import annotations
+@@ -23,7 +22,7 @@ from pathlib import Path
+ 
+ import numpy as np
+ 
+-from .conforming_port_mesh import _min_dihedral, carrier_shell, signed_volume, smooth_on_polyhedron, tri_quality, watertight_report
++from .conforming_port_mesh import _components, _min_dihedral, carrier_shell, signed_volume, tri_quality, watertight_report
+ 
+ _BOX = (("box_x_min", 0, 0.0, -1.0), ("box_x_max", 0, 1.0, 1.0), ("box_y_min", 1, 0.0, -1.0),
+         ("box_y_max", 1, 1.0, 1.0), ("box_z_min", 2, 0.0, -1.0), ("box_z_max", 2, 1.0, 1.0))
+@@ -70,12 +69,6 @@ def project_to_sheet(geometry, V: np.ndarray, iters: int = 4, fd: float = 1e-6)
+     return V, float(res0)
+ 
+ 
+-def snap_near_plane(V: np.ndarray, n: np.ndarray, d: float, eps: float) -> np.ndarray:
+-    """Move vertices closer than eps to the plane exactly onto it (avoids sliver triangles after clipping)."""
+-    V = V.copy(); s = V @ n - d; m = np.abs(s) < eps
+-    V[m] -= np.outer(s[m], n); return V
+-
+-
+ def snap_near_plane_constrained(V: np.ndarray, n: np.ndarray, d: float, eps: float, planes, tol: float = 1e-9, allow: np.ndarray | None = None) -> np.ndarray:
+     """snap_near_plane that keeps a vertex on every clip plane it already lies on (joint least-squares correction), so
+     snapping onto an oblique cut plane does not lift box-face vertices off their face.  `allow` (bool per vertex)
+@@ -229,19 +222,6 @@ def _cube_plane_polygon(n: np.ndarray, d: float, box_max=(1.0, 1.0, 1.0)) -> np.
+     return P[np.argsort(ang)]
+ 
+ 
+-def _even_odd_inside(P: np.ndarray, loops: list[np.ndarray]) -> np.ndarray:
+-    """Even-odd rule: point is inside an odd number of the closed 2D loops."""
+-    cnt = np.zeros(len(P), dtype=np.int64)
+-    for L in loops:
+-        A = L; B = np.roll(L, -1, axis=0)
+-        for a, b in zip(A, B):
+-            cond = (a[1] > P[:, 1]) != (b[1] > P[:, 1])
+-            with np.errstate(divide="ignore", invalid="ignore"):
+-                x = a[0] + (P[:, 1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1])
+-            cnt += (cond & (P[:, 0] < x)).astype(np.int64)
+-    return (cnt % 2) == 1
+-
+-
+ def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: list[bool], n: np.ndarray, d: float, is_material, *, level_fn=None,
+                              constraint_points: np.ndarray | None = None, constraint_segments: np.ndarray | None = None,
+                              max_area: float | None = None, quality: str = "q20", steiner_on_chains: bool = False, snap_relative: float = 0.3,
+@@ -759,11 +739,6 @@ def collapse_edges_on_lines(V: np.ndarray, F: np.ndarray, planes, tol: float = 1
+     return V, F, total
+ 
+ 
+-def collapse_short_boundary_edges(V: np.ndarray, F: np.ndarray, planes, min_len: float, max_passes: int = 10) -> tuple[np.ndarray, np.ndarray, int]:
+-    """Boundary-only variant of collapse_short_edges (kept for the marching-cubes path and the block validation)."""
+-    return collapse_short_edges(V, F, planes, min_len, max_passes=max_passes, boundary_only=True)
+-
+-
+ def _flip_edges(V: np.ndarray, F: np.ndarray, edges, fold_cos: float = 0.5, protected: set | None = None) -> tuple[np.ndarray, int]:
+     """Flip interior edges (b, c) -> (a, d) when both new triangles keep the local orientation, improve the worse of the
+     two qualities, and the new edge does not exist yet.  Edges in `protected` (chain / constraint segments) stay."""
+@@ -834,9 +809,13 @@ def self_intersecting_faces(V: np.ndarray, F: np.ndarray) -> np.ndarray:
+     return np.where(ms.current_mesh().face_selection_array())[0]
+ 
+ 
++def _cross2(a: np.ndarray, b: np.ndarray) -> float:
++    return float(a[0] * b[1] - a[1] * b[0])
++
++
+ def _proper_overlap_2d(P: np.ndarray, Q: np.ndarray, eps: float = 1e-12) -> bool:
+     def inside(p, T):
+-        sgn = [np.cross(T[(k + 1) % 3] - T[k], p - T[k]) for k in range(3)]
++        sgn = [_cross2(T[(k + 1) % 3] - T[k], p - T[k]) for k in range(3)]
+         return (min(sgn) > eps) or (max(sgn) < -eps)
+     if any(inside(p, Q) for p in P) or any(inside(q, P) for q in Q):
+         return True
+@@ -844,10 +823,10 @@ def _proper_overlap_2d(P: np.ndarray, Q: np.ndarray, eps: float = 1e-12) -> bool
+         a, b = P[i], P[(i + 1) % 3]
+         for j in range(3):
+             c, d = Q[j], Q[(j + 1) % 3]
+-            r = b - a; t_ = d - c; den = np.cross(r, t_)
++            r = b - a; t_ = d - c; den = _cross2(r, t_)
+             if abs(den) < 1e-18:
+                 continue
+-            t = np.cross(c - a, t_) / den; u = np.cross(c - a, r) / den
++            t = _cross2(c - a, t_) / den; u = _cross2(c - a, r) / den
+             if eps < t < 1 - eps and eps < u < 1 - eps:
+                 return True
+     return False
+@@ -942,95 +921,6 @@ class EmptyCellError(ValueError):
+     """The clipped sheet has no triangles: the cell carries no material."""
+ 
+ 
+-def resnap_boundary_to_planes(V: np.ndarray, F: np.ndarray, planes, max_dist: float) -> tuple[np.ndarray, int]:
+-    """Every boundary vertex of the open sheet must lie on a clip plane; vertices that drifted (remeshing) are moved back onto
+-    the nearest plane(s) within max_dist, solving for all selected planes simultaneously (planes need not be orthogonal)."""
+-    V = V.copy(); bnd = sorted({v for e in _directed_boundary(F) for v in e}); moved = 0
+-    for v in bnd:
+-        close = sorted([(abs(V[v] @ n - d), n, d) for _, n, d in planes if abs(V[v] @ n - d) <= max_dist], key=lambda t: t[0])[:3]
+-        if not close or close[0][0] <= 1e-12 and len(close) == 1:
+-            continue
+-        A = np.stack([n for _, n, _ in close]); rhs = np.array([d for _, _, d in close]) - A @ V[v]
+-        corr, *_ = np.linalg.lstsq(A, rhs, rcond=None)
+-        if np.linalg.norm(corr) > 1e-12:
+-            V[v] += corr; moved += 1
+-    return V, moved
+-
+-
+-def handle_flat_triangles(geometry, V: np.ndarray, F: np.ndarray, planes, tol: float = 1e-9) -> tuple[np.ndarray, np.ndarray, dict]:
+-    """Sheet triangles lying in a clip plane: if the triangle has at least two boundary edges (a boundary 'ear' of three
+-    consecutive boundary vertices) it is dropped (the cap covers that area and the chain shortcut is exact); otherwise it
+-    is lifted: replaced by a fan around a new vertex pushed inward and projected onto the sheet."""
+-    V = np.asarray(V, dtype=np.float64); F = np.asarray(F, dtype=np.int64)
+-    flat = np.zeros(len(F), bool); plane_of = np.full(len(F), -1)
+-    for k, (_, n, d) in enumerate(planes):
+-        m = (np.abs(V[F] @ n - d) <= tol).all(axis=1); plane_of[m & ~flat] = k; flat |= m
+-    if not flat.any():
+-        return V, F, {"dropped": 0, "lifted": 0}
+-    e2f: dict[tuple[int, int], int] = defaultdict(int)
+-    for f in F:
+-        for a, b in ((0, 1), (1, 2), (0, 2)):
+-            e2f[(min(f[a], f[b]), max(f[a], f[b]))] += 1
+-    out = []; new_pts = []; dropped = 0; lifted = 0
+-    for i, f in enumerate(F):
+-        if not flat[i]:
+-            out.append(tuple(int(v) for v in f)); continue
+-        nb = sum(1 for a, b in ((0, 1), (1, 2), (0, 2)) if e2f[(min(f[a], f[b]), max(f[a], f[b]))] == 1)
+-        if nb >= 2:
+-            dropped += 1; continue
+-        n = planes[plane_of[i]][1]; P = V[f]; edge = np.mean([np.linalg.norm(P[1] - P[0]), np.linalg.norm(P[2] - P[1]), np.linalg.norm(P[0] - P[2])])
+-        c = P.mean(axis=0) - 0.35 * edge * n; cid = len(V) + len(new_pts); new_pts.append(c); lifted += 1
+-        a, b, cc = (int(v) for v in f); out += [(a, b, cid), (b, cc, cid), (cc, a, cid)]
+-    F2 = np.asarray(out, dtype=np.int64)
+-    if new_pts:
+-        V2 = np.vstack([V, np.asarray(new_pts)]); Vp = project_to_sheet_in_planes(geometry, V2, planes, iters=3); V2[len(V):] = Vp[len(V):]
+-    else:
+-        V2 = V
+-    V2, F2 = compact(V2, F2)
+-    return V2, F2, {"dropped": dropped, "lifted": lifted}
+-
+-
+-def flip_flat_triangles(V: np.ndarray, F: np.ndarray, planes, tol: float = 1e-9, max_passes: int = 4) -> tuple[np.ndarray, int]:
+-    """A sheet triangle with all three vertices on one clip plane (all three on the boundary polyline) is removed by
+-    flipping one of its interior edges with the neighbouring triangle; no vertex is added or removed."""
+-    F = np.asarray(F, dtype=np.int64).copy(); flipped = 0
+-    onp = [np.abs(V @ n - d) <= tol for _, n, d in planes]
+-    for _ in range(max_passes):
+-        flat = np.zeros(len(F), bool)
+-        for k in range(len(planes)):
+-            flat |= onp[k][F].all(axis=1)
+-        if not flat.any():
+-            break
+-        e2f: dict[tuple[int, int], list[int]] = defaultdict(list)
+-        for i, f in enumerate(F):
+-            for a, b in ((0, 1), (1, 2), (0, 2)):
+-                e2f[(min(f[a], f[b]), max(f[a], f[b]))].append(i)
+-        done = set(); changed = 0
+-        for i in np.where(flat)[0]:
+-            if i in done:
+-                continue
+-            f = [int(v) for v in F[i]]
+-            for k in range(3):
+-                a, b = f[k], f[(k + 1) % 3]; c = f[(k + 2) % 3]
+-                nb = [j for j in e2f[(min(a, b), max(a, b))] if j != i and j not in done]
+-                if not nb:
+-                    continue
+-                j = nb[0]; g = [int(v) for v in F[j]]; d = [v for v in g if v not in (a, b)]
+-                if len(d) != 1:
+-                    continue
+-                d = d[0]
+-                if (min(c, d), max(c, d)) in e2f:
+-                    continue  # flipping would duplicate an existing edge
+-                # flip (a,b) -> (c,d), keeping orientation: triangle i had a->b->c, neighbour has b->a->d
+-                F[i] = (c, a, d) if g.index(a) == (g.index(b) + 1) % 3 else (c, d, a)
+-                F[j] = (c, d, b) if g.index(a) == (g.index(b) + 1) % 3 else (c, b, d)
+-                done.update((i, j)); changed += 1; break
+-        flipped += changed
+-        if changed == 0:
+-            break
+-    return F, flipped
+-
+-
+ def remove_nonmanifold_and_flat(V: np.ndarray, F: np.ndarray, planes, max_passes: int = 5) -> tuple[np.ndarray, dict]:
+     """After remeshing: for edges shared by 3+ triangles, drop the smallest-area offenders until every edge has at most
+     two triangles (flat in-plane triangles are handled separately by lift_flat_triangles)."""
+@@ -1052,29 +942,6 @@ def remove_nonmanifold_and_flat(V: np.ndarray, F: np.ndarray, planes, max_passes
+     return F, {"dropped_flat": dropped_flat, "dropped_nonmanifold": dropped_nm}
+ 
+ 
+-def restore_plane_corners(V: np.ndarray, F: np.ndarray, planes, tol: float = 1e-9) -> tuple[np.ndarray, np.ndarray, int]:
+-    """A boundary edge whose endpoints lie on different clip planes with no plane in common cuts a box corner/edge line.
+-    Insert the line point (projection of the edge midpoint onto both planes) and split the edge, so the boundary chain
+-    of each plane is closed through the corner."""
+-    V = np.asarray(V, dtype=np.float64).copy(); F = np.asarray(F, dtype=np.int64)
+-    onp = np.stack([np.abs(V @ n - d) <= tol for _, n, d in planes], axis=1)
+-    splits = []; new_pts = []
+-    for a, b in _directed_boundary(F):
+-        if (onp[a] & onp[b]).any() or not onp[a].any() or not onp[b].any():
+-            continue
+-        # pick one plane of a and one of b; corner point = solve for the point closest to the midpoint on both planes
+-        ia = int(np.argmax(onp[a])); ib = int(np.argmax(onp[b])); na, da = planes[ia][1], planes[ia][2]; nb, db = planes[ib][1], planes[ib][2]
+-        m = 0.5 * (V[a] + V[b])
+-        A = np.stack([na, nb]); rhs = np.array([da, db]) - A @ m
+-        corr, *_ = np.linalg.lstsq(A, rhs, rcond=None); c = m + corr
+-        new_pts.append(c); splits.append((int(a), int(b), [len(V) + len(new_pts) - 1]))
+-    if not splits:
+-        return V, F, 0
+-    V = np.vstack([V, np.asarray(new_pts)])
+-    F2, _ = split_edges_in_triangles(F, ["x"] * len(F), splits, V)
+-    return V, F2, len(splits)
+-
+-
+ def remesh_sheet(V: np.ndarray, F: np.ndarray, *, size: float, iterations: int = 10, feature_degrees: float = 60.0) -> tuple[np.ndarray, np.ndarray]:
+     """Isotropic explicit remeshing (pymeshlab) of the open sheet surface; boundary vertices stay on the boundary polylines."""
+     import pymeshlab as ml
+@@ -1167,40 +1034,9 @@ def split_all_t_junctions(V: np.ndarray, F: np.ndarray, labels, tol: float = 1e-
+     return F, labels, total
+ 
+ 
+-def split_line_t_junctions(V: np.ndarray, F: np.ndarray, labels: list[str], planes, tol: float = 1e-9):
+-    """Vertices lying on >= 2 clip planes (box edges, cut lines) that fall strictly inside an edge of a triangle running
+-    along the same line split that edge (removes T-junctions between caps built independently)."""
+-    onp = np.zeros((len(V), len(planes)), bool)
+-    for k, (_, n, d) in enumerate(planes):
+-        onp[:, k] = np.abs(V @ n - d) <= tol
+-    line_v = np.where(onp.sum(axis=1) >= 2)[0]
+-    if not len(line_v):
+-        return F, labels, 0
+-    splits = {}
+-    edges = {}
+-    for f in F:
+-        for a, b in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2])):
+-            if (onp[a] & onp[b]).sum() >= 2:
+-                edges[(min(a, b), max(a, b))] = (onp[a] & onp[b])
+-    for (a, b), mask in edges.items():
+-        cand = line_v[(onp[line_v][:, mask].all(axis=1))]; cand = cand[(cand != a) & (cand != b)]
+-        if not len(cand):
+-            continue
+-        e = V[b] - V[a]; L2 = e @ e; w = V[cand] - V[a]; t = (w @ e) / L2
+-        dist = np.linalg.norm(w - np.outer(t, e), axis=1)
+-        inner = cand[(dist <= tol) & (t > 1e-9) & (t < 1 - 1e-9)]
+-        if len(inner):
+-            order = np.argsort(t[(dist <= tol) & (t > 1e-9) & (t < 1 - 1e-9)]); splits[(a, b)] = [int(v) for v in inner[order]]
+-    if not splits:
+-        return F, labels, 0
+-    F2, lab2 = split_edges_in_triangles(F, labels, [(a, b, js) for (a, b), js in splits.items()], V)
+-    return F2, lab2, len(splits)
+-
+-
+ def drop_floating_components(V: np.ndarray, F: np.ndarray, labels: np.ndarray) -> tuple[np.ndarray, np.ndarray, dict]:
+     """Connected components (by shared edges) of the closed surface that contain no port-face triangle are loose fragments
+     of the sheet cut off by the clip planes; they carry no load and are removed (they would add floating rigid modes)."""
+-    from .conforming_port_mesh import _components
+     comps = _components(F); keep = np.zeros(len(F), bool); dropped = 0; dropped_area = 0.0
+     P = V[F]; area = 0.5 * np.linalg.norm(np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0]), axis=1)
+     for c in comps:
+@@ -1239,8 +1075,10 @@ def orient_outward(V: np.ndarray, F: np.ndarray) -> np.ndarray:
+                     if (e[0], e[1]) in dir_j:
+                         F[j] = fj[[0, 2, 1]]
+                     stack.append(j)
+-    if signed_volume(V, F) < 0:
+-        F = F[:, [0, 2, 1]]
++    for comp in _components(F):          # every closed shell is flipped by its own volume sign (several pieces of material)
++        comp = np.asarray(comp)
++        if signed_volume(V, F[comp]) < 0:
++            F[comp] = F[comp][:, [0, 2, 1]]
+     return F
+ 
+ 
+@@ -1318,15 +1156,17 @@ class SheetSurfaceResult:
+     report: dict = field(default_factory=dict)
+ 
+ 
+-def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 48, pad: int = 4, smooth: bool = True, project: bool = True,
+-                              snap_fraction: float = 0.2, remesh_size: float | None = None, cap_max_area: float | None = None,
+-                              quality: str = "q20", port_constraints: dict | None = None, flat_mode: str = "drop", constrain_carrier_edges: bool = True,
++def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_size: float = 0.02, pad: int = 4, cap_max_area: float | None = None,
++                              quality: str = "q20", port_constraints: dict | None = None, constrain_carrier_edges: bool = True,
+                               remesh_retry_factors: tuple[float, ...] = (1.0, 0.9, 1.12, 0.8), needle_quality: float = 0.05, thickness_scaling: bool = True) -> SheetSurfaceResult:
+-    """port_constraints: optional {face: (points xyz, segments (pairs into points), keys)} replacing the layout carrier trace
+-    (used for multi-cell blocks); keys identify the constraint points in the returned carrier_nodes map.
+-    With remesh_size the sheet is remeshed with a margin outside the planes and then clipped exactly (_remesh_and_clip);
+-    a result with self-intersections or non-manifold edges is retried with remesh_size scaled by the next factor, and the
+-    build fails closed when every factor fails."""
++    """Closed, carrier-conforming surface of the sheet solid.
++
++    n_per_unit / remesh_size: marching-cubes grid and isotropic remesh target (both refined automatically for thin walls
++    when thickness_scaling is on).  port_constraints: optional {face: (points xyz, segments (pairs into points), keys)}
++    replacing the layout carrier trace (multi-cell blocks); keys identify the constraint points in the returned
++    carrier_nodes map.  The sheet is remeshed with a margin outside the planes and then clipped exactly
++    (_remesh_and_clip); a result with self-intersections or non-manifold edges is retried with remesh_size scaled by
++    the next factor, and the build fails closed when every factor fails."""
+     t0 = time.perf_counter(); report: dict = {}
+     # resolution follows the thinnest wall: t_min = 2 tau_min / max|grad phi| = 2 tau_min / (2 pi sqrt 3) = 0.184 tau_min
+     t_min = 2.0 * float(min(geometry.tau_corners)) / (2.0 * np.pi * np.sqrt(3.0))
+@@ -1338,42 +1178,28 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 48, pad: in
+     report["resolution_effective"] = {"n_per_unit": int(n_per_unit), "remesh_size": remesh_size, "requested": {"n_per_unit": n_requested, "remesh_size": h_requested}, "wall_thickness_min": float(t_min)}
+     V, F = marching_sheet(geometry, n_per_unit, pad); h = 1.0 / n_per_unit
+     report["marching_cubes"] = {"vertices": int(len(V)), "triangles": int(len(F)), "h": h}
+-    if project:
+-        V, res0 = project_to_sheet(geometry, V); report["projection"] = {"max_level_residual_before": res0, "max_level_residual_after": float(np.abs(sheet_level(geometry, V)).max())}
++    V, res0 = project_to_sheet(geometry, V); report["projection"] = {"max_level_residual_before": res0, "max_level_residual_after": float(np.abs(sheet_level(geometry, V)).max())}
+     planes = clip_planes(geometry)
+-    if remesh_size is not None:
+-        if 1.5 * max(remesh_retry_factors) * remesh_size >= pad * h:
+-            raise ValueError(f"marching-cubes pad {pad * h:.4f} is smaller than the remesh margin {1.5 * max(remesh_retry_factors) * remesh_size:.4f}")
+-        attempts = []; chosen = None
+-        for factor in remesh_retry_factors:
+-            size = float(remesh_size) * float(factor)
+-            try:
+-                Vr, Fr, rep_r = _remesh_and_clip(geometry, V, F, planes, size, snap_fraction=0.2, needle_quality=needle_quality)
+-            except EmptyCellError:
+-                raise
+-            except Exception as exc:
+-                attempts.append({"size": size, "error": str(exc)[:200]}); continue
+-            attempts.append(rep_r)
+-            if rep_r["self_intersecting_triangles"] == 0 and rep_r["edges_with_3_or_more_triangles"] == 0 and rep_r["boundary_vertices_off_plane"] == 0 and len(Fr):
+-                chosen = (Vr, Fr); break
+-        report["remesh_attempts"] = attempts
+-        if chosen is None:
+-            raise ValueError(f"sheet remesh failed for every retry factor: {attempts}")
+-        V, F = chosen; report["sheet_remesh"] = attempts[-1]
+-        report["flat_sheet_triangles"] = {"dropped": attempts[-1]["flat_dropped"], "lifted": 0}
+-    else:
+-        for name, n, d in planes:
+-            V = snap_near_plane(V, n, d, snap_fraction * h)
+-            V, F = clip_by_plane(V, F, n, d)
+-        if flat_mode == "drop":
+-            flat = np.zeros(len(F), bool)
+-            for _, n, d in planes:
+-                flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
+-            F = F[~flat]; V, F = compact(V, F); report["flat_sheet_triangles"] = {"dropped": int(flat.sum()), "lifted": 0}
+-        else:
+-            V, F, flat_rep = handle_flat_triangles(geometry, V, F, planes); report["flat_sheet_triangles"] = flat_rep
+-    if project:  # re-project the interior vertices after snapping moved a few of them
+-        V = project_to_sheet_in_planes(geometry, V, planes, iters=2)
++    if 1.5 * max(remesh_retry_factors) * remesh_size >= pad * h:
++        raise ValueError(f"marching-cubes pad {pad * h:.4f} is smaller than the remesh margin {1.5 * max(remesh_retry_factors) * remesh_size:.4f}")
++    attempts = []; chosen = None
++    for factor in remesh_retry_factors:
++        size = float(remesh_size) * float(factor)
++        try:
++            Vr, Fr, rep_r = _remesh_and_clip(geometry, V, F, planes, size, snap_fraction=0.2, needle_quality=needle_quality)
++        except EmptyCellError:
++            raise
++        except Exception as exc:
++            attempts.append({"size": size, "error": str(exc)[:200]}); continue
++        attempts.append(rep_r)
++        if rep_r["self_intersecting_triangles"] == 0 and rep_r["edges_with_3_or_more_triangles"] == 0 and rep_r["boundary_vertices_off_plane"] == 0 and len(Fr):
++            chosen = (Vr, Fr); break
++    report["remesh_attempts"] = attempts
++    if chosen is None:
++        raise ValueError(f"sheet remesh failed for every retry factor: {attempts}")
++    V, F = chosen; report["sheet_remesh"] = attempts[-1]
++    report["flat_sheet_triangles"] = {"dropped": attempts[-1]["flat_dropped"], "lifted": 0}
++    V = project_to_sheet_in_planes(geometry, V, planes, iters=2)
+     flat = np.zeros(len(F), bool)      # defensive: no sheet triangle may lie in a clip plane when the chains are read
+     for _, n, d in planes:
+         flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
+@@ -1447,7 +1273,6 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 48, pad: in
+     report["caps"] = caps; report["cap_classification"] = {k: v for k, v in classification.items() if v}
+     report["cap_classification_conflicts"] = int(sum(v.get("conflicts", 0) for v in classification.values()))
+     report["cap_level_disagreements"] = int(sum(v.get("level_disagreements", 0) for v in classification.values()))
+-    F, labels, nfix = split_line_t_junctions(V, F, labels, planes); report["line_t_junction_splits"] = int(nfix)
+     F, labels, nfix2 = split_all_t_junctions(V, F, labels); report["t_junction_splits"] = int(nfix2)
+     labels_arr = np.asarray(labels)
+     V, F, remap, keep_mask = merge_duplicate_vertices(V, F); labels_arr = labels_arr[keep_mask]; report["degenerate_triangles_dropped"] = int((~keep_mask).sum())
+@@ -1467,32 +1292,6 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 48, pad: in
+                 e2f[(min(f[a], f[b]), max(f[a], f[b]))].append(i)
+         bad = [(e, [labels_arr[i] for i in fs]) for e, fs in e2f.items() if len(fs) != 2]
+         report["non_manifold_examples"] = [{"edge": [int(e[0]), int(e[1])], "count": len(l), "labels": l, "xyz": V[list(e)].round(6).tolist()} for e, l in bad[:12]]
+-    if smooth and wt["non_two_manifold_edges"] == 0:
+-        sheet = np.where(labels_arr == "tpms_free")[0]
+-        on_plane = np.zeros(len(V), bool)
+-        for _, n, d in planes:
+-            on_plane |= np.abs(V @ n - d) <= 1e-9
+-        near_plane = np.zeros(len(V), bool)
+-        for _, n, d in planes:
+-            near_plane |= np.abs(V @ n - d) <= (0.3 * remesh_size if remesh_size else 0.3 / n_per_unit)
+-        Vs, moved, crease = smooth_on_polyhedron(V, F[sheet], frozen=on_plane | near_plane)
+-        V = Vs; report["sheet_smoothing"] = {"moved": int(moved), "crease_vertices": int(np.asarray(crease).sum()), "frozen_plane_vertices": int(on_plane.sum()), "frozen_near_plane": int((near_plane & ~on_plane).sum())}
+-        flat = np.zeros(len(F), bool)
+-        for _, n, d in planes:
+-            flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
+-        flat &= labels_arr == "tpms_free"; report["flat_after_smoothing"] = int(flat.sum())
+-        if flat.any():  # lift them (fan around an inward vertex); labels follow
+-            keep_idx = np.where(~flat)[0]; Fk = F[keep_idx]; Lk = labels_arr[keep_idx]
+-            Vl, Fl, _ = handle_flat_triangles(geometry, V, F[flat], planes)  # returns compacted V/F for the flat subset
+-            # rebuild: handle_flat_triangles compacts; redo manually to keep ids stable
+-            out = []; new_pts = []
+-            for f in F[flat]:
+-                pl = next(k for k, (_, n, d) in enumerate(planes) if (np.abs(V[f] @ n - d) <= 1e-9).all()); n = planes[pl][1]
+-                P = V[f]; edge = np.mean([np.linalg.norm(P[1] - P[0]), np.linalg.norm(P[2] - P[1]), np.linalg.norm(P[0] - P[2])])
+-                cid = len(V) + len(new_pts); new_pts.append(P.mean(axis=0) - 0.35 * edge * n)
+-                a, b, cc = (int(v) for v in f); out += [(a, b, cid), (b, cc, cid), (cc, a, cid)]
+-            V = np.vstack([V, np.asarray(new_pts)]); Vp = project_to_sheet_in_planes(geometry, V, planes, iters=3); V[len(V) - len(new_pts):] = Vp[len(V) - len(new_pts):]
+-            F = np.vstack([Fk, np.asarray(out, dtype=np.int64)]); labels_arr = np.concatenate([Lk, np.array(["tpms_free"] * len(out))])
+     outside = np.zeros(len(V), bool)
+     for _, n, d in planes:
+         outside |= (V @ n - d) > 1e-12
+@@ -1578,7 +1377,6 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+         gmsh.model.add("sheet_solid")
+         node_tag = {}; tag_count = 0; tag = 0
+         # one volume per connected shell: a cut can leave several separate pieces of material, each a closed surface
+-        from .conforming_port_mesh import _components
+         comps = _components(F)
+         for comp in comps:
+             comp = np.sort(np.asarray(comp, dtype=np.int64)); surf_tags = []   # original triangle order: node insertion order (hence the Gmsh result) is unchanged for one shell
+diff --git a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+index c62bb0a..c33f5c4 100644
+--- a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
++++ b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+@@ -69,7 +69,7 @@ def test_projection_lands_on_the_level_set_and_respects_planes(fixture) -> None:
+ 
+ def test_surface_is_watertight_carrier_conforming_and_has_the_published_density(fixture) -> None:
+     geometry, layout = fixture
+-    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.04, smooth=False)
++    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.04)
+     report = result.report
+     assert report["watertight"]["non_two_manifold_edges"] == 0
+     assert report["components"]["dropped"] == 0
+@@ -156,7 +156,7 @@ def test_thin_cut_cell_surface_is_watertight_and_has_the_right_volume() -> None:
+     charts, *_ = compile_full_cube_geometry_inputs(spec)
+     layout = build_full_cube_trace_layout(spec, charts=charts)
+     geometry = CgalGeometryParameters(tau_corners=(float(tau),) * 8, cut_plane=(1.0, 0.5774, 0.0, 0.7227))
+-    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.03, smooth=False)
++    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.03)
+     report = result.report
+     assert report["resolution_effective"]["remesh_size"] < 0.03           # thickness-scaled: the wall is 0.032 thick
+     assert report["watertight"]["non_two_manifold_edges"] == 0
+-- 
+2.34.1
+

@@ -1,0 +1,4 @@
+supported carrier nodes 1248, q_supported 3744, lowfreq vector modes 222
+THIN_h02 vs THIN_h015: lowfreq 0.0033 whitened 0.1833 raw 0.1547 p50 +0.0022 p95 0.0052
+THIN_h02 vs THIN_h011: lowfreq 0.0042 whitened 0.1684 raw 0.1452 p50 +0.0036 p95 0.0087
+THIN_h015 vs THIN_h011: lowfreq 0.0017 whitened 0.1273 raw 0.1074 p50 +0.0015 p95 0.0036

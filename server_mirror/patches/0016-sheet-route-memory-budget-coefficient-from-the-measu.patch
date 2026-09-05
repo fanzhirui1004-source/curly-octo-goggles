@@ -1,0 +1,45 @@
+From 5819d127263e69c1823f91ffc96f8b61700a3aa2 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 18:23:47 +0800
+Subject: [PATCH 16/22] sheet route: memory budget coefficient from the
+ measured Schur peak
+
+Sixty production labels through the budgeted queue put the peak RSS of
+the Schur stage at 33 MB per 1000 fine Tet10 dof; the reservation was
+45 MB and held about 35 percent of the budget idle.  Now 36 MB, a ten
+percent margin.  Thread count per job made no difference to the Schur
+time per unit work (104 vs 105 s per 100k tetrahedra at 8 and 12
+threads): the queue is bound by the memory budget, not by threads.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X77H1Uihff2oEyM5T4qg7v
+---
+ .../sheet_label_pipeline.py                                  | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+index cddd629..3ad223e 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -139,7 +139,8 @@ class MemoryBudget:
+     stages and reserve their estimated Schur memory here before the expensive one, so a 128 GiB cgroup carries
+     ten or more jobs in flight with only as many Schurs as fit.  Reservations are files `res_<pid>` in one
+     directory, summed under a directory lock; a reservation whose process is gone counts for nothing, so a killed
+-    job cannot leak budget.  Estimate: 45 MB per 1000 fine Tet10 dof (measured 19 GB at 500k dof, 32 GB at 814k)."""
++    job cannot leak budget.  Estimate: 36 MB per 1000 fine Tet10 dof; the peak RSS of the Schur stage measured on 60
++    production labels is 33 MB per 1000 dof (2026-09-04), so the margin is about 10 percent."""
+ 
+     def __init__(self, directory: Path, budget_gb: float, poll_seconds: float = 3.0):
+         self.directory = Path(directory); self.budget_gb = float(budget_gb); self.poll = float(poll_seconds); self.mine = None
+@@ -147,7 +148,7 @@ class MemoryBudget:
+ 
+     @staticmethod
+     def estimate_gb(tet10_dof: int) -> float:
+-        return 0.045 * tet10_dof / 1000.0
++        return 0.036 * tet10_dof / 1000.0
+ 
+     def _reserved(self) -> float:
+         import os
+-- 
+2.34.1
+

@@ -1,0 +1,206 @@
+From cc11fa176925397890647ad7ea86e72f350f58be Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 12:14:44 +0800
+Subject: [PATCH 09/22] sheet surface: fix three census failure mechanisms at
+ the source
+
+Population census (2009 cells, production preset) failed on four cut cells;
+each was diagnosed and fixed in the mesher rather than excluded:
+
+- snap_near_plane_constrained: the joint correction that keeps a vertex on
+  the planes it already lies on projected face vertices near a shallow cut
+  plane onto the intersection line, a move of eps/sin(theta) along the face
+  (19 snap distances at 3 deg).  This folded the boundary strip, stranded
+  vertices off the level set (residuals up to 0.3) and even pulled sheet
+  from the removed wedge into the retained region.  The correction is now
+  capped at 2 eps; farther vertices are left to the exact clip.
+- cap boundary polygon: a port face without carrier constraints used the
+  whole cube face, so on a face crossed by the cut the flood fill leaked past
+  the cut line.  Every cap now uses the facet of the retained region
+  (_retained_facet_polygon).
+- tangent patches: sheet triangles within h/2 of a plane with material in
+  between were partly snapped, pinching the sheet onto the cap along an
+  interior edge (four triangles on one edge).  _flatten_tangent_patches
+  snaps such patches as a whole so the flat-triangle drop removes them and
+  the cap closes the solid.
+
+Two unit tests added (snap cap, facet polygon); 12 tests pass.  The four
+cells and a 20-cell regression panel build watertight surfaces and volumes.
+---
+ .../sheet_solid_surface.py                    | 81 ++++++++++++++++++-
+ .../test_sheet_solid_surface.py               | 32 ++++++++
+ 2 files changed, 109 insertions(+), 4 deletions(-)
+
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index 1fd15cb..f889a2f 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -69,11 +69,16 @@ def project_to_sheet(geometry, V: np.ndarray, iters: int = 4, fd: float = 1e-6)
+     return V, float(res0)
+ 
+ 
+-def snap_near_plane_constrained(V: np.ndarray, n: np.ndarray, d: float, eps: float, planes, tol: float = 1e-9, allow: np.ndarray | None = None) -> np.ndarray:
++def snap_near_plane_constrained(V: np.ndarray, n: np.ndarray, d: float, eps: float, planes, tol: float = 1e-9, allow: np.ndarray | None = None,
++                                max_move: float | None = 2.0) -> np.ndarray:
+     """snap_near_plane that keeps a vertex on every clip plane it already lies on (joint least-squares correction), so
+     snapping onto an oblique cut plane does not lift box-face vertices off their face.  `allow` (bool per vertex)
+     restricts snapping to vertices where the sheet crosses the plane transversally: where the sheet is tangent to the
+-    plane (knife edge) a snapped vertex would leave the level set with no nearby in-plane point to return to."""
++    plane (knife edge) a snapped vertex would leave the level set with no nearby in-plane point to return to.
++    The joint correction moves a vertex by eps / sin(dihedral angle): where the plane meets a face the vertex lies on
++    at a shallow angle this would drag it along the face by many mesh sizes onto the intersection line (population
++    census 2026-09-04: a 3 deg cut against the x face folded the boundary strip and stranded vertices off the level
++    set).  A correction longer than max_move * eps is not applied; the exact clip handles that vertex instead."""
+     V = V.copy(); s = V @ n - d; near = np.abs(s) < eps
+     if allow is not None:
+         near &= allow
+@@ -86,7 +91,10 @@ def snap_near_plane_constrained(V: np.ndarray, n: np.ndarray, d: float, eps: flo
+         if len(rows) == 1:
+             V[i] -= s[i] * n; continue
+         A = np.stack([r[0] for r in rows]); rhs = np.array([r[1] for r in rows]) - A @ V[i]
+-        corr, *_ = np.linalg.lstsq(A, rhs, rcond=None); V[i] += corr
++        corr, *_ = np.linalg.lstsq(A, rhs, rcond=None)
++        if max_move is not None and np.linalg.norm(corr) > max_move * eps:
++            continue
++        V[i] += corr
+     return V
+ 
+ 
+@@ -222,6 +230,38 @@ def _cube_plane_polygon(n: np.ndarray, d: float, box_max=(1.0, 1.0, 1.0)) -> np.
+     return P[np.argsort(ang)]
+ 
+ 
++def _clip_polygon_by_halfspace(poly: np.ndarray, n: np.ndarray, d: float, tol: float = 1e-12) -> np.ndarray:
++    """Sutherland-Hodgman: the part of the ordered 3D polygon with n.x - d <= 0."""
++    if len(poly) == 0:
++        return poly
++    out = []; s = poly @ n - d
++    for i in range(len(poly)):
++        j = (i + 1) % len(poly); pi, pj = poly[i], poly[j]; si, sj = s[i], s[j]
++        if si <= tol:
++            out.append(pi)
++        if (si < -tol and sj > tol) or (si > tol and sj < -tol):
++            t = si / (si - sj); out.append(pi + t * (pj - pi))
++    return np.asarray(out).reshape(-1, 3)
++
++
++def _retained_facet_polygon(planes, name: str, box_max=(1.0, 1.0, 1.0)) -> np.ndarray:
++    """Ordered polygon of the facet of the retained region (box cut by every plane) lying on plane `name`: the box face
++    or the cut plane's cube polygon, clipped by all the other retained half-spaces.  A cap built on the whole box face
++    of a face the cut crosses would extend past the cut line, where nothing bounds the flood fill (census 2026-09-04:
++    a face the band does not reach, hence without carrier constraints, grew cap triangles up to the far cube corner)."""
++    n, d = next((nn, dd) for nm, nn, dd in planes if nm == name)
++    bx, by, bz = box_max; corners = np.array([(x, y, z) for x in (0.0, bx) for y in (0.0, by) for z in (0.0, bz)])
++    if name.startswith("box_"):
++        on = np.abs(corners @ n - d) <= 1e-12; P = corners[on]
++        u, v = _plane_basis(n); c = P.mean(axis=0); ang = np.arctan2((P - c) @ v, (P - c) @ u); poly = P[np.argsort(ang)]
++    else:
++        poly = _cube_plane_polygon(n, d, box_max)
++    for nm, nn, dd in planes:
++        if nm != name:
++            poly = _clip_polygon_by_halfspace(poly, nn, dd)
++    return poly
++
++
+ def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: list[bool], n: np.ndarray, d: float, is_material, *, level_fn=None,
+                              constraint_points: np.ndarray | None = None, constraint_segments: np.ndarray | None = None,
+                              max_area: float | None = None, quality: str = "q20", steiner_on_chains: bool = False, snap_relative: float = 0.3,
+@@ -1132,6 +1172,38 @@ def orient_outward(V: np.ndarray, F: np.ndarray) -> np.ndarray:
+     return F
+ 
+ 
++def _flatten_tangent_patches(geometry, V: np.ndarray, F: np.ndarray, planes, tol: float, max_rounds: int = 8) -> tuple[np.ndarray, int]:
++    """Sheet triangles lying within `tol` of a clip plane with the material between them and the plane (the band level
++    rises away from the plane) bound a sliver thinner than the mesh can carry.  Their vertices are snapped onto the
++    plane, so the flat-triangle drop removes them and the cap closes the solid there.  Snapping only some vertices of
++    such a patch (the plain near-plane snap) pinches the sheet onto the cap along an interior edge, an edge with four
++    triangles (census 2026-09-04, sheet tangent to the cut plane beside a face edge).  Iterated: a flattened patch can
++    expose the next ring.  Returns (vertices, number of triangles flattened)."""
++    V = V.copy(); total = 0
++    for _ in range(max_rounds):
++        moved = False
++        for _, n, d in planes:
++            s = V @ n - d; sF = np.abs(s[F])
++            cand = (sF <= tol).all(axis=1) & ~(sF <= 1e-9).all(axis=1)
++            if not cand.any():
++                continue
++            cen = V[F[cand]].mean(axis=1); g = np.zeros_like(cen)
++            for k in range(3):
++                e = np.zeros(3); e[k] = 1e-6
++                g[:, k] = (sheet_level(geometry, cen + e) - sheet_level(geometry, cen - e)) / 2e-6
++            patch = F[cand][(g @ n) < 0.0]          # void lies away from the plane: the sliver in between is material
++            if not len(patch):
++                continue
++            allow = np.zeros(len(V), bool); allow[np.unique(patch)] = True
++            V2 = snap_near_plane_constrained(V, n, d, tol * (1.0 + 1e-9), planes, allow=allow, max_move=2.0)
++            flat = (np.abs(V2[patch] @ n - d) <= 1e-9).all(axis=1)
++            if flat.any():
++                V = V2; total += int(flat.sum()); moved = True
++        if not moved:
++            break
++    return V, total
++
++
+ def _remesh_and_clip(geometry, V_mc: np.ndarray, F_mc: np.ndarray, planes, size: float, *, margin_factor: float = 1.5,
+                      snap_fraction: float = 0.2, collapse_fraction: float = 0.3, needle_quality: float = 0.05, transversal_cos: float = 1.01) -> tuple[np.ndarray, np.ndarray, dict]:
+     """Isotropic remesh of the sheet clipped with a margin outside every plane, then EXACT clipping by the planes.
+@@ -1162,6 +1234,7 @@ def _remesh_and_clip(geometry, V_mc: np.ndarray, F_mc: np.ndarray, planes, size:
+         V, F = clip_by_plane(V, F, n, d)
+     if len(F) == 0:
+         raise EmptyCellError("the sheet does not enter the retained region")
++    V, ntan = _flatten_tangent_patches(geometry, V, F, planes, 0.5 * size); rep["tangent_patches_flattened"] = int(ntan)
+     flat = np.zeros(len(F), bool)
+     for _, n, d in planes:
+         flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
+@@ -1306,7 +1379,7 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_
+         elif not chains:
+             caps[name] = {"chains": 0, "open_chains": 0, "triangles": 0, "area": 0.0, "edge_splits": 0}; continue
+         else:
+-            poly = _cube_plane_polygon(n, d, tuple(getattr(geometry, "box_max", (1.0, 1.0, 1.0))))
++            poly = _retained_facet_polygon(planes, name, tuple(getattr(geometry, "box_max", (1.0, 1.0, 1.0))))
+             segs = np.asarray([(k, (k + 1) % len(poly)) for k in range(len(poly))]) if len(poly) else None
+             new_xyz, tris_g, _, splits, merged = triangulate_plane_region(V, chains, closed, n, d, is_material, level_fn=clipped_level, constraint_points=poly if len(poly) else None,
+                                                                     constraint_segments=segs, max_area=cap_max_area, quality=quality, classification_report=cls_rep)
+diff --git a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+index bb279f2..07be3e1 100644
+--- a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
++++ b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+@@ -200,3 +200,35 @@ def test_equivariant_active_set_is_a_superset_and_rotation_invariant(fixture) ->
+         lookup = {key(p): g for g, p in enumerate(coords)}
+         image = {lookup[key(rot.rotate_points(coords[g][None], R)[0])] for g in a0}
+         assert image == a1
++
++
++def test_constrained_snap_does_not_drag_vertices_along_a_shallow_face() -> None:
++    """A vertex on the x face within the snap distance of a 3 deg cut plane used to be moved along the face by
++    eps / sin(3 deg) (nineteen snap distances) onto the intersection line; the joint correction is now capped."""
++    theta = np.radians(3.0); n_cut = np.array([np.cos(theta), np.sin(theta), 0.0]); d_cut = 1.0372
++    planes = [("box_x_max", np.array([1.0, 0.0, 0.0]), 1.0), ("cut_0", n_cut, d_cut)]
++    eps = 0.004; y_line = (d_cut - np.cos(theta)) / np.sin(theta)
++    V = np.array([[1.0, y_line - 0.5 * eps / np.sin(theta), 0.5],     # on the face, 0.5 eps inside the cut plane, 9.5 eps from the line
++                  [1.0, y_line - 0.5 * eps, 0.5],                     # on the face, 0.5 eps from the line: snapped onto it
++                  [0.5, 0.5, 0.5]])
++    W = sss.snap_near_plane_constrained(V, n_cut, d_cut, eps, planes)
++    assert np.allclose(W[0], V[0]), "vertex far from the line must stay where the exact clip can handle it"
++    assert np.linalg.norm(W[1] - V[1]) <= 2.0 * eps + 1e-12
++    assert abs(W[1] @ n_cut - d_cut) < 1e-9 and abs(W[1][0] - 1.0) < 1e-9, "near the line the vertex lands on both planes"
++    assert np.allclose(W[2], V[2])
++
++
++def test_retained_facet_polygon_stops_at_the_cut_line() -> None:
++    n_cut = np.array([0.9987, 0.0508, 0.0]); n_cut = n_cut / np.linalg.norm(n_cut); d_cut = 1.0074
++    planes = [("box_x_min", np.array([-1.0, 0, 0]), 0.0), ("box_x_max", np.array([1.0, 0, 0]), 1.0), ("box_y_min", np.array([0, -1.0, 0]), 0.0),
++              ("box_y_max", np.array([0, 1.0, 0]), 1.0), ("box_z_min", np.array([0, 0, -1.0]), 0.0), ("box_z_max", np.array([0, 0, 1.0]), 1.0), ("cut_0", n_cut, d_cut)]
++    poly = sss._retained_facet_polygon(planes, "box_x_max")
++    y_line = (d_cut - n_cut[0]) / n_cut[1]
++    assert np.allclose(poly[:, 0], 1.0) and poly[:, 1].max() <= y_line + 1e-9 and poly[:, 1].max() >= y_line - 1e-9
++    assert (poly @ n_cut - d_cut).max() <= 1e-9
++    area = 0.5 * abs(sum(poly[i][1] * poly[(i + 1) % len(poly)][2] - poly[(i + 1) % len(poly)][1] * poly[i][2] for i in range(len(poly))))
++    assert abs(area - y_line) < 1e-9
++    full = sss._retained_facet_polygon(planes, "box_y_min")            # the cut does not reach y = 0 inside the cell
++    assert len(full) == 4 and abs(0.5 * abs(np.cross(full[1] - full[0], full[3] - full[0])[1]) * 2 - 1.0) < 1e-9
++    cut_poly = sss._retained_facet_polygon(planes, "cut_0")
++    assert len(cut_poly) >= 4 and (cut_poly.min(axis=0) >= -1e-9).all() and (cut_poly.max(axis=0) <= 1 + 1e-9).all()
+-- 
+2.34.1
+

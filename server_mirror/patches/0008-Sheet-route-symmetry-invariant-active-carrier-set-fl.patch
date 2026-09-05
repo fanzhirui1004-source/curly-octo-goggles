@@ -1,0 +1,901 @@
+From 1cdb3d52e086ba20d2e00da8b90100d3e14551dc Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 11:32:07 +0800
+Subject: [PATCH 08/22] Sheet route: symmetry-invariant active carrier set,
+ float32 upper-triangle labels, N x N x N block and rotation checks,
+ population generator
+
+- active carrier set: the carrier triangulation is not invariant under the cube symmetries (one diagonal per square,
+  clipped traces on cut faces), so "vertices of the triangles the band reaches" gave a cell and its symmetry image
+  different active sets.  New rule (equivariant_active_nodes): a node is active iff a closed carrier square containing
+  it is reached by the band on a symmetric cell-centred face lattice; carrier_active_set (cap constraints) uses the
+  same lattice, so the node set contains every vertex of every constraint triangle by construction.  carrier_n is
+  passed explicitly through build_sheet_solid_surface / compile_port.
+- labels stored as the float32 upper triangle (q(q+1)/2 entries, 64 MB at q = 5643) with the P1 mass and
+  Laplace-Beltrami matrices as COO; sheet_label_pipeline.load_schur / load_carrier_norms rebuild them; the gates are
+  evaluated in float64 before storage
+- sheet_block_validation.py generalized to --shape Nx Ny Nz (eight-cell assembly validation); sheet_rotation_check.py
+  labels a cell and its symmetry image independently and compares the transformed operator on the common active
+  nodes; make_sheet_population.py (Sobol population, corner spread <= 0.47)
+---
+ .../produce_sheet_label.py                    |  24 +-
+ .../run_sheet_solid_prototype.py              |   4 +-
+ .../sheet_block_validation.py                 | 324 ++++++++++--------
+ .../sheet_rotation_check.py                   | 110 ++++++
+ .../sheet_surface_check.py                    |   2 +-
+ .../sheet_label_pipeline.py                   |  27 +-
+ .../sheet_solid_surface.py                    |  74 +++-
+ .../test_sheet_solid_surface.py               |  37 +-
+ 8 files changed, 430 insertions(+), 172 deletions(-)
+ create mode 100644 scripts/pred777h_full_cube_v1/sheet_rotation_check.py
+
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index 2e10796..8699253 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -101,7 +101,7 @@ def main() -> int:
+ 
+     # ---- surface and volume mesh ----
+     t0 = time.perf_counter()
+-    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=preset["n_per_unit"], remesh_size=preset["remesh_size"])
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=preset["n_per_unit"], remesh_size=preset["remesh_size"], carrier_n=a.carrier_n)
+     receipt["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps", "non_manifold_examples", "surface_quality_by_label", "remesh_attempts")}
+     if surf.report["watertight"]["non_two_manifold_edges"]:
+         raise SystemExit(f"{a.case_id}: surface is not watertight ({surf.report['watertight']})")
+@@ -117,7 +117,7 @@ def main() -> int:
+ 
+     # ---- fixed port on the geometric active set (P is never modified) ----
+     try:
+-        stage = pipe.compile_port(out / "mesh.mesh", geom, spec, layout)
++        stage = pipe.compile_port(out / "mesh.mesh", geom, spec, layout, carrier_n=a.carrier_n)
+     except RuntimeError as exc:
+         raise SystemExit(f"{a.case_id}: {exc}")
+     port, active, check = stage.port, stage.active, stage.check
+@@ -138,9 +138,20 @@ def main() -> int:
+     ids = np.asarray(port.active_global_carrier_ids)[active]
+     coords = np.asarray(port.carrier_coordinates)[active]
+     membership = np.asarray([",".join(m) for m in port.carrier_port_membership], dtype=object)[active].astype(str)
+-    np.savez(out / "FIXED_PORT_SCHUR_TET10.npz", schur=S_active, carrier_ids=ids, carrier_coordinates=coords,
++    # storage (decision of record 2026-09-04): the symmetric operator is stored as its upper triangle in float32
++    # (q(q+1)/2 entries; 64 MB at q = 5643 instead of 255 MB), the gates above were evaluated in float64.
++    # pipe.load_schur() rebuilds the full symmetric float64 matrix.
++    iu = np.triu_indices(S_active.shape[0])
++    from scipy.sparse import coo_matrix
++    mass_c = coo_matrix(mass); lap_c = coo_matrix(lap)       # P1 matrices are sparse (about 7 entries per row): stored as COO
++    np.savez(out / "FIXED_PORT_SCHUR_TET10.npz", schur_upper_f32=S_active[iu].astype(np.float32), schur_format=np.asarray(["upper_triangle_float32"]),
++             q=np.asarray([S_active.shape[0]]), carrier_ids=ids, carrier_coordinates=coords,
+              carrier_port_membership=membership, rigid_basis=rigid, active_ports=np.asarray(list(port.active_global_port_ids)),
+-             carrier_mass=mass, carrier_laplacian=lap, material_volume=np.asarray([mesh.material_volume]))
++             carrier_mass_coo=np.vstack([mass_c.row, mass_c.col]).astype(np.int32), carrier_mass_values=mass_c.data,
++             carrier_laplacian_coo=np.vstack([lap_c.row, lap_c.col]).astype(np.int32), carrier_laplacian_values=lap_c.data,
++             carrier_scalar_count=np.asarray([mass.shape[0]]), material_volume=np.asarray([mesh.material_volume]))
++    receipt["schur"]["storage"] = {"format": "upper_triangle_float32", "entries": int(len(iu[0])), "bytes": int(4 * len(iu[0])),
++                                   "float32_rounding_relative": float(np.abs(S_active[iu] - S_active[iu].astype(np.float32)).max() / np.abs(S_active).max())}
+ 
+     receipt["outputs"] = {name: {"path": name, "sha256": sha256(out / name)} for name in ("mesh.mesh", "SHEET_SOLID_SURFACE.off", "FIXED_PORT_SCHUR_TET10.npz")}
+     receipt["timing"]["total"] = time.perf_counter() - t_all
+@@ -155,8 +166,9 @@ def main() -> int:
+           f"support outside active {check['support_outside_active']}, active without support {check['active_without_support']}",
+           f"- Schur: rigid residual {rigid_residual:.1e}, eigenvalues [{eig[0]:.3e}, {eig[-1]:.3e}]",
+           f"- timing: surface+mesh {receipt['timing']['surface_and_mesh']:.0f}s, port {receipt['timing']['fixed_port']:.0f}s, schur {receipt['timing']['schur']:.0f}s, total {receipt['timing']['total']:.0f}s",
+-          "", "Contents: `FIXED_PORT_SCHUR_TET10.npz` (schur, carrier ids/coordinates/port membership, rigid basis, carrier mass and",
+-          "Laplace-Beltrami matrices of the active complex, material volume), `mesh.mesh`, `SHEET_SOLID_SURFACE.off`."]
++          f"- storage: upper triangle float32, {receipt['schur']['storage']['bytes'] / 1e6:.1f} MB (float32 rounding {receipt['schur']['storage']['float32_rounding_relative']:.1e} relative)",
++          "", "Contents: `FIXED_PORT_SCHUR_TET10.npz` (schur_upper_f32 + q, carrier ids/coordinates/port membership, rigid basis, carrier mass and",
++          "Laplace-Beltrami matrices of the active complex as COO, material volume; pipe.load_schur() / pipe.load_carrier_norms() rebuild them), `mesh.mesh`, `SHEET_SOLID_SURFACE.off`."]
+     (out / "LABEL_RECEIPT.md").write_text("\n".join(md) + "\n")
+     print("\n".join(md), flush=True)
+     return 0
+diff --git a/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+index 2802803..829606c 100644
+--- a/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
++++ b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+@@ -27,14 +27,14 @@ def main() -> int:
+     _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
+     charts, *_ = fcb.compile_full_cube_geometry_inputs(spec); layout = build_layout(spec, charts, a.carrier_n); rep["carrier_n"] = a.carrier_n
+     t0 = time.perf_counter()
+-    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, cap_max_area=a.cap_max_area, constrain_carrier_edges=not a.no_carrier_edges)
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, carrier_n=a.carrier_n, cap_max_area=a.cap_max_area, constrain_carrier_edges=not a.no_carrier_edges)
+     sss.write_off(out / "SHEET_SOLID_SURFACE.off", surf.V, surf.F); rep["surface"] = surf.report; rep["surface"]["seconds_total"] = time.perf_counter() - t0
+     print("surface:", json.dumps({k: v for k, v in surf.report.items() if k != "caps"}, default=float)); print("caps:", json.dumps(surf.report["caps"], default=float), flush=True)
+     if surf.report["watertight"]["non_two_manifold_edges"] != 0:
+         (out / "SHEET_PROTOTYPE_REPORT.json").write_text(json.dumps(rep, indent=1, default=float)); print("surface not watertight, stop"); return 1
+     m = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, netgen_optimize=not a.no_netgen, threads=a.threads)
+     rep["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}; print("mesh:", json.dumps(rep["mesh"], default=float), flush=True)
+-    stage = pipe.compile_port(out / "mesh.mesh", geom, spec, layout); rep["active_set"] = stage.check; print("active_set:", stage.check, flush=True)
++    stage = pipe.compile_port(out / "mesh.mesh", geom, spec, layout, carrier_n=a.carrier_n); rep["active_set"] = stage.check; print("active_set:", stage.check, flush=True)
+     support = stage.active; rep["fixed_port"] = {**stage.summary, "seconds": stage.seconds}; print("fixed_port:", json.dumps(rep["fixed_port"], default=float), flush=True)
+     np.save(out / "carrier_support.npy", support)
+     if not a.skip_schur:
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+index fd0ac9d..1bb1d98 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_block_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -1,37 +1,43 @@
+ #!/usr/bin/env python3
+-"""2x1x1 block of two identical sheet cells (true geometry, no collars): monolithic Tet10 (free interface, free external
+-faces) vs fixed-port assembly of the cell label, plus the constrained-monolithic control (all external port traces tied to
+-the P1 carrier, interface free).  Loads on the x=2 face, x=0 fixed."""
++"""N x N x N block of sheet cells (true geometry, no collars) under the parent thickness field: monolithic Tet10 (free
++interfaces, free external faces) vs fixed-port assembly of the per-cell labels, plus the constrained-monolithic
++control (all external port traces tied to the P1 carrier, interfaces free).  Loads on the x = N face, x = 0 fixed.
++
++--shape 2 1 1 reproduces the STEP3 block; --shape 2 2 2 is the eight-cell assembly validation.
++"""
+ from __future__ import annotations
+-import argparse, json, sys, time
++import argparse, itertools, json, sys, time
++from fractions import Fraction
+ from pathlib import Path
+ import numpy as np, scipy.sparse as sp
+ ROOT = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(ROOT / "src"))
+ P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
+ from importlib import import_module
+-adapter = import_module(f"{P}.cgal_mesh3_adapter"); fpa = import_module(f"{P}.fixed_port_adapter"); fcb = import_module(f"{P}.full_cube_backend")
+-snap = import_module(f"{P}.mesher_neutral_snapshot"); t10 = import_module(f"{P}.tet10_label"); sss = import_module(f"{P}.sheet_solid_surface"); cpm = import_module(f"{P}.conforming_port_mesh")
++fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot"); sss = import_module(f"{P}.sheet_solid_surface")
++cpm = import_module(f"{P}.conforming_port_mesh"); pipe = import_module(f"{P}.sheet_label_pipeline"); fcg = import_module(f"{P}.full_cube_geometry")
+ import_module(f"{P}.frozen_backend").activate_frozen_backend()
+ from cctpms.fem.tet10 import assemble_global_tet10_stiffness
+ from cctpms.port.tet10_nodal_schur import TET10_EDGE_LOCAL_NODES
+-from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_prolongation
++from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_prolongation, build_global_cell_patch_p1_trace_layout
+ import pypardiso
+ 
++FACES = ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max")
++FACE_AXIS = {"box_x_min": (0, 0), "box_x_max": (0, 1), "box_y_min": (1, 0), "box_y_max": (1, 1), "box_z_min": (2, 0), "box_z_max": (2, 1)}
++
++
+ def build_layout(spec, charts, carrier_n: int):
+-    """Carrier trace layout with a (carrier_n x carrier_n) P1 grid per face (the frozen contract uses 16)."""
+-    from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout
+     return build_global_cell_patch_p1_trace_layout(charts, background_lower=(0.0, 0.0, 0.0), background_upper=(1.0, 1.0, 1.0),
+                                                    background_shape=(carrier_n, carrier_n, carrier_n),
+                                                    world_identity_rotation=spec.placement.rotation, world_identity_translation=spec.placement.translation)
+ 
++
+ def p1_field_evaluator(tf):
+     """Vectorized trilinear evaluation of the parent GlobalP1ThicknessField at world points."""
+     origin = np.array([float(v) for v in tf.origin]); size = np.array([float(v) for v in tf.cell_size]); shape = np.array(tf.cell_shape, dtype=int)
+     vals = np.array([float(v) for v in tf.vertex_values]).reshape(shape[0] + 1, shape[1] + 1, shape[2] + 1)
+     def value(xyz):
+         c = (np.asarray(xyz, dtype=np.float64) - origin) / size; c = np.clip(c, 0, shape - 1e-12)
+-        i = np.floor(c).astype(int); f = c - i
+-        out = np.zeros(c.shape[:-1])
++        i = np.floor(c).astype(int); f = c - i; out = np.zeros(c.shape[:-1])
+         for di in (0, 1):
+             for dj in (0, 1):
+                 for dk in (0, 1):
+@@ -40,81 +46,94 @@ def p1_field_evaluator(tf):
+         return out
+     return value
+ 
++
+ class BlockGeom:
+-    """Two cells along x on [0,2]x[0,1]x[0,1] with the parent thickness field: |phi(world)| - tau(world)."""
+-    def __init__(self, spec, geom):
++    """Block [0,Nx]x[0,Ny]x[0,Nz] with the parent thickness field: |phi(world)| - tau(world)."""
++    def __init__(self, spec, geom, shape):
+         self.tau = p1_field_evaluator(spec.thickness_field); self.origin = np.array([float(v) for v in spec.placement.translation])
+-        self.cut_plane = None; self.box_max = (2.0, 1.0, 1.0); self.collar_thickness = geom.collar_thickness
++        self.cut_plane = None; self.box_max = tuple(float(s) for s in shape); self.collar_thickness = geom.collar_thickness
++        self.tau_corners = tuple(float(self.tau(self.origin + np.array(c, dtype=float) * np.array(shape))) for c in itertools.product((0, 1), repeat=3))
+     def material_band_components(self, points):
+         xyz = np.asarray(points, dtype=np.float64); world = xyz + self.origin
+         phi = np.cos(2.0 * np.pi * world).sum(axis=-1); t = np.abs(phi) - self.tau(world)
+         return t, np.full(t.shape, np.inf)
+-    def active_outer_port_sources(self): return ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max")
++    def active_outer_port_sources(self): return FACES
+ 
+-def cell_label(spec, geom, layout, out, a):
+-    """Sheet label of one cell: surface -> mesh -> fixed port -> Tet10 Schur on the geometric active set."""
+-    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size)
+-    if surf.report["watertight"]["non_two_manifold_edges"]: raise SystemExit(f"cell surface not watertight: {out}")
+-    m = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads)
+-    mp = {"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False, "semantic_plane_tolerance": 1e-10}
+-    from dataclasses import replace as dc_replace
+-    art = adapter.mesh_artifact_from_cgal_medit(out / "mesh.mesh", geometry=dc_replace(geom, cut_plane=None), mesher_version="5.4", mesher_parameters=mp, plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
+-    port = fpa.compile_fixed_port(art, spec, layout)
+-    keys = list(layout.global_scalar_node_keys); g2c = dict(port.global_to_compact); lay2c = np.array([g2c.get(str(k), -1) for k in keys])
+-    active = sss.geometric_active_mask(geom, layout, port); chk = sss.verify_active_superset(port, active); support = active
+-    print(f"cell {out.name}: active set {chk}", flush=True)
+-    if chk["support_outside_active"]:
+-        raise SystemExit(f"geometric active set is not a superset of the mesh support: {chk}")
+-    S, timing = t10.dense_fixed_port_schur(art, port, element="TET10", workers=a.workers)
+-    keep = np.repeat(active, 3); Ss = S[np.ix_(keep, keep)]
+-    print(f"cell label {out.name}: mesh {m.node_count} nodes, active {int(active.sum())}, unsupported active {int((active & ~support).sum())}, schur {timing['schur_total']:.0f}s", flush=True)
+-    return port, active, Ss, lay2c
+ 
+-def main() -> int:
+-    ap = argparse.ArgumentParser(); ap.add_argument("--geometry-manifest", type=Path, required=True);     ap.add_argument("--output-dir", type=Path, required=True); ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--remesh-size", type=float, default=0.03)
+-    ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=1); ap.add_argument("--no-smooth", action="store_true", help="ignored"); ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
+-    a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True); rep = {}
+-    _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
+-    charts, *_ = fcb.compile_full_cube_geometry_inputs(spec); layout = build_layout(spec, charts, a.carrier_n); rep["carrier_n"] = a.carrier_n
+-    fcg = import_module(f"{P}.full_cube_geometry"); tf = spec.thickness_field; o = spec.placement.translation
+-    from fractions import Fraction
+-    spec_B = fcg.make_cell_spec(thickness_field=tf, cell_world_origin=(o[0] + Fraction(1), o[1], o[2]), cell_id=spec.cell_id + "_B", parent_world_cut_id=spec.parent_world_cut_id, world_cut=None)
+-    # geometry parameters of B: tau at its eight corners in the same corner order as geom.tau_corners
++def cell_specs(spec, geom, shape):
++    """(offset, spec, geom) of every cell of the block; tau corners in the same corner order as geom.tau_corners."""
++    tf = spec.thickness_field; o = spec.placement.translation
+     corners = [(x, y, z) for x in (0, 1) for y in (0, 1) for z in (0, 1)]
+     tauA = [float(tf.value(spec.placement.world(np.array(c, dtype=float)))) for c in corners]
+     order = None
+-    import itertools
+     for perm in itertools.permutations(range(8)):
+-        if all(abs(tauA[perm[k]] - float(geom.tau_corners[k])) < 1e-12 for k in range(8)): order = perm; break
+-    if order is None: raise SystemExit("could not match the corner order of tau_corners")
+-    tauB = tuple(float(tf.value(spec_B.placement.world(np.array(corners[order[k]], dtype=float)))) for k in range(8))
+-    geom_B = type(geom)(tau_corners=tauB, cut_plane=None, collar_thickness=geom.collar_thickness)
+-    chartsB, *_ = fcb.compile_full_cube_geometry_inputs(spec_B); layout_B = build_layout(spec_B, chartsB, a.carrier_n)
+-    # ---- cell labels A and B ----
+-    portA, activeA, SA, lay2cA = cell_label(spec, geom, layout, out / "cellA", a); portB, activeB, SB, lay2cB = cell_label(spec_B, geom_B, layout_B, out / "cellB", a)
+-    ccoordsA = np.asarray(portA.carrier_coordinates)[activeA]; ccoordsB = np.asarray(portB.carrier_coordinates)[activeB]; shift = np.array([1.0, 0.0, 0.0])
+-    c2sA = np.full(len(activeA), -1); c2sA[activeA] = np.arange(int(activeA.sum())); c2sB = np.full(len(activeB), -1); c2sB[activeB] = np.arange(int(activeB.sum()))
+-    ns = int(activeA.sum()); support = activeA; S_sup = SA; port = portA; ccoords = ccoordsA; lay2c = lay2cA; c2s = c2sA
+-    # ---- block surface: port constraints from the cell carrier (A) and its shift (B) ----
+-    shell_coords, _, per_face = cpm.carrier_shell(layout, ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max"))
++        if all(abs(tauA[perm[k]] - float(geom.tau_corners[k])) < 1e-12 for k in range(8)):
++            order = perm; break
++    if order is None:
++        raise SystemExit("could not match the corner order of tau_corners")
++    out = []
++    for off in itertools.product(range(shape[0]), range(shape[1]), range(shape[2])):
++        if off == (0, 0, 0):
++            out.append((off, spec, geom)); continue
++        sp_ = fcg.make_cell_spec(thickness_field=tf, cell_world_origin=(o[0] + Fraction(off[0]), o[1] + Fraction(off[1]), o[2] + Fraction(off[2])),
++                                 cell_id=f"{spec.cell_id}_{off[0]}{off[1]}{off[2]}", parent_world_cut_id=spec.parent_world_cut_id, world_cut=None)
++        tau = tuple(float(tf.value(sp_.placement.world(np.array(corners[order[k]], dtype=float)))) for k in range(8))
++        out.append((off, sp_, type(geom)(tau_corners=tau, cut_plane=None, collar_thickness=geom.collar_thickness)))
++    return out
++
++
++def cell_label(spec, geom, layout, out, a):
++    """Sheet label of one cell through the production pipeline stages."""
++    out.mkdir(parents=True, exist_ok=True)
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, carrier_n=a.carrier_n)
++    if surf.report["watertight"]["non_two_manifold_edges"] or surf.report["self_intersecting_triangles"]:
++        raise SystemExit(f"cell surface rejected: {out}")
++    m = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads)
++    stage = pipe.compile_port(out / "mesh.mesh", geom, spec, layout, carrier_n=a.carrier_n); sch = pipe.schur_label(stage, workers=a.workers)
++    keys = list(layout.global_scalar_node_keys); g2c = dict(stage.port.global_to_compact); lay2c = np.array([g2c.get(str(k), -1) for k in keys])
++    print(f"cell {out.name}: mesh {m.node_count} nodes, active {int(stage.active.sum())}, schur {sch.timing['schur_total']:.0f}s, rigid {sch.rigid_residual:.1e}", flush=True)
++    return stage.port, stage.active, sch.schur_active, lay2c
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser(); ap.add_argument("--geometry-manifest", type=Path, required=True); ap.add_argument("--output-dir", type=Path, required=True)
++    ap.add_argument("--shape", type=int, nargs=3, default=(2, 1, 1)); ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--remesh-size", type=float, default=0.03)
++    ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=1); ap.add_argument("--no-smooth", action="store_true", help="ignored")
++    ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
++    a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True); rep = {"shape": list(a.shape)}; shape = tuple(a.shape); N = np.array(shape)
++    _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
++    cells = cell_specs(spec, geom, shape); layouts = {}; labels = {}
++    for off, sp_, gm_ in cells:
++        charts, *_ = fcb.compile_full_cube_geometry_inputs(sp_); layouts[off] = build_layout(sp_, charts, a.carrier_n)
++        labels[off] = cell_label(sp_, gm_, layouts[off], out / f"cell_{off[0]}{off[1]}{off[2]}", a)
++    layout0 = layouts[(0, 0, 0)]; rep["carrier_n"] = a.carrier_n; rep["cells"] = len(cells)
++    # ---- block surface: port constraints on the six block faces from the cell carriers (shifted) ----
++    shell_coords, _, per_face = cpm.carrier_shell(layout0, FACES)
+     def face_constraint(src, shifts):
+         tris = [t for s_, t in per_face if s_ == src][0]; pts = []; segs = []; keysl = []; idx = {}
+         for sh in shifts:
++            shv = np.array(sh, dtype=float)
+             for f in tris:
+                 for v in f:
+                     k = (int(v), sh)
+-                    if k not in idx: idx[k] = len(pts); pts.append(shell_coords[v] + sh * shift); keysl.append((int(v), sh))
+-                for a_, b_ in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2])): segs.append((idx[(int(a_), sh)], idx[(int(b_), sh)]))
++                    if k not in idx:
++                        idx[k] = len(pts); pts.append(shell_coords[v] + shv); keysl.append((int(v), sh))
++                for a_, b_ in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2])):
++                    segs.append((idx[(int(a_), sh)], idx[(int(b_), sh)]))
+         return np.asarray(pts), np.asarray(sorted({(min(x), max(x)) for x in segs})), keysl
+-    pc = {"box_x_min": face_constraint("box_x_min", (0,)), "box_x_max": face_constraint("box_x_max", (1,))}
+-    for src in ("box_y_min", "box_y_max", "box_z_min", "box_z_max"): pc[src] = face_constraint(src, (0, 1))
+-    bg = BlockGeom(spec, geom); t0 = time.perf_counter()
+-    surf = sss.build_sheet_solid_surface(bg, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, port_constraints=pc)
+-    rep["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps",)}; print("block surface:", json.dumps({k: v for k, v in rep["surface"].items() if k not in ("caps", "non_manifold_examples", "surface_quality_by_label", "marching_cubes")}, default=float), flush=True)
+-    if surf.report["watertight"]["non_two_manifold_edges"]: raise SystemExit("block surface not watertight")
+-    m = sss.mesh_sheet_solid(surf, out / "block.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads); rep["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}
+-    print("block mesh:", json.dumps(rep["mesh"], default=float), flush=True)
+-    V, F, labels = surf.V, surf.F, surf.labels
++    pc = {}
++    for src, (axis, side) in FACE_AXIS.items():
++        shifts = [off for off, _, _ in cells if off[axis] == (shape[axis] - 1 if side else 0)]
++        pc[src] = face_constraint(src, shifts)
++    bg = BlockGeom(spec, geom, shape); t0 = time.perf_counter()
++    surf = sss.build_sheet_solid_surface(bg, layout0, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, carrier_n=a.carrier_n, port_constraints=pc, pad=6)
++    rep["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps", "remesh_attempts", "non_manifold_examples", "surface_quality_by_label", "cap_classification")}
++    print("block surface:", json.dumps({k: v for k, v in rep["surface"].items() if k not in ("marching_cubes",)}, default=float), flush=True)
++    if surf.report["watertight"]["non_two_manifold_edges"] or surf.report["self_intersecting_triangles"]:
++        raise SystemExit("block surface rejected")
++    m = sss.mesh_sheet_solid(surf, out / "block.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads)
++    rep["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}; print("block mesh:", json.dumps(rep["mesh"], default=float), flush=True)
++    V, F, labs = surf.V, surf.F, surf.labels
+     # ---- Tet10 monolithic ----
+     L = open(out / "block.mesh").read().split("\n"); i = L.index("Vertices"); nv = int(L[i + 1]); nxyz = np.array([list(map(float, l.split()[:3])) for l in L[i + 2:i + 2 + nv]])
+     j = L.index("Tetrahedra"); nt = int(L[j + 1]); tets = np.array([list(map(int, l.split()[:4])) for l in L[j + 2:j + 2 + nt]]) - 1
+@@ -131,99 +150,112 @@ def main() -> int:
+     nodes10 = np.vstack([nxyz, mids]); n10 = len(nodes10); t0 = time.perf_counter()
+     K = assemble_global_tet10_stiffness(nodes10, el10, E=1.0, nu=0.3, workers=a.workers).tocsr(); print(f"Tet10 dof {3*n10}, assembled {time.perf_counter()-t0:.0f}s", flush=True)
+     key = lambda p: tuple(np.round(p, 9)); fine_lookup = {key(p): k for k, p in enumerate(nxyz)}
+-    # ---- global carrier set of the block (supported nodes of A and B; shared x=1 nodes merged) ----
++    # ---- global carrier set of the block (active nodes of every cell; shared interface nodes merged by coordinate) ----
+     gk = {}; gc = []
+     def gid(p):
+         k = key(p)
+         if k not in gk: gk[k] = len(gc); gc.append(np.asarray(k))
+         return gk[k]
+-    mapA = np.array([gid(p) for p in ccoordsA]); mapB = np.array([gid(p + shift) for p in ccoordsB]); nG = len(gc); gcoords = np.asarray(gc)
+-    KG = np.zeros((3 * nG, 3 * nG))
+-    for mm, Sm in ((mapA, SA), (mapB, SB)):
+-        idx = (3 * mm[:, None] + np.arange(3)).ravel(); KG[np.ix_(idx, idx)] += Sm
+-    # interface consistency: A's x_max active nodes and B's x_min active nodes must coincide
+-    xA = set(mapA[np.abs(ccoordsA[:, 0] - 1.0) < 1e-9].tolist()); xB = set(mapB[np.abs(ccoordsB[:, 0]) < 1e-9].tolist())
+-    rep["interface_active_mismatch"] = int(len(xA ^ xB)); print("interface active nodes A/B:", len(xA), len(xB), "mismatch", len(xA ^ xB), flush=True)
++    maps = {}; c2s = {}
++    for off, port, active, Ss, lay2c in ((off, *labels[off]) for off, _, _ in cells):
++        cc = np.asarray(port.carrier_coordinates)[active]; maps[off] = np.array([gid(p + np.array(off, dtype=float)) for p in cc])
++        m_ = np.full(len(active), -1); m_[active] = np.arange(int(active.sum())); c2s[off] = m_
++    nG = len(gc); gcoords = np.asarray(gc); KG = np.zeros((3 * nG, 3 * nG))
++    for off, _, _ in cells:
++        mm = maps[off]; Sm = labels[off][2]; idx = (3 * mm[:, None] + np.arange(3)).ravel(); KG[np.ix_(idx, idx)] += Sm
++    # interface consistency: for every internal interface the two cells' active node sets on it must coincide
++    mism = 0; pairs = 0
++    for off, _, _ in cells:
++        for axis in range(3):
++            nb = list(off); nb[axis] += 1; nb = tuple(nb)
++            if nb not in maps: continue
++            pairs += 1
++            ccA = np.asarray(labels[off][0].carrier_coordinates)[labels[off][1]]; ccB = np.asarray(labels[nb][0].carrier_coordinates)[labels[nb][1]]
++            sA = set(maps[off][np.abs(ccA[:, axis] - 1.0) < 1e-9].tolist()); sB = set(maps[nb][np.abs(ccB[:, axis]) < 1e-9].tolist()); mism += len(sA ^ sB)
++    rep["interface_pairs"] = pairs; rep["interface_active_mismatch"] = int(mism); print("internal interfaces:", pairs, "active-set mismatch", mism, flush=True)
+     from scipy.spatial import cKDTree
+     tet_tree = cKDTree(nxyz[tets].mean(axis=1))
+     def interp_vertex_field(u_vertex, pts):
+-        out = np.full((len(pts), 3), np.nan); idx = tet_tree.query(pts, k=48)[1]
+-        for i, p in enumerate(pts):
+-            for ti in idx[i]:
++        out_ = np.full((len(pts), 3), np.nan); idx = tet_tree.query(pts, k=48)[1]
++        for i_, p in enumerate(pts):
++            for ti in idx[i_]:
+                 a_, b_, c_, d_ = nxyz[tets[ti]]; Mm = np.column_stack([b_ - a_, c_ - a_, d_ - a_])
+                 try: l = np.linalg.solve(Mm, p - a_)
+                 except np.linalg.LinAlgError: continue
+                 lam = np.array([1 - l.sum(), *l])
+-                if lam.min() > -1e-6: out[i] = lam @ u_vertex[tets[ti]]; break
+-        return out
+-    # ---- face P (fine face vertex -> supported carrier of that cell/face), nested: faces are carrier-conforming ----
+-    traces = {str(t.source_id): t for t in layout.local_traces}
+-    tracesB = {str(tr.source_id): tr for tr in layout_B.local_traces}
+-    def face_P(src, sh):
+-        fv = np.unique(F[labels == src]); fxyz = V[fv]; cell_mask = (fxyz[:, 0] >= sh - 1e-9) & (fxyz[:, 0] <= sh + 1.0 + 1e-9); fv = fv[cell_mask]; fxyz = fxyz[cell_mask]
+-        lay = layout if sh == 0 else layout_B; trs = traces if sh == 0 else tracesB
+-        Ploc = build_global_cell_patch_p1_prolongation(trs[src], fxyz - sh * shift, geometric_tolerance=1e-9)
+-        l2g = lay.local_to_global_scalar[src].tocsr(); Pg = (Ploc @ l2g).tocsr()   # fine face vertex -> layout global scalar (of that cell)
+-        fine_ids = np.array([fine_lookup[key(p)] for p in fxyz]); return fine_ids, Pg
+-    # loads on x=2 (B's x_max): lumped tractions on fine face vertices, f_c = P^T f
+-    fB, PB = face_P("box_x_max", 1); wts = np.zeros(len(fB)); pos = {int(v): k for k, v in enumerate(fB)}
+-    for f in F[labels == "box_x_max"]:
++                if lam.min() > -1e-6: out_[i_] = lam @ u_vertex[tets[ti]]; break
++        return out_
++    # ---- face P (fine face vertex of one cell face -> layout global scalar of that cell) ----
++    def face_P(src, off):
++        axis, side = FACE_AXIS[src]; fv = np.unique(F[labs == src]); fxyz = V[fv]; offv = np.array(off, dtype=float)
++        inside = np.ones(len(fv), bool)
++        for ax in range(3):
++            if ax != axis: inside &= (fxyz[:, ax] >= offv[ax] - 1e-9) & (fxyz[:, ax] <= offv[ax] + 1.0 + 1e-9)
++        fv = fv[inside]; fxyz = fxyz[inside]; lay = layouts[off]; tr = {str(t.source_id): t for t in lay.local_traces}[src]
++        Ploc = build_global_cell_patch_p1_prolongation(tr, fxyz - offv, geometric_tolerance=1e-9)
++        Pg = (Ploc @ lay.local_to_global_scalar[src].tocsr()).tocsr()
++        return np.array([fine_lookup[key(p)] for p in fxyz]), Pg
++    def clip_P(Pg, off):
++        Pl = Pg.tolil(copy=True); c2s_ = c2s[off]; lay2c_ = labels[off][3]
++        for r in range(Pl.shape[0]):
++            keep = [(c, v) for c, v in zip(Pl.rows[r], Pl.data[r]) if c2s_[lay2c_[c]] >= 0]; tot = sum(v for _, v in keep)
++            if tot <= 1e-12: keep = list(zip(Pl.rows[r], Pl.data[r])); tot = sum(v for _, v in keep)
++            Pl.rows[r] = [c for c, _ in keep]; Pl.data[r] = [v / tot for _, v in keep]
++        return Pl.tocsr()
++    def global_cols(off, ncols):
++        c2s_ = c2s[off]; lay2c_ = labels[off][3]; mm = maps[off]
++        return np.array([mm[c2s_[lay2c_[jj]]] if c2s_[lay2c_[jj]] >= 0 else -1 for jj in range(ncols)])
++    # ---- loads on x = Nx: lumped tractions on fine face vertices of every cell face there, f_c = P^T f ----
++    load_cells = [off for off, _, _ in cells if off[0] == shape[0] - 1]
++    face_data = []
++    for off in load_cells:
++        fB, PB = face_P("box_x_max", off); PB = clip_P(PB, off); colB = global_cols(off, PB.shape[1]); face_data.append((off, fB, PB, colB))
++    wts = {}
++    for f in F[labs == "box_x_max"]:
+         pp = V[f]; area = 0.5 * np.linalg.norm(np.cross(pp[1] - pp[0], pp[2] - pp[0]))
+         for v in f:
+-            k = pos.get(fine_lookup[key(V[v])])
+-            if k is not None: wts[k] += area / 3
+-    fxyz = nxyz[fB]
++            fid = fine_lookup[key(V[v])]; wts[fid] = wts.get(fid, 0.0) + area / 3
+     def traction(kind, yz):
+-        y, z = yz[:, 0], yz[:, 1]; t = np.zeros((len(yz), 3))
++        y, z = yz[:, 0], yz[:, 1]; t = np.zeros((len(yz), 3)); Ly, Lz = shape[1], shape[2]
+         if kind == "tension_x": t[:, 0] = 1
+         elif kind == "shear_y": t[:, 1] = 1
+-        elif kind == "bending_z": t[:, 0] = z - 0.5
+-        elif kind == "wave_16H": t[:, 0] = np.sin(2 * np.pi * y) * np.sin(2 * np.pi * z)
++        elif kind == "bending_z": t[:, 0] = z - 0.5 * Lz
++        elif kind == "wave_16H": t[:, 0] = np.sin(2 * np.pi * y / Ly) * np.sin(2 * np.pi * z / Lz)
+         elif kind == "wave_8H": t[:, 0] = np.sin(4 * np.pi * y) * np.sin(4 * np.pi * z)
+         elif kind == "wave_4H": t[:, 0] = np.sin(8 * np.pi * y) * np.sin(8 * np.pi * z)
+         return t
+-    def clip_P(Pg, c2s_, lay2c_):
+-        Pl = Pg.tolil(copy=True)
+-        for r in range(Pl.shape[0]):
+-            keep = [(c, v) for c, v in zip(Pl.rows[r], Pl.data[r]) if c2s_[lay2c_[c]] >= 0]; tot = sum(v for _, v in keep)
+-            if tot <= 1e-12: keep = list(zip(Pl.rows[r], Pl.data[r])); tot = sum(v for _, v in keep)
+-            Pl.rows[r] = [c for c, _ in keep]; Pl.data[r] = [v / tot for _, v in keep]
+-        return Pl.tocsr()
+-    PB = clip_P(PB, c2sB, lay2cB)
+-    colB = np.array([mapB[c2sB[lay2cB[jj]]] if c2sB[lay2cB[jj]] >= 0 else -1 for jj in range(PB.shape[1])])
+     loads = {}
+     for kind in ("tension_x", "shear_y", "bending_z", "wave_16H", "wave_8H", "wave_4H"):
+-        tf = traction(kind, fxyz[:, 1:]) * wts[:, None]; fcA = PB.T @ tf; fc = np.zeros((nG, 3)); lost = 0.0
+-        for jj in range(PB.shape[1]):
+-            if colB[jj] >= 0: fc[colB[jj]] += fcA[jj]
+-            else: lost += float(np.abs(fcA[jj]).sum())
+-        loads[kind] = (tf, fc)
++        fF = np.zeros(3 * n10); fc = np.zeros((nG, 3))
++        for off, fB, PB, colB in face_data:
++            tf_ = traction(kind, nxyz[fB][:, 1:]) * np.array([wts[int(v)] for v in fB])[:, None]
++            fF[(3 * fB[:, None] + np.arange(3)).ravel()] += tf_.ravel(); fcA = PB.T @ tf_
++            for jj in range(PB.shape[1]):
++                if colB[jj] >= 0: fc[colB[jj]] += fcA[jj]
++        loads[kind] = (fF, fc.ravel())
+     # ---- (a) monolithic free ----
+     fixed_fine = np.where(np.abs(nodes10[:, 0]) < 1e-9)[0]; free = np.ones(3 * n10, bool); free[(3 * fixed_fine[:, None] + np.arange(3)).ravel()] = False
+-    Kff = K[free][:, free].tocsr(); sol = pypardiso.PyPardisoSolver(); sol.set_iparm(1, 1); sol.set_iparm(2, 3); t0 = time.perf_counter(); sol.factorize(Kff); print(f"monolithic factorized {time.perf_counter()-t0:.0f}s", flush=True)
++    Kff = K[free][:, free].tocsr(); sol = pypardiso.PyPardisoSolver(); sol.set_iparm(1, 1); sol.set_iparm(2, 3); t0 = time.perf_counter(); sol.factorize(Kff); print(f"monolithic factorized {time.perf_counter()-t0:.0f}s ({Kff.shape[0]} dof)", flush=True)
+     # ---- (b) assembled ----
+-    fixedG = np.zeros(3 * nG, bool); fixedG[(3 * np.where(np.abs(gcoords[:, 0]) < 1e-9)[0][:, None] + np.arange(3)).ravel()] = True; freeG = ~fixedG; KGf = KG[np.ix_(freeG, freeG)]
+-    dg = np.diag(KG); zero_nodes = np.where((dg.reshape(-1, 3) == 0).all(axis=1))[0]
+-    print(f"assembled carrier system: {nG} nodes, zero-stiffness nodes {len(zero_nodes)}", [gcoords[i].round(4).tolist() for i in zero_nodes[:8]], flush=True)
+-    rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))
+-    if len(zero_nodes):  # drop them from the assembled system (isolated carrier nodes: no fine node ties to them)
+-        zmask = np.zeros(3 * nG, bool); zmask[(3 * zero_nodes[:, None] + np.arange(3)).ravel()] = True; freeG &= ~zmask; KGf = KG[np.ix_(freeG, freeG)]
+-    ev_min = float(np.linalg.eigvalsh(KGf)[:3].min()); print("assembled free system smallest eigenvalues:", np.linalg.eigvalsh(KGf)[:4], flush=True)
+-    # ---- (c) constrained monolithic: tie every external port-face fine node (x=2, y=0/1, z=0/1 of both cells) to the carrier ----
+-    tied = {}  # fine vertex id -> {global carrier id: weight}
+-    for src, shs in (("box_x_max", (1,)), ("box_y_min", (0, 1)), ("box_y_max", (0, 1)), ("box_z_min", (0, 1)), ("box_z_max", (0, 1))):
+-        for sh in shs:
+-            fids, Pg = face_P(src, sh); mm = mapA if sh == 0 else mapB; c2s_ = c2sA if sh == 0 else c2sB; lay2c_ = lay2cA if sh == 0 else lay2cB; Pl = clip_P(Pg, c2s_, lay2c_).tolil()
++    fixedG = np.zeros(3 * nG, bool); fixedG[(3 * np.where(np.abs(gcoords[:, 0]) < 1e-9)[0][:, None] + np.arange(3)).ravel()] = True; freeG = ~fixedG
++    dg = np.diag(KG); zero_nodes = np.where((dg.reshape(-1, 3) == 0).all(axis=1))[0]; rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))
++    if len(zero_nodes):
++        zmask = np.zeros(3 * nG, bool); zmask[(3 * zero_nodes[:, None] + np.arange(3)).ravel()] = True; freeG &= ~zmask
++    KGf = KG[np.ix_(freeG, freeG)]; evs = np.linalg.eigvalsh(KGf)[:4]; rep["assembled_smallest_eigenvalues"] = evs.tolist()
++    print(f"assembled carrier system: {nG} nodes, zero-stiffness nodes {len(zero_nodes)}, smallest eigenvalues {evs}", flush=True)
++    # ---- (c) constrained monolithic: every external port-face fine node tied to the carrier ----
++    tied = {}
++    for src, (axis, side) in FACE_AXIS.items():
++        if src == "box_x_min": continue
++        for off, _, _ in cells:
++            if off[axis] != (shape[axis] - 1 if side else 0): continue
++            fids, Pg = face_P(src, off); Pl = clip_P(Pg, off).tolil(); cols = global_cols(off, Pg.shape[1])
+             for r, fid in enumerate(fids):
+                 w = {}
+                 for jj, val in zip(Pl.rows[r], Pl.data[r]):
+-                    cs = c2s_[lay2c_[jj]]
+-                    if cs < 0:
+-                        continue  # row could not be clipped (whole triangle inactive): node left free
+-                    w[mm[cs]] = w.get(mm[cs], 0.0) + float(val)
+-                if not w or abs(sum(w.values()) - 1.0) > 1e-9:
+-                    continue
+-                if fid in tied and tied[fid] != w and abs(sum(w.values()) - 1) < 1e-9: pass
++                    if cols[jj] < 0: continue
++                    w[cols[jj]] = w.get(cols[jj], 0.0) + float(val)
++                if not w or abs(sum(w.values()) - 1.0) > 1e-9: continue
+                 tied[fid] = w
+     mid_tied = {}
+     for (p_, q_), k in edges.items():
+@@ -233,34 +265,36 @@ def main() -> int:
+                 for g_, val in src_w.items(): w[g_] = w.get(g_, 0.0) + 0.5 * val
+             mid_tied[nv + k] = w
+     tied_all = dict(tied); tied_all.update(mid_tied)
+-    free_nodes = [i for i in range(n10) if i not in tied_all]; col_free = {nd: k for k, nd in enumerate(free_nodes)}; nfree = len(free_nodes)
+-    rows, cols, vals = [], [], []
++    free_nodes = [i_ for i_ in range(n10) if i_ not in tied_all]; col_free = {nd: k for k, nd in enumerate(free_nodes)}; nfree = len(free_nodes)
++    rows, cols_, vals = [], [], []
+     for nd in free_nodes:
+-        for c in range(3): rows.append(3 * nd + c); cols.append(3 * col_free[nd] + c); vals.append(1.0)
++        for c in range(3): rows.append(3 * nd + c); cols_.append(3 * col_free[nd] + c); vals.append(1.0)
+     for nd, w in tied_all.items():
+         for g_, val in w.items():
+-            for c in range(3): rows.append(3 * nd + c); cols.append(3 * nfree + 3 * g_ + c); vals.append(val)
+-    Tc = sp.coo_matrix((vals, (rows, cols)), shape=(3 * n10, 3 * nfree + 3 * nG)).tocsr()
++            for c in range(3): rows.append(3 * nd + c); cols_.append(3 * nfree + 3 * g_ + c); vals.append(val)
++    Tc = sp.coo_matrix((vals, (rows, cols_)), shape=(3 * n10, 3 * nfree + 3 * nG)).tocsr()
+     Kc = (Tc.T @ K @ Tc).tocsr(); fixed_c = np.zeros(Tc.shape[1], bool)
+     for nd in fixed_fine:
+         if nd in col_free: fixed_c[3 * col_free[nd]:3 * col_free[nd] + 3] = True
+     fixed_c[3 * nfree:][fixedG] = True
+     freec = (~fixed_c) & (np.diff(Kc.indptr) > 0); Kcf = Kc[freec][:, freec].tocsr(); solc = pypardiso.PyPardisoSolver(); solc.set_iparm(1, 1); solc.set_iparm(2, 3); solc.factorize(Kcf)
+     print(f"constrained monolithic: tied fine nodes {len(tied_all)}, dof {Kcf.shape[0]}", flush=True)
+-    x1 = np.where(np.abs(gcoords[:, 0] - 1.0) < 1e-9)[0]; results = {}
+-    for name, (tf, fcg) in loads.items():
+-        fF = np.zeros(3 * n10); fF[(3 * fB[:, None] + np.arange(3)).ravel()] = tf.ravel(); fG = fcg.ravel()
++    interior = np.where((np.abs(gcoords[:, 0] - np.round(gcoords[:, 0])) < 1e-9) & (gcoords[:, 0] > 1e-9) & (gcoords[:, 0] < shape[0] - 1e-9))[0]   # nodes on internal x-interfaces
++    results = {}
++    for name, (fF, fG) in loads.items():
+         uF = np.zeros(3 * n10); uF[free] = sol.solve(Kff, fF[free]); uG = np.zeros(3 * nG); uG[freeG] = np.linalg.solve(KGf, fG[freeG])
+         fc_ = Tc.T @ fF; zc = np.zeros(Tc.shape[1]); zc[freec] = solc.solve(Kcf, fc_[freec]); uC = Tc @ zc
+         cm, ca, cc = float(fF @ uF), float(fG @ uG), float(fF @ uC)
+-        ui_m = interp_vertex_field(uF[:3 * nv].reshape(-1, 3), gcoords[x1]).ravel(); ui_c = interp_vertex_field(uC[:3 * nv].reshape(-1, 3), gcoords[x1]).ravel(); ui_a = uG[(3 * x1[:, None] + np.arange(3)).ravel()]
+-        okm = ~np.isnan(ui_m); ui_m, ui_a, ui_c = ui_m[okm], ui_a[okm], ui_c[okm]
+         results[name] = {"compliance_monolithic": cm, "compliance_assembled": ca, "compliance_constrained": cc, "assembled_vs_free": ca / cm - 1, "constrained_vs_free": cc / cm - 1,
+-                         "assembled_vs_constrained": ca / cc - 1, "interface_disp_rel_l2_vs_free": float(np.linalg.norm(ui_a - ui_m) / np.linalg.norm(ui_m)),
+-                         "interface_disp_rel_l2_vs_constrained": float(np.linalg.norm(ui_a - ui_c) / np.linalg.norm(ui_c))}
++                         "assembled_vs_constrained": ca / cc - 1}
++        if len(interior):
++            ui_m = interp_vertex_field(uF[:3 * nv].reshape(-1, 3), gcoords[interior]).ravel(); ui_c = interp_vertex_field(uC[:3 * nv].reshape(-1, 3), gcoords[interior]).ravel(); ui_a = uG[(3 * interior[:, None] + np.arange(3)).ravel()]
++            okm = ~np.isnan(ui_m); ui_m, ui_a, ui_c = ui_m[okm], ui_a[okm], ui_c[okm]
++            results[name].update({"interface_disp_rel_l2_vs_free": float(np.linalg.norm(ui_a - ui_m) / np.linalg.norm(ui_m)), "interface_disp_rel_l2_vs_constrained": float(np.linalg.norm(ui_a - ui_c) / np.linalg.norm(ui_c))})
+         print(name, {k: (round(v, 5) if abs(v) > 1e-3 else f"{v:.2e}") for k, v in results[name].items()}, flush=True)
+-    rep["results"] = results; rep["block_tet10_dof"] = int(3 * n10); rep["carrier_nodes_supported_per_cell"] = int(ns); rep["global_carrier_nodes"] = int(nG)
++    rep["results"] = results; rep["block_tet10_dof"] = int(3 * n10); rep["global_carrier_nodes"] = int(nG)
+     (out / "SHEET_BLOCK_VALIDATION.json").write_text(json.dumps(rep, indent=1, default=float)); return 0
+ 
++
+ if __name__ == "__main__":
+     raise SystemExit(main())
+diff --git a/scripts/pred777h_full_cube_v1/sheet_rotation_check.py b/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
+new file mode 100644
+index 0000000..316eef6
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
+@@ -0,0 +1,110 @@
++#!/usr/bin/env python3
++"""Rotation action check for the sheet route: the label of a cube-symmetry image of a cell equals the transformed label
++of the original cell up to mesh noise.  Only vertical cuts are generated in production; the other orientations come
++from the 48 cube symmetries (24 proper rotations + 24 improper), so this is the premise of the augmentation.
++
++For a symmetry R about the cell centre: tau'(x) = tau(R^-1 x) (corner permutation), cut plane (n, d) -> (R n, d').
++The rotated cell is built and labelled independently (its own marching cubes, remesh, Gmsh, Schur); the prediction is
++T S T^T with T the vector-dof transform of the carrier-node permutation induced by R on the active carrier set.
++"""
++from __future__ import annotations
++import argparse, json, sys, tempfile, time
++from fractions import Fraction
++from pathlib import Path
++import numpy as np
++ROOT = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(ROOT / "src"))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++from importlib import import_module
++fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot"); sss = import_module(f"{P}.sheet_solid_surface")
++pipe = import_module(f"{P}.sheet_label_pipeline"); t10 = import_module(f"{P}.tet10_label"); rot = import_module(f"{P}.rotations")
++from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout
++
++
++def fp(v: Fraction) -> dict:
++    return {"numerator": v.numerator, "denominator": v.denominator}
++
++
++def rotated_manifest(payload: dict, R: np.ndarray, out: Path) -> Path:
++    """Manifest of the symmetry image: the cell's eight corner values (taken from the parent lattice at the cell's
++    placement) permuted, written as a single-cell field at the same placement; the world cut plane transformed about
++    the cell centre (exact rationals)."""
++    tf = payload["global_thickness_field"]; shape = [int(v) for v in tf["cell_shape"]]
++    origin = [Fraction(v["numerator"], v["denominator"]) for v in tf["origin"]]; size = [Fraction(v["numerator"], v["denominator"]) for v in tf["cell_size"]]
++    t = [Fraction(v["numerator"], v["denominator"]) for v in payload["cell_placement"]["translation"]]
++    base = [int((t[k] - origin[k]) / size[k]) for k in range(3)]          # lattice index of the cell's lower corner
++    lat = lambda i, j, k: ((base[0] + i) * (shape[1] + 1) + (base[1] + j)) * (shape[2] + 1) + (base[2] + k)
++    vals = tf["vertex_values"]; index = lambda i, j, k: (i * 2 + j) * 2 + k
++    Ri = np.rint(np.asarray(R, dtype=float)).astype(int); new_vals = [None] * 8
++    for i in range(2):
++        for j in range(2):
++            for k in range(2):
++                x = np.array([i, j, k]) - 0.5; xi = Ri.T @ x + 0.5   # tau'(x) = tau(R^-1 x), R^-1 = R^T
++                new_vals[index(i, j, k)] = vals[lat(int(round(xi[0])), int(round(xi[1])), int(round(xi[2])))]
++    new = json.loads(json.dumps(payload))
++    new["global_thickness_field"] = {"field_id": tf["field_id"] + "_ROT", "origin": [fp(v) for v in t], "cell_size": [fp(v) for v in size], "cell_shape": [1, 1, 1], "vertex_values": new_vals}
++    new["cell_id"] += "_rot"
++    if payload.get("cut_plane"):
++        c = payload["cut_plane"]["raw_coefficients"]; n = [Fraction(c[k]["numerator"], c[k]["denominator"]) for k in "abc"]; d = Fraction(c["d"]["numerator"], c["d"]["denominator"])
++        centre = [t[k] + Fraction(1, 2) for k in range(3)]
++        nn = [sum(Fraction(int(Ri[r, cc])) * n[cc] for cc in range(3)) for r in range(3)]
++        dd = d - sum(n[cc] * centre[cc] for cc in range(3)) + sum(nn[r] * centre[r] for r in range(3))
++        new["cut_plane"]["raw_coefficients"] = {"a": fp(nn[0]), "b": fp(nn[1]), "c": fp(nn[2]), "d": fp(dd)}
++    out.mkdir(parents=True, exist_ok=True); (out / "geometry_material_manifest.json").write_text(json.dumps(new, indent=1)); return out / "geometry_material_manifest.json"
++
++
++def label(manifest: Path, a, workdir: Path):
++    _, spec, geom = snap.load_geometry_manifest(manifest); charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
++    layout = build_global_cell_patch_p1_trace_layout(charts, background_lower=(0., 0., 0.), background_upper=(1., 1., 1.), background_shape=(a.carrier_n,) * 3,
++                                                     world_identity_rotation=spec.placement.rotation, world_identity_translation=spec.placement.translation)
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, carrier_n=a.carrier_n)
++    workdir.mkdir(parents=True, exist_ok=True); sss.mesh_sheet_solid(surf, workdir / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=1, threads=a.threads)
++    stage = pipe.compile_port(workdir / "mesh.mesh", geom, spec, layout, carrier_n=a.carrier_n); sch = pipe.schur_label(stage, workers=a.workers)
++    coords = np.asarray(stage.port.carrier_coordinates)[stage.active]
++    norms = t10.build_carrier_norms(layout, stage.port, wavelength_cutoff=4.0 / a.carrier_n)
++    return sch.schur_active, coords, stage.active, norms, layout, stage.port
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser(); ap.add_argument("--geometry-manifest", type=Path, required=True); ap.add_argument("--output-dir", type=Path, required=True)
++    ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--remesh-size", type=float, default=0.03); ap.add_argument("--size-max", type=float, default=0.05)
++    ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
++    ap.add_argument("--symmetries", default="R05,M01", help="comma list: Rxx = proper rotation index, Mxx = improper (reflection) index")
++    a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True)
++    payload = json.loads(a.geometry_manifest.read_text()); rep = {"manifest": str(a.geometry_manifest), "results": {}}
++    proper = rot.proper_cubic_rotations()
++    improper = [np.diag([-1, 1, 1]).astype(np.int8) @ r.matrix for r in proper]          # 24 reflections (det -1)
++    S0, C0, act0, norms0, layout0, port0 = label(a.geometry_manifest, a, out / "original")
++    print(f"original label: q = {S0.shape[0]}", flush=True)
++    for tag in a.symmetries.split(","):
++        R = np.eye(3, dtype=np.int8) if tag == "ID" else ((-np.eye(3)).astype(np.int8) if tag == "INV" else (proper[int(tag[1:])].matrix if tag[0] == "R" else improper[int(tag[1:])]))
++        man = rotated_manifest(payload, R, out / f"cell_{tag}")
++        S1, C1, act1, norms1, layout1, port1 = label(man, a, out / f"label_{tag}")
++        # permutation of active carrier nodes induced by R (by exact grid coordinates, denominator carrier_n)
++        key = lambda p: tuple(np.rint(np.asarray(p) * a.carrier_n).astype(int).tolist())
++        idx1 = {key(p): i for i, p in enumerate(C1)}; perm = np.empty(len(C0), dtype=np.int64); missing = 0
++        for i, p in enumerate(C0):
++            k = key(rot.rotate_points(p[None], R)[0]); perm[i] = idx1.get(k, -1); missing += perm[i] < 0
++        res = {"symmetry": tag, "det": int(round(np.linalg.det(R))), "matrix": R.astype(int).tolist(), "q_original": int(S0.shape[0]), "q_rotated": int(S1.shape[0]), "active_set_mismatch": int(missing + (len(C1) - (len(C0) - missing)))}
++        # rows of the original that vanish (no support) and are absent in the rotated set, and vice versa: harmless if their rows are zero
++        rown0 = np.linalg.norm(S0.reshape(len(C0), 3, -1), axis=(1, 2)); only0 = np.where(perm < 0)[0]
++        matched1 = set(perm[perm >= 0].tolist()); only1 = np.array([i for i in range(len(C1)) if i not in matched1], dtype=int)
++        rown1 = np.linalg.norm(S1.reshape(len(C1), 3, -1), axis=(1, 2))
++        res.update({"only_original_nodes": int(len(only0)), "only_original_max_row_norm_rel": float(rown0[only0].max() / rown0.max()) if len(only0) else 0.0,
++                    "only_rotated_nodes": int(len(only1)), "only_rotated_max_row_norm_rel": float(rown1[only1].max() / rown1.max()) if len(only1) else 0.0})
++        # compare on the common nodes (intersection), in the rotated cell's carrier norms restricted to them
++        keep0 = np.where(perm >= 0)[0]; keep1 = perm[keep0]
++        T = rot.vector_dof_transform(np.arange(len(keep0)), R)                    # rotation of the vector components only
++        S0c = S0[np.ix_(np.repeat(keep0 * 3, 3) + np.tile(np.arange(3), len(keep0)), np.repeat(keep0 * 3, 3) + np.tile(np.arange(3), len(keep0)))]
++        S1c = S1[np.ix_(np.repeat(keep1 * 3, 3) + np.tile(np.arange(3), len(keep1)), np.repeat(keep1 * 3, 3) + np.tile(np.arange(3), len(keep1)))]
++        S_pred = rot.rotate_schur(S0c, T)
++        cidx1 = np.where(act1)[0]; Mc = norms1.mass_scalar[np.ix_(cidx1[keep1], cidx1[keep1])]; Lc = norms1.laplacian_scalar[np.ix_(cidx1[keep1], cidx1[keep1])]
++        w, Vm = np.linalg.eigh(Mc); Mih = Vm @ np.diag(w ** -0.5) @ Vm.T; mu, U = np.linalg.eigh(Mih @ Lc @ Mih); kmax = 2 * np.pi / (4.0 / a.carrier_n); Uk = Mih @ U[:, mu <= kmax ** 2]
++        normsc = t10.CarrierNorms(Mc, Lc, np.kron(Mih, np.eye(3)), np.kron(Uk, np.eye(3)), mu[mu <= kmax ** 2], 4.0 / a.carrier_n)
++        cmp = t10.compare_operators(S_pred, S1c, normsc)
++        res.update({k: float(v) for k, v in cmp.items()}); res["common_nodes"] = int(len(keep0))
++        rep["results"][tag] = res; print(tag, json.dumps(res, default=float), flush=True)
++    (out / "SHEET_ROTATION_CHECK.json").write_text(json.dumps(rep, indent=1, default=float)); return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/pred777h_full_cube_v1/sheet_surface_check.py b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+index e1aea66..c51df0a 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_surface_check.py
++++ b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+@@ -26,7 +26,7 @@ if out['volume_est'] < 1e-6:
+     out['status'] = 'EMPTY'; print(json.dumps(out)); sys.exit(0)
+ t = time.perf_counter()
+ try:
+-    r = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n, remesh_size=a.h)
++    r = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n, remesh_size=a.h, carrier_n=a.carrier_n)
+ except Exception as e:
+     out.update({'status': 'SURFACE_FAIL', 'error': str(e)[:300], 'seconds': round(time.perf_counter() - t, 1)}); print(json.dumps(out)); sys.exit(0)
+ rep = r.report; last = rep['remesh_attempts'][-1]
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+index 185b326..76b7c76 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -28,14 +28,14 @@ class PortStage:
+     seconds: float
+ 
+ 
+-def compile_port(mesh_path: Path, geometry, spec, layout) -> PortStage:
++def compile_port(mesh_path: Path, geometry, spec, layout, *, carrier_n: int = 32) -> PortStage:
+     """Fixed port of a sheet-solid mesh on the geometric active carrier set (P is never modified).  Raises when the
+     mesh port support escapes the geometric active set."""
+     t0 = time.perf_counter()
+     art = adapter.mesh_artifact_from_cgal_medit(mesh_path, geometry=dc_replace(geometry, cut_plane=None), mesher_version="5.4",
+                                                 mesher_parameters=MESHER_PARAMETERS, plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
+     port = fpa.compile_fixed_port(art, spec, layout)
+-    active = sss.geometric_active_mask(geometry, layout, port)
++    active = sss.geometric_active_mask(geometry, layout, port, carrier_n=carrier_n)
+     check = sss.verify_active_superset(port, active)
+     if check["support_outside_active"]:
+         raise RuntimeError(f"mesh port support escapes the geometric active set: {check}")
+@@ -85,4 +85,25 @@ def carrier_norms(layout, port, active: np.ndarray) -> tuple[np.ndarray, np.ndar
+     return M[np.ix_(idx, idx)], L[np.ix_(idx, idx)]
+ 
+ 
+-__all__ = ["MESHER_PARAMETERS", "PortStage", "SchurStage", "carrier_norms", "compile_port", "schur_label"]
++def load_schur(npz_path: Path) -> np.ndarray:
++    """Full symmetric float64 operator from a production label (upper-triangle float32 storage, or the older full array)."""
++    z = np.load(npz_path)
++    if "schur_upper_f32" in z.files:
++        q = int(z["q"][0]); S = np.zeros((q, q), dtype=np.float64); iu = np.triu_indices(q)
++        S[iu] = z["schur_upper_f32"].astype(np.float64); S = S + np.triu(S, 1).T
++        return S
++    return np.asarray(z["schur"], dtype=np.float64)
++
++
++def load_carrier_norms(npz_path: Path) -> tuple[np.ndarray, np.ndarray]:
++    """Dense P1 mass and Laplace-Beltrami matrices of the active carrier complex from a production label."""
++    z = np.load(npz_path)
++    if "carrier_mass_coo" in z.files:
++        n = int(z["carrier_scalar_count"][0]); out = []
++        for name in ("carrier_mass", "carrier_laplacian"):
++            rc = z[f"{name}_coo"]; M = np.zeros((n, n)); np.add.at(M, (rc[0], rc[1]), z[f"{name}_values"]); out.append(M)
++        return out[0], out[1]
++    return np.asarray(z["carrier_mass"]), np.asarray(z["carrier_laplacian"])
++
++
++__all__ = ["MESHER_PARAMETERS", "PortStage", "SchurStage", "carrier_norms", "compile_port", "load_carrier_norms", "load_schur", "schur_label"]
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index 2c22541..1fd15cb 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -952,10 +952,26 @@ def remesh_sheet(V: np.ndarray, F: np.ndarray, *, size: float, iterations: int =
+     return compact(V2, F2)
+ 
+ 
+-def carrier_active_set(geometry, layout, active_ports, *, samples: int = 48, interior_margin: float = 0.003, level_tolerance: float = 0.05) -> tuple[np.ndarray, list, dict]:
+-    """Mesh-independent active carrier nodes: vertices of every carrier trace triangle that intersects the material band
+-    on its face (band = |phi| <= tau, retained side of the cut).  Returns (shell coords, per-face triangle arrays restricted
+-    to intersecting triangles, {face: {triangle index: material support point well inside the triangle and the band}})."""
++def _face_band_samples(geometry, planes, box_max, src, carrier_n: int, samples_per_cell: int, level_tolerance: float):
++    """Symmetric cell-centred lattice of one box face with the band test (|phi| - tau < level_tolerance, retained side).
++    Returns (axis, inplane axes, n_u, n_v, U, V (2D coords), P (3D), level, near mask, material mask)."""
++    axis, side = {"box_x_min": (0, 0), "box_x_max": (0, 1), "box_y_min": (1, 0), "box_y_max": (1, 1), "box_z_min": (2, 0), "box_z_max": (2, 1)}[src]
++    inplane = [k for k in range(3) if k != axis]; spu = samples_per_cell * carrier_n
++    n_u = int(round(box_max[inplane[0]] * carrier_n)); n_v = int(round(box_max[inplane[1]] * carrier_n))
++    su = (np.arange(n_u * samples_per_cell) + 0.5) / spu; sv = (np.arange(n_v * samples_per_cell) + 0.5) / spu
++    U, W = np.meshgrid(su, sv, indexing="ij"); P = np.zeros((U.size, 3)); P[:, axis] = box_max[axis] if side else 0.0; P[:, inplane[0]] = U.ravel(); P[:, inplane[1]] = W.ravel()
++    lev = sheet_level(geometry, P); inside = np.ones(len(P), bool)
++    for _, n, d in planes:
++        inside &= (P @ n - d) <= 1e-9
++    return axis, inplane, n_u, n_v, U.ravel(), W.ravel(), P, lev, inside & (lev < level_tolerance), inside & (lev < 0.0)
++
++
++def carrier_active_set(geometry, layout, active_ports, *, carrier_n: int | None = None, samples: int = 48, interior_margin: float = 0.003, level_tolerance: float = 0.05) -> tuple[np.ndarray, list, dict]:
++    """Mesh-independent carrier TRIANGLES the material band reaches on each port face (band = |phi| <= tau within
++    level_tolerance, retained side of the cut), by barycentric sampling of every carrier trace triangle: these are the
++    cap constraints (PSLG) and the support points.  Returns (shell coords, per-face triangle arrays restricted to the
++    touched triangles, {face: {triangle index: material support point well inside the triangle and the band}}).
++    carrier_n is accepted for API symmetry with equivariant_active_nodes and unused here."""
+     shell_coords, _, per_face = carrier_shell(layout, tuple(a for a in active_ports if a != "cut_0"))
+     planes = clip_planes(geometry)
+     bary = np.asarray([(i / samples, j / samples, 1 - (i + j) / samples) for i in range(samples + 1) for j in range(samples + 1 - i)])
+@@ -981,14 +997,48 @@ def carrier_active_set(geometry, layout, active_ports, *, samples: int = 48, int
+     return shell_coords, kept, support_points
+ 
+ 
+-def geometric_active_mask(geometry, layout, port) -> np.ndarray:
+-    """Boolean mask over port.active_global_carrier_ids (compact order): the mesh-independent active carrier set."""
++def equivariant_active_nodes(geometry, layout, active_ports, *, carrier_n: int, samples_per_cell: int = 32, level_tolerance: float = 0.05) -> set[int]:
++    """Active carrier NODES by a rule that is exactly invariant under the 48 cube symmetries and contains every vertex
++    of every carrier triangle carrier_active_set marks (same face lattice): a node is active iff one of the closed
++    carrier squares containing its location is reached by the band.  Squares and the cell-centred lattice are
++    symmetric, unlike the carrier triangulation (each square is split along one diagonal, faces crossed by the cut
++    are clipped), and a touched triangle lies in a touched square whose closure holds its vertices.  Grid nodes see
++    their four squares, nodes on a grid line (cut-line vertices) the two squares they separate.  Returns layout global
++    scalar ids."""
++    shell_coords, _, per_face = carrier_shell(layout, tuple(a for a in active_ports if a != "cut_0"))
++    planes = clip_planes(geometry); box_max = np.asarray(getattr(geometry, "box_max", (1.0, 1.0, 1.0)), dtype=np.float64)
++    active: set[int] = set()
++    for src, tris in per_face:
++        nodes = np.unique(tris)
++        if not len(nodes):
++            continue
++        axis, inplane, n_u, n_v, U, W, P, lev, near, strict = _face_band_samples(geometry, planes, box_max, src, carrier_n, samples_per_cell, level_tolerance)
++        touched = near.reshape(n_u, samples_per_cell, n_v, samples_per_cell).any(axis=(1, 3))
++        if not touched.any():
++            continue
++        uv = shell_coords[nodes][:, inplane] * carrier_n
++        for g, (u, v) in zip(nodes, uv):
++            us = {int(np.floor(u - 1e-9)), int(np.floor(u + 1e-9))}; vs = {int(np.floor(v - 1e-9)), int(np.floor(v + 1e-9))}
++            if any(touched[a, b] for a in us for b in vs if 0 <= a < n_u and 0 <= b < n_v):
++                active.add(int(g))
++    return active
++
++
++def geometric_active_mask(geometry, layout, port, *, carrier_n: int) -> np.ndarray:
++    """Boolean mask over port.active_global_carrier_ids (compact order): the mesh-independent active carrier set =
++    symmetric square rule (equivariant_active_nodes) united with the vertices of the cap-constraint triangles."""
+     keys = list(layout.global_scalar_node_keys); g2c = dict(port.global_to_compact)
+     lay2c = np.array([g2c.get(str(k), -1) for k in keys]); active = np.zeros(len(port.active_global_carrier_ids), bool)
+-    for _, tris in carrier_active_set(geometry, layout, list(port.active_global_port_ids))[1]:
+-        for g in np.unique(tris):
+-            if lay2c[g] >= 0:
+-                active[lay2c[g]] = True
++    ports = list(port.active_global_port_ids)
++    nodes = equivariant_active_nodes(geometry, layout, ports, carrier_n=carrier_n)
++    # plus the vertices of every barycentrically touched cap-constraint triangle: the mesh port nodes lie on those
++    # triangles, so this keeps the geometric set a superset of any mesh support (the few hairline triangles the
++    # lattice misses add zero-stiffness rows and are the only non-invariant part of the set)
++    for _, tris in carrier_active_set(geometry, layout, ports, carrier_n=carrier_n)[1]:
++        nodes.update(int(g) for g in np.unique(tris))
++    for g in nodes:
++        if lay2c[g] >= 0:
++            active[lay2c[g]] = True
+     return active
+ 
+ 
+@@ -1156,7 +1206,7 @@ class SheetSurfaceResult:
+     report: dict = field(default_factory=dict)
+ 
+ 
+-def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_size: float = 0.02, pad: int = 4, cap_max_area: float | None = None,
++def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_size: float = 0.02, carrier_n: int = 32, pad: int = 4, cap_max_area: float | None = None,
+                               quality: str = "q20", port_constraints: dict | None = None, constrain_carrier_edges: bool = True,
+                               remesh_retry_factors: tuple[float, ...] = (1.0, 0.9, 1.12, 0.8), needle_quality: float = 0.05, thickness_scaling: bool = True) -> SheetSurfaceResult:
+     """Closed, carrier-conforming surface of the sheet solid.
+@@ -1235,7 +1285,7 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_
+ 
+     active = list(geometry.active_outer_port_sources())
+     if port_constraints is None:
+-        shell_coords, per_face, support_points = carrier_active_set(geometry, layout, active)
++        shell_coords, per_face, support_points = carrier_active_set(geometry, layout, active, carrier_n=carrier_n)
+         port_constraints = {}; report["active_carrier_nodes"] = {}
+         for src, tris_c in per_face:
+             used = np.unique(tris_c); local = {int(g): k for k, g in enumerate(used)}
+diff --git a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+index c33f5c4..bb279f2 100644
+--- a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
++++ b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+@@ -69,7 +69,7 @@ def test_projection_lands_on_the_level_set_and_respects_planes(fixture) -> None:
+ 
+ def test_surface_is_watertight_carrier_conforming_and_has_the_published_density(fixture) -> None:
+     geometry, layout = fixture
+-    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.04)
++    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.04, carrier_n=16)
+     report = result.report
+     assert report["watertight"]["non_two_manifold_edges"] == 0
+     assert report["components"]["dropped"] == 0
+@@ -91,7 +91,7 @@ def test_surface_is_watertight_carrier_conforming_and_has_the_published_density(
+ def test_active_carrier_set_is_geometric_and_covers_the_band(fixture) -> None:
+     geometry, layout = fixture
+     ports = ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max")
+-    coords, per_face, support_points = sss.carrier_active_set(geometry, layout, ports)
++    coords, per_face, support_points = sss.carrier_active_set(geometry, layout, ports, carrier_n=16)
+     active = {src: np.unique(tris) for src, tris in per_face}
+     assert all(len(v) > 0 for v in active.values())
+     for src, tris in per_face:
+@@ -156,7 +156,7 @@ def test_thin_cut_cell_surface_is_watertight_and_has_the_right_volume() -> None:
+     charts, *_ = compile_full_cube_geometry_inputs(spec)
+     layout = build_full_cube_trace_layout(spec, charts=charts)
+     geometry = CgalGeometryParameters(tau_corners=(float(tau),) * 8, cut_plane=(1.0, 0.5774, 0.0, 0.7227))
+-    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.03)
++    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.03, carrier_n=16)
+     report = result.report
+     assert report["resolution_effective"]["remesh_size"] < 0.03           # thickness-scaled: the wall is 0.032 thick
+     assert report["watertight"]["non_two_manifold_edges"] == 0
+@@ -169,3 +169,34 @@ def test_thin_cut_cell_surface_is_watertight_and_has_the_right_volume() -> None:
+     for _, nn, dd in sss.clip_planes(geometry):
+         inside &= (grid @ nn - dd) <= 0.0
+     assert abs(report["volume"] - inside.mean()) < 0.03 * inside.mean()
++
++
++def test_equivariant_active_set_is_a_superset_and_rotation_invariant(fixture) -> None:
++    """Node-distance active set: contains every vertex of every carrier triangle the band reaches, and maps onto itself
++    under a proper rotation and a reflection of a graded, cut cell (the triangle rule does not)."""
++    from pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1 import rotations as rot
++    geometry, layout = fixture
++    ports = ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max")
++    _, per_face, _ = sss.carrier_active_set(geometry, layout, ports, carrier_n=16)
++    tri_nodes = {int(g) for _, tris in per_face for g in np.unique(tris)}
++    eq_nodes = sss.equivariant_active_nodes(geometry, layout, ports, carrier_n=16)
++    assert tri_nodes <= eq_nodes
++    assert len(eq_nodes) <= 1.3 * len(tri_nodes)
++    # graded, cut cell: compare the node set of the cell with the rotated node set of its symmetry image
++    coords = np.asarray(layout.global_scalar_node_coordinates)
++    corners = np.asarray([0.2, 0.35, 0.3, 0.5, 0.25, 0.45, 0.4, 0.6])           # order (i,j,k) for i,j,k in {0,1}
++    cut = (1.0, 0.5, 0.0, 0.95)
++    for R in (np.asarray([[0, -1, 0], [0, 0, -1], [1, 0, 0]]), np.asarray([[-1, 0, 0], [0, 1, 0], [0, 0, 1]])):
++        idx = lambda i, j, k: (i * 2 + j) * 2 + k
++        rc = np.empty(8)
++        for i in range(2):
++            for j in range(2):
++                for k in range(2):
++                    x = np.array([i, j, k]) - 0.5; xi = R.T @ x + 0.5; rc[idx(i, j, k)] = corners[idx(*[int(round(v)) for v in xi])]
++        n_new, d_new = rot.transform_plane(np.asarray(cut[:3]), cut[3], R)
++        g0 = CgalGeometryParameters(tau_corners=tuple(corners), cut_plane=cut); g1 = CgalGeometryParameters(tau_corners=tuple(rc), cut_plane=(*n_new, d_new))
++        a0 = sss.equivariant_active_nodes(g0, layout, ports, carrier_n=16); a1 = sss.equivariant_active_nodes(g1, layout, ports, carrier_n=16)
++        key = lambda p: tuple(np.rint(np.asarray(p) * 16).astype(int).tolist())          # the fixture layout is the 1/16 grid
++        lookup = {key(p): g for g, p in enumerate(coords)}
++        image = {lookup[key(rot.rotate_points(coords[g][None], R)[0])] for g in a0}
++        assert image == a1
+-- 
+2.34.1
+

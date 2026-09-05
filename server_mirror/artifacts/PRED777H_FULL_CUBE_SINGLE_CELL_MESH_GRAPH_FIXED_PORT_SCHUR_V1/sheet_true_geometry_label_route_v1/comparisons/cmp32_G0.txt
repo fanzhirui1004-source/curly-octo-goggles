@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/root/autodl-tmp/_claude_diag/sheet_compare.py", line 22, in <module>
+    s2 = np.load(d / 'carrier_support.npy')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/lib/python3.12/site-packages/numpy/lib/_npyio_impl.py", line 451, in load
+    fid = stack.enter_context(open(os.fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/root/autodl-tmp/_claude_diag/sheet/G0_c32_alg7/carrier_support.npy'

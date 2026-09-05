@@ -1,0 +1,32 @@
+30 cases, 0 already labelled, 30 to run, 16 jobs x 12 threads, budget 110.0 GB
+[1/30] pop_cut_0928 rc=0 PASS 125s  elapsed 2.1 min  rate 29/h
+[2/30] pop_uncut_0515 rc=0 PASS 167s  elapsed 2.8 min  rate 43/h
+[3/30] pop_cut_0329 rc=0 PASS 170s  elapsed 2.8 min  rate 64/h
+[4/30] pop_uncut_0365 rc=0 PASS 185s  elapsed 3.1 min  rate 78/h
+[5/30] pop_cut_0806 rc=0 PASS 187s  elapsed 3.1 min  rate 96/h
+[6/30] pop_cut_0681 rc=0 PASS 37s  elapsed 3.4 min  rate 104/h
+[7/30] pop_cut_0229 rc=0 PASS 235s  elapsed 3.9 min  rate 107/h
+[8/30] pop_uncut_0418 rc=0 PASS 317s  elapsed 5.3 min  rate 91/h
+[9/30] pop_uncut_0501 rc=0 PASS 348s  elapsed 5.8 min  rate 93/h
+[10/30] pop_cut_0456 rc=0 PASS 197s  elapsed 6.1 min  rate 99/h
+[11/30] pop_cut_0239 rc=0 PASS 402s  elapsed 6.7 min  rate 98/h
+[12/30] pop_cut_1256 rc=0 PASS 495s  elapsed 8.2 min  rate 87/h
+[13/30] pop_uncut_0295 rc=0 PASS 551s  elapsed 9.2 min  rate 85/h
+[14/30] pop_cut_1091 rc=0 PASS 560s  elapsed 9.3 min  rate 90/h
+[15/30] pop_uncut_0607 rc=0 PASS 369s  elapsed 10.1 min  rate 89/h
+[16/30] pop_cut_0335 rc=0 PASS 136s  elapsed 10.5 min  rate 91/h
+[17/30] pop_uncut_0669 rc=0 PASS 655s  elapsed 10.9 min  rate 93/h
+[18/30] pop_cut_1198 rc=0 PASS 480s  elapsed 11.1 min  rate 97/h
+[19/30] pop_cut_1096 rc=0 PASS 267s  elapsed 11.1 min  rate 102/h
+[20/30] pop_cut_0338 rc=0 PASS 574s  elapsed 11.7 min  rate 103/h
+[21/30] pop_uncut_0247 rc=0 PASS 713s  elapsed 11.9 min  rate 106/h
+[22/30] pop_uncut_0517 rc=0 PASS 471s  elapsed 13.1 min  rate 100/h
+[23/30] pop_uncut_0366 rc=0 PASS 848s  elapsed 14.1 min  rate 98/h
+[24/30] pop_uncut_0142 rc=0 PASS 671s  elapsed 14.3 min  rate 101/h
+[25/30] pop_uncut_0503 rc=0 PASS 321s  elapsed 14.5 min  rate 103/h
+[26/30] pop_cut_0699 rc=0 PASS 624s  elapsed 16.2 min  rate 96/h
+[27/30] pop_uncut_0286 rc=0 PASS 615s  elapsed 16.3 min  rate 99/h
+[28/30] pop_uncut_0226 rc=0 PASS 793s  elapsed 16.7 min  rate 101/h
+[29/30] pop_cut_1072 rc=0 PASS 548s  elapsed 18.5 min  rate 94/h
+[30/30] pop_uncut_0175 rc=0 PASS 1144s  elapsed 19.1 min  rate 94/h
+done: 30 run, 0 failed: []

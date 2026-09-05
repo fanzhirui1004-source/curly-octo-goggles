@@ -1,0 +1,15 @@
+G0 h03 identical_to_panel True flat_before_caps 0 flat_late 0
+G0 h02 identical_to_panel True flat_before_caps 0 flat_late 0
+G0 h015 identical_to_panel True flat_before_caps 0 flat_late 0
+G1 h03 identical_to_panel True flat_before_caps 0 flat_late 0
+G1 h02 identical_to_panel True flat_before_caps 0 flat_late 0
+G1 h015 identical_to_panel True flat_before_caps 0 flat_late 0
+G3 h03 identical_to_panel True flat_before_caps 0 flat_late 0
+G3 h02 identical_to_panel True flat_before_caps 0 flat_late 0
+G3 h015 identical_to_panel True flat_before_caps 0 flat_late 0
+G4 h03 identical_to_panel True flat_before_caps 0 flat_late 0
+G4 h02 identical_to_panel True flat_before_caps 0 flat_late 0
+G4 h015 identical_to_panel True flat_before_caps 0 flat_late 0
+G5 h03 identical_to_panel True flat_before_caps 0 flat_late 1
+G5 h02 identical_to_panel True flat_before_caps 0 flat_late 0
+G5 h015 identical_to_panel True flat_before_caps 0 flat_late 0

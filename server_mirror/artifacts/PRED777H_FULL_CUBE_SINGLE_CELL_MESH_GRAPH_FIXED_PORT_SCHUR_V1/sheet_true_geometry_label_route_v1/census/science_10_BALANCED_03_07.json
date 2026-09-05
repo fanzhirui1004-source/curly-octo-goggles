@@ -1,0 +1,5 @@
+/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py:272: RuntimeWarning: invalid value encountered in divide
+  t = np.einsum("ij,ij->i", w, e) / L2; dist = np.abs(w[:, 0] * e[:, 1] - w[:, 1] * e[:, 0]) / np.sqrt(L2)
+/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py:359: RuntimeWarning: invalid value encountered in divide
+  w = allp - A2[k]; tt = (w @ e[k]) / L2[k]; dist = np.abs(w[:, 0] * e[k, 1] - w[:, 1] * e[k, 0]) / np.sqrt(L2[k])
+{"case": "science_10_BALANCED_03_07", "tau_mean": 0.4, "volume": 0.01936, "cut": true, "carrier_n": 32, "active_nodes_per_face": {"box_x_max": 0, "box_x_min": 33, "box_y_min": 75, "box_z_min": 154}, "active_nodes_total": 262, "faces_with_material": 3, "components": {"components": 1, "dropped": 0, "dropped_area": 0.0}, "watertight": 0, "surface_volume": 0.01931, "status": "OK"}

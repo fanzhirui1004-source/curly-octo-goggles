@@ -1,0 +1,185 @@
+{
+ "case_id": "G3",
+ "geometry_manifest": "/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/science_pilot16_v1/samples/science_04_BALANCED_00_04/geometry_material_manifest.json",
+ "git_head": "3c6a76cdd21a20c437f252f285b407e52252ce5d",
+ "resolution": {
+  "preset": "production",
+  "n_per_unit": 64,
+  "remesh_size": 0.02,
+  "size_max": 0.04,
+  "carrier_n": 32,
+  "algorithm3d": 1
+ },
+ "execution": {
+  "workers": 6,
+  "threads": 6,
+  "column_chunk": 1024,
+  "omp_num_threads": "6",
+  "mkl_cbwr": null
+ },
+ "contract": "SHEET_SOLID_NO_COLLAR",
+ "timing": {
+  "empty_screen": 0.9750842414796352,
+  "surface_and_mesh": 20.7343868650496,
+  "fixed_port": 36.118045795708895,
+  "schur": 202.72087407112122,
+  "total": 297.7153463624418
+ },
+ "geometry": {
+  "spec_hash": "54c1a60c64c098b37170283847f0a528e9a8e421cf00e104c64b17e8efb2c618",
+  "tau_corners": [
+   0.4,
+   0.375,
+   0.425,
+   0.4,
+   0.4,
+   0.375,
+   0.425,
+   0.4
+  ],
+  "cut_plane": null,
+  "material_volume_estimate": 0.22844384765625
+ },
+ "surface": {
+  "marching_cubes": {
+   "vertices": 38286,
+   "triangles": 74980,
+   "h": 0.015625
+  },
+  "projection": {
+   "max_level_residual_before": 0.0012025922375986098,
+   "max_level_residual_after": 1.4988010832439613e-15
+  },
+  "flat_sheet_triangles": {
+   "dropped": 38,
+   "lifted": 0
+  },
+  "boundary_collapse": {
+   "collapsed": 553,
+   "non_two_manifold_edges_open": 985
+  },
+  "flat_after_remesh": {
+   "dropped": 0,
+   "lifted": 0
+  },
+  "boundary_collapse_2": 0,
+  "boundary_resnap": 0,
+  "post_remesh_cleanup": {
+   "dropped_flat": 0,
+   "dropped_nonmanifold": 0
+  },
+  "corner_restores": 0,
+  "boundary_vertices_off_plane": 0,
+  "sheet_remesh": {
+   "vertices": 13222,
+   "triangles": 25498,
+   "size": 0.02,
+   "max_level_residual": 1.4432899320127035e-15,
+   "non_two_manifold_edges_open": 962
+  },
+  "clipped": {
+   "vertices": 13222,
+   "triangles": 25498
+  },
+  "active_carrier_nodes": {
+   "box_x_max": 314,
+   "box_x_min": 322,
+   "box_y_max": 319,
+   "box_y_min": 304,
+   "box_z_max": 308,
+   "box_z_min": 322
+  },
+  "line_t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 52272,
+   "non_two_manifold_edges": 0
+  },
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.0005481953002291478,
+   "p01": 0.17614076009175028,
+   "below_0.3": 1458,
+   "triangles": 34848
+  },
+  "volume": 0.22858987624654428,
+  "seconds": 8.735582198947668,
+  "active_ports": [
+   "box_x_min",
+   "box_x_max",
+   "box_y_min",
+   "box_y_max",
+   "box_z_min",
+   "box_z_max"
+  ]
+ },
+ "mesh": {
+  "mesh_path": "/root/autodl-tmp/_claude_diag/sheet/prod/G3_prod/mesh.mesh",
+  "node_count": 27035,
+  "tet_count": 105190,
+  "material_volume": 0.22858987624654334,
+  "min_dihedral_degrees": 0.030621423144225446,
+  "tets_below_5deg": 200,
+  "tets_below_10deg": 589,
+  "seconds": 11.92427122965455,
+  "carrier_nodes_preserved": 1098
+ },
+ "fixed_port": {
+  "carrier_scalar_nodes": 6146,
+  "active_carrier_nodes": 1889,
+  "q_active": 5667,
+  "fine_port_nodes": 5156,
+  "active_set_check": {
+   "active": 1889,
+   "support": 1718,
+   "support_outside_active": 0,
+   "active_without_support": 171
+  },
+  "active_ports": [
+   "box_x_max",
+   "box_x_min",
+   "box_y_max",
+   "box_y_min",
+   "box_z_max",
+   "box_z_min"
+  ],
+  "partition_of_unity_error": 0.0,
+  "affine_reproduction_error": 5.551115123125783e-16,
+  "deterministic_replay_sha256": "d54f67059f15670e97c7147eb62358ce4f84947b3180db2de13db1920412f603"
+ },
+ "schur_timing": {
+  "tet10_promotion": 1.3284887410700321,
+  "assembly": 15.710826754570007,
+  "solver": 2.0,
+  "schur_total": 198.01264245435596,
+  "fine_dof": 530064.0,
+  "internal_dof": 472062.0
+ },
+ "schur": {
+  "q_active": 5667,
+  "rigid_residual_relative": 6.566011165401959e-15,
+  "min_eigenvalue": -1.6491156962714143e-17,
+  "max_eigenvalue": 0.04126474687520213,
+  "inactive_block_max": 0.0
+ },
+ "outputs": {
+  "mesh.mesh": {
+   "path": "mesh.mesh",
+   "sha256": "11e9b3fa2577b5b0c694db1f7ddd01b62323c91e8be1a9c28e6cfeb80bcc33e7"
+  },
+  "SHEET_SOLID_SURFACE.off": {
+   "path": "SHEET_SOLID_SURFACE.off",
+   "sha256": "4609bbdbfe1786243b863796caf94323ebce4e4e91fcedd3ac166f6d671d30f0"
+  },
+  "FIXED_PORT_SCHUR_TET10.npz": {
+   "path": "FIXED_PORT_SCHUR_TET10.npz",
+   "sha256": "4c0a4172d590ee1e9c4d0c48b0f6ccc9c742acad69ed98f26cc98300fdf5d9ac"
+  }
+ },
+ "status": "PASS"
+}

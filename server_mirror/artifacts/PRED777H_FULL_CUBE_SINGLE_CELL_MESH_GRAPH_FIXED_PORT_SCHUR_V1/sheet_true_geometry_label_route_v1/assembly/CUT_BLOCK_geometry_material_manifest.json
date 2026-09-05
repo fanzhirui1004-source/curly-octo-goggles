@@ -1,0 +1,387 @@
+{
+ "box_planes": [
+  {
+   "inside_relation": "a*x+b*y+c*z<=d",
+   "plane_id": "box_x_min",
+   "raw_coefficients": {
+    "a": {
+     "denominator": 1,
+     "numerator": -1
+    },
+    "b": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "c": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "d": {
+     "denominator": 1,
+     "numerator": 0
+    }
+   },
+   "semantic_id": "box_x_min"
+  },
+  {
+   "inside_relation": "a*x+b*y+c*z<=d",
+   "plane_id": "box_x_max",
+   "raw_coefficients": {
+    "a": {
+     "denominator": 1,
+     "numerator": 1
+    },
+    "b": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "c": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "d": {
+     "denominator": 1,
+     "numerator": 1
+    }
+   },
+   "semantic_id": "box_x_max"
+  },
+  {
+   "inside_relation": "a*x+b*y+c*z<=d",
+   "plane_id": "box_y_min",
+   "raw_coefficients": {
+    "a": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "b": {
+     "denominator": 1,
+     "numerator": -1
+    },
+    "c": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "d": {
+     "denominator": 1,
+     "numerator": 0
+    }
+   },
+   "semantic_id": "box_y_min"
+  },
+  {
+   "inside_relation": "a*x+b*y+c*z<=d",
+   "plane_id": "box_y_max",
+   "raw_coefficients": {
+    "a": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "b": {
+     "denominator": 1,
+     "numerator": 1
+    },
+    "c": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "d": {
+     "denominator": 1,
+     "numerator": 1
+    }
+   },
+   "semantic_id": "box_y_max"
+  },
+  {
+   "inside_relation": "a*x+b*y+c*z<=d",
+   "plane_id": "box_z_min",
+   "raw_coefficients": {
+    "a": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "b": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "c": {
+     "denominator": 1,
+     "numerator": -1
+    },
+    "d": {
+     "denominator": 1,
+     "numerator": 0
+    }
+   },
+   "semantic_id": "box_z_min"
+  },
+  {
+   "inside_relation": "a*x+b*y+c*z<=d",
+   "plane_id": "box_z_max",
+   "raw_coefficients": {
+    "a": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "b": {
+     "denominator": 1,
+     "numerator": 0
+    },
+    "c": {
+     "denominator": 1,
+     "numerator": 1
+    },
+    "d": {
+     "denominator": 1,
+     "numerator": 1
+    }
+   },
+   "semantic_id": "box_z_max"
+  }
+ ],
+ "cell_domain": {
+  "lower": [
+   0,
+   0,
+   0
+  ],
+  "upper": [
+   1,
+   1,
+   1
+  ]
+ },
+ "cell_id": "BALANCED_00_00_cut",
+ "cell_placement": {
+  "rotation": [
+   [
+    1,
+    0,
+    0
+   ],
+   [
+    0,
+    1,
+    0
+   ],
+   [
+    0,
+    0,
+    1
+   ]
+  ],
+  "semantics": "local_cell_coordinates_to_global_thickness_field_coordinates",
+  "translation": [
+   {
+    "denominator": 1,
+    "numerator": 0
+   },
+   {
+    "denominator": 1,
+    "numerator": 0
+   },
+   {
+    "denominator": 1,
+    "numerator": 0
+   }
+  ]
+ },
+ "cut_plane": {
+  "plane_id": "cut_0",
+  "semantic_id": "cut_0",
+  "inside_relation": "a*x+b*y+c*z<=d",
+  "raw_coefficients": {
+   "a": {
+    "numerator": 3,
+    "denominator": 1
+   },
+   "b": {
+    "numerator": 10,
+    "denominator": 1
+   },
+   "c": {
+    "numerator": 0,
+    "denominator": 1
+   },
+   "d": {
+    "numerator": 9,
+    "denominator": 1
+   }
+  }
+ },
+ "geometry_family": "P_TYPE_FULL_CUBE_GLOBAL_P1_THICKNESS_RESTRICTION",
+ "global_thickness_field": {
+  "cell_shape": [
+   2,
+   2,
+   2
+  ],
+  "cell_size": [
+   {
+    "denominator": 1,
+    "numerator": 1
+   },
+   {
+    "denominator": 1,
+    "numerator": 1
+   },
+   {
+    "denominator": 1,
+    "numerator": 1
+   }
+  ],
+  "continuity": "C0_exact_shared_control_vertices_and_shared_face_triangulation",
+  "field_id": "BALANCED_FIELD_00_00",
+  "mesh_information_used": false,
+  "origin": [
+   {
+    "denominator": 1,
+    "numerator": 0
+   },
+   {
+    "denominator": 1,
+    "numerator": 0
+   },
+   {
+    "denominator": 1,
+    "numerator": 0
+   }
+  ],
+  "schema": "pred777h_global_p1_thickness_field_v1",
+  "target_information_used": false,
+  "tau_max": {
+   "denominator": 80,
+   "numerator": 33
+  },
+  "tau_min": {
+   "denominator": 80,
+   "numerator": 31
+  },
+  "tetrahedralization": "fixed_six_tet_body_diagonal_0_to_6",
+  "vertex_order": "(i*(ny+1)+j)*(nz+1)+k",
+  "vertex_values": [
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 32,
+    "numerator": 13
+   },
+   {
+    "denominator": 80,
+    "numerator": 33
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 32,
+    "numerator": 13
+   },
+   {
+    "denominator": 80,
+    "numerator": 33
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 32,
+    "numerator": 13
+   },
+   {
+    "denominator": 80,
+    "numerator": 33
+   },
+   {
+    "denominator": 160,
+    "numerator": 63
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 32,
+    "numerator": 13
+   },
+   {
+    "denominator": 160,
+    "numerator": 63
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 32,
+    "numerator": 13
+   },
+   {
+    "denominator": 160,
+    "numerator": 63
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 32,
+    "numerator": 13
+   },
+   {
+    "denominator": 80,
+    "numerator": 31
+   },
+   {
+    "denominator": 160,
+    "numerator": 63
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 80,
+    "numerator": 31
+   },
+   {
+    "denominator": 160,
+    "numerator": 63
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   },
+   {
+    "denominator": 80,
+    "numerator": 31
+   },
+   {
+    "denominator": 160,
+    "numerator": 63
+   },
+   {
+    "denominator": 5,
+    "numerator": 2
+   }
+  ]
+ },
+ "mesh_information_used": false,
+ "parent_field_realization_id": "BALANCED_FIELD_00_00",
+ "parent_world_cut_id": "CUT_BLOCK_3X_10Y_9",
+ "schema": "pred777h_full_cube_global_p1_cell_spec_v1",
+ "target_information_used": false,
+ "tpms_band": {
+  "field": "cos(2pi*x)+cos(2pi*y)+cos(2pi*z)",
+  "material_relation": "abs(phi(world))<=tau_global(world)",
+  "periods": [
+   1,
+   1,
+   1
+  ]
+ }
+}

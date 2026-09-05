@@ -1,0 +1,1509 @@
+From 739bbcd0f6b7af9e4abbc04f57371a0647f62361 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Thu, 3 Sep 2026 23:07:14 +0800
+Subject: [PATCH 02/22] WIP: true sheet-TPMS geometry route (no port collars):
+ closed carrier-conforming surface, Gmsh Tet10 labels
+
+- sheet_solid_surface.py: marching cubes of |phi|-tau, exact clipping by box and cut planes, pymeshlab isotropic
+  remeshing with exact Newton projection, band caps by constrained Delaunay with carrier nodes/edges as constraints,
+  geometric (mesh-independent) active carrier set with support points, deterministic fringe clipping of port weights,
+  Triangle isolated in a subprocess.
+- run_sheet_solid_prototype.py: label driver (cut plane is a free surface, never a port).
+- sheet_block_validation.py: 2x1x1 block with the graded parent thickness field, per-cell labels, free / assembled /
+  constrained-monolithic comparison.
+Status: G0/G1/G3/G4 labels reproduce across meshers; G5 (thin wall + cut) still leaves a few non-manifold cap edges;
+G2 is empty in the true geometry.
+---
+ .../run_sheet_solid_prototype.py              |   57 +
+ .../sheet_block_validation.py                 |  251 ++++
+ .../conforming_port_mesh.py                   |    4 +-
+ .../sheet_solid_surface.py                    | 1133 +++++++++++++++++
+ 4 files changed, 1443 insertions(+), 2 deletions(-)
+ create mode 100644 scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+ create mode 100644 scripts/pred777h_full_cube_v1/sheet_block_validation.py
+ create mode 100644 src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+
+diff --git a/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+new file mode 100644
+index 0000000..2c1ebfa
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+@@ -0,0 +1,57 @@
++#!/usr/bin/env python3
++"""Prototype: true sheet-TPMS solid (no collars) -> carrier-conforming surface -> Gmsh Tet4 -> Tet10 fixed-port Schur."""
++from __future__ import annotations
++import argparse, json, sys, time
++from pathlib import Path
++import numpy as np
++ROOT = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(ROOT / "src"))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++from importlib import import_module
++adapter = import_module(f"{P}.cgal_mesh3_adapter"); fpa = import_module(f"{P}.fixed_port_adapter"); fcb = import_module(f"{P}.full_cube_backend")
++snap = import_module(f"{P}.mesher_neutral_snapshot"); t10 = import_module(f"{P}.tet10_label"); sss = import_module(f"{P}.sheet_solid_surface")
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--case-id", required=True); ap.add_argument("--geometry-manifest", type=Path, required=True); ap.add_argument("--output-dir", type=Path, required=True)
++    ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--no-project", action="store_true"); ap.add_argument("--snap-fraction", type=float, default=0.2); ap.add_argument("--remesh-size", type=float, default=None); ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=10)
++    ap.add_argument("--no-netgen", action="store_true"); ap.add_argument("--no-smooth", action="store_true"); ap.add_argument("--cap-max-area", type=float, default=None)
++    ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8); ap.add_argument("--skip-schur", action="store_true")
++    a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True); rep: dict = {"case_id": a.case_id}
++    _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
++    charts, *_ = fcb.compile_full_cube_geometry_inputs(spec); layout = fcb.build_full_cube_trace_layout(spec, charts=charts)
++    t0 = time.perf_counter()
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, smooth=not a.no_smooth, project=not a.no_project, snap_fraction=a.snap_fraction, remesh_size=a.remesh_size, cap_max_area=a.cap_max_area)
++    sss.write_off(out / "SHEET_SOLID_SURFACE.off", surf.V, surf.F); rep["surface"] = surf.report; rep["surface"]["seconds_total"] = time.perf_counter() - t0
++    print("surface:", json.dumps({k: v for k, v in surf.report.items() if k != "caps"}, default=float)); print("caps:", json.dumps(surf.report["caps"], default=float), flush=True)
++    if surf.report["watertight"]["non_two_manifold_edges"] != 0:
++        (out / "SHEET_PROTOTYPE_REPORT.json").write_text(json.dumps(rep, indent=1, default=float)); print("surface not watertight, stop"); return 1
++    m = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, netgen_optimize=not a.no_netgen, threads=a.threads)
++    rep["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}; print("mesh:", json.dumps(rep["mesh"], default=float), flush=True)
++    mp = {"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False, "semantic_plane_tolerance": 1e-10}
++    t0 = time.perf_counter()
++    from dataclasses import replace as dc_replace
++    geom_ports = dc_replace(geom, cut_plane=None)  # the cut surface is a FREE surface of the part, never a port
++    art = adapter.mesh_artifact_from_cgal_medit(out / "mesh.mesh", geometry=geom_ports, mesher_version="5.4", mesher_parameters=mp, plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
++    port = fpa.compile_fixed_port(art, spec, layout)
++    active_geo = sss.geometric_active_mask(geom, layout, port)
++    port, active_geo, clip = sss.clip_port_to_active(port, active_geo); rep["active_set"] = clip; print("active_set:", clip, flush=True)
++    Sc = port.scalar_fine_to_carrier; support = active_geo
++    cert = port.certificates
++    rep["fixed_port"] = {"q": int(port.q), "carrier_scalar_nodes": int(Sc.shape[1]), "supported_carrier_nodes": int(support.sum()), "fine_port_nodes": int(Sc.shape[0]),
++                         "affine_reproduction_error": float(cert["maximum_affine_reproduction_error"]), "partition_of_unity_error": float(cert["maximum_partition_of_unity_error"]),
++                         "zero_support_columns": int(cert["zero_support_active_carrier_column_count"]), "active_ports": list(port.active_global_port_ids), "seconds": time.perf_counter() - t0}
++    print("fixed_port:", json.dumps(rep["fixed_port"], default=float), flush=True)
++    np.save(out / "carrier_support.npy", support)
++    if not a.skip_schur:
++        S, timing = t10.dense_fixed_port_schur(art, port, element="TET10", workers=a.workers)
++        np.save(out / "S_TET10.npy", S)
++        keep = np.repeat(support, 3); Ss = S[np.ix_(keep, keep)]; np.save(out / "S_TET10_supported.npy", Ss)
++        rig = port.rigid_basis[keep]
++        rep["schur"] = {"timing": timing, "rigid_residual": float(np.linalg.norm(S @ port.rigid_basis) / np.linalg.norm(S)), "q_supported": int(Ss.shape[0]),
++                        "unsupported_block_max": float(np.abs(S[np.ix_(~keep, ~keep)]).max()) if (~keep).any() else 0.0}
++        ev = np.linalg.eigvalsh(Ss); rep["schur"]["min_eig_supported"] = float(ev[0]); rep["schur"]["max_eig_supported"] = float(ev[-1])
++        rep["schur"]["rigid_residual_supported"] = float(np.linalg.norm(Ss @ rig) / np.linalg.norm(Ss)); print("schur:", json.dumps(rep["schur"], default=float), flush=True)
++    (out / "SHEET_PROTOTYPE_REPORT.json").write_text(json.dumps(rep, indent=1, default=float)); return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+new file mode 100644
+index 0000000..247260c
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -0,0 +1,251 @@
++#!/usr/bin/env python3
++"""2x1x1 block of two identical sheet cells (true geometry, no collars): monolithic Tet10 (free interface, free external
++faces) vs fixed-port assembly of the cell label, plus the constrained-monolithic control (all external port traces tied to
++the P1 carrier, interface free).  Loads on the x=2 face, x=0 fixed."""
++from __future__ import annotations
++import argparse, json, sys, time
++from pathlib import Path
++import numpy as np, scipy.sparse as sp
++ROOT = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(ROOT / "src"))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++from importlib import import_module
++adapter = import_module(f"{P}.cgal_mesh3_adapter"); fpa = import_module(f"{P}.fixed_port_adapter"); fcb = import_module(f"{P}.full_cube_backend")
++snap = import_module(f"{P}.mesher_neutral_snapshot"); t10 = import_module(f"{P}.tet10_label"); sss = import_module(f"{P}.sheet_solid_surface"); cpm = import_module(f"{P}.conforming_port_mesh")
++import_module(f"{P}.frozen_backend").activate_frozen_backend()
++from cctpms.fem.tet10 import assemble_global_tet10_stiffness
++from cctpms.port.tet10_nodal_schur import TET10_EDGE_LOCAL_NODES
++from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_prolongation
++import pypardiso
++
++def p1_field_evaluator(tf):
++    """Vectorized trilinear evaluation of the parent GlobalP1ThicknessField at world points."""
++    origin = np.array([float(v) for v in tf.origin]); size = np.array([float(v) for v in tf.cell_size]); shape = np.array(tf.cell_shape, dtype=int)
++    vals = np.array([float(v) for v in tf.vertex_values]).reshape(shape[0] + 1, shape[1] + 1, shape[2] + 1)
++    def value(xyz):
++        c = (np.asarray(xyz, dtype=np.float64) - origin) / size; c = np.clip(c, 0, shape - 1e-12)
++        i = np.floor(c).astype(int); f = c - i
++        out = np.zeros(c.shape[:-1])
++        for di in (0, 1):
++            for dj in (0, 1):
++                for dk in (0, 1):
++                    w = (f[..., 0] if di else 1 - f[..., 0]) * (f[..., 1] if dj else 1 - f[..., 1]) * (f[..., 2] if dk else 1 - f[..., 2])
++                    out += w * vals[i[..., 0] + di, i[..., 1] + dj, i[..., 2] + dk]
++        return out
++    return value
++
++class BlockGeom:
++    """Two cells along x on [0,2]x[0,1]x[0,1] with the parent thickness field: |phi(world)| - tau(world)."""
++    def __init__(self, spec, geom):
++        self.tau = p1_field_evaluator(spec.thickness_field); self.origin = np.array([float(v) for v in spec.placement.translation])
++        self.cut_plane = None; self.box_max = (2.0, 1.0, 1.0); self.collar_thickness = geom.collar_thickness
++    def material_band_components(self, points):
++        xyz = np.asarray(points, dtype=np.float64); world = xyz + self.origin
++        phi = np.cos(2.0 * np.pi * world).sum(axis=-1); t = np.abs(phi) - self.tau(world)
++        return t, np.full(t.shape, np.inf)
++    def active_outer_port_sources(self): return ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max")
++
++def cell_label(spec, geom, layout, out, a):
++    """Sheet label of one cell: surface -> mesh -> fixed port -> Tet10 Schur on the geometric active set."""
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, smooth=not a.no_smooth)
++    if surf.report["watertight"]["non_two_manifold_edges"]: raise SystemExit(f"cell surface not watertight: {out}")
++    m = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads)
++    mp = {"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False, "semantic_plane_tolerance": 1e-10}
++    from dataclasses import replace as dc_replace
++    art = adapter.mesh_artifact_from_cgal_medit(out / "mesh.mesh", geometry=dc_replace(geom, cut_plane=None), mesher_version="5.4", mesher_parameters=mp, plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
++    port = fpa.compile_fixed_port(art, spec, layout)
++    keys = list(layout.global_scalar_node_keys); g2c = dict(port.global_to_compact); lay2c = np.array([g2c.get(str(k), -1) for k in keys])
++    active = sss.geometric_active_mask(geom, layout, port); port, active, clip = sss.clip_port_to_active(port, active); support = active
++    print(f"cell {out.name}: active-set clip {clip}", flush=True)
++    S, timing = t10.dense_fixed_port_schur(art, port, element="TET10", workers=a.workers)
++    keep = np.repeat(active, 3); Ss = S[np.ix_(keep, keep)]
++    print(f"cell label {out.name}: mesh {m.node_count} nodes, active {int(active.sum())}, unsupported active {int((active & ~support).sum())}, schur {timing['schur_total']:.0f}s", flush=True)
++    return port, active, Ss, lay2c
++
++def main() -> int:
++    ap = argparse.ArgumentParser(); ap.add_argument("--geometry-manifest", type=Path, required=True);     ap.add_argument("--output-dir", type=Path, required=True); ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--remesh-size", type=float, default=0.03)
++    ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=1); ap.add_argument("--no-smooth", action="store_true"); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
++    a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True); rep = {}
++    _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
++    charts, *_ = fcb.compile_full_cube_geometry_inputs(spec); layout = fcb.build_full_cube_trace_layout(spec, charts=charts)
++    fcg = import_module(f"{P}.full_cube_geometry"); tf = spec.thickness_field; o = spec.placement.translation
++    from fractions import Fraction
++    spec_B = fcg.make_cell_spec(thickness_field=tf, cell_world_origin=(o[0] + Fraction(1), o[1], o[2]), cell_id=spec.cell_id + "_B", parent_world_cut_id=spec.parent_world_cut_id, world_cut=None)
++    # geometry parameters of B: tau at its eight corners in the same corner order as geom.tau_corners
++    corners = [(x, y, z) for x in (0, 1) for y in (0, 1) for z in (0, 1)]
++    tauA = [float(tf.value(spec.placement.world(np.array(c, dtype=float)))) for c in corners]
++    order = None
++    import itertools
++    for perm in itertools.permutations(range(8)):
++        if all(abs(tauA[perm[k]] - float(geom.tau_corners[k])) < 1e-12 for k in range(8)): order = perm; break
++    if order is None: raise SystemExit("could not match the corner order of tau_corners")
++    tauB = tuple(float(tf.value(spec_B.placement.world(np.array(corners[order[k]], dtype=float)))) for k in range(8))
++    geom_B = type(geom)(tau_corners=tauB, cut_plane=None, collar_thickness=geom.collar_thickness)
++    chartsB, *_ = fcb.compile_full_cube_geometry_inputs(spec_B); layout_B = fcb.build_full_cube_trace_layout(spec_B, charts=chartsB)
++    # ---- cell labels A and B ----
++    portA, activeA, SA, lay2cA = cell_label(spec, geom, layout, out / "cellA", a); portB, activeB, SB, lay2cB = cell_label(spec_B, geom_B, layout_B, out / "cellB", a)
++    ccoordsA = np.asarray(portA.carrier_coordinates)[activeA]; ccoordsB = np.asarray(portB.carrier_coordinates)[activeB]; shift = np.array([1.0, 0.0, 0.0])
++    c2sA = np.full(len(activeA), -1); c2sA[activeA] = np.arange(int(activeA.sum())); c2sB = np.full(len(activeB), -1); c2sB[activeB] = np.arange(int(activeB.sum()))
++    ns = int(activeA.sum()); support = activeA; S_sup = SA; port = portA; ccoords = ccoordsA; lay2c = lay2cA; c2s = c2sA
++    # ---- block surface: port constraints from the cell carrier (A) and its shift (B) ----
++    shell_coords, _, per_face = cpm.carrier_shell(layout, ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max"))
++    def face_constraint(src, shifts):
++        tris = [t for s_, t in per_face if s_ == src][0]; pts = []; segs = []; keysl = []; idx = {}
++        for sh in shifts:
++            for f in tris:
++                for v in f:
++                    k = (int(v), sh)
++                    if k not in idx: idx[k] = len(pts); pts.append(shell_coords[v] + sh * shift); keysl.append((int(v), sh))
++                for a_, b_ in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2])): segs.append((idx[(int(a_), sh)], idx[(int(b_), sh)]))
++        return np.asarray(pts), np.asarray(sorted({(min(x), max(x)) for x in segs})), keysl
++    pc = {"box_x_min": face_constraint("box_x_min", (0,)), "box_x_max": face_constraint("box_x_max", (1,))}
++    for src in ("box_y_min", "box_y_max", "box_z_min", "box_z_max"): pc[src] = face_constraint(src, (0, 1))
++    bg = BlockGeom(spec, geom); t0 = time.perf_counter()
++    surf = sss.build_sheet_solid_surface(bg, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, port_constraints=pc, smooth=not a.no_smooth)
++    rep["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps",)}; print("block surface:", json.dumps({k: v for k, v in rep["surface"].items() if k not in ("caps", "non_manifold_examples", "surface_quality_by_label", "marching_cubes")}, default=float), flush=True)
++    if surf.report["watertight"]["non_two_manifold_edges"]: raise SystemExit("block surface not watertight")
++    m = sss.mesh_sheet_solid(surf, out / "block.mesh", interior_size_max=a.size_max, algorithm3d=a.algorithm3d, threads=a.threads); rep["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}
++    print("block mesh:", json.dumps(rep["mesh"], default=float), flush=True)
++    V, F, labels = surf.V, surf.F, surf.labels
++    # ---- Tet10 monolithic ----
++    L = open(out / "block.mesh").read().split("\n"); i = L.index("Vertices"); nv = int(L[i + 1]); nxyz = np.array([list(map(float, l.split()[:3])) for l in L[i + 2:i + 2 + nv]])
++    j = L.index("Tetrahedra"); nt = int(L[j + 1]); tets = np.array([list(map(int, l.split()[:4])) for l in L[j + 2:j + 2 + nt]]) - 1
++    edges = {}
++    def eid(p_, q_):
++        k = (p_, q_) if p_ < q_ else (q_, p_)
++        if k not in edges: edges[k] = len(edges)
++        return edges[k]
++    el10 = np.empty((len(tets), 10), np.int64); el10[:, :4] = tets
++    for e, t in enumerate(tets):
++        for jj, (p_, q_) in enumerate(TET10_EDGE_LOCAL_NODES): el10[e, 4 + jj] = nv + eid(int(t[p_]), int(t[q_]))
++    mids = np.zeros((len(edges), 3))
++    for (p_, q_), k in edges.items(): mids[k] = 0.5 * (nxyz[p_] + nxyz[q_])
++    nodes10 = np.vstack([nxyz, mids]); n10 = len(nodes10); t0 = time.perf_counter()
++    K = assemble_global_tet10_stiffness(nodes10, el10, E=1.0, nu=0.3, workers=a.workers).tocsr(); print(f"Tet10 dof {3*n10}, assembled {time.perf_counter()-t0:.0f}s", flush=True)
++    key = lambda p: tuple(np.round(p, 9)); fine_lookup = {key(p): k for k, p in enumerate(nxyz)}
++    # ---- global carrier set of the block (supported nodes of A and B; shared x=1 nodes merged) ----
++    gk = {}; gc = []
++    def gid(p):
++        k = key(p)
++        if k not in gk: gk[k] = len(gc); gc.append(np.asarray(k))
++        return gk[k]
++    mapA = np.array([gid(p) for p in ccoordsA]); mapB = np.array([gid(p + shift) for p in ccoordsB]); nG = len(gc); gcoords = np.asarray(gc)
++    KG = np.zeros((3 * nG, 3 * nG))
++    for mm, Sm in ((mapA, SA), (mapB, SB)):
++        idx = (3 * mm[:, None] + np.arange(3)).ravel(); KG[np.ix_(idx, idx)] += Sm
++    # interface consistency: A's x_max active nodes and B's x_min active nodes must coincide
++    xA = set(mapA[np.abs(ccoordsA[:, 0] - 1.0) < 1e-9].tolist()); xB = set(mapB[np.abs(ccoordsB[:, 0]) < 1e-9].tolist())
++    rep["interface_active_mismatch"] = int(len(xA ^ xB)); print("interface active nodes A/B:", len(xA), len(xB), "mismatch", len(xA ^ xB), flush=True)
++    from scipy.spatial import cKDTree
++    tet_tree = cKDTree(nxyz[tets].mean(axis=1))
++    def interp_vertex_field(u_vertex, pts):
++        out = np.full((len(pts), 3), np.nan); idx = tet_tree.query(pts, k=48)[1]
++        for i, p in enumerate(pts):
++            for ti in idx[i]:
++                a_, b_, c_, d_ = nxyz[tets[ti]]; Mm = np.column_stack([b_ - a_, c_ - a_, d_ - a_])
++                try: l = np.linalg.solve(Mm, p - a_)
++                except np.linalg.LinAlgError: continue
++                lam = np.array([1 - l.sum(), *l])
++                if lam.min() > -1e-6: out[i] = lam @ u_vertex[tets[ti]]; break
++        return out
++    # ---- face P (fine face vertex -> supported carrier of that cell/face), nested: faces are carrier-conforming ----
++    traces = {str(t.source_id): t for t in layout.local_traces}
++    tracesB = {str(tr.source_id): tr for tr in layout_B.local_traces}
++    def face_P(src, sh):
++        fv = np.unique(F[labels == src]); fxyz = V[fv]; cell_mask = (fxyz[:, 0] >= sh - 1e-9) & (fxyz[:, 0] <= sh + 1.0 + 1e-9); fv = fv[cell_mask]; fxyz = fxyz[cell_mask]
++        lay = layout if sh == 0 else layout_B; trs = traces if sh == 0 else tracesB
++        Ploc = build_global_cell_patch_p1_prolongation(trs[src], fxyz - sh * shift, geometric_tolerance=1e-9)
++        l2g = lay.local_to_global_scalar[src].tocsr(); Pg = (Ploc @ l2g).tocsr()   # fine face vertex -> layout global scalar (of that cell)
++        fine_ids = np.array([fine_lookup[key(p)] for p in fxyz]); return fine_ids, Pg
++    # loads on x=2 (B's x_max): lumped tractions on fine face vertices, f_c = P^T f
++    fB, PB = face_P("box_x_max", 1); wts = np.zeros(len(fB)); pos = {int(v): k for k, v in enumerate(fB)}
++    for f in F[labels == "box_x_max"]:
++        pp = V[f]; area = 0.5 * np.linalg.norm(np.cross(pp[1] - pp[0], pp[2] - pp[0]))
++        for v in f:
++            k = pos.get(fine_lookup[key(V[v])])
++            if k is not None: wts[k] += area / 3
++    fxyz = nxyz[fB]
++    def traction(kind, yz):
++        y, z = yz[:, 0], yz[:, 1]; t = np.zeros((len(yz), 3))
++        if kind == "tension_x": t[:, 0] = 1
++        elif kind == "shear_y": t[:, 1] = 1
++        elif kind == "bending_z": t[:, 0] = z - 0.5
++        elif kind == "wave_16H": t[:, 0] = np.sin(2 * np.pi * y) * np.sin(2 * np.pi * z)
++        elif kind == "wave_8H": t[:, 0] = np.sin(4 * np.pi * y) * np.sin(4 * np.pi * z)
++        elif kind == "wave_4H": t[:, 0] = np.sin(8 * np.pi * y) * np.sin(8 * np.pi * z)
++        return t
++    def clip_P(Pg, c2s_, lay2c_):
++        Pl = Pg.tolil(copy=True)
++        for r in range(Pl.shape[0]):
++            keep = [(c, v) for c, v in zip(Pl.rows[r], Pl.data[r]) if c2s_[lay2c_[c]] >= 0]; tot = sum(v for _, v in keep)
++            if tot <= 1e-12: keep = list(zip(Pl.rows[r], Pl.data[r])); tot = sum(v for _, v in keep)
++            Pl.rows[r] = [c for c, _ in keep]; Pl.data[r] = [v / tot for _, v in keep]
++        return Pl.tocsr()
++    PB = clip_P(PB, c2sB, lay2cB)
++    colB = np.array([mapB[c2sB[lay2cB[jj]]] if c2sB[lay2cB[jj]] >= 0 else -1 for jj in range(PB.shape[1])])
++    loads = {}
++    for kind in ("tension_x", "shear_y", "bending_z", "wave_16H", "wave_8H", "wave_4H"):
++        tf = traction(kind, fxyz[:, 1:]) * wts[:, None]; fcA = PB.T @ tf; fc = np.zeros((nG, 3)); lost = 0.0
++        for jj in range(PB.shape[1]):
++            if colB[jj] >= 0: fc[colB[jj]] += fcA[jj]
++            else: lost += float(np.abs(fcA[jj]).sum())
++        loads[kind] = (tf, fc)
++    # ---- (a) monolithic free ----
++    fixed_fine = np.where(np.abs(nodes10[:, 0]) < 1e-9)[0]; free = np.ones(3 * n10, bool); free[(3 * fixed_fine[:, None] + np.arange(3)).ravel()] = False
++    Kff = K[free][:, free].tocsr(); sol = pypardiso.PyPardisoSolver(); sol.set_iparm(1, 1); sol.set_iparm(2, 3); t0 = time.perf_counter(); sol.factorize(Kff); print(f"monolithic factorized {time.perf_counter()-t0:.0f}s", flush=True)
++    # ---- (b) assembled ----
++    fixedG = np.zeros(3 * nG, bool); fixedG[(3 * np.where(np.abs(gcoords[:, 0]) < 1e-9)[0][:, None] + np.arange(3)).ravel()] = True; freeG = ~fixedG; KGf = KG[np.ix_(freeG, freeG)]
++    # ---- (c) constrained monolithic: tie every external port-face fine node (x=2, y=0/1, z=0/1 of both cells) to the carrier ----
++    tied = {}  # fine vertex id -> {global carrier id: weight}
++    for src, shs in (("box_x_max", (1,)), ("box_y_min", (0, 1)), ("box_y_max", (0, 1)), ("box_z_min", (0, 1)), ("box_z_max", (0, 1))):
++        for sh in shs:
++            fids, Pg = face_P(src, sh); mm = mapA if sh == 0 else mapB; c2s_ = c2sA if sh == 0 else c2sB; lay2c_ = lay2cA if sh == 0 else lay2cB; Pl = clip_P(Pg, c2s_, lay2c_).tolil()
++            for r, fid in enumerate(fids):
++                w = {}
++                for jj, val in zip(Pl.rows[r], Pl.data[r]):
++                    cs = c2s_[lay2c_[jj]]
++                    if cs < 0:
++                        continue  # row could not be clipped (whole triangle inactive): node left free
++                    w[mm[cs]] = w.get(mm[cs], 0.0) + float(val)
++                if not w or abs(sum(w.values()) - 1.0) > 1e-9:
++                    continue
++                if fid in tied and tied[fid] != w and abs(sum(w.values()) - 1) < 1e-9: pass
++                tied[fid] = w
++    mid_tied = {}
++    for (p_, q_), k in edges.items():
++        if p_ in tied and q_ in tied:
++            w = {}
++            for src_w in (tied[p_], tied[q_]):
++                for g_, val in src_w.items(): w[g_] = w.get(g_, 0.0) + 0.5 * val
++            mid_tied[nv + k] = w
++    tied_all = dict(tied); tied_all.update(mid_tied)
++    free_nodes = [i for i in range(n10) if i not in tied_all]; col_free = {nd: k for k, nd in enumerate(free_nodes)}; nfree = len(free_nodes)
++    rows, cols, vals = [], [], []
++    for nd in free_nodes:
++        for c in range(3): rows.append(3 * nd + c); cols.append(3 * col_free[nd] + c); vals.append(1.0)
++    for nd, w in tied_all.items():
++        for g_, val in w.items():
++            for c in range(3): rows.append(3 * nd + c); cols.append(3 * nfree + 3 * g_ + c); vals.append(val)
++    Tc = sp.coo_matrix((vals, (rows, cols)), shape=(3 * n10, 3 * nfree + 3 * nG)).tocsr()
++    Kc = (Tc.T @ K @ Tc).tocsr(); fixed_c = np.zeros(Tc.shape[1], bool)
++    for nd in fixed_fine:
++        if nd in col_free: fixed_c[3 * col_free[nd]:3 * col_free[nd] + 3] = True
++    fixed_c[3 * nfree:][fixedG] = True
++    freec = (~fixed_c) & (np.diff(Kc.indptr) > 0); Kcf = Kc[freec][:, freec].tocsr(); solc = pypardiso.PyPardisoSolver(); solc.set_iparm(1, 1); solc.set_iparm(2, 3); solc.factorize(Kcf)
++    print(f"constrained monolithic: tied fine nodes {len(tied_all)}, dof {Kcf.shape[0]}", flush=True)
++    x1 = np.where(np.abs(gcoords[:, 0] - 1.0) < 1e-9)[0]; results = {}
++    for name, (tf, fcg) in loads.items():
++        fF = np.zeros(3 * n10); fF[(3 * fB[:, None] + np.arange(3)).ravel()] = tf.ravel(); fG = fcg.ravel()
++        uF = np.zeros(3 * n10); uF[free] = sol.solve(Kff, fF[free]); uG = np.zeros(3 * nG); uG[freeG] = np.linalg.solve(KGf, fG[freeG])
++        fc_ = Tc.T @ fF; zc = np.zeros(Tc.shape[1]); zc[freec] = solc.solve(Kcf, fc_[freec]); uC = Tc @ zc
++        cm, ca, cc = float(fF @ uF), float(fG @ uG), float(fF @ uC)
++        ui_m = interp_vertex_field(uF[:3 * nv].reshape(-1, 3), gcoords[x1]).ravel(); ui_c = interp_vertex_field(uC[:3 * nv].reshape(-1, 3), gcoords[x1]).ravel(); ui_a = uG[(3 * x1[:, None] + np.arange(3)).ravel()]
++        okm = ~np.isnan(ui_m); ui_m, ui_a, ui_c = ui_m[okm], ui_a[okm], ui_c[okm]
++        results[name] = {"compliance_monolithic": cm, "compliance_assembled": ca, "compliance_constrained": cc, "assembled_vs_free": ca / cm - 1, "constrained_vs_free": cc / cm - 1,
++                         "assembled_vs_constrained": ca / cc - 1, "interface_disp_rel_l2_vs_free": float(np.linalg.norm(ui_a - ui_m) / np.linalg.norm(ui_m)),
++                         "interface_disp_rel_l2_vs_constrained": float(np.linalg.norm(ui_a - ui_c) / np.linalg.norm(ui_c))}
++        print(name, {k: (round(v, 5) if abs(v) > 1e-3 else f"{v:.2e}") for k, v in results[name].items()}, flush=True)
++    rep["results"] = results; rep["block_tet10_dof"] = int(3 * n10); rep["carrier_nodes_supported_per_cell"] = int(ns); rep["global_carrier_nodes"] = int(nG)
++    (out / "SHEET_BLOCK_VALIDATION.json").write_text(json.dumps(rep, indent=1, default=float)); return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/conforming_port_mesh.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/conforming_port_mesh.py
+index 39bf439..43a5099 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/conforming_port_mesh.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/conforming_port_mesh.py
+@@ -177,7 +177,7 @@ def tri_quality(V,T):
+ def normals(V,T):
+     Pp=V[T]; n=np.cross(Pp[:,1]-Pp[:,0],Pp[:,2]-Pp[:,0]); l=np.linalg.norm(n,axis=1); return n/np.maximum(l,1e-300)[:,None]
+ 
+-def smooth_on_polyhedron(V0: np.ndarray, T: np.ndarray, iters: int = 20, step: float = 0.6, q_thresh: float = 0.6, knn: int = 16):
++def smooth_on_polyhedron(V0: np.ndarray, T: np.ndarray, iters: int = 20, step: float = 0.6, q_thresh: float = 0.6, knn: int = 16, frozen: np.ndarray | None = None):
+     V=V0.copy(); Pp=V0[T]; tree=cKDTree(Pp.mean(1)); A0,B0,C0=Pp[:,0],Pp[:,1],Pp[:,2]
+     nbr=defaultdict(set); v2t=defaultdict(list)
+     for ti,f in enumerate(T):
+@@ -197,7 +197,7 @@ def smooth_on_polyhedron(V0: np.ndarray, T: np.ndarray, iters: int = 20, step: f
+         q=tri_quality(V,T); cand=sorted(set(int(u) for ti in np.where(q<q_thresh)[0] for u in T[ti]))
+         Vn=V.copy(); ch=0
+         for i in cand:
+-            if crease[i] or not nbr[i]: continue
++            if crease[i] or not nbr[i] or (frozen is not None and frozen[i]): continue
+             nb=list(nbr[i]); target=V[nb].mean(0); d=target-V[i]
+             # tangential component w.r.t. vertex normal (area-weighted incident normals)
+             inc=v2t[i]; n=N[inc].mean(0); n/=max(np.linalg.norm(n),1e-300); d=d-(d@n)*n
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+new file mode 100644
+index 0000000..aee238b
+--- /dev/null
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -0,0 +1,1133 @@
++"""True sheet-TPMS solid (no port collars) as a closed, carrier-conforming surface, plus its Gmsh volume mesh.
++
++Material = { |phi(x)| <= tau(x) } clipped by the unit box and the world cut plane.  Steps:
++1. marching cubes of |phi| - tau on a padded grid aligned with the box (skimage);
++2. exact clipping by every box plane and the cut plane (Sutherland-Hodgman per triangle, shared intersection vertices,
++   on-plane vertices snapped exactly onto the plane);
++3. the clipped surface's boundary loops on each plane bound the material cross-section (bands); on active port faces the
++   band is re-triangulated by constrained Delaunay (`triangle`) with the carrier trace nodes and edges as constraints
++   (so every fine port node lies on a carrier node, a carrier edge or inside a carrier triangle); on the cut plane the
++   band is triangulated without constraints;
++4. consistent outward orientation, watertightness check, optional tangential smoothing of the sheet part with all
++   plane vertices frozen;
++5. Gmsh volume mesh (discrete surfaces, boundary preserved), MEDIT output.
++"""
++from __future__ import annotations
++
++import time
++from collections import defaultdict
++from dataclasses import dataclass, field
++from pathlib import Path
++
++import numpy as np
++
++from .conforming_port_mesh import _min_dihedral, carrier_shell, signed_volume, smooth_on_polyhedron, watertight_report
++
++_BOX = (("box_x_min", 0, 0.0, -1.0), ("box_x_max", 0, 1.0, 1.0), ("box_y_min", 1, 0.0, -1.0),
++        ("box_y_max", 1, 1.0, 1.0), ("box_z_min", 2, 0.0, -1.0), ("box_z_max", 2, 1.0, 1.0))
++
++
++def sheet_level(geometry, points: np.ndarray) -> np.ndarray:
++    """|phi| - tau: negative inside the sheet.  No collar terms."""
++    tpms_signed, _ = geometry.material_band_components(np.asarray(points, dtype=np.float64))
++    return np.asarray(tpms_signed, dtype=np.float64)
++
++
++def clip_planes(geometry) -> list[tuple[str, np.ndarray, float]]:
++    """(name, n, d) with the retained side n.x - d <= 0; box normals point outward."""
++    planes = []; box_max = np.asarray(getattr(geometry, "box_max", (1.0, 1.0, 1.0)), dtype=np.float64)
++    for name, axis, value, sign in _BOX:
++        n = np.zeros(3); n[axis] = sign; planes.append((name, n, sign * (value * box_max[axis])))
++    if geometry.cut_plane is not None:
++        p = np.asarray(geometry.cut_plane, dtype=np.float64); s = np.linalg.norm(p[:3])
++        planes.append(("cut_0", p[:3] / s, float(p[3]) / s))
++    return planes
++
++
++def marching_sheet(geometry, n_per_unit: int = 128, pad: int = 4) -> tuple[np.ndarray, np.ndarray]:
++    from skimage.measure import marching_cubes
++    h = 1.0 / n_per_unit; box_max = np.asarray(getattr(geometry, "box_max", (1.0, 1.0, 1.0)), dtype=np.float64)
++    axes = [np.arange(-pad, int(round(box_max[k] * n_per_unit)) + pad + 1, dtype=np.float64) * h for k in range(3)]
++    X, Y, Z = np.meshgrid(*axes, indexing="ij")
++    vol = sheet_level(geometry, np.stack([X, Y, Z], axis=-1))
++    verts, faces, _, _ = marching_cubes(vol, level=0.0, spacing=(h, h, h), allow_degenerate=False)
++    verts = np.asarray(verts, dtype=np.float64) + np.array([axes[0][0], axes[1][0], axes[2][0]])
++    return verts, np.asarray(faces, dtype=np.int64)
++
++
++def project_to_sheet(geometry, V: np.ndarray, iters: int = 4, fd: float = 1e-6) -> tuple[np.ndarray, float]:
++    """Newton projection of points onto the exact level set |phi| - tau = 0 along the numerical gradient."""
++    V = np.asarray(V, dtype=np.float64).copy(); res0 = np.abs(sheet_level(geometry, V)).max()
++    for _ in range(iters):
++        f = sheet_level(geometry, V); g = np.zeros_like(V)
++        for k in range(3):
++            e = np.zeros(3); e[k] = fd
++            g[:, k] = (sheet_level(geometry, V + e) - sheet_level(geometry, V - e)) / (2 * fd)
++        g2 = np.einsum("ij,ij->i", g, g); step = (f / np.maximum(g2, 1e-300))[:, None] * g
++        V -= step
++    return V, float(res0)
++
++
++def snap_near_plane(V: np.ndarray, n: np.ndarray, d: float, eps: float) -> np.ndarray:
++    """Move vertices closer than eps to the plane exactly onto it (avoids sliver triangles after clipping)."""
++    V = V.copy(); s = V @ n - d; m = np.abs(s) < eps
++    V[m] -= np.outer(s[m], n); return V
++
++
++def clip_by_plane(V: np.ndarray, F: np.ndarray, n: np.ndarray, d: float, tol: float = 1e-12) -> tuple[np.ndarray, np.ndarray]:
++    """Keep the part with n.x - d <= 0.  Intersection vertices are shared between neighbouring triangles."""
++    V = np.asarray(V, dtype=np.float64).copy(); s = V @ n - d
++    on = np.abs(s) <= tol
++    V[on] -= np.outer(s[on], n); s[on] = 0.0
++    inside = s <= 0.0
++    keep_all = inside[F].all(axis=1); drop_all = (~inside[F]).all(axis=1)
++    out_tris = [F[keep_all]]
++    new_pts: list[np.ndarray] = []; cache: dict[tuple[int, int], int] = {}; base = len(V)
++
++    def cut_point(a: int, b: int) -> int:
++        key = (a, b) if a < b else (b, a)
++        if key not in cache:
++            t = s[a] / (s[a] - s[b]); p = V[a] + t * (V[b] - V[a]); p = p - (p @ n - d) * n
++            cache[key] = base + len(new_pts); new_pts.append(p)
++        return cache[key]
++
++    mixed = np.where(~keep_all & ~drop_all)[0]; tris = []
++    for f in F[mixed]:
++        poly = []
++        for k in range(3):
++            a, b = int(f[k]), int(f[(k + 1) % 3])
++            if s[a] <= 0.0:
++                poly.append(a)
++            if s[a] * s[b] < 0.0:
++                poly.append(cut_point(a, b))
++        for k in range(1, len(poly) - 1):
++            tris.append((poly[0], poly[k], poly[k + 1]))
++    if tris:
++        out_tris.append(np.asarray(tris, dtype=np.int64))
++    F2 = np.vstack(out_tris) if out_tris else np.empty((0, 3), dtype=np.int64)
++    V2 = np.vstack([V, np.asarray(new_pts)]) if new_pts else V
++    return compact(V2, F2)
++
++
++def compact(V: np.ndarray, F: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
++    used, inv = np.unique(F.ravel(), return_inverse=True)
++    return V[used], inv.reshape(F.shape).astype(np.int64)
++
++
++def _directed_boundary(F: np.ndarray) -> list[tuple[int, int]]:
++    edges = set()
++    for a, b, c in F:
++        edges.update(((int(a), int(b)), (int(b), int(c)), (int(c), int(a))))
++    return [e for e in edges if (e[1], e[0]) not in edges]
++
++
++def boundary_chains_on_plane(V: np.ndarray, F: np.ndarray, n: np.ndarray, d: float, tol: float = 1e-9) -> tuple[list[list[int]], list[bool]]:
++    """Boundary chains (vertex id sequences) of the surface lying on the plane, following the surface orientation.
++    Closed chains are loops; open chains end where the boundary leaves the plane (band reaching a box edge)."""
++    onp = np.abs(V @ n - d) <= tol
++    nxt: dict[int, list[int]] = defaultdict(list); indeg: dict[int, int] = defaultdict(int)
++    for a, b in _directed_boundary(F):
++        if onp[a] and onp[b]:
++            nxt[a].append(b); indeg[b] += 1
++    chains: list[list[int]] = []; closed: list[bool] = []; used_edges = set()
++    starts = [v for v in nxt if indeg[v] == 0] + [v for v in nxt if indeg[v] > 0]
++    for start in starts:
++        while any((start, b) not in used_edges for b in nxt.get(start, [])):
++            chain = [start]; cur = start
++            while True:
++                cands = [b for b in nxt.get(cur, []) if (cur, b) not in used_edges]
++                if not cands:
++                    break
++                b = cands[0]; used_edges.add((cur, b)); chain.append(b); cur = b
++                if cur == start:
++                    break
++            if len(chain) >= 2:
++                if chain[-1] == chain[0]:
++                    chains.append(chain[:-1]); closed.append(True)
++                else:
++                    chains.append(chain); closed.append(False)
++    return chains, closed
++
++
++def _triangulate_isolated(pslg: dict, opts: str) -> dict:
++    """Run Triangle in a subprocess: the C library aborts the whole process on some inputs, and its global state is not
++    reliable across repeated in-process calls.  Falls back to a plain constrained triangulation ('pYY')."""
++    import subprocess, sys, tempfile, os
++    with tempfile.TemporaryDirectory() as td:
++        inp = os.path.join(td, "in.npz"); outp = os.path.join(td, "out.npz")
++        np.savez(inp, vertices=np.asarray(pslg["vertices"], dtype=np.float64), segments=np.asarray(pslg["segments"], dtype=np.int32))
++        code = ("import numpy as np, triangle as tr, sys\n"
++                "z = np.load(sys.argv[1]); out = tr.triangulate({'vertices': z['vertices'], 'segments': z['segments']}, sys.argv[3])\n"
++                "np.savez(sys.argv[2], vertices=out['vertices'], triangles=out['triangles'])\n")
++        for o in (opts, "pYY"):
++            r = subprocess.run([sys.executable, "-c", code, inp, outp, o], capture_output=True, text=True, timeout=600)
++            if r.returncode == 0 and os.path.exists(outp):
++                z = np.load(outp); return {"vertices": z["vertices"], "triangles": z["triangles"]}
++        raise RuntimeError(f"Triangle failed on a cap PSLG ({len(pslg['vertices'])} points, {len(pslg['segments'])} segments): {r.stderr[-200:]}")
++
++
++def _plane_basis(n: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
++    a = np.array([1.0, 0.0, 0.0]) if abs(n[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
++    u = np.cross(n, a); u /= np.linalg.norm(u); v = np.cross(n, u)
++    return u, v  # u x v = n
++
++
++def _seg_intersections(p: np.ndarray, q: np.ndarray, A: np.ndarray, B: np.ndarray, eps: float = 1e-12):
++    """Parameters (t on pq, s on AB) of proper intersections of segment pq with segments A[i]B[i]."""
++    r = q - p; e = B - A
++    den = r[0] * e[:, 1] - r[1] * e[:, 0]
++    ok = np.abs(den) > eps
++    w = A - p
++    t = np.full(len(A), np.nan); s = np.full(len(A), np.nan)
++    t[ok] = (w[ok, 0] * e[ok, 1] - w[ok, 1] * e[ok, 0]) / den[ok]
++    s[ok] = (w[ok, 0] * r[1] - w[ok, 1] * r[0]) / den[ok]
++    return t, s
++
++
++def _cube_plane_polygon(n: np.ndarray, d: float, box_max=(1.0, 1.0, 1.0)) -> np.ndarray:
++    """Ordered polygon (3D points) of the intersection of plane n.x = d with the box [0, box_max]."""
++    bx, by, bz = box_max
++    corners = np.array([(x, y, z) for x in (0.0, bx) for y in (0.0, by) for z in (0.0, bz)])
++    pts = []
++    for i in range(8):
++        for j in range(i + 1, 8):
++            if np.sum(corners[i] != corners[j]) != 1:
++                continue
++            si, sj = corners[i] @ n - d, corners[j] @ n - d
++            if si * sj < 0:
++                t = si / (si - sj); pts.append(corners[i] + t * (corners[j] - corners[i]))
++            elif si == 0:
++                pts.append(corners[i])
++    if not pts:
++        return np.empty((0, 3))
++    P = np.unique(np.round(np.asarray(pts), 12), axis=0)
++    u, v = _plane_basis(n); c = P.mean(axis=0)
++    ang = np.arctan2((P - c) @ v, (P - c) @ u)
++    return P[np.argsort(ang)]
++
++
++def _even_odd_inside(P: np.ndarray, loops: list[np.ndarray]) -> np.ndarray:
++    """Even-odd rule: point is inside an odd number of the closed 2D loops."""
++    cnt = np.zeros(len(P), dtype=np.int64)
++    for L in loops:
++        A = L; B = np.roll(L, -1, axis=0)
++        for a, b in zip(A, B):
++            cond = (a[1] > P[:, 1]) != (b[1] > P[:, 1])
++            with np.errstate(divide="ignore", invalid="ignore"):
++                x = a[0] + (P[:, 1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1])
++            cnt += (cond & (P[:, 0] < x)).astype(np.int64)
++    return (cnt % 2) == 1
++
++
++def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: list[bool], n: np.ndarray, d: float, is_material, *, level_fn=None,
++                             constraint_points: np.ndarray | None = None, constraint_segments: np.ndarray | None = None,
++                             max_area: float | None = None, quality: str = "q20", steiner_on_chains: bool = False, snap_relative: float = 0.3):
++    """Constrained Delaunay triangulation of the material region on the plane.
++
++    chains: boundary chains (global vertex ids) of the already-built surface on this plane (closed or open);
++    constraint_points/segments: extra 3D points and 3D segments (pairs of points) that must appear in the triangulation
++    (carrier trace on a port face, the cube polygon on the cut plane).  Every chain edge crossed by a constraint is split
++    and the split is reported so the neighbouring surface triangles can be split identically.
++    Returns (new vertex xyz, triangles in global ids, global ids of constraint points, chain-edge splits)."""
++    sheet_level_2d = level_fn if level_fn is not None else (lambda P3: np.where(is_material(P3), -1.0, 1.0))
++    u, v = _plane_basis(n); o = n * d
++    to2 = lambda P: np.column_stack([(np.asarray(P) - o) @ u, (np.asarray(P) - o) @ v])
++    to3 = lambda P2: o + P2[:, :1] * u + P2[:, 1:2] * v
++    chain_ids = sorted({i for ch in chains for i in ch}); lid = {g: k for k, g in enumerate(chain_ids)}
++    pts2 = to2(V[chain_ids]) if chain_ids else np.empty((0, 2))
++    if len(pts2) > 1:  # near-duplicate chain vertices (< 1e-7 apart) collapse onto one PSLG vertex
++        from scipy.spatial import cKDTree
++        for i2, j2 in sorted(cKDTree(pts2).query_pairs(1e-7)):
++            for g, k in lid.items():
++                if k == j2:
++                    lid[g] = i2
++    segs = []
++    for ch, cl in zip(chains, closed):
++        m = len(ch) if cl else len(ch) - 1
++        for k in range(m):
++            segs.append((lid[ch[k]], lid[ch[(k + 1) % len(ch)]]))
++    extra2: list[np.ndarray] = []; tol = 1e-7
++
++    def all_pts():
++        return np.vstack([pts2, np.asarray(extra2)]) if extra2 else pts2
++
++    def add_point(p2: np.ndarray) -> int:
++        ap = all_pts()
++        if len(ap):
++            dd = np.linalg.norm(ap - p2, axis=1); j = int(np.argmin(dd))
++            if dd[j] <= tol:
++                return j
++        extra2.append(np.asarray(p2, dtype=np.float64)); return len(pts2) + len(extra2) - 1
++
++    seg_arr = np.asarray(segs, dtype=np.int64).reshape(-1, 2)
++    A = pts2[seg_arr[:, 0]] if len(seg_arr) else np.empty((0, 2)); B = pts2[seg_arr[:, 1]] if len(seg_arr) else np.empty((0, 2))
++    chain_splits: dict[int, list[tuple[float, int]]] = defaultdict(list)
++    cons_segments: list[tuple[int, int]] = []; cons_ids: list[int] = []
++
++    def point_on_segments(p2: np.ndarray):
++        """indices of chain edges whose interior contains p2, with the parameter."""
++        if not len(seg_arr):
++            return []
++        e = B - A; w = p2 - A; L2 = np.einsum("ij,ij->i", e, e)
++        t = np.einsum("ij,ij->i", w, e) / L2; dist = np.abs(w[:, 0] * e[:, 1] - w[:, 1] * e[:, 0]) / np.sqrt(L2)
++        return [(int(i), float(t[i])) for i in np.where((dist <= tol) & (t > 1e-9) & (t < 1 - 1e-9))[0]]
++
++    if constraint_points is not None:
++        c2 = to2(constraint_points); cid = []
++        for k in range(len(c2)):
++            j = add_point(c2[k]); cid.append(j)
++            for i, t in point_on_segments(c2[k]):
++                chain_splits[i].append((t, j))
++        cons_ids = cid
++        if constraint_segments is not None:
++            for a, b in constraint_segments:
++                p, q = c2[a], c2[b]
++                splits = [(0.0, cid[a]), (1.0, cid[b])]
++                if len(seg_arr):
++                    t, s = _seg_intersections(p, q, A, B)
++                    hit = np.where(np.isfinite(t) & (t > 1e-9) & (t < 1 - 1e-9) & (s > 1e-9) & (s < 1 - 1e-9))[0]
++                    for i in hit:
++                        # crossings close to a chain vertex are snapped onto it (avoids sliver splits of the sheet)
++                        if s[i] < snap_relative:
++                            splits.append((float(t[i]), int(seg_arr[i, 0])))
++                        elif s[i] > 1 - snap_relative:
++                            splits.append((float(t[i]), int(seg_arr[i, 1])))
++                        else:
++                            j = add_point(p + t[i] * (q - p)); splits.append((float(t[i]), j)); chain_splits[int(i)].append((float(s[i]), j))
++                    # chain vertices in the interior of the constraint segment
++                    w = pts2 - p; r = q - p; L2 = r @ r
++                    tt = (w @ r) / L2; dist = np.abs(w[:, 0] * r[1] - w[:, 1] * r[0]) / np.sqrt(L2)
++                    for k in np.where((dist <= tol) & (tt > 1e-9) & (tt < 1 - 1e-9))[0]:
++                        splits.append((float(tt[k]), int(k)))
++                splits = sorted(set(splits))
++                for k in range(len(splits) - 1):
++                    if splits[k][1] != splits[k + 1][1]:
++                        cons_segments.append((splits[k][1], splits[k + 1][1]))
++    final_segs: list[tuple[int, int]] = []; edge_splits_global = []
++    for i, (a, b) in enumerate(seg_arr):
++        inner = sorted({(t, j) for t, j in chain_splits.get(i, []) if j != int(a) and j != int(b)})
++        chain = [(0.0, int(a))] + inner + [(1.0, int(b))]
++        for k in range(len(chain) - 1):
++            if chain[k][1] != chain[k + 1][1]:
++                final_segs.append((chain[k][1], chain[k + 1][1]))
++        if inner:
++            edge_splits_global.append((int(a), int(b), [j for _, j in inner]))  # local ids for now
++    # origin bookkeeping: chain pieces remember their original chain edge so later splits reach the sheet triangles
++    origin = {}
++    for i, (a, b) in enumerate(seg_arr):
++        inner = sorted({(t, j) for t, j in chain_splits.get(i, []) if j != int(a) and j != int(b)})
++        chain = [(0.0, int(a))] + inner + [(1.0, int(b))]
++        for k in range(len(chain) - 1):
++            if chain[k][1] != chain[k + 1][1]:
++                origin[(min(chain[k][1], chain[k + 1][1]), max(chain[k][1], chain[k + 1][1]))] = i
++    final_segs += cons_segments
++    final_segs = sorted({(min(a, b), max(a, b)) for a, b in final_segs if a != b})
++    # planar arrangement: no two segments may properly cross (Triangle crashes or overlaps on crossing PSLG segments)
++    for _pass in range(8):
++        allp = all_pts(); segs_np = np.asarray(final_segs, dtype=np.int64)
++        if len(segs_np) < 2:
++            break
++        A2 = allp[segs_np[:, 0]]; B2 = allp[segs_np[:, 1]]; found = None
++        for si in range(len(segs_np)):
++            t, s_ = _seg_intersections(A2[si], B2[si], A2, B2)
++            hit = np.where(np.isfinite(t) & (t > 1e-7) & (t < 1 - 1e-7) & (s_ > 1e-7) & (s_ < 1 - 1e-7))[0]
++            hit = [h for h in hit if h != si and len({int(x) for x in segs_np[si]} & {int(x) for x in segs_np[h]}) == 0]
++            if hit:
++                found = (si, int(hit[0]), float(t[hit[0]])); break
++        if found is None:
++            break
++        si, sj, t = found; p2 = A2[si] + t * (B2[si] - A2[si]); j = add_point(p2)
++        new_segs = []
++        for k, (a2, b2) in enumerate(final_segs):
++            if k in (si, sj) and j not in (a2, b2):
++                new_segs += [(min(a2, j), max(a2, j)), (min(j, b2), max(j, b2))]
++                oi = origin.get((a2, b2))
++                if oi is not None:  # split of a chain piece: register on the original chain edge
++                    e = B[oi] - A[oi]; tt = float(((p2 - A[oi]) @ e) / (e @ e)); chain_splits[oi].append((tt, j))
++                    origin[(min(a2, j), max(a2, j))] = oi; origin[(min(j, b2), max(j, b2))] = oi
++            else:
++                new_segs.append((a2, b2))
++        final_segs = sorted(set(new_segs))
++    # points lying in the interior of a segment split that segment (collinear overlaps, touching segments)
++    for _pass in range(8):
++        allp = all_pts(); segs_np = np.asarray(final_segs, dtype=np.int64)
++        if not len(segs_np):
++            break
++        A2 = allp[segs_np[:, 0]]; B2 = allp[segs_np[:, 1]]; e = B2 - A2; L2 = np.einsum("ij,ij->i", e, e)
++        new_segs = []; changed = False
++        for k, (a2, b2) in enumerate(final_segs):
++            w = allp - A2[k]; tt = (w @ e[k]) / L2[k]; dist = np.abs(w[:, 0] * e[k, 1] - w[:, 1] * e[k, 0]) / np.sqrt(L2[k])
++            on = np.where((dist <= 1e-9) & (tt > 1e-9) & (tt < 1 - 1e-9))[0]; on = [int(q) for q in on if q not in (a2, b2)]
++            if not on:
++                new_segs.append((a2, b2)); continue
++            changed = True; chain = [(0.0, a2)] + sorted((float(tt[q]), q) for q in on) + [(1.0, b2)]
++            oi = origin.get((a2, b2))
++            for m in range(len(chain) - 1):
++                p_, q_ = chain[m][1], chain[m + 1][1]
++                if p_ != q_:
++                    new_segs.append((min(p_, q_), max(p_, q_)))
++                    if oi is not None:
++                        origin[(min(p_, q_), max(p_, q_))] = oi
++            if oi is not None:
++                for t_, q in chain[1:-1]:
++                    e0 = B[oi] - A[oi]; chain_splits[oi].append((float(((allp[q] - A[oi]) @ e0) / (e0 @ e0)), q))
++        final_segs = sorted(set(new_segs))
++        if not changed:
++            break
++    # recompute chain-edge splits (the arrangement may have added some)
++    edge_splits_global = []
++    for i, (a, b) in enumerate(seg_arr):
++        inner = sorted({(t, j) for t, j in chain_splits.get(i, []) if j != int(a) and j != int(b)})
++        if inner:
++            edge_splits_global.append((int(a), int(b), [j for _, j in inner]))
++    allp = all_pts()
++    opts = "p" + quality + ("Y" if steiner_on_chains else "YY") + (f"a{max_area:.12g}" if max_area is not None else "")
++    # sanitize: merge points closer than 1e-7 (union-find via KD-tree pairs), drop degenerate/duplicate segments
++    from scipy.spatial import cKDTree
++    parent = np.arange(len(allp))
++    def find(x):
++        while parent[x] != x:
++            parent[x] = parent[parent[x]]; x = parent[x]
++        return x
++    for i2, j2 in cKDTree(allp).query_pairs(1e-7):
++        ri, rj = find(i2), find(j2)
++        if ri != rj:
++            parent[max(ri, rj)] = min(ri, rj)
++    root = np.array([find(i) for i in range(len(allp))]); uniq = np.unique(root); old2new = {int(r): k for k, r in enumerate(uniq)}
++    new_of_old = np.array([old2new[int(r)] for r in root]); allp_s = allp[uniq]
++    segs_s = sorted({(min(new_of_old[a], new_of_old[b]), max(new_of_old[a], new_of_old[b])) for a, b in final_segs if new_of_old[a] != new_of_old[b]})
++    pslg = {"vertices": allp_s, "segments": np.asarray(segs_s, dtype=np.int32).reshape(-1, 2)}
++    import os
++    if os.environ.get("SHEET_DEBUG_DIR"):
++        dd = Path(os.environ["SHEET_DEBUG_DIR"]); dd.mkdir(parents=True, exist_ok=True); k = len(list(dd.glob("cap_*.npz")))
++        np.savez(dd / f"cap_{k}.npz", vertices=allp, segments=pslg["segments"], n=n, d=d, opts=opts, n_chain=len(chain_ids))
++    out = _triangulate_isolated(pslg, opts)
++    pts_out = np.asarray(out["vertices"], dtype=np.float64); tris = np.asarray(out["triangles"], dtype=np.int64)
++    if not np.allclose(pts_out[:len(allp_s)], allp_s, atol=1e-12):
++        raise RuntimeError("triangle reordered input vertices")
++    # map the triangulation back to the un-merged local ids (representative = smallest old id of each merged group)
++    rep_old = {int(new_of_old[i]): i for i in range(len(allp) - 1, -1, -1)}
++    n_new = len(allp_s); n_steiner = len(pts_out) - n_new
++    back = np.array([rep_old[k] for k in range(n_new)] + list(range(len(allp), len(allp) + n_steiner)), dtype=np.int64)
++    pts_full = np.vstack([allp, pts_out[n_new:]]) if n_steiner else allp.copy()
++    tris = back[tris]; pts_out = pts_full
++    chain_splits = {i: [(t, int(rep_old[int(new_of_old[j])])) for t, j in v] for i, v in chain_splits.items()}
++    cons_ids = [int(rep_old[int(new_of_old[c])]) for c in cons_ids]
++    chain_merge = {k: int(rep_old[int(new_of_old[k])]) for k in range(len(chain_ids))}
++    if steiner_on_chains and len(pts_out) > len(allp) and len(seg_arr):
++        # Steiner vertices inserted on original chain edges -> additional chain-edge splits
++        extra = np.arange(len(allp), len(pts_out)); Pe = pts_out[extra]
++        for i, (a, b) in enumerate(seg_arr):
++            e = B[i] - A[i]; L2 = e @ e; w = Pe - A[i]
++            t = (w @ e) / L2; dist = np.abs(w[:, 0] * e[1] - w[:, 1] * e[0]) / np.sqrt(L2)
++            for k in np.where((dist <= 1e-9) & (t > 1e-9) & (t < 1 - 1e-9))[0]:
++                chain_splits[i].append((float(t[k]), int(extra[k])))
++        edge_splits_global = []
++        for i, (a, b) in enumerate(seg_arr):
++            inner = sorted({(t, j) for t, j in chain_splits.get(i, []) if j != int(a) and j != int(b)})
++            if inner:
++                edge_splits_global.append((int(a), int(b), [j for _, j in inner]))
++    cen2 = pts_out[tris].mean(axis=1)
++    if chains:
++        # region classification by flood fill: chain edges separate material from void; the material side of a chain
++        # edge is read from the exact level a small distance off the edge midpoint (both sides), then propagated across
++        # all non-chain edges.  Components touching no chain edge fall back to the level at the centroid.
++        chain_edge_side = {}
++        for ch, cl in zip(chains, closed):
++            m = len(ch) if cl else len(ch) - 1
++            for k in range(m):
++                a2, b2 = lid[ch[k]], lid[ch[(k + 1) % len(ch)]]
++                # after splitting, the chain edge may be a sequence of segments: register every final segment on it
++                chain_edge_side[(min(a2, b2), max(a2, b2))] = None
++        seg_of = {}
++        for (a2, b2) in list(chain_edge_side):
++            seg_of[(a2, b2)] = (a2, b2)
++        for i, (a2, b2) in enumerate(seg_arr):
++            inner = sorted({(t, j) for t, j in chain_splits.get(i, []) if j != int(a2) and j != int(b2)})
++            chain_nodes = [int(a2)] + [j for _, j in inner] + [int(b2)]
++            for k in range(len(chain_nodes) - 1):
++                key = (min(chain_nodes[k], chain_nodes[k + 1]), max(chain_nodes[k], chain_nodes[k + 1])); chain_edge_side[key] = None
++        e2t = defaultdict(list)
++        for ti, tr3 in enumerate(tris):
++            for a2, b2 in ((tr3[0], tr3[1]), (tr3[1], tr3[2]), (tr3[0], tr3[2])):
++                e2t[(min(a2, b2), max(a2, b2))].append(ti)
++        label = np.full(len(tris), -1, dtype=int)
++        for key in chain_edge_side:
++            if key not in e2t:
++                continue
++            a2, b2 = key; pa, pb = pts_out[a2], pts_out[b2]; mid = 0.5 * (pa + pb); t2 = pb - pa; t2 /= max(np.linalg.norm(t2), 1e-300); s2 = np.array([-t2[1], t2[0]])
++            off = max(0.3 * np.linalg.norm(pb - pa), 1e-4)
++            lev_p = float(sheet_level_2d(to3((mid + off * s2)[None]))[0]); lev_m = float(sheet_level_2d(to3((mid - off * s2)[None]))[0])
++            mat_side = 1 if lev_p < lev_m else -1
++            for ti in e2t[key]:
++                c2 = cen2[ti] - mid; side = 1 if (c2 @ s2) > 0 else -1
++                label[ti] = 1 if side == mat_side else 0
++        # flood across non-chain edges
++        stack = [ti for ti in range(len(tris)) if label[ti] >= 0]
++        while stack:
++            ti = stack.pop(); tr3 = tris[ti]
++            for a2, b2 in ((tr3[0], tr3[1]), (tr3[1], tr3[2]), (tr3[0], tr3[2])):
++                key = (min(a2, b2), max(a2, b2))
++                if key in chain_edge_side:
++                    continue
++                for tj in e2t[key]:
++                    if label[tj] < 0:
++                        label[tj] = label[ti]; stack.append(tj)
++        rest = label < 0
++        if rest.any():
++            label[rest] = is_material(to3(cen2[rest])).astype(int)
++        keep = label == 1
++    else:
++        keep = is_material(to3(cen2)); label = keep.astype(int); chain_edge_side = {}
++    import os
++    if os.environ.get("SHEET_DEBUG_DIR"):
++        dd = Path(os.environ["SHEET_DEBUG_DIR"]); k = len(list(dd.glob("cls_*.npz")))
++        np.savez(dd / f"cls_{k}.npz", vertices=pts_out, tris=tris, label=label, chain_edges=np.asarray(list(chain_edge_side), dtype=np.int64).reshape(-1, 2), n=n, d=d)
++    tris = tris[keep]
++    gid = np.full(len(pts_out), -1, dtype=np.int64)
++    for k, g in enumerate(chain_ids):
++        gid[k] = g
++    merged_chain = {}
++    for k, g in enumerate(chain_ids):
++        r = chain_merge.get(k, k)
++        if r != k and r < len(chain_ids):
++            merged_chain[g] = chain_ids[r]  # global chain vertex g is replaced by chain vertex of r
++    new_xyz = []; base = len(V)
++    needed = set(np.unique(tris).tolist()) | set(cons_ids) | {j for _, _, js in edge_splits_global for j in js}
++    for k in sorted(needed):
++        if gid[k] < 0:
++            gid[k] = base + len(new_xyz); new_xyz.append(to3(pts_out[k:k + 1])[0])
++    tris_g = gid[tris]
++    cons_global = [int(gid[c]) for c in cons_ids]
++    splits_global = [(int(gid[a]), int(gid[b]), [int(gid[j]) for j in js]) for a, b, js in edge_splits_global]
++    return np.asarray(new_xyz).reshape(-1, 3), tris_g, cons_global, splits_global, merged_chain
++
++
++def split_edges_in_triangles(F: np.ndarray, labels: list[str], splits, V: np.ndarray) -> tuple[np.ndarray, list[str]]:
++    """Fan-split every triangle containing edge (a,b) or (b,a) at the given interior points (ordered from a to b)."""
++    if not splits:
++        return F, labels
++    by_edge = {}
++    for a, b, js in splits:
++        by_edge[(a, b)] = [a] + js + [b]; by_edge[(b, a)] = [b] + js[::-1] + [a]
++    out = []; out_lab = []
++    for f, lab in zip(F, labels):
++        f = [int(x) for x in f]; done = False
++        for k in range(3):
++            a, b = f[k], f[(k + 1) % 3]; c = f[(k + 2) % 3]
++            if (a, b) in by_edge:
++                chain = by_edge[(a, b)]
++                for m in range(len(chain) - 1):
++                    out.append((chain[m], chain[m + 1], c)); out_lab.append(lab)
++                done = True; break
++        if not done:
++            out.append(tuple(f)); out_lab.append(lab)
++    return np.asarray(out, dtype=np.int64), out_lab
++
++
++def merge_duplicate_vertices(V: np.ndarray, F: np.ndarray, decimals: int = 9):
++    key = np.round(V, decimals); _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
++    inv = inv.ravel(); remap = np.arange(len(V)); remap = first[inv]
++    F2 = remap[F]; F2 = F2[(F2[:, 0] != F2[:, 1]) & (F2[:, 1] != F2[:, 2]) & (F2[:, 0] != F2[:, 2])]
++    V2, F3 = compact(V, F2)
++    # mapping old id -> new id
++    used, inv2 = np.unique(F2.ravel(), return_inverse=True); new_of = {int(u): k for k, u in enumerate(used)}
++    Fr = remap[F]; keep_mask = (Fr[:, 0] != Fr[:, 1]) & (Fr[:, 1] != Fr[:, 2]) & (Fr[:, 0] != Fr[:, 2])
++    return V2, F3, lambda old: new_of.get(int(remap[old]), -1), keep_mask
++
++
++def project_to_sheet_in_planes(geometry, V: np.ndarray, planes, iters: int = 4, fd: float = 1e-6, tol: float = 1e-9, inside_margin: float = 2e-4) -> np.ndarray:
++    """Newton projection onto |phi| - tau = 0; vertices lying on clip planes move only within their plane(s)."""
++    V = np.asarray(V, dtype=np.float64).copy()
++    normals = np.zeros((len(V), 3, 3)); count = np.zeros(len(V), dtype=int)
++    for _, n, d in planes:
++        on = np.abs(V @ n - d) <= tol
++        for i in np.where(on)[0]:
++            if count[i] < 3:
++                normals[i, count[i]] = n; count[i] += 1
++    for _ in range(iters):
++        f = sheet_level(geometry, V); g = np.zeros_like(V)
++        for k in range(3):
++            e = np.zeros(3); e[k] = fd
++            g[:, k] = (sheet_level(geometry, V + e) - sheet_level(geometry, V - e)) / (2 * fd)
++        for i in np.where(count > 0)[0]:  # remove the plane-normal components (orthonormalized: planes may be oblique)
++            basis = []
++            for c in range(count[i]):
++                nn = normals[i, c].copy()
++                for b in basis:
++                    nn -= (nn @ b) * b
++                if np.linalg.norm(nn) > 1e-9:
++                    basis.append(nn / np.linalg.norm(nn))
++            for b in basis:
++                g[i] -= (g[i] @ b) * b
++        g2 = np.einsum("ij,ij->i", g, g); ok = g2 > 1e-20
++        step = np.zeros_like(V); step[ok] = (f[ok] / g2[ok])[:, None] * g[ok]
++        # interior vertices must stay strictly inside the retained half-spaces (no overshoot through a clip plane)
++        for _, n, d in planes:
++            s_now = V @ n - d; s_new = (V - step) @ n - d
++            cross = (count == 0) & (s_new > -inside_margin) & (s_now < s_new)
++            if cross.any():
++                allowed = (s_now[cross] + inside_margin) / np.maximum(s_now[cross] - s_new[cross], 1e-300)
++                step[cross] *= np.clip(allowed, 0.0, 1.0)[:, None]
++        V -= step
++    return V
++
++
++def collapse_short_boundary_edges(V: np.ndarray, F: np.ndarray, planes, min_len: float, max_passes: int = 10) -> tuple[np.ndarray, np.ndarray, int]:
++    """Collapse boundary (on-plane) edges shorter than min_len by merging the removable endpoint into the other.
++    Vertices lying on two or more clip planes (box edges/corners) are never removed."""
++    V = np.asarray(V, dtype=np.float64).copy(); F = np.asarray(F, dtype=np.int64).copy(); total = 0
++    for _ in range(max_passes):
++        onp = np.zeros(len(V), dtype=int)
++        for _, n, d in planes:
++            onp += (np.abs(V @ n - d) <= 1e-9)
++        edges = _directed_boundary(F)
++        short = [(a, b) for a, b in edges if np.linalg.norm(V[a] - V[b]) < min_len and onp[a] > 0 and onp[b] > 0]
++        if not short:
++            break
++        remap = np.arange(len(V)); touched = set(); done = 0
++        v2t: dict[int, list[int]] = defaultdict(list)
++        for i, f in enumerate(F):
++            for v in f:
++                v2t[int(v)].append(i)
++        N0 = np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]])
++        for a, b in short:
++            if a in touched or b in touched:
++                continue
++            # keep the vertex on more planes; on a tie keep b
++            if onp[a] > onp[b]:
++                keep, drop = a, b
++            else:
++                keep, drop = b, a
++            if onp[drop] >= 2:
++                continue
++            # no fold-over: every surviving triangle around `drop` must keep its orientation
++            ok = True
++            for i in v2t[drop]:
++                f = [keep if int(v) == drop else int(v) for v in F[i]]
++                if len(set(f)) < 3:
++                    continue
++                n1 = np.cross(V[f[1]] - V[f[0]], V[f[2]] - V[f[0]])
++                if n1 @ N0[i] <= 0.2 * np.linalg.norm(n1) * np.linalg.norm(N0[i]):
++                    ok = False; break
++            if not ok:
++                continue
++            remap[drop] = keep; touched.update((a, b)); done += 1
++        if done == 0:
++            break
++        F = remap[F]; F = F[(F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])]
++        V, F = compact(V, F); total += done
++    return V, F, total
++
++
++def resnap_boundary_to_planes(V: np.ndarray, F: np.ndarray, planes, max_dist: float) -> tuple[np.ndarray, int]:
++    """Every boundary vertex of the open sheet must lie on a clip plane; vertices that drifted (remeshing) are moved back onto
++    the nearest plane(s) within max_dist, solving for all selected planes simultaneously (planes need not be orthogonal)."""
++    V = V.copy(); bnd = sorted({v for e in _directed_boundary(F) for v in e}); moved = 0
++    for v in bnd:
++        close = sorted([(abs(V[v] @ n - d), n, d) for _, n, d in planes if abs(V[v] @ n - d) <= max_dist], key=lambda t: t[0])[:3]
++        if not close or close[0][0] <= 1e-12 and len(close) == 1:
++            continue
++        A = np.stack([n for _, n, _ in close]); rhs = np.array([d for _, _, d in close]) - A @ V[v]
++        corr, *_ = np.linalg.lstsq(A, rhs, rcond=None)
++        if np.linalg.norm(corr) > 1e-12:
++            V[v] += corr; moved += 1
++    return V, moved
++
++
++def handle_flat_triangles(geometry, V: np.ndarray, F: np.ndarray, planes, tol: float = 1e-9) -> tuple[np.ndarray, np.ndarray, dict]:
++    """Sheet triangles lying in a clip plane: if the triangle has at least two boundary edges (a boundary 'ear' of three
++    consecutive boundary vertices) it is dropped (the cap covers that area and the chain shortcut is exact); otherwise it
++    is lifted: replaced by a fan around a new vertex pushed inward and projected onto the sheet."""
++    V = np.asarray(V, dtype=np.float64); F = np.asarray(F, dtype=np.int64)
++    flat = np.zeros(len(F), bool); plane_of = np.full(len(F), -1)
++    for k, (_, n, d) in enumerate(planes):
++        m = (np.abs(V[F] @ n - d) <= tol).all(axis=1); plane_of[m & ~flat] = k; flat |= m
++    if not flat.any():
++        return V, F, {"dropped": 0, "lifted": 0}
++    e2f: dict[tuple[int, int], int] = defaultdict(int)
++    for f in F:
++        for a, b in ((0, 1), (1, 2), (0, 2)):
++            e2f[(min(f[a], f[b]), max(f[a], f[b]))] += 1
++    out = []; new_pts = []; dropped = 0; lifted = 0
++    for i, f in enumerate(F):
++        if not flat[i]:
++            out.append(tuple(int(v) for v in f)); continue
++        nb = sum(1 for a, b in ((0, 1), (1, 2), (0, 2)) if e2f[(min(f[a], f[b]), max(f[a], f[b]))] == 1)
++        if nb >= 2:
++            dropped += 1; continue
++        n = planes[plane_of[i]][1]; P = V[f]; edge = np.mean([np.linalg.norm(P[1] - P[0]), np.linalg.norm(P[2] - P[1]), np.linalg.norm(P[0] - P[2])])
++        c = P.mean(axis=0) - 0.35 * edge * n; cid = len(V) + len(new_pts); new_pts.append(c); lifted += 1
++        a, b, cc = (int(v) for v in f); out += [(a, b, cid), (b, cc, cid), (cc, a, cid)]
++    F2 = np.asarray(out, dtype=np.int64)
++    if new_pts:
++        V2 = np.vstack([V, np.asarray(new_pts)]); Vp = project_to_sheet_in_planes(geometry, V2, planes, iters=3); V2[len(V):] = Vp[len(V):]
++    else:
++        V2 = V
++    V2, F2 = compact(V2, F2)
++    return V2, F2, {"dropped": dropped, "lifted": lifted}
++
++
++def flip_flat_triangles(V: np.ndarray, F: np.ndarray, planes, tol: float = 1e-9, max_passes: int = 4) -> tuple[np.ndarray, int]:
++    """A sheet triangle with all three vertices on one clip plane (all three on the boundary polyline) is removed by
++    flipping one of its interior edges with the neighbouring triangle; no vertex is added or removed."""
++    F = np.asarray(F, dtype=np.int64).copy(); flipped = 0
++    onp = [np.abs(V @ n - d) <= tol for _, n, d in planes]
++    for _ in range(max_passes):
++        flat = np.zeros(len(F), bool)
++        for k in range(len(planes)):
++            flat |= onp[k][F].all(axis=1)
++        if not flat.any():
++            break
++        e2f: dict[tuple[int, int], list[int]] = defaultdict(list)
++        for i, f in enumerate(F):
++            for a, b in ((0, 1), (1, 2), (0, 2)):
++                e2f[(min(f[a], f[b]), max(f[a], f[b]))].append(i)
++        done = set(); changed = 0
++        for i in np.where(flat)[0]:
++            if i in done:
++                continue
++            f = [int(v) for v in F[i]]
++            for k in range(3):
++                a, b = f[k], f[(k + 1) % 3]; c = f[(k + 2) % 3]
++                nb = [j for j in e2f[(min(a, b), max(a, b))] if j != i and j not in done]
++                if not nb:
++                    continue
++                j = nb[0]; g = [int(v) for v in F[j]]; d = [v for v in g if v not in (a, b)]
++                if len(d) != 1:
++                    continue
++                d = d[0]
++                if (min(c, d), max(c, d)) in e2f:
++                    continue  # flipping would duplicate an existing edge
++                # flip (a,b) -> (c,d), keeping orientation: triangle i had a->b->c, neighbour has b->a->d
++                F[i] = (c, a, d) if g.index(a) == (g.index(b) + 1) % 3 else (c, d, a)
++                F[j] = (c, d, b) if g.index(a) == (g.index(b) + 1) % 3 else (c, b, d)
++                done.update((i, j)); changed += 1; break
++        flipped += changed
++        if changed == 0:
++            break
++    return F, flipped
++
++
++def remove_nonmanifold_and_flat(V: np.ndarray, F: np.ndarray, planes, max_passes: int = 5) -> tuple[np.ndarray, dict]:
++    """After remeshing: for edges shared by 3+ triangles, drop the smallest-area offenders until every edge has at most
++    two triangles (flat in-plane triangles are handled separately by lift_flat_triangles)."""
++    F = np.asarray(F, dtype=np.int64); dropped_flat = 0; dropped_nm = 0
++    for _ in range(max_passes):
++        e2f: dict[tuple[int, int], list[int]] = defaultdict(list)
++        for i, f in enumerate(F):
++            for a, b in ((0, 1), (1, 2), (0, 2)):
++                e2f[(min(f[a], f[b]), max(f[a], f[b]))].append(i)
++        bad = [fs for fs in e2f.values() if len(fs) > 2]
++        if not bad:
++            break
++        P = V[F]; area = 0.5 * np.linalg.norm(np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0]), axis=1)
++        drop = set()
++        for fs in bad:
++            fs_sorted = sorted(fs, key=lambda i: area[i])
++            drop.update(fs_sorted[:len(fs) - 2])
++        dropped_nm += len(drop); F = F[[i for i in range(len(F)) if i not in drop]]
++    return F, {"dropped_flat": dropped_flat, "dropped_nonmanifold": dropped_nm}
++
++
++def restore_plane_corners(V: np.ndarray, F: np.ndarray, planes, tol: float = 1e-9) -> tuple[np.ndarray, np.ndarray, int]:
++    """A boundary edge whose endpoints lie on different clip planes with no plane in common cuts a box corner/edge line.
++    Insert the line point (projection of the edge midpoint onto both planes) and split the edge, so the boundary chain
++    of each plane is closed through the corner."""
++    V = np.asarray(V, dtype=np.float64).copy(); F = np.asarray(F, dtype=np.int64)
++    onp = np.stack([np.abs(V @ n - d) <= tol for _, n, d in planes], axis=1)
++    splits = []; new_pts = []
++    for a, b in _directed_boundary(F):
++        if (onp[a] & onp[b]).any() or not onp[a].any() or not onp[b].any():
++            continue
++        # pick one plane of a and one of b; corner point = solve for the point closest to the midpoint on both planes
++        ia = int(np.argmax(onp[a])); ib = int(np.argmax(onp[b])); na, da = planes[ia][1], planes[ia][2]; nb, db = planes[ib][1], planes[ib][2]
++        m = 0.5 * (V[a] + V[b])
++        A = np.stack([na, nb]); rhs = np.array([da, db]) - A @ m
++        corr, *_ = np.linalg.lstsq(A, rhs, rcond=None); c = m + corr
++        new_pts.append(c); splits.append((int(a), int(b), [len(V) + len(new_pts) - 1]))
++    if not splits:
++        return V, F, 0
++    V = np.vstack([V, np.asarray(new_pts)])
++    F2, _ = split_edges_in_triangles(F, ["x"] * len(F), splits, V)
++    return V, F2, len(splits)
++
++
++def remesh_sheet(V: np.ndarray, F: np.ndarray, *, size: float, iterations: int = 10, feature_degrees: float = 60.0) -> tuple[np.ndarray, np.ndarray]:
++    """Isotropic explicit remeshing (pymeshlab) of the open sheet surface; boundary vertices stay on the boundary polylines."""
++    import pymeshlab as ml
++    ms = ml.MeshSet(); ms.add_mesh(ml.Mesh(vertex_matrix=np.asarray(V, dtype=np.float64), face_matrix=np.asarray(F, dtype=np.int32)))
++    ms.meshing_isotropic_explicit_remeshing(iterations=int(iterations), targetlen=ml.PureValue(float(size)), featuredeg=float(feature_degrees),
++                                            adaptive=False, selectedonly=False, splitflag=True, collapseflag=True, swapflag=True, smoothflag=True, reprojectflag=True)
++    m = ms.current_mesh(); V2 = np.asarray(m.vertex_matrix(), dtype=np.float64); F2 = np.asarray(m.face_matrix(), dtype=np.int64)
++    return compact(V2, F2)
++
++
++def carrier_active_set(geometry, layout, active_ports, *, samples: int = 48, interior_margin: float = 0.003) -> tuple[np.ndarray, list, dict]:
++    """Mesh-independent active carrier nodes: vertices of every carrier trace triangle that intersects the material band
++    on its face (band = |phi| <= tau, retained side of the cut).  Returns (shell coords, per-face triangle arrays restricted
++    to intersecting triangles, {face: {triangle index: material support point well inside the triangle and the band}})."""
++    shell_coords, _, per_face = carrier_shell(layout, tuple(a for a in active_ports if a != "cut_0"))
++    planes = clip_planes(geometry)
++    bary = np.asarray([(i / samples, j / samples, 1 - (i + j) / samples) for i in range(samples + 1) for j in range(samples + 1 - i)])
++    kept = []; support_points: dict[str, dict[int, np.ndarray]] = {}
++    for src, tris in per_face:
++        keep = np.zeros(len(tris), bool); pts_face: dict[int, np.ndarray] = {}
++        for k, tri in enumerate(tris):
++            P = bary @ shell_coords[tri]; lev = sheet_level(geometry, P); inside = np.ones(len(P), bool)
++            for _, n, d in planes:
++                inside &= (P @ n - d) <= 1e-9
++            # active: a material sample strictly inside the triangle (mesh independent; sample spacing = edge/samples)
++            strict = inside & (lev < 0.0) & (bary.min(axis=1) > interior_margin)
++            if strict.any():
++                keep[k] = True
++                # support point: material sample well inside the triangle and deep in the band (guarantees nonzero weights
++                # on all three vertices, hence stiffness on every active carrier node)
++                tau = -lev[strict]; score = np.minimum(bary[strict].min(axis=1) / 0.33, tau / max(tau.max(), 1e-12))
++                pts_face[k] = P[strict][int(np.argmax(score))]
++        kept.append((src, tris[keep])); support_points[src] = {int(k): v for k, v in pts_face.items()}
++    return shell_coords, kept, support_points
++
++
++def geometric_active_mask(geometry, layout, port) -> np.ndarray:
++    """Boolean mask over port.active_global_carrier_ids (compact order): the mesh-independent active carrier set."""
++    keys = list(layout.global_scalar_node_keys); g2c = dict(port.global_to_compact)
++    lay2c = np.array([g2c.get(str(k), -1) for k in keys]); active = np.zeros(len(port.active_global_carrier_ids), bool)
++    for _, tris in carrier_active_set(geometry, layout, list(port.active_global_port_ids))[1]:
++        for g in np.unique(tris):
++            if lay2c[g] >= 0:
++                active[lay2c[g]] = True
++    return active
++
++
++def clip_port_to_active(port, active: np.ndarray):
++    """Deterministic fringe rule: interpolation weights of fine port nodes on carrier nodes outside the geometric active set
++    are removed and the row renormalized (those weights are tiny: the node lies within the sampling margin of a carrier
++    triangle boundary).  Returns (new FixedPortMap, report)."""
++    from dataclasses import replace
++    from scipy.sparse import csr_matrix, eye, kron
++    Sc = port.scalar_fine_to_carrier.tolil(copy=True); removed_max = 0.0; rows_touched = 0; forced: set[int] = set()
++    for r in range(Sc.shape[0]):
++        cols = Sc.rows[r]; vals = Sc.data[r]
++        bad = [k for k, c in enumerate(cols) if not active[c]]
++        if not bad:
++            continue
++        rows_touched += 1; removed_max = max(removed_max, max(abs(vals[k]) for k in bad))
++        keep = [(c, v) for k, (c, v) in enumerate(zip(cols, vals)) if k not in bad]
++        tot = sum(v for _, v in keep)
++        if tot <= 1e-12:  # whole carrier triangle missed by the sampling: keep the row and activate its columns (reported)
++            forced.update(int(c) for c in cols); continue
++        Sc.rows[r] = [c for c, _ in keep]; Sc.data[r] = [v / tot for _, v in keep]
++    if forced:
++        active = active.copy(); active[list(forced)] = True
++    Sc = csr_matrix(Sc); vec = kron(Sc, eye(3, format="csr"), format="csr")
++    support = np.asarray((Sc != 0).sum(axis=0)).ravel() > 0
++    rep = {"rows_clipped": int(rows_touched), "max_weight_removed": float(removed_max), "active": int(active.sum()), "forced_active": int(len(forced)),
++           "active_unsupported": int((active & ~support).sum()), "supported_inactive": int((support & ~active).sum())}
++    return replace(port, scalar_fine_to_carrier=Sc, fine_to_carrier=vec), active, rep
++
++
++def split_line_t_junctions(V: np.ndarray, F: np.ndarray, labels: list[str], planes, tol: float = 1e-9):
++    """Vertices lying on >= 2 clip planes (box edges, cut lines) that fall strictly inside an edge of a triangle running
++    along the same line split that edge (removes T-junctions between caps built independently)."""
++    onp = np.zeros((len(V), len(planes)), bool)
++    for k, (_, n, d) in enumerate(planes):
++        onp[:, k] = np.abs(V @ n - d) <= tol
++    line_v = np.where(onp.sum(axis=1) >= 2)[0]
++    if not len(line_v):
++        return F, labels, 0
++    splits = {}
++    edges = {}
++    for f in F:
++        for a, b in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2])):
++            if (onp[a] & onp[b]).sum() >= 2:
++                edges[(min(a, b), max(a, b))] = (onp[a] & onp[b])
++    for (a, b), mask in edges.items():
++        cand = line_v[(onp[line_v][:, mask].all(axis=1))]; cand = cand[(cand != a) & (cand != b)]
++        if not len(cand):
++            continue
++        e = V[b] - V[a]; L2 = e @ e; w = V[cand] - V[a]; t = (w @ e) / L2
++        dist = np.linalg.norm(w - np.outer(t, e), axis=1)
++        inner = cand[(dist <= tol) & (t > 1e-9) & (t < 1 - 1e-9)]
++        if len(inner):
++            order = np.argsort(t[(dist <= tol) & (t > 1e-9) & (t < 1 - 1e-9)]); splits[(a, b)] = [int(v) for v in inner[order]]
++    if not splits:
++        return F, labels, 0
++    F2, lab2 = split_edges_in_triangles(F, labels, [(a, b, js) for (a, b), js in splits.items()], V)
++    return F2, lab2, len(splits)
++
++
++def orient_outward(V: np.ndarray, F: np.ndarray) -> np.ndarray:
++    """Make triangle orientation consistent across shared edges (BFS), then flip globally so the volume is positive."""
++    F = F.copy(); nf = len(F)
++    edge_tris: dict[tuple[int, int], list[int]] = defaultdict(list)
++    for i, (a, b, c) in enumerate(F):
++        for e in ((a, b), (b, c), (c, a)):
++            edge_tris[(min(e), max(e))].append(i)
++    seen = np.zeros(nf, bool)
++    for root in range(nf):
++        if seen[root]:
++            continue
++        seen[root] = True; stack = [root]
++        while stack:
++            i = stack.pop(); a, b, c = F[i]
++            for e in ((a, b), (b, c), (c, a)):
++                for j in edge_tris[(min(e), max(e))]:
++                    if seen[j]:
++                        continue
++                    seen[j] = True
++                    # neighbour must traverse the shared edge in the opposite direction
++                    fj = F[j]; dir_j = [(fj[0], fj[1]), (fj[1], fj[2]), (fj[2], fj[0])]
++                    if (e[0], e[1]) in dir_j:
++                        F[j] = fj[[0, 2, 1]]
++                    stack.append(j)
++    if signed_volume(V, F) < 0:
++        F = F[:, [0, 2, 1]]
++    return F
++
++
++@dataclass
++class SheetSurfaceResult:
++    V: np.ndarray
++    F: np.ndarray
++    labels: np.ndarray            # per-triangle label: "tpms_free", "cut_0", or a box face name
++    carrier_nodes: dict[str, dict[int, int]]  # face -> {layout carrier global id: surface vertex id}
++    report: dict = field(default_factory=dict)
++
++
++def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 48, pad: int = 4, smooth: bool = True, project: bool = True,
++                              snap_fraction: float = 0.2, remesh_size: float | None = None, cap_max_area: float | None = None,
++                              quality: str = "q20", port_constraints: dict | None = None, flat_mode: str = "drop", constrain_carrier_edges: bool = True) -> SheetSurfaceResult:
++    """port_constraints: optional {face: (points xyz, segments (pairs into points), keys)} replacing the layout carrier trace
++    (used for multi-cell blocks); keys identify the constraint points in the returned carrier_nodes map."""
++    t0 = time.perf_counter(); report: dict = {}
++    V, F = marching_sheet(geometry, n_per_unit, pad); h = 1.0 / n_per_unit
++    report["marching_cubes"] = {"vertices": int(len(V)), "triangles": int(len(F)), "h": h}
++    if project:
++        V, res0 = project_to_sheet(geometry, V); report["projection"] = {"max_level_residual_before": res0, "max_level_residual_after": float(np.abs(sheet_level(geometry, V)).max())}
++    planes = clip_planes(geometry)
++    for name, n, d in planes:
++        V = snap_near_plane(V, n, d, snap_fraction * h)
++        V, F = clip_by_plane(V, F, n, d)
++    if flat_mode == "drop":
++        flat = np.zeros(len(F), bool)
++        for _, n, d in planes:
++            flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
++        F = F[~flat]; V, F = compact(V, F); report["flat_sheet_triangles"] = {"dropped": int(flat.sum()), "lifted": 0}
++    else:
++        V, F, flat_rep = handle_flat_triangles(geometry, V, F, planes); report["flat_sheet_triangles"] = flat_rep
++    if remesh_size is not None:
++        V0, F0 = V, F
++        try:
++            V, F, ncol = collapse_short_boundary_edges(V, F, planes, 0.5 * remesh_size)
++            V = project_to_sheet_in_planes(geometry, V, planes)
++            report["boundary_collapse"] = {"collapsed": int(ncol), "non_two_manifold_edges_open": watertight_report(F)["non_two_manifold_edges"]}
++            V, F = remesh_sheet(V, F, size=remesh_size)
++            F, clean = remove_nonmanifold_and_flat(V, F, planes)
++            V, nmoved = resnap_boundary_to_planes(V, F, planes, 0.5 * remesh_size)
++            F, clean2 = remove_nonmanifold_and_flat(V, F, planes); V, F = compact(V, F)
++            if flat_mode == "drop":
++                flat = np.zeros(len(F), bool)
++                for _, n, d in planes:
++                    flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
++                F = F[~flat]; V, F = compact(V, F); report["flat_after_remesh"] = {"dropped": int(flat.sum()), "lifted": 0}
++            else:
++                V, F, flat_rep2 = handle_flat_triangles(geometry, V, F, planes); report["flat_after_remesh"] = flat_rep2
++            V, F, ncorner = restore_plane_corners(V, F, planes); V, F, ncorner2 = restore_plane_corners(V, F, planes); ncorner += ncorner2
++            V, F, ncol2 = collapse_short_boundary_edges(V, F, planes, 0.3 * remesh_size)  # tiny boundary edges left by resnap/corners
++            V = project_to_sheet_in_planes(geometry, V, planes, iters=2); report["boundary_collapse_2"] = int(ncol2)
++            report["boundary_resnap"] = int(nmoved); report["post_remesh_cleanup"] = {k: clean[k] + clean2[k] for k in clean}; report["corner_restores"] = int(ncorner)
++            offb = [v for v in {x for e in _directed_boundary(F) for x in e} if not any(abs(V[v] @ n - d) <= 1e-9 for _, n, d in planes)]
++            report["boundary_vertices_off_plane"] = int(len(offb))
++            V = project_to_sheet_in_planes(geometry, V, planes)
++            wt0 = watertight_report(F)
++            report["sheet_remesh"] = {"vertices": int(len(V)), "triangles": int(len(F)), "size": remesh_size,
++                                      "max_level_residual": float(np.abs(sheet_level(geometry, V)).max()), "non_two_manifold_edges_open": wt0["non_two_manifold_edges"]}
++        except Exception as exc:  # fall back to the marching-cubes triangulation
++            V, F = V0, F0; report["sheet_remesh"] = {"failed": str(exc)[:200]}
++    if project:  # re-project the interior vertices after snapping moved a few of them
++        V = project_to_sheet_in_planes(geometry, V, planes, iters=2)
++    report["clipped"] = {"vertices": int(len(V)), "triangles": int(len(F))}
++    labels = ["tpms_free"] * len(F)
++
++    def is_material(P3: np.ndarray) -> np.ndarray:
++        ok = sheet_level(geometry, P3) < 0.0
++        for _, n2, d2 in planes:
++            ok &= (P3 @ n2 - d2) <= 1e-9
++        return ok
++
++    def clipped_level(P3: np.ndarray) -> np.ndarray:
++        """Signed level that is positive outside any retained half-space (used for the material-side test of chain edges)."""
++        lev = sheet_level(geometry, P3)
++        outside = np.zeros(len(P3), bool)
++        for _, n2, d2 in planes:
++            outside |= (P3 @ n2 - d2) > 1e-9
++        return np.where(outside, np.abs(lev) + 1.0, lev)
++
++    active = list(geometry.active_outer_port_sources())
++    if port_constraints is None:
++        shell_coords, per_face, support_points = carrier_active_set(geometry, layout, active)
++        port_constraints = {}; report["active_carrier_nodes"] = {}
++        for src, tris_c in per_face:
++            used = np.unique(tris_c); local = {int(g): k for k, g in enumerate(used)}
++            edges = sorted({(min(local[int(a)], local[int(b)]), max(local[int(a)], local[int(b)])) for f in tris_c for a, b in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2]))})
++            pts = [shell_coords[g] for g in used] + [support_points[src][k] for k in sorted(support_points[src])]
++            keys = [int(g) for g in used] + [-1 - k for k in sorted(support_points[src])]  # negative keys: support points
++            port_constraints[src] = (np.asarray(pts), np.asarray(edges, dtype=np.int64), keys)
++            report["active_carrier_nodes"][src] = int(len(used))
++    carrier_nodes: dict[str, dict[int, int]] = {}; caps = {}
++    for name, n, d in planes:
++        chains, closed = boundary_chains_on_plane(V, F, n, d)
++        if name in port_constraints and len(port_constraints[name][0]):
++            cpts, cedges, ckeys = port_constraints[name]
++            new_xyz, tris_g, cids, splits, merged = triangulate_plane_region(V, chains, closed, n, d, is_material, level_fn=clipped_level, constraint_points=np.asarray(cpts).reshape(-1, 3),
++                                                                       constraint_segments=(np.asarray(cedges).reshape(-1, 2) if (len(cedges) and constrain_carrier_edges) else None), max_area=cap_max_area, quality=quality)
++            carrier_nodes[name] = {g: int(c) for g, c in zip(ckeys, cids) if not (isinstance(g, (int, np.integer)) and int(g) < 0)}
++        elif not chains:
++            caps[name] = {"chains": 0, "open_chains": 0, "triangles": 0, "area": 0.0, "edge_splits": 0}; continue
++        else:
++            poly = _cube_plane_polygon(n, d, tuple(getattr(geometry, "box_max", (1.0, 1.0, 1.0))))
++            segs = np.asarray([(k, (k + 1) % len(poly)) for k in range(len(poly))]) if len(poly) else None
++            new_xyz, tris_g, _, splits, merged = triangulate_plane_region(V, chains, closed, n, d, is_material, level_fn=clipped_level, constraint_points=poly if len(poly) else None,
++                                                                    constraint_segments=segs, max_area=cap_max_area, quality=quality)
++        V = np.vstack([V, new_xyz]) if len(new_xyz) else V
++        F, labels = split_edges_in_triangles(F, labels, splits, V)
++        F = np.vstack([F, tris_g]); labels += [name] * len(tris_g)
++        if merged:  # chain vertices merged inside the cap: merge them on the sheet too
++            rm = np.arange(len(V))
++            for g_old, g_new in merged.items():
++                rm[g_old] = g_new
++            F = rm[F]; ok_tri = (F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2]); F = F[ok_tri]; labels = [l for l, o in zip(labels, ok_tri) if o]
++        P = V[tris_g]; area = 0.5 * np.linalg.norm(np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0]), axis=1).sum() if len(tris_g) else 0.0
++        caps[name] = {"chains": len(chains), "open_chains": int(sum(1 for c in closed if not c)), "triangles": int(len(tris_g)), "area": float(area), "edge_splits": len(splits)}
++    report["caps"] = caps
++    F, labels, nfix = split_line_t_junctions(V, F, labels, planes); report["line_t_junction_splits"] = int(nfix)
++    labels_arr = np.asarray(labels)
++    V, F, remap, keep_mask = merge_duplicate_vertices(V, F); labels_arr = labels_arr[keep_mask]; report["degenerate_triangles_dropped"] = int((~keep_mask).sum())
++    carrier_nodes = {face: {g: remap(c) for g, c in m.items()} for face, m in carrier_nodes.items()}
++    F = orient_outward(V, F)
++    wt = watertight_report(F); report["watertight"] = wt
++    if wt["non_two_manifold_edges"]:
++        e2f = defaultdict(list)
++        for i, f in enumerate(F):
++            for a, b in ((0, 1), (1, 2), (0, 2)):
++                e2f[(min(f[a], f[b]), max(f[a], f[b]))].append(i)
++        bad = [(e, [labels_arr[i] for i in fs]) for e, fs in e2f.items() if len(fs) != 2]
++        report["non_manifold_examples"] = [{"edge": [int(e[0]), int(e[1])], "count": len(l), "labels": l, "xyz": V[list(e)].round(6).tolist()} for e, l in bad[:12]]
++    if smooth and wt["non_two_manifold_edges"] == 0:
++        sheet = np.where(labels_arr == "tpms_free")[0]
++        on_plane = np.zeros(len(V), bool)
++        for _, n, d in planes:
++            on_plane |= np.abs(V @ n - d) <= 1e-9
++        near_plane = np.zeros(len(V), bool)
++        for _, n, d in planes:
++            near_plane |= np.abs(V @ n - d) <= (0.3 * remesh_size if remesh_size else 0.3 / n_per_unit)
++        Vs, moved, crease = smooth_on_polyhedron(V, F[sheet], frozen=on_plane | near_plane)
++        V = Vs; report["sheet_smoothing"] = {"moved": int(moved), "crease_vertices": int(np.asarray(crease).sum()), "frozen_plane_vertices": int(on_plane.sum()), "frozen_near_plane": int((near_plane & ~on_plane).sum())}
++        flat = np.zeros(len(F), bool)
++        for _, n, d in planes:
++            flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
++        flat &= labels_arr == "tpms_free"; report["flat_after_smoothing"] = int(flat.sum())
++        if flat.any():  # lift them (fan around an inward vertex); labels follow
++            keep_idx = np.where(~flat)[0]; Fk = F[keep_idx]; Lk = labels_arr[keep_idx]
++            Vl, Fl, _ = handle_flat_triangles(geometry, V, F[flat], planes)  # returns compacted V/F for the flat subset
++            # rebuild: handle_flat_triangles compacts; redo manually to keep ids stable
++            out = []; new_pts = []
++            for f in F[flat]:
++                pl = next(k for k, (_, n, d) in enumerate(planes) if (np.abs(V[f] @ n - d) <= 1e-9).all()); n = planes[pl][1]
++                P = V[f]; edge = np.mean([np.linalg.norm(P[1] - P[0]), np.linalg.norm(P[2] - P[1]), np.linalg.norm(P[0] - P[2])])
++                cid = len(V) + len(new_pts); new_pts.append(P.mean(axis=0) - 0.35 * edge * n)
++                a, b, cc = (int(v) for v in f); out += [(a, b, cid), (b, cc, cid), (cc, a, cid)]
++            V = np.vstack([V, np.asarray(new_pts)]); Vp = project_to_sheet_in_planes(geometry, V, planes, iters=3); V[len(V) - len(new_pts):] = Vp[len(V) - len(new_pts):]
++            F = np.vstack([Fk, np.asarray(out, dtype=np.int64)]); labels_arr = np.concatenate([Lk, np.array(["tpms_free"] * len(out))])
++    outside = np.zeros(len(V), bool)
++    for _, n, d in planes:
++        outside |= (V @ n - d) > 1e-12
++    report["vertices_outside_box"] = int(outside.sum())
++    from .conforming_port_mesh import tri_quality
++    if len(F) == 0:
++        raise ValueError("sheet solid surface is empty: the cell has no material at this resolution (use finer n_per_unit / remesh_size)")
++    q = tri_quality(V, F); report["surface_quality"] = {"min": float(q.min()), "p01": float(np.quantile(q, 0.01)), "below_0.3": int((q < 0.3).sum()), "triangles": int(len(F))}
++    report["surface_quality_by_label"] = {lab: {"min": float(q[labels_arr == lab].min()), "below_0.3": int((q[labels_arr == lab] < 0.3).sum()), "n": int((labels_arr == lab).sum())}
++                                          for lab in sorted(set(labels_arr.tolist())) if (labels_arr == lab).any()}
++    report["volume"] = float(signed_volume(V, F)); report["seconds"] = time.perf_counter() - t0
++    report["active_ports"] = [a for a in active if caps.get(a, {}).get("triangles", 0) > 0]
++    return SheetSurfaceResult(V=V, F=F, labels=labels_arr, carrier_nodes=carrier_nodes, report=report)
++
++
++def write_off(path: Path, V: np.ndarray, F: np.ndarray) -> None:
++    with open(path, "w") as fh:
++        fh.write(f"OFF\n{len(V)} {len(F)} 0\n"); np.savetxt(fh, V, fmt="%.17g"); np.savetxt(fh, np.column_stack([np.full(len(F), 3), F]), fmt="%d")
++
++
++@dataclass
++class SheetMeshResult:
++    mesh_path: Path
++    node_count: int
++    tet_count: int
++    material_volume: float
++    min_dihedral_degrees: float
++    tets_below_5deg: int
++    tets_below_10deg: int
++    seconds: float
++    carrier_nodes_preserved: int
++
++
++def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior_size_max: float = 0.05, algorithm3d: int = 10,
++                     netgen_optimize: bool = True, optimize_passes: int = 2, threads: int = 8) -> SheetMeshResult:
++    import gmsh
++    t0 = time.perf_counter(); V, F, labels = surface.V, surface.F, surface.labels
++    gmsh.initialize(); gmsh.option.setNumber("General.Terminal", 0); gmsh.logger.start()
++    try:
++        gmsh.model.add("sheet_solid")
++        node_tag = {}; tag_count = 0
++        surf_tags = []
++        for k, lab in enumerate(sorted(set(labels.tolist()))):
++            tris = F[labels == lab]; tag = k + 1; gmsh.model.addDiscreteEntity(2, tag)
++            used = np.unique(tris); new_ids = []; new_xyz = []
++            for v in used:
++                if int(v) not in node_tag:
++                    tag_count += 1; node_tag[int(v)] = tag_count; new_ids.append(tag_count); new_xyz.extend(V[v].tolist())
++            if new_ids:
++                gmsh.model.mesh.addNodes(2, tag, new_ids, new_xyz)
++            gmsh.model.mesh.addElementsByType(tag, 2, [], [node_tag[int(v)] for f in tris for v in f]); surf_tags.append(tag)
++        loop = gmsh.model.geo.addSurfaceLoop(surf_tags); gmsh.model.geo.addVolume([loop]); gmsh.model.geo.synchronize()
++        gmsh.option.setNumber("Mesh.Algorithm3D", algorithm3d); gmsh.option.setNumber("Mesh.MeshSizeMax", interior_size_max)
++        gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1); gmsh.option.setNumber("Mesh.Optimize", 1)
++        gmsh.option.setNumber("Mesh.OptimizeThreshold", 0.3); gmsh.option.setNumber("General.NumThreads", threads)
++        gmsh.option.setNumber("Mesh.OptimizeNetgen", 1 if netgen_optimize else 0)
++        gmsh.model.mesh.generate(3)
++        for _ in range(optimize_passes):
++            gmsh.model.mesh.optimize("", niter=1)
++        if netgen_optimize:
++            gmsh.model.mesh.optimize("Netgen", niter=2)
++        ntags, nxyz, _ = gmsh.model.mesh.getNodes(); nxyz = np.asarray(nxyz).reshape(-1, 3)
++        order = {int(t): i for i, t in enumerate(ntags)}
++        _, _, enodes = gmsh.model.mesh.getElements(3); log = gmsh.logger.get(); gmsh.logger.stop()
++        if not enodes or len(enodes[0]) == 0:
++            raise RuntimeError("Gmsh produced no tetrahedra; log tail: " + " | ".join(log[-12:]))
++        tets = np.vectorize(order.get)(np.asarray(enodes[0]).reshape(-1, 4))
++        preserved = 0
++        for face, m in surface.carrier_nodes.items():
++            for g, vid in m.items():
++                if int(vid) < 0 or int(vid) not in node_tag:
++                    continue
++                i = order[node_tag[int(vid)]]
++                if np.allclose(nxyz[i], V[vid], atol=1e-12):
++                    preserved += 1
++                else:
++                    raise RuntimeError(f"Gmsh moved carrier node {g} on {face}")
++    finally:
++        gmsh.finalize()
++    P = nxyz[tets]; vol = np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0])) / 6.0
++    neg = vol < 0; tets[neg, 1], tets[neg, 2] = tets[neg, 2].copy(), tets[neg, 1].copy(); vol = np.abs(vol)
++    dih = _min_dihedral(nxyz, tets)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++    with open(output_path, "w") as fh:
++        fh.write("MeshVersionFormatted 2\nDimension 3\n")
++        fh.write(f"Vertices\n{len(nxyz)}\n"); np.savetxt(fh, np.column_stack([nxyz, np.zeros(len(nxyz), int)]), fmt="%.17g %.17g %.17g %d")
++        fh.write(f"Tetrahedra\n{len(tets)}\n"); np.savetxt(fh, np.column_stack([tets + 1, np.ones(len(tets), int)]), fmt="%d %d %d %d %d")
++        fh.write("End\n")
++    return SheetMeshResult(mesh_path=output_path, node_count=int(len(nxyz)), tet_count=int(len(tets)), material_volume=float(vol.sum()),
++                           min_dihedral_degrees=float(dih.min()), tets_below_5deg=int((dih < 5).sum()), tets_below_10deg=int((dih < 10).sum()),
++                           seconds=time.perf_counter() - t0, carrier_nodes_preserved=preserved)
+-- 
+2.34.1
+

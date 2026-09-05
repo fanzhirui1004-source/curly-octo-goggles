@@ -177,7 +177,7 @@ def tri_quality(V,T):
 def normals(V,T):
     Pp=V[T]; n=np.cross(Pp[:,1]-Pp[:,0],Pp[:,2]-Pp[:,0]); l=np.linalg.norm(n,axis=1); return n/np.maximum(l,1e-300)[:,None]
 
-def smooth_on_polyhedron(V0: np.ndarray, T: np.ndarray, iters: int = 20, step: float = 0.6, q_thresh: float = 0.6, knn: int = 16):
+def smooth_on_polyhedron(V0: np.ndarray, T: np.ndarray, iters: int = 20, step: float = 0.6, q_thresh: float = 0.6, knn: int = 16, frozen: np.ndarray | None = None):
     V=V0.copy(); Pp=V0[T]; tree=cKDTree(Pp.mean(1)); A0,B0,C0=Pp[:,0],Pp[:,1],Pp[:,2]
     nbr=defaultdict(set); v2t=defaultdict(list)
     for ti,f in enumerate(T):
@@ -197,7 +197,7 @@ def smooth_on_polyhedron(V0: np.ndarray, T: np.ndarray, iters: int = 20, step: f
         q=tri_quality(V,T); cand=sorted(set(int(u) for ti in np.where(q<q_thresh)[0] for u in T[ti]))
         Vn=V.copy(); ch=0
         for i in cand:
-            if crease[i] or not nbr[i]: continue
+            if crease[i] or not nbr[i] or (frozen is not None and frozen[i]): continue
             nb=list(nbr[i]); target=V[nb].mean(0); d=target-V[i]
             # tangential component w.r.t. vertex normal (area-weighted incident normals)
             inc=v2t[i]; n=N[inc].mean(0); n/=max(np.linalg.norm(n),1e-300); d=d-(d@n)*n

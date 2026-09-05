@@ -101,18 +101,32 @@ def pardiso_fixed_port_schur(stiffness: csr_matrix, node_count: int, port_node_i
     Kqq = Kc[:q, :q].toarray(); Kqi = Kc[:q, q:].tocsr(); Kii = Kc[q:, q:].tocsr()
     solver = pypardiso.PyPardisoSolver(); solver.set_iparm(1, 1); solver.set_iparm(2, 3); solver.factorize(Kii)
     S = Kqq.copy(); B = Kqi.T.tocsc()
-    for c0 in range(0, q, column_chunk_size):
-        S[:, c0:c0 + column_chunk_size] -= Kqi @ solver.solve(Kii, B[:, c0:c0 + column_chunk_size].toarray())
+    # carrier columns without fine support (geometrically active nodes the mesh never touches, plus every inactive node
+    # of the layout) have an all-zero coupling column: their Schur correction is exactly zero, so only the supported
+    # columns are solved for (on the true sheet geometry this is about a third of the layout columns).
+    supported = np.where(B.getnnz(axis=0) > 0)[0]
+    for c0 in range(0, len(supported), column_chunk_size):
+        cols = supported[c0:c0 + column_chunk_size]
+        S[:, cols] -= Kqi @ solver.solve(Kii, B[:, cols].toarray())
     solver.free_memory(everything=True)
     return S
 
 
-def dense_fixed_port_schur(mesh: MeshArtifact, port: FixedPortMap, *, element: str, workers: int = 8, column_chunk_size: int = 128,
-                           pardiso_above: int = 1_000_000) -> tuple[np.ndarray, dict[str, float]]:
+def pardiso_available() -> bool:
+    try:
+        import pypardiso  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+def dense_fixed_port_schur(mesh: MeshArtifact, port: FixedPortMap, *, element: str, workers: int = 8, column_chunk_size: int = 1024,
+                           pardiso_above: int = 0) -> tuple[np.ndarray, dict[str, float]]:
     """Exact dense fixed-carrier Schur (q x q) with Tet4 or Tet10 displacement.
 
-    The internal block is factorized by SuperLU (chunked_fixed_carrier_schur) up to ``pardiso_above`` internal dof and by
-    MKL Pardiso above it (SuperLU runs out of memory near 2M dof).
+    The internal block is factorized by MKL Pardiso whenever the internal dof count exceeds ``pardiso_above`` (default 0:
+    always) and pypardiso is importable; otherwise by SuperLU (chunked_fixed_carrier_schur). Benchmark on G0 k=1
+    (386k Tet10 dof, q=4614): SuperLU 718 s factor + 2222 s solve, Pardiso 3 s + 30 s (chunk 1024), max |dS|/max|S| = 4e-14.
     """
 
     timing: dict[str, float] = {}
@@ -135,7 +149,7 @@ def dense_fixed_port_schur(mesh: MeshArtifact, port: FixedPortMap, *, element: s
     timing["assembly"] = time.perf_counter() - started
     q = 3 * len(port.active_global_carrier_ids)
     internal_dof = 3 * (node_count - len(port_nodes))
-    if internal_dof > int(pardiso_above):
+    if internal_dof > int(pardiso_above) and pardiso_available():
         schur = pardiso_fixed_port_schur(stiffness, node_count, tuple(int(v) for v in port_nodes), vector, q, column_chunk_size)
         timing["solver"] = 2.0  # 2 = mkl_pardiso
     else:
@@ -230,5 +244,5 @@ def compare_operators(S_a: np.ndarray, S_b: np.ndarray, norms: CarrierNorms) -> 
 
 __all__ = [
     "CarrierNorms", "Tet10Promotion", "build_carrier_norms", "carrier_mass_and_laplacian",
-    "compare_operators", "dense_fixed_port_schur", "pardiso_fixed_port_schur", "promote_mesh_artifact_to_tet10",
+    "compare_operators", "dense_fixed_port_schur", "pardiso_available", "pardiso_fixed_port_schur", "promote_mesh_artifact_to_tet10",
 ]

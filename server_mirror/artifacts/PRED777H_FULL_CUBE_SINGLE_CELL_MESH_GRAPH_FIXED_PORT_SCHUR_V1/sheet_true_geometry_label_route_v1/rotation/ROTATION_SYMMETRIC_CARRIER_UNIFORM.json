@@ -1,0 +1,113 @@
+{
+ "manifest": "/root/autodl-tmp/_claude_diag/population/cells/pop_anchor_rho20/geometry_material_manifest.json",
+ "results": {
+  "INV": {
+   "symmetry": "INV",
+   "det": -1,
+   "matrix": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "q_original": 5544,
+   "q_rotated": 5544,
+   "active_set_mismatch": 0,
+   "only_original_nodes": 0,
+   "only_original_max_row_norm_rel": 0.0,
+   "only_rotated_nodes": 0,
+   "only_rotated_max_row_norm_rel": 0.0,
+   "raw_frobenius": 0.08077575051868846,
+   "whitened_frobenius": 0.08966250490191363,
+   "lowfreq_frobenius": 0.008069670371407166,
+   "lowfreq_energy_ratio_p50": 4.816496997772646e-05,
+   "lowfreq_energy_ratio_p95abs": 0.002332013672136979,
+   "lowfreq_energy_ratio_max_abs": 0.0059523879990659445,
+   "lowfreq_mode_count": 846.0,
+   "common_nodes": 1848
+  },
+  "R05": {
+   "symmetry": "R05",
+   "det": 1,
+   "matrix": [
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     1,
+     0,
+     0
+    ]
+   ],
+   "q_original": 5544,
+   "q_rotated": 5544,
+   "active_set_mismatch": 0,
+   "only_original_nodes": 0,
+   "only_original_max_row_norm_rel": 0.0,
+   "only_rotated_nodes": 0,
+   "only_rotated_max_row_norm_rel": 0.0,
+   "raw_frobenius": 0.08167701343913686,
+   "whitened_frobenius": 0.09075868950334673,
+   "lowfreq_frobenius": 0.007753561983859472,
+   "lowfreq_energy_ratio_p50": 6.37634485644023e-05,
+   "lowfreq_energy_ratio_p95abs": 0.0023700770023481754,
+   "lowfreq_energy_ratio_max_abs": 0.009456686919733337,
+   "lowfreq_mode_count": 846.0,
+   "common_nodes": 1848
+  },
+  "M01": {
+   "symmetry": "M01",
+   "det": -1,
+   "matrix": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     0,
+     -1,
+     0
+    ]
+   ],
+   "q_original": 5544,
+   "q_rotated": 5544,
+   "active_set_mismatch": 0,
+   "only_original_nodes": 0,
+   "only_original_max_row_norm_rel": 0.0,
+   "only_rotated_nodes": 0,
+   "only_rotated_max_row_norm_rel": 0.0,
+   "raw_frobenius": 0.08227723664486836,
+   "whitened_frobenius": 0.0912309444111028,
+   "lowfreq_frobenius": 0.008064963002368506,
+   "lowfreq_energy_ratio_p50": 2.889632333136216e-05,
+   "lowfreq_energy_ratio_p95abs": 0.0023572129872251324,
+   "lowfreq_energy_ratio_max_abs": 0.009752692927262996,
+   "lowfreq_mode_count": 846.0,
+   "common_nodes": 1848
+  }
+ }
+}

@@ -1,0 +1,77 @@
+{
+ "manifest": "/root/autodl-tmp/_claude_diag/population/cells/pop_cut_0003/geometry_material_manifest.json",
+ "results": {
+  "INV": {
+   "symmetry": "INV",
+   "det": -1,
+   "matrix": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "q_original": 7014,
+   "q_rotated": 7023,
+   "active_set_mismatch": 3,
+   "only_original_nodes": 0,
+   "only_original_max_row_norm_rel": 0.0,
+   "only_rotated_nodes": 3,
+   "only_rotated_max_row_norm_rel": 0.0,
+   "raw_frobenius": 0.2007670388629984,
+   "whitened_frobenius": 0.20635886068462253,
+   "lowfreq_frobenius": 0.02753025636393527,
+   "lowfreq_energy_ratio_p50": -0.010418918130105759,
+   "lowfreq_energy_ratio_p95abs": 0.021051264183311037,
+   "lowfreq_energy_ratio_max_abs": 0.030398848257979783,
+   "lowfreq_mode_count": 1080.0,
+   "common_nodes": 2338
+  },
+  "R05": {
+   "symmetry": "R05",
+   "det": 1,
+   "matrix": [
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     1,
+     0,
+     0
+    ]
+   ],
+   "q_original": 7014,
+   "q_rotated": 7026,
+   "active_set_mismatch": 4,
+   "only_original_nodes": 0,
+   "only_original_max_row_norm_rel": 0.0,
+   "only_rotated_nodes": 4,
+   "only_rotated_max_row_norm_rel": 0.0,
+   "raw_frobenius": 0.20550946417219637,
+   "whitened_frobenius": 0.20881067121825636,
+   "lowfreq_frobenius": 0.028177858420839346,
+   "lowfreq_energy_ratio_p50": -0.010730738558366093,
+   "lowfreq_energy_ratio_p95abs": 0.02123267320804295,
+   "lowfreq_energy_ratio_max_abs": 0.030290098750047623,
+   "lowfreq_mode_count": 1086.0,
+   "common_nodes": 2338
+  }
+ }
+}

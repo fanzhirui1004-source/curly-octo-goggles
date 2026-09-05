@@ -1,0 +1,1274 @@
+From 3b0959dc8dd2bc86db95a06238c4a79962b1665e Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 03:12:28 +0800
+Subject: [PATCH 04/22] Sheet label production command, unit tests, and a
+ carrier-map defect fix
+
+- produce_sheet_label.py: create-only label directory, resolution presets (fast/production/reference), carrier 1/32,
+  fail-closed on empty cells (status EMPTY, no operator), on port support escaping the geometric active set, on a rigid
+  residual above 1e-10 and on a negative eigenvalue; writes the operator on the active set together with carrier ids,
+  coordinates, port membership, rigid basis, and the carrier mass and Laplace-Beltrami matrices the training loss needs,
+  plus SHA-256 receipts recording the git head, resolution and execution settings.
+- Reproducibility: geometry is byte-identical across repeats and thread counts; the operator is byte-identical at a
+  fixed thread count and agrees to 2e-14 across thread counts (MKL summation order), so the receipt pins the threads.
+- test_sheet_solid_surface.py (5 tests) covers the level set, plane clipping with shared cut vertices, the constrained
+  Newton projection, watertightness plus the published density law, and the geometric active carrier set. It caught a
+  defect: the carrier-node to surface-vertex map was built before fragment removal and vertex merging renumbered the
+  vertices, so the mesher preservation check tested the wrong vertices. The map is now rebuilt by coordinate and is the
+  cap conformity certificate (G0: 1086 carrier nodes on the surface, all preserved exactly by Gmsh). Labels were not
+  affected: the port map is compiled geometrically from the mesh.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X77H1Uihff2oEyM5T4qg7v
+---
+ .../STEP3_REPORT.md                           |  42 +++-
+ .../production/G0_fix1_RECEIPT.json           | 194 ++++++++++++++++++
+ .../production/G0_fix2_RECEIPT.json           | 194 ++++++++++++++++++
+ .../production/G1_prod_RECEIPT.json           | 188 +++++++++++++++++
+ .../production/G2_empty_RECEIPT.json          |  38 ++++
+ .../production/G3_prod_RECEIPT.json           | 185 +++++++++++++++++
+ .../produce_sheet_label.py                    | 189 +++++++++++++++++
+ .../sheet_solid_surface.py                    |  18 +-
+ .../test_sheet_solid_surface.py               | 102 +++++++++
+ 9 files changed, 1144 insertions(+), 6 deletions(-)
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix1_RECEIPT.json
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix2_RECEIPT.json
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G1_prod_RECEIPT.json
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G2_empty_RECEIPT.json
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G3_prod_RECEIPT.json
+ create mode 100644 scripts/pred777h_full_cube_v1/produce_sheet_label.py
+ create mode 100644 tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP3_REPORT.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP3_REPORT.md
+index 066d871..dcea64b 100644
+--- a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP3_REPORT.md
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP3_REPORT.md
+@@ -103,15 +103,47 @@ resolutions (it was 1-2.5% with collars). Everything else is the P1 constraint o
+ by 3-4x when the carrier goes from 1/16 to 1/32. A few carrier nodes per block are active but tied to no fine node
+ (3 at 1/32, 7 at 1/16); they carry zero stiffness and are dropped at assembly.
+ 
+-## 6. Open items before production
++## 6. Production command and reproducibility (2026-09-04)
++`scripts/pred777h_full_cube_v1/produce_sheet_label.py --case-id ... --geometry-manifest ... --output-dir ... [--resolution fast|production|reference]`
++
++- create-only output; presets fast (surface 1/48, remesh 0.03, interior 0.05), production (1/64, 0.02, 0.04),
++  reference (1/96, 0.015, 0.03); carrier 1/32; Gmsh Delaunay by default.
++- fail-closed: material volume below 1e-6 -> status EMPTY and no operator; port support outside the geometric active
++  set, rigid residual above 1e-10, or min eigenvalue below -1e-8 lambda_max -> error.
++- writes `FIXED_PORT_SCHUR_TET10.npz` with the operator on the active set, carrier ids / coordinates / port membership,
++  the rigid basis, the carrier mass and Laplace-Beltrami matrices (the training loss needs them) and the material
++  volume; `mesh.mesh`; `SHEET_SOLID_SURFACE.off`; SHA-256 receipts in `LABEL_RECEIPT.{json,md}` with the git head, the
++  resolution and the execution settings (thread counts).
++- measured on G0: fast 161 s (surface+mesh 13 s, port 29 s, Schur 81 s), production 298 s on G3, 120 s on G1 (rho 0.11).
++- certificates on every label so far: partition of unity 0.0, affine 1e-16, rigid residual 3e-15 to 1.2e-14,
++  min eigenvalue > -2.1e-17.
++
++Reproducibility (item 5):
++
++| repeat | mesh.mesh | surface OFF | operator npz |
++|---|---|---|---|
++| same settings, same threads | identical | identical | identical |
++| 8 vs 4 threads | identical | identical | differ in bytes, agree to 2.1e-14 |
++
++The geometry is fully deterministic; only the Schur back-substitution depends on MKL's summation order, so the receipt
++records the thread counts. MKL_CBWR=COMPATIBLE does not make the operator byte-identical across thread counts (the
++chunked BLAS products are affected too); pin the thread count if byte-level reproduction is required.
++
++A defect the new unit tests (`tests/pred777h_full_cube_v1/test_sheet_solid_surface.py`, 5 tests) caught: the carrier
++node -> surface vertex map was built before fragment removal and vertex merging renumbered the vertices, so the
++"Gmsh moved a carrier node" check was verifying the wrong vertices. The map is now rebuilt by coordinate after every
++topology change and is the cap conformity certificate: on G0, 1086 carrier nodes lie on the surface and all 1086 keep
++their exact coordinates through the volume mesher. Labels were not affected (the port map is compiled geometrically).
++
++## 7. Open items before production
+ 1. DONE (2026-09-04): the active set is a superset of every mesher's support; P is unmodified; rigid residual 1e-14.
+ 2. DONE for G1/G3/G4 (table in section 4). G5 fails at the two finer settings; make the surface pipeline robust on
+    near-degenerate cells (rho ~ 0.02 and below) and then finish its convergence row.
+ 3. Census over the full population, not just the 16 pilot cells; redefine the strata (the near-empty stratum is gone,
+    an EMPTY class appears) and pick new representative cases.
+-4. Sheet-route production command (create-only, SHA-256 receipts, rigid/PSD checks) and its determinism proof
+-   (pymeshlab remeshing and the Triangle subprocess must give byte-identical repeats).
+-5. Cap-triangle quality: 50-230 tets below 5 degrees per cell; measure the effect on the operator.
+-6. Export the carrier mass and Laplace-Beltrami matrices with every label (the NN loss needs them).
++4. DONE (2026-09-04): `produce_sheet_label.py`, section 6.
++5. DONE (2026-09-04): determinism table in section 6.
++5b. Cap-triangle quality: 50-230 tets below 5 degrees per cell; measure the effect on the operator.
++6. DONE (2026-09-04): the carrier mass and Laplace-Beltrami matrices ship inside every label npz.
+ 7. A 2x2x2 assembly check.
+ 8. MMG (Gmsh Algorithm3D=7) fails on sheet surfaces ("unable to set tetrahedron"); HXT and Delaunay are the production pair.
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix1_RECEIPT.json b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix1_RECEIPT.json
+new file mode 100644
+index 0000000..7b4ccd0
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix1_RECEIPT.json
+@@ -0,0 +1,194 @@
++{
++ "case_id": "G0",
++ "geometry_manifest": "/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/science_pilot16_v1/samples/science_00_BALANCED_00_00/geometry_material_manifest.json",
++ "git_head": "3c6a76cdd21a20c437f252f285b407e52252ce5d",
++ "resolution": {
++  "preset": "fast",
++  "n_per_unit": 48,
++  "remesh_size": 0.03,
++  "size_max": 0.05,
++  "carrier_n": 32,
++  "algorithm3d": 1
++ },
++ "execution": {
++  "workers": 8,
++  "threads": 8,
++  "column_chunk": 1024,
++  "omp_num_threads": "8",
++  "mkl_cbwr": null
++ },
++ "contract": "SHEET_SOLID_NO_COLLAR",
++ "timing": {
++  "empty_screen": 0.8875545673072338,
++  "surface_and_mesh": 12.827842880040407,
++  "fixed_port": 28.986946154385805,
++  "schur": 80.7356269583106,
++  "total": 160.96656381711364
++ },
++ "geometry": {
++  "spec_hash": "27392bf44dda74c9ca30d718ec0be7e8edd1b540919cc1cb9dd14e6a49115dd5",
++  "tau_corners": [
++   0.4,
++   0.40625,
++   0.4,
++   0.40625,
++   0.39375,
++   0.4,
++   0.39375,
++   0.4
++  ],
++  "cut_plane": null,
++  "material_volume_estimate": 0.2283603515625
++ },
++ "surface": {
++  "marching_cubes": {
++   "vertices": 23116,
++   "triangles": 45000,
++   "h": 0.020833333333333332
++  },
++  "projection": {
++   "max_level_residual_before": 0.0021000477846523924,
++   "max_level_residual_after": 1.4988010832439613e-15
++  },
++  "flat_sheet_triangles": {
++   "dropped": 36,
++   "lifted": 0
++  },
++  "boundary_collapse": {
++   "collapsed": 446,
++   "non_two_manifold_edges_open": 712
++  },
++  "flat_after_remesh": {
++   "dropped": 0,
++   "lifted": 0
++  },
++  "boundary_collapse_2": 0,
++  "boundary_resnap": 0,
++  "post_remesh_cleanup": {
++   "dropped_flat": 0,
++   "dropped_nonmanifold": 0
++  },
++  "corner_restores": 0,
++  "boundary_vertices_off_plane": 0,
++  "sheet_remesh": {
++   "vertices": 5980,
++   "triangles": 11366,
++   "size": 0.03,
++   "max_level_residual": 1.3877787807814457e-15,
++   "non_two_manifold_edges_open": 610
++  },
++  "clipped": {
++   "vertices": 5980,
++   "triangles": 11366
++  },
++  "active_carrier_nodes": {
++   "box_x_max": 313,
++   "box_x_min": 321,
++   "box_y_max": 309,
++   "box_y_min": 310,
++   "box_z_max": 312,
++   "box_z_min": 316
++  },
++  "line_t_junction_splits": 0,
++  "degenerate_triangles_dropped": 0,
++  "components": {
++   "components": 1,
++   "dropped": 0,
++   "dropped_area": 0.0
++  },
++  "watertight": {
++   "edges": 31236,
++   "non_two_manifold_edges": 0
++  },
++  "vertices_outside_box": 0,
++  "surface_quality": {
++   "min": 0.00034008583033279325,
++   "p01": 0.11413531661993935,
++   "below_0.3": 1569,
++   "triangles": 20824
++  },
++  "carrier_nodes_on_surface": {
++   "box_x_max": 180,
++   "box_x_min": 182,
++   "box_y_max": 181,
++   "box_y_min": 180,
++   "box_z_max": 183,
++   "box_z_min": 180
++  },
++  "carrier_nodes_not_on_surface": 795,
++  "volume": 0.2287926623765689,
++  "seconds": 6.6728321723639965,
++  "active_ports": [
++   "box_x_min",
++   "box_x_max",
++   "box_y_min",
++   "box_y_max",
++   "box_z_min",
++   "box_z_max"
++  ]
++ },
++ "mesh": {
++  "mesh_path": "/root/autodl-tmp/_claude_diag/sheet/prod/G0_fix1/mesh.mesh",
++  "node_count": 13711,
++  "tet_count": 47067,
++  "material_volume": 0.22879266237656906,
++  "min_dihedral_degrees": 0.022311814458845447,
++  "tets_below_5deg": 188,
++  "tets_below_10deg": 675,
++  "seconds": 6.107590902596712,
++  "carrier_nodes_preserved": 1086
++ },
++ "fixed_port": {
++  "carrier_scalar_nodes": 6146,
++  "active_carrier_nodes": 1881,
++  "q_active": 5643,
++  "fine_port_nodes": 5034,
++  "active_set_check": {
++   "active": 1881,
++   "support": 1731,
++   "support_outside_active": 0,
++   "active_without_support": 150
++  },
++  "active_ports": [
++   "box_x_max",
++   "box_x_min",
++   "box_y_max",
++   "box_y_min",
++   "box_z_max",
++   "box_z_min"
++  ],
++  "partition_of_unity_error": 0.0,
++  "affine_reproduction_error": 1.2412670766236366e-16,
++  "deterministic_replay_sha256": "a22775b1c44d65df311643aa708d48a4dcb0720013a0f090e8b0da7483d3f663"
++ },
++ "schur_timing": {
++  "tet10_promotion": 1.0285479426383972,
++  "assembly": 5.290108975023031,
++  "solver": 2.0,
++  "schur_total": 76.60703326389194,
++  "fine_dof": 254715.0,
++  "internal_dof": 197766.0
++ },
++ "schur": {
++  "q_active": 5643,
++  "rigid_residual_relative": 9.384525728138386e-15,
++  "min_eigenvalue": -2.0590414708905246e-17,
++  "max_eigenvalue": 0.047633946608657995,
++  "inactive_block_max": 0.0
++ },
++ "outputs": {
++  "mesh.mesh": {
++   "path": "mesh.mesh",
++   "sha256": "85af1ee242d4570af2ca3b837be0e8a5aa34a6ebe7fdb1d7d821b05f9387f590"
++  },
++  "SHEET_SOLID_SURFACE.off": {
++   "path": "SHEET_SOLID_SURFACE.off",
++   "sha256": "df6ab94b8e3c3ae4d25cdb7ebdd74f91a2fdc2df6f4ecf87733ea5fa044fb846"
++  },
++  "FIXED_PORT_SCHUR_TET10.npz": {
++   "path": "FIXED_PORT_SCHUR_TET10.npz",
++   "sha256": "dd4ef01c4003dea93f89c93cc8a9683196b291c98e9dc5186e19f26273e73ca0"
++  }
++ },
++ "status": "PASS"
++}
+\ No newline at end of file
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix2_RECEIPT.json b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix2_RECEIPT.json
+new file mode 100644
+index 0000000..9e2bcfd
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G0_fix2_RECEIPT.json
+@@ -0,0 +1,194 @@
++{
++ "case_id": "G0",
++ "geometry_manifest": "/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/science_pilot16_v1/samples/science_00_BALANCED_00_00/geometry_material_manifest.json",
++ "git_head": "3c6a76cdd21a20c437f252f285b407e52252ce5d",
++ "resolution": {
++  "preset": "fast",
++  "n_per_unit": 48,
++  "remesh_size": 0.03,
++  "size_max": 0.05,
++  "carrier_n": 32,
++  "algorithm3d": 1
++ },
++ "execution": {
++  "workers": 8,
++  "threads": 8,
++  "column_chunk": 1024,
++  "omp_num_threads": "8",
++  "mkl_cbwr": null
++ },
++ "contract": "SHEET_SOLID_NO_COLLAR",
++ "timing": {
++  "empty_screen": 0.8955675773322582,
++  "surface_and_mesh": 12.87762912735343,
++  "fixed_port": 29.364654447883368,
++  "schur": 79.78627524152398,
++  "total": 159.82865297049284
++ },
++ "geometry": {
++  "spec_hash": "27392bf44dda74c9ca30d718ec0be7e8edd1b540919cc1cb9dd14e6a49115dd5",
++  "tau_corners": [
++   0.4,
++   0.40625,
++   0.4,
++   0.40625,
++   0.39375,
++   0.4,
++   0.39375,
++   0.4
++  ],
++  "cut_plane": null,
++  "material_volume_estimate": 0.2283603515625
++ },
++ "surface": {
++  "marching_cubes": {
++   "vertices": 23116,
++   "triangles": 45000,
++   "h": 0.020833333333333332
++  },
++  "projection": {
++   "max_level_residual_before": 0.0021000477846523924,
++   "max_level_residual_after": 1.4988010832439613e-15
++  },
++  "flat_sheet_triangles": {
++   "dropped": 36,
++   "lifted": 0
++  },
++  "boundary_collapse": {
++   "collapsed": 446,
++   "non_two_manifold_edges_open": 712
++  },
++  "flat_after_remesh": {
++   "dropped": 0,
++   "lifted": 0
++  },
++  "boundary_collapse_2": 0,
++  "boundary_resnap": 0,
++  "post_remesh_cleanup": {
++   "dropped_flat": 0,
++   "dropped_nonmanifold": 0
++  },
++  "corner_restores": 0,
++  "boundary_vertices_off_plane": 0,
++  "sheet_remesh": {
++   "vertices": 5980,
++   "triangles": 11366,
++   "size": 0.03,
++   "max_level_residual": 1.3877787807814457e-15,
++   "non_two_manifold_edges_open": 610
++  },
++  "clipped": {
++   "vertices": 5980,
++   "triangles": 11366
++  },
++  "active_carrier_nodes": {
++   "box_x_max": 313,
++   "box_x_min": 321,
++   "box_y_max": 309,
++   "box_y_min": 310,
++   "box_z_max": 312,
++   "box_z_min": 316
++  },
++  "line_t_junction_splits": 0,
++  "degenerate_triangles_dropped": 0,
++  "components": {
++   "components": 1,
++   "dropped": 0,
++   "dropped_area": 0.0
++  },
++  "watertight": {
++   "edges": 31236,
++   "non_two_manifold_edges": 0
++  },
++  "vertices_outside_box": 0,
++  "surface_quality": {
++   "min": 0.00034008583033279325,
++   "p01": 0.11413531661993935,
++   "below_0.3": 1569,
++   "triangles": 20824
++  },
++  "carrier_nodes_on_surface": {
++   "box_x_max": 180,
++   "box_x_min": 182,
++   "box_y_max": 181,
++   "box_y_min": 180,
++   "box_z_max": 183,
++   "box_z_min": 180
++  },
++  "carrier_nodes_not_on_surface": 795,
++  "volume": 0.2287926623765689,
++  "seconds": 6.674781534820795,
++  "active_ports": [
++   "box_x_min",
++   "box_x_max",
++   "box_y_min",
++   "box_y_max",
++   "box_z_min",
++   "box_z_max"
++  ]
++ },
++ "mesh": {
++  "mesh_path": "/root/autodl-tmp/_claude_diag/sheet/prod/G0_fix2/mesh.mesh",
++  "node_count": 13711,
++  "tet_count": 47067,
++  "material_volume": 0.22879266237656906,
++  "min_dihedral_degrees": 0.022311814458845447,
++  "tets_below_5deg": 188,
++  "tets_below_10deg": 675,
++  "seconds": 6.1547085121273994,
++  "carrier_nodes_preserved": 1086
++ },
++ "fixed_port": {
++  "carrier_scalar_nodes": 6146,
++  "active_carrier_nodes": 1881,
++  "q_active": 5643,
++  "fine_port_nodes": 5034,
++  "active_set_check": {
++   "active": 1881,
++   "support": 1731,
++   "support_outside_active": 0,
++   "active_without_support": 150
++  },
++  "active_ports": [
++   "box_x_max",
++   "box_x_min",
++   "box_y_max",
++   "box_y_min",
++   "box_z_max",
++   "box_z_min"
++  ],
++  "partition_of_unity_error": 0.0,
++  "affine_reproduction_error": 1.2412670766236366e-16,
++  "deterministic_replay_sha256": "a22775b1c44d65df311643aa708d48a4dcb0720013a0f090e8b0da7483d3f663"
++ },
++ "schur_timing": {
++  "tet10_promotion": 1.0454385504126549,
++  "assembly": 5.0377480536699295,
++  "solver": 2.0,
++  "schur_total": 75.42500888928771,
++  "fine_dof": 254715.0,
++  "internal_dof": 197766.0
++ },
++ "schur": {
++  "q_active": 5643,
++  "rigid_residual_relative": 9.384525728138386e-15,
++  "min_eigenvalue": -2.0590414708905246e-17,
++  "max_eigenvalue": 0.047633946608657995,
++  "inactive_block_max": 0.0
++ },
++ "outputs": {
++  "mesh.mesh": {
++   "path": "mesh.mesh",
++   "sha256": "85af1ee242d4570af2ca3b837be0e8a5aa34a6ebe7fdb1d7d821b05f9387f590"
++  },
++  "SHEET_SOLID_SURFACE.off": {
++   "path": "SHEET_SOLID_SURFACE.off",
++   "sha256": "df6ab94b8e3c3ae4d25cdb7ebdd74f91a2fdc2df6f4ecf87733ea5fa044fb846"
++  },
++  "FIXED_PORT_SCHUR_TET10.npz": {
++   "path": "FIXED_PORT_SCHUR_TET10.npz",
++   "sha256": "dd4ef01c4003dea93f89c93cc8a9683196b291c98e9dc5186e19f26273e73ca0"
++  }
++ },
++ "status": "PASS"
++}
+\ No newline at end of file
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G1_prod_RECEIPT.json b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G1_prod_RECEIPT.json
+new file mode 100644
+index 0000000..2247590
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G1_prod_RECEIPT.json
+@@ -0,0 +1,188 @@
++{
++ "case_id": "G1",
++ "geometry_manifest": "/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/science_pilot16_v1/samples/science_12_BALANCED_02_01/geometry_material_manifest.json",
++ "git_head": "3c6a76cdd21a20c437f252f285b407e52252ce5d",
++ "resolution": {
++  "preset": "production",
++  "n_per_unit": 64,
++  "remesh_size": 0.02,
++  "size_max": 0.04,
++  "carrier_n": 32,
++  "algorithm3d": 1
++ },
++ "execution": {
++  "workers": 6,
++  "threads": 6,
++  "column_chunk": 1024,
++  "omp_num_threads": "6",
++  "mkl_cbwr": null
++ },
++ "contract": "SHEET_SOLID_NO_COLLAR",
++ "timing": {
++  "empty_screen": 0.8648814894258976,
++  "surface_and_mesh": 10.846311137080193,
++  "fixed_port": 13.464354697614908,
++  "schur": 66.67250464484096,
++  "total": 119.94759688526392
++ },
++ "geometry": {
++  "spec_hash": "c6dd00bbcf987b4f4acd2d3e6f81859c4159059a7ef4bbd546e5d2a83c5d9001",
++  "tau_corners": [
++   0.4,
++   0.39375,
++   0.40625,
++   0.4,
++   0.4,
++   0.39375,
++   0.40625,
++   0.4
++  ],
++  "cut_plane": [
++   0.0,
++   1.0,
++   0.0,
++   0.5
++  ],
++  "material_volume_estimate": 0.11365966796875
++ },
++ "surface": {
++  "marching_cubes": {
++   "vertices": 38354,
++   "triangles": 75096,
++   "h": 0.015625
++  },
++  "projection": {
++   "max_level_residual_before": 0.0011936661613008437,
++   "max_level_residual_after": 1.6653345369377348e-15
++  },
++  "flat_sheet_triangles": {
++   "dropped": 30,
++   "lifted": 0
++  },
++  "boundary_collapse": {
++   "collapsed": 352,
++   "non_two_manifold_edges_open": 677
++  },
++  "flat_after_remesh": {
++   "dropped": 0,
++   "lifted": 0
++  },
++  "boundary_collapse_2": 0,
++  "boundary_resnap": 0,
++  "post_remesh_cleanup": {
++   "dropped_flat": 0,
++   "dropped_nonmanifold": 0
++  },
++  "corner_restores": 0,
++  "boundary_vertices_off_plane": 0,
++  "sheet_remesh": {
++   "vertices": 6689,
++   "triangles": 12737,
++   "size": 0.02,
++   "max_level_residual": 1.1657341758564144e-15,
++   "non_two_manifold_edges_open": 641
++  },
++  "clipped": {
++   "vertices": 6689,
++   "triangles": 12737
++  },
++  "active_carrier_nodes": {
++   "box_x_max": 165,
++   "box_x_min": 168,
++   "box_y_min": 310,
++   "box_z_max": 163,
++   "box_z_min": 166
++  },
++  "line_t_junction_splits": 0,
++  "degenerate_triangles_dropped": 0,
++  "components": {
++   "components": 1,
++   "dropped": 0,
++   "dropped_area": 0.0
++  },
++  "watertight": {
++   "edges": 26604,
++   "non_two_manifold_edges": 0
++  },
++  "vertices_outside_box": 0,
++  "surface_quality": {
++   "min": 0.006659883066333658,
++   "p01": 0.15380111877669078,
++   "below_0.3": 799,
++   "triangles": 17736
++  },
++  "volume": 0.11384939817774968,
++  "seconds": 5.321810949593782,
++  "active_ports": [
++   "box_x_min",
++   "box_x_max",
++   "box_y_min",
++   "box_z_min",
++   "box_z_max",
++   "cut_0"
++  ]
++ },
++ "mesh": {
++  "mesh_path": "/root/autodl-tmp/_claude_diag/sheet/prod/G1_prod/mesh.mesh",
++  "node_count": 13501,
++  "tet_count": 51635,
++  "material_volume": 0.11384939817774971,
++  "min_dihedral_degrees": 0.31340892658928965,
++  "tets_below_5deg": 107,
++  "tets_below_10deg": 339,
++  "seconds": 5.483255580067635,
++  "carrier_nodes_preserved": 561
++ },
++ "fixed_port": {
++  "carrier_scalar_nodes": 3137,
++  "active_carrier_nodes": 972,
++  "q_active": 2916,
++  "fine_port_nodes": 2600,
++  "active_set_check": {
++   "active": 972,
++   "support": 890,
++   "support_outside_active": 0,
++   "active_without_support": 82
++  },
++  "active_ports": [
++   "box_x_max",
++   "box_x_min",
++   "box_y_min",
++   "box_z_max",
++   "box_z_min"
++  ],
++  "partition_of_unity_error": 0.0,
++  "affine_reproduction_error": 2.220446049250313e-16,
++  "deterministic_replay_sha256": "c38d09f23c65461c2d2161ce5b65c02c15eef9bc2dc417bd31166908fa0a70da"
++ },
++ "schur_timing": {
++  "tet10_promotion": 0.6268511787056923,
++  "assembly": 5.514161802828312,
++  "solver": 2.0,
++  "schur_total": 65.18566923961043,
++  "fine_dof": 262515.0,
++  "internal_dof": 233388.0
++ },
++ "schur": {
++  "q_active": 2916,
++  "rigid_residual_relative": 3.428088120655767e-15,
++  "min_eigenvalue": -1.5143484616614314e-17,
++  "max_eigenvalue": 0.042339736732909035,
++  "inactive_block_max": 0.0
++ },
++ "outputs": {
++  "mesh.mesh": {
++   "path": "mesh.mesh",
++   "sha256": "d230c19b61d20627872d815df62f0279669e6c130bbfc58a3bc01e5eeea2960e"
++  },
++  "SHEET_SOLID_SURFACE.off": {
++   "path": "SHEET_SOLID_SURFACE.off",
++   "sha256": "6518d07eef9b93e483b4023bb3036442307e7c1344b86cf8ace20c0fe1981eeb"
++  },
++  "FIXED_PORT_SCHUR_TET10.npz": {
++   "path": "FIXED_PORT_SCHUR_TET10.npz",
++   "sha256": "cba39cf0f8cc336762124b58a5e504c1610270c6c6cf1a817f75ed99c6dcd2dd"
++  }
++ },
++ "status": "PASS"
++}
+\ No newline at end of file
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G2_empty_RECEIPT.json b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G2_empty_RECEIPT.json
+new file mode 100644
+index 0000000..37680ed
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G2_empty_RECEIPT.json
+@@ -0,0 +1,38 @@
++{
++ "case_id": "G2empty",
++ "geometry_manifest": "/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/science_pilot16_v1/samples/science_08_BALANCED_04_03/geometry_material_manifest.json",
++ "git_head": "3c6a76cdd21a20c437f252f285b407e52252ce5d",
++ "resolution": {
++  "preset": "fast",
++  "n_per_unit": 48,
++  "remesh_size": 0.03,
++  "size_max": 0.05,
++  "carrier_n": 32,
++  "algorithm3d": 1
++ },
++ "contract": "SHEET_SOLID_NO_COLLAR",
++ "timing": {
++  "empty_screen": 0.8266004994511604
++ },
++ "geometry": {
++  "spec_hash": "75e69e957c6b19d5168401266ff782bdfcbd50717f3c5c67ef6f0f5246c66090",
++  "tau_corners": [
++   0.4,
++   0.40625,
++   0.4,
++   0.40625,
++   0.39375,
++   0.4,
++   0.39375,
++   0.4
++  ],
++  "cut_plane": [
++   1.0,
++   1.0,
++   0.0,
++   0.0625
++  ],
++  "material_volume_estimate": 0.0
++ },
++ "status": "EMPTY"
++}
+\ No newline at end of file
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G3_prod_RECEIPT.json b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G3_prod_RECEIPT.json
+new file mode 100644
+index 0000000..b2be88a
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/production/G3_prod_RECEIPT.json
+@@ -0,0 +1,185 @@
++{
++ "case_id": "G3",
++ "geometry_manifest": "/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/science_pilot16_v1/samples/science_04_BALANCED_00_04/geometry_material_manifest.json",
++ "git_head": "3c6a76cdd21a20c437f252f285b407e52252ce5d",
++ "resolution": {
++  "preset": "production",
++  "n_per_unit": 64,
++  "remesh_size": 0.02,
++  "size_max": 0.04,
++  "carrier_n": 32,
++  "algorithm3d": 1
++ },
++ "execution": {
++  "workers": 6,
++  "threads": 6,
++  "column_chunk": 1024,
++  "omp_num_threads": "6",
++  "mkl_cbwr": null
++ },
++ "contract": "SHEET_SOLID_NO_COLLAR",
++ "timing": {
++  "empty_screen": 0.9750842414796352,
++  "surface_and_mesh": 20.7343868650496,
++  "fixed_port": 36.118045795708895,
++  "schur": 202.72087407112122,
++  "total": 297.7153463624418
++ },
++ "geometry": {
++  "spec_hash": "54c1a60c64c098b37170283847f0a528e9a8e421cf00e104c64b17e8efb2c618",
++  "tau_corners": [
++   0.4,
++   0.375,
++   0.425,
++   0.4,
++   0.4,
++   0.375,
++   0.425,
++   0.4
++  ],
++  "cut_plane": null,
++  "material_volume_estimate": 0.22844384765625
++ },
++ "surface": {
++  "marching_cubes": {
++   "vertices": 38286,
++   "triangles": 74980,
++   "h": 0.015625
++  },
++  "projection": {
++   "max_level_residual_before": 0.0012025922375986098,
++   "max_level_residual_after": 1.4988010832439613e-15
++  },
++  "flat_sheet_triangles": {
++   "dropped": 38,
++   "lifted": 0
++  },
++  "boundary_collapse": {
++   "collapsed": 553,
++   "non_two_manifold_edges_open": 985
++  },
++  "flat_after_remesh": {
++   "dropped": 0,
++   "lifted": 0
++  },
++  "boundary_collapse_2": 0,
++  "boundary_resnap": 0,
++  "post_remesh_cleanup": {
++   "dropped_flat": 0,
++   "dropped_nonmanifold": 0
++  },
++  "corner_restores": 0,
++  "boundary_vertices_off_plane": 0,
++  "sheet_remesh": {
++   "vertices": 13222,
++   "triangles": 25498,
++   "size": 0.02,
++   "max_level_residual": 1.4432899320127035e-15,
++   "non_two_manifold_edges_open": 962
++  },
++  "clipped": {
++   "vertices": 13222,
++   "triangles": 25498
++  },
++  "active_carrier_nodes": {
++   "box_x_max": 314,
++   "box_x_min": 322,
++   "box_y_max": 319,
++   "box_y_min": 304,
++   "box_z_max": 308,
++   "box_z_min": 322
++  },
++  "line_t_junction_splits": 0,
++  "degenerate_triangles_dropped": 0,
++  "components": {
++   "components": 1,
++   "dropped": 0,
++   "dropped_area": 0.0
++  },
++  "watertight": {
++   "edges": 52272,
++   "non_two_manifold_edges": 0
++  },
++  "vertices_outside_box": 0,
++  "surface_quality": {
++   "min": 0.0005481953002291478,
++   "p01": 0.17614076009175028,
++   "below_0.3": 1458,
++   "triangles": 34848
++  },
++  "volume": 0.22858987624654428,
++  "seconds": 8.735582198947668,
++  "active_ports": [
++   "box_x_min",
++   "box_x_max",
++   "box_y_min",
++   "box_y_max",
++   "box_z_min",
++   "box_z_max"
++  ]
++ },
++ "mesh": {
++  "mesh_path": "/root/autodl-tmp/_claude_diag/sheet/prod/G3_prod/mesh.mesh",
++  "node_count": 27035,
++  "tet_count": 105190,
++  "material_volume": 0.22858987624654334,
++  "min_dihedral_degrees": 0.030621423144225446,
++  "tets_below_5deg": 200,
++  "tets_below_10deg": 589,
++  "seconds": 11.92427122965455,
++  "carrier_nodes_preserved": 1098
++ },
++ "fixed_port": {
++  "carrier_scalar_nodes": 6146,
++  "active_carrier_nodes": 1889,
++  "q_active": 5667,
++  "fine_port_nodes": 5156,
++  "active_set_check": {
++   "active": 1889,
++   "support": 1718,
++   "support_outside_active": 0,
++   "active_without_support": 171
++  },
++  "active_ports": [
++   "box_x_max",
++   "box_x_min",
++   "box_y_max",
++   "box_y_min",
++   "box_z_max",
++   "box_z_min"
++  ],
++  "partition_of_unity_error": 0.0,
++  "affine_reproduction_error": 5.551115123125783e-16,
++  "deterministic_replay_sha256": "d54f67059f15670e97c7147eb62358ce4f84947b3180db2de13db1920412f603"
++ },
++ "schur_timing": {
++  "tet10_promotion": 1.3284887410700321,
++  "assembly": 15.710826754570007,
++  "solver": 2.0,
++  "schur_total": 198.01264245435596,
++  "fine_dof": 530064.0,
++  "internal_dof": 472062.0
++ },
++ "schur": {
++  "q_active": 5667,
++  "rigid_residual_relative": 6.566011165401959e-15,
++  "min_eigenvalue": -1.6491156962714143e-17,
++  "max_eigenvalue": 0.04126474687520213,
++  "inactive_block_max": 0.0
++ },
++ "outputs": {
++  "mesh.mesh": {
++   "path": "mesh.mesh",
++   "sha256": "11e9b3fa2577b5b0c694db1f7ddd01b62323c91e8be1a9c28e6cfeb80bcc33e7"
++  },
++  "SHEET_SOLID_SURFACE.off": {
++   "path": "SHEET_SOLID_SURFACE.off",
++   "sha256": "4609bbdbfe1786243b863796caf94323ebce4e4e91fcedd3ac166f6d671d30f0"
++  },
++  "FIXED_PORT_SCHUR_TET10.npz": {
++   "path": "FIXED_PORT_SCHUR_TET10.npz",
++   "sha256": "4c0a4172d590ee1e9c4d0c48b0f6ccc9c742acad69ed98f26cc98300fdf5d9ac"
++  }
++ },
++ "status": "PASS"
++}
+\ No newline at end of file
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+new file mode 100644
+index 0000000..fb9a4c5
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -0,0 +1,189 @@
++#!/usr/bin/env python3
++"""Production command for one sheet-TPMS fixed-port label (true geometry, no port collars).
++
++Geometry -> carrier-conforming surface -> Gmsh Tet4 -> Tet10 -> fixed-port Schur (MKL Pardiso), written to a create-only
++directory together with the carrier norms the training loss needs and a SHA-256 receipt.
++
++Fail-closed: an empty cell produces no label (status EMPTY); a mesh whose port support escapes the geometric active set,
++a rigid-body residual above 1e-10, or a negative eigenvalue below -1e-8 * lambda_max is an error.
++
++Reproducibility: the geometry (surface and mesh) is byte-identical across repeats and across thread counts. The Schur
++operator is byte-identical at a fixed thread count and agrees to 2e-14 across thread counts (MKL summation order); set
++MKL_CBWR=COMPATIBLE for byte-identical operators across machines. The receipt records the execution settings.
++"""
++from __future__ import annotations
++
++import argparse, hashlib, json, os, subprocess, sys, time
++from pathlib import Path
++
++import numpy as np
++
++ROOT = Path(__file__).resolve().parents[2]
++sys.path.insert(0, str(ROOT / "src"))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++from importlib import import_module  # noqa: E402
++
++adapter = import_module(f"{P}.cgal_mesh3_adapter"); fpa = import_module(f"{P}.fixed_port_adapter")
++fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot")
++t10 = import_module(f"{P}.tet10_label"); sss = import_module(f"{P}.sheet_solid_surface")
++from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout  # noqa: E402
++
++# surface grid, sheet remesh target, interior element size
++RESOLUTION_PRESETS = {
++    "reference": {"n_per_unit": 96, "remesh_size": 0.015, "size_max": 0.03},
++    "production": {"n_per_unit": 64, "remesh_size": 0.02, "size_max": 0.04},
++    "fast": {"n_per_unit": 48, "remesh_size": 0.03, "size_max": 0.05},
++}
++CARRIER_N = 32          # carrier P1 grid per face (decision of record, 2026-09-03)
++EMPTY_VOLUME = 1.0e-6   # a cell below this material volume carries no label
++
++
++def sha256(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def git_head() -> str:
++    try:
++        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=30).stdout.strip()
++    except Exception:
++        return "unknown"
++
++
++def carrier_norms(layout, port, active: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
++    """P1 mass and Laplace-Beltrami matrices of the ACTIVE carrier complex (the training loss is defined with them)."""
++    M, L = t10.carrier_mass_and_laplacian(layout, port)
++    idx = np.where(active)[0]
++    return M[np.ix_(idx, idx)], L[np.ix_(idx, idx)]
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--case-id", required=True)
++    ap.add_argument("--geometry-manifest", type=Path, required=True)
++    ap.add_argument("--output-dir", type=Path, required=True)
++    ap.add_argument("--resolution", choices=sorted(RESOLUTION_PRESETS), default="production")
++    ap.add_argument("--n-per-unit", type=int); ap.add_argument("--remesh-size", type=float); ap.add_argument("--size-max", type=float)
++    ap.add_argument("--carrier-n", type=int, default=CARRIER_N)
++    ap.add_argument("--algorithm3d", type=int, default=1, help="Gmsh 3D algorithm: 1 Delaunay (default), 10 HXT")
++    ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
++    ap.add_argument("--chunk", type=int, default=1024)
++    a = ap.parse_args()
++
++    preset = dict(RESOLUTION_PRESETS[a.resolution])
++    for key in ("n_per_unit", "remesh_size", "size_max"):
++        if getattr(a, key) is not None:
++            preset[key] = getattr(a, key)
++    out = a.output_dir
++    out.mkdir(parents=True, exist_ok=False)      # create-only: never overwrite a published label
++    t_all = time.perf_counter()
++    receipt: dict = {"case_id": a.case_id, "geometry_manifest": str(a.geometry_manifest), "git_head": git_head(),
++                     "resolution": {"preset": a.resolution, **preset, "carrier_n": a.carrier_n, "algorithm3d": a.algorithm3d},
++                     "execution": {"workers": a.workers, "threads": a.threads, "column_chunk": a.chunk,
++                                   "omp_num_threads": os.environ.get("OMP_NUM_THREADS"), "mkl_cbwr": os.environ.get("MKL_CBWR")},
++                     "contract": "SHEET_SOLID_NO_COLLAR", "timing": {}}
++
++    _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
++    charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
++    layout = build_global_cell_patch_p1_trace_layout(charts, background_lower=(0.0, 0.0, 0.0), background_upper=(1.0, 1.0, 1.0),
++                                                     background_shape=(a.carrier_n,) * 3,
++                                                     world_identity_rotation=spec.placement.rotation,
++                                                     world_identity_translation=spec.placement.translation)
++    receipt["geometry"] = {"spec_hash": spec.spec_hash, "tau_corners": [float(t) for t in geom.tau_corners],
++                           "cut_plane": None if geom.cut_plane is None else [float(v) for v in geom.cut_plane]}
++
++    # ---- empty-cell screen (exact level set, no meshing) ----
++    t0 = time.perf_counter(); n = 160; xs = (np.arange(n) + 0.5) / n
++    grid = np.stack(np.meshgrid(xs, xs, xs, indexing="ij"), axis=-1).reshape(-1, 3)
++    inside = sss.sheet_level(geom, grid) < 0.0
++    for _, nn, dd in sss.clip_planes(geom):
++        inside &= (grid @ nn - dd) <= 0.0
++    volume = float(inside.mean()); receipt["geometry"]["material_volume_estimate"] = volume
++    receipt["timing"]["empty_screen"] = time.perf_counter() - t0
++    if volume < EMPTY_VOLUME:
++        receipt["status"] = "EMPTY"
++        (out / "LABEL_RECEIPT.json").write_text(json.dumps(receipt, indent=1, default=float))
++        (out / "LABEL_RECEIPT.md").write_text(f"# Sheet label: {a.case_id}\n\n- status: **EMPTY** (material volume {volume:.2e}); no operator is produced.\n")
++        print(f"{a.case_id}: EMPTY (volume {volume:.2e})", flush=True)
++        return 0
++
++    # ---- surface and volume mesh ----
++    t0 = time.perf_counter()
++    surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=preset["n_per_unit"], remesh_size=preset["remesh_size"], smooth=False)
++    receipt["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps", "non_manifold_examples", "surface_quality_by_label")}
++    if surf.report["watertight"]["non_two_manifold_edges"]:
++        raise SystemExit(f"{a.case_id}: surface is not watertight ({surf.report['watertight']})")
++    sss.write_off(out / "SHEET_SOLID_SURFACE.off", surf.V, surf.F)
++    mesh = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=preset["size_max"], algorithm3d=a.algorithm3d, threads=a.threads)
++    receipt["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in mesh.__dict__.items()}
++    receipt["timing"]["surface_and_mesh"] = time.perf_counter() - t0
++
++    # ---- fixed port on the geometric active set (P is never modified) ----
++    t0 = time.perf_counter()
++    from dataclasses import replace as dc_replace
++    art = adapter.mesh_artifact_from_cgal_medit(out / "mesh.mesh", geometry=dc_replace(geom, cut_plane=None), mesher_version="5.4",
++                                                mesher_parameters={"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False,
++                                                                   "semantic_plane_tolerance": 1e-10},
++                                                plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
++    port = fpa.compile_fixed_port(art, spec, layout)
++    active = sss.geometric_active_mask(geom, layout, port)
++    check = sss.verify_active_superset(port, active)
++    cert = port.certificates
++    receipt["fixed_port"] = {"carrier_scalar_nodes": int(len(active)), "active_carrier_nodes": int(active.sum()),
++                             "q_active": int(3 * active.sum()), "fine_port_nodes": int(port.scalar_fine_to_carrier.shape[0]),
++                             "active_set_check": check, "active_ports": list(port.active_global_port_ids),
++                             "partition_of_unity_error": float(cert["maximum_partition_of_unity_error"]),
++                             "affine_reproduction_error": float(cert["maximum_affine_reproduction_error"]),
++                             "deterministic_replay_sha256": cert["deterministic_replay_sha256"]}
++    if check["support_outside_active"]:
++        raise SystemExit(f"{a.case_id}: mesh port support escapes the geometric active set: {check}")
++    receipt["timing"]["fixed_port"] = time.perf_counter() - t0
++
++    # ---- Tet10 fixed-port Schur ----
++    t0 = time.perf_counter()
++    S, timing = t10.dense_fixed_port_schur(art, port, element="TET10", workers=a.workers, column_chunk_size=a.chunk)
++    receipt["schur_timing"] = timing; receipt["timing"]["schur"] = time.perf_counter() - t0
++    keep = np.repeat(active, 3)
++    S_active = np.ascontiguousarray(S[np.ix_(keep, keep)])
++    rigid = np.ascontiguousarray(port.rigid_basis[keep])
++    scale = float(np.abs(S_active).max())
++    rigid_residual = float(np.linalg.norm(S_active @ rigid) / max(np.linalg.norm(S_active), 1e-300))
++    eig = np.linalg.eigvalsh(S_active)
++    receipt["schur"] = {"q_active": int(S_active.shape[0]), "rigid_residual_relative": rigid_residual,
++                        "min_eigenvalue": float(eig[0]), "max_eigenvalue": float(eig[-1]),
++                        "inactive_block_max": float(np.abs(S[np.ix_(~keep, ~keep)]).max()) if (~keep).any() else 0.0}
++    if rigid_residual > 1.0e-10:
++        raise SystemExit(f"{a.case_id}: rigid-body residual {rigid_residual:.2e} exceeds 1e-10")
++    if eig[0] < -1.0e-8 * eig[-1]:
++        raise SystemExit(f"{a.case_id}: Schur operator is not positive semidefinite (min eigenvalue {eig[0]:.3e})")
++
++    # ---- carrier norms for the training loss ----
++    mass, lap = carrier_norms(layout, port, active)
++    ids = np.asarray(port.active_global_carrier_ids)[active]
++    coords = np.asarray(port.carrier_coordinates)[active]
++    membership = np.asarray([",".join(m) for m in port.carrier_port_membership], dtype=object)[active].astype(str)
++    np.savez(out / "FIXED_PORT_SCHUR_TET10.npz", schur=S_active, carrier_ids=ids, carrier_coordinates=coords,
++             carrier_port_membership=membership, rigid_basis=rigid, active_ports=np.asarray(list(port.active_global_port_ids)),
++             carrier_mass=mass, carrier_laplacian=lap, material_volume=np.asarray([mesh.material_volume]))
++
++    receipt["outputs"] = {name: {"path": name, "sha256": sha256(out / name)} for name in ("mesh.mesh", "SHEET_SOLID_SURFACE.off", "FIXED_PORT_SCHUR_TET10.npz")}
++    receipt["timing"]["total"] = time.perf_counter() - t_all
++    receipt["status"] = "PASS"
++    (out / "LABEL_RECEIPT.json").write_text(json.dumps(receipt, indent=1, default=float))
++    md = [f"# Sheet label: {a.case_id}", "", f"- status: **PASS**",
++          f"- geometry: rho = {volume:.5f}, tau in [{min(receipt['geometry']['tau_corners']):.4f}, {max(receipt['geometry']['tau_corners']):.4f}], cut = {receipt['geometry']['cut_plane']}",
++          f"- resolution: {a.resolution} (surface 1/{preset['n_per_unit']}, remesh {preset['remesh_size']}, interior {preset['size_max']}, carrier 1/{a.carrier_n})",
++          f"- mesh: {mesh.node_count} Tet4 nodes / {mesh.tet_count} tets, min dihedral {mesh.min_dihedral_degrees:.2f} deg, volume {mesh.material_volume:.5f}",
++          f"- fixed port: {receipt['fixed_port']['active_carrier_nodes']} active carrier nodes (q = {receipt['fixed_port']['q_active']}), "
++          f"partition of unity {receipt['fixed_port']['partition_of_unity_error']:.1e}, affine {receipt['fixed_port']['affine_reproduction_error']:.1e}, "
++          f"support outside active {check['support_outside_active']}, active without support {check['active_without_support']}",
++          f"- Schur: rigid residual {rigid_residual:.1e}, eigenvalues [{eig[0]:.3e}, {eig[-1]:.3e}]",
++          f"- timing: surface+mesh {receipt['timing']['surface_and_mesh']:.0f}s, port {receipt['timing']['fixed_port']:.0f}s, schur {receipt['timing']['schur']:.0f}s, total {receipt['timing']['total']:.0f}s",
++          "", "Contents: `FIXED_PORT_SCHUR_TET10.npz` (schur, carrier ids/coordinates/port membership, rigid basis, carrier mass and",
++          "Laplace-Beltrami matrices of the active complex, material volume), `mesh.mesh`, `SHEET_SOLID_SURFACE.off`."]
++    (out / "LABEL_RECEIPT.md").write_text("\n".join(md) + "\n")
++    print("\n".join(md), flush=True)
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index 385f9ed..a74a240 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -1019,7 +1019,7 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 48, pad: in
+     F, labels, nfix = split_line_t_junctions(V, F, labels, planes); report["line_t_junction_splits"] = int(nfix)
+     labels_arr = np.asarray(labels)
+     V, F, remap, keep_mask = merge_duplicate_vertices(V, F); labels_arr = labels_arr[keep_mask]; report["degenerate_triangles_dropped"] = int((~keep_mask).sum())
+-    carrier_nodes = {face: {g: remap(c) for g, c in m.items()} for face, m in carrier_nodes.items()}
++    carrier_nodes = {face: {g: remap(c) for g, c in m.items()} for face, m in carrier_nodes.items()}  # provisional (see below)
+     V, F, comp = drop_floating_components(V, F, labels_arr); labels_arr = comp.pop("labels"); report["components"] = comp
+     F = orient_outward(V, F)
+     wt = watertight_report(F); report["watertight"] = wt
+@@ -1066,6 +1066,22 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 48, pad: in
+     q = tri_quality(V, F); report["surface_quality"] = {"min": float(q.min()), "p01": float(np.quantile(q, 0.01)), "below_0.3": int((q < 0.3).sum()), "triangles": int(len(F))}
+     report["surface_quality_by_label"] = {lab: {"min": float(q[labels_arr == lab].min()), "below_0.3": int((q[labels_arr == lab] < 0.3).sum()), "n": int((labels_arr == lab).sum())}
+                                           for lab in sorted(set(labels_arr.tolist())) if (labels_arr == lab).any()}
++    # carrier identity is geometric, not index based: every topology step above renumbers vertices, so the map from
++    # carrier node to surface vertex is rebuilt by coordinate here and is the conformity certificate of the cap.
++    lookup = {tuple(np.round(p, 9)): i for i, p in enumerate(V)}
++    carrier_nodes = {}; missing = 0
++    for src, (pts, _edges, keys) in port_constraints.items():
++        found: dict[int, int] = {}
++        for key, point in zip(keys, np.asarray(pts).reshape(-1, 3)):
++            if isinstance(key, (int, np.integer)) and int(key) >= 0:
++                idx = lookup.get(tuple(np.round(point, 9)))
++                if idx is None:
++                    missing += 1          # the band only grazes this carrier triangle: its node carries no material
++                else:
++                    found[int(key)] = int(idx)
++        carrier_nodes[src] = found
++    report["carrier_nodes_on_surface"] = {src: len(m) for src, m in carrier_nodes.items()}
++    report["carrier_nodes_not_on_surface"] = int(missing)
+     report["volume"] = float(signed_volume(V, F)); report["seconds"] = time.perf_counter() - t0
+     report["active_ports"] = [a for a in active if caps.get(a, {}).get("triangles", 0) > 0]
+     return SheetSurfaceResult(V=V, F=F, labels=labels_arr, carrier_nodes=carrier_nodes, report=report)
+diff --git a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+new file mode 100644
+index 0000000..e03c0da
+--- /dev/null
++++ b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+@@ -0,0 +1,102 @@
++from __future__ import annotations
++
++from fractions import Fraction
++
++import numpy as np
++import pytest
++
++from pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1 import sheet_solid_surface as sss
++from pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1.cgal_mesh3_adapter import CgalGeometryParameters
++from pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1.full_cube_backend import (
++    build_full_cube_trace_layout,
++    compile_full_cube_geometry_inputs,
++)
++from pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1.full_cube_geometry import (
++    make_cell_spec,
++    make_parent_p1_field,
++)
++
++TAU = 0.4
++
++
++@pytest.fixture(scope="module")
++def fixture():
++    field = make_parent_p1_field(field_id="SHEET_SURFACE_TEST", base=Fraction(2, 5))
++    spec = make_cell_spec(thickness_field=field, cell_world_origin=(Fraction(0), Fraction(0), Fraction(0)),
++                          cell_id="sheet_unit", parent_world_cut_id="NO_CUT", world_cut=None)
++    charts, *_ = compile_full_cube_geometry_inputs(spec)
++    layout = build_full_cube_trace_layout(spec, charts=charts)
++    geometry = CgalGeometryParameters(tau_corners=(TAU,) * 8, cut_plane=None)
++    return geometry, layout
++
++
++def test_sheet_level_is_the_collar_free_band(fixture) -> None:
++    geometry, _ = fixture
++    # material is the band |phi| <= tau with phi = sum cos(2 pi x_i): thin sheet, void at the cell centre and corners
++    points = np.asarray([[0.5, 0.5, 0.5], [0.25, 0.25, 0.2], [0.0, 0.0, 0.0], [0.25, 0.0, 0.0]])
++    level = sss.sheet_level(geometry, points)
++    assert level[0] == pytest.approx(3.0 - TAU)   # cell centre: phi = -3
++    assert level[1] < 0.0                         # inside the band: |phi| = |cos(0.4 pi)| = 0.31 < tau
++    assert level[2] == pytest.approx(3.0 - TAU)   # cube corner: phi = +3
++    assert level[3] > 0.0                         # phi = 2, outside the band
++
++
++def test_clip_by_plane_keeps_the_retained_side_and_shares_cut_vertices() -> None:
++    V = np.asarray([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]])
++    F = np.asarray([[0, 1, 2], [1, 3, 2]], dtype=np.int64)
++    n = np.asarray([1.0, 0.0, 0.0]); d = 0.5
++    V2, F2 = sss.clip_by_plane(V, F, n, d)
++    s = V2 @ n - d
++    assert s.max() <= 1.0e-12                              # nothing survives beyond the plane
++    on = np.abs(s) <= 1.0e-12
++    assert on.sum() == 3                                   # three edges cross the plane
++    assert len(np.unique(np.round(V2, 12), axis=0)) == len(V2)   # cut vertices are shared, never duplicated
++    area = 0.5 * np.linalg.norm(np.cross(V2[F2[:, 1]] - V2[F2[:, 0]], V2[F2[:, 2]] - V2[F2[:, 0]]), axis=1).sum()
++    assert abs(area - 0.5) < 1.0e-12
++
++
++def test_projection_lands_on_the_level_set_and_respects_planes(fixture) -> None:
++    geometry, _ = fixture
++    planes = sss.clip_planes(geometry)
++    rng = np.random.default_rng(0)
++    V = rng.uniform(0.05, 0.95, size=(200, 3))
++    V[:20, 0] = 0.0                                        # vertices pinned to the x = 0 plane
++    out = sss.project_to_sheet_in_planes(geometry, V, planes, iters=20)
++    residual = np.abs(sss.sheet_level(geometry, out))
++    assert np.quantile(residual, 0.9) < 1.0e-9             # Newton converges except where the gradient vanishes
++    assert np.abs(out[:20, 0]).max() <= 1.0e-12            # plane-pinned vertices stayed in their plane
++
++
++def test_surface_is_watertight_carrier_conforming_and_has_the_published_density(fixture) -> None:
++    geometry, layout = fixture
++    result = sss.build_sheet_solid_surface(geometry, layout, n_per_unit=48, remesh_size=0.04, smooth=False)
++    report = result.report
++    assert report["watertight"]["non_two_manifold_edges"] == 0
++    assert report["components"]["dropped"] == 0
++    # Schwarz P sheet density law C = 1.755 rho (Hao 2023): tau = 0.4 -> rho = 0.228
++    assert abs(report["volume"] - TAU / 1.755) < 0.01
++    # every carrier node the band reaches is a surface vertex, at its exact coordinate
++    coords = np.asarray(layout.global_scalar_node_coordinates)
++    for face, mapping in result.carrier_nodes.items():
++        for global_id, vertex in mapping.items():
++            assert np.allclose(result.V[vertex], coords[global_id], atol=1.0e-12)
++    # boundary vertices of the sheet part all lie on a clip plane
++    sheet = result.F[result.labels == "tpms_free"]
++    boundary = {v for edge in sss._directed_boundary(sheet) for v in edge}
++    planes = sss.clip_planes(geometry)
++    for v in boundary:
++        assert min(abs(result.V[v] @ n - d) for _, n, d in planes) <= 1.0e-9
++
++
++def test_active_carrier_set_is_geometric_and_covers_the_band(fixture) -> None:
++    geometry, layout = fixture
++    ports = ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max")
++    coords, per_face, support_points = sss.carrier_active_set(geometry, layout, ports)
++    active = {src: np.unique(tris) for src, tris in per_face}
++    assert all(len(v) > 0 for v in active.values())
++    for src, tris in per_face:
++        # every support point is material and inside its triangle's plane
++        for k, point in support_points[src].items():
++            assert sss.sheet_level(geometry, point[None])[0] < 0.0
++        # the six faces of an uncut cell carry the same band up to sampling: node counts agree within 5%
++        assert abs(len(np.unique(tris)) - len(np.unique(per_face[0][1]))) <= 0.05 * len(np.unique(per_face[0][1]))
+-- 
+2.34.1
+

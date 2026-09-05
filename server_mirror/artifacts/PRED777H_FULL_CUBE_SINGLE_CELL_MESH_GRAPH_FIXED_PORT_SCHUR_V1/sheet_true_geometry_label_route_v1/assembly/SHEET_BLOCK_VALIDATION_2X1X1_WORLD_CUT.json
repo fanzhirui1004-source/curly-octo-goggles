@@ -1,0 +1,213 @@
+{
+ "shape": [
+  2,
+  1,
+  1
+ ],
+ "cut_plane_block_frame": [
+  3.0,
+  10.0,
+  0.0,
+  9.0
+ ],
+ "empty_cells": [],
+ "carrier_n": 32,
+ "cells": 2,
+ "surface": {
+  "resolution_effective": {
+   "n_per_unit": 48,
+   "remesh_size": 0.03,
+   "requested": {
+    "n_per_unit": 48,
+    "remesh_size": 0.03
+   },
+   "wall_thickness_min": 0.0712133156586493
+  },
+  "marching_cubes": {
+   "vertices": 50624,
+   "triangles": 98960,
+   "h": 0.020833333333333332
+  },
+  "projection": {
+   "max_level_residual_before": 0.0021270525531694173,
+   "max_level_residual_after": 1.609823385706477e-15
+  },
+  "sheet_remesh": {
+   "size": 0.03,
+   "remeshed": {
+    "vertices": 9083,
+    "triangles": 17219
+   },
+   "crossing_vertices": 442,
+   "patches_flattened": 0,
+   "patch_vertices_flattened": 0,
+   "patches_left": 1,
+   "flat_dropped": 0,
+   "late_cut_snap": {
+    "crossing_vertices": 0,
+    "patches_flattened": 3,
+    "patch_vertices_flattened": 168,
+    "patches_left": 4
+   },
+   "line_edges_collapsed": 0,
+   "flat_dropped_late": 0,
+   "short_edges_collapsed": 120,
+   "needles": {
+    "collapsed": 0,
+    "flipped": 0,
+    "remaining_below": 0,
+    "min_quality": 0.21556554372418124
+   },
+   "nonmanifold_dropped": 0,
+   "edges_with_3_or_more_triangles": 0,
+   "boundary_vertices_off_plane": 0,
+   "self_intersecting_triangles": 0,
+   "self_intersection_candidates": 0,
+   "fold_pairs": 0,
+   "vertices": 7572,
+   "triangles": 14048,
+   "min_quality": 0.21556554372418124,
+   "max_level_residual": 0.014409837612193055
+  },
+  "flat_sheet_triangles": {
+   "dropped": 0,
+   "lifted": 0
+  },
+  "flat_sheet_triangles_before_caps": 0,
+  "clipped": {
+   "vertices": 7572,
+   "triangles": 14048
+  },
+  "sheet_orientation": {
+   "outward_triangles": 14048,
+   "inward_triangles": 0
+  },
+  "cap_classification_conflicts": 0,
+  "cap_level_disagreements": 0,
+  "t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 27948,
+   "non_two_manifold_edges": 0
+  },
+  "self_intersecting_triangles": 0,
+  "self_intersection_candidates": 8,
+  "closed_surface_fold_pairs": 22,
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.0015214246046764105,
+   "p01": 0.18717501354217767,
+   "below_0.3": 480,
+   "triangles": 18632
+  },
+  "carrier_nodes_on_surface": {
+   "box_x_min": 0,
+   "box_x_max": 0,
+   "box_y_min": 0,
+   "box_y_max": 0,
+   "box_z_min": 0,
+   "box_z_max": 0
+  },
+  "carrier_nodes_not_on_surface": 0,
+  "volume": 0.27238999386703283,
+  "seconds": 11.784513253718615,
+  "active_ports": [
+   "box_x_min",
+   "box_x_max",
+   "box_y_min",
+   "box_z_min",
+   "box_z_max",
+   "cut_0"
+  ]
+ },
+ "mesh": {
+  "mesh_path": "/root/autodl-tmp/_claude_diag/block_cut/run211/block.mesh",
+  "node_count": 12679,
+  "tet_count": 45545,
+  "material_volume": 0.27238999386703383,
+  "min_dihedral_degrees": 0.06887801838291807,
+  "tets_below_5deg": 48,
+  "tets_below_10deg": 311,
+  "seconds": 6.198882266879082,
+  "carrier_nodes_preserved": 0,
+  "algorithm3d": 1
+ },
+ "interface_pairs": 1,
+ "interface_active_mismatch": 0,
+ "zero_stiffness_carrier_nodes": 165,
+ "assembled_smallest_eigenvalues": [
+  8.186968163467344e-07,
+  9.511409649239834e-07,
+  1.1500538213693151e-06,
+  1.2060697718887984e-06
+ ],
+ "results": {
+  "tension_x": {
+   "compliance_monolithic": 0.16561966355842267,
+   "compliance_assembled": 0.1642650352117046,
+   "compliance_constrained": 0.16422108727566517,
+   "assembled_vs_free": -0.008179151663595952,
+   "constrained_vs_free": -0.008444506242244243,
+   "assembled_vs_constrained": 0.0002676144505464606,
+   "interface_disp_rel_l2_vs_free": 0.005823777867874341,
+   "interface_disp_rel_l2_vs_constrained": 0.0030941079533246237
+  },
+  "shear_y": {
+   "compliance_monolithic": 3.5880622285811263,
+   "compliance_assembled": 3.5746653128393095,
+   "compliance_constrained": 3.574211014651226,
+   "assembled_vs_free": -0.0037337467659011025,
+   "constrained_vs_free": -0.0038603605644201844,
+   "assembled_vs_constrained": 0.00012710446759345295,
+   "interface_disp_rel_l2_vs_free": 0.003762972673487935,
+   "interface_disp_rel_l2_vs_constrained": 0.0008551652440407635
+  },
+  "bending_z": {
+   "compliance_monolithic": 0.0001612658098409052,
+   "compliance_assembled": 0.00015401019833159745,
+   "compliance_constrained": 0.00015391843217639484,
+   "assembled_vs_free": -0.044991629139900624,
+   "constrained_vs_free": -0.04556066578376927,
+   "assembled_vs_constrained": 0.0005961999086467884,
+   "interface_disp_rel_l2_vs_free": 0.00816715390127571,
+   "interface_disp_rel_l2_vs_constrained": 0.0022855018159976524
+  },
+  "wave_16H": {
+   "compliance_monolithic": 0.004873551279516617,
+   "compliance_assembled": 0.004649682701663171,
+   "compliance_constrained": 0.004647210434224281,
+   "assembled_vs_free": -0.045935410343245664,
+   "constrained_vs_free": -0.046442692876473624,
+   "assembled_vs_constrained": 0.000531989561024071,
+   "interface_disp_rel_l2_vs_free": 0.008166886564784644,
+   "interface_disp_rel_l2_vs_constrained": 0.0022857543238781505
+  },
+  "wave_8H": {
+   "compliance_monolithic": 0.0004676232265025266,
+   "compliance_assembled": 0.0004187266441528857,
+   "compliance_constrained": 0.0004177548137080831,
+   "assembled_vs_free": -0.10456405836671312,
+   "constrained_vs_free": -0.10664229227325184,
+   "assembled_vs_constrained": 0.0023263177656205336,
+   "interface_disp_rel_l2_vs_free": 0.008163738317554228,
+   "interface_disp_rel_l2_vs_constrained": 0.002282074432358419
+  },
+  "wave_4H": {
+   "compliance_monolithic": 0.0007033829047946107,
+   "compliance_assembled": 0.0005433281817681406,
+   "compliance_constrained": 0.0005384137531080709,
+   "assembled_vs_free": -0.22754991902057442,
+   "constrained_vs_free": -0.23453676590947448,
+   "assembled_vs_constrained": 0.00912760610534269,
+   "interface_disp_rel_l2_vs_free": 0.008176526503273673,
+   "interface_disp_rel_l2_vs_constrained": 0.0022848242398520935
+  }
+ },
+ "block_tet10_dof": 240669,
+ "global_carrier_nodes": 2230
+}

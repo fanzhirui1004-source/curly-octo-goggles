@@ -1,0 +1,200 @@
+From ff9d147ee33dcb6c688a3e8b7c0a8c93ef98b8f6 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 13:16:03 +0800
+Subject: [PATCH 11/22] sheet route: one carrier layout builder, symmetric
+ carrier by default
+
+Every entry point of the sheet route (production command, prototype driver,
+surface census, block validation, rotation check) built its own carrier
+layout, so the label definition could drift between them.  They now call
+sheet_label_pipeline.build_carrier_layout, which applies the route's
+carrier triangulation (CARRIER_TRIANGULATION, now the cube-symmetric
+parity diagonal of commit 534c56b) in one place.  The rotation check keeps
+--carrier-triangulation to compare against the frozen fan, the production
+receipt records which rule produced the label, and SheetSolidContract
+carries the rule as a frozen constant of the route.
+---
+ .../produce_sheet_label.py                    |  7 ++----
+ .../run_sheet_solid_prototype.py              |  5 +----
+ .../sheet_block_validation.py                 |  6 ++---
+ .../sheet_rotation_check.py                   |  8 ++-----
+ .../sheet_surface_check.py                    |  6 ++---
+ .../sheet_contract.py                         |  1 +
+ .../sheet_label_pipeline.py                   | 22 +++++++++++++++++++
+ 7 files changed, 32 insertions(+), 23 deletions(-)
+
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index 8699253..a6d19aa 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -26,7 +26,6 @@ from importlib import import_module  # noqa: E402
+ fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot")
+ sss = import_module(f"{P}.sheet_solid_surface"); pipe = import_module(f"{P}.sheet_label_pipeline")
+ SheetSolidContract = import_module(f"{P}.sheet_contract").SheetSolidContract
+-from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout  # noqa: E402
+ 
+ # surface grid, sheet remesh target, interior element size
+ RESOLUTION_PRESETS = {
+@@ -77,10 +76,8 @@ def main() -> int:
+ 
+     _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
+     charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
+-    layout = build_global_cell_patch_p1_trace_layout(charts, background_lower=(0.0, 0.0, 0.0), background_upper=(1.0, 1.0, 1.0),
+-                                                     background_shape=(a.carrier_n,) * 3,
+-                                                     world_identity_rotation=spec.placement.rotation,
+-                                                     world_identity_translation=spec.placement.translation)
++    layout = pipe.build_carrier_layout(charts, spec, carrier_n=a.carrier_n)
++    receipt["carrier_triangulation"] = pipe.CARRIER_TRIANGULATION
+     receipt["geometry"] = {"spec_hash": spec.spec_hash, "tau_corners": [float(t) for t in geom.tau_corners],
+                            "cut_plane": None if geom.cut_plane is None else [float(v) for v in geom.cut_plane]}
+ 
+diff --git a/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+index 829606c..dde0ab7 100644
+--- a/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
++++ b/scripts/pred777h_full_cube_v1/run_sheet_solid_prototype.py
+@@ -12,10 +12,7 @@ snap = import_module(f"{P}.mesher_neutral_snapshot"); sss = import_module(f"{P}.
+ 
+ def build_layout(spec, charts, carrier_n: int):
+     """Carrier trace layout with a (carrier_n x carrier_n) P1 grid per face (the frozen contract uses 16)."""
+-    from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout
+-    return build_global_cell_patch_p1_trace_layout(charts, background_lower=(0.0, 0.0, 0.0), background_upper=(1.0, 1.0, 1.0),
+-                                                   background_shape=(carrier_n, carrier_n, carrier_n),
+-                                                   world_identity_rotation=spec.placement.rotation, world_identity_translation=spec.placement.translation)
++    return pipe.build_carrier_layout(charts, spec, carrier_n=carrier_n)
+ 
+ def main() -> int:
+     ap = argparse.ArgumentParser()
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+index 1bb1d98..58e216f 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_block_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -18,7 +18,7 @@ cpm = import_module(f"{P}.conforming_port_mesh"); pipe = import_module(f"{P}.she
+ import_module(f"{P}.frozen_backend").activate_frozen_backend()
+ from cctpms.fem.tet10 import assemble_global_tet10_stiffness
+ from cctpms.port.tet10_nodal_schur import TET10_EDGE_LOCAL_NODES
+-from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_prolongation, build_global_cell_patch_p1_trace_layout
++from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_prolongation
+ import pypardiso
+ 
+ FACES = ("box_x_min", "box_x_max", "box_y_min", "box_y_max", "box_z_min", "box_z_max")
+@@ -26,9 +26,7 @@ FACE_AXIS = {"box_x_min": (0, 0), "box_x_max": (0, 1), "box_y_min": (1, 0), "box
+ 
+ 
+ def build_layout(spec, charts, carrier_n: int):
+-    return build_global_cell_patch_p1_trace_layout(charts, background_lower=(0.0, 0.0, 0.0), background_upper=(1.0, 1.0, 1.0),
+-                                                   background_shape=(carrier_n, carrier_n, carrier_n),
+-                                                   world_identity_rotation=spec.placement.rotation, world_identity_translation=spec.placement.translation)
++    return pipe.build_carrier_layout(charts, spec, carrier_n=carrier_n)
+ 
+ 
+ def p1_field_evaluator(tf):
+diff --git a/scripts/pred777h_full_cube_v1/sheet_rotation_check.py b/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
+index df5dd53..8ff3634 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
++++ b/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
+@@ -17,7 +17,6 @@ P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
+ from importlib import import_module
+ fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot"); sss = import_module(f"{P}.sheet_solid_surface")
+ pipe = import_module(f"{P}.sheet_label_pipeline"); t10 = import_module(f"{P}.tet10_label"); rot = import_module(f"{P}.rotations"); ct = import_module(f"{P}.carrier_triangulation")
+-from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout
+ 
+ 
+ def fp(v: Fraction) -> dict:
+@@ -54,10 +53,7 @@ def rotated_manifest(payload: dict, R: np.ndarray, out: Path) -> Path:
+ 
+ def label(manifest: Path, a, workdir: Path):
+     _, spec, geom = snap.load_geometry_manifest(manifest); charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
+-    layout = build_global_cell_patch_p1_trace_layout(charts, background_lower=(0., 0., 0.), background_upper=(1., 1., 1.), background_shape=(a.carrier_n,) * 3,
+-                                                     world_identity_rotation=spec.placement.rotation, world_identity_translation=spec.placement.translation)
+-    if getattr(a, "carrier_triangulation", "frozen") == "unionjack":
+-        layout = ct.unionjack_layout(layout, carrier_n=a.carrier_n)
++    layout = pipe.build_carrier_layout(charts, spec, carrier_n=a.carrier_n, triangulation=a.carrier_triangulation)
+     surf = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, carrier_n=a.carrier_n)
+     workdir.mkdir(parents=True, exist_ok=True); sss.mesh_sheet_solid(surf, workdir / "mesh.mesh", interior_size_max=a.size_max, algorithm3d=1, threads=a.threads)
+     stage = pipe.compile_port(workdir / "mesh.mesh", geom, spec, layout, carrier_n=a.carrier_n); sch = pipe.schur_label(stage, workers=a.workers)
+@@ -71,7 +67,7 @@ def main() -> int:
+     ap.add_argument("--n-per-unit", type=int, default=48); ap.add_argument("--remesh-size", type=float, default=0.03); ap.add_argument("--size-max", type=float, default=0.05)
+     ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
+     ap.add_argument("--symmetries", default="R05,M01", help="comma list: Rxx = proper rotation index, Mxx = improper (reflection) index")
+-    ap.add_argument("--carrier-triangulation", choices=("frozen", "unionjack"), default="frozen", help="frozen: the vendored fan by node id; unionjack: the cube-symmetric parity diagonal")
++    ap.add_argument("--carrier-triangulation", choices=("frozen", "unionjack"), default=pipe.CARRIER_TRIANGULATION, help="frozen: the vendored fan by node id; unionjack: the cube-symmetric parity diagonal")
+     a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True)
+     payload = json.loads(a.geometry_manifest.read_text()); rep = {"manifest": str(a.geometry_manifest), "results": {}}
+     proper = rot.proper_cubic_rotations()
+diff --git a/scripts/pred777h_full_cube_v1/sheet_surface_check.py b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+index c51df0a..bfd965d 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_surface_check.py
++++ b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+@@ -9,14 +9,12 @@ from pathlib import Path
+ R = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(R / 'src'))
+ from importlib import import_module
+ P = 'pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1'
+-fcb = import_module(f'{P}.full_cube_backend'); snap = import_module(f'{P}.mesher_neutral_snapshot'); sss = import_module(f'{P}.sheet_solid_surface')
+-from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout
++fcb = import_module(f'{P}.full_cube_backend'); snap = import_module(f'{P}.mesher_neutral_snapshot'); sss = import_module(f'{P}.sheet_solid_surface'); pipe = import_module(f'{P}.sheet_label_pipeline')
+ ap = argparse.ArgumentParser(); ap.add_argument('manifest'); ap.add_argument('n', type=int); ap.add_argument('h', type=float); ap.add_argument('--mesh', action='store_true'); ap.add_argument('--size-max', type=float, default=0.04); ap.add_argument('--carrier-n', type=int, default=32); ap.add_argument('--threads', type=int, default=2)
+ a = ap.parse_args(); gm = Path(a.manifest)
+ _, spec, geom = snap.load_geometry_manifest(gm)
+ charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
+-layout = build_global_cell_patch_p1_trace_layout(charts, background_lower=(0., 0., 0.), background_upper=(1., 1., 1.), background_shape=(a.carrier_n,) * 3,
+-                                                 world_identity_rotation=spec.placement.rotation, world_identity_translation=spec.placement.translation)
++layout = pipe.build_carrier_layout(charts, spec, carrier_n=a.carrier_n)
+ out = {'case': gm.parent.name, 'n': a.n, 'h': a.h, 'tau': [round(float(t), 4) for t in geom.tau_corners], 'cut': None if geom.cut_plane is None else [round(float(v), 4) for v in geom.cut_plane]}
+ n = 120; xs = (np.arange(n) + 0.5) / n; grid = np.stack(np.meshgrid(xs, xs, xs, indexing='ij'), axis=-1).reshape(-1, 3)
+ inside = sss.sheet_level(geom, grid) < 0.0
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+index 3b6f5c9..f801e72 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+@@ -15,6 +15,7 @@ class SheetSolidContract:
+     domain: str = "unit cube clipped by the world cut plane; the cut surface is a free surface, never a port"
+     port_collar_enabled: bool = False
+     carrier_grid_per_face: int = 32                      # P1 carrier 1/32 on every box face (decision of record 2026-09-03)
++    carrier_triangulation: str = "union jack: each carrier square is split by the diagonal joining its two corners of even lattice coordinate sum (exactly invariant under the 48 cube symmetries for an even carrier grid)"
+     carrier_active_rule: str = "geometric superset: vertices of carrier triangles the band reaches within level tolerance 0.05"
+     empty_volume: float = 1.0e-6                        # material volume below which a cell carries no label (status EMPTY)
+     floating_fragments: str = "connected components touching no port face are removed"
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+index 76b7c76..f87bb1b 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -10,14 +10,36 @@ from pathlib import Path
+ 
+ import numpy as np
+ 
++from . import carrier_triangulation as ct
+ from . import cgal_mesh3_adapter as adapter
+ from . import fixed_port_adapter as fpa
+ from . import sheet_solid_surface as sss
+ from . import tet10_label as t10
+ 
++CARRIER_TRIANGULATION = "unionjack"
++
+ MESHER_PARAMETERS = {"domain_contract": "SHEET_SOLID_NO_COLLAR", "optimization_enabled": False, "semantic_plane_tolerance": 1e-10}
+ 
+ 
++def build_carrier_layout(charts, spec, *, carrier_n: int = 32, triangulation: str = CARRIER_TRIANGULATION):
++    """The P1 carrier layout of one cell, with the route's carrier triangulation.
++
++    Every entry point of the sheet route builds its layout here so the label definition cannot drift between the
++    production command, the prototype driver and the checks.  triangulation="unionjack" replaces the vendored fan
++    (which picks each square's diagonal by a hash of the node coordinates, hence not equivariant) by the parity
++    diagonal, which is exactly invariant under the 48 cube symmetries; "frozen" keeps the vendored rule."""
++    from cctpms.port.global_cell_patch_trace_layout import build_global_cell_patch_p1_trace_layout
++
++    layout = build_global_cell_patch_p1_trace_layout(
++        charts, background_lower=(0.0, 0.0, 0.0), background_upper=(1.0, 1.0, 1.0), background_shape=(carrier_n,) * 3,
++        world_identity_rotation=spec.placement.rotation, world_identity_translation=spec.placement.translation)
++    if triangulation == "unionjack":
++        return ct.unionjack_layout(layout, carrier_n=carrier_n)
++    if triangulation != "frozen":
++        raise ValueError(f"unknown carrier triangulation {triangulation!r}")
++    return layout
++
++
+ @dataclass
+ class PortStage:
+     artifact: object
+-- 
+2.34.1
+

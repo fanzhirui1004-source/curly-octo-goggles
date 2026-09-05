@@ -1,0 +1,25 @@
+From 81a2601d8dc58abba2eb5da49be2cfbf16a939c6 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 08:26:37 +0800
+Subject: [PATCH 07/22] sheet_surface_check: drop the removed smooth keyword
+
+---
+ scripts/pred777h_full_cube_v1/sheet_surface_check.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/scripts/pred777h_full_cube_v1/sheet_surface_check.py b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+index ecb9725..e1aea66 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_surface_check.py
++++ b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+@@ -26,7 +26,7 @@ if out['volume_est'] < 1e-6:
+     out['status'] = 'EMPTY'; print(json.dumps(out)); sys.exit(0)
+ t = time.perf_counter()
+ try:
+-    r = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n, remesh_size=a.h, smooth=False)
++    r = sss.build_sheet_solid_surface(geom, layout, n_per_unit=a.n, remesh_size=a.h)
+ except Exception as e:
+     out.update({'status': 'SURFACE_FAIL', 'error': str(e)[:300], 'seconds': round(time.perf_counter() - t, 1)}); print(json.dumps(out)); sys.exit(0)
+ rep = r.report; last = rep['remesh_attempts'][-1]
+-- 
+2.34.1
+

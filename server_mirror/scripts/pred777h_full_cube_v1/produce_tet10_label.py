@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Production label command: geometry manifest + coherent polyhedral OFF -> boundary-conforming mesh -> Tet10 exact
-fixed-port Schur -> create-only label directory with SHA-256 receipts.  Solver: SuperLU below --pardiso-above internal
+fixed-port Schur -> create-only label directory with SHA-256 receipts.  Solver: MKL Pardiso (default; SuperLU fallback below --pardiso-above internal
 DOFs, Pardiso (MKL) above.  No gate is applied here; gates run on the six-case panel (run_tet10_label_gates.py)."""
 from __future__ import annotations
 import argparse, hashlib, json, os, subprocess, sys, time
@@ -15,7 +15,7 @@ import_module(f"{P}.frozen_backend").activate_frozen_backend()
 from cctpms.fem.tet10 import assemble_global_tet10_stiffness
 
 STRATUM_PRESETS = {  # label resolution per population stratum (protocol decision, step 1/2 evidence)
-    "full": {"port_refine": 2, "size_max": 0.035}, "thin": {"port_refine": 1, "size_max": 0.05}, "near_empty": {"port_refine": 1, "size_max": 0.05},
+    "full": {"port_refine": 1, "size_max": 0.05}, "thin": {"port_refine": 1, "size_max": 0.05}, "near_empty": {"port_refine": 1, "size_max": 0.05},
 }
 
 def sha(path: Path) -> str: return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -28,7 +28,7 @@ def main() -> int:
     ap.add_argument("--case-id", required=True); ap.add_argument("--geometry-manifest", type=Path, required=True); ap.add_argument("--off", type=Path, required=True)
     ap.add_argument("--output-dir", type=Path, required=True); ap.add_argument("--stratum", choices=sorted(STRATUM_PRESETS), default=None)
     ap.add_argument("--port-refine", type=int); ap.add_argument("--size-max", type=float); ap.add_argument("--algorithm3d", type=int, default=10)
-    ap.add_argument("--pardiso-above", type=int, default=1_000_000); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--chunk", type=int, default=256)
+    ap.add_argument("--pardiso-above", type=int, default=0, help="internal dof above which MKL Pardiso is used (default 0: always, SuperLU fallback if pypardiso is missing)"); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--chunk", type=int, default=1024)
     a = ap.parse_args()
     preset = STRATUM_PRESETS[a.stratum] if a.stratum else {}
     k = a.port_refine if a.port_refine is not None else preset.get("port_refine", 2); size = a.size_max if a.size_max is not None else preset.get("size_max", 0.035)
@@ -61,7 +61,7 @@ def main() -> int:
     Kc = (constraint.T @ K @ constraint).tocsr(); Kc = (0.5 * (Kc + Kc.T)).tocsr(); q = port.q; ni = Kc.shape[0] - q
     receipt["tet10"] = {"nodes": int(n10), "elements": int(len(promo.elements)), "fine_dof": int(3 * n10), "internal_dof": int(ni)}; receipt["timing"]["tet10_assembly"] = time.perf_counter() - t0
     Kqq = Kc[:q, :q].toarray(); Kqi = Kc[:q, q:].tocsr(); Kii = Kc[q:, q:].tocsr(); t0 = time.perf_counter()
-    if ni > a.pardiso_above:
+    if ni > a.pardiso_above and t10.pardiso_available():
         import pypardiso
         solver = pypardiso.PyPardisoSolver(); solver.set_iparm(1, 1); solver.set_iparm(2, 3); solver.factorize(Kii)
         S = Kqq.copy(); B = Kqi.T.tocsc()
