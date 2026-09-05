@@ -128,6 +128,56 @@ at this coarse preset (0.4 % to 4.5 % at the production preset, step 7).  Sizes:
 monolithic (factorised in 25 s) and 85 365 assembled carrier dof with 4.2e8 upper nonzeros (symmetric Pardiso, 44 s).
 The 4 x 4 x 2 panel follows.
 
+
+## 8. Re-production of the samples with the repaired pipeline
+
+The 300-cell stratified production sample and the 20-cell track A set were re-produced (`repro/`).  Track B: 297 PASS,
+3 MESH_FAIL (two HXT nonmanifold boundary recoveries, one Gmsh crash, all on pre-existing 1e-4 features the surface
+carried before the fix as well; fail closed, no label).  Track A: 28 of 28 after two reference-tier re-runs.
+
+| statistic (300-cell sample) | before | after |
+|---|---|---|
+| top mode with >= 99 % of its mass on one carrier square | 19 (6.6 %) | 0 |
+| >= 95 % | 39 (13.6 %) | 5 (1.7 %) |
+| >= 90 % | 74 (25.9 %) | 31 (10.4 %) |
+| exact null modes beyond 6 + 3 x unsupported (30-cell sample) | 5 of 5 cells, +2 to +15 | 0 of 30 |
+| first eigenvalue above the null space, over lambda_max | 1e-16 to 1e-17 | median 8e-5, min 6e-7 |
+| guards (rigid residual, PSD, nonmanifold) | all pass | all pass, rigid residual median 2.4e-15 |
+| zero-row fraction, median | 13.8 % | 13.6 % (geometric) |
+| power-law exponents, normal / shear | 1.337 / 1.205 | 1.350 / 1.209 |
+| storage projected for 1949 cells | 193 GB | 165 GB |
+
+The support points in shallow band intrusions were also the source of the extra null modes (two columns sharing one
+vertex): with them gone the null space is exactly the combinatorial lower bound on every sampled cell and a real
+spectral gap appears.  The remaining lambda_max tail belongs to near-empty cells: the 14 cells with material volume
+below 0.01 have a median lambda_max of 0.136 against 0.038 for the other 283, with the top mode spread over 10 or
+more nodes (a small piece of material pinned between ports, physical).  Whether cells below 1 % material enter the
+training set is a population decision, recorded as open.
+
+**Single-cell error, metric of record (A1 v4).**  Three metrics were tried and rejected on the repaired labels: the
+generalized eigenvalues on the reference's range (v1) and on a declared energy floor from the top (v2) are dominated
+by single-node modes whose value is the local mesh around one carrier node (bounds 2 to 30); the softest modes in
+the mass norm (v3) are the hairline modes one mesh resolves and the other does not (bounds 4 to 180).  Neither end
+of the spectrum is what a neighbouring cell transmits.  The subspace of record is the span of the k lowest
+eigenvectors of the carrier Laplace-Beltrami operator in the carrier mass norm, both shipped with the label and
+functions of the geometry only, with the six rigid modes projected out: smooth port fields.  Production against
+reference, worst relative strain energy over that subspace:
+
+| cell | 6 modes | 30 | 90 (wavelength >= 4 spacings) | 300 | 900 | six uniform strains |
+|---|---|---|---|---|---|---|
+| pop_uncut_0529 | 0.9 % | 1.3 % | 2.2 % | 3.1 % | 8.4 % | 0.13 % |
+| pop_uncut_0297 | 0.24 % | 0.33 % | 0.43 % | 0.64 % | 2.4 % | 0.05 % |
+| pop_uncut_0658 | 0.50 % | 0.79 % | 1.1 % | 1.7 % | 6.3 % | 0.08 % |
+| pop_cut_1215 | 0.24 % | 0.33 % | 0.75 % | 1.3 % | 3.5 % | 0.05 % |
+| pop_cut_0122 | 0.34 % | 0.52 % | 1.1 % | 1.7 % | 6.4 % | 0.10 % |
+| pop_cut_1118 | 0.68 % | 1.2 % | 2.1 % | 4.1 % | 12.3 % | 0.11 % |
+| pop_cut_0473 | 0.56 % | 0.86 % | 1.4 % | 3.3 % | 12.8 % | 0.14 % |
+| pop_cut_0418 | 0.26 % | 0.40 % | 0.61 % | 0.96 % | 3.4 % | 0.06 % |
+
+The fast tier is 2x to 3x the production tier in every column (monotone convergence with the mesh).  Reading: on the
+smooth port fields assembly transmits, down to four carrier spacings, a production label is within 0.4 % to 2.2 % of
+the reference in every direction; the error grows towards the carrier's own resolution limit, as it must.
+
 ## 6. Consequences for the route
 
 * lambda_max is not the operator scale; the "operator scale dynamic range 11.2x" of the production statistics was

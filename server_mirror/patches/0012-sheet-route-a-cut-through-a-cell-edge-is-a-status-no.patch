@@ -1,7 +1,7 @@
 From 288b1c21d108580df8da6f2494945d4c4cefee80 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 15:21:07 +0800
-Subject: [PATCH 12/23] sheet route: a cut through a cell edge is a status, not
+Subject: [PATCH 12/24] sheet route: a cut through a cell edge is a status, not
  a crash
 
 The census of record lost one cell without a JSON line: the 45 degree

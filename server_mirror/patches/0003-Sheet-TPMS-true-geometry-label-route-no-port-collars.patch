@@ -1,7 +1,7 @@
 From 3c6a76cdd21a20c437f252f285b407e52252ce5d Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 02:53:30 +0800
-Subject: [PATCH 03/23] Sheet-TPMS true-geometry label route: no port collars,
+Subject: [PATCH 03/24] Sheet-TPMS true-geometry label route: no port collars,
  carrier 1/32, exact rigid reproduction
 
 The cell geometry used so far carried 1/32 solid plates on all six box faces (46% of the G0 material) and treated the

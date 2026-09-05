@@ -1,7 +1,7 @@
 From a5587de18cba2cbc6d585e359abb232ead011f4b Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 17:27:15 +0800
-Subject: [PATCH 15/23] sheet route: cooperative memory budget for the Schur
+Subject: [PATCH 15/24] sheet route: cooperative memory budget for the Schur
  stage
 
 Memory, not CPU, bounds how many labels a machine runs at once: the

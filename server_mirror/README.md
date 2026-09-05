@@ -14,7 +14,7 @@ reports can be read without a server connection.
 
 ## Update of 2026-09-05: the sheet-TPMS true-geometry label route
 
-Snapshot of every file changed on the server between commits `843f7b4` and `831e1db` (23 commits, the true-geometry
+Snapshot of every file changed on the server between commits `843f7b4` and `a1b4a84` (24 commits, the true-geometry
 sheet route: no port collars, carrier-conforming caps, the cut face as a port, the block-with-skin validation, and
 the sliver root cause).  The server remains the source of truth.
 
@@ -26,4 +26,4 @@ the sliver root cause).  The server remains the source of truth.
 - `src/.../sheet_solid_surface.py`, `cut_carrier.py`, `sheet_label_pipeline.py`, `sheet_contract.py`,
   `scripts/pred777h_full_cube_v1/produce_sheet_label.py`, `sheet_block_validation.py`, `sheet_skin_validation.py`,
   `scripts/pred777h_full_cube_v1/diagnostics/`, `cpp/pred777h_sliver_remesh/`, `tests/pred777h_full_cube_v1/`.
-- `patches/0001..0023`: the 23 server commits as git patches, in order.
+- `patches/0001..0024`: the 24 server commits as git patches, in order.

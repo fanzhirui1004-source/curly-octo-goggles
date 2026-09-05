@@ -1,7 +1,7 @@
 From b46230741270430ad5502c9bdcc1e4af735a039b Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 07:48:54 +0800
-Subject: [PATCH 05/23] Sheet surface robustness on near-degenerate cells (Step
+Subject: [PATCH 05/24] Sheet surface robustness on near-degenerate cells (Step
  4): remesh-then-clip, orientation-based caps, verified self-intersection gate
 
 Surface pipeline (sheet_solid_surface.py):

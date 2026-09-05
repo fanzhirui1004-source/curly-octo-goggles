@@ -1,7 +1,7 @@
 From fc361f8f03cd1599c65975012cc6ad1065d754d3 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Sat, 5 Sep 2026 01:58:02 +0800
-Subject: [PATCH 20/23] sheet route: root-cause the carrier feature size and
+Subject: [PATCH 20/24] sheet route: root-cause the carrier feature size and
  the volume mesher instead of gating
 
 Two things were being papered over: a gate that refused cells whose cut nearly contains a cell edge or corner, and an

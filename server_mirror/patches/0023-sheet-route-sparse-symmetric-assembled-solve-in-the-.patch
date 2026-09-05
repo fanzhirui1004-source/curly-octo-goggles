@@ -1,7 +1,7 @@
 From 831e1db5dadb43a88d430ffa3a9db2e21b5b3af2 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Sat, 5 Sep 2026 19:44:29 +0800
-Subject: [PATCH 23/23] sheet route: sparse symmetric assembled solve in the
+Subject: [PATCH 23/24] sheet route: sparse symmetric assembled solve in the
  block validation, support mask and numerical rank in the label, panel results
 
 The block validation held the assembled carrier operator as a dense matrix and took its full eigendecomposition

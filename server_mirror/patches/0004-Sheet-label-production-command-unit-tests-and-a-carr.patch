@@ -1,7 +1,7 @@
 From 3b0959dc8dd2bc86db95a06238c4a79962b1665e Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 03:12:28 +0800
-Subject: [PATCH 04/23] Sheet label production command, unit tests, and a
+Subject: [PATCH 04/24] Sheet label production command, unit tests, and a
  carrier-map defect fix
 
 - produce_sheet_label.py: create-only label directory, resolution presets (fast/production/reference), carrier 1/32,

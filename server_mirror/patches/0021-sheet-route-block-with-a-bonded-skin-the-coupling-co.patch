@@ -1,7 +1,7 @@
 From 41c338fd4296e31286ef73fff3d7b3c50d067931 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Sat, 5 Sep 2026 02:26:32 +0800
-Subject: [PATCH 21/23] sheet route: block with a bonded skin, the coupling
+Subject: [PATCH 21/24] sheet route: block with a bonded skin, the coupling
  contract proven end to end
 
 Every earlier assembly figure was measured on internal interfaces, where both sides use the same carrier by

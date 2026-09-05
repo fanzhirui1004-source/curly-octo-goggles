@@ -1,7 +1,7 @@
 From 30afa9e4bb0cf3af1acf2cdec0736cf5be22f637 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 18:24:35 +0800
-Subject: [PATCH 17/23] sheet route: Step 5 report final, census of record v2,
+Subject: [PATCH 17/24] sheet route: Step 5 report final, census of record v2,
  label census, cut assembly, throughput
 
 Report and evidence for the state of the route at the end of 2026-09-04:

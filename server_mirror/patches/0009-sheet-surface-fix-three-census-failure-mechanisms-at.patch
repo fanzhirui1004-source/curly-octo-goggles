@@ -1,7 +1,7 @@
 From cc11fa176925397890647ad7ea86e72f350f58be Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 12:14:44 +0800
-Subject: [PATCH 09/23] sheet surface: fix three census failure mechanisms at
+Subject: [PATCH 09/24] sheet surface: fix three census failure mechanisms at
  the source
 
 Population census (2009 cells, production preset) failed on four cut cells;

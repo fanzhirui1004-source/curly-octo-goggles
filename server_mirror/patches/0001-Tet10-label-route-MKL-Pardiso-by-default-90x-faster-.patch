@@ -1,7 +1,7 @@
 From d5aa9c23c11562a34abaef54d9c5495dafedef3e Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Thu, 3 Sep 2026 18:27:58 +0800
-Subject: [PATCH 01/23] Tet10 label route: MKL Pardiso by default (90x faster
+Subject: [PATCH 01/24] Tet10 label route: MKL Pardiso by default (90x faster
  Schur), k=1 for full cells, geometry finding
 
 - dense_fixed_port_schur / produce_tet10_label / run_tet10_label_gates: Pardiso with 1024-column chunks by default,

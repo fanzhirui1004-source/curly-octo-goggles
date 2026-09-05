@@ -1,7 +1,7 @@
 From c20557e130d0d8c15be0483eca94f908120b0711 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Fri, 4 Sep 2026 08:22:22 +0800
-Subject: [PATCH 06/23] Sheet route code review: dead code removed, shared
+Subject: [PATCH 06/24] Sheet route code review: dead code removed, shared
  label pipeline, route contract, population generator
 
 - sheet_solid_surface.py: remove the marching-cubes-only path and eight functions dead since Step 4 (resnap,

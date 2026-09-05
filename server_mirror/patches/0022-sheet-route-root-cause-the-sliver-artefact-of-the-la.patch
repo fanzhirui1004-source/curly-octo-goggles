@@ -1,7 +1,7 @@
 From 17b0fdd798b7941a883c383d672ff5d0e53c5ed9 Mon Sep 17 00:00:00 2001
 From: Codex Executor <codex-executor@local>
 Date: Sat, 5 Sep 2026 15:39:00 +0800
-Subject: [PATCH 22/23] sheet route: root-cause the sliver artefact of the
+Subject: [PATCH 22/24] sheet route: root-cause the sliver artefact of the
  label operator (needle cap triangles from forced support points)
 
 lambda_max of the fixed-port operator was up to 11x its converged value in a quarter of the production labels, its
