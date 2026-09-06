@@ -29,3 +29,7 @@
 - 12 QR 归约：每切割单元占比约 12%，改为 Gram 累积会损失秩判定精度；未改。
 - 14 内部单元快速路径、15 认证循环 C++ 化：收益小或工程量大；未改。
 - 16 生产运行中 2.5 倍减速：`stage_cutfem_runtime.scaling_probe` 已就绪，需在队列空闲时运行。
+
+## 已知的历史测试失败（与本轮无关）
+
+`tests/implicit_macro_cut_whole_boundary/test_filtered_rank.py::test_scaled_1e_minus_12_sparse_full_rank_is_certified_without_scale_floor` 在 Codex 原树、原运行时组合下同样失败（PROPACK 对 1e-12 尺度矩阵不收敛，返回 ADAPTIVE_REQUIRED）。该文件随 T16 的完整 Git 部署首次进入服务器，此前从未在服务器执行过；`stage_zx_implicit.filtered_rank` 不在 CutFEM 生产链上。与 gmpy2 运行时无关。建议由 Codex 调整用例尺度或增加直接 SVD 回退，不放宽 CERTIFIED 门槛。
