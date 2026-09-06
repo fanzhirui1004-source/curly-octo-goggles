@@ -1,7 +1,7 @@
 From d1715aa9348606befaf3ec57fbc79d63f95ea069 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Mon, 7 Sep 2026 02:37:35 +0800
-Subject: [PATCH 2/2] Correct the note on the pre-existing filtered-rank test
+Subject: [PATCH 2/3] Correct the note on the pre-existing filtered-rank test
  failure
 
 ---

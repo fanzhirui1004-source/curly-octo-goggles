@@ -1,7 +1,7 @@
 From 5072dcdba5748f2c72a05b3f284835a115a48c72 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Mon, 7 Sep 2026 02:17:18 +0800
-Subject: [PATCH 1/2] R22 throughput and audit follow-up
+Subject: [PATCH 1/3] R22 throughput and audit follow-up
 
 - exact trace compilation on gmpy2.mpq (identical digests, 3x faster); runtime r22_gmpy2_v1
 - INTEGRATION_POLICY_R22: enclosure ladders disabled per user decision, candidate search from order 8,

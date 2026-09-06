@@ -1,0 +1,502 @@
+From 7705d7994bd4158a94d98337419002541d05c31f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 7 Sep 2026 03:36:20 +0800
+Subject: [PATCH 3/3] R22 batch 2: geometry labels from cell records, single
+ pair gate, outcome propagation, P11 packaging, independent field
+
+- body record summarises geometry qualification from cell records (false while enclosure ladders are disabled)
+- PAIR_GATE_POLICY_R22 V2: one 1e-6 discrete-replay gate; strict prototype gate retired
+- pipeline classifies packet outcomes from RESULT.json, fails the batch on scientific stops, captures lane exceptions
+- library.package handles a certified plane that adds no macro-cut trace face (P11)
+- registered_fields: R18 selection fields plus the R22 independent (2,3,2) field; probes, references and qualification share it
+- packet and response PSS budgets raised
+---
+ CHANGES_R22.md                                | 13 ++++
+ stage_cutfem_assembly/experiment.py           |  8 ++-
+ stage_cutfem_multiconstraint/body.py          |  9 ++-
+ .../PAIR_GATE_POLICY_R22.json                 |  9 ++-
+ .../PRODUCTION_POLICY_R22.json                |  4 +-
+ stage_cutfem_preproduction/geometry.py        | 18 +++--
+ stage_cutfem_preproduction/library.py         | 31 ++++++---
+ stage_cutfem_preproduction/packet_pair.py     | 20 +++---
+ stage_cutfem_preproduction/pipeline.py        | 66 +++++++++++++++++--
+ stage_cutfem_preproduction/qualification.py   | 20 +++++-
+ .../registered_fields.py                      | 26 ++++++++
+ tests/r22/test_r22_pair_gate.py               | 21 ++----
+ 12 files changed, 183 insertions(+), 62 deletions(-)
+ create mode 100644 stage_cutfem_preproduction/registered_fields.py
+
+diff --git a/CHANGES_R22.md b/CHANGES_R22.md
+index 981bcdd..4f869e7 100644
+--- a/CHANGES_R22.md
++++ b/CHANGES_R22.md
+@@ -33,3 +33,16 @@
+ ## 已知的历史测试失败（与本轮无关）
+ 
+ `tests/implicit_macro_cut_whole_boundary/test_filtered_rank.py::test_scaled_1e_minus_12_sparse_full_rank_is_certified_without_scale_floor` 在 Codex 原树、原运行时组合下同样失败（PROPACK 对 1e-12 尺度矩阵不收敛，返回 ADAPTIVE_REQUIRED）。该文件随 T16 的完整 Git 部署首次进入服务器，此前从未在服务器执行过；`stage_zx_implicit.filtered_rank` 不在 CutFEM 生产链上。与 gmpy2 运行时无关。建议由 Codex 调整用例尺度或增加直接 SVD 回退，不放宽 CERTIFIED 门槛。
++
++## 第二批（响应 Codex 审查，2026-09-07）
++
++用户决定：包络阶梯全关；独立边界场在已测频率范围内换组合；严格配对门直接删除。
++
++| 项 | 改动 | 验证 |
++| --- | --- | --- |
++| 几何资格标签 | `body.build` 的 `geometry_error_separately_qualified` 改为从单元记录汇总，包络禁用时为 false，并新增 `geometry_enclosure_confirmation`、`cells_geometry_qualified` | 代码审阅；下次几何运行生效 |
++| 配对门 | `PAIR_GATE_POLICY_R22.json` 升到 V2，只保留 1e-6 单门；`evaluate_pair_gates` 不再报告严格门；状态只有 PASS / STOP | tests/r22/test_r22_pair_gate.py |
++| 流水线状态传递 | `pipeline.classify_packet` 按 RESULT.json 把结果分为 PAIR_AUDIT_PASS、PAIR_LOAD_NOT_APPLICABLE、PACKET_NOT_AUDITED、PAIR_AUDIT_STOP、PAIR_REFERENCE_UNAVAILABLE、STAGE_FAILED；算子阶段也检查科学状态；科学 STOP 计入失败且不归档；车道线程异常记录并终止；汇总输出各类计数 | 单元测试（计划测试） |
++| P11 打包 | `library.package` 在切割几何没有 MACRO_CUT 迹面时按 box 坐标打包，记录 `box_coordinates_no_macro_cut_face` | CLAUDE_R22_P11_PACKET_2：打包、本地重放、两模块配对全部通过，最大偏差 6.0e-10 |
++| 预算 | 打包阶段 PSS 预算 32 → 44 GiB，响应 32 → 40 GiB | 策略文件 |
++| 独立边界场 | 新增 `stage_cutfem_preproduction/registered_fields.py`：R18 三个选参场加 R22 独立场（频率 2,3,2）；`experiment.nonaffine` 探针改为四场；新参考运行写四个能量；`qualification` 对前三场沿用旧比较，第四场单列为 FULL_TRACE_INDEPENDENT，参考缺失时标 INDEPENDENT_FIELD_REFERENCE_PENDING；旧消费者默认仍取三场 | 单元测试通过；参考计算未执行 |
+diff --git a/stage_cutfem_assembly/experiment.py b/stage_cutfem_assembly/experiment.py
+index 8aadbc7..b845191 100644
+--- a/stage_cutfem_assembly/experiment.py
++++ b/stage_cutfem_assembly/experiment.py
+@@ -55,9 +55,10 @@ def body_solve(upper,prescribed,values,energy,out,ooc):
+ 
+ 
+ def nonaffine(local,S,points,directory,trace_map=None):
++    from stage_cutfem_preproduction.registered_fields import FIELDS,analytic_field
+     n=local.dimension;xyz=np.repeat(points,3,axis=0);component=np.arange(len(xyz))%3;probes=[]
+-    for frequency in (1,2,3):
+-        field=np.sin(frequency*np.pi*xyz[:,0]+.27*component)*np.cos(frequency*np.pi*xyz[:,1]+.31)*np.sin(np.pi*xyz[:,2]+.57)
++    for spec in FIELDS:
++        field=analytic_field(spec,xyz,component)
+         probes.append(field if trace_map is None else trace_map@field)
+     for column in sorted(set((0,n//2,n-1))):
+         q=np.zeros(n);q[column]=1;probes.append(q)
+@@ -68,11 +69,12 @@ def nonaffine(local,S,points,directory,trace_map=None):
+     np.savez_compressed(directory/'NONAFFINE_PROBES.npz',trace=q,implicit_force=original,exported_force=exported,
+         harmonic_state=u,physical_twice_energy=physical,ghost_twice_energy=ghost)
+     record=dict(action_relative=relative.tolist(),work_energy_relative=work.tolist(),frequencies=[1,2,3],
++        registered_fields=[dict(s,frequencies=list(s['frequencies'])) for s in FIELDS],analytic_field_count=len(FIELDS),
+         individual_columns=sorted(set((0,n//2,n-1))),harmonic=local.history[-1],original_gate=1e-10,
+         prototype_stop_limit=1e-8,numerical_warning=bool(max(relative.max(),work.max())>1e-10),
+         physical_twice_energy=physical.tolist(),ghost_twice_energy=ghost.tolist(),
+         ghost_fraction=(ghost/(physical+ghost)).tolist(),
+-        cross_grid_comparison='First three analytic fields only; individual coordinate columns change with the grid',
++        cross_grid_comparison='Analytic fields only; individual coordinate columns change with the grid',
+         policy='User requested fast prototype validation: retain small numerical excess as a warning')
+     write_json(directory/'NONAFFINE.json',record)
+     if max(relative.max(),work.max())>1e-8:raise ValueError('NONAFFINE_COMPLETE_TRACE_ACTION_OR_ENERGY')
+diff --git a/stage_cutfem_multiconstraint/body.py b/stage_cutfem_multiconstraint/body.py
+index 8d3e395..f03eb7a 100644
+--- a/stage_cutfem_multiconstraint/body.py
++++ b/stage_cutfem_multiconstraint/body.py
+@@ -60,9 +60,16 @@ def build(contract,directory,workers=None,topology=None):
+         G,V,moments,timing=prepare(directory,cache,indices,np.zeros_like(indices,bool),inverse.reshape(all_nodes.shape),workers,executor=pool)
+         upper,assembly=assemble_upper(directory,3*len(nodes),workers,executor=pool)
+     points=np.stack(np.unravel_index(nodes,(2*contract.n+1,)*3),axis=1)/(2*contract.n)
++    enclosure=sorted({r['rule'].get('geometry_enclosure_confirmation','CONFIRMED_PER_CELL') for r in records})
++    geometry_qualified=all(r['rule'].get('geometry_approximation_qualified',True) for r in records)
+     record=dict(case=contract.case_id,n=contract.n,body_dofs=3*len(nodes),active_cells=len(indices),
+         component_count=topology['component_count'],topology_proof=topology['proof'],geometry_surrogate=True,
+-        geometry_error_separately_qualified=True,all_body_columns_retained=True,port_reduction=False,
++        # Summarised from the cell records, never asserted: with the R22 policy
++        # the enclosure ladders are not run, so the surrogate geometry error is
++        # not separately qualified and the label says so.
++        geometry_error_separately_qualified=geometry_qualified,geometry_enclosure_confirmation=enclosure,
++        cells_geometry_qualified=int(sum(bool(r['rule'].get('geometry_approximation_qualified',True)) for r in records)),
++        all_body_columns_retained=True,port_reduction=False,
+         volume=float(moments[:,0].sum()),cells=records,seconds=time.perf_counter()-start,
+         factor_preparation=timing,assembly=assembly,preallocation_forecast_bytes=forecast)
+     np.save(directory/'NODES.npy',nodes);np.save(directory/'CELL_INDICES.npy',indices)
+diff --git a/stage_cutfem_preproduction/PAIR_GATE_POLICY_R22.json b/stage_cutfem_preproduction/PAIR_GATE_POLICY_R22.json
+index fe4a8b0..3283714 100644
+--- a/stage_cutfem_preproduction/PAIR_GATE_POLICY_R22.json
++++ b/stage_cutfem_preproduction/PAIR_GATE_POLICY_R22.json
+@@ -1,11 +1,10 @@
+ {
+-  "schema": "CUTFEM_PAIR_GATE_POLICY_R22_V1",
++  "schema": "CUTFEM_PAIR_GATE_POLICY_R22_V2",
+   "date": "2026-09-07",
+-  "purpose": "Discrete-consistency gate for solving two saved packets against the independent body solve. The strict prototype gate is kept and reported; production acceptance uses a gate calibrated to the 1% science target instead of pure floating-point tails.",
+-  "strict": {"trace_relative": 1e-8, "reaction_relative": 1e-8, "energy_relative": 1e-9},
+-  "production": {"trace_relative": 1e-6, "reaction_relative": 1e-6, "energy_relative": 1e-6},
++  "purpose": "Discrete-consistency gate for solving two saved packets against the independent body solve. The historical 1e-8/1e-9 prototype gate is retired by user decision; it stopped numerically sound samples on floating-point tails.",
++  "gate": {"trace_relative": 1e-6, "reaction_relative": 1e-6, "energy_relative": 1e-6},
+   "science_target_relative": 0.01,
+-  "rationale": "R21_T04 P00-P06 measured deviations of 1e-10..2.4e-7 against the body solve for cut cells whose end-load energies are of order 1e-7; the strict gate stopped five numerically sound samples. 1e-6 is four orders below the registered 1% response target and still requires refinement convergence.",
++  "rationale": "R21_T04 measured deviations of 1e-10..2.4e-7 against the body solve for cut cells whose end-load energies are of order 1e-7. 1e-6 is four orders below the registered 1% response target and still requires refinement convergence.",
+   "requires_refinement_converged": true,
+   "bulk_data_production_authorized": false,
+   "neural_training_authorized": false
+diff --git a/stage_cutfem_preproduction/PRODUCTION_POLICY_R22.json b/stage_cutfem_preproduction/PRODUCTION_POLICY_R22.json
+index c861c7e..e6d2efb 100644
+--- a/stage_cutfem_preproduction/PRODUCTION_POLICY_R22.json
++++ b/stage_cutfem_preproduction/PRODUCTION_POLICY_R22.json
+@@ -6,7 +6,7 @@
+   "lane_note": "Lane A runs geometry (all assembly workers, ~12 GiB PSS). Lane B runs operator, optional response and packet (mostly one core, up to 35 GiB PSS). Admission waits until cgroup usage plus reserved lane budgets fit in memory_budget_gib.",
+   "memory_budget_gib": 96,
+   "container_guard_gib": 108,
+-  "stage_pss_gib": {"geometry": 24, "operator": 48, "response": 32, "packet": 32, "retire": 4},
++  "stage_pss_gib": {"geometry": 24, "operator": 48, "response": 40, "packet": 44, "retire": 4},
+   "retire_after_packet": true,
+   "retire_note": "After a sealed packet, the reconstructible body/ghost/global_body arrays of that sample are gzip-archived with verified receipts (stage_cutfem_runtime.retire_sample); about 10 GiB per n32 sample returns to the data disk while every RESULT, manifest and the packet itself stay online.",
+   "pair_audit_every": 20,
+@@ -15,7 +15,7 @@
+   "registered_method_changes": {
+     "exact_trace_arithmetic": "gmpy2.mpq via stage_cutfem_full_interface.exact_numbers; identical exact results and digests",
+     "integration": "stage_cutfem_multiconstraint/INTEGRATION_POLICY_R22.json (enclosure ladders disabled; candidate search from order 8; per-process coefficient caches; unordered cell scheduling)",
+-    "pair_gate": "stage_cutfem_preproduction/PAIR_GATE_POLICY_R22.json (strict gate reported, production gate 1e-6 decides)"
++    "pair_gate": "stage_cutfem_preproduction/PAIR_GATE_POLICY_R22.json (single 1e-6 discrete-replay gate; the historical strict gate is retired)"
+   },
+   "bulk_data_production_authorized": false,
+   "neural_training_authorized": false
+diff --git a/stage_cutfem_preproduction/geometry.py b/stage_cutfem_preproduction/geometry.py
+index 3287e9a..a18a0ed 100644
+--- a/stage_cutfem_preproduction/geometry.py
++++ b/stage_cutfem_preproduction/geometry.py
+@@ -35,12 +35,16 @@ class Geometry:
+         return names+(['cut_0'] if self.cut_plane else [])
+ 
+ 
+-def analytic_fields(points):
+-    """Exactly the R18 frequency1/2/3 fields, with node-major xyz ordering."""
+-    xyz=np.repeat(np.asarray(points),3,axis=0);component=np.arange(len(xyz))%3
+-    return np.stack([np.sin(f*np.pi*xyz[:,0]+.27*component)*
+-        np.cos(f*np.pi*xyz[:,1]+.31)*np.sin(np.pi*xyz[:,2]+.57)
+-        for f in (1,2,3)],axis=1)
++def analytic_fields(points,registered=False):
++    """R18 selection fields by default; ``registered=True`` adds the R22 independent field.
++
++    Historical consumers compare against sealed references that carry three
++    fields, so the default stays at three. New reference runs and the CutFEM
++    probes pass ``registered=True`` so the independent field gets its own
++    reference and comparison.
++    """
++    from .registered_fields import analytic_fields as all_fields,FIELDS,SELECTION_COUNT
++    return all_fields(points,None if registered else FIELDS[:SELECTION_COUNT])
+ 
+ 
+ def boundary_values(points,geometry):
+@@ -51,7 +55,7 @@ def boundary_values(points,geometry):
+         if any(not len(ids) for ids in faces.values()):raise ValueError('REFERENCE_BOX_FACE_EMPTY')
+         nodes=np.unique(np.concatenate(list(faces.values())))
+         prescribed=(3*nodes[:,None]+np.arange(3)).ravel()
+-        values=analytic_fields(points[nodes])
++        values=analytic_fields(points[nodes],registered=True)
+         right=np.empty(0,dtype=int)
+     else:
+         ends=[faces[(2,side)] for side in (0,1)]
+diff --git a/stage_cutfem_preproduction/library.py b/stage_cutfem_preproduction/library.py
+index 4a70996..6e0083b 100644
+--- a/stage_cutfem_preproduction/library.py
++++ b/stage_cutfem_preproduction/library.py
+@@ -40,7 +40,11 @@ def package(source,directory,cut_geometry=None,matrix_format=None):
+         'chain/full_operator/EXPORT.json','chain/NONAFFINE_PROBES.npz']
+     if source_format=='packed-upper':
+         names.append('chain/full_operator/S_UPPER.json')
+-    if cut_geometry:names+=['chain/ORIGINAL_FROM_TRACE_FREE.npz','chain/TRACE_FREE_FROM_ORIGINAL.npz','chain/COMPLETE_MACRO_TRACE.json']
++    # A cut geometry whose plane adds no MACRO_CUT trace face is exported in the
++    # original box coordinates (R21_T04 P11); its packet then carries no
++    # coordinate transform files and no additional cut coordinates.
++    cut_trace_present=bool(cut_geometry) and (source/'chain/COMPLETE_MACRO_TRACE.json').is_file()
++    if cut_trace_present:names+=['chain/ORIGINAL_FROM_TRACE_FREE.npz','chain/TRACE_FREE_FROM_ORIGINAL.npz','chain/COMPLETE_MACRO_TRACE.json']
+     binding=sealed(source,names);result=json.loads((source/'RESULT.json').read_text())
+     allowed = {'COMPLETE_LOCAL_OPERATOR_NUMERICAL_PASS_NOT_TEACHER',
+                'COMPLETE_LOCAL_OPERATOR_WITH_NUMERICAL_WARNING_NOT_TEACHER',
+@@ -60,14 +64,21 @@ def package(source,directory,cut_geometry=None,matrix_format=None):
+         c=Contract(row['case_id'],n,tuple(row['normal']),row['offset'])
+         body=dict(contract=c,nodes=nodes,topology=json.loads((old/'TOPOLOGY.json').read_text()))
+         domain=dict(box_max=[1,1,1],cut_plane=[*c.normal,c.offset],tau=.35)
+-        coordinates=json.loads((source/'chain/COMPLETE_MACRO_TRACE.json').read_text())
+-        coordinate_binding = dict(
+-            coordinate_convention=coordinates.get('coordinate_convention', 'geometric_residuals_v1'),
+-            policy_sha256=coordinates['policy_sha256'], coordinate_sha256=coordinates['coordinate_sha256'])
+-        extra=coordinates['additional_cut_trace_dimension']
+-        for name in ['ORIGINAL_FROM_TRACE_FREE.npz','TRACE_FREE_FROM_ORIGINAL.npz','COMPLETE_MACRO_TRACE.json']:
+-            os.link(source/'chain'/name,directory/name)
+-        coordinate_kind='complete box Q2 coefficients, then all independent exact cut residual functionals; node-major xyz'
++        if cut_trace_present:
++            coordinates=json.loads((source/'chain/COMPLETE_MACRO_TRACE.json').read_text())
++            coordinate_binding = dict(
++                coordinate_convention=coordinates.get('coordinate_convention', 'geometric_residuals_v1'),
++                policy_sha256=coordinates['policy_sha256'], coordinate_sha256=coordinates['coordinate_sha256'])
++            extra=coordinates['additional_cut_trace_dimension']
++            for name in ['ORIGINAL_FROM_TRACE_FREE.npz','TRACE_FREE_FROM_ORIGINAL.npz','COMPLETE_MACRO_TRACE.json']:
++                os.link(source/'chain'/name,directory/name)
++            coordinate_kind='complete box Q2 coefficients, then all independent exact cut residual functionals; node-major xyz'
++        else:
++            if any(p['tag']=='MACRO_CUT_FACE' for p in body['topology']['patches']):
++                raise ValueError('LIBRARY_CUT_TRACE_FILES_MISSING')
++            coordinate_binding=dict(coordinate_convention='box_coordinates_no_macro_cut_face',
++                additional_cut_trace_dimension=0,cut_plane_retained_in_geometry=True)
++            coordinate_kind='complete box Q2 coefficients, ascending background node id then xyz; certified plane adds no macro-cut trace face'
+     else:
+         if result['case']!='P_UNCUT':raise ValueError('LIBRARY_FULL_GEOMETRY_BINDING')
+         c=contract('P_UNCUT',n);body=dict(contract=c,nodes=nodes,active=[r['owner'] for r in result['body']['cells']])
+@@ -93,7 +104,7 @@ def package(source,directory,cut_geometry=None,matrix_format=None):
+         packed = PackedSymmetric(directory/'S_UPPER.npy', len(boundary))
+         points = np.stack(np.unravel_index(nodes, (2*n+1,)*3), axis=1)/(2*n)
+         rigid = rigid_fields(points)
+-        if cut_geometry:
++        if cut_trace_present:
+             rigid = sparse.load_npz(directory/'TRACE_FREE_FROM_ORIGINAL.npz') @ rigid
+         rigid = rigid[boundary]
+         denominator = migration['norm_frobenius'] * np.linalg.norm(rigid)
+diff --git a/stage_cutfem_preproduction/packet_pair.py b/stage_cutfem_preproduction/packet_pair.py
+index cb77d93..81e241e 100644
+--- a/stage_cutfem_preproduction/packet_pair.py
++++ b/stage_cutfem_preproduction/packet_pair.py
+@@ -18,24 +18,20 @@ from stage_cutfem_runtime.config import SCRATCH_ROOT
+ 
+ def pair_gate_policy():
+     path=Path(__file__).with_name('PAIR_GATE_POLICY_R22.json');policy=json.loads(path.read_text())
+-    if policy.get('schema')!='CUTFEM_PAIR_GATE_POLICY_R22_V1':raise ValueError('PAIR_GATE_POLICY_SCHEMA')
++    if policy.get('schema')!='CUTFEM_PAIR_GATE_POLICY_R22_V2':raise ValueError('PAIR_GATE_POLICY_SCHEMA')
+     return policy,sha256(path)
+ 
+ 
+ def evaluate_pair_gates(coefficient,reaction,energy_relative,converged):
+-    """Strict prototype gate is reported; production acceptance uses the calibrated gate."""
++    """One discrete-replay acceptance gate calibrated to the 1% science target."""
+     policy,digest=pair_gate_policy()
+     coefficient,reaction,energy_relative=(np.asarray(x,float) for x in (coefficient,reaction,energy_relative))
+     finite=bool(np.isfinite(coefficient).all() and np.isfinite(reaction).all() and np.isfinite(energy_relative).all())
+-    def within(gate):
+-        return bool(finite and coefficient.max()<=gate['trace_relative'] and reaction.max()<=gate['reaction_relative']
+-                    and energy_relative.max()<=gate['energy_relative'])
+-    strict=bool(converged and within(policy['strict']))
+-    passed=bool(converged and within(policy['production']))
+-    status=('SAVED_N32_PACKET_PAIR_REPLAY_PASS' if strict else
+-            'SAVED_N32_PACKET_PAIR_REPLAY_PASS_PRODUCTION_GATE' if passed else 'SAVED_PACKET_PAIR_VS_BODY_STOP')
+-    return dict(status=status,strict_gate=policy['strict'],strict_gate_passed=strict,production_gate=policy['production'],
+-        production_gate_passed=passed,refinement_converged=bool(converged),
++    gate=policy['gate']
++    passed=bool(converged and finite and coefficient.max()<=gate['trace_relative'] and reaction.max()<=gate['reaction_relative']
++                and energy_relative.max()<=gate['energy_relative'])
++    return dict(status='SAVED_N32_PACKET_PAIR_REPLAY_PASS' if passed else 'SAVED_PACKET_PAIR_VS_BODY_STOP',
++        gate=gate,gate_passed=passed,refinement_converged=bool(converged),
+         science_target_relative=policy['science_target_relative'],pair_gate_policy_sha256=digest)
+ 
+ 
+@@ -74,7 +70,7 @@ def solve_pair(sample,state,body_force,prescribed,values,twice,axis,out,scratch,
+     reaction=np.linalg.norm(f[p]-body_force[pb],axis=0)/np.linalg.norm(body_force[pb],axis=0)
+     er=abs(energy(q)/twice-1)
+     gates=evaluate_pair_gates(coefficient,reaction,er,bool(solver['refinement_converged']))
+-    passed=gates['production_gate_passed']
++    passed=gates['gate_passed']
+     record=dict(status=gates['status'],n=n,gamma=sample['metadata']['gp']['gamma'],axis=axis,
+         trace_dimension=dimension,trace_relative=coefficient.tolist(),reaction_relative=reaction.tolist(),energy_relative=er.tolist(),
+         **{k:v for k,v in gates.items() if k!='status'},
+diff --git a/stage_cutfem_preproduction/pipeline.py b/stage_cutfem_preproduction/pipeline.py
+index bd8eb40..8907339 100644
+--- a/stage_cutfem_preproduction/pipeline.py
++++ b/stage_cutfem_preproduction/pipeline.py
+@@ -108,6 +108,33 @@ class Lane:
+         return status
+ 
+ 
++GEOMETRY_OK = 'GEOMETRY_INTEGRATION_LOCAL_TRACE_QUALIFIED_COMPLETE_CHAIN_PENDING'
++OPERATOR_OK = {'COMPLETE_LOCAL_OPERATOR_NUMERICAL_PASS_NOT_TEACHER',
++               'COMPLETE_LOCAL_OPERATOR_WITH_NUMERICAL_WARNING_NOT_TEACHER'}
++
++
++def classify_packet(run_id):
++    """Scientific outcome of a sealed packet run, independent of the process exit code."""
++    result = run_dir(run_id)/'RESULT.json'
++    failure = run_dir(run_id)/'FAILURE.json'
++    if not result.is_file():
++        return 'STAGE_FAILED', json.loads(failure.read_text()).get('error') if failure.is_file() else None
++    record = json.loads(result.read_text())
++    pair = (record.get('pair') or {}).get('status')
++    status = record.get('status')
++    if status == 'T04_COMPLETE_OPERATOR_PACKET_AND_APPLICABLE_PAIR_PASS' and pair == 'SAVED_N32_PACKET_PAIR_REPLAY_PASS':
++        return 'PAIR_AUDIT_PASS', pair
++    if status == 'T04_COMPLETE_OPERATOR_PACKET_AND_APPLICABLE_PAIR_PASS' and pair == 'T04_Z_PAIR_LOAD_NOT_APPLICABLE':
++        return 'PAIR_LOAD_NOT_APPLICABLE', pair
++    if status == 'T04_LOCAL_PACKET_PASS_PAIR_NOT_AUDITED':
++        return 'PACKET_NOT_AUDITED', pair
++    if status == 'T04_LOCAL_PACKET_PASS_PAIR_VALIDATION_STOP':
++        return 'PAIR_AUDIT_STOP', pair
++    if status == 'T04_LOCAL_PACKET_PASS_PAIR_REFERENCE_UNAVAILABLE':
++        return 'PAIR_REFERENCE_UNAVAILABLE', pair
++    return 'UNCLASSIFIED', status
++
++
+ def plan_case(prefix, case_id, audit):
+     ident = case_id.replace('-', '_')
+     return dict(case_id=case_id, audit=audit,
+@@ -153,8 +180,22 @@ def main():
+     ready = deque()
+     ready_event = threading.Event()
+     failures = []
++    outcomes = {}
+     geometry_done = threading.Event()
+ 
++    lane_errors = []
++
++    def guarded(function):
++        def wrapper():
++            try:
++                function()
++            except BaseException as error:  # a lane must never die silently
++                lane_errors.append(dict(thread=threading.current_thread().name, error=repr(error)))
++                journal.write(event='LANE_EXCEPTION', thread=threading.current_thread().name, error=repr(error))
++                geometry_done.set(); ready_event.set()
++                raise
++        return wrapper
++
+     def geometry_worker():
+         for plan in plans:
+             status = geometry_lane.run(plan['geometry'], 'geometry',
+@@ -179,8 +220,9 @@ def main():
+         status = operator_lane.run(plan['operator'], 'assembly',
+             ['stage_cutfem_multiconstraint.trial', 'operator', '--geometry-run', str(g)],
+             runtimes, workers, threads, rules['stage_pss_gib']['operator'], None, [geometry_lane], source)
+-        if status not in ('COMPLETED', 'DRY_RUN'):
+-            failures.append(dict(case=plan['case_id'], stage='operator', status=status)); return
++        if status not in ('COMPLETED', 'DRY_RUN') or (not args.dry_run and stage_status(plan['operator']) not in OPERATOR_OK):
++            failures.append(dict(case=plan['case_id'], stage='operator', status=status,
++                                 result_status=None if args.dry_run else stage_status(plan['operator']))); return
+         packet_command = ['stage_cutfem_multiconstraint.trial', 'packet', '--geometry-run', str(g),
+                           '--operator-run', str(o), '--matrix-format', args.matrix_format]
+         if plan['audit']:
+@@ -195,6 +237,13 @@ def main():
+                                    rules['stage_pss_gib']['packet'], None, [geometry_lane], source)
+         if status not in ('COMPLETED', 'DRY_RUN'):
+             failures.append(dict(case=plan['case_id'], stage='packet', status=status)); return
++        outcome, detail = ('DRY_RUN', None) if args.dry_run else classify_packet(plan['packet'])
++        outcomes[plan['case_id']] = dict(outcome=outcome, detail=detail, packet=plan['packet'], audited=plan['audit'])
++        journal.write(event='CASE_OUTCOME', case=plan['case_id'], outcome=outcome, detail=detail)
++        if outcome in ('PAIR_AUDIT_STOP', 'STAGE_FAILED', 'UNCLASSIFIED', 'PAIR_REFERENCE_UNAVAILABLE'):
++            # A scientific stop is a failure for the batch even though the
++            # process exited cleanly; nothing of this sample is retired.
++            failures.append(dict(case=plan['case_id'], stage='packet_outcome', status=outcome, detail=detail)); return
+         if rules.get('retire_after_packet'):
+             # Reconstructible arrays of this sample are archived losslessly with
+             # receipts once the packet is sealed; RESULT/manifests stay online.
+@@ -214,20 +263,25 @@ def main():
+             if geometry_done.is_set() and not ready:
+                 return
+ 
+-    geometry_thread = threading.Thread(target=geometry_worker, name='geometry-lane', daemon=True)
++    geometry_thread = threading.Thread(target=guarded(geometry_worker), name='geometry-lane', daemon=True)
+     geometry_thread.start()
+     if lanes == 2:
+-        operator_thread = threading.Thread(target=operator_worker, name='operator-lane', daemon=True)
++        operator_thread = threading.Thread(target=guarded(operator_worker), name='operator-lane', daemon=True)
+         operator_thread.start()
+         geometry_thread.join()
+         operator_thread.join()
+     else:
+         geometry_thread.join()
++    from collections import Counter
++    counts = Counter(o['outcome'] for o in outcomes.values())
+     summary = dict(event='PIPELINE_END', prefix=args.prefix, cases=len(plans), failures=failures,
+-                   audited=[p['case_id'] for p in plans if p['audit']])
++                   lane_errors=lane_errors, outcomes=outcomes, outcome_counts=dict(counts),
++                   audited=[p['case_id'] for p in plans if p['audit']],
++                   accepted_packets=[c for c, o in outcomes.items() if o['outcome'] in ('PAIR_AUDIT_PASS', 'PAIR_LOAD_NOT_APPLICABLE', 'PACKET_NOT_AUDITED')],
++                   note='PACKET_NOT_AUDITED packets passed the saved-packet replay only; teacher accuracy is a separate qualification')
+     journal.write(**summary)
+     print(json.dumps(summary), flush=True)
+-    if failures:
++    if failures or lane_errors:
+         raise SystemExit(1)
+ 
+ 
+diff --git a/stage_cutfem_preproduction/qualification.py b/stage_cutfem_preproduction/qualification.py
+index cdbca4d..087a383 100644
+--- a/stage_cutfem_preproduction/qualification.py
++++ b/stage_cutfem_preproduction/qualification.py
+@@ -63,8 +63,24 @@ def main():
+         run=Path(name);binding=sealed(run,['RESULT.json','chain/NONAFFINE.json'])
+         result=json.loads((run/'RESULT.json').read_text());v=json.loads((run/'chain/NONAFFINE.json').read_text())
+         if result['case']!='P_UNCUT':raise ValueError('FULL_REFERENCE_GEOMETRY')
+-        ep=np.array(v['physical_twice_energy'][:3]);eg=np.array(v['ghost_twice_energy'][:3])
+-        comparisons.append(dict(case='FULL_TRACE',n=result['n'],gamma=result['gamma'],run=str(run),comparison=compare(ep+eg,ep,eg,references['FULL_TRACE'])))
++        from .registered_fields import FIELDS,SELECTION_COUNT
++        ref=references['FULL_TRACE'];available=len(ref.get('twice_energy') or [])
++        ep=np.array(v['physical_twice_energy'][:SELECTION_COUNT]);eg=np.array(v['ghost_twice_energy'][:SELECTION_COUNT])
++        selection_reference=dict(ref,twice_energy=(ref.get('twice_energy') or [None]*SELECTION_COUNT)[:SELECTION_COUNT],
++            empirical_uncertainty=(ref.get('empirical_uncertainty') or [None]*SELECTION_COUNT)[:SELECTION_COUNT]) if available else ref
++        comparisons.append(dict(case='FULL_TRACE',n=result['n'],gamma=result['gamma'],run=str(run),
++            fields=[f['name'] for f in FIELDS[:SELECTION_COUNT]],comparison=compare(ep+eg,ep,eg,selection_reference)))
++        # Independent verification fields: registered after gamma was chosen;
++        # compared only once the reference series carries them.
++        extra=len(v['physical_twice_energy'])-SELECTION_COUNT
++        for k in range(SELECTION_COUNT,SELECTION_COUNT+max(extra,0)):
++            spec=FIELDS[k] if k<len(FIELDS) else dict(name='field_%d'%k)
++            if k<available:
++                one=dict(ref,twice_energy=[ref['twice_energy'][k]],empirical_uncertainty=[ref['empirical_uncertainty'][k]])
++                comparison=compare(np.array([v['physical_twice_energy'][k]+v['ghost_twice_energy'][k]]),[v['physical_twice_energy'][k]],[v['ghost_twice_energy'][k]],one)
++            else:
++                comparison=dict(status='INDEPENDENT_FIELD_REFERENCE_PENDING',physical_twice_energy=[v['physical_twice_energy'][k]],ghost_twice_energy=[v['ghost_twice_energy'][k]])
++            comparisons.append(dict(case='FULL_TRACE_INDEPENDENT',n=result['n'],gamma=result['gamma'],run=str(run),fields=[spec['name']],comparison=comparison))
+         inputs.append(dict(run=str(run),files=binding))
+     for name in a.cut_runs:
+         run=Path(name);binding=sealed(run,['RESULT.json']);r=json.loads((run/'RESULT.json').read_text())
+diff --git a/stage_cutfem_preproduction/registered_fields.py b/stage_cutfem_preproduction/registered_fields.py
+new file mode 100644
+index 0000000..2f8e01b
+--- /dev/null
++++ b/stage_cutfem_preproduction/registered_fields.py
+@@ -0,0 +1,26 @@
++"""Registered analytic boundary fields shared by the CutFEM probes and the fitted reference.
++
++The first three are the R18 selection fields (frequency f on x and y, 1 on z).
++The fourth is the R22 independent verification field: it mixes frequencies
++that were all individually tested (2, 3, 2) and took no part in choosing gamma.
++"""
++import numpy as np
++
++FIELDS = [dict(name='R18_f1', frequencies=(1, 1, 1), role='selection'),
++          dict(name='R18_f2', frequencies=(2, 2, 1), role='selection'),
++          dict(name='R18_f3', frequencies=(3, 3, 1), role='selection'),
++          dict(name='R22_independent_232', frequencies=(2, 3, 2), role='independent_verification')]
++SELECTION_COUNT = 3
++
++
++def analytic_field(spec, xyz, component):
++    fx, fy, fz = spec['frequencies']
++    return (np.sin(fx*np.pi*xyz[:, 0]+.27*component)*np.cos(fy*np.pi*xyz[:, 1]+.31)
++            *np.sin(fz*np.pi*xyz[:, 2]+.57))
++
++
++def analytic_fields(points, specs=None):
++    """Node-major xyz ordering, one column per registered field."""
++    xyz = np.repeat(np.asarray(points), 3, axis=0)
++    component = np.arange(len(xyz)) % 3
++    return np.stack([analytic_field(spec, xyz, component) for spec in (specs or FIELDS)], axis=1)
+diff --git a/tests/r22/test_r22_pair_gate.py b/tests/r22/test_r22_pair_gate.py
+index 47b1452..9964136 100644
+--- a/tests/r22/test_r22_pair_gate.py
++++ b/tests/r22/test_r22_pair_gate.py
+@@ -2,26 +2,19 @@ import numpy as np
+ from stage_cutfem_preproduction.packet_pair import evaluate_pair_gates, pair_gate_policy
+ 
+ 
+-def test_policy_is_registered_and_strict_is_tighter():
++def test_policy_is_registered_single_gate():
+     policy, digest = pair_gate_policy()
+-    assert len(digest) == 64
+-    for key in ('trace_relative', 'reaction_relative', 'energy_relative'):
+-        assert policy['strict'][key] < policy['production'][key] <= 1e-6
++    assert len(digest) == 64 and 'strict' not in policy
++    assert all(policy['gate'][k] == 1e-6 for k in ('trace_relative', 'reaction_relative', 'energy_relative'))
+ 
+ 
+-def test_strict_pass_keeps_historical_status():
+-    g = evaluate_pair_gates([1e-11, 2e-11], [1e-10, 3e-10], [1e-10, 5e-10], True)
+-    assert g['status'] == 'SAVED_N32_PACKET_PAIR_REPLAY_PASS' and g['strict_gate_passed'] and g['production_gate_passed']
+-
+-
+-def test_measured_t04_deviations_pass_production_gate_only():
+-    # R21_T04_P00: reaction 4.6e-8, energy 2.4e-7, trace 2.1e-8 stopped the strict gate.
++def test_measured_t04_deviations_pass():
++    # R21_T04_P00: reaction 4.6e-8, energy 2.4e-7, trace 2.1e-8.
+     g = evaluate_pair_gates([9.5e-9, 2.1e-8], [2.1e-9, 4.6e-8], [3.5e-10, 2.4e-7], True)
+-    assert g['status'] == 'SAVED_N32_PACKET_PAIR_REPLAY_PASS_PRODUCTION_GATE'
+-    assert not g['strict_gate_passed'] and g['production_gate_passed']
++    assert g['status'] == 'SAVED_N32_PACKET_PAIR_REPLAY_PASS' and g['gate_passed']
+ 
+ 
+-def test_large_deviation_or_nonconvergence_still_stops():
++def test_large_deviation_or_nonconvergence_stops():
+     assert evaluate_pair_gates([1e-3], [1e-3], [1e-3], True)['status'] == 'SAVED_PACKET_PAIR_VS_BODY_STOP'
+     assert evaluate_pair_gates([1e-12], [1e-12], [1e-12], False)['status'] == 'SAVED_PACKET_PAIR_VS_BODY_STOP'
+     assert evaluate_pair_gates([np.nan], [1e-12], [1e-12], True)['status'] == 'SAVED_PACKET_PAIR_VS_BODY_STOP'
+-- 
+2.34.1
+

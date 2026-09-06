@@ -33,3 +33,16 @@
 ## 已知的历史测试失败（与本轮无关）
 
 `tests/implicit_macro_cut_whole_boundary/test_filtered_rank.py::test_scaled_1e_minus_12_sparse_full_rank_is_certified_without_scale_floor` 在 Codex 原树、原运行时组合下同样失败（PROPACK 对 1e-12 尺度矩阵不收敛，返回 ADAPTIVE_REQUIRED）。该文件随 T16 的完整 Git 部署首次进入服务器，此前从未在服务器执行过；`stage_zx_implicit.filtered_rank` 不在 CutFEM 生产链上。与 gmpy2 运行时无关。建议由 Codex 调整用例尺度或增加直接 SVD 回退，不放宽 CERTIFIED 门槛。
+
+## 第二批（响应 Codex 审查，2026-09-07）
+
+用户决定：包络阶梯全关；独立边界场在已测频率范围内换组合；严格配对门直接删除。
+
+| 项 | 改动 | 验证 |
+| --- | --- | --- |
+| 几何资格标签 | `body.build` 的 `geometry_error_separately_qualified` 改为从单元记录汇总，包络禁用时为 false，并新增 `geometry_enclosure_confirmation`、`cells_geometry_qualified` | 代码审阅；下次几何运行生效 |
+| 配对门 | `PAIR_GATE_POLICY_R22.json` 升到 V2，只保留 1e-6 单门；`evaluate_pair_gates` 不再报告严格门；状态只有 PASS / STOP | tests/r22/test_r22_pair_gate.py |
+| 流水线状态传递 | `pipeline.classify_packet` 按 RESULT.json 把结果分为 PAIR_AUDIT_PASS、PAIR_LOAD_NOT_APPLICABLE、PACKET_NOT_AUDITED、PAIR_AUDIT_STOP、PAIR_REFERENCE_UNAVAILABLE、STAGE_FAILED；算子阶段也检查科学状态；科学 STOP 计入失败且不归档；车道线程异常记录并终止；汇总输出各类计数 | 单元测试（计划测试） |
+| P11 打包 | `library.package` 在切割几何没有 MACRO_CUT 迹面时按 box 坐标打包，记录 `box_coordinates_no_macro_cut_face` | CLAUDE_R22_P11_PACKET_2：打包、本地重放、两模块配对全部通过，最大偏差 6.0e-10 |
+| 预算 | 打包阶段 PSS 预算 32 → 44 GiB，响应 32 → 40 GiB | 策略文件 |
+| 独立边界场 | 新增 `stage_cutfem_preproduction/registered_fields.py`：R18 三个选参场加 R22 独立场（频率 2,3,2）；`experiment.nonaffine` 探针改为四场；新参考运行写四个能量；`qualification` 对前三场沿用旧比较，第四场单列为 FULL_TRACE_INDEPENDENT，参考缺失时标 INDEPENDENT_FIELD_REFERENCE_PENDING；旧消费者默认仍取三场 | 单元测试通过；参考计算未执行 |
