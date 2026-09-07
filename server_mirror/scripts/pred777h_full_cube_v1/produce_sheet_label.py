@@ -92,6 +92,33 @@ def main() -> int:
     receipt["cut_carrier_residual_strip"] = pipe.cc.cut_carrier_gate(receipt["cut_carrier_merge"])   # diagnostic only (harmless, see cut_carrier)
     receipt["geometry"] = {"spec_hash": spec.spec_hash, "tau_corners": [float(t) for t in geom.tau_corners],
                            "cut_plane": None if geom.cut_plane is None else [float(v) for v in geom.cut_plane]}
+    # how thin the cut face is, in carrier spacings: the cut-face carrier keeps a fixed node set at any width (two
+    # boundary columns plus one centroid per layer), but its triangles are needles of aspect ratio about 4h/width, and
+    # a needle cap triangle is what the volume mesher turns into a sliver (STEP8).  Pure geometry, recorded so a thin
+    # cell can be filtered without re-deriving it.
+    if geom.cut_plane is not None:
+        _p = np.asarray(geom.cut_plane, dtype=np.float64); _n = _p[:3] / np.linalg.norm(_p[:3]); _d = _p[3] / np.linalg.norm(_p[:3])
+        _c = np.array([(x, y, z) for x in (0.0, 1.0) for y in (0.0, 1.0) for z in (0.0, 1.0)])
+        _pts = []
+        for _i in range(8):
+            for _j in range(_i + 1, 8):
+                if bin(_i ^ _j).count("1") != 1: continue
+                _a, _b = _c[_i], _c[_j]; _da, _db = _n @ _a - _d, _n @ _b - _d
+                if _da * _db < 0: _pts.append(_a + (_b - _a) * (_da / (_da - _db)))
+                elif abs(_da) < 1e-12: _pts.append(_a)
+        _w = _ar = 0.0
+        if len(_pts) >= 3:
+            _P = np.unique(np.round(np.asarray(_pts), 12), axis=0)
+            if len(_P) >= 3:
+                _o = _P.mean(axis=0); _u = _P[0] - _o; _u /= np.linalg.norm(_u); _v = np.cross(_n, _u)
+                _Q = np.column_stack([(_P - _o) @ _u, (_P - _o) @ _v]); _Q = _Q[np.argsort(np.arctan2(_Q[:, 1], _Q[:, 0]))]
+                _ar = float(0.5 * abs(sum(_Q[k, 0] * _Q[(k + 1) % len(_Q), 1] - _Q[(k + 1) % len(_Q), 0] * _Q[k, 1] for k in range(len(_Q)))))
+                _w = float("inf")
+                for k in range(len(_Q)):
+                    _e = _Q[(k + 1) % len(_Q)] - _Q[k]; _L = float(np.linalg.norm(_e))
+                    if _L < 1e-15: continue
+                    _proj = (_Q - _Q[k]) @ np.array([-_e[1], _e[0]]) / _L; _w = min(_w, float(_proj.max() - _proj.min()))
+        receipt["geometry"]["cut_face"] = {"min_width": _w, "min_width_over_carrier_spacing": _w * a.carrier_n, "area": _ar}
 
     # ---- empty-cell screen (exact level set, no meshing) ----
     t0 = time.perf_counter(); n = 160; xs = (np.arange(n) + 0.5) / n

@@ -43,9 +43,15 @@ minimum dihedral angle correlates with it at 0.22 only.
 ## 3. What was tried and rejected
 
 * **CGAL tetrahedral remeshing with the boundary locked** (`cpp/pred777h_sliver_remesh`, CGAL 5.4): built and run.
-  It cannot flip next to a locked boundary and left the min dihedral at 0.003 degrees.  CGAL's own exude / perturb
-  need a Mesh_3 regular triangulation and cannot take our boundary; a Triangulation_3 cannot even hold the material
-  alone, because the sheet's boundary has genus 5 and the infinite vertex's link must be a sphere (`manifold_check`).
+  It cannot flip next to a locked boundary and left the min dihedral at 0.003 degrees.  A `Triangulation_3` cannot
+  even hold the material alone, because the sheet's boundary has genus 5 and the infinite vertex's link must be a
+  sphere (`manifold_check`).  CORRECTION (2026-09-07): the statement that CGAL's exude and perturb cannot take our
+  boundary was too strong.  `pred777h_cgal_polyhedral_mesh3` builds a Mesh_3 domain from our own
+  `SHEET_SOLID_SURFACE.off` and its optimisers do apply.  What it cannot do is PRESERVE that boundary: Mesh_3
+  remeshes the domain surface (19 410 facets in the complex from 9 168 input triangles on pop_cut_0473), so the
+  carrier nodes do not survive and the fixed port is destroyed.  That is the real reason this path cannot produce
+  labels, and it is also what makes it a valid independent convergence reference (see
+  `cgal_convergence_reference_v1/BRIEF.md`).
 * **Boundary-locked sliver perturbation** (`smooth_slivers`): moves the interior vertex of every sliver to maximise
   the star's minimum dihedral angle.  Min dihedral 0.003 to 4.6 degrees, sub-degree tetrahedra to zero, but the
   operator got WORSE where the cap was already clean: pop_uncut_0658 production lambda_max / reference 1.13 with it,
@@ -187,3 +193,72 @@ the reference in every direction; the error grows towards the carrier's own reso
 * Every label produced before this fix carries the artefact with probability about one in four; the production
   sample (286 labels) and the track A labels must be re-produced before any statistics are quoted or any training
   starts.
+
+## 9. Thin cut faces, and what the cut-face index set really is (2026-09-06)
+
+**The index set has two families, not one.**  A cut-face carrier node is either the crossing of the cut plane with a
+background grid LINE (or a grid node lying in the plane), or the exact CENTROID of a polygon the symmetric fan rule
+cannot fan from a vertex.  Measured on the layout itself: a 45-degree half-cut carries 1073 nodes = 561 grid nodes +
+0 line crossings + 512 fan centroids, and every one of those 512 is the centroid of its ring to 1e-9; a 26.6-degree
+corner cut carries 229 = 99 + 66 + 64.  The second family is still a deterministic function of the plane (its
+polygon's vertices are first-family points), so it is shared by the two cells of an internal interface and does not
+depend on the volume mesh, but an index scheme built on "3267 grid lines" alone does not cover it.
+
+**A vanishing corner does not degenerate the port.**  Shaving the corner (1,1,*) with `a x + b y <= d`, `t = a+b-d`
+shrinking, at three azimuths:
+
+| cut-face width | nodes | grid nodes + line crossings + fan centroids | triangles | max aspect ratio | merged | refused |
+|---|---|---|---|---|---|---|
+| 5.7 h | 293 | 165 + 0 + 128 | 512 | 5.7 | 0 | no |
+| 1.4 h | 98 | 66 + 0 + 32 | 128 | 5.7 | 0 | no |
+| 0.71 h | 98 | 0 + 66 + 32 | 128 | 5.7 | 0 | no |
+| 0.23 h | 98 | 0 + 66 + 32 | 128 | 17.7 | 0 | no |
+| 0.045 h | 98 | 0 + 66 + 32 | 128 | 88 | 0 | no |
+| 0.005 h | 98 | 0 + 66 + 32 | 128 | 884 | 0 | no |
+
+The node set saturates at 98 (two boundary columns of 33 crossings, one centroid per layer) below one carrier
+spacing and never changes again, identically at every azimuth: the cut-face port dimension is 294 however thin the
+corner.  The merge pass never fires (it merges grid nodes near the cut, not the two edges of the strip), and the
+degeneracy screen correctly does not refuse (the plane contains no cell edge).  What degrades is the triangle aspect
+ratio, as about 4 h / width.
+
+**In the population.**  Minimum caliper width of the cut face over all 1302 cut cells: min 0.087 h, 12 cells (0.9 %)
+below h, 4 below h/4, 54 (4.1 %) below 3 h.  The six thinnest were produced at the production preset:
+
+| cell | width / h | status | lambda_max | top mode on 4 nodes | null dim vs lower bound | material volume |
+|---|---|---|---|---|---|---|
+| pop_cut_0548 | 0.087 | PASS | 0.0370 | 0.893 (10 nodes) | 714 = 714 | 0.248 |
+| pop_cut_1157 | 0.141 | PASS | 0.0375 | 0.865 (8) | 1269 = 1269 | 0.322 |
+| pop_cut_0027 | 0.188 | EMPTY | | | | the retained sliver holds no material |
+| pop_cut_0215 | 0.196 | PASS | 0.0323 | 0.909 (7) | 1185 = 1185 | 0.138 |
+| pop_cut_1235 | 0.259 | EMPTY | | | | idem |
+| pop_cut_0035 | 0.262 | PASS | 0.0358 | 0.731 (12) | 789 = 789 | 0.274 |
+
+Every produced one has lambda_max at the population median (0.038), a top mode spread over 7 to 12 carrier nodes, a
+null space exactly at the combinatorial lower bound, and rigid residual 2e-15 to 7e-15.  The needle cap triangles the
+thin strip must carry did NOT become stiffness bombs: the worst tetrahedra of these meshes sit on the box faces
+(pop_cut_0548 at (0.31, 0.0007, 0.72), pop_cut_0035 at (0.003, 0.71, 0.30)), the ordinary residual family of
+near-duplicate chain vertices, not on the cut face.  A cut face thin enough to be a problem carries so little
+material trace that the volume mesher builds almost nothing on it.
+
+A thin cut is also the case where only a sliver is RETAINED: two of the six are EMPTY, screened before meshing by the
+exact level-set volume estimate, which is the intended behaviour.
+
+`geometry.cut_face.min_width` and `min_width_over_carrier_spacing` are now recorded in every receipt (pure geometry,
+no meshing), so this family can be filtered downstream without re-deriving it.  No gate is imposed: the measured
+labels are clean.
+
+## 10. Dataset policy of record (2026-09-06)
+
+The population is produced in full; nothing is filtered out at production time.  Two families are extreme but
+physical, and both are RECORDED so a training run can select on them without re-deriving anything:
+
+| family | how it is identified | size | decision |
+|---|---|---|---|
+| near-empty cells | `mesh.material_volume` (and `geometry.material_volume_estimate` before meshing) | volume < 0.01: 14 of 297 in the validation sample (about 5 %) | INCLUDED.  Their operators are physical: a small piece of material pinned between two ports is genuinely stiff, and lambda_max is about 3.5x the rest (median 0.136 against 0.038), with the top mode spread over many carrier nodes.  A loss that normalises with the carrier mass matrix, not with lambda_max, handles them. |
+| thin cut faces | `geometry.cut_face.min_width` and `min_width_over_carrier_spacing` | below one carrier spacing: 12 of 1302 cut cells (0.9 %); below h/4: 4 | RECORDED, NOT EXCLUDED.  The port does not degenerate (section 9): the node set saturates at 98 and the six thinnest produced labels are clean. |
+
+A cell whose retained material falls below `EMPTY_VOLUME = 1e-6` produces status EMPTY and no operator; that screen is
+an exact level-set volume estimate and runs before any meshing.  A cell whose volume mesh is nonmanifold or whose
+mesher crashes is retried ONCE at an 8 % smaller interior size and then recorded as unproducible; in the validation
+sample this was 3 of 300 (1 %) before any retry.

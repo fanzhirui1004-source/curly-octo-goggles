@@ -16,3 +16,4 @@ not as pipeline code.
 | `grad_bomb.py`, `height_ratio.py` | tetrahedron stiffness-bomb metric area^2 / V and the flatness measure |
 | `compare_fixed.py`, `reschur.py` | repaired labels against the old ones and the references |
 | `manifold_check.py` | why a CGAL Triangulation_3 cannot hold the material alone (genus-5 boundary) |
+| `corner_cut2.py`, `node_kinds.py`, `cutface_width.py` | the cut-face carrier of a vanishing corner cut: the node set saturates at 98 and its two families (grid-line crossings and fan centroids); the population's cut-face widths |
