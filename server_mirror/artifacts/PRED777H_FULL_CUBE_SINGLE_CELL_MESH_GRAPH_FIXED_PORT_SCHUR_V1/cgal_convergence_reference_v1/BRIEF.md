@@ -34,8 +34,11 @@ carrier space, so on our side this is `u' S u` with S the shipped operator; on t
 computed by constraining the port-face boundary nodes to `u = eps x` and solving for everything else.  No carrier is
 involved on the CGAL side at all.
 
-Also report the material volume: it is a pure geometry check on the two surface constructions and any disagreement
-there invalidates the stiffness comparison.
+Also report the material volume, but read it for what it is on this route.  Because the CGAL side is fed the label's
+OWN surface, the volume difference does NOT cross-validate the two surface constructions; it measures only how far
+Mesh_3's remeshing of that surface has drifted from it, i.e. it is the `facet_distance` error.  That still makes it
+the right gate -- a volume difference that does not fall under refinement means the meshing is not converging and
+nothing downstream is meaningful -- but do not report it as agreement on the geometry.
 
 ## 3. The geometry contract, and which CGAL program to use
 
@@ -110,8 +113,9 @@ difference between the CGAL-extrapolated value and our label's value.
 
 ## 6. What counts as a result
 
-* The material volumes of the two routes agree to about 1e-3 relative.  If they do not, the collar or the tau corners
-  are wrong and nothing else matters.
+* The material volume converges to the label's volume as `facet_distance` is refined (2.5e-3 at 0.004 is the measured
+  starting point).  This is a meshing-convergence gate, not a geometry cross-check -- see section 2.  If it does not
+  fall under refinement, stop: nothing downstream is meaningful.
 * The six stiffnesses converge as the CGAL mesh refines, and the CGAL limit agrees with our label.  Our own mesh-tier
   study puts our production preset within 0.05 % to 0.14 % of our reference preset on these same six numbers, so the
   interesting threshold is about 1 %: agreement at that level is a genuine independent confirmation, and a systematic
@@ -131,11 +135,31 @@ difference between the CGAL-extrapolated value and our label's value.
   the same criteria give the same mesh.
 * **Do not reuse the old collared artefacts** under
   `artifacts/.../mesher_teacher_representation_route_v1/` as a reference: they are a different geometry.
-* **An independent SURFACE is a second, harder question.**  Feeding the label's own OFF shares the surface
-  construction, so this reference isolates the volume mesher, the element and the solve, which is where the STEP8
-  error lived.  A fully independent surface would come from `implicit_polyhedral_surface.py`, but that one evaluates
-  `geometry.material_band_level`, which includes the collar; doing it properly means giving that builder a
-  collar-free mode, and it is a follow-up, not part of this task.
+* **An independent SURFACE is a second, harder question, and the obvious shortcut is a trap.**  Feeding the label's
+  own OFF shares the surface construction, so this reference isolates the volume mesher, the element and the solve --
+  which is exactly where the STEP8 error lived, so it is the right first target.  The tempting next step is to make
+  `pred777h_cgal_mesh3` (the implicit labelled domain) collar-free and get a surface CGAL builds itself.  Do not do
+  that, for two reasons found by reading it on 2026-09-07:
+
+  1. Its port-face identification is load-bearing on the collar.  A void point inside the box is labelled by the
+     NEAREST branch of the material union, so with a fat collar the void adjacent to a box face is material and the
+     `(1, box_*)` surface patch occurs only where the box plane is actually crossed.  Set the collar to zero and that
+     nearest-branch test degenerates into a bisector: genuine TPMS free surface that happens to lie near a box face
+     acquires a `(1, box_*)` patch and is misclassified as an outer port.  That is a rewrite of the labelling, not a
+     parameter change.
+  2. It does not detect features.  It REQUIRES a complete externally supplied polyline network via
+     `--feature-polylines` (V2 schema, with per-polyline patch incidences) and refuses partial ones by design.  With
+     collars those curves are plane-plane intersections, i.e. straight segments.  Without collars they become
+     `{|phi| = tau}` intersected with each box plane: curved, implicitly defined, with topology that changes with tau
+     and with the cut.  The only thing on this machine that can produce them is our own surface builder -- so paying
+     for the independent surface with that network would hand the coupling straight back.
+
+  `pred777h_cgal_polyhedral_mesh3` has neither problem: it detects sharp features by angle
+  (`exact_outer_feature_segments`, and it throws if no sharp outer-port feature is found).  So the right way to get an
+  independent surface later is to KEEP this program and swap only its input OFF for an independently built surface (a
+  different sampler on a different grid, or a collar-free mode for `implicit_polyhedral_surface.py`).  Holding
+  everything downstream fixed also ATTRIBUTES a disagreement to the surface instead of merely detecting one.  Either
+  way it is a follow-up, not part of this task.
 
 ## 8. Where to put the results
 
