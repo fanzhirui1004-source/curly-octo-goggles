@@ -1,0 +1,250 @@
+{
+ "case_id": "G5_v12_h015",
+ "carrier_n": 32,
+ "surface": {
+  "marching_cubes": {
+   "vertices": 79386,
+   "triangles": 156428,
+   "h": 0.010416666666666666
+  },
+  "projection": {
+   "max_level_residual_before": 0.0005332855869667474,
+   "max_level_residual_after": 1.4988010832439613e-15
+  },
+  "flat_sheet_triangles": {
+   "dropped": 121,
+   "lifted": 0
+  },
+  "boundary_collapse": {
+   "collapsed": 291,
+   "non_two_manifold_edges_open": 372
+  },
+  "flat_after_remesh": {
+   "dropped": 4,
+   "lifted": 0
+  },
+  "boundary_collapse_2": 0,
+  "boundary_resnap": 14,
+  "post_remesh_cleanup": {
+   "dropped_flat": 0,
+   "dropped_nonmanifold": 0
+  },
+  "corner_restores": 0,
+  "boundary_vertices_off_plane": 0,
+  "sheet_remesh": {
+   "vertices": 2027,
+   "triangles": 3744,
+   "size": 0.015,
+   "max_level_residual": 6.661338147750939e-16,
+   "non_two_manifold_edges_open": 306
+  },
+  "clipped": {
+   "vertices": 2027,
+   "triangles": 3744
+  },
+  "active_carrier_nodes": {
+   "box_x_max": 0,
+   "box_x_min": 44,
+   "box_y_min": 78,
+   "box_z_min": 172
+  },
+  "caps": {
+   "box_x_min": {
+    "chains": 1,
+    "open_chains": 1,
+    "triangles": 132,
+    "area": 0.008008232310559957,
+    "edge_splits": 9
+   },
+   "box_x_max": {
+    "chains": 0,
+    "open_chains": 0,
+    "triangles": 0,
+    "area": 0.0,
+    "edge_splits": 0
+   },
+   "box_y_min": {
+    "chains": 1,
+    "open_chains": 1,
+    "triangles": 352,
+    "area": 0.03638178198205336,
+    "edge_splits": 11
+   },
+   "box_y_max": {
+    "chains": 0,
+    "open_chains": 0,
+    "triangles": 0,
+    "area": 0.0,
+    "edge_splits": 0
+   },
+   "box_z_min": {
+    "chains": 2,
+    "open_chains": 2,
+    "triangles": 828,
+    "area": 0.09066381003647263,
+    "edge_splits": 38
+   },
+   "box_z_max": {
+    "chains": 0,
+    "open_chains": 0,
+    "triangles": 0,
+    "area": 0.0,
+    "edge_splits": 0
+   },
+   "cut_0": {
+    "chains": 1,
+    "open_chains": 0,
+    "triangles": 351,
+    "area": 0.2716780684229009,
+    "edge_splits": 0
+   }
+  },
+  "line_t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 8204,
+   "non_two_manifold_edges": 4
+  },
+  "non_manifold_examples": [
+   {
+    "edge": [
+     1042,
+     1044
+    ],
+    "count": 1,
+    "labels": [
+     "tpms_free"
+    ],
+    "xyz": [
+     [
+      0.336569,
+      0.572935,
+      0.0
+     ],
+     [
+      0.352421,
+      0.598386,
+      0.0
+     ]
+    ]
+   },
+   {
+    "edge": [
+     1763,
+     1842
+    ],
+    "count": 4,
+    "labels": [
+     "tpms_free",
+     "tpms_free",
+     "tpms_free",
+     "box_z_min"
+    ],
+    "xyz": [
+     [
+      0.635423,
+      0.385048,
+      0.0
+     ],
+     [
+      0.648239,
+      0.401174,
+      0.0
+     ]
+    ]
+   },
+   {
+    "edge": [
+     1044,
+     2620
+    ],
+    "count": 1,
+    "labels": [
+     "box_z_min"
+    ],
+    "xyz": [
+     [
+      0.352421,
+      0.598386,
+      0.0
+     ],
+     [
+      0.34375,
+      0.584464,
+      0.0
+     ]
+    ]
+   },
+   {
+    "edge": [
+     1042,
+     2620
+    ],
+    "count": 1,
+    "labels": [
+     "box_z_min"
+    ],
+    "xyz": [
+     [
+      0.336569,
+      0.572935,
+      0.0
+     ],
+     [
+      0.34375,
+      0.584464,
+      0.0
+     ]
+    ]
+   }
+  ],
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.005252019595052052,
+   "p01": 0.16378208906468686,
+   "below_0.3": 260,
+   "triangles": 5469
+  },
+  "surface_quality_by_label": {
+   "box_x_min": {
+    "min": 0.07579330279577594,
+    "below_0.3": 34,
+    "n": 132
+   },
+   "box_y_min": {
+    "min": 0.008393417482486485,
+    "below_0.3": 71,
+    "n": 352
+   },
+   "box_z_min": {
+    "min": 0.005252019595052052,
+    "below_0.3": 141,
+    "n": 828
+   },
+   "cut_0": {
+    "min": 0.4855858447230885,
+    "below_0.3": 0,
+    "n": 351
+   },
+   "tpms_free": {
+    "min": 0.04124882742088064,
+    "below_0.3": 14,
+    "n": 3806
+   }
+  },
+  "volume": 0.019289667326611217,
+  "seconds": 2.6266587860882282,
+  "active_ports": [
+   "box_x_min",
+   "box_y_min",
+   "box_z_min",
+   "cut_0"
+  ],
+  "seconds_total": 2.63815775886178
+ }
+}

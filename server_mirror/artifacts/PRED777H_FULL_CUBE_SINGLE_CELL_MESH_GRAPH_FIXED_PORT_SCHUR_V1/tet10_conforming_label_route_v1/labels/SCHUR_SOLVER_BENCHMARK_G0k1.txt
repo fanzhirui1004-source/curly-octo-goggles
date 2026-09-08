@@ -1,0 +1,9 @@
+G0_k1: fine dof 385926, internal 312192, q 4614, assembly+constraint 8.3s
+superlu: factor 717.6s, solve 2221.8s (481.5 ms/rhs)
+pardiso chunk 256: factor 4.4s, solve 44.9s (9.7 ms/rhs)
+pardiso chunk 1024: factor 3.2s, solve 29.7s (6.4 ms/rhs)
+pardiso chunk 4096: factor 3.4s, solve 32.3s (7.0 ms/rhs)
+superlu_256 max|dS|/max|S| vs superlu = 0.00e+00
+pardiso_256 max|dS|/max|S| vs superlu = 3.57e-14
+pardiso_1024 max|dS|/max|S| vs superlu = 3.57e-14
+pardiso_4096 max|dS|/max|S| vs superlu = 3.57e-14

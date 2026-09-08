@@ -1,0 +1,428 @@
+From 3e8c45017c943397389c4b848fc7d58cc3e19464 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 16:28:45 +0800
+Subject: [PATCH 14/24] sheet surface: near-plane treatment decided by topology
+ and material side
+
+The census of record left three surface failures and their diagnosis
+pointed at one mechanism, the blanket "snap every vertex within eps onto
+the plane" of the remesh-and-clip stage (and the tangent-patch pass added
+on top of it):
+
+- a vertex that merely passes near a face with the void in between was
+  pulled onto the face, fabricating a contact where the exact geometry has
+  a gap; the cap beside it had no carrier support and stayed open
+  (pop_cut_0475);
+- snapping the two endpoints of an interior edge while its neighbours stay
+  off the plane pinches the sheet onto the cap along that edge, an edge
+  with four triangles (pop_cut_0620, and pop_cut_0076 earlier);
+- the tangent-patch pass moved vertices up to half a mesh size and folded
+  triangles beside a grazing cut (pop_cut_0625).
+
+_snap_crossings_and_flatten_patches replaces both.  A near vertex whose
+one-ring reaches clearly beyond the plane on both sides is a crossing and
+is moved onto the plane (jointly with the planes it already lies on,
+displacement capped).  Any other near vertex belongs to a patch running
+alongside the plane; patches are handled by connected component: with the
+material between patch and plane the whole patch is moved onto the plane
+and the flat-triangle drop turns the slab into cap, with the void between
+nothing moves.  _flatten_tangent_edges enforces the invariant behind this
+("no interior sheet edge in a cap plane with material below") after every
+step that moves or merges vertices, flattening the two triangles of such
+an edge unless the move would fold a neighbour; the guard is the fold
+itself, not a distance threshold.
+
+The three residual cells and the four earlier ones build watertight
+surfaces; the 20-cell regression panel is unchanged in status with
+triangle counts within 1 percent.
+---
+ .../sheet_block_validation.py                 |  78 ++++++--
+ .../sheet_solid_surface.py                    | 175 ++++++++++++++----
+ 2 files changed, 201 insertions(+), 52 deletions(-)
+
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+index 58e216f..8b21b20 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_block_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -45,17 +45,39 @@ def p1_field_evaluator(tf):
+     return value
+ 
+ 
++def local_cut_plane(spec, off=(0, 0, 0)):
++    """The cell's world cut in the local frame of the cell at block offset `off` (exact, from the base cell's spec),
++    as the float tuple the mesher geometry carries; None without a cut."""
++    cut = getattr(spec, "cut_plane_local", None)
++    if cut is None:
++        return None
++    a, b, c, d = (Fraction(cut.a), Fraction(cut.b), Fraction(cut.c), Fraction(cut.d))
++    d_off = d - (a * Fraction(off[0]) + b * Fraction(off[1]) + c * Fraction(off[2]))
++    return (float(a), float(b), float(c), float(d_off))
++
++
++def world_cut_plane(spec):
++    """The base cell's cut in WORLD coordinates (what make_cell_spec expects for the other cells of the block)."""
++    cut = getattr(spec, "cut_plane_local", None)
++    if cut is None:
++        return None
++    o = [Fraction(v) for v in spec.placement.translation]
++    a, b, c, d = (Fraction(cut.a), Fraction(cut.b), Fraction(cut.c), Fraction(cut.d))
++    return type(cut)(cut.plane_id, cut.semantic_id, a, b, c, d + a * o[0] + b * o[1] + c * o[2])
++
++
+ class BlockGeom:
+-    """Block [0,Nx]x[0,Ny]x[0,Nz] with the parent thickness field: |phi(world)| - tau(world)."""
++    """Block [0,Nx]x[0,Ny]x[0,Nz] with the parent thickness field: |phi(world)| - tau(world); the world cut, if any,
++    in the block's frame (the base cell's local frame)."""
+     def __init__(self, spec, geom, shape):
+         self.tau = p1_field_evaluator(spec.thickness_field); self.origin = np.array([float(v) for v in spec.placement.translation])
+-        self.cut_plane = None; self.box_max = tuple(float(s) for s in shape); self.collar_thickness = geom.collar_thickness
++        self.cut_plane = local_cut_plane(spec); self.box_max = tuple(float(s) for s in shape); self.collar_thickness = geom.collar_thickness
+         self.tau_corners = tuple(float(self.tau(self.origin + np.array(c, dtype=float) * np.array(shape))) for c in itertools.product((0, 1), repeat=3))
+     def material_band_components(self, points):
+         xyz = np.asarray(points, dtype=np.float64); world = xyz + self.origin
+         phi = np.cos(2.0 * np.pi * world).sum(axis=-1); t = np.abs(phi) - self.tau(world)
+         return t, np.full(t.shape, np.inf)
+-    def active_outer_port_sources(self): return FACES
++    def active_outer_port_sources(self): return FACES + (("cut_0",) if self.cut_plane is not None else ())
+ 
+ 
+ def cell_specs(spec, geom, shape):
+@@ -69,14 +91,15 @@ def cell_specs(spec, geom, shape):
+             order = perm; break
+     if order is None:
+         raise SystemExit("could not match the corner order of tau_corners")
+-    out = []
++    out = []; wcut = world_cut_plane(spec)
+     for off in itertools.product(range(shape[0]), range(shape[1]), range(shape[2])):
+         if off == (0, 0, 0):
+-            out.append((off, spec, geom)); continue
++            # the manifest loader carries the cut unshifted; the exact local plane of the spec is authoritative
++            out.append((off, spec, type(geom)(tau_corners=geom.tau_corners, cut_plane=local_cut_plane(spec), collar_thickness=geom.collar_thickness))); continue
+         sp_ = fcg.make_cell_spec(thickness_field=tf, cell_world_origin=(o[0] + Fraction(off[0]), o[1] + Fraction(off[1]), o[2] + Fraction(off[2])),
+-                                 cell_id=f"{spec.cell_id}_{off[0]}{off[1]}{off[2]}", parent_world_cut_id=spec.parent_world_cut_id, world_cut=None)
++                                 cell_id=f"{spec.cell_id}_{off[0]}{off[1]}{off[2]}", parent_world_cut_id=spec.parent_world_cut_id, world_cut=wcut)
+         tau = tuple(float(tf.value(sp_.placement.world(np.array(corners[order[k]], dtype=float)))) for k in range(8))
+-        out.append((off, sp_, type(geom)(tau_corners=tau, cut_plane=None, collar_thickness=geom.collar_thickness)))
++        out.append((off, sp_, type(geom)(tau_corners=tau, cut_plane=local_cut_plane(spec, off), collar_thickness=geom.collar_thickness)))
+     return out
+ 
+ 
+@@ -99,26 +122,37 @@ def main() -> int:
+     ap.add_argument("--size-max", type=float, default=0.05); ap.add_argument("--algorithm3d", type=int, default=1); ap.add_argument("--no-smooth", action="store_true", help="ignored")
+     ap.add_argument("--carrier-n", type=int, default=32); ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
+     a = ap.parse_args(); out = a.output_dir; out.mkdir(parents=True, exist_ok=True); rep = {"shape": list(a.shape)}; shape = tuple(a.shape); N = np.array(shape)
++    rep["cut_plane_block_frame"] = None
+     _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
+-    cells = cell_specs(spec, geom, shape); layouts = {}; labels = {}
++    cells = cell_specs(spec, geom, shape); layouts = {}; labels = {}; empty = []
+     for off, sp_, gm_ in cells:
++        if pipe.cut_contains_a_cell_edge(sp_) is not None:
++            raise SystemExit(f"cell {off}: the cut contains a cell edge (GEOMETRY_DEGENERATE); move the world cut by an exact epsilon")
+         charts, *_ = fcb.compile_full_cube_geometry_inputs(sp_); layouts[off] = build_layout(sp_, charts, a.carrier_n)
+-        labels[off] = cell_label(sp_, gm_, layouts[off], out / f"cell_{off[0]}{off[1]}{off[2]}", a)
+-    layout0 = layouts[(0, 0, 0)]; rep["carrier_n"] = a.carrier_n; rep["cells"] = len(cells)
++        try:
++            labels[off] = cell_label(sp_, gm_, layouts[off], out / f"cell_{off[0]}{off[1]}{off[2]}", a)
++        except sss.EmptyCellError:
++            empty.append(off); print(f"cell {off}: EMPTY (the cut leaves no band)", flush=True)
++    cells = [c for c in cells if c[0] not in empty]; rep["empty_cells"] = [list(o) for o in empty]
++    layout0 = layouts[(0, 0, 0)]; rep["carrier_n"] = a.carrier_n; rep["cells"] = len(cells); rep["cut_plane_block_frame"] = local_cut_plane(spec)
+     # ---- block surface: port constraints on the six block faces from the cell carriers (shifted) ----
+-    shell_coords, _, per_face = cpm.carrier_shell(layout0, FACES)
++    # every cell's own carrier trace (a cut clips the traces differently in every cell, and can remove a face entirely)
++    shells = {off: dict(zip(("coords", "tris", "per_face"), cpm.carrier_shell(layouts[off], tuple(str(t.source_id) for t in layouts[off].local_traces)))) for off, _, _ in cells}
+     def face_constraint(src, shifts):
+-        tris = [t for s_, t in per_face if s_ == src][0]; pts = []; segs = []; keysl = []; idx = {}
++        pts = []; segs = []; keysl = []; idx = {}
+         for sh in shifts:
+-            shv = np.array(sh, dtype=float)
+-            for f in tris:
++            shv = np.array(sh, dtype=float); found = [t for s_, t in shells[sh]["per_face"] if s_ == src]
++            if not found:
++                continue                          # the cut removed this face of this cell
++            coords_ = shells[sh]["coords"]
++            for f in found[0]:
+                 for v in f:
+                     k = (int(v), sh)
+                     if k not in idx:
+-                        idx[k] = len(pts); pts.append(shell_coords[v] + shv); keysl.append((int(v), sh))
++                        idx[k] = len(pts); pts.append(coords_[v] + shv); keysl.append((int(v), sh))
+                 for a_, b_ in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2])):
+                     segs.append((idx[(int(a_), sh)], idx[(int(b_), sh)]))
+-        return np.asarray(pts), np.asarray(sorted({(min(x), max(x)) for x in segs})), keysl
++        return np.asarray(pts).reshape(-1, 3), np.asarray(sorted({(min(x), max(x)) for x in segs}), dtype=np.int64).reshape(-1, 2), keysl
+     pc = {}
+     for src, (axis, side) in FACE_AXIS.items():
+         shifts = [off for off, _, _ in cells if off[axis] == (shape[axis] - 1 if side else 0)]
+@@ -186,6 +220,8 @@ def main() -> int:
+     # ---- face P (fine face vertex of one cell face -> layout global scalar of that cell) ----
+     def face_P(src, off):
+         axis, side = FACE_AXIS[src]; fv = np.unique(F[labs == src]); fxyz = V[fv]; offv = np.array(off, dtype=float)
++        if src not in {str(t.source_id) for t in layouts[off].local_traces} or not len(fv):
++            return np.zeros(0, dtype=np.int64), sp.csr_matrix((0, layouts[off].scalar_node_count))
+         inside = np.ones(len(fv), bool)
+         for ax in range(3):
+             if ax != axis: inside &= (fxyz[:, ax] >= offv[ax] - 1e-9) & (fxyz[:, ax] <= offv[ax] + 1.0 + 1e-9)
+@@ -207,7 +243,10 @@ def main() -> int:
+     load_cells = [off for off, _, _ in cells if off[0] == shape[0] - 1]
+     face_data = []
+     for off in load_cells:
+-        fB, PB = face_P("box_x_max", off); PB = clip_P(PB, off); colB = global_cols(off, PB.shape[1]); face_data.append((off, fB, PB, colB))
++        fB, PB = face_P("box_x_max", off)
++        if not len(fB):
++            continue
++        PB = clip_P(PB, off); colB = global_cols(off, PB.shape[1]); face_data.append((off, fB, PB, colB))
+     wts = {}
+     for f in F[labs == "box_x_max"]:
+         pp = V[f]; area = 0.5 * np.linalg.norm(np.cross(pp[1] - pp[0], pp[2] - pp[0]))
+@@ -247,7 +286,10 @@ def main() -> int:
+         if src == "box_x_min": continue
+         for off, _, _ in cells:
+             if off[axis] != (shape[axis] - 1 if side else 0): continue
+-            fids, Pg = face_P(src, off); Pl = clip_P(Pg, off).tolil(); cols = global_cols(off, Pg.shape[1])
++            fids, Pg = face_P(src, off)
++            if not len(fids):
++                continue
++            Pl = clip_P(Pg, off).tolil(); cols = global_cols(off, Pg.shape[1])
+             for r, fid in enumerate(fids):
+                 w = {}
+                 for jj, val in zip(Pl.rows[r], Pl.data[r]):
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index f889a2f..b2a33a0 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -1172,40 +1172,136 @@ def orient_outward(V: np.ndarray, F: np.ndarray) -> np.ndarray:
+     return F
+ 
+ 
+-def _flatten_tangent_patches(geometry, V: np.ndarray, F: np.ndarray, planes, tol: float, max_rounds: int = 8) -> tuple[np.ndarray, int]:
+-    """Sheet triangles lying within `tol` of a clip plane with the material between them and the plane (the band level
+-    rises away from the plane) bound a sliver thinner than the mesh can carry.  Their vertices are snapped onto the
+-    plane, so the flat-triangle drop removes them and the cap closes the solid there.  Snapping only some vertices of
+-    such a patch (the plain near-plane snap) pinches the sheet onto the cap along an interior edge, an edge with four
+-    triangles (census 2026-09-04, sheet tangent to the cut plane beside a face edge).  Iterated: a flattened patch can
+-    expose the next ring.  Returns (vertices, number of triangles flattened)."""
++def _snap_crossings_and_flatten_patches(V: np.ndarray, F: np.ndarray, n: np.ndarray, d: float, eps: float, planes, unit_grad: np.ndarray) -> tuple[np.ndarray, dict]:
++    """Near-plane treatment of the sheet before its exact clip by the plane n.x = d (retained side n.x - d <= 0),
++    decided by the local topology of the surface instead of by distance alone.
++
++    A vertex within eps of the plane is one of two things.  If its one-ring reaches clearly beyond the plane on both
++    sides (a neighbour farther than eps on each side) the surface CROSSES the plane there: the vertex is moved onto
++    the plane (jointly with any plane it already lies on, displacement capped), so the boundary that the clip
++    produces passes through mesh vertices instead of through slivers.  Otherwise the vertex belongs to a patch of
++    surface that runs alongside the plane without crossing it (a tangency).  Such patches are handled as a whole,
++    by connected component: when the material lies between the patch and the plane (the band level rises away from
++    the plane, unit gradient . n < 0) the patch bounds a slab thinner than eps that the volume mesher cannot carry,
++    so every vertex of the patch is moved onto the plane and the flat-triangle drop turns the slab into cap; when
++    the void lies between, nothing is moved (a thin gap outside the solid is harmless).
++
++    This replaces the blanket "snap everything within eps" of the earlier pipeline, whose two failure modes the
++    population census exposed: snapping a vertex whose neighbours stay off the plane pinches the sheet onto the cap
++    along an interior edge (an edge with four triangles), and snapping a vertex that merely passes near a face with
++    the void in between fabricates a contact with that face where the exact geometry has none (a hole in the cap
++    beside it).  Returns (vertices, report)."""
++    V = np.asarray(V, dtype=np.float64); s_ = V @ n - d; near = np.abs(s_) < eps
++    rep = {"crossing_vertices": 0, "patches_flattened": 0, "patch_vertices_flattened": 0, "patches_left": 0}
++    if not near.any():
++        return V, rep
++    from scipy.sparse import coo_matrix
++    from scipy.sparse.csgraph import connected_components
++    E = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]]); m = len(V)
++    A = coo_matrix((np.ones(2 * len(E)), (np.concatenate([E[:, 0], E[:, 1]]), np.concatenate([E[:, 1], E[:, 0]]))), shape=(m, m)).tocsr()
++    A.data[:] = 1.0
++    has_out = (A @ (s_ > eps).astype(np.float64)) > 0
++    has_in = (A @ (s_ < -eps).astype(np.float64)) > 0
++    crossing = near & has_out & has_in
++    rep["crossing_vertices"] = int(crossing.sum())
++    tangent = near & ~crossing
++    flatten = np.zeros(m, bool)
++    if tangent.any():
++        idx = np.where(tangent)[0]; sub = A[idx][:, idx]
++        ncomp, lab = connected_components(sub, directed=False)
++        for k in range(ncomp):
++            members = idx[lab == k]
++            material_between = float(np.mean(unit_grad[members] @ n)) < 0.0
++            if material_between:
++                flatten[members] = True; rep["patches_flattened"] += 1; rep["patch_vertices_flattened"] += int(len(members))
++            else:
++                rep["patches_left"] += 1
++    allow = crossing | flatten
++    # patch vertices may sit farther than eps in the joint direction of a second plane; the cap on the move still holds
++    V = snap_near_plane_constrained(V, n, d, eps * (1.0 + 1e-9), planes, allow=allow, max_move=2.0)
++    return V, rep
++
++
++def _flatten_tangent_edges(geometry, V: np.ndarray, F: np.ndarray, n: np.ndarray, d: float, planes, eps: float, max_rounds: int = 8) -> tuple[np.ndarray, int]:
++    """The invariant behind the near-plane treatment: no INTERIOR sheet edge lies in a cap plane with the material
++    between the sheet and the plane.  Such an edge is where the crossing curve runs tangentially along the surface
++    for one edge length (both endpoints are crossing vertices, both incident triangles stay on the retained side): the
++    sheet would touch the cap along that edge from inside the material, an edge with four triangles.  With the
++    material between, the two incident triangles bound a slab that is as thin as the surface curvature makes it, so
++    their third vertices are moved onto the plane too and the flat-triangle drop turns them into cap.  The move is
++    accepted only if no triangle around the moved vertex changes orientation (the guard is the fold itself, not a
++    distance threshold: a threshold always has a case just beyond it), and a third vertex farther than two snap
++    distances is left to the watertight gate.  With the void between, the touch is harmless and nothing moves.
++    Iterated: flattening can expose the next edge.  Returns (vertices, number of triangles flattened)."""
+     V = V.copy(); total = 0
++    v2t: dict[int, list[int]] = defaultdict(list)
++    for t, f in enumerate(F):
++        for v in f:
++            v2t[int(v)].append(t)
++    normals = lambda X, tris: np.cross(X[F[tris, 1]] - X[F[tris, 0]], X[F[tris, 2]] - X[F[tris, 0]])
+     for _ in range(max_rounds):
+-        moved = False
+-        for _, n, d in planes:
+-            s = V @ n - d; sF = np.abs(s[F])
+-            cand = (sF <= tol).all(axis=1) & ~(sF <= 1e-9).all(axis=1)
+-            if not cand.any():
++        s_ = V @ n - d; onp = np.abs(s_) <= 1e-9
++        e2t: dict[tuple[int, int], list[int]] = defaultdict(list)
++        for t, f in enumerate(F):
++            for a, b in ((f[0], f[1]), (f[1], f[2]), (f[0], f[2])):
++                e2t[(min(a, b), max(a, b))].append(t)
++        moved = np.zeros(len(V), bool)
++        for (a, b), tris in e2t.items():
++            if len(tris) != 2 or not (onp[a] and onp[b]):
+                 continue
+-            cen = V[F[cand]].mean(axis=1); g = np.zeros_like(cen)
++            third = [int(v) for t in tris for v in F[t] if v != a and v != b]
++            if any(onp[v] for v in third):
++                continue                              # one triangle is already flat: the drop removes it
++            if any(abs(s_[v]) > 2.0 * eps for v in third):
++                continue
++            mid = 0.5 * (V[a] + V[b]); g = np.zeros(3)
+             for k in range(3):
+                 e = np.zeros(3); e[k] = 1e-6
+-                g[:, k] = (sheet_level(geometry, cen + e) - sheet_level(geometry, cen - e)) / 2e-6
+-            patch = F[cand][(g @ n) < 0.0]          # void lies away from the plane: the sliver in between is material
+-            if not len(patch):
+-                continue
+-            allow = np.zeros(len(V), bool); allow[np.unique(patch)] = True
+-            V2 = snap_near_plane_constrained(V, n, d, tol * (1.0 + 1e-9), planes, allow=allow, max_move=2.0)
+-            flat = (np.abs(V2[patch] @ n - d) <= 1e-9).all(axis=1)
+-            if flat.any():
+-                V = V2; total += int(flat.sum()); moved = True
+-        if not moved:
++                g[k] = float(sheet_level(geometry, (mid + e)[None])[0] - sheet_level(geometry, (mid - e)[None])[0]) / 2e-6
++            if float(g @ n) >= 0.0:
++                continue                              # void between the sheet and the plane: a harmless touch
++            moved[third] = True
++        if not moved.any():
++            break
++        for _guard in range(4):                       # drop the moves that would fold a neighbouring triangle
++            # the third vertices sit up to two snap distances off the plane: the near threshold of the snap is widened
++            # to that, and the joint move stays capped at three snap distances
++            V2 = snap_near_plane_constrained(V, n, d, 2.0 * eps * (1.0 + 1e-9), planes, allow=moved, max_move=1.5)
++            bad = np.zeros(len(V), bool)
++            for v in np.where(moved)[0]:
++                tris = np.asarray(v2t[int(v)]); N0 = normals(V, tris); N1 = normals(V2, tris)
++                stays = ~(np.abs(V2[F[tris]] @ n - d) <= 1e-9).all(axis=1)          # triangles that do not become flat
++                if (np.einsum("ij,ij->i", N0[stays], N1[stays]) <= 0.0).any():
++                    bad[v] = True
++            if not bad.any():
++                break
++            moved &= ~bad
++            if not moved.any():
++                break
++        if not moved.any():
++            break
++        flat_now = int(((np.abs(V2[F] @ n - d) <= 1e-9).all(axis=1) & ~(np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)).sum())
++        if flat_now == 0:
+             break
++        V = V2; total += flat_now
+     return V, total
+ 
+ 
++def _enforce_no_tangent_edges(geometry, V: np.ndarray, F: np.ndarray, planes, eps: float) -> tuple[np.ndarray, np.ndarray, int]:
++    """_flatten_tangent_edges on every plane, then the flat-triangle drop; returns (V, F, triangles flattened)."""
++    total = 0
++    for _, n, d in planes:
++        V, k = _flatten_tangent_edges(geometry, V, F, n, d, planes, eps); total += k
++    if total:
++        flat = np.zeros(len(F), bool)
++        for _, n, d in planes:
++            flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
++        F = F[~flat]; V, F = compact(V, F)
++    return V, F, total
++
++
+ def _remesh_and_clip(geometry, V_mc: np.ndarray, F_mc: np.ndarray, planes, size: float, *, margin_factor: float = 1.5,
+-                     snap_fraction: float = 0.2, collapse_fraction: float = 0.3, needle_quality: float = 0.05, transversal_cos: float = 1.01) -> tuple[np.ndarray, np.ndarray, dict]:
++                     snap_fraction: float = 0.2, collapse_fraction: float = 0.3, needle_quality: float = 0.05) -> tuple[np.ndarray, np.ndarray, dict]:
+     """Isotropic remesh of the sheet clipped with a margin outside every plane, then EXACT clipping by the planes.
+     The remesher's own boundary (which it does not keep on the planes) is discarded; the boundary of the result comes
+     from the clipping, so every boundary vertex lies on its planes to round-off and box corners are exact.  Slivers
+@@ -1220,21 +1316,20 @@ def _remesh_and_clip(geometry, V_mc: np.ndarray, F_mc: np.ndarray, planes, size:
+     V, F = remesh_sheet(V, F, size=size); rep["remeshed"] = {"vertices": int(len(V)), "triangles": int(len(F))}
+     V, _ = project_to_sheet(geometry, V)
+     for _, n, d in planes:
+-        # unit normal of the level set at every vertex (recomputed: clipping renumbers).  With transversal_cos >= 1 every
+-        # near-plane vertex is snapped: where the sheet is nearly tangent to the plane this truncates a knife-edge tip
+-        # thinner than snap_fraction * size onto the plane (its triangles become flat and are dropped, the cap covers
+-        # them), which removes the near-coincident facets Gmsh rejects; the projection guard then leaves those vertices
+-        # on the plane instead of chasing the level set along it.
++        # unit normal of the level set at every vertex (recomputed: clipping renumbers); it tells the near-plane
++        # treatment on which side of a tangent patch the material lies (see _snap_crossings_and_flatten_patches)
+         g = np.zeros_like(V)
+         for k in range(3):
+             e = np.zeros(3); e[k] = 1e-6
+             g[:, k] = (sheet_level(geometry, V + e) - sheet_level(geometry, V - e)) / 2e-6
+         unit_g = g / np.maximum(np.linalg.norm(g, axis=1), 1e-300)[:, None]
+-        V = snap_near_plane_constrained(V, n, d, snap_fraction * size, planes, allow=np.abs(unit_g @ n) < transversal_cos)
++        V, rep_snap = _snap_crossings_and_flatten_patches(V, F, n, d, snap_fraction * size, planes, unit_g)
++        for key_, val_ in rep_snap.items():
++            rep[key_] = rep.get(key_, 0) + val_
+         V, F = clip_by_plane(V, F, n, d)
++        V, ntan = _flatten_tangent_edges(geometry, V, F, n, d, planes, snap_fraction * size); rep["tangent_edges_flattened"] = rep.get("tangent_edges_flattened", 0) + int(ntan)
+     if len(F) == 0:
+         raise EmptyCellError("the sheet does not enter the retained region")
+-    V, ntan = _flatten_tangent_patches(geometry, V, F, planes, 0.5 * size); rep["tangent_patches_flattened"] = int(ntan)
+     flat = np.zeros(len(F), bool)
+     for _, n, d in planes:
+         flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
+@@ -1248,7 +1343,14 @@ def _remesh_and_clip(geometry, V_mc: np.ndarray, F_mc: np.ndarray, planes, size:
+     # inside the face): snap it onto the cut plane too, and collapse every sheet edge that now runs along a plane line
+     for name, n, d in planes:
+         if name == "cut_0":
+-            V = snap_near_plane_constrained(V, n, d, snap_fraction * size, planes)
++            g = np.zeros_like(V)
++            for k in range(3):
++                e = np.zeros(3); e[k] = 1e-6
++                g[:, k] = (sheet_level(geometry, V + e) - sheet_level(geometry, V - e)) / 2e-6
++            unit_g = g / np.maximum(np.linalg.norm(g, axis=1), 1e-300)[:, None]
++            V, rep_snap = _snap_crossings_and_flatten_patches(V, F, n, d, snap_fraction * size, planes, unit_g)
++            V, ntan = _flatten_tangent_edges(geometry, V, F, n, d, planes, snap_fraction * size); rep_snap["tangent_edges_flattened"] = int(ntan)
++            rep["late_cut_snap"] = rep_snap
+     V, F, nline = collapse_edges_on_lines(V, F, planes); rep["line_edges_collapsed"] = int(nline)
+     V, F, ncol3 = collapse_short_edges(V, F, planes, collapse_fraction * size); ncol2 += ncol3
+     V, F, needle = remove_needle_triangles(V, F, planes, q_min=needle_quality)   # collapses/flips only: no vertex moves
+@@ -1258,6 +1360,8 @@ def _remesh_and_clip(geometry, V_mc: np.ndarray, F_mc: np.ndarray, planes, size:
+     for _, n, d in planes:
+         flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
+     F = F[~flat]; V, F = compact(V, F); rep["flat_dropped_late"] = int(flat.sum())
++    # the invariant of the near-plane treatment, enforced after every step that moves or merges vertices
++    V, F, ntan = _enforce_no_tangent_edges(geometry, V, F, planes, snap_fraction * size); rep["tangent_edges_flattened"] = int(ntan)
+     rep["short_edges_collapsed"] = int(ncol + ncol2); rep["needles"] = needle; rep["nonmanifold_dropped"] = int(clean["dropped_nonmanifold"])
+     counts = _edge_counts(F); rep["edges_with_3_or_more_triangles"] = int(sum(1 for c in counts.values() if c > 2))
+     offb = [v for v in {x for e in _directed_boundary(F) for x in e} if not any(abs(V[v] @ n - d) <= 1e-9 for _, n, d in planes)]
+@@ -1323,12 +1427,15 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_
+     V, F = chosen; report["sheet_remesh"] = attempts[-1]
+     report["flat_sheet_triangles"] = {"dropped": attempts[-1]["flat_dropped"], "lifted": 0}
+     V = project_to_sheet_in_planes(geometry, V, planes, iters=2)
+-    flat = np.zeros(len(F), bool)      # defensive: no sheet triangle may lie in a clip plane when the chains are read
++    # the projection moves vertices: re-establish the near-plane invariant, then no sheet triangle may lie in a
++    # clip plane when the chains are read
++    V, F, ntan = _enforce_no_tangent_edges(geometry, V, F, planes, 0.2 * (remesh_size if remesh_size is not None else h))
++    flat = np.zeros(len(F), bool)
+     for _, n, d in planes:
+         flat |= (np.abs(V[F] @ n - d) <= 1e-9).all(axis=1)
+     if flat.any():
+         F = F[~flat]; V, F = compact(V, F)
+-    report["flat_sheet_triangles_before_caps"] = int(flat.sum())
++    report["flat_sheet_triangles_before_caps"] = int(flat.sum()); report["tangent_edges_flattened_before_caps"] = int(ntan)
+     report["clipped"] = {"vertices": int(len(V)), "triangles": int(len(F))}
+     # orient the open sheet outward (normals toward increasing level = void) before the caps read the material side
+     # of every chain edge from the triangle orientation
+-- 
+2.34.1
+

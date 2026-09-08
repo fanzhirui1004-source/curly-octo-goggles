@@ -1,0 +1,11 @@
+{
+ "raw_frobenius": 8.320986456094279e-14,
+ "whitened_frobenius": 8.69235269346394e-14,
+ "lowfreq_frobenius": 7.465443394735912e-15,
+ "lowfreq_energy_ratio_p50": 2.220446049250313e-16,
+ "lowfreq_energy_ratio_p95abs": 5.10702591327572e-15,
+ "lowfreq_energy_ratio_max_abs": 1.9628743075372768e-13,
+ "lowfreq_mode_count": 846.0,
+ "tag": "R05",
+ "common_nodes": 1848
+}

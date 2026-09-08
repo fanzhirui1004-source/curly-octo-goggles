@@ -1,0 +1,122 @@
+{
+ "shape": [
+  2,
+  1,
+  1
+ ],
+ "skin": {
+  "thickness": 0.05,
+  "refine": 1,
+  "modulus": 1.0
+ },
+ "resolution": {
+  "n_per_unit": 48,
+  "remesh_size": 0.03,
+  "size_max": 0.05,
+  "carrier_n": 32
+ },
+ "cells": 2,
+ "empty_cells": [],
+ "block_mesh": {
+  "nodes": 13392,
+  "tets": 48521,
+  "min_dihedral": 0.49450470245591305,
+  "tets_below_5deg": 57
+ },
+ "carrier": {
+  "active_nodes": 3116,
+  "union_nodes": 4825,
+  "joint_nodes": 2721,
+  "joint_triangles": 5248,
+  "joint_nodes_inactive": 1709,
+  "joint_edges": {
+   "edges": 7968,
+   "non_two_manifold_edges": 192
+  },
+  "nonjoint_nodes": 2104
+ },
+ "skin_mesh": {
+  "joint_nodes": 10689,
+  "joint_triangles": 20992,
+  "tet10_nodes": 127107,
+  "tets": 62976,
+  "volume": 0.10440306508910548,
+  "joint_edge_median": 0.015625
+ },
+ "tied_fine_nodes": 9961,
+ "cut_fine_nodes_slaved": 3908,
+ "cut_fine_nodes_not_on_skin": 0,
+ "load_wavelengths_in_carrier_spacings": {
+  "wave_L2": 16.0,
+  "wave_L4": 8.0,
+  "wave_L8": 4.0
+ },
+ "results": {
+  "pull_n": {
+   "compliance_reference": 579.9962191526029,
+   "compliance_contract": 580.9895129782304,
+   "compliance_assembled": 580.976112050205,
+   "contract_vs_reference": 0.0017125867252700822,
+   "assembled_vs_contract": -2.3065696929336355e-05,
+   "skin_disp_rel_l2_contract_vs_reference": 0.0016105189167265129,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.00022199905161894766,
+   "compliance_skin_on_carrier": 572.1603403809886,
+   "skin_on_carrier_vs_reference": -0.013510223882256978
+  },
+  "shear_t": {
+   "compliance_reference": 529.8813657792352,
+   "compliance_contract": 531.2317394060144,
+   "compliance_assembled": 531.1910488030221,
+   "contract_vs_reference": 0.00254844520677433,
+   "assembled_vs_contract": -7.659670907045335e-05,
+   "skin_disp_rel_l2_contract_vs_reference": 0.002665256274616747,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.00024185550042532788,
+   "compliance_skin_on_carrier": 511.3540611668461,
+   "skin_on_carrier_vs_reference": -0.0349650050160627
+  },
+  "bend_t": {
+   "compliance_reference": 85.48137681699498,
+   "compliance_contract": 85.68520515983596,
+   "compliance_assembled": 85.68201726300205,
+   "contract_vs_reference": 0.002384476600995278,
+   "assembled_vs_contract": -3.7204752301844835e-05,
+   "skin_disp_rel_l2_contract_vs_reference": 0.0025673467370933623,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.0002314488000641465,
+   "compliance_skin_on_carrier": 83.42586494175427,
+   "skin_on_carrier_vs_reference": -0.02404631221185527
+  },
+  "wave_L2": {
+   "compliance_reference": 7.650066487034551,
+   "compliance_contract": 7.7361903562526475,
+   "compliance_assembled": 7.744083806264426,
+   "contract_vs_reference": 0.01125792427609107,
+   "assembled_vs_contract": 0.0010203277903313435,
+   "skin_disp_rel_l2_contract_vs_reference": 0.007651265208086025,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.0010139684098264515,
+   "compliance_skin_on_carrier": 7.53147403682019,
+   "skin_on_carrier_vs_reference": -0.015502146342826428
+  },
+  "wave_L4": {
+   "compliance_reference": 1.1031135042570739,
+   "compliance_contract": 1.1290303581317378,
+   "compliance_assembled": 1.1315407966816773,
+   "contract_vs_reference": 0.02349427667655868,
+   "assembled_vs_contract": 0.0022235350288486444,
+   "skin_disp_rel_l2_contract_vs_reference": 0.0153431923093585,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.0030426409920243248,
+   "compliance_skin_on_carrier": 1.072682750937224,
+   "skin_on_carrier_vs_reference": -0.02758623949612904
+  },
+  "wave_L8": {
+   "compliance_reference": 0.1971672898840182,
+   "compliance_contract": 0.2010173853805726,
+   "compliance_assembled": 0.20111101984142993,
+   "contract_vs_reference": 0.019527049840869504,
+   "assembled_vs_contract": 0.0004658027994945968,
+   "skin_disp_rel_l2_contract_vs_reference": 0.009921347037421117,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.0021107588050220216,
+   "compliance_skin_on_carrier": 0.18961097895291898,
+   "skin_on_carrier_vs_reference": -0.03832436371947967
+  }
+ }
+}

@@ -1,0 +1,9 @@
+{
+ "raw_frobenius": 0.05372821059096672,
+ "whitened_frobenius": 0.060232930473821826,
+ "lowfreq_frobenius": 0.003715167548939956,
+ "lowfreq_energy_ratio_p50": 0.0006606555060997277,
+ "lowfreq_energy_ratio_p95abs": 0.0021205211834805387,
+ "lowfreq_energy_ratio_max_abs": 0.0075376368837904995,
+ "lowfreq_mode_count": 837.0
+}

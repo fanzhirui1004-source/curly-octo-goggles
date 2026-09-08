@@ -1,0 +1,209 @@
+From a5587de18cba2cbc6d585e359abb232ead011f4b Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 17:27:15 +0800
+Subject: [PATCH 15/24] sheet route: cooperative memory budget for the Schur
+ stage
+
+Memory, not CPU, bounds how many labels a machine runs at once: the
+Schur stage of a thick cell peaks above 30 GB while the surface and port
+stages need well under 1 GB, and the surface stage is single-threaded.
+Running five jobs at a time under a 128 GiB cgroup therefore leaves most
+cores idle.
+
+MemoryBudget lets jobs run freely through the cheap stages and reserve
+their estimated Schur memory (45 MB per 1000 fine Tet10 dof, from the
+mesh) before the expensive one.  Reservations are per-process files
+summed under a directory lock; a reservation whose process is gone counts
+for nothing, so a killed job cannot leak budget.  produce_sheet_label
+takes --memory-budget-dir / --memory-budget-gb and records the wait and
+the reservation in the receipt.
+---
+ .../produce_sheet_label.py                    | 14 +++-
+ .../run_sheet_label_queue.py                  | 66 +++++++++++++++++++
+ .../sheet_label_pipeline.py                   | 61 +++++++++++++++++
+ 3 files changed, 140 insertions(+), 1 deletion(-)
+ create mode 100644 scripts/pred777h_full_cube_v1/run_sheet_label_queue.py
+
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index ef8d5f9..f35fad2 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -59,6 +59,8 @@ def main() -> int:
+     ap.add_argument("--algorithm3d", type=int, default=1, help="Gmsh 3D algorithm: 1 Delaunay (default), 10 HXT")
+     ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
+     ap.add_argument("--chunk", type=int, default=1024)
++    ap.add_argument("--memory-budget-dir", type=Path, help="directory of the cooperative memory budget shared by the jobs of this machine (see MemoryBudget)")
++    ap.add_argument("--memory-budget-gb", type=float, default=110.0, help="budget in GB for the Schur stages in flight (a 128 GiB cgroup: 110)")
+     a = ap.parse_args()
+ 
+     preset = dict(RESOLUTION_PRESETS[a.resolution])
+@@ -126,11 +128,21 @@ def main() -> int:
+     port, active, check = stage.port, stage.active, stage.check
+     receipt["fixed_port"] = stage.summary; receipt["timing"]["fixed_port"] = stage.seconds
+ 
+-    # ---- Tet10 fixed-port Schur with the operator gates ----
++    # ---- Tet10 fixed-port Schur with the operator gates, under the machine's memory budget ----
++    budget = None
++    if a.memory_budget_dir is not None:
++        tet10_dof = 3 * (int(receipt["mesh"]["node_count"]) + int(round(1.2 * int(receipt["mesh"]["tet_count"]))))
++        budget = pipe.MemoryBudget(a.memory_budget_dir, a.memory_budget_gb); need = budget.estimate_gb(tet10_dof)
++        receipt["timing"]["memory_budget_wait"] = budget.reserve(need); receipt["execution"]["memory_reserved_gb"] = need
+     try:
+         sch = pipe.schur_label(stage, workers=a.workers, column_chunk_size=a.chunk)
+     except RuntimeError as exc:
++        if budget is not None:
++            budget.release()
+         raise SystemExit(f"{a.case_id}: {exc}")
++    finally:
++        if budget is not None:
++            budget.release()
+     S_active, rigid, eig, rigid_residual = sch.schur_active, sch.rigid_active, sch.eigenvalues, sch.rigid_residual
+     receipt["schur_timing"] = sch.timing; receipt["timing"]["schur"] = sch.seconds
+     receipt["schur"] = {"q_active": int(S_active.shape[0]), "rigid_residual_relative": rigid_residual,
+diff --git a/scripts/pred777h_full_cube_v1/run_sheet_label_queue.py b/scripts/pred777h_full_cube_v1/run_sheet_label_queue.py
+new file mode 100644
+index 0000000..12f49b7
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/run_sheet_label_queue.py
+@@ -0,0 +1,66 @@
++#!/usr/bin/env python3
++"""Per-machine production queue for sheet labels: many jobs in flight, memory budgeted at the Schur stage.
++
++Runs produce_sheet_label.py for every case of a population list, skipping cases whose output directory already
++holds a receipt (idempotent restarts), with `--jobs` processes at a time.  Concurrency is set by the cores, not
++by the memory: the jobs share one MemoryBudget so only as many Schur stages run as fit under `--budget-gb`, while
++the single-threaded surface and port stages of the other jobs keep the remaining cores busy.
++"""
++import argparse, subprocess, sys, time
++from concurrent.futures import ThreadPoolExecutor, as_completed
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[2]
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--cases", type=Path, required=True, help="text file, one case id per line")
++    ap.add_argument("--cells", type=Path, required=True, help="directory holding <case>/geometry_material_manifest.json")
++    ap.add_argument("--output-root", type=Path, required=True)
++    ap.add_argument("--jobs", type=int, default=14, help="processes in flight (surface stages are single-threaded)")
++    ap.add_argument("--threads", type=int, default=8, help="threads per job for Gmsh, the assembly and Pardiso")
++    ap.add_argument("--budget-gb", type=float, default=110.0, help="memory for the Schur stages in flight")
++    ap.add_argument("--resolution", default="production")
++    ap.add_argument("--extra", default="", help="extra arguments passed to produce_sheet_label.py")
++    a = ap.parse_args()
++    cases = [c.strip() for c in a.cases.read_text().splitlines() if c.strip()]
++    a.output_root.mkdir(parents=True, exist_ok=True); budget = a.output_root / "_memory_budget"
++    todo = [c for c in cases if not (a.output_root / c / "LABEL_RECEIPT.json").exists()]
++    print(f"{len(cases)} cases, {len(cases) - len(todo)} already labelled, {len(todo)} to run, {a.jobs} jobs x {a.threads} threads, budget {a.budget_gb} GB", flush=True)
++
++    def run(case: str) -> tuple[str, int, float]:
++        out = a.output_root / case; log = a.output_root / f"{case}.log"
++        if out.exists():                                   # a directory without a receipt: an interrupted job
++            subprocess.run(["rm", "-rf", str(out)], check=False)
++        cmd = [sys.executable, str(ROOT / "scripts/pred777h_full_cube_v1/produce_sheet_label.py"), "--case-id", case,
++               "--geometry-manifest", str(a.cells / case / "geometry_material_manifest.json"), "--output-dir", str(out),
++               "--resolution", a.resolution, "--workers", str(a.threads), "--threads", str(a.threads),
++               "--memory-budget-dir", str(budget), "--memory-budget-gb", str(a.budget_gb)] + a.extra.split()
++        env = {"OMP_NUM_THREADS": str(a.threads), "MKL_NUM_THREADS": str(a.threads), "PYTHONPATH": str(ROOT / "src")}
++        import os
++        env = {**os.environ, **env}; t0 = time.perf_counter()
++        with open(log, "w") as fh:
++            rc = subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT, env=env, cwd=str(ROOT)).returncode
++        return case, rc, time.perf_counter() - t0
++
++    t_all = time.perf_counter(); done = 0; failed = []
++    with ThreadPoolExecutor(max_workers=a.jobs) as pool:
++        futures = [pool.submit(run, c) for c in todo]
++        for fut in as_completed(futures):
++            case, rc, secs = fut.result(); done += 1
++            status = "?"
++            rp = a.output_root / case / "LABEL_RECEIPT.json"
++            if rp.exists():
++                import json
++                status = json.loads(rp.read_text()).get("status", "?")
++            if rc != 0 or status not in ("PASS", "EMPTY", "GEOMETRY_DEGENERATE"):
++                failed.append(case)
++            elapsed = time.perf_counter() - t_all
++            print(f"[{done}/{len(todo)}] {case} rc={rc} {status} {secs:.0f}s  elapsed {elapsed/60:.1f} min  rate {done / elapsed * 3600:.0f}/h", flush=True)
++    print(f"done: {done} run, {len(failed)} failed: {failed}", flush=True)
++    return 0 if not failed else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+index cef14b6..cddd629 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -131,6 +131,67 @@ def load_carrier_norms(npz_path: Path) -> tuple[np.ndarray, np.ndarray]:
+ __all__ = ["MESHER_PARAMETERS", "PortStage", "SchurStage", "carrier_norms", "compile_port", "load_carrier_norms", "load_schur", "schur_label"]
+ 
+ 
++class MemoryBudget:
++    """Cooperative memory budget for concurrent label jobs on one machine.
++
++    Memory, not CPU, bounds how many labels a machine can run at once: the Schur stage of a thick cell peaks above
++    30 GB while the surface and port stages need well under 1 GB.  Jobs therefore run freely through the cheap
++    stages and reserve their estimated Schur memory here before the expensive one, so a 128 GiB cgroup carries
++    ten or more jobs in flight with only as many Schurs as fit.  Reservations are files `res_<pid>` in one
++    directory, summed under a directory lock; a reservation whose process is gone counts for nothing, so a killed
++    job cannot leak budget.  Estimate: 45 MB per 1000 fine Tet10 dof (measured 19 GB at 500k dof, 32 GB at 814k)."""
++
++    def __init__(self, directory: Path, budget_gb: float, poll_seconds: float = 3.0):
++        self.directory = Path(directory); self.budget_gb = float(budget_gb); self.poll = float(poll_seconds); self.mine = None
++        self.directory.mkdir(parents=True, exist_ok=True)
++
++    @staticmethod
++    def estimate_gb(tet10_dof: int) -> float:
++        return 0.045 * tet10_dof / 1000.0
++
++    def _reserved(self) -> float:
++        import os
++        total = 0.0
++        for f in self.directory.glob("res_*"):
++            try:
++                pid = int(f.name[4:]); os.kill(pid, 0)
++            except (ValueError, ProcessLookupError):
++                try:
++                    f.unlink()
++                except FileNotFoundError:
++                    pass
++                continue
++            except PermissionError:
++                pass
++            try:
++                total += float(f.read_text())
++            except (ValueError, FileNotFoundError):
++                pass
++        return total
++
++    def reserve(self, gb: float) -> float:
++        """Block until `gb` fits under the budget; returns the seconds waited."""
++        import fcntl, os
++        gb = float(gb); waited = 0.0; lock = self.directory / "lock"
++        while True:
++            with open(lock, "w") as fh:
++                fcntl.flock(fh, fcntl.LOCK_EX)
++                try:
++                    if self._reserved() + gb <= self.budget_gb or (gb > self.budget_gb and self._reserved() == 0.0):
++                        self.mine = self.directory / f"res_{os.getpid()}"; self.mine.write_text(f"{gb:.3f}"); return waited
++                finally:
++                    fcntl.flock(fh, fcntl.LOCK_UN)
++            time.sleep(self.poll); waited += self.poll
++
++    def release(self) -> None:
++        if self.mine is not None:
++            try:
++                self.mine.unlink()
++            except FileNotFoundError:
++                pass
++            self.mine = None
++
++
+ def cut_contains_a_cell_edge(spec) -> dict | None:
+     """The exact chart compiler refuses a world cut plane that CONTAINS one of the cell's box edges: the cut's trace
+     on a port face then coincides with an edge of that face ("coincident semantic edges"), and for a plane through
+-- 
+2.34.1
+

@@ -1,0 +1,2648 @@
+From 17b0fdd798b7941a883c383d672ff5d0e53c5ed9 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Sat, 5 Sep 2026 15:39:00 +0800
+Subject: [PATCH 22/24] sheet route: root-cause the sliver artefact of the
+ label operator (needle cap triangles from forced support points)
+
+lambda_max of the fixed-port operator was up to 11x its converged value in a quarter of the production labels, its
+eigenvector sitting on the four corners of one carrier square: a sliver tetrahedron, not a port stiffness.  Every
+sub-degree tetrahedron stands on a needle cap triangle whose apex is a carrier support point forced into a shallow
+intrusion of the band into a carrier triangle, a hair from the chain; Triangle may not split the chain and the flip
+pass protects it, and a tetrahedron on a needle base has shape-function gradients of 1/width whatever its height.
+
+Fix, in the surface stage: no support point where the band is shallower than 0.05 in level units; support points are
+never feature-size snap targets; a needle whose apex or long-edge endpoint is a cap-owned vertex is collapsed (2D link
+condition, orientation, no duplicates) or its apex moved into the fan.  Receipt: surface.cap_needles and the
+localisation of the stiffest mode (schur.top_mode_mass_on_4_nodes).  Production-tier labels now sit within 1-5 % of
+the reference's lambda_max (was up to 2x / 16x) with the top mode spread over 10-11 nodes.
+
+Rejected with evidence: CGAL tetrahedral remeshing with the boundary locked (cpp/pred777h_sliver_remesh: cannot flip
+next to a locked boundary; Mesh_3 exude/perturb cannot take our boundary, and a Triangulation_3 cannot hold a
+genus-5 solid alone) and a boundary-locked sliver perturbation (kept opt-in: it trades harmless slivers for flat
+tetrahedra on the port face and raised lambda_max/reference from 1.01 to 1.13).
+
+Also: the null-space section of the cut-carrier report (dim Null(S) = 3 dim null(prolongation) + 3 x components,
+proven; the rank is mesh dependent while q is not; decisions of record), the diagnostics behind both findings, and
+the skin validation's restored service-load dictionary.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X77H1Uihff2oEyM5T4qg7v
+---
+ .../STEP6_CUT_CARRIER_REPORT.md               |  27 ++
+ .../STEP8_SLIVER_REPORT.md                    | 103 +++++++
+ cpp/pred777h_sliver_remesh/CMakeLists.txt     |   7 +
+ .../pred777h_sliver_remesh.cpp                | 282 ++++++++++++++++++
+ .../diagnostics/README.md                     |  18 ++
+ .../diagnostics/analyse_A.py                  |  87 ++++++
+ .../diagnostics/analyse_A_v2.py               |  52 ++++
+ .../diagnostics/analyse_B.py                  | 119 ++++++++
+ .../diagnostics/apex_is_support.py            |  30 ++
+ .../diagnostics/cap_needles.py                |  48 +++
+ .../diagnostics/compare_fixed.py              |  53 ++++
+ .../diagnostics/decide_tri.py                 | 121 ++++++++
+ .../diagnostics/grad_bomb.py                  |  26 ++
+ .../diagnostics/height_ratio.py               |  21 ++
+ .../diagnostics/label_error.py                | 119 ++++++++
+ .../diagnostics/label_error2.py               |  90 ++++++
+ .../diagnostics/manifold_check.py             |  80 +++++
+ .../diagnostics/needle_class.py               |  41 +++
+ .../diagnostics/ns_why.py                     | 118 ++++++++
+ .../diagnostics/nullspace.py                  |  62 ++++
+ .../diagnostics/prolong.py                    | 105 +++++++
+ .../diagnostics/rank_mesh.py                  |  42 +++
+ .../diagnostics/reschur.py                    |  77 +++++
+ .../diagnostics/sliver_anatomy.py             |  65 ++++
+ .../diagnostics/sliver_scan.py                |  62 ++++
+ .../diagnostics/top_mode.py                   |  30 ++
+ .../produce_sheet_label.py                    |   6 +-
+ .../sheet_skin_validation.py                  |  35 ++-
+ .../sheet_contract.py                         |   3 +
+ .../sheet_label_pipeline.py                   |  14 +-
+ .../sheet_solid_surface.py                    | 222 +++++++++++++-
+ .../test_sliver_repair.py                     |  48 +++
+ 32 files changed, 2188 insertions(+), 25 deletions(-)
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md
+ create mode 100644 cpp/pred777h_sliver_remesh/CMakeLists.txt
+ create mode 100644 cpp/pred777h_sliver_remesh/pred777h_sliver_remesh.cpp
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/README.md
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/analyse_A.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/analyse_A_v2.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/analyse_B.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/apex_is_support.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/cap_needles.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/compare_fixed.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/decide_tri.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/grad_bomb.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/height_ratio.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/label_error.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/label_error2.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/manifold_check.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/needle_class.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/ns_why.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/nullspace.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/prolong.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/rank_mesh.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/reschur.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/sliver_anatomy.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/sliver_scan.py
+ create mode 100644 scripts/pred777h_full_cube_v1/diagnostics/top_mode.py
+ create mode 100644 tests/pred777h_full_cube_v1/test_sliver_repair.py
+
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
+index 1560a0c..2e2af96 100644
+--- a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
+@@ -248,3 +248,30 @@ loads (it was 1.4e-4 to 6.4e-3 before 7.1 to 7.3).  Block mesh: minimum dihedral
+ (140 at eps = 1/10 with Delaunay).
+ 
+ Test suites: 21 tests pass (test_cut_carrier, test_sheet_solid_surface).
++
++
++## 8. The null space of the operator (2026-09-05)
++
++The formula `dim Null(S) = 6 x components + 3 x unsupported carrier nodes` is a LOWER bound.  Measured on five
++production labels, the exact null space (eigenvalues below 1e-14 lambda_max) is larger by 2 to 15, and there is no
++spectral gap: 17 to 88 further modes sit between 1e-14 and 1e-4 of lambda_max.
++
++**Mechanism, proven.**  `S = P' S_bb P` with `P = scalar (x) I3`, `scalar` the P1 prolongation from the active carrier
++columns to the fine boundary-trace vertices, so `Null(S) = null(scalar) (x) R^3 + rotations`:
++`dim Null(S) = 3 dim null(scalar) + 3 x components` (matches on every cell where the threshold is unambiguous).
++`null(scalar)` holds one indicator per column the trace never reaches, PLUS one vector per pair of neighbouring
++carrier columns whose entire material trace is the SAME single mesh vertex (identical columns, cosine 1.000000000000;
++four such pairs in pop_cut_0236, one in pop_cut_0136).  The prolongation's null space is clean (the same integer at
++every threshold from 1e-4 to 1e-14); the staircase above it belongs to `S_bb`: material attached by a hairline has a
++genuinely tiny stiffness, and no threshold separates it.
++
++**Where the zero columns come from.**  Of the zero-support columns, 80 % to 92 % have a patch that provably holds no
++material at any mesh resolution (the active-set rule's 0.05 level margin), 8 % to 18 % hold material this mesh missed
++(the trace is thinner than the local element).  The second family makes the RANK mesh dependent while q is not (10
++cells x 3 tiers: q identical, null dimension 926 / 917 / 895 for pop_uncut_0529).  Deleting columns by mesh support
++would therefore give the same geometry three different q and would discard real material; deleting by geometric proof
++is safe on the production tier but not on the fast tier (4 proven-empty columns of pop_cut_0473 are used by its
++coarser surface).  Decision of record: the active set is unchanged; the label ships the support mask and the
++numerical rank at a declared threshold (1e-14 and 1e-10 lambda_max, both recorded); the decoder and the loss never
++assume full rank; no Cholesky, no S^-1, no whitening by S; the carrier mass matrix is the normalisation; the
++geometric material coverage of each carrier patch (`decide_tri`) is an input feature, not a learned output.
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md
+new file mode 100644
+index 0000000..e4fcb1e
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP8_SLIVER_REPORT.md
+@@ -0,0 +1,103 @@
++# Step 8: the sliver artefact in the label operator, root-caused and removed
++
++Sheet route, 2026-09-05.  Evidence scripts: `scripts/pred777h_full_cube_v1/diagnostics/`.
++
++## 1. The symptom
++
++The largest eigenvalue of the fixed-port operator is not a property of the cell.  For the same geometry at three mesh
++tiers (carrier 1/32 fixed, q identical):
++
++| cell | fast | production | reference | fast / ref | prod / ref |
++|---|---|---|---|---|---|
++| pop_uncut_0658 | 0.3893 | 0.0362 | 0.0343 | 11.3 | 1.06 |
++| pop_cut_1215 | 0.2330 | 0.0389 | 0.0365 | 6.4 | 1.07 |
++| pop_cut_0473 | 0.1358 | 0.0404 | 0.0405 | 3.4 | 1.00 |
++| pop_uncut_0529 | 0.0366 | 0.0656 | 0.0335 | 1.09 | 1.96 |
++
++The eigenvector of lambda_max in the bad labels puts 97 % to 100 % of its mass on the four corners of ONE carrier
++square (a healthy one spreads over 10 or more nodes).  Over the 286-label production sample, 26 % of the labels have
++90 % or more of that mode on one square, 6.6 % have 99 % or more.  The six uniform-strain stiffnesses are unaffected
++(0.03 % to 0.2 % across tiers): the mode is numerically huge and physically inert, which is the worst case for a
++training target, because it is the largest entry scale of the matrix and it varies tenfold between meshes.
++
++None of the operator gates (rigid residual, positive semidefiniteness, nonmanifold facets) sees it, and the mesh's
++minimum dihedral angle correlates with it at 0.22 only.
++
++## 2. The mechanism, step by step
++
++1. **Every sub-degree tetrahedron stands on a needle CAP triangle.**  In five meshes (three tiers, cut and uncut)
++   every tetrahedron below 1 degree has three vertices on a box-face cap triangle and one interior vertex; 41 of 41
++   such tetrahedra in three production meshes stand on a cap triangle of angle below 1 degree (0.0025 to 0.6 degrees).
++   A tetrahedron on a needle base has shape-function gradients of 1 / width for the needle's vertices whatever its
++   height, so nothing done to the volume mesh can repair it.
++2. **The needle's apex is a carrier support point.**  22 of 22 in pop_uncut_0658: `carrier_active_set` forces one
++   material sample into every carrier triangle the band touches (so that every active carrier node has stiffness), at
++   the deepest sample of that triangle.  Where the band only clips the triangle's corner the deepest sample is a hair
++   from the chain (level depth 0.0007 to 0.0075 against a median of 0.19), and Triangle, which may not put Steiner
++   points on the chain (`YY`), builds the needle (support point, chain vertex, chain vertex) on that chain edge; the
++   flip pass protects chain edges, so the needle survives.
++3. **Some needles are bombs and some are not.**  A needle whose three vertices see an affine carrier field strains
++   affinely and is harmless (pop_uncut_0658 production had 23 needles and lambda_max / reference = 1.06); one whose
++   vertices straddle a kink of the carrier field, or whose apex is an interior vertex a hair above the face, is not.
++
++## 3. What was tried and rejected
++
++* **CGAL tetrahedral remeshing with the boundary locked** (`cpp/pred777h_sliver_remesh`, CGAL 5.4): built and run.
++  It cannot flip next to a locked boundary and left the min dihedral at 0.003 degrees.  CGAL's own exude / perturb
++  need a Mesh_3 regular triangulation and cannot take our boundary; a Triangulation_3 cannot even hold the material
++  alone, because the sheet's boundary has genus 5 and the infinite vertex's link must be a sphere (`manifold_check`).
++* **Boundary-locked sliver perturbation** (`smooth_slivers`): moves the interior vertex of every sliver to maximise
++  the star's minimum dihedral angle.  Min dihedral 0.003 to 4.6 degrees, sub-degree tetrahedra to zero, but the
++  operator got WORSE where the cap was already clean: pop_uncut_0658 production lambda_max / reference 1.13 with it,
++  1.01 without.  It trades slivers on sound bases, harmless, for flat tetrahedra on the port face, which are not.
++  Kept as an opt-in diagnostic (`--sliver-smooth`), off by default.
++
++## 4. The fix of record
++
++All in the surface stage, where the needle is made:
++
++* `carrier_active_set(support_min_depth=0.05)`: no support point in a triangle where the band is shallower than
++  0.05 in level units (about one feature size from the chain at |grad| <= 2 pi sqrt 3).
++* support points are never feature-size snap targets (a chain vertex snapped onto one made the support point a
++  chain vertex, pop_uncut_0529).
++* `_repair_cap_needles`, before the flip pass: a needle below 2 degrees whose apex or long-edge endpoint is a vertex
++  the cap owns (Steiner point, unshared support point) is removed by collapsing that vertex onto another vertex of
++  the needle, under the 2D link condition, orientation of every fan triangle and no duplicate triangles; an owned
++  apex that cannot collapse is moved into its fan.  Chain vertices, carrier nodes and crossings never move.
++* the receipt reports `surface.cap_needles` (remaining, min angle, collapsed, moved) and
++  `schur.top_mode_mass_on_4_nodes` / `top_mode_nodes_above_1pct`, the diagnostic of record for this artefact.
++
++## 5. Result
++
++Five labels re-produced with the fix (`fixed4/`), against the labels produced before it and against the reference
++tier produced before it (the reference carries the artefact too, mildly: its own top mode sits 65 % on four nodes).
++"top mode on 4" is the share of lambda_max's eigenvector on its four heaviest carrier nodes; "physics" is the largest
++relative difference of the six uniform-strain stiffnesses.
++
++| label | cap needles before / after | lambda_max before / after | lambda_max / reference before / after | top mode on 4 before / after | physics vs reference before / after |
++|---|---|---|---|---|---|
++| pop_uncut_0658 fast | 22 / 0 | 0.3893 / 0.0403 | 11.34 / 1.18 | 1.000 / 0.928 | 2.4e-3 / 3.3e-3 |
++| pop_uncut_0658 production | 23 / 2 | 0.0362 / 0.0355 | 1.056 / 1.036 | 0.808 / 0.708 | 6.8e-4 / 9.9e-4 |
++| pop_uncut_0529 fast | 20 / 5 | 0.0366 / 0.0365 | 1.092 / 1.091 | 0.848 / 0.772 | 2.0e-3 / 3.0e-3 |
++| pop_uncut_0529 production | 12 / 0 | 0.0656 / 0.0352 | 1.959 / 1.050 | 0.972 / 0.785 | 9.2e-4 / 1.5e-3 |
++| pop_cut_0009 production | 18 / 2 | 0.5683 / 0.0379 | (no reference) | 1.000 / 0.843 | 3.3e-4 vs the old label |
++
++Every production-tier label now sits within 1 % to 5 % of the reference's lambda_max with its top mode spread over 10
++or 11 carrier nodes; the fast tier keeps a 9 % to 18 % excess, which is the coarse mesh, not an artefact (the same cell's
++production tier is at 1.04).  The physics moved by at most 1e-3, the size of the port-support change itself (fewer
++forced support points).  The remaining needles (0 to 5 per label, 0.07 to 0.6 degrees) are pairs of chain vertices a
++few 1e-5 apart with a third vertex, harmless to the operator (pop_uncut_0529 fast: top mode 0.77 on four nodes with
++five of them); merging such near-duplicate chain vertices is a follow-up.
++
++Per-cell cost of the fix: none measurable (the surface stage does a few collapses; the volume mesh is unchanged in
++size).  The 24 tests of the sheet surface, cut carrier and sliver repair pass.
++
++## 6. Consequences for the route
++
++* lambda_max is not the operator scale; the "operator scale dynamic range 11.2x" of the production statistics was
++  this artefact.  Normalise with the carrier mass matrix (shipped in the label), never with lambda_max.
++* The A1 energy floors must not be anchored on lambda_max; the revised metric uses common support and the carrier
++  mass matrix.
++* Every label produced before this fix carries the artefact with probability about one in four; the production
++  sample (286 labels) and the track A labels must be re-produced before any statistics are quoted or any training
++  starts.
+diff --git a/cpp/pred777h_sliver_remesh/CMakeLists.txt b/cpp/pred777h_sliver_remesh/CMakeLists.txt
+new file mode 100644
+index 0000000..1762e30
+--- /dev/null
++++ b/cpp/pred777h_sliver_remesh/CMakeLists.txt
+@@ -0,0 +1,7 @@
++cmake_minimum_required(VERSION 3.16)
++project(pred777h_sliver_remesh LANGUAGES CXX)
++find_package(CGAL REQUIRED)
++add_executable(pred777h_sliver_remesh pred777h_sliver_remesh.cpp)
++target_compile_features(pred777h_sliver_remesh PRIVATE cxx_std_17)
++target_link_libraries(pred777h_sliver_remesh PRIVATE CGAL::CGAL)
++target_compile_options(pred777h_sliver_remesh PRIVATE -Wall -Wextra)
+diff --git a/cpp/pred777h_sliver_remesh/pred777h_sliver_remesh.cpp b/cpp/pred777h_sliver_remesh/pred777h_sliver_remesh.cpp
+new file mode 100644
+index 0000000..6c4c23b
+--- /dev/null
++++ b/cpp/pred777h_sliver_remesh/pred777h_sliver_remesh.cpp
+@@ -0,0 +1,282 @@
++// Sliver removal for a sheet-solid tetrahedral mesh with the boundary surface locked.
++//
++// Every sliver the pipeline produces has three vertices on a port cap triangle and one interior vertex almost in
++// that plane (sliver_anatomy, 2026-09-05: five meshes, zero slivers with four surface vertices).  Such a sliver is
++// removed by moving or reconnecting the INTERIOR vertex only, so the boundary triangulation -- the carrier-conforming
++// caps the fixed port interpolates on -- never changes.  CGAL's tetrahedral remeshing with remesh_boundaries(false)
++// does exactly that: split / collapse / flip of interior edges and facets and smoothing of interior vertices,
++// driven by the minimum dihedral angle.
++//
++// Fail closed: if any boundary facet or boundary vertex differs after remeshing, exit code 3 and no output mesh.
++//
++//   pred777h_sliver_remesh --input in.mesh --output out.mesh --target-edge-length L
++//                          [--iterations N] [--report out.json]
++#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
++#include <CGAL/Tetrahedral_remeshing/Remeshing_triangulation_3.h>
++#include <CGAL/tetrahedral_remeshing.h>
++#include <CGAL/IO/File_medit.h>
++#include <CGAL/Mesh_3/tet_soup_to_c3t3.h>
++#include <sstream>
++
++#include <algorithm>
++#include <array>
++#include <chrono>
++#include <cmath>
++#include <fstream>
++#include <iomanip>
++#include <iostream>
++#include <map>
++#include <set>
++#include <string>
++#include <vector>
++
++namespace {
++
++using K = CGAL::Exact_predicates_inexact_constructions_kernel;
++using Tr = CGAL::Tetrahedral_remeshing::Remeshing_triangulation_3<K>;
++using Point = K::Point_3;
++using Vertex_handle = Tr::Vertex_handle;
++using Cell_handle = Tr::Cell_handle;
++using P3 = std::array<double, 3>;
++using Facet_key = std::array<P3, 3>;
++
++struct Options {
++  std::string input, output, report;
++  double target_edge_length = 0.0;
++  unsigned iterations = 3;
++};
++
++Options parse(int argc, char** argv) {
++  Options o;
++  for (int i = 1; i < argc; ++i) {
++    std::string k(argv[i]);
++    auto next = [&]() -> std::string { if (++i >= argc) throw std::runtime_error("missing value for " + k); return argv[i]; };
++    if (k == "--input") o.input = next();
++    else if (k == "--output") o.output = next();
++    else if (k == "--report") o.report = next();
++    else if (k == "--target-edge-length") o.target_edge_length = std::stod(next());
++    else if (k == "--iterations") o.iterations = static_cast<unsigned>(std::stoul(next()));
++    else throw std::runtime_error("unknown argument " + k);
++  }
++  if (o.input.empty() || o.output.empty() || o.target_edge_length <= 0.0)
++    throw std::runtime_error("usage: --input in.mesh --output out.mesh --target-edge-length L [--iterations N] [--report r.json]");
++  return o;
++}
++
++P3 p3(const Point& p) { return {p.x(), p.y(), p.z()}; }
++
++bool is_domain_cell(const Tr& tr, Cell_handle c) { return !tr.is_infinite(c) && c->subdomain_index() != 0; }
++
++// Boundary facets of the domain as sorted point triples: the exact object the fixed port interpolates on.
++std::set<Facet_key> boundary_facets(const Tr& tr) {
++  std::set<Facet_key> out;
++  for (auto c = tr.finite_cells_begin(); c != tr.finite_cells_end(); ++c) {
++    if (!is_domain_cell(tr, c)) continue;
++    for (int i = 0; i < 4; ++i) {
++      Cell_handle n = c->neighbor(i);
++      if (is_domain_cell(tr, n)) continue;
++      Facet_key f;
++      int k = 0;
++      for (int j = 0; j < 4; ++j) if (j != i) f[k++] = p3(c->vertex(j)->point());
++      std::sort(f.begin(), f.end());
++      out.insert(f);
++    }
++  }
++  return out;
++}
++
++struct Quality { double min_dihedral_deg = 180.0; std::size_t below_5 = 0, below_1 = 0, tets = 0; double volume = 0.0; };
++
++double min_dihedral_deg(const std::array<Point, 4>& p) {
++  std::array<K::Vector_3, 4> n;
++  static const int faces[4][3] = {{1, 2, 3}, {0, 3, 2}, {0, 1, 3}, {0, 2, 1}};
++  for (int k = 0; k < 4; ++k) {
++    const Point &a = p[faces[k][0]], &b = p[faces[k][1]], &c = p[faces[k][2]];
++    K::Vector_3 v = CGAL::cross_product(b - a, c - a);
++    double len = std::sqrt(v.squared_length());
++    if (len <= 0.0) return 0.0;
++    v = v / len;
++    if (v * (p[k] - a) > 0.0) v = -v;           // outward: away from the opposite vertex
++    n[k] = v;
++  }
++  double best = 180.0;
++  for (int i = 0; i < 4; ++i)
++    for (int j = i + 1; j < 4; ++j) {
++      double d = std::max(-1.0, std::min(1.0, n[i] * n[j]));
++      best = std::min(best, 180.0 - std::acos(d) * 180.0 / M_PI);
++    }
++  return best;
++}
++
++Quality quality(const Tr& tr) {
++  Quality q;
++  for (auto c = tr.finite_cells_begin(); c != tr.finite_cells_end(); ++c) {
++    if (!is_domain_cell(tr, c)) continue;
++    std::array<Point, 4> p{c->vertex(0)->point(), c->vertex(1)->point(), c->vertex(2)->point(), c->vertex(3)->point()};
++    double d = min_dihedral_deg(p);
++    q.min_dihedral_deg = std::min(q.min_dihedral_deg, d);
++    if (d < 5.0) ++q.below_5;
++    if (d < 1.0) ++q.below_1;
++    ++q.tets;
++    q.volume += std::abs(CGAL::volume(p[0], p[1], p[2], p[3]));
++  }
++  return q;
++}
++
++void write_medit(const Tr& tr, const std::string& path) {
++  std::map<Vertex_handle, std::size_t> index;
++  std::ofstream os(path);
++  os << std::setprecision(17);
++  os << "MeshVersionFormatted 2\nDimension 3\n";
++  std::size_t nv = 0;
++  for (auto v = tr.finite_vertices_begin(); v != tr.finite_vertices_end(); ++v) ++nv;
++  os << "Vertices\n" << nv << '\n';
++  std::size_t i = 0;
++  for (auto v = tr.finite_vertices_begin(); v != tr.finite_vertices_end(); ++v) {
++    index[v] = ++i;
++    os << v->point().x() << ' ' << v->point().y() << ' ' << v->point().z() << " 0\n";
++  }
++  std::size_t nc = 0;
++  for (auto c = tr.finite_cells_begin(); c != tr.finite_cells_end(); ++c) if (is_domain_cell(tr, c)) ++nc;
++  os << "Tetrahedra\n" << nc << '\n';
++  for (auto c = tr.finite_cells_begin(); c != tr.finite_cells_end(); ++c) {
++    if (!is_domain_cell(tr, c)) continue;
++    os << index[c->vertex(0)] << ' ' << index[c->vertex(1)] << ' ' << index[c->vertex(2)] << ' ' << index[c->vertex(3)] << " 1\n";
++  }
++  os << "End\n";
++}
++
++void write_report(const std::string& path, const Quality& before, const Quality& after, std::size_t facets_before,
++                  std::size_t facets_after, bool boundary_unchanged, std::size_t verts_before, std::size_t verts_after,
++                  const Options& o, double seconds) {
++  std::ofstream os(path);
++  os << std::setprecision(17) << std::boolalpha << "{\n"
++     << "  \"tool\": \"pred777h_sliver_remesh\",\n"
++     << "  \"cgal_version\": \"" << CGAL_VERSION_STR << "\",\n"
++     << "  \"target_edge_length\": " << o.target_edge_length << ",\n"
++     << "  \"iterations\": " << o.iterations << ",\n"
++     << "  \"remesh_boundaries\": false,\n"
++     << "  \"before\": {\"tets\": " << before.tets << ", \"vertices\": " << verts_before << ", \"min_dihedral_degrees\": " << before.min_dihedral_deg
++     << ", \"tets_below_5deg\": " << before.below_5 << ", \"tets_below_1deg\": " << before.below_1 << ", \"volume\": " << before.volume << "},\n"
++     << "  \"after\": {\"tets\": " << after.tets << ", \"vertices\": " << verts_after << ", \"min_dihedral_degrees\": " << after.min_dihedral_deg
++     << ", \"tets_below_5deg\": " << after.below_5 << ", \"tets_below_1deg\": " << after.below_1 << ", \"volume\": " << after.volume << "},\n"
++     << "  \"boundary_facets_before\": " << facets_before << ",\n"
++     << "  \"boundary_facets_after\": " << facets_after << ",\n"
++     << "  \"boundary_unchanged\": " << boundary_unchanged << ",\n"
++     << "  \"seconds\": " << seconds << "\n}\n";
++}
++
++// Local validity of the triangulation: what the remeshing actually relies on.
++bool local_validity(const Tr& tr, const char* stage) {
++  std::size_t bad_orient = 0, bad_neigh = 0, bad_vertex = 0;
++  for (auto c = tr.all_cells_begin(); c != tr.all_cells_end(); ++c) {
++    for (int i = 0; i < 4; ++i) {
++      Cell_handle n = c->neighbor(i);
++      if (n == Cell_handle() || !n->has_neighbor(c)) { ++bad_neigh; break; }
++      if (c->vertex(i) == Vertex_handle()) { ++bad_neigh; break; }
++    }
++    if (tr.is_infinite(c)) continue;
++    if (CGAL::orientation(c->vertex(0)->point(), c->vertex(1)->point(), c->vertex(2)->point(), c->vertex(3)->point()) != CGAL::POSITIVE) ++bad_orient;
++  }
++  for (auto v = tr.all_vertices_begin(); v != tr.all_vertices_end(); ++v) {
++    Cell_handle c = v->cell();
++    if (c == Cell_handle() || !c->has_vertex(v)) ++bad_vertex;
++  }
++  if (bad_orient || bad_neigh || bad_vertex) {
++    std::cerr << stage << ": local validity failed: non-positive finite cells " << bad_orient << ", broken neighbour relations "
++              << bad_neigh << ", broken vertex pointers " << bad_vertex << "\n";
++    return false;
++  }
++  return true;
++}
++
++void read_medit(const std::string& path, std::vector<Point>& points, std::vector<std::array<int, 5>>& cells) {
++  std::ifstream in(path);
++  if (!in) throw std::runtime_error("cannot open " + path);
++  std::string tok;
++  while (in >> tok) {
++    if (tok == "Vertices") {
++      std::size_t n; in >> n; points.reserve(n);
++      for (std::size_t i = 0; i < n; ++i) { double x, y, z; int ref; in >> x >> y >> z >> ref; points.emplace_back(x, y, z); }
++    } else if (tok == "Tetrahedra") {
++      std::size_t n; in >> n; cells.reserve(n);
++      for (std::size_t i = 0; i < n; ++i) { std::array<int, 5> c; in >> c[0] >> c[1] >> c[2] >> c[3] >> c[4]; for (int k = 0; k < 4; ++k) c[k] -= 1; if (c[4] == 0) c[4] = 1; cells.push_back(c); }
++    } else if (tok == "Triangles" || tok == "Edges") {
++      std::size_t n; in >> n; std::string line; std::getline(in, line);
++      for (std::size_t i = 0; i < n; ++i) std::getline(in, line);
++    } else if (tok == "End") break;
++  }
++  if (points.empty() || cells.empty()) throw std::runtime_error("no vertices or tetrahedra in " + path);
++}
++
++}  // namespace
++
++int main(int argc, char** argv) {
++  try {
++    const Options o = parse(argc, argv);
++    const auto t0 = std::chrono::steady_clock::now();
++    Tr tr;
++    std::size_t reoriented = 0, degenerate = 0;
++    {
++      std::vector<Point> points; std::vector<std::array<int, 5>> cells;
++      read_medit(o.input, points, cells);
++      for (auto& c : cells) {
++        const CGAL::Orientation ori = CGAL::orientation(points[c[0]], points[c[1]], points[c[2]], points[c[3]]);
++        if (ori == CGAL::NEGATIVE) { std::swap(c[1], c[2]); ++reoriented; }
++        else if (ori == CGAL::COPLANAR) ++degenerate;
++      }
++      if (degenerate) throw std::runtime_error("input has " + std::to_string(degenerate) + " exactly degenerate tetrahedra");
++      const std::map<std::array<int, 3>, Tr::Cell::Surface_patch_index> border;   // boundary facets are inferred
++      std::vector<Vertex_handle> vhv;
++      CGAL::build_triangulation<Tr, true>(tr, points, cells, border, vhv, false);
++    }
++    // Validity.  The global TDS check (Euler relation) is NOT applicable: the material's boundary is a high-genus
++    // surface (a Schwarz-P sheet cell has genus 5), and coning it to CGAL's single infinite vertex can never be a
++    // 3-sphere.  Everything local is required instead: every finite cell positively oriented, every cell's neighbour
++    // relation mutual, every vertex pointing at an incident cell.  The remeshing only touches interior elements, so
++    // the singular infinite vertex is never involved in an operation.
++    if (!local_validity(tr, "input")) return 4;
++    {
++      const long V = static_cast<long>(tr.tds().number_of_vertices()), E = static_cast<long>(tr.tds().number_of_edges()),
++                 F = static_cast<long>(tr.tds().number_of_facets()), C = static_cast<long>(tr.tds().number_of_cells());
++      std::cerr << "triangulation built: reoriented " << reoriented << ", V-E+F-C = " << (V - E + F - C)
++                << " (the boundary genus; 0 only for a ball)\n";
++    }
++    std::size_t verts_before = tr.number_of_vertices();
++    const std::set<Facet_key> facets_before = boundary_facets(tr);
++    // vertex dimension: 2 on the boundary, 3 inside (the remesher only moves dimension-3 vertices freely)
++    for (auto v = tr.finite_vertices_begin(); v != tr.finite_vertices_end(); ++v) v->set_dimension(3);
++    for (auto c = tr.finite_cells_begin(); c != tr.finite_cells_end(); ++c) {
++      if (!is_domain_cell(tr, c)) continue;
++      for (int i = 0; i < 4; ++i) {
++        if (is_domain_cell(tr, c->neighbor(i))) continue;
++        for (int j = 0; j < 4; ++j) if (j != i) c->vertex(j)->set_dimension(2);
++      }
++    }
++    const Quality before = quality(tr);
++
++    CGAL::tetrahedral_isotropic_remeshing(tr, o.target_edge_length,
++        CGAL::parameters::remesh_boundaries(false).number_of_iterations(o.iterations));
++
++    if (!local_validity(tr, "remeshed")) return 4;
++    const Quality after = quality(tr);
++    const std::set<Facet_key> facets_after = boundary_facets(tr);
++    const bool unchanged = (facets_before == facets_after);
++    const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
++    if (!o.report.empty())
++      write_report(o.report, before, after, facets_before.size(), facets_after.size(), unchanged, verts_before, tr.number_of_vertices(), o, seconds);
++    std::cout << std::setprecision(6)
++              << "sliver_remesh: tets " << before.tets << " -> " << after.tets
++              << ", min dihedral " << before.min_dihedral_deg << " -> " << after.min_dihedral_deg << " deg"
++              << ", below 5 deg " << before.below_5 << " -> " << after.below_5
++              << ", below 1 deg " << before.below_1 << " -> " << after.below_1
++              << ", volume " << std::setprecision(10) << before.volume << " -> " << after.volume
++              << ", boundary " << (unchanged ? "unchanged" : "CHANGED") << ", " << std::setprecision(3) << seconds << " s\n";
++    if (!unchanged) { std::cerr << "boundary facets changed: refusing to write the mesh\n"; return 3; }
++    write_medit(tr, o.output);
++    return 0;
++  } catch (const std::exception& e) {
++    std::cerr << "pred777h_sliver_remesh: " << e.what() << '\n';
++    return 2;
++  }
++}
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/README.md b/scripts/pred777h_full_cube_v1/diagnostics/README.md
+new file mode 100644
+index 0000000..06e89b7
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/README.md
+@@ -0,0 +1,18 @@
++# Diagnostics of 2026-09-05 (single-cell label error, null space, sliver artefact)
++
++Evidence scripts behind `STEP8_SLIVER_REPORT.md` and the null-space section of `STEP6_CUT_CARRIER_REPORT.md`.  They read
++produced labels under a work directory (`/root/autodl-tmp/_claude_diag/tonight` by default) and are kept for the record,
++not as pipeline code.
++
++| script | what it establishes |
++|---|---|
++| `label_error.py`, `label_error2.py`, `analyse_A.py`, `analyse_A_v2.py` | single-cell error metrics: generalized eigenvalues on the reference range (v1, invalidated by the near-null modes), common support + declared energy floor (v2); the six uniform-strain stiffnesses |
++| `analyse_B.py` | production-sample statistics (guards, zero rows, storage) and the external stiffness benchmark |
++| `nullspace.py`, `ns_why.py`, `prolong.py` | dim Null(S) = 3 dim null(prolongation) + 3 x components; the extra null modes are pairs of carrier columns whose whole material trace is one shared mesh vertex |
++| `decide_tri.py` | exact decision procedure (interval bound on phi, witness search) for "does a carrier patch hold material" |
++| `rank_mesh.py` | q is mesh independent, the rank is not |
++| `sliver_scan.py`, `top_mode.py` | lambda_max's eigenvector sits on one carrier square in a quarter of the production labels: a sliver, not a port stiffness |
++| `sliver_anatomy.py`, `cap_needles.py`, `needle_class.py`, `apex_is_support.py` | every sub-degree tetrahedron stands on a needle cap triangle whose apex is a carrier support point a hair from the chain |
++| `grad_bomb.py`, `height_ratio.py` | tetrahedron stiffness-bomb metric area^2 / V and the flatness measure |
++| `compare_fixed.py`, `reschur.py` | repaired labels against the old ones and the references |
++| `manifold_check.py` | why a CGAL Triangulation_3 cannot hold the material alone (genus-5 boundary) |
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/analyse_A.py b/scripts/pred777h_full_cube_v1/diagnostics/analyse_A.py
+new file mode 100644
+index 0000000..6e025b8
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/analyse_A.py
+@@ -0,0 +1,87 @@
++#!/usr/bin/env python3
++"""Track A: the single-cell label error, from the labels produced tonight.
++
++A1  fine-mesh convergence, carrier fixed: fast and production against reference, per cell, by the generalized
++    eigenvalues of (S_h, S_ref) on the reference's range.  Load-free and sharp.
++A2  carrier resolution: 16 and 64 against 32, compared through the six uniform-strain apparent stiffnesses, because
++    the port SPACE changes and only fields that belong to every carrier (the affine ones) are comparable.
++A3  reproducibility: the same settings at a different thread count.
++"""
++from __future__ import annotations
++
++import json, sys
++from pathlib import Path
++
++import numpy as np
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import compare, compare_across_carriers, load_label, uniform_strain_stiffness
++
++A = Path("/root/autodl-tmp/_claude_diag/tonight/A")
++T = Path("/root/autodl-tmp/_claude_diag/tonight")
++cells = [c.strip() for c in (T / "trackA.txt").read_text().split() if c.strip()]
++cellsA2 = [c.strip() for c in (T / "trackA2.txt").read_text().split() if c.strip()]
++cellsA3 = [c.strip() for c in (T / "trackA3.txt").read_text().split() if c.strip()]
++have = lambda p: (A / p / "LABEL_RECEIPT.json").exists() and (A / p / "FIXED_PORT_SCHUR_TET10.npz").exists()
++status = lambda p: json.loads((A / p / "LABEL_RECEIPT.json").read_text()).get("status") if (A / p / "LABEL_RECEIPT.json").exists() else "-"
++
++out: dict = {"A1": {}, "A2": {}, "A3": {}, "missing": []}
++print("=" * 118)
++print("A1  fine-mesh convergence (carrier 1/32 fixed): generalized eigenvalues of S_h relative to S_reference")
++print("    lambda in [lo, hi] bounds the relative strain energy over EVERY port displacement; bound = max|lambda-1|")
++print("=" * 118)
++print(f"{'cell':<17}{'preset':<12}{'q':>7}{'modes':>7}{'lambda_lo':>11}{'lambda_hi':>11}{'bound':>9}{'uniform strain max':>20}{'Frob rel':>10}")
++for c in cells:
++    ref = f"A1_reference_{c}"
++    if not have(ref):
++        out["missing"].append((ref, status(ref))); print(f"{c:<17}reference missing ({status(ref)})"); continue
++    for preset in ("fast", "production"):
++        tag = f"A1_{preset}_{c}"
++        if not have(tag):
++            out["missing"].append((tag, status(tag))); print(f"{c:<17}{preset:<12}missing ({status(tag)})"); continue
++        r = compare(A / tag, A / ref); sp = r.get("spectrum", {})
++        if "lambda_min" not in sp:
++            print(f"{c:<17}{preset:<12}{sp.get('error', 'no spectrum')}"); continue
++        out["A1"].setdefault(c, {})[preset] = r
++        print(f"{c:<17}{preset:<12}{r['q_h']:>7}{sp['kept_modes']:>7}{sp['lambda_min']:>11.5f}{sp['lambda_max']:>11.5f}"
++              f"{sp['energy_error_bound']:>9.4f}{r['uniform_strain_max_abs_relative']:>20.2e}{r['frobenius_relative']:>10.2e}")
++        if r["alignment"]["only_a"] or r["alignment"]["only_b"]:
++            print(f"{'':<17}{'':<12}active-set differs: only_h {r['alignment']['only_a']}, only_ref {r['alignment']['only_b']}")
++
++print()
++print("=" * 118)
++print("A2  carrier resolution (production mesh fixed): the six uniform-strain apparent stiffnesses against carrier 1/32")
++print("    the port space itself changes, so only affine fields, which belong to every carrier, are comparable")
++print("=" * 118)
++print(f"{'cell':<17}{'carrier':<9}{'q':>7}{'q/q32':>7}{'Exx':>10}{'Eyy':>10}{'Ezz':>10}{'Gyz':>10}{'Gxz':>10}{'Gxy':>10}{'max|rel|':>10}")
++for c in cellsA2:
++    base = f"A1_production_{c}"
++    if not have(base):
++        out["missing"].append((base, status(base))); print(f"{c:<17}carrier-32 baseline missing"); continue
++    b = load_label(A / base); Cb = uniform_strain_stiffness(b["S"], b["xyz"])
++    print(f"{c:<17}{'32':<9}{b['q']:>7}{1.0:>7.2f}" + "".join(f"{v:>10.4g}" for v in Cb) + f"{0.0:>10.1e}")
++    for n in (16, 64):
++        tag = f"A2_c{n}_{c}"
++        if not have(tag):
++            out["missing"].append((tag, status(tag))); print(f"{c:<17}{str(n):<9}missing ({status(tag)})"); continue
++        r = compare_across_carriers(A / tag, A / base); out["A2"].setdefault(c, {})[n] = r
++        rel = np.asarray(r["uniform_strain_relative"], float)
++        print(f"{c:<17}{str(n):<9}{r['q_h']:>7}{r['q_h'] / max(b['q'], 1):>7.2f}" + "".join(f"{v:>10.4g}" for v in r["uniform_strain_h"]) + f"{r['uniform_strain_max_abs_relative']:>10.2e}")
++
++print()
++print("=" * 118)
++print("A3  reproducibility: the same geometry and settings at a different thread count")
++print("=" * 118)
++for c in cellsA3:
++    a, b = f"A1_production_{c}", f"A3_t12_{c}"
++    if not (have(a) and have(b)):
++        out["missing"].append((b, status(b))); print(f"{c:<17}missing ({status(b)})"); continue
++    r = compare(A / b, A / a); sp = r.get("spectrum", {}); out["A3"][c] = r
++    print(f"{c:<17}q {r['q_h']:>6} vs {r['q_ref']:<6} lambda [{sp.get('lambda_min', float('nan')):.9f}, {sp.get('lambda_max', float('nan')):.9f}]"
++          f"  Frobenius rel {r['frobenius_relative']:.2e}  uniform strain max {r['uniform_strain_max_abs_relative']:.2e}")
++
++if out["missing"]:
++    print(f"\nmissing or failed: {len(out['missing'])}")
++    for tag, st in out["missing"][:20]: print("   ", tag, st)
++json.dump(out, open(T / "TRACK_A_ANALYSIS.json", "w"), indent=1, default=float)
++print("\nwritten", T / "TRACK_A_ANALYSIS.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/analyse_A_v2.py b/scripts/pred777h_full_cube_v1/diagnostics/analyse_A_v2.py
+new file mode 100644
+index 0000000..cd3b295
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/analyse_A_v2.py
+@@ -0,0 +1,52 @@
++#!/usr/bin/env python3
++"""A1 with the revised metric (see label_error2): common support, and the error bound as a function of a declared
++energy floor rather than one arbitrary threshold."""
++from __future__ import annotations
++
++import json, sys
++from pathlib import Path
++
++import numpy as np
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error2 import compare_v2, FLOORS
++
++A = Path("/root/autodl-tmp/_claude_diag/tonight/A"); T = Path("/root/autodl-tmp/_claude_diag/tonight")
++cells = [c.strip() for c in (T / "trackA.txt").read_text().split() if c.strip()]
++have = lambda p: (A / p / "FIXED_PORT_SCHUR_TET10.npz").exists()
++
++print("=" * 124)
++print("A1  fine-mesh convergence, carrier 1/32 fixed, on the carrier nodes BOTH meshes load")
++print("    bound = max|lambda - 1| over the reference modes carrying at least `floor` of lambda_max")
++print("=" * 124)
++head = f"{'cell':<17}{'preset':<11}{'common':>7}{'ref only':>9}{'h only':>7}"
++head += "".join(f"{('%.0e' % f):>11}" for f in FLOORS) + f"{'uniform':>10}"
++print(head)
++print(f"{'':<17}{'':<11}{'nodes':>7}{'':>9}{'':>7}" + "".join(f"{'bound':>11}" for _ in FLOORS) + f"{'strain':>10}")
++rows = {}
++for c in cells:
++    ref = f"A1_reference_{c}"
++    if not have(ref):
++        print(f"{c:<17}reference missing"); continue
++    for preset in ("fast", "production"):
++        tag = f"A1_{preset}_{c}"
++        if not have(tag):
++            print(f"{c:<17}{preset:<11}missing"); continue
++        r = compare_v2(A / tag, A / ref); rows.setdefault(c, {})[preset] = r
++        if "ladder" not in r:
++            print(f"{c:<17}{preset:<11}{r.get('error')}"); continue
++        s = r["support"]
++        line = f"{c:<17}{preset:<11}{s['common_supported']:>7}{s['supported_in_ref_only']:>9}{s['supported_in_h_only']:>7}"
++        line += "".join(f"{(('%.3f' % e['bound']) if 'bound' in e else '-'):>11}" for e in r["ladder"])
++        line += f"{r['uniform_strain_max_abs_relative']:>10.2e}"
++        print(line, flush=True)
++
++first = next((v for d in rows.values() for v in d.values() if "ladder" in v), None)
++if first:
++    print("\nenergy share retained at each floor (from the first cell, the others are within a few tenths of a percent):")
++    print("   " + "  ".join(f"{('%.0e' % e['floor'])}: {100 * e.get('energy_share', float('nan')):.2f}%" for e in first["ladder"]))
++print("\nreading: the bound is the worst relative strain-energy error over the retained subspace, so it grows as the")
++print("floor drops and softer directions enter.  The uniform-strain column is the same comparison on the six")
++print("homogenisation load cases, which is what an engineer would quote.")
++json.dump(rows, open(T / "TRACK_A_ANALYSIS_V2.json", "w"), indent=1, default=float)
++print("\nwritten", T / "TRACK_A_ANALYSIS_V2.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/analyse_B.py b/scripts/pred777h_full_cube_v1/diagnostics/analyse_B.py
+new file mode 100644
+index 0000000..aea9fbd
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/analyse_B.py
+@@ -0,0 +1,119 @@
++#!/usr/bin/env python3
++"""Track B: the statistics the production plan and the training-target decisions need, plus track C, the external
++stiffness benchmark.
++
++B  guards, zero rows, operator scale, storage and throughput over the 300-cell stratified production sample.
++C  the KUBC apparent stiffness of the uncut cells against the material volume fraction.  Our operator under an affine
++   port displacement is the kinematic-uniform-boundary-condition estimate, an UPPER bound on the effective modulus;
++   published sheet-TPMS moduli are usually periodic homogenisation, so the level is not directly comparable but the
++   POWER-LAW EXPONENT is: a sheet TPMS is stretch dominated and should give an exponent near 1, not the 2 of a
++   bending-dominated network.
++"""
++from __future__ import annotations
++
++import glob, json, sys
++from pathlib import Path
++
++import numpy as np
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import load_label, uniform_strain_stiffness
++
++T = Path("/root/autodl-tmp/_claude_diag/tonight"); B = T / "B"
++rows = []
++for f in sorted(glob.glob(str(B / "*" / "LABEL_RECEIPT.json"))):
++    d = json.loads(Path(f).read_text()); case = Path(f).parent.name
++    rows.append({"case": case, "status": d.get("status"), "receipt": d, "dir": Path(f).parent})
++done = [r for r in rows if r["status"] == "PASS"]
++print(f"track B: {len(rows)} receipts, PASS {len(done)}, "
++      f"other {sorted({r['status'] for r in rows if r['status'] != 'PASS'})}")
++
++def col(key, where=lambda r: r["receipt"]):
++    out = []
++    for r in done:
++        d = where(r)
++        for k in key.split("."):
++            d = (d or {}).get(k) if isinstance(d, dict) else None
++        if d is not None: out.append(float(d))
++    return np.asarray(out)
++
++def line(name, v, fmt="%.4g"):
++    if not len(v): print(f"  {name:<34} (none)"); return
++    print(f"  {name:<34} min {fmt % v.min():>12}  med {fmt % np.median(v):>12}  p95 {fmt % np.percentile(v, 95):>12}  max {fmt % v.max():>12}")
++
++print("\n=== guards ===")
++line("rigid-body residual (relative)", col("schur.rigid_residual_relative"), "%.2e")
++line("min eigenvalue", col("schur.min_eigenvalue"), "%.2e")
++line("min eigenvalue / max", np.abs(col("schur.min_eigenvalue")) / np.maximum(col("schur.max_eigenvalue"), 1e-300), "%.2e")
++line("inactive block max", col("schur.inactive_block_max"), "%.2e")
++line("nonmanifold volume facets", col("mesh.nonmanifold_facets"), "%.0f")
++line("min dihedral (deg)", col("mesh.min_dihedral_degrees"), "%.4f")
++line("tets below 5 deg", col("mesh.tets_below_5deg"), "%.0f")
++line("surface min quality", col("surface.surface_quality.min"), "%.2e")
++alg = col("mesh.algorithm3d"); print(f"  {'algorithm3d values':<34} {sorted(set(int(x) for x in alg))}")
++
++print("\n=== operator scale and size ===")
++q = col("schur.q_active"); line("q_active", q, "%.0f")
++emax = col("schur.max_eigenvalue"); line("max eigenvalue (operator scale)", emax, "%.4g")
++print(f"  {'operator scale dynamic range':<34} max/min = {emax.max() / max(emax.min(), 1e-300):.1f}")
++vol = col("mesh.material_volume"); line("material volume", vol, "%.4f")
++
++print("\n=== zero rows (the training-target decision) ===")
++zr = []
++for r in done:
++    npz = r["dir"] / "FIXED_PORT_SCHUR_TET10.npz"
++    if not npz.exists(): continue
++    try:
++        lab = load_label(r["dir"])
++    except Exception:
++        continue
++    S = lab["S"]; n = S.shape[0] // 3
++    rown = np.linalg.norm(S.reshape(n, 3, -1), axis=(1, 2))
++    zero = rown <= 1e-12 * rown.max()
++    zr.append({"case": r["case"], "nodes": n, "zero": int(zero.sum()), "frac": float(zero.mean()),
++               "scale": float(rown.max()), "cut": r["receipt"]["geometry"]["cut_plane"] is not None})
++if zr:
++    fr = np.asarray([z["frac"] for z in zr]); line("zero-row fraction of active nodes", fr, "%.4f")
++    cutf = np.asarray([z["frac"] for z in zr if z["cut"]]); unc = np.asarray([z["frac"] for z in zr if not z["cut"]])
++    line("  cut cells", cutf, "%.4f"); line("  uncut cells", unc, "%.4f")
++    print(f"  {'labels inspected':<34} {len(zr)} (cut {int(sum(z['cut'] for z in zr))}, uncut {int(sum(not z['cut'] for z in zr))})")
++
++print("\n=== storage and throughput ===")
++mb = col("schur.storage.bytes") / 1e6; line("label operator (MB)", mb, "%.1f")
++tt = col("timing.total"); line("wall time per cell (s)", tt, "%.0f")
++for k in ("timing.surface_and_mesh", "timing.fixed_port", "timing.schur"):
++    line(k.split(".")[-1] + " (s)", col(k), "%.0f")
++if len(mb):
++    print(f"  {'projected for 1949 OK cells':<34} storage {mb.mean() * 1949 / 1000:.0f} GB, "
++          f"machine time {tt.mean() * 1949 / 3600:.0f} core-batches, wall at 8 concurrent {tt.mean() * 1949 / 8 / 3600:.1f} h")
++    tet = col("mesh.tet_count"); dof = 3 * col("mesh.node_count")
++    if len(tet): print(f"  {'memory coefficient (GB per 1000 dof)':<34} {np.median(mb / 1000 / (dof / 1000)):.4f} (operator only)")
++
++print("\n=== C: external stiffness benchmark, uncut cells ===")
++pts = []
++for r in done:
++    if r["receipt"]["geometry"]["cut_plane"] is not None: continue
++    try:
++        lab = load_label(r["dir"])
++    except Exception:
++        continue
++    C = uniform_strain_stiffness(lab["S"], lab["xyz"])
++    v = r["receipt"]["mesh"]["material_volume"]
++    pts.append({"case": r["case"], "rho": float(v), "E": float(np.mean(C[:3])), "G": float(np.mean(C[3:])),
++                "tau_mean": float(np.mean(r["receipt"]["geometry"]["tau_corners"]))})
++if len(pts) >= 6:
++    rho = np.asarray([p["rho"] for p in pts]); E = np.asarray([p["E"] for p in pts]); G = np.asarray([p["G"] for p in pts])
++    keep = (rho > 1e-6) & (E > 0)
++    for name, Y in (("normal (Exx,Eyy,Ezz mean)", E), ("shear (Gyz,Gxz,Gxy mean)", G)):
++        k = keep & (Y > 0)
++        a, b = np.polyfit(np.log(rho[k]), np.log(Y[k]), 1)
++        resid = np.log(Y[k]) - (a * np.log(rho[k]) + b)
++        print(f"  {name:<28} exponent {a:.3f}   coefficient {np.exp(b):.4g}   R2 {1 - resid.var() / np.log(Y[k]).var():.4f}   n {int(k.sum())}")
++    print(f"  {'volume fraction range':<28} {rho.min():.3f} to {rho.max():.3f}")
++    print("  reading: a sheet TPMS is stretch dominated, so the exponent should sit near 1; near 2 would mean")
++    print("  bending dominated.  The COEFFICIENT is a KUBC (affine port displacement) value, an upper bound on the")
++    print("  periodic effective modulus, so it is not directly comparable to published periodic data.")
++else:
++    print(f"  only {len(pts)} uncut labels so far, need at least 6 for the fit")
++json.dump({"zero_rows": zr, "benchmark": pts}, open(T / "TRACK_B_ANALYSIS.json", "w"), indent=1, default=float)
++print("\nwritten", T / "TRACK_B_ANALYSIS.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/apex_is_support.py b/scripts/pred777h_full_cube_v1/diagnostics/apex_is_support.py
+new file mode 100644
+index 0000000..0ddbc2e
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/apex_is_support.py
+@@ -0,0 +1,30 @@
++#!/usr/bin/env python3
++"""Are the needle apexes the carrier support points?"""
++import json, sys
++from importlib import import_module
++from pathlib import Path
++import numpy as np
++ROOT = Path("/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1"); sys.path.insert(0, str(ROOT / "src"))
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot"); sss = import_module(f"{P}.sheet_solid_surface"); pipe = import_module(f"{P}.sheet_label_pipeline")
++from cap_needles import tri_min_angle
++d = Path(sys.argv[1]); r = json.loads((d / "LABEL_RECEIPT.json").read_text())
++_, spec, geom = snap.load_geometry_manifest(Path(r["geometry_manifest"])); cn = int(r["resolution"]["carrier_n"])
++charts, *_ = fcb.compile_full_cube_geometry_inputs(spec); layout = pipe.build_carrier_layout(charts, spec, carrier_n=cn)
++ports = [n for n, _, _ in sss.clip_planes(geom)]
++_, _, support = sss.carrier_active_set(geom, layout, ports, carrier_n=cn)
++S = np.asarray([p for face in support.values() for p in face.values()]).reshape(-1, 3)
++lines = (d / "SHEET_SOLID_SURFACE.off").read_text().split("\n"); nv, nf, _ = map(int, lines[1].split())
++V = np.asarray([[float(x) for x in l.split()[:3]] for l in lines[2:2 + nv]]); F = np.asarray([[int(x) for x in l.split()[1:4]] for l in lines[2 + nv:2 + nv + nf]])
++onplane = np.zeros(len(V), bool)
++for k in range(3): onplane |= (np.abs(V[:, k]) < 1e-9) | (np.abs(V[:, k] - 1) < 1e-9)
++Fc = F[onplane[F].all(axis=1)]; ang = tri_min_angle(V[Fc]); needles = np.flatnonzero(ang < 1.0)
++hits = 0; depths = []
++for i in needles:
++    f = Fc[i]; p = V[f]; e = [np.linalg.norm(p[1] - p[2]), np.linalg.norm(p[0] - p[2]), np.linalg.norm(p[0] - p[1])]; apex = V[f[int(np.argmax(e))]]
++    dist = np.linalg.norm(S - apex, axis=1).min(); hits += dist < 1e-9
++    depths.append(float(-sss.sheet_level(geom, apex[None])[0]))
++print(f"support points {len(S)}; needles {len(needles)}; apex is a support point: {hits}")
++print("level depth (-lev) at the needle apexes:", np.round(sorted(depths)[:10], 5))
++allS = -sss.sheet_level(geom, S); print(f"level depth of all support points: p05 {np.percentile(allS, 5):.4f} median {np.median(allS):.4f}; below 0.01: {(allS < 0.01).sum()}, below 0.02: {(allS < 0.02).sum()}")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/cap_needles.py b/scripts/pred777h_full_cube_v1/diagnostics/cap_needles.py
+new file mode 100644
+index 0000000..2fadb35
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/cap_needles.py
+@@ -0,0 +1,48 @@
++#!/usr/bin/env python3
++"""Are the slivers inherited from needle-shaped CAP triangles, and are those needles a thin cap STRIP (the material
++touching the face along a hairline) rather than a bad triangulation of a fat region?"""
++import sys
++from collections import defaultdict
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sliver_smooth import read_medit, min_dihedral
++ROOTD = Path("/root/autodl-tmp/_claude_diag/tonight")
++
++
++def tri_min_angle(P):
++    a = np.linalg.norm(P[:, 1] - P[:, 2], axis=1); b = np.linalg.norm(P[:, 0] - P[:, 2], axis=1); c = np.linalg.norm(P[:, 0] - P[:, 1], axis=1)
++    ang = lambda x, y, z: np.degrees(np.arccos(np.clip((y * y + z * z - x * x) / np.maximum(2 * y * z, 1e-300), -1, 1)))
++    return np.minimum(np.minimum(ang(a, b, c), ang(b, a, c)), ang(c, a, b))
++
++
++for tag in sys.argv[1:]:
++    V, T = read_medit(ROOTD / tag / "mesh.mesh")
++    faces = np.sort(np.vstack([T[:, [0, 1, 2]], T[:, [0, 1, 3]], T[:, [0, 2, 3]], T[:, [1, 2, 3]]]), axis=1)
++    u, cnt = np.unique(faces, axis=0, return_counts=True); B = u[cnt == 1]
++    onplane = np.zeros(len(V), bool)
++    for k in range(3): onplane |= (np.abs(V[:, k]) < 1e-9) | (np.abs(V[:, k] - 1) < 1e-9)
++    cap = onplane[B].all(axis=1); sheet = ~cap
++    crease = np.zeros(len(V), bool); crease[np.unique(B[cap])] = True; crease &= np.isin(np.arange(len(V)), np.unique(B[sheet]))
++    ang_cap = tri_min_angle(V[B[cap]]); ang_sheet = tri_min_angle(V[B[sheet]])
++    Bc = B[cap]; all_crease = crease[Bc].all(axis=1)
++    d = min_dihedral(V[T]); sl = np.flatnonzero(d < 1.0)
++    # does each sliver sit on a needle cap triangle?
++    capset = {tuple(f): i for i, f in enumerate(Bc)}
++    inherited = 0; on_needle_all_crease = 0
++    for t in sl:
++        vs = T[t]
++        for k in range(4):
++            f = tuple(sorted(int(vs[j]) for j in range(4) if j != k))
++            if f in capset:
++                i = capset[f]
++                if ang_cap[i] < 1.0: inherited += 1; on_needle_all_crease += int(all_crease[i])
++                break
++    print(f"=== {tag} ===")
++    print(f"  cap triangles {len(Bc)}: min angle < 0.1 deg {(ang_cap < 0.1).sum()}, < 1 deg {(ang_cap < 1).sum()}, < 5 deg {(ang_cap < 5).sum()}, p01 {np.percentile(ang_cap, 1):.3f}, min {ang_cap.min():.4f}")
++    print(f"  sheet triangles {len(B[sheet])}: min angle < 1 deg {(ang_sheet < 1).sum()}, < 5 deg {(ang_sheet < 5).sum()}, min {ang_sheet.min():.3f}")
++    print(f"  needle cap triangles (< 1 deg) with ALL three vertices on the cap/sheet crease (a hairline strip): {(all_crease & (ang_cap < 1)).sum()} of {(ang_cap < 1).sum()}")
++    print(f"  tets below 1 deg: {len(sl)}, of which sitting on a needle cap triangle: {inherited}, on a needle that is a crease strip: {on_needle_all_crease}")
++    for i in np.argsort(ang_cap)[:4]:
++        P = V[Bc[i]]; e = [np.linalg.norm(P[a] - P[b]) for a, b in ((0, 1), (1, 2), (0, 2))]
++        print(f"    needle {ang_cap[i]:.4f} deg at {P.mean(axis=0).round(4).tolist()}, edges {np.round(e, 5).tolist()}, crease vertices {int(crease[Bc[i]].sum())}/3")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/compare_fixed.py b/scripts/pred777h_full_cube_v1/diagnostics/compare_fixed.py
+new file mode 100644
+index 0000000..2d285a4
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/compare_fixed.py
+@@ -0,0 +1,53 @@
++#!/usr/bin/env python3
++"""The repaired pipeline against the old labels: cap needles, slivers, lambda_max, the top mode's localisation, and
++the uniform-strain stiffnesses (physics) per cell and tier.  Usage: compare_fixed.py tag:old_label_dir[:reference_dir] ..."""
++from __future__ import annotations
++import json, sys
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import load_label, uniform_strain_stiffness
++
++import os
++T = Path("/root/autodl-tmp/_claude_diag/tonight"); W = Path(os.environ.get("FIXED_DIR", str(T / "fixed")))
++
++
++def top_mode(S):
++    w, U = np.linalg.eigh(S); n = S.shape[0] // 3
++    part = np.sort(np.linalg.norm(U[:, -1].reshape(n, 3), axis=1) ** 2)[::-1]
++    return float(w[-1]), float(part[:4].sum()), int((part > 0.01).sum())
++
++
++def common(a, b):
++    ib = {k: i for i, k in enumerate(b["ids"])}; keys = [k for k in a["ids"] if k in ib]
++    ka = np.asarray([a["ids"].index(k) for k in keys]); kb = np.asarray([ib[k] for k in keys])
++    da = np.repeat(3 * ka, 3) + np.tile(np.arange(3), len(ka)); db = np.repeat(3 * kb, 3) + np.tile(np.arange(3), len(kb))
++    return da, db, ka, kb
++
++
++print(f"{'tag':<11}{'status':<8}{'q':>6}{'needles':>8}{'capMinAng':>10}{'dih0':>8}{'dih1':>8}{'<5deg':>7}{'lmax':>9}{'lmax old':>9}{'top4':>7}{'top4 old':>9}{'vs old':>9}{'vs ref':>9}{'old vs ref':>11}")
++for arg in sys.argv[1:]:
++    parts = arg.split(":"); tag, old = parts[0], Path(parts[1]); ref = Path(parts[2]) if len(parts) > 2 else None
++    d = W / tag
++    if not (d / "LABEL_RECEIPT.json").exists():
++        print(f"{tag:<11}missing"); continue
++    r = json.loads((d / "LABEL_RECEIPT.json").read_text())
++    if r.get("status") != "PASS" or not (d / "FIXED_PORT_SCHUR_TET10.npz").exists():
++        print(f"{tag:<11}{r.get('status')}"); continue
++    cn = r["surface"].get("cap_needles", {}); ss = r["mesh"].get("sliver_smooth") or {}
++    new = load_label(d); o = load_label(old)
++    lam, t4, n1 = top_mode(new["S"]); lam0, t40, _ = top_mode(o["S"])
++    da, db, ka, kb = common(new, o)
++    Cn = uniform_strain_stiffness(new["S"][np.ix_(da, da)], new["xyz"][ka]); Co = uniform_strain_stiffness(o["S"][np.ix_(db, db)], o["xyz"][kb])
++    vs_old = float(np.abs(Cn / Co - 1).max())
++    vs_ref = old_vs_ref = float("nan")
++    if ref is not None and (ref / "FIXED_PORT_SCHUR_TET10.npz").exists():
++        rf = load_label(ref); da2, db2, ka2, kb2 = common(new, rf)
++        Cr = uniform_strain_stiffness(rf["S"][np.ix_(db2, db2)], rf["xyz"][kb2]); Cn2 = uniform_strain_stiffness(new["S"][np.ix_(da2, da2)], new["xyz"][ka2])
++        vs_ref = float(np.abs(Cn2 / Cr - 1).max())
++        da3, db3, ka3, kb3 = common(o, rf); Cr3 = uniform_strain_stiffness(rf["S"][np.ix_(db3, db3)], rf["xyz"][kb3]); Co3 = uniform_strain_stiffness(o["S"][np.ix_(da3, da3)], o["xyz"][ka3])
++        old_vs_ref = float(np.abs(Co3 / Cr3 - 1).max()); lamr = top_mode(rf["S"])[0]
++    print(f"{tag:<11}{'PASS':<8}{new['q']:>6}{cn.get('remaining', -1):>8}{cn.get('min_angle_degrees', float('nan')):>10.3f}"
++          f"{(ss.get('before') or {}).get('min_dihedral_degrees', float('nan')):>8.3f}{r['mesh']['min_dihedral_degrees']:>8.3f}{r['mesh']['tets_below_5deg']:>7}"
++          f"{lam:>9.4f}{lam0:>9.4f}{t4:>7.3f}{t40:>9.3f}{vs_old:>9.1e}{vs_ref:>9.1e}{old_vs_ref:>11.1e}"
++          + (f"   lmax/ref {lam / lamr:.3f} (old {lam0 / lamr:.3f})" if ref is not None and not np.isnan(vs_ref) else ""))
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/decide_tri.py b/scripts/pred777h_full_cube_v1/diagnostics/decide_tri.py
+new file mode 100644
+index 0000000..b658986
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/decide_tri.py
+@@ -0,0 +1,121 @@
++#!/usr/bin/env python3
++"""Does a carrier NODE's own P1 patch hold material?  Decided on the patch triangles, not their bounding boxes.
++
++For each carrier trace triangle: 4-way midpoint subdivision, with two rigorous tests per sub-triangle.
++
++  PROOF OF MATERIAL   a sample point inside the sub-triangle with lev = |phi| - tau <= 0 (and on the retained side).
++  PROOF OF EMPTINESS  min|phi| > max tau over the sub-triangle's axis-aligned bounding box, both exact in closed form
++                      (phi is separable, tau is trilinear so its box extrema are at the corners).
++
++A triangle is empty only if EVERY sub-triangle is proven empty; undecided sub-triangles are subdivided.  Whatever is
++still undecided at the depth limit counts as material (the safe side, so the active set stays a superset).
++"""
++from __future__ import annotations
++
++import json, sys
++from importlib import import_module
++from pathlib import Path
++
++import numpy as np
++
++ROOT = Path("/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1")
++sys.path.insert(0, str(ROOT / "src"))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot")
++sss = import_module(f"{P}.sheet_solid_surface"); pipe = import_module(f"{P}.sheet_label_pipeline")
++T = Path("/root/autodl-tmp/_claude_diag/tonight")
++DEPTH = 7
++BARY = np.asarray([(1/3, 1/3, 1/3), (0.5, 0.25, 0.25), (0.25, 0.5, 0.25), (0.25, 0.25, 0.5),
++                   (0.6, 0.2, 0.2), (0.2, 0.6, 0.2), (0.2, 0.2, 0.6), (1/3, 1/3, 1/3)])
++
++
++def cos_range(a, b):
++    ca, cb = np.cos(2 * np.pi * a), np.cos(2 * np.pi * b)
++    lo = np.minimum(ca, cb); hi = np.maximum(ca, cb)
++    full = (b - a) >= 1.0
++    hi = np.where(full | (np.floor(b) >= np.ceil(a)), 1.0, hi)
++    lo = np.where(full | (np.floor(b - 0.5) >= np.ceil(a - 0.5)), -1.0, lo)
++    return lo, hi
++
++
++def decide(geometry, planes, V, depth=DEPTH):
++    """V: (n, 3, 3) triangles.  Returns (has_material, undecided) booleans of length n."""
++    n = len(V)
++    mat = np.zeros(n, bool)
++    owner = np.arange(n); W = V.copy()
++    for _ in range(depth + 1):
++        if not len(owner): break
++        lo = W.min(axis=1); hi = W.max(axis=1)
++        plo = np.zeros(len(W)); phh = np.zeros(len(W))
++        for k in range(3):
++            a, b = cos_range(lo[:, k], hi[:, k]); plo += a; phh += b
++        straddle = (plo <= 0) & (phh >= 0)
++        min_abs = np.where(straddle, 0.0, np.minimum(np.abs(plo), np.abs(phh)))
++        tmax = np.full(len(W), -np.inf)
++        for c in range(8):
++            sel = np.array([[c & 1, (c >> 1) & 1, (c >> 2) & 1]], dtype=bool)
++            X = np.where(sel, hi, lo)
++            tmax = np.maximum(tmax, np.abs(np.cos(2 * np.pi * X).sum(axis=1)) - sss.sheet_level(geometry, X))
++        proven_empty = min_abs > tmax
++        witness = np.zeros(len(W), bool)
++        for bc in BARY:
++            X = np.einsum("c,ncj->nj", bc, W)
++            lev = sss.sheet_level(geometry, X); ins = np.ones(len(X), bool)
++            for _, nrm, d in planes: ins &= (X @ nrm - d) <= 1e-12
++            witness |= ins & (lev <= 0.0)
++        np.logical_or.at(mat, owner[witness], True)
++        keep = ~proven_empty & ~witness & ~mat[owner]
++        if not keep.any(): break
++        owner = owner[keep]; W = W[keep]
++        A, B, C = W[:, 0], W[:, 1], W[:, 2]
++        AB, BC, CA = 0.5 * (A + B), 0.5 * (B + C), 0.5 * (C + A)
++        W = np.concatenate([np.stack([A, AB, CA], 1), np.stack([AB, B, BC], 1),
++                            np.stack([CA, BC, C], 1), np.stack([AB, BC, CA], 1)])
++        owner = np.tile(owner, 4)
++    undec = np.zeros(n, bool); np.logical_or.at(undec, owner, True)
++    return mat, undec & ~mat
++
++
++def analyse(case: str) -> dict:
++    d = T / case if "/" in case else T / "B" / case
++    r = json.loads((d / "LABEL_RECEIPT.json").read_text())
++    man = Path(r["geometry_manifest"]); cn = int(r["resolution"]["carrier_n"])
++    _, spec, geom = snap.load_geometry_manifest(man)
++    charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
++    layout = pipe.build_carrier_layout(charts, spec, carrier_n=cn)
++    stage = pipe.compile_port(d / "mesh.mesh", geom, spec, layout, carrier_n=cn)
++    active = np.asarray(stage.active, bool)
++    Sc = stage.port.scalar_fine_to_carrier.tocsc()
++    support = np.asarray((Sc != 0).sum(axis=0)).ravel() > 0
++    keys = list(layout.global_scalar_node_keys); g2c = dict(stage.port.global_to_compact)
++    lay2c = np.array([g2c.get(str(k), -1) for k in keys]); planes = sss.clip_planes(geom)
++    shell, _all, per_face = sss.carrier_shell(layout, tuple(stage.port.active_global_port_ids))
++    has = np.zeros(len(keys), bool); und = np.zeros(len(keys), bool)
++    for src, tris in per_face:
++        mat, undec = decide(geom, planes, shell[tris])
++        for t in np.flatnonzero(mat): has[tris[t]] = True
++        for t in np.flatnonzero(undec): und[tris[t]] = True
++    hv = np.zeros(len(active), bool); uv = np.zeros(len(active), bool); ok = lay2c >= 0
++    hv[lay2c[ok]] = has[np.flatnonzero(ok)]; uv[lay2c[ok]] = und[np.flatnonzero(ok)]
++    keep = active & (hv | uv); drop = active & ~hv & ~uv
++    out = {"case": case, "active": int(active.sum()), "q": int(3 * active.sum()),
++           "patch_holds_material": int((active & hv).sum()), "undecided": int((active & uv & ~hv).sum()),
++           "patch_proven_empty": int(drop.sum()), "proven_empty_but_meshed": int((drop & support).sum()),
++           "zero_support": int((active & ~support).sum()),
++           "zero_support_with_material": int((active & hv & ~support).sum()),
++           "q_new": int(3 * keep.sum())}
++    print(f"\n=== {case} ===")
++    print(f"  active {out['active']} (q {out['q']}): patch PROVEN to hold material {out['patch_holds_material']}, "
++          f"undecided {out['undecided']}, PROVEN EMPTY {out['patch_proven_empty']}")
++    print(f"  zero-support columns {out['zero_support']}, of which the patch provably HAS material: "
++          f"{out['zero_support_with_material']}  <- the mesh missed real material")
++    print(f"  dropping only the proven-empty: q {out['q']} -> {out['q_new']} ({100*(out['q_new']/out['q']-1):+.1f} %); "
++          f"proven-empty yet meshed (must be 0): {out['proven_empty_but_meshed']}")
++    sys.stdout.flush()
++    return out
++
++
++if __name__ == "__main__":
++    rows = [analyse(c) for c in (sys.argv[1:] or ["pop_cut_0136"])]
++    json.dump(rows, open(T / "DECIDE_TRI.json", "w"), indent=1, default=float)
++    print("\nwritten", T / "DECIDE_TRI.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/grad_bomb.py b/scripts/pred777h_full_cube_v1/diagnostics/grad_bomb.py
+new file mode 100644
+index 0000000..581a4e4
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/grad_bomb.py
+@@ -0,0 +1,26 @@
++#!/usr/bin/env python3
++"""Which tetrahedra can inject a stiffness bomb?  For Tet4 shape functions |grad N_k| = area(face opposite k) / (3 V);
++the element energy of a unit nodal displacement scales with V |grad N|^2 = area^2 / (9 V).  Rank tetrahedra by
++max_k area_k^2 / V (dimension length; compare with the mesh size ~0.02) and locate the worst."""
++import sys
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sliver_smooth import read_medit, min_dihedral
++ROOTD = Path("/root/autodl-tmp/_claude_diag/tonight")
++FACES = [(1, 2, 3), (0, 3, 2), (0, 1, 3), (0, 2, 1)]
++for tag in sys.argv[1:]:
++    V, T = read_medit(ROOTD / tag / "mesh.mesh"); P = V[T]
++    vol = np.abs(np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0]))) / 6
++    bomb = np.zeros(len(T))
++    for k, f in enumerate(FACES):
++        area = 0.5 * np.linalg.norm(np.cross(P[:, f[1]] - P[:, f[0]], P[:, f[2]] - P[:, f[0]]), axis=1)
++        bomb = np.maximum(bomb, area ** 2 / np.maximum(vol, 1e-300))
++    d = min_dihedral(P)
++    onplane = np.zeros(len(V), bool)
++    for k in range(3): onplane |= (np.abs(V[:, k]) < 1e-9) | (np.abs(V[:, k] - 1) < 1e-9)
++    order = np.argsort(-bomb)
++    print(f"=== {tag} === tets {len(T)}; bomb metric (area^2/V): median {np.median(bomb):.4f}, p99 {np.percentile(bomb, 99):.4f}, max {bomb.max():.4f}")
++    for t in order[:6]:
++        c = P[t].mean(axis=0); npl = int(onplane[T[t]].sum())
++        print(f"   {bomb[t]:9.4f}  min dihedral {d[t]:7.3f} deg  vol {vol[t]:.2e}  centroid {c.round(4).tolist()}  vertices on box planes {npl}")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/height_ratio.py b/scripts/pred777h_full_cube_v1/diagnostics/height_ratio.py
+new file mode 100644
+index 0000000..aef079d
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/height_ratio.py
+@@ -0,0 +1,21 @@
++#!/usr/bin/env python3
++"""Distribution of the flatness measure h_min / L_max (min altitude over max edge; regular tet 0.816) and of the
++stiffness-bomb metric max_k area_k^2 / V = 3 max_k area_k / h_k."""
++import sys
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sliver_smooth import read_medit, min_dihedral
++ROOTD = Path("/root/autodl-tmp/_claude_diag/tonight")
++FACES = [(1, 2, 3), (0, 3, 2), (0, 1, 3), (0, 2, 1)]
++for tag in sys.argv[1:]:
++    V, T = read_medit(ROOTD / tag / "mesh.mesh"); P = V[T]
++    vol = np.abs(np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0]))) / 6
++    areas = np.stack([0.5 * np.linalg.norm(np.cross(P[:, f[1]] - P[:, f[0]], P[:, f[2]] - P[:, f[0]]), axis=1) for f in FACES], axis=1)
++    h = 3 * vol[:, None] / np.maximum(areas, 1e-300); hmin = h.min(axis=1)
++    L = np.max([np.linalg.norm(P[:, a] - P[:, b], axis=1) for a in range(4) for b in range(a + 1, 4)], axis=0)
++    ratio = hmin / L; bomb = (areas ** 2 / np.maximum(vol, 1e-300)[:, None]).max(axis=1); d = min_dihedral(P)
++    print(f"=== {tag} === h_min/L_max: p01 {np.percentile(ratio, 1):.4f} p05 {np.percentile(ratio, 5):.4f} median {np.median(ratio):.3f}; below 0.02: {(ratio < 0.02).sum()}, 0.05: {(ratio < 0.05).sum()}, 0.1: {(ratio < 0.1).sum()}, 0.2: {(ratio < 0.2).sum()}")
++    o = np.argsort(ratio)[:5]
++    print("   flattest:", [(round(float(ratio[t]), 4), round(float(d[t]), 2), round(float(bomb[t]), 3)) for t in o], "(ratio, min dihedral deg, bomb)")
++    print(f"   bomb max {bomb.max():.3f}; tets with bomb > 0.5: {(bomb > 0.5).sum()}, > 1: {(bomb > 1).sum()}; of tets with dihedral >= 5 deg the worst bomb is {bomb[d >= 5].max():.3f} (ratio {ratio[d >= 5][np.argmax(bomb[d >= 5])]:.4f})")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/label_error.py b/scripts/pred777h_full_cube_v1/diagnostics/label_error.py
+new file mode 100644
+index 0000000..12e9f1b
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/label_error.py
+@@ -0,0 +1,119 @@
++"""Single-cell label error: how far is one cell's fixed-port Schur operator from a reference, without choosing a load.
++
++The carrier is fixed by geometry alone (a Cartesian background grid intersected with the cell's boundary planes) and
++never depends on the tet mesh, so two labels of the same cell at different mesh resolutions live in the SAME port
++space and can be compared entry by entry.  The metric of record is therefore the generalized eigenvalue problem
++
++    S_h v = lambda S_ref v      on the range of S_ref (its six rigid modes and its unsupported nodes removed),
++
++whose extreme eigenvalues bound the relative strain-energy error over EVERY port displacement:
++
++    lambda_min <= (v' S_h v) / (v' S_ref v) <= lambda_max     for all v in that subspace.
++
++No load is chosen and the bound is sharp.  Reported alongside, for interpretation only, are the six uniform-strain
++apparent stiffnesses, which are the standard homogenisation load cases.
++
++Comparing across CARRIER resolutions is a different question, because the space itself changes; there the operators
++are compared through the uniform-strain stiffnesses (the affine fields belong to every carrier space exactly).
++"""
++from __future__ import annotations
++
++import json
++from pathlib import Path
++
++import numpy as np
++
++RIGID_TOL = 1.0e-9          # a generalized eigenvalue is kept when the reference mode carries this much energy
++
++
++def load_label(directory: Path) -> dict:
++    """Operator, carrier coordinates and identities of one produced label."""
++    z = np.load(Path(directory) / "FIXED_PORT_SCHUR_TET10.npz")
++    q = int(z["q"][0]); S = np.zeros((q, q)); iu = np.triu_indices(q); S[iu] = z["schur_upper_f32"]
++    S = S + S.T - np.diag(np.diag(S))
++    receipt = json.loads((Path(directory) / "LABEL_RECEIPT.json").read_text())
++    return {"S": S, "q": q, "xyz": np.asarray(z["carrier_coordinates"], dtype=np.float64),
++            "ids": [str(v) for v in z["carrier_ids"]], "receipt": receipt,
++            "volume": float(z["material_volume"][0]) if "material_volume" in z.files else float("nan")}
++
++
++def align(a: dict, b: dict) -> tuple[np.ndarray, np.ndarray, dict]:
++    """Common carrier nodes of two labels of the same cell, by carrier identity (the identity is exact and geometric,
++    so the sets agree unless the geometric active-set rule saw a different band)."""
++    ia = {k: i for i, k in enumerate(a["ids"])}; ib = {k: i for i, k in enumerate(b["ids"])}
++    common = [k for k in a["ids"] if k in ib]
++    ka = np.asarray([ia[k] for k in common], dtype=np.int64); kb = np.asarray([ib[k] for k in common], dtype=np.int64)
++    da = np.repeat(3 * ka, 3) + np.tile(np.arange(3), len(ka)); db = np.repeat(3 * kb, 3) + np.tile(np.arange(3), len(kb))
++    report = {"nodes_a": len(a["ids"]), "nodes_b": len(b["ids"]), "common": len(common),
++              "only_a": len(a["ids"]) - len(common), "only_b": len(b["ids"]) - len(common),
++              "max_coordinate_mismatch": float(np.abs(a["xyz"][ka] - b["xyz"][kb]).max()) if len(ka) else 0.0}
++    return da, db, report
++
++
++def generalized_spectrum(S_h: np.ndarray, S_ref: np.ndarray, *, tol: float = RIGID_TOL) -> dict:
++    """Eigenvalues of S_h relative to S_ref on the range of S_ref.
++
++    S_ref is symmetric positive semidefinite with a six-dimensional rigid null space and one zero row per carrier node
++    the material does not reach.  Project both onto the reference's range (eigenvalues above tol * lambda_max), where
++    the pencil is a genuine similarity, and return the extreme relative energies."""
++    w, U = np.linalg.eigh(S_ref)
++    keep = w > tol * w[-1]
++    if not keep.any():
++        return {"error": "reference operator is numerically zero"}
++    Q = U[:, keep] / np.sqrt(w[keep])                       # S_ref-orthonormal basis of the range
++    M = Q.T @ S_h @ Q
++    lam = np.linalg.eigvalsh(0.5 * (M + M.T))
++    return {"kept_modes": int(keep.sum()), "removed_modes": int((~keep).sum()),
++            "lambda_min": float(lam.min()), "lambda_max": float(lam.max()),
++            "lambda_median": float(np.median(lam)), "lambda_p01": float(np.percentile(lam, 1)), "lambda_p99": float(np.percentile(lam, 99)),
++            "energy_error_bound": float(max(abs(lam.min() - 1.0), abs(lam.max() - 1.0))),
++            "reference_condition": float(w[-1] / w[keep].min())}
++
++
++def uniform_strain_stiffness(S: np.ndarray, xyz: np.ndarray) -> np.ndarray:
++    """Apparent stiffness in the six uniform strains: C[i] = u_i' S u_i with u_i the affine port displacement of the
++    i-th unit strain (xx, yy, zz, yz, xz, xy).  Affine fields lie in every carrier space exactly, so this is
++    comparable across carrier resolutions as well as across meshes."""
++    x = xyz - xyz.mean(axis=0)
++    out = []
++    for i, j in ((0, 0), (1, 1), (2, 2), (1, 2), (0, 2), (0, 1)):
++        u = np.zeros_like(x)
++        if i == j: u[:, i] = x[:, i]
++        else: u[:, i] += 0.5 * x[:, j]; u[:, j] += 0.5 * x[:, i]
++        v = u.ravel(); out.append(float(v @ S @ v))
++    return np.asarray(out)
++
++
++def compare(dir_h: Path, dir_ref: Path) -> dict:
++    """One label against a reference label of the same cell."""
++    a = load_label(dir_h); b = load_label(dir_ref)
++    da, db, rep = align(a, b)
++    out = {"alignment": rep, "case": a["receipt"]["case_id"],
++           "resolution_h": a["receipt"]["resolution"], "resolution_ref": b["receipt"]["resolution"],
++           "q_h": a["q"], "q_ref": b["q"], "volume_h": a["volume"], "volume_ref": b["volume"]}
++    if rep["common"] < 12:
++        out["error"] = "too few common carrier nodes"; return out
++    Sh = a["S"][np.ix_(da, da)]; Sr = b["S"][np.ix_(db, db)]
++    out["spectrum"] = generalized_spectrum(Sh, Sr)
++    Ch = uniform_strain_stiffness(Sh, a["xyz"][da[::3] // 3]); Cr = uniform_strain_stiffness(Sr, b["xyz"][db[::3] // 3])
++    out["uniform_strain_h"] = Ch.tolist(); out["uniform_strain_ref"] = Cr.tolist()
++    out["uniform_strain_relative"] = (Ch / np.where(np.abs(Cr) > 0, Cr, np.nan) - 1.0).tolist()
++    out["uniform_strain_max_abs_relative"] = float(np.nanmax(np.abs(Ch / np.where(np.abs(Cr) > 0, Cr, np.nan) - 1.0)))
++    # the whitened Frobenius the route has been quoting, for continuity with earlier reports
++    out["frobenius_relative"] = float(np.linalg.norm(Sh - Sr) / max(np.linalg.norm(Sr), 1e-300))
++    return out
++
++
++def compare_across_carriers(dir_h: Path, dir_ref: Path) -> dict:
++    """Two labels of the same cell on DIFFERENT carrier resolutions: the port spaces differ, so only quantities whose
++    fields belong to both spaces are comparable.  The six uniform strains are affine and belong to every P1 carrier."""
++    a = load_label(dir_h); b = load_label(dir_ref)
++    Ch = uniform_strain_stiffness(a["S"], a["xyz"]); Cr = uniform_strain_stiffness(b["S"], b["xyz"])
++    rel = Ch / np.where(np.abs(Cr) > 0, Cr, np.nan) - 1.0
++    return {"case": a["receipt"]["case_id"], "carrier_h": a["receipt"]["resolution"]["carrier_n"], "carrier_ref": b["receipt"]["resolution"]["carrier_n"],
++            "q_h": a["q"], "q_ref": b["q"], "uniform_strain_h": Ch.tolist(), "uniform_strain_ref": Cr.tolist(),
++            "uniform_strain_relative": rel.tolist(), "uniform_strain_max_abs_relative": float(np.nanmax(np.abs(rel))),
++            "volume_h": a["volume"], "volume_ref": b["volume"]}
++
++
++__all__ = ["load_label", "align", "generalized_spectrum", "uniform_strain_stiffness", "compare", "compare_across_carriers"]
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/label_error2.py b/scripts/pred777h_full_cube_v1/diagnostics/label_error2.py
+new file mode 100644
+index 0000000..fca8c77
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/label_error2.py
+@@ -0,0 +1,90 @@
++"""A1 revisited: the single-cell mesh error on a subspace where the question is well posed.
++
++The first version solved  S_h v = lambda S_ref v  on the range of S_ref, keeping every reference mode above
++1e-9 * lambda_max.  That is not a usable metric here, because the operator has no spectral gap: below about
++1e-6 * lambda_max sit hundreds of modes that are slivers of material or carrier columns one mesh reaches and the
++other does not, and dividing by their energy produced lambda in [0, 510].
++
++Two changes make it well posed.
++
++  COMMON SUPPORT.  Restrict to carrier nodes both labels actually load.  A node one mesh reaches and the other does
++  not is not a discretization error of the operator, it is a different active support; it is counted and reported
++  separately instead of being divided by.
++
++  AN ENERGY FLOOR THAT IS DECLARED.  Report the bound as a function of the retained reference energy: keep the
++  reference modes with lambda_ref >= eps * lambda_max and give max|lambda - 1| for a ladder of eps.  There is no
++  gap to find, so no single eps is "the" answer; the curve is the answer, and the reader picks the operating point.
++  Alongside it, the share of trace(S_ref) the retained modes carry, so "eps = 1e-6" can be read as "this covers
++  99.4 % of the operator's energy".
++"""
++from __future__ import annotations
++
++import numpy as np
++
++from label_error import load_label, uniform_strain_stiffness
++
++FLOORS = (1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8)
++
++
++def supported_nodes(S: np.ndarray, *, relative: float = 1e-12) -> np.ndarray:
++    n = S.shape[0] // 3
++    rn = np.linalg.norm(S.reshape(n, 3, -1), axis=(1, 2))
++    return rn > relative * rn.max()
++
++
++def common_support(a: dict, b: dict) -> tuple[np.ndarray, np.ndarray, dict]:
++    """Vector dof index arrays into a and b for the carrier nodes both operators load."""
++    ia = {k: i for i, k in enumerate(a["ids"])}; ib = {k: i for i, k in enumerate(b["ids"])}
++    sa = supported_nodes(a["S"]); sb = supported_nodes(b["S"])
++    keys = [k for k in a["ids"] if k in ib and sa[ia[k]] and sb[ib[k]]]
++    ka = np.asarray([ia[k] for k in keys], dtype=np.int64); kb = np.asarray([ib[k] for k in keys], dtype=np.int64)
++    rep = {"nodes_a": len(a["ids"]), "nodes_b": len(b["ids"]),
++           "supported_a": int(sa.sum()), "supported_b": int(sb.sum()), "common_supported": len(keys),
++           "supported_in_ref_only": int(sb.sum()) - len(keys), "supported_in_h_only": int(sa.sum()) - len(keys)}
++    da = np.repeat(3 * ka, 3) + np.tile(np.arange(3), len(ka))
++    db = np.repeat(3 * kb, 3) + np.tile(np.arange(3), len(kb))
++    return da, db, rep
++
++
++def spectrum_by_floor(S_h: np.ndarray, S_ref: np.ndarray, floors=FLOORS) -> list[dict]:
++    """max|lambda - 1| over the reference modes above each energy floor, with the trace share they carry."""
++    w, U = np.linalg.eigh(S_ref); wmax = w[-1]; total = float(w[w > 0].sum())
++    M_full = U.T @ S_h @ U
++    out = []
++    for eps in floors:
++        keep = w >= eps * wmax
++        if keep.sum() < 6:
++            out.append({"floor": eps, "modes": int(keep.sum()), "error": "fewer than six modes above the floor"}); continue
++        idx = np.flatnonzero(keep)
++        Q = U[:, idx] / np.sqrt(w[idx])
++        M = Q.T @ S_h @ Q
++        lam = np.linalg.eigvalsh(0.5 * (M + M.T))
++        out.append({"floor": eps, "modes": int(keep.sum()),
++                    "energy_share": float(w[idx].sum() / max(total, 1e-300)),
++                    "lambda_min": float(lam.min()), "lambda_max": float(lam.max()),
++                    "bound": float(max(abs(lam.min() - 1.0), abs(lam.max() - 1.0))),
++                    "lambda_p05": float(np.percentile(lam, 5)), "lambda_p95": float(np.percentile(lam, 95))})
++    _ = M_full
++    return out
++
++
++def compare_v2(dir_h, dir_ref) -> dict:
++    a = load_label(dir_h); b = load_label(dir_ref)
++    da, db, rep = common_support(a, b)
++    out = {"case": a["receipt"]["case_id"], "support": rep,
++           "resolution_h": a["receipt"]["resolution"]["preset"], "resolution_ref": b["receipt"]["resolution"]["preset"],
++           "q_h": a["q"], "q_ref": b["q"], "tets_h": int(a["receipt"]["mesh"]["tet_count"]),
++           "tets_ref": int(b["receipt"]["mesh"]["tet_count"])}
++    if rep["common_supported"] < 12:
++        out["error"] = "too few commonly supported nodes"; return out
++    Sh = a["S"][np.ix_(da, da)]; Sr = b["S"][np.ix_(db, db)]
++    out["ladder"] = spectrum_by_floor(Sh, Sr)
++    xa = a["xyz"][da[::3] // 3]
++    Ch = uniform_strain_stiffness(Sh, xa); Cr = uniform_strain_stiffness(Sr, xa)
++    out["uniform_strain_relative"] = (Ch / np.where(np.abs(Cr) > 0, Cr, np.nan) - 1.0).tolist()
++    out["uniform_strain_max_abs_relative"] = float(np.nanmax(np.abs(np.asarray(out["uniform_strain_relative"]))))
++    out["frobenius_relative_on_common_support"] = float(np.linalg.norm(Sh - Sr) / max(np.linalg.norm(Sr), 1e-300))
++    return out
++
++
++__all__ = ["supported_nodes", "common_support", "spectrum_by_floor", "compare_v2", "FLOORS"]
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/manifold_check.py b/scripts/pred777h_full_cube_v1/diagnostics/manifold_check.py
+new file mode 100644
+index 0000000..ce0207f
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/manifold_check.py
+@@ -0,0 +1,80 @@
++#!/usr/bin/env python3
++"""Is the tet mesh a valid 3-manifold-with-boundary triangulation?  Checks the two things a CGAL Triangulation_3
++cannot represent: a boundary vertex whose incident boundary triangles do not form ONE fan (a pinched vertex), and an
++interior vertex whose link is not a sphere; plus the Euler characteristic of the boundary surface per component."""
++from __future__ import annotations
++import sys
++from collections import defaultdict
++from pathlib import Path
++import numpy as np
++
++ROOTD = Path("/root/autodl-tmp/_claude_diag/tonight")
++
++
++def read_medit(path):
++    V = []; T = []
++    with open(path) as fh:
++        it = iter(fh)
++        for line in it:
++            s = line.strip()
++            if s == "Vertices":
++                n = int(next(it)); V = np.asarray([[float(x) for x in next(it).split()[:3]] for _ in range(n)])
++            elif s == "Tetrahedra":
++                n = int(next(it)); T = np.asarray([[int(x) for x in next(it).split()[:4]] for _ in range(n)]) - 1
++    return V, T
++
++
++for tag in sys.argv[1:]:
++    V, T = read_medit(ROOTD / tag / "mesh.mesh")
++    faces = np.sort(np.vstack([T[:, [0, 1, 2]], T[:, [0, 1, 3]], T[:, [0, 2, 3]], T[:, [1, 2, 3]]]), axis=1)
++    u, cnt = np.unique(faces, axis=0, return_counts=True)
++    B = u[cnt == 1]                                    # boundary triangles
++    # boundary edge manifoldness
++    E = np.sort(np.vstack([B[:, [0, 1]], B[:, [1, 2]], B[:, [0, 2]]]), axis=1)
++    ue, ce = np.unique(E, axis=0, return_counts=True)
++    bad_edges = int((ce != 2).sum())
++    # boundary vertex fans: incident boundary triangles must be connected through shared edges into ONE cycle
++    inc = defaultdict(list)
++    for i, f in enumerate(B):
++        for v in f: inc[int(v)].append(i)
++    pinched = 0; examples = []
++    for v, tris in inc.items():
++        # graph on tris: adjacent if they share an edge containing v
++        edge_to_tris = defaultdict(list)
++        for t in tris:
++            f = B[t]; others = [int(x) for x in f if x != v]
++            for o in others: edge_to_tris[o].append(t)
++        adj = defaultdict(set)
++        for o, ts in edge_to_tris.items():
++            for a in ts:
++                for b in ts:
++                    if a != b: adj[a].add(b)
++        seen = set(); stack = [tris[0]]; seen.add(tris[0])
++        while stack:
++            a = stack.pop()
++            for b in adj[a]:
++                if b not in seen: seen.add(b); stack.append(b)
++        if len(seen) != len(tris):
++            pinched += 1
++            if len(examples) < 5: examples.append((v, V[v].round(5).tolist(), len(tris), len(seen)))
++    nb = len(np.unique(B)); chi = nb - len(ue) + len(B)
++    # interior vertices: link must be a sphere: for each vertex, V-E+F of the link == 2 <=> (#tets - #facets + #edges around v) ... use: link is sphere iff  ntets - nfacets_inc + nedges_inc = 2? Simpler: check via tets around v: link vertices L, link faces = tets, link edges = facets containing v.
++    print(f"=== {tag} ===  vertices {len(V)}, tets {len(T)}, boundary tris {len(B)}, boundary vertices {nb}")
++    print(f"  boundary edges with != 2 triangles: {bad_edges}")
++    print(f"  pinched boundary vertices (incident triangles not one fan): {pinched}   examples {examples}")
++    print(f"  boundary surface Euler characteristic V-E+F = {chi}  (2 per sphere component; 0 per torus)")
++    # interior vertex links
++    tet_inc = defaultdict(list)
++    for i, t in enumerate(T):
++        for v in t: tet_inc[int(v)].append(i)
++    bset = set(np.unique(B).tolist()); bad_links = 0
++    for v, tets in tet_inc.items():
++        if v in bset: continue
++        Lf = len(tets)                                   # link faces
++        Le = set(); Lv = set()
++        for t in tets:
++            others = tuple(sorted(int(x) for x in T[t] if x != v)); Lv.update(others)
++            for a in range(3):
++                for b in range(a + 1, 3): Le.add((others[a], others[b]))
++        if len(Lv) - len(Le) + Lf != 2: bad_links += 1
++    print(f"  interior vertices whose link is not a sphere: {bad_links}")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/needle_class.py b/scripts/pred777h_full_cube_v1/diagnostics/needle_class.py
+new file mode 100644
+index 0000000..bdd45fc
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/needle_class.py
+@@ -0,0 +1,41 @@
++#!/usr/bin/env python3
++"""Classify every cap needle in the surface output: what is its long edge (chain edge shared with a sheet triangle,
++carrier lattice segment, or a free triangulation edge) and what is its apex (crease vertex, carrier lattice node, or a
++Steiner point of the cap)?"""
++import sys
++from collections import defaultdict
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from cap_needles import tri_min_angle
++ROOTD = Path("/root/autodl-tmp/_claude_diag/tonight")
++for tag in sys.argv[1:]:
++    lines = (ROOTD / tag / "SHEET_SOLID_SURFACE.off").read_text().split("\n")
++    nv, nf, _ = map(int, lines[1].split()); V = np.asarray([[float(x) for x in l.split()[:3]] for l in lines[2:2 + nv]])
++    F = np.asarray([[int(x) for x in l.split()[1:4]] for l in lines[2 + nv:2 + nv + nf]])
++    onplane = np.zeros(len(V), bool)
++    for k in range(3): onplane |= (np.abs(V[:, k]) < 1e-9) | (np.abs(V[:, k] - 1) < 1e-9)
++    cap = onplane[F].all(axis=1)
++    crease = np.zeros(len(V), bool); crease[np.unique(F[cap])] = True; crease &= np.isin(np.arange(len(V)), np.unique(F[~cap]))
++    lattice = np.all(np.abs(V * 32 - np.round(V * 32)) < 1e-9, axis=1)
++    sheet_edges = set()
++    for f in F[~cap]:
++        for a, b in ((0, 1), (1, 2), (0, 2)): sheet_edges.add((min(f[a], f[b]), max(f[a], f[b])))
++    cap_edge_count = defaultdict(int)
++    for f in F[cap]:
++        for a, b in ((0, 1), (1, 2), (0, 2)): cap_edge_count[(min(f[a], f[b]), max(f[a], f[b]))] += 1
++    Fc = F[cap]; ang = tri_min_angle(V[Fc]); needles = np.flatnonzero(ang < 1.0)
++    kinds = defaultdict(int)
++    print(f"=== {tag} === cap needles < 1 deg: {len(needles)}")
++    for i in needles[np.argsort(ang[needles])]:
++        f = Fc[i]; P = V[f]
++        e = np.asarray([np.linalg.norm(P[1] - P[2]), np.linalg.norm(P[0] - P[2]), np.linalg.norm(P[0] - P[1])]); m = int(np.argmax(e))
++        a, b = [k for k in range(3) if k != m]; A, B, Pp = int(f[a]), int(f[b]), int(f[m])
++        key = (min(A, B), max(A, B))
++        long_kind = "chain edge" if key in sheet_edges else ("lattice segment" if lattice[A] and lattice[B] else ("cap boundary" if cap_edge_count[key] == 1 else "free cap edge"))
++        apex_kind = "carrier node" if lattice[Pp] else ("crease vertex" if crease[Pp] else "cap Steiner")
++        ends = f"A {'node' if lattice[A] else ('crease' if crease[A] else 'steiner')}, B {'node' if lattice[B] else ('crease' if crease[B] else 'steiner')}"
++        d = np.linalg.norm(np.cross(P[b] - P[a], P[m] - P[a])) / e[m]
++        kinds[(long_kind, apex_kind)] += 1
++        if ang[i] < 0.6: print(f"  {ang[i]:.4f} deg: long edge = {long_kind} ({ends}); apex = {apex_kind}, {d:.1e} off; |AB| {e[m]:.4f}")
++    print("  summary:", dict(kinds))
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/ns_why.py b/scripts/pred777h_full_cube_v1/diagnostics/ns_why.py
+new file mode 100644
+index 0000000..10ca19e
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/ns_why.py
+@@ -0,0 +1,118 @@
++#!/usr/bin/env python3
++"""WHY the operator has more null modes than 6*components + 3*unsupported.
++
++The label operator is  S = P' S_bb P  with  P = scalar (x) I3, where `scalar` is the P1 prolongation from the
++active carrier scalar nodes to the fine boundary-trace vertices (fixed_port_adapter._compile_scalar_map).  Hence
++
++    Null(S) = null(scalar) (x) R3   +   P^-1( Null(S_bb) )   =   3 * dim null(scalar)  +  6 * components.
++
++null(scalar) contains one indicator per carrier column the mesh trace never reaches (the "zero rows"), but it is
++LARGER whenever several carrier columns are linearly dependent on the trace: that happens where the material band
++is narrower than the carrier patch, so the patch holds fewer trace vertices than the carrier basis functions
++covering it.  Each such dependency costs exactly THREE null modes, not one.
++
++This script tests that decomposition WITHOUT re-running the pipeline, from the operator alone:
++
++  * V = an orthonormal basis of Null(S) (eigenvalues below tol * lambda_max).
++  * H = sum_d V_d V_d'  with V_d = V[d::3, :]  (n x n, eigenvalues in [0, 3]).
++    A scalar pattern w has w (x) e_d in Null(S) for EVERY direction d  <=>  H w = 3 w.
++    So dim W := #{mu = 3} is dim null(scalar) whenever the decomposition above holds, and then
++        dim Null(S)  ==  3 * dim W + 3        (the +3 are the rotations, which are not of the form w (x) e_d).
++  * The extra scalar patterns (W minus the unsupported-node indicators minus the constant) are then located: if
++    they sit on a handful of NEIGHBOURING carrier nodes, they are dependent columns, which is the claim.
++"""
++from __future__ import annotations
++
++import json, sys
++from pathlib import Path
++
++import numpy as np
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import load_label
++
++T = Path("/root/autodl-tmp/_claude_diag/tonight")
++TOL = 1e-14                     # relative to lambda_max, the "exact" null space
++MU_TOL = 1e-8                   # mu >= 3 - MU_TOL counts as an exact scalar pattern
++
++cases = sys.argv[1:] or ["pop_cut_0136", "pop_cut_0236", "pop_cut_0424", "pop_cut_0181"]
++out = []
++for case in cases:
++    d = T / "B" / case
++    if not (d / "FIXED_PORT_SCHUR_TET10.npz").exists():
++        print(f"{case}: missing"); continue
++    lab = load_label(d); S = lab["S"]; xyz = lab["xyz"]; ids = lab["ids"]
++    r = lab["receipt"]; n = S.shape[0] // 3
++    comps = int(((r.get("surface") or {}).get("components") or {}).get("components", 1))
++    dropped = int(((r.get("surface") or {}).get("components") or {}).get("dropped", 0))
++    kept = max(comps - dropped, 1)
++
++    w, U = np.linalg.eigh(S); wmax = w[-1]
++    k = int((w <= TOL * wmax).sum()); V = U[:, :k]
++    rown = np.linalg.norm(S.reshape(n, 3, -1), axis=(1, 2))
++    zero = rown <= 1e-12 * rown.max(); nz = int(zero.sum())
++
++    H = sum(V[dd::3, :] @ V[dd::3, :].T for dd in range(3))
++    mu, Q = np.linalg.eigh(H)
++    dimW = int((mu >= 3.0 - MU_TOL).sum())
++    Wb = Q[:, mu >= 3.0 - MU_TOL]                              # n x dimW, orthonormal
++    predicted_from_W = 3 * dimW + 3 * kept                     # 3 rotations per kept component
++
++    # strip the unsupported-node indicators: restrict to supported nodes and take the column space there
++    sup = ~zero
++    Ws = Wb[sup, :]
++    if Ws.size:
++        s = np.linalg.svd(Ws, compute_uv=False)
++        dim_sup = int((s > 1e-8 * max(s[0], 1e-300)).sum())
++    else:
++        dim_sup = 0
++    # an orthonormal basis of that supported column space, with the constant removed
++    extra_patterns = []
++    if dim_sup:
++        Uw, sw, _ = np.linalg.svd(Ws, full_matrices=False)
++        B = Uw[:, :dim_sup]                                    # n_sup x dim_sup
++        one = np.ones(B.shape[0]); one /= np.linalg.norm(one)
++        c = B.T @ one
++        # basis of B's span orthogonal to the constant
++        Bc = B - np.outer(one, c)
++        Ub, sb, _ = np.linalg.svd(Bc, full_matrices=False)
++        m = int((sb > 1e-8 * max(sb[0], 1e-300)).sum())
++        idx_sup = np.flatnonzero(sup)
++        for j in range(min(m, 12)):
++            v = Ub[:, j]; a = np.abs(v)
++            car = np.flatnonzero(a > 0.02 * a.max())
++            order = car[np.argsort(-a[car])]
++            extra_patterns.append({
++                "nodes": int(len(car)),
++                "top": [{"id": ids[int(idx_sup[t])], "xyz": [round(float(x), 6) for x in xyz[int(idx_sup[t])]],
++                         "w": round(float(v[t]), 4)} for t in order[:8]],
++                "mass_on_top4": float((a[order[:4]] ** 2).sum() / (a ** 2).sum()),
++            })
++        n_extra = m
++    else:
++        n_extra = 0
++
++    row = {"case": case, "n": n, "q": 3 * n, "kept_components": kept, "zero_rows": nz,
++           "null_dim": k, "combinatorial_prediction": 6 * kept + 3 * nz,
++           "dim_W": dimW, "prediction_from_W": predicted_from_W,
++           "W_matches_null": bool(predicted_from_W == k),
++           "dim_W_on_supported_nodes": dim_sup, "extra_scalar_patterns": n_extra,
++           "extra_patterns": extra_patterns,
++           "mu_near_3": [float(x) for x in mu[-min(dimW + 6, n):][:0]] or None}
++    out.append(row)
++    print(f"\n=== {case} ===")
++    print(f"  carrier scalar nodes n = {n}, q = {3*n}, kept components {kept}, unsupported (zero) columns {nz}")
++    print(f"  dim Null(S) measured                 {k}")
++    print(f"  6*components + 3*unsupported         {6*kept + 3*nz}      (difference {k - 6*kept - 3*nz:+d})")
++    print(f"  dim W  (scalar patterns, H w = 3w)   {dimW}")
++    print(f"  3*dim W + 3*components               {predicted_from_W}      -> {'MATCH' if predicted_from_W == k else 'MISMATCH'}")
++    print(f"  of those scalar patterns: {nz} are unsupported-node indicators, 1 is the constant, {n_extra} are")
++    print(f"  genuine linear dependencies between SUPPORTED carrier columns")
++    for j, p in enumerate(extra_patterns[:6]):
++        print(f"    pattern {j}: {p['nodes']} nodes carry it, {p['mass_on_top4']*100:.1f}% of its mass on the top 4:")
++        for t in p["top"][:4]:
++            print(f"        w {t['w']:+.3f}  at {t['xyz']}   {t['id']}")
++    sys.stdout.flush()
++
++json.dump(out, open(T / "NULLSPACE_WHY.json", "w"), indent=1, default=float)
++print("\nwritten", T / "NULLSPACE_WHY.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/nullspace.py b/scripts/pred777h_full_cube_v1/diagnostics/nullspace.py
+new file mode 100644
+index 0000000..ead4662
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/nullspace.py
+@@ -0,0 +1,62 @@
++#!/usr/bin/env python3
++"""The label operator's null space: is it exactly 6 * components + 3 * unsupported nodes, or is there a third family?
++
++The geometric active carrier set is deliberately a superset of any mesh's support (mesh independence of q), so an
++active node the material never reaches gives an exact zero row AND zero column.  With S = [[S_ss, 0], [0, 0]] the
++null space is Null(S_ss) + 3 * n_zero, and Null(S_ss) is 6 per connected piece of retained material that touches a
++port.  This checks that count numerically against the eigenvalues.
++"""
++from __future__ import annotations
++import glob, json, sys
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import load_label
++
++T = Path("/root/autodl-tmp/_claude_diag/tonight")
++dirs = sorted(glob.glob(str(T / "B" / "*" / "LABEL_RECEIPT.json")))
++LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 40      # a full eigendecomposition per cell: sample, do not sweep
++if len(dirs) > LIMIT:
++    step = len(dirs) / LIMIT; dirs = [dirs[int(i * step)] for i in range(LIMIT)]
++print(f"sampling {len(dirs)} labels for the eigen-decomposition", flush=True)
++print(f"{'case':<20}{'cut':>4}{'nodes':>6}{'zero':>6}{'comps':>6}{'pred':>7}" + "".join(f"{('<1e%d' % -e):>8}" for e in (14, 12, 10, 8, 6, 4)) + f"{'gap@pred':>10}")
++print("  pred = 6*components + 3*unsupported.  The columns count eigenvalues below that fraction of lambda_max:")
++print("  a clean null space shows the same count in every column; a staircase means near-null modes with tiny support.")
++rows = []; mismatch = 0
++for f in dirs:
++    d = Path(f).parent; r = json.loads(Path(f).read_text())
++    if r.get("status") != "PASS": continue
++    try: lab = load_label(d)
++    except Exception: continue
++    S = lab["S"]; n = S.shape[0] // 3
++    rown = np.linalg.norm(S.reshape(n, 3, -1), axis=(1, 2))
++    zero = rown <= 1e-12 * rown.max(); nz = int(zero.sum())
++    comps = int(((r.get("surface") or {}).get("components") or {}).get("components", 1))
++    dropped = int(((r.get("surface") or {}).get("components") or {}).get("dropped", 0))
++    kept = max(comps - dropped, 1)
++    w = np.linalg.eigvalsh(S); wmax = w[-1]
++    counts = {e: int((w <= 10.0 ** (-e) * wmax).sum()) for e in (14, 12, 10, 8, 6, 4)}
++    predicted = 6 * kept + 3 * nz
++    gap = float(w[predicted] / wmax) if predicted < len(w) else float("nan")
++    ok = counts[10] == predicted
++    mismatch += (not ok)
++    rows.append({"case": d.name, "cut": r["geometry"]["cut_plane"] is not None, "nodes": n, "zero": nz,
++                 "components": comps, "kept_components": kept, "predicted": predicted, "counts": counts,
++                 "match": bool(ok), "eigenvalue_at_predicted_index_over_max": gap})
++    print(f"{d.name:<20}{'Y' if rows[-1]['cut'] else 'N':>4}{n:>6}{nz:>6}{kept:>6}{predicted:>7}" + "".join(f"{counts[e]:>8}" for e in (14, 12, 10, 8, 6, 4)) + f"{gap:>10.1e}", flush=True)
++if rows:
++    z = np.asarray([r["zero"] / r["nodes"] for r in rows]); g = np.asarray([r["eigenvalue_at_predicted_index_over_max"] for r in rows])
++    cut = np.asarray([r["cut"] for r in rows])
++    print(f"\ncells {len(rows)}, null-space formula matches {len(rows) - mismatch}/{len(rows)}")
++    print(f"zero-row fraction: med {np.median(z):.3f} p95 {np.percentile(z, 95):.3f} max {z.max():.3f}")
++    if cut.any(): print(f"  cut cells   med {np.median(z[cut]):.3f} max {z[cut].max():.3f}")
++    if (~cut).any(): print(f"  uncut cells med {np.median(z[~cut]):.3f} max {z[~cut].max():.3f}")
++    print(f"components > 1: {sum(1 for r in rows if r['kept_components'] > 1)} cells")
++    print(f"eigenvalue just above the predicted null dimension, over lambda_max: min {np.nanmin(g):.2e} med {np.nanmedian(g):.2e} max {np.nanmax(g):.2e}")
++    ex = np.asarray([r["counts"][10] - r["predicted"] for r in rows])
++    print(f"measured (at 1e-10) minus predicted: min {ex.min()} med {int(np.median(ex))} max {ex.max()}; cells with extra modes {int((ex > 0).sum())}")
++    stair = np.asarray([r["counts"][4] - r["counts"][14] for r in rows])
++    print(f"staircase width (count below 1e-4 minus below 1e-14): min {stair.min()} med {int(np.median(stair))} max {stair.max()}")
++    print("  a wide staircase means the operator has a continuum of nearly-null modes, so any threshold is arbitrary")
++json.dump(rows, open(T / "NULLSPACE_CHECK.json", "w"), indent=1, default=float)
++print("written", T / "NULLSPACE_CHECK.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/prolong.py b/scripts/pred777h_full_cube_v1/diagnostics/prolong.py
+new file mode 100644
+index 0000000..a54a046
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/prolong.py
+@@ -0,0 +1,105 @@
++#!/usr/bin/env python3
++"""The prolongation itself: why the label operator has more null modes than 6 + 3 * unsupported.
++
++S = P' S_bb P with P = scalar (x) I3.  This rebuilds `scalar` for a produced label from its SAVED mesh (no remeshing)
++and measures its null space directly: how many active carrier columns the boundary trace never reaches, and how many
++SURVIVING columns are linearly dependent on the trace.  Each dependency costs three null modes in S.
++"""
++from __future__ import annotations
++
++import json, sys
++from importlib import import_module
++from pathlib import Path
++
++import numpy as np
++
++ROOT = Path("/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1")
++sys.path.insert(0, str(ROOT / "src"))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot")
++sss = import_module(f"{P}.sheet_solid_surface"); pipe = import_module(f"{P}.sheet_label_pipeline")
++
++T = Path("/root/autodl-tmp/_claude_diag/tonight")
++
++
++def analyse(case: str) -> dict:
++    d = T / "B" / case
++    r = json.loads((d / "LABEL_RECEIPT.json").read_text())
++    man = Path(r["geometry_manifest"]); carrier_n = int(r["resolution"]["carrier_n"])
++    _, spec, geom = snap.load_geometry_manifest(man)
++    charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
++    layout = pipe.build_carrier_layout(charts, spec, carrier_n=carrier_n)
++    stage = pipe.compile_port(d / "mesh.mesh", geom, spec, layout, carrier_n=carrier_n)
++    scalar = stage.port.scalar_fine_to_carrier.tocsc()
++    active = np.asarray(stage.active, dtype=bool)
++    A = scalar[:, np.flatnonzero(active)].toarray()          # n_fine x n_active
++    nfine, nact = A.shape
++    nnz = (np.abs(A) > 0).sum(axis=0)
++    coords = np.asarray(stage.port.carrier_coordinates, dtype=float)[active]
++    fine_xyz = np.asarray(stage.artifact.mesh_nodes[stage.port.fine_port_node_ids], dtype=float) \
++        if hasattr(stage.port, "fine_port_node_ids") else None
++
++    s = np.linalg.svd(A, compute_uv=False)
++    smax = s[0] if len(s) else 1.0
++    tiers = {e: int((s <= 10.0 ** (-e) * smax).sum()) for e in (14, 12, 10, 8, 6, 4)}
++    U_, s_, Vt = np.linalg.svd(A, full_matrices=True)
++    nullA = Vt[len(s_) - tiers[10]:].T if tiers[10] else np.zeros((nact, 0))
++    if tiers[10]:
++        nullA = Vt[nact - tiers[10]:, :].T                    # n_active x dim
++    zero_cols = np.flatnonzero(nnz == 0)
++    # the dependencies among SURVIVING columns: null space modulo the zero-column indicators
++    keep = np.flatnonzero(nnz > 0)
++    dep = 0; groups = []
++    if nullA.shape[1]:
++        Nk = nullA[keep, :]
++        sk = np.linalg.svd(Nk, compute_uv=False) if Nk.size else np.zeros(0)
++        dep = int((sk > 1e-8 * max(sk[0], 1e-300)).sum()) if sk.size else 0
++        if dep:
++            Uk, sk2, _ = np.linalg.svd(Nk, full_matrices=False)
++            B = Uk[:, :dep]
++            Pi = B @ B.T                                     # projector onto the dependency space, on surviving cols
++            part = np.diag(Pi)
++            invol = np.flatnonzero(part > 1e-6)
++            # try to name each dependency as a pair of columns whose trace restrictions are proportional
++            for a_ in range(len(invol)):
++                for b_ in range(a_ + 1, len(invol)):
++                    i, j = keep[invol[a_]], keep[invol[b_]]
++                    ca, cb = A[:, i], A[:, j]
++                    na, nb = np.linalg.norm(ca), np.linalg.norm(cb)
++                    if na == 0 or nb == 0: continue
++                    cos = abs(float(ca @ cb) / (na * nb))
++                    if cos > 1 - 1e-10:
++                        rows = np.flatnonzero((np.abs(ca) > 0) | (np.abs(cb) > 0))
++                        groups.append({"columns": [int(i), int(j)], "xyz": [coords[i].round(6).tolist(), coords[j].round(6).tolist()],
++                                       "nnz": [int(nnz[i]), int(nnz[j])], "cos": cos,
++                                       "shared_trace_rows": int(len(rows)),
++                                       "weights": [[round(float(ca[t]), 6), round(float(cb[t]), 6)] for t in rows[:6]],
++                                       "trace_xyz": [fine_xyz[t].round(6).tolist() for t in rows[:6]] if fine_xyz is not None else None})
++    hist = {int(k): int(v) for k, v in zip(*np.unique(np.minimum(nnz, 8), return_counts=True))}
++    out = {"case": case, "fine_trace_nodes": int(nfine), "active_carrier_columns": int(nact),
++           "zero_support_columns": int(len(zero_cols)), "singular_value_tiers": tiers,
++           "dim_null_scalar": tiers[10], "dependencies_among_supported_columns": dep,
++           "support_size_histogram_capped_at_8": hist, "pairs": groups[:12],
++           "predicted_null_dim_of_S": 3 * tiers[10] + 3, "q_active": int(3 * nact)}
++    print(f"\n=== {case} ===")
++    print(f"  fine boundary-trace vertices {nfine}, active carrier scalar columns {nact}, q = {3*nact}")
++    print(f"  columns the trace never reaches (zero support)   {len(zero_cols)}")
++    print(f"  support size histogram (trace vertices per column, capped at 8): {hist}")
++    print(f"  singular values of the prolongation below 10^-e * s_max: " +
++          ", ".join(f"1e-{e}:{tiers[e]}" for e in (14, 12, 10, 8, 6, 4)))
++    print(f"  dim null(scalar) = {tiers[10]}  =  {len(zero_cols)} zero columns + {dep} dependencies among supported columns")
++    print(f"  => predicted dim Null(S) = 3 * {tiers[10]} + 3 = {3 * tiers[10] + 3}")
++    for g in groups[:6]:
++        print(f"    dependent pair {g['xyz'][0]} and {g['xyz'][1]}: supports {g['nnz']}, "
++              f"{g['shared_trace_rows']} trace vertices, cos {g['cos']:.12f}")
++        for wt, xy in zip(g["weights"], (g["trace_xyz"] or [])):
++            print(f"        trace vertex {xy}  weights {wt}")
++    sys.stdout.flush()
++    return out
++
++
++if __name__ == "__main__":
++    cases = sys.argv[1:] or ["pop_cut_0236"]
++    rows = [analyse(c) for c in cases]
++    json.dump(rows, open(T / "PROLONGATION_NULL.json", "w"), indent=1, default=float)
++    print("\nwritten", T / "PROLONGATION_NULL.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/rank_mesh.py b/scripts/pred777h_full_cube_v1/diagnostics/rank_mesh.py
+new file mode 100644
+index 0000000..90cee20
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/rank_mesh.py
+@@ -0,0 +1,42 @@
++#!/usr/bin/env python3
++"""Is the operator's RANK a property of the geometry, or of the mesh?
++
++q (the port dimension) is mesh-independent by contract.  The rank is not obviously so: an exact null mode appears when
++two active carrier columns see the SAME trace vertices with the same weights, which a finer mesh can break.  Track A
++produced the same cells at three mesh resolutions, so this is directly measurable.
++"""
++from __future__ import annotations
++import json, sys
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import load_label
++
++A = Path("/root/autodl-tmp/_claude_diag/tonight/A"); T = Path("/root/autodl-tmp/_claude_diag/tonight")
++cells = [c.strip() for c in (T / "trackA.txt").read_text().split() if c.strip()]
++print(f"{'cell':<20}{'preset':<12}{'q':>7}{'zero':>7}{'tets':>9}" + "".join(f"{('null<1e%d'%-e):>11}" for e in (14, 12, 10, 8)) + f"{'rank':>7}{'rank/q':>9}")
++rows = []
++for c in cells:
++    for preset in ("fast", "production", "reference"):
++        d = A / f"A1_{preset}_{c}"
++        if not (d / "FIXED_PORT_SCHUR_TET10.npz").exists(): continue
++        try: lab = load_label(d)
++        except Exception: continue
++        S = lab["S"]; n = S.shape[0] // 3
++        rown = np.linalg.norm(S.reshape(n, 3, -1), axis=(1, 2)); nz = int((rown <= 1e-12 * rown.max()).sum())
++        w = np.linalg.eigvalsh(S); wmax = w[-1]
++        cnt = {e: int((w <= 10.0 ** (-e) * wmax).sum()) for e in (14, 12, 10, 8)}
++        tets = int(lab["receipt"]["mesh"]["tet_count"])
++        rows.append({"cell": c, "preset": preset, "q": lab["q"], "zero_rows": nz, "tets": tets, "null_counts": cnt,
++                     "rank": lab["q"] - cnt[14]})
++        print(f"{c:<20}{preset:<12}{lab['q']:>7}{nz:>7}{tets:>9}" + "".join(f"{cnt[e]:>11}" for e in (14, 12, 10, 8))
++              + f"{lab['q'] - cnt[14]:>7}{(lab['q'] - cnt[14]) / lab['q']:>9.4f}", flush=True)
++byc = {}
++for r in rows: byc.setdefault(r["cell"], []).append(r)
++print("\nper cell, across mesh resolutions:")
++for c, rs in byc.items():
++    if len(rs) < 2: continue
++    q = {r["q"] for r in rs}; z = {r["zero_rows"] for r in rs}; k = {r["null_counts"][14] for r in rs}
++    print(f"  {c:<20} q {'STABLE' if len(q)==1 else 'VARIES ' + str(sorted(q)):<28} zero-rows {'STABLE' if len(z)==1 else 'VARIES ' + str(sorted(z)):<26} null-dim {'STABLE' if len(k)==1 else 'VARIES ' + str(sorted(k))}")
++json.dump(rows, open(T / "RANK_VS_MESH.json", "w"), indent=1, default=float)
++print("written", T / "RANK_VS_MESH.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/reschur.py b/scripts/pred777h_full_cube_v1/diagnostics/reschur.py
+new file mode 100644
+index 0000000..d27ced7
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/reschur.py
+@@ -0,0 +1,77 @@
++#!/usr/bin/env python3
++"""Re-run the fixed port and the Tet10 Schur on an alternative volume mesh of a produced label's geometry, and
++compare the operator with the label's own and with a reference label.
++
++    reschur.py <label dir> <mesh path> [<reference label dir>] [--out DIR]
++
++Reports lambda_max, the top mode's localisation (mass on its four heaviest carrier nodes), the uniform-strain
++stiffness relative differences, and the spectrum ladder against the reference on common support.
++"""
++from __future__ import annotations
++
++import argparse, json, sys, time
++from importlib import import_module
++from pathlib import Path
++
++import numpy as np
++
++ROOT = Path("/root/autodl-tmp/cut_control_tpms_v1_full_cube_single_cell_v1")
++sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(Path(__file__).resolve().parent))
++P = "pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1"
++fcb = import_module(f"{P}.full_cube_backend"); snap = import_module(f"{P}.mesher_neutral_snapshot")
++pipe = import_module(f"{P}.sheet_label_pipeline")
++from label_error import load_label, uniform_strain_stiffness
++
++
++def top_mode(S):
++    w, U = np.linalg.eigh(S); v = U[:, -1]; n = S.shape[0] // 3
++    part = np.sort(np.linalg.norm(v.reshape(n, 3), axis=1) ** 2)[::-1]
++    return float(w[-1]), float(part[:4].sum()), float(part[:16].sum()), int((part > 0.01).sum())
++
++
++def main():
++    ap = argparse.ArgumentParser(); ap.add_argument("label"); ap.add_argument("mesh"); ap.add_argument("reference", nargs="?")
++    ap.add_argument("--out"); ap.add_argument("--workers", type=int, default=6)
++    a = ap.parse_args()
++    lab_dir = Path(a.label); r = json.loads((lab_dir / "LABEL_RECEIPT.json").read_text())
++    _, spec, geom = snap.load_geometry_manifest(Path(r["geometry_manifest"])); cn = int(r["resolution"]["carrier_n"])
++    charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
++    layout = pipe.build_carrier_layout(charts, spec, carrier_n=cn)
++    t0 = time.perf_counter()
++    stage = pipe.compile_port(Path(a.mesh), geom, spec, layout, carrier_n=cn)
++    sch = pipe.schur_label(stage, workers=a.workers)
++    S = sch.schur_active; xyz = np.asarray(stage.port.carrier_coordinates)[stage.active]
++    ids = [str(k) for k, keep in zip(stage.port.active_global_carrier_ids, stage.active) if keep]
++    own = load_label(lab_dir)
++    lam, t4, t16, n1 = top_mode(S); lam0, t40, t160, n10 = top_mode(own["S"])
++    out = {"label": str(lab_dir), "mesh": str(a.mesh), "q": int(S.shape[0]), "q_label": own["q"],
++           "rigid_residual": sch.rigid_residual, "seconds": time.perf_counter() - t0,
++           "lambda_max": lam, "lambda_max_label": lam0, "top4": t4, "top4_label": t40, "nodes_above_1pct": n1, "nodes_above_1pct_label": n10}
++    print(f"q {S.shape[0]} (label {own['q']}), rigid residual {sch.rigid_residual:.1e}, {out['seconds']:.0f} s")
++    print(f"lambda_max  remeshed {lam:.5g}   label {lam0:.5g}   ratio {lam / lam0:.3f}")
++    print(f"top mode on 4 nodes  remeshed {t4:.3f} ({n1} nodes > 1%)   label {t40:.3f} ({n10} nodes > 1%)")
++    same = (len(ids) == len(own["ids"])) and all(x == y for x, y in zip(ids, own["ids"]))
++    if same:
++        C1 = uniform_strain_stiffness(S, xyz); C0 = uniform_strain_stiffness(own["S"], own["xyz"])
++        rel = C1 / C0 - 1; out["uniform_strain_rel_vs_label"] = rel.tolist()
++        print(f"uniform strain vs label: max |rel| {np.abs(rel).max():.2e}   ({', '.join(f'{v:+.1e}' for v in rel)})")
++    if a.reference:
++        ref = load_label(Path(a.reference))
++        ib = {k: i for i, k in enumerate(ref["ids"])}; common = [k for k in ids if k in ib]
++        ka = np.asarray([ids.index(k) for k in common]); kb = np.asarray([ib[k] for k in common])
++        da = np.repeat(3 * ka, 3) + np.tile(np.arange(3), len(ka)); db = np.repeat(3 * kb, 3) + np.tile(np.arange(3), len(kb))
++        Cr = uniform_strain_stiffness(ref["S"][np.ix_(db, db)], ref["xyz"][kb]); C1 = uniform_strain_stiffness(S[np.ix_(da, da)], xyz[ka])
++        C0 = uniform_strain_stiffness(own["S"][np.ix_(da, da)], xyz[ka]) if same else None
++        lamr, t4r, _, n1r = top_mode(ref["S"])
++        print(f"reference: lambda_max {lamr:.5g} (remeshed/ref {lam / lamr:.3f}, label/ref {lam0 / lamr:.3f}), top4 {t4r:.3f} ({n1r} nodes)")
++        print(f"uniform strain vs reference: remeshed max |rel| {np.abs(C1 / Cr - 1).max():.2e}" + (f", label max |rel| {np.abs(C0 / Cr - 1).max():.2e}" if C0 is not None else ""))
++        out["lambda_max_reference"] = lamr; out["uniform_strain_rel_vs_reference"] = (C1 / Cr - 1).tolist()
++        if C0 is not None: out["uniform_strain_rel_label_vs_reference"] = (C0 / Cr - 1).tolist()
++    if a.out:
++        Path(a.out).mkdir(parents=True, exist_ok=True)
++        np.save(Path(a.out) / "S.npy", S); json.dump(out, open(Path(a.out) / "RESCHUR.json", "w"), indent=1, default=float)
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/sliver_anatomy.py b/scripts/pred777h_full_cube_v1/diagnostics/sliver_anatomy.py
+new file mode 100644
+index 0000000..45237d6
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/sliver_anatomy.py
+@@ -0,0 +1,65 @@
++#!/usr/bin/env python3
++"""What the slivers ARE: where the worst tetrahedra sit relative to the port faces.
++
++For the remedy it matters whether a sliver has (a) three vertices on a port face and one interior vertex barely off
++it (then smoothing that interior vertex, or a flip, removes it), or (b) all four vertices on the surface (then only a
++flip or a Steiner point can), or (c) is interior."""
++from __future__ import annotations
++import sys
++from pathlib import Path
++import numpy as np
++
++ROOTD = Path("/root/autodl-tmp/_claude_diag/tonight")
++
++
++def read_medit(path):
++    V = []; Tt = []
++    with open(path) as fh:
++        it = iter(fh)
++        for line in it:
++            s = line.strip()
++            if s == "Vertices":
++                n = int(next(it)); V = np.asarray([[float(x) for x in next(it).split()[:3]] for _ in range(n)])
++            elif s == "Tetrahedra":
++                n = int(next(it)); Tt = np.asarray([[int(x) for x in next(it).split()[:4]] for _ in range(n)]) - 1
++    return V, Tt
++
++
++def dihedrals(V, T):
++    P = V[T]
++    out = np.full(len(T), 180.0)
++    pairs = [((0, 1), (2, 3)), ((0, 2), (1, 3)), ((0, 3), (1, 2)), ((1, 2), (0, 3)), ((1, 3), (0, 2)), ((2, 3), (0, 1))]
++    faces = [(1, 2, 3), (0, 3, 2), (0, 1, 3), (0, 2, 1)]
++    N = []
++    for f in faces:
++        n = np.cross(P[:, f[1]] - P[:, f[0]], P[:, f[2]] - P[:, f[0]]); N.append(n / np.maximum(np.linalg.norm(n, axis=1), 1e-300)[:, None])
++    # dihedral at edge shared by faces i, j = pi - angle(N_i, N_j)
++    for i in range(4):
++        for j in range(i + 1, 4):
++            c = np.clip(np.einsum("ij,ij->i", N[i], N[j]), -1, 1)
++            out = np.minimum(out, 180.0 - np.degrees(np.arccos(c)))
++    return out
++
++
++for tag in sys.argv[1:]:
++    V, T = read_medit(ROOTD / tag / "mesh.mesh")
++    faces = np.sort(np.vstack([T[:, [0, 1, 2]], T[:, [0, 1, 3]], T[:, [0, 2, 3]], T[:, [1, 2, 3]]]), axis=1)
++    u, cnt = np.unique(faces, axis=0, return_counts=True)
++    bfaces = u[cnt == 1]; on_surface = np.zeros(len(V), bool); on_surface[np.unique(bfaces)] = True
++    onplane = np.zeros(len(V), bool)
++    for k in range(3):
++        onplane |= (np.abs(V[:, k]) < 1e-9) | (np.abs(V[:, k] - 1.0) < 1e-9)
++    d = dihedrals(V, T)
++    print(f"\n=== {tag} ===  tets {len(T)}  min dihedral {d.min():.4f} deg")
++    for thr in (0.1, 0.5, 1.0, 2.0, 5.0):
++        sel = np.flatnonzero(d < thr)
++        if not len(sel): print(f"  < {thr:>4} deg: 0"); continue
++        ns = on_surface[T[sel]].sum(axis=1); npl = onplane[T[sel]].sum(axis=1)
++        kinds = {"4 on surface": int((ns == 4).sum()), "3 on surface": int((ns == 3).sum()),
++                 "<=2 on surface": int((ns <= 2).sum())}
++        print(f"  < {thr:>4} deg: {len(sel):>4}   {kinds}   on a box plane: 4:{int((npl==4).sum())} 3:{int((npl==3).sum())} 2:{int((npl==2).sum())}")
++    # the worst ten
++    worst = np.argsort(d)[:8]
++    for t in worst:
++        vs = T[t]; print(f"    {d[t]:8.4f} deg  surface {on_surface[vs].astype(int).tolist()}  plane {onplane[vs].astype(int).tolist()}  "
++                         f"vol {abs(np.linalg.det(np.vstack([V[vs[1]]-V[vs[0]], V[vs[2]]-V[vs[0]], V[vs[3]]-V[vs[0]]]))/6):.2e}")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/sliver_scan.py b/scripts/pred777h_full_cube_v1/diagnostics/sliver_scan.py
+new file mode 100644
+index 0000000..9038514
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/sliver_scan.py
+@@ -0,0 +1,62 @@
++#!/usr/bin/env python3
++"""How many produced labels carry a sliver artefact in the operator?
++
++Evidence (top_mode.py): in the bad labels ALL of lambda_max's eigenvector sits on the four corners of ONE carrier
++square, and lambda_max is up to 11x its converged value.  That is a single near-degenerate tetrahedron, not a port
++stiffness.  This scans the production sample and counts them, by the participation of the top mode.
++"""
++from __future__ import annotations
++import glob, json, sys
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import load_label
++
++T = Path("/root/autodl-tmp/_claude_diag/tonight")
++
++
++def top_mode(S, iters=300):
++    n = S.shape[0]
++    v = np.ones(n) / np.sqrt(n)
++    lam = 0.0
++    for _ in range(iters):
++        w = S @ v; nw = np.linalg.norm(w)
++        if nw == 0: return 0.0, v
++        v = w / nw
++        lam = float(v @ (S @ v))
++    return lam, v
++
++
++rows = []
++files = sorted(glob.glob(str(T / "B" / "*" / "LABEL_RECEIPT.json")))
++print(f"scanning {len(files)} labels", flush=True)
++for f in files:
++    d = Path(f).parent; r = json.loads(Path(f).read_text())
++    if r.get("status") != "PASS": continue
++    try: lab = load_label(d)
++    except Exception: continue
++    S = lab["S"]; n = S.shape[0] // 3
++    lam, v = top_mode(S)
++    part = np.linalg.norm(v.reshape(n, 3), axis=1) ** 2
++    order = np.argsort(-part)
++    m = lab["receipt"]["mesh"]
++    rows.append({"case": d.name, "lambda_max": lam, "top4": float(part[order[:4]].sum()),
++                 "top16": float(part[order[:16]].sum()), "nodes_above_1pct": int((part > 0.01).sum()),
++                 "min_dihedral": float(m["min_dihedral_degrees"]), "tets_below_5deg": int(m["tets_below_5deg"]),
++                 "cut": r["geometry"]["cut_plane"] is not None, "volume": float(m["material_volume"])})
++    if len(rows) % 25 == 0: print(f"  {len(rows)} done", flush=True)
++
++t4 = np.asarray([x["top4"] for x in rows]); md = np.asarray([x["min_dihedral"] for x in rows])
++print(f"\nlabels scanned {len(rows)}")
++for thr in (0.5, 0.7, 0.9, 0.95, 0.99):
++    print(f"  top mode with >= {thr:.0%} of its mass on 4 carrier nodes (one carrier square): "
++          f"{int((t4 >= thr).sum())}  ({100 * (t4 >= thr).mean():.1f} %)")
++print(f"  min dihedral: med {np.median(md):.3f} deg, p05 {np.percentile(md, 5):.4f}, min {md.min():.4f}")
++print(f"  correlation(top4, -log min_dihedral) = {np.corrcoef(t4, -np.log(np.maximum(md, 1e-6)))[0,1]:.3f}")
++worst = sorted(rows, key=lambda x: -x["top4"])[:10]
++print("\n  worst by localisation:")
++for x in worst:
++    print(f"    {x['case']:<20} lambda_max {x['lambda_max']:.5g}  top4 {x['top4']:.3f}  "
++          f"nodes>1% {x['nodes_above_1pct']:>3}  minDihed {x['min_dihedral']:.4f}")
++json.dump(rows, open(T / "SLIVER_SCAN.json", "w"), indent=1, default=float)
++print("\nwritten", T / "SLIVER_SCAN.json")
+diff --git a/scripts/pred777h_full_cube_v1/diagnostics/top_mode.py b/scripts/pred777h_full_cube_v1/diagnostics/top_mode.py
+new file mode 100644
+index 0000000..82aef6b
+--- /dev/null
++++ b/scripts/pred777h_full_cube_v1/diagnostics/top_mode.py
+@@ -0,0 +1,30 @@
++#!/usr/bin/env python3
++"""Is lambda_max a physical port stiffness or one bad element?
++
++A sliver tetrahedron has vanishing volume and gradients like 1/thickness, so its element stiffness diverges and it
++injects ONE very stiff, very LOCAL mode.  A physical port stiffness is spread over the material's footprint.  So:
++look at the top eigenvector's participation.  If almost all of its mass sits on a handful of carrier nodes,
++lambda_max measures the mesh, not the cell.
++"""
++from __future__ import annotations
++import json, sys
++from pathlib import Path
++import numpy as np
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from label_error import load_label
++
++T = Path("/root/autodl-tmp/_claude_diag/tonight")
++print(f"{'label':<34}{'lambda_max':>11}{'nodes>1%':>10}{'top1':>8}{'top4':>8}{'top16':>8}{'minDihed':>10}{'<5deg':>7}")
++for tag in sys.argv[1:]:
++    d = T / tag
++    lab = load_label(d); S = lab["S"]; n = S.shape[0] // 3
++    w, U = np.linalg.eigh(S); v = U[:, -1]
++    part = np.linalg.norm(v.reshape(n, 3), axis=1) ** 2          # sums to 1
++    order = np.argsort(-part)
++    m = lab["receipt"]["mesh"]
++    print(f"{tag:<34}{w[-1]:>11.5g}{int((part > 0.01).sum()):>10}"
++          f"{part[order[0]]:>8.3f}{part[order[:4]].sum():>8.3f}{part[order[:16]].sum():>8.3f}"
++          f"{m['min_dihedral_degrees']:>10.3f}{m['tets_below_5deg']:>7}")
++    xyz = lab["xyz"]
++    print("      top carrier nodes: " + ", ".join(f"{np.round(xyz[i], 4).tolist()} ({part[i]:.2f})" for i in order[:4]))
++    sys.stdout.flush()
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index a8e9341..69b1a76 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -58,6 +58,7 @@ def main() -> int:
+     ap.add_argument("--carrier-n", type=int, default=CARRIER_N)
+     ap.add_argument("--algorithm3d", type=int, default=10, help="Gmsh 3D algorithm: 10 HXT (algorithm of record, deterministic at the pinned thread count), 1 legacy Delaunay")
+     ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
++    ap.add_argument("--sliver-smooth", action="store_true", help="boundary-locked sliver perturbation after Gmsh (opt-in diagnostic: it raised lambda_max on pop_uncut_0658, see sheet_contract)")
+     ap.add_argument("--chunk", type=int, default=1024)
+     ap.add_argument("--memory-budget-dir", type=Path, help="directory of the cooperative memory budget shared by the jobs of this machine (see MemoryBudget)")
+     ap.add_argument("--memory-budget-gb", type=float, default=110.0, help="budget in GB for the Schur stages in flight (a 128 GiB cgroup: 110)")
+@@ -117,7 +118,7 @@ def main() -> int:
+         raise SystemExit(f"{a.case_id}: surface self-intersects ({surf.report.get('self_intersection_examples')})")
+     sss.write_off(out / "SHEET_SOLID_SURFACE.off", surf.V, surf.F)
+     try:
+-        mesh = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=preset["size_max"], algorithm3d=a.algorithm3d, threads=a.threads)
++        mesh = sss.mesh_sheet_solid(surf, out / "mesh.mesh", interior_size_max=preset["size_max"], algorithm3d=a.algorithm3d, threads=a.threads, sliver_smooth=a.sliver_smooth)
+     except RuntimeError as exc:
+         raise SystemExit(f"{a.case_id}: MESH_FAIL {exc}")
+     receipt["mesh"] = {k: (str(v) if isinstance(v, Path) else v) for k, v in mesh.__dict__.items()}
+@@ -149,7 +150,8 @@ def main() -> int:
+     S_active, rigid, eig, rigid_residual = sch.schur_active, sch.rigid_active, sch.eigenvalues, sch.rigid_residual
+     receipt["schur_timing"] = sch.timing; receipt["timing"]["schur"] = sch.seconds
+     receipt["schur"] = {"q_active": int(S_active.shape[0]), "rigid_residual_relative": rigid_residual,
+-                        "min_eigenvalue": float(eig[0]), "max_eigenvalue": float(eig[-1]), "inactive_block_max": sch.inactive_block_max}
++                        "min_eigenvalue": float(eig[0]), "max_eigenvalue": float(eig[-1]), "inactive_block_max": sch.inactive_block_max,
++                        "top_mode_mass_on_4_nodes": sch.top_mode_mass_on_4_nodes, "top_mode_nodes_above_1pct": sch.top_mode_nodes_above_1pct}
+ 
+     # ---- carrier norms for the training loss ----
+     mass, lap = pipe.carrier_norms(layout, port, active)
+diff --git a/scripts/pred777h_full_cube_v1/sheet_skin_validation.py b/scripts/pred777h_full_cube_v1/sheet_skin_validation.py
+index ad7df41..77b027b 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_skin_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_skin_validation.py
+@@ -289,23 +289,35 @@ def main() -> int:
+         for v in tri: area[v] += A_ / 3.0
+     basis = np.linalg.svd(np.eye(3) - np.outer(n_cut, n_cut))[0][:, :2].T          # two in-plane directions
+     u_, v_ = basis[0], basis[1]
+-    su = jxyz @ u_; sv = jxyz @ v_
+-    su = (su - su.min()) / max(float(np.ptp(su)), 1e-12); sv = (sv - sv.min()) / max(float(np.ptp(sv)), 1e-12)
++    pu = jxyz @ u_; pv = jxyz @ v_                                                  # physical in-plane coordinates
++    su = (pu - pu.min()) / max(float(np.ptp(pu)), 1e-12); sv = (pv - pv.min()) / max(float(np.ptp(pv)), 1e-12)
++    cu, cv = 0.5 * (pu.min() + pu.max()), 0.5 * (pv.min() + pv.max())
++    extent = min(float(np.ptp(pu)), float(np.ptp(pv))); R_patch = 0.25 * extent      # a fitting footprint
++    rr = np.sqrt((pu - cu) ** 2 + (pv - cv) ** 2)
+     def traction(kind):
++        """Service load cases of a sandwich panel skin (the first five) and a sinusoidal sweep (the last three), which
++        is the restriction's transfer function against in-plane wavelength, not a load anyone applies."""
+         f = np.zeros((nj, 3))
+-        if kind == "pull_n": f += n_cut
+-        elif kind == "shear_t": f += u_
+-        elif kind == "bend_t": f += np.outer(2 * (sv - 0.5), u_)
+-        elif kind == "wave_L2": f += np.outer(np.sin(2 * np.pi * su) * np.sin(2 * np.pi * sv), n_cut)
+-        elif kind == "wave_L4": f += np.outer(np.sin(4 * np.pi * su) * np.sin(4 * np.pi * sv), n_cut)
+-        elif kind == "wave_L8": f += np.outer(np.sin(8 * np.pi * su) * np.sin(8 * np.pi * sv), n_cut)
++        if kind == "flatwise_tension": f += n_cut                                   # ASTM C297: uniform pull-off
++        elif kind == "core_shear": f += u_                                          # ASTM C273: uniform in-plane shear
++        elif kind == "pressure_gradient": f += np.outer(2 * (sv - 0.5), n_cut)      # panel flexure: linear normal pressure
++        elif kind == "membrane_bending": f += np.outer(2 * (sv - 0.5), u_)          # in-plane bending of the skin
++        elif kind == "fitting_patch": f[rr <= R_patch] += n_cut                     # a bolted insert footprint
++        elif kind == "pressure_step": f[sv > 0.5] += n_cut                          # pressure over half the panel
++        elif kind == "sine_16H": f += np.outer(np.sin(2 * np.pi * su) * np.sin(2 * np.pi * sv), n_cut)
++        elif kind == "sine_8H": f += np.outer(np.sin(4 * np.pi * su) * np.sin(4 * np.pi * sv), n_cut)
++        elif kind == "sine_4H": f += np.outer(np.sin(8 * np.pi * su) * np.sin(8 * np.pi * sv), n_cut)
+         return f * area[:, None]
+-    KINDS = ("pull_n", "shear_t", "bend_t", "wave_L2", "wave_L4", "wave_L8")
++    SERVICE = ("flatwise_tension", "core_shear", "pressure_gradient", "membrane_bending", "fitting_patch", "pressure_step")
++    SWEEP = ("sine_16H", "sine_8H", "sine_4H")
++    KINDS = SERVICE + SWEEP
+     loads = {}
+     for k in KINDS:
+         fs = np.zeros(3 * ns); fs[(3 * (nj + np.arange(nj))[:, None] + np.arange(3)).ravel()] = traction(k).ravel(); loads[k] = fs
+-    rep["load_wavelengths_in_carrier_spacings"] = {"wave_L2": float(np.ptp(jxyz @ u_) / 2 * a.carrier_n), "wave_L4": float(np.ptp(jxyz @ u_) / 4 * a.carrier_n),
+-                                                  "wave_L8": float(np.ptp(jxyz @ u_) / 8 * a.carrier_n)}
++    rep["loads"] = {"service": list(SERVICE), "diagnostic_sweep": list(SWEEP), "in_plane_extent": [float(np.ptp(pu)), float(np.ptp(pv))],
++                    "fitting_patch_radius": float(R_patch), "fitting_patch_radius_in_carrier_spacings": float(R_patch * a.carrier_n),
++                    "sine_wavelengths_in_carrier_spacings": {k: float(np.ptp(pu) / n * a.carrier_n) for k, n in (("sine_16H", 2), ("sine_8H", 4), ("sine_4H", 8))}}
++    print("loads:", json.dumps(rep["loads"]), flush=True)
+ 
+     # ---------------- the three arms ----------------
+     # carrier joint nodes are the first len(joint_nodes) nodes of the refined skin joint mesh (refinement appends),
+@@ -393,6 +405,7 @@ def main() -> int:
+     results = {}
+     for kind in KINDS:
+         fs = loads[kind]
++        if kind == SWEEP[0]: print("  -- diagnostic sweep (transfer function, not service loads) --", flush=True)
+         cR, uR = run(A_ref, fs); cC, uC = run(A_con, fs); cA, uA = run(A_asm, fs)
+         nrm = max(float(np.linalg.norm(uR)), 1e-300)
+         row = {"compliance_reference": cR, "compliance_contract": cC, "compliance_assembled": cA,
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+index ee29a9b..7e5fa07 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+@@ -26,6 +26,9 @@ class SheetSolidContract:
+     surface_gates: str = "watertight, zero verified self-intersections, zero cap-classification conflicts, boundary on planes"
+     element: str = "TET10 (straight-sided promotion of the Gmsh Tet4 mesh), E = 1, nu = 0.3"
+     volume_mesher: str = "Gmsh HXT (Algorithm3D 10) at a pinned generation thread count of 1 (byte-identical meshes), Netgen optimisation; a nonmanifold or crashed mesh fails closed, no retry (legacy Delaunay overlapped tetrahedra on well-shaped cap triangles and segfaulted on 2 of 60 cut cells)"
++    cap_needle_repair: str = "cap triangulation needle repair (2026-09-05): a Steiner apex that Triangle (q20, no Steiner points on the chains) leaves a hair beside a chain edge is collapsed onto an endpoint of that edge or moved into its fan before the flip pass; input vertices never move; the receipt reports remaining needles below 2 degrees and the cap minimum angle (every sub-degree tetrahedron of the 2026-09-05 production sample stood on such a triangle)"
++    sliver_perturbation: str = "NOT applied (opt-in diagnostic only): moving interior vertices to maximise the minimum dihedral angle trades slivers on sound cap triangles, which are harmless to the port operator, for flat tetrahedra on the port face, which are not (pop_uncut_0658 production: lambda_max / reference 1.13 with the perturbation, 1.01 without); the needle repair of the cap is the remedy of record"
++    operator_top_mode: str = "diagnostic of record: the share of lambda_max's eigenvector on its four heaviest carrier nodes (one carrier square); a sliver on a port face puts 0.97 to 1.00 of it there at up to 11x the converged operator scale, a physical port stiffness spreads over 10 or more nodes; lambda_max is therefore NOT the operator scale (normalise with the carrier mass matrix)"
+     schur_solver: str = "MKL Pardiso on the internal block, supported carrier columns only"
+     operator_gates: str = "rigid-body residual <= 1e-10, min eigenvalue >= -1e-8 lambda_max, mesh port support inside the geometric active set"
+     density_law_reference: str = "Hao 2023 Table 2.2: C = 1.755 rho (tau = 0.4 -> rho = 0.228; measured 0.2286)"
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+index 08c3ef8..2ec71e6 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -109,10 +109,12 @@ class SchurStage:
+     inactive_block_max: float
+     timing: dict
+     seconds: float
++    top_mode_mass_on_4_nodes: float = 0.0   # share of lambda_max's eigenvector on its four heaviest carrier nodes (1.0 = one carrier square: a sliver)
++    top_mode_nodes_above_1pct: int = 0
+ 
+ 
+ def schur_label(stage: PortStage, *, workers: int = 8, column_chunk_size: int = 1024, rigid_tolerance: float = 1.0e-10,
+-                eigenvalue_tolerance: float = 1.0e-8) -> SchurStage:
++                eigenvalue_tolerance: float = 1.0e-8, top_mode_gate: float | None = None) -> SchurStage:
+     """Tet10 fixed-port Schur restricted to the active carrier nodes, with the operator gates (rigid-body residual,
+     positive semidefiniteness).  Raises on a gate failure."""
+     t0 = time.perf_counter()
+@@ -120,14 +122,20 @@ def schur_label(stage: PortStage, *, workers: int = 8, column_chunk_size: int =
+     keep = np.repeat(stage.active, 3)
+     S_active = np.ascontiguousarray(S[np.ix_(keep, keep)]); rigid = np.ascontiguousarray(stage.port.rigid_basis[keep])
+     rigid_residual = float(np.linalg.norm(S_active @ rigid) / max(np.linalg.norm(S_active), 1e-300))
+-    eig = np.linalg.eigvalsh(S_active)
++    eig, vecs = np.linalg.eigh(S_active)
++    # localisation of the stiffest mode: a sliver tetrahedron on a port face puts all of it on one carrier square
++    # (four nodes) at up to 11x the converged operator scale (2026-09-05); a physical port stiffness is spread out
++    part = np.sort(np.linalg.norm(vecs[:, -1].reshape(-1, 3), axis=1) ** 2)[::-1]
++    top4 = float(part[:4].sum()); n1 = int((part > 0.01).sum()); del vecs
+     inactive = float(np.abs(S[np.ix_(~keep, ~keep)]).max()) if (~keep).any() else 0.0
+     if rigid_residual > rigid_tolerance:
+         raise RuntimeError(f"rigid-body residual {rigid_residual:.2e} exceeds {rigid_tolerance:g}")
+     if eig[0] < -eigenvalue_tolerance * eig[-1]:
+         raise RuntimeError(f"Schur operator is not positive semidefinite (min eigenvalue {eig[0]:.3e})")
++    if top_mode_gate is not None and top4 > top_mode_gate:
++        raise RuntimeError(f"stiffest mode is localised on one carrier square ({top4:.3f} of its mass on 4 nodes): a sliver artefact")
+     return SchurStage(schur_active=S_active, rigid_active=rigid, eigenvalues=eig, rigid_residual=rigid_residual, inactive_block_max=inactive,
+-                      timing=timing, seconds=time.perf_counter() - t0)
++                      timing=timing, seconds=time.perf_counter() - t0, top_mode_mass_on_4_nodes=top4, top_mode_nodes_above_1pct=n1)
+ 
+ 
+ def carrier_norms(layout, port, active: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index 29ee8cb..ef617cd 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -266,7 +266,8 @@ def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: lis
+                              constraint_points: np.ndarray | None = None, constraint_segments: np.ndarray | None = None,
+                              max_area: float | None = None, quality: str = "q20", steiner_on_chains: bool = False, snap_relative: float = 0.3,
+                              orientation_sign: float = 1.0, classification_report: dict | None = None, unseeded_material: bool = True,
+-                             cap_flip_quality: float = 0.3, feature_size: float | None = None, fixed_vertices=None, can_move=None, fixed_targets=None):
++                             cap_flip_quality: float = 0.3, feature_size: float | None = None, fixed_vertices=None, can_move=None, fixed_targets=None,
++                             removable_points=None):
+     """Constrained Delaunay triangulation of the material region on the plane.
+ 
+     chains: boundary chains (global vertex ids) of the already-built surface on this plane (closed or open);
+@@ -640,6 +641,12 @@ def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: lis
+         dd = Path(os.environ["SHEET_DEBUG_DIR"]); k = len(list(dd.glob("cls_*.npz")))
+         np.savez(dd / f"cls_{k}.npz", vertices=pts_out, tris=tris, label=label, chain_edges=np.asarray(list(chain_edge_side), dtype=np.int64).reshape(-1, 2), n=n, d=d)
+     tris = tris[keep]
++    # needle repair before the flip pass: a Steiner apex a hair beside a chain edge (see _repair_cap_needles)
++    if len(tris):
++        shared = set(range(len(chain_ids))) | {int(j) for lst in chain_splits.values() for _, j in lst}
++        removable = {int(cons_ids[k]) for k in (removable_points or ()) if k < len(cons_ids)} - shared
++        tris, needle_rep = _repair_cap_needles(pts_out, tris, len(allp), removable=removable)
++        classification_report.update(needle_rep)
+     # simple cap quality pass: flip the longest edge of the worst triangles when neither a chain edge nor a PSLG
+     # segment (carrier edge, cube polygon) is involved; orientation and quality guards live in _flip_edges
+     if len(tris) and cap_flip_quality > 0.0:
+@@ -863,6 +870,114 @@ def collapse_edges_on_lines(V: np.ndarray, F: np.ndarray, planes, tol: float = 1
+     return V, F, total
+ 
+ 
++def _tri_min_angle_2d(P2: np.ndarray, T: np.ndarray) -> np.ndarray:
++    """Minimum interior angle (degrees) of planar triangles; 0 for a degenerate one."""
++    if not len(T):
++        return np.empty(0)
++    p = P2[T]; a = np.linalg.norm(p[:, 1] - p[:, 2], axis=1); b = np.linalg.norm(p[:, 0] - p[:, 2], axis=1); c = np.linalg.norm(p[:, 0] - p[:, 1], axis=1)
++    def ang(x, y, z):
++        return np.degrees(np.arccos(np.clip((y * y + z * z - x * x) / np.maximum(2 * y * z, 1e-300), -1.0, 1.0)))
++    return np.minimum(np.minimum(ang(a, b, c), ang(b, a, c)), ang(c, a, b))
++
++
++def _repair_cap_needles(P2: np.ndarray, tris: np.ndarray, n_input: int, *, removable: set | None = None, angle_min: float = 2.0, max_passes: int = 4) -> tuple[np.ndarray, dict]:
++    """Remove needle triangles of the cap whose apex, or an endpoint of whose long edge, is a vertex the cap owns.
++
++    Triangle's quality refinement ('q20') with no Steiner points allowed on the chains ('YY') cannot split a chain
++    segment its circumcenter encroaches and places the point a hair beside the segment instead, and a carrier SUPPORT
++    point forced into a shallow intrusion of the band into a carrier triangle lands a hair from the chain likewise:
++    a triangle of angle 1e-3 degrees standing on that chain edge, protected from the flip pass, survives into the
++    volume mesh, where every tetrahedron built on it is a sliver (all 41 sub-degree tetrahedra of three production
++    meshes, 2026-09-05) and a stiffness bomb of up to 11x the converged operator scale.
++
++    A vertex the cap owns (a Steiner point, or a support point listed in `removable` that is not shared with the
++    sheet) is collapsed onto another vertex of the needle: the needle vanishes and its fan follows the target.  The
++    2D link condition, orientation of every fan triangle and absence of duplicate triangles are required; the target
++    leaving the best fan is taken, and a collapse is accepted only when it improves on the needle's angle.  When the
++    apex owns no removable vertex it is moved off the long edge into its fan.  Chain vertices, carrier nodes and
++    crossings never move.  P2 is modified in place when an apex is moved."""
++    tris = np.asarray(tris, dtype=np.int64).copy()
++    removed = moved = 0; skipped_input = 0; removable = set(int(k) for k in (removable or ()))
++
++    def area2(T):
++        p = P2[T]; return (p[:, 1, 0] - p[:, 0, 0]) * (p[:, 2, 1] - p[:, 0, 1]) - (p[:, 1, 1] - p[:, 0, 1]) * (p[:, 2, 0] - p[:, 0, 0])
++
++    def owned(v):
++        return v >= n_input or v in removable
++
++    for _ in range(max_passes):
++        ang = _tri_min_angle_2d(P2, tris); bad = np.flatnonzero(ang < angle_min)
++        if not len(bad):
++            break
++        sgn = np.sign(area2(tris)); rows = {tuple(sorted(int(v) for v in f)) for f in tris}
++        changed: set[int] = set(); progress = 0
++        for i in bad[np.argsort(ang[bad])]:
++            if int(i) in changed:
++                continue
++            f = [int(v) for v in tris[i]]; p = P2[f]
++            e = [np.linalg.norm(p[1] - p[2]), np.linalg.norm(p[0] - p[2]), np.linalg.norm(p[0] - p[1])]; m = int(np.argmax(e))
++            apex, ends = f[m], [f[k] for k in range(3) if k != m]
++            candidates = [c for c in [apex] + ends if owned(c)]
++            if not candidates:
++                skipped_input += 1; continue                      # chain vertices, carrier nodes, crossings only
++            best = None
++            for c in candidates:
++                star = [int(s) for s in np.flatnonzero((tris == c).any(axis=1))]
++                if changed.intersection(star):
++                    continue
++                link_c = {int(v) for s in star for v in tris[s] if int(v) != c}
++                for t in [v for v in f if v != c]:
++                    star_t = np.flatnonzero((tris == t).any(axis=1))
++                    link_t = {int(v) for s in star_t for v in tris[s] if int(v) != t}
++                    opposite = {int(v) for s in star if t in tris[s] for v in tris[s] if int(v) not in (c, t)}
++                    if (link_c & link_t) != opposite:            # 2D link condition
++                        continue
++                    keep = [s for s in star if t not in tris[s]]
++                    new = tris[keep].copy(); new[new == c] = t
++                    a2 = area2(new) if len(new) else np.empty(0)
++                    if len(new) and (np.any(np.sign(a2) != sgn[keep]) or np.any(np.abs(a2) < 1e-24)):
++                        continue
++                    if any(tuple(sorted(int(v) for v in r)) in rows for r in new):
++                        continue
++                    q = float(_tri_min_angle_2d(P2, new).min()) if len(new) else 90.0
++                    if best is None or q > best[0]:
++                        best = (q, c, t, star, keep, new)
++            if best is not None and best[0] > ang[i]:
++                q, c, t, star, keep, new = best
++                for s in star:
++                    rows.discard(tuple(sorted(int(v) for v in tris[s])))
++                tris[keep] = new; rows.update(tuple(sorted(int(v) for v in r)) for r in new)
++                for s in star:
++                    if s not in keep:
++                        tris[s] = -1
++                changed.update(star); removed += 1; progress += 1
++                continue
++            if not owned(apex):
++                continue
++            # move the apex off the long edge, into its fan
++            star = [int(s) for s in np.flatnonzero((tris == apex).any(axis=1))]
++            if changed.intersection(star):
++                continue
++            A, Bv = P2[ends[0]], P2[ends[1]]; ab = Bv - A; L = float(np.linalg.norm(ab)); nrm = np.array([-ab[1], ab[0]]) / max(L, 1e-300)
++            side = np.sign((P2[apex] - A) @ nrm)
++            if side == 0:
++                others = [int(v) for s in star for v in tris[s] if int(v) not in (apex, *ends)]
++                side = np.sign(np.mean([(P2[o] - A) @ nrm for o in others])) if others else 1.0
++            old = P2[apex].copy()
++            for frac in (0.3, 0.15, 0.05):
++                P2[apex] = old + frac * L * side * nrm
++                a2 = area2(tris[star])
++                if np.all(np.sign(a2) == sgn[star]) and float(_tri_min_angle_2d(P2, tris[star]).min()) > ang[i]:
++                    moved += 1; progress += 1; changed.update(star); break
++                P2[apex] = old
++        tris = tris[(tris >= 0).all(axis=1)]
++        if progress == 0:
++            break
++    ang = _tri_min_angle_2d(P2, tris) if len(tris) else np.asarray([90.0])
++    return tris, {"cap_needle_apex_collapsed": int(removed), "cap_needle_apex_moved": int(moved), "cap_needle_input_apex_skipped": int(skipped_input),
++                  "cap_needles_remaining": int((ang < angle_min).sum()), "cap_min_angle_degrees": float(ang.min())}
++
++
+ def _flip_edges(V: np.ndarray, F: np.ndarray, edges, fold_cos: float = 0.5, protected: set | None = None) -> tuple[np.ndarray, int]:
+     """Flip interior edges (b, c) -> (a, d) when both new triangles keep the local orientation, improve the worse of the
+     two qualities, and the new edge does not exist yet.  Edges in `protected` (chain / constraint segments) stay."""
+@@ -1090,7 +1205,8 @@ def _face_band_samples(geometry, planes, box_max, src, carrier_n: int, samples_p
+     return axis, inplane, n_u, n_v, U.ravel(), W.ravel(), P, lev, inside & (lev < level_tolerance), inside & (lev < 0.0)
+ 
+ 
+-def carrier_active_set(geometry, layout, active_ports, *, carrier_n: int | None = None, samples: int = 48, interior_margin: float = 0.003, level_tolerance: float = 0.05) -> tuple[np.ndarray, list, dict]:
++def carrier_active_set(geometry, layout, active_ports, *, carrier_n: int | None = None, samples: int = 48, interior_margin: float = 0.003, level_tolerance: float = 0.05,
++                       support_min_depth: float = 0.05) -> tuple[np.ndarray, list, dict]:
+     """Mesh-independent carrier TRIANGLES the material band reaches on each port face (band = |phi| <= tau within
+     level_tolerance, retained side of the cut), by barycentric sampling of every carrier trace triangle: these are the
+     cap constraints (PSLG) and the support points.  The cut face is a port like the box faces (skin coupling,
+@@ -1116,9 +1232,14 @@ def carrier_active_set(geometry, layout, active_ports, *, carrier_n: int | None
+                 keep[k] = True
+             if strict.any():
+                 # support point: material sample well inside the triangle and deep in the band (guarantees nonzero weights
+-                # on all three vertices, hence stiffness on every active carrier node)
+-                tau = -lev[strict]; score = np.minimum(bary[strict].min(axis=1) / 0.33, tau / max(tau.max(), 1e-12))
+-                pts_face[k] = P[strict][int(np.argmax(score))]
++                # on all three vertices, hence stiffness on every active carrier node).  Only where the band is at least
++                # support_min_depth deep inside this triangle: a point forced into a shallow intrusion of the band (a
++                # lens a hair from the chain) makes a needle cap triangle, and every tetrahedron on a needle has
++                # shape-function gradients of 1/width, a stiffness bomb of up to 11x the operator scale (2026-09-05).
++                tau = -lev[strict]; deep = tau >= support_min_depth
++                if deep.any():
++                    score = np.minimum(bary[strict].min(axis=1) / 0.33, tau / max(tau.max(), 1e-12)); score[~deep] = -np.inf
++                    pts_face[k] = P[strict][int(np.argmax(score))]
+         kept.append((src, tris[keep])); support_points[src] = {int(k): v for k, v in pts_face.items()}
+     return shell_coords, kept, support_points
+ 
+@@ -1577,6 +1698,7 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_
+                     if chain_v:
+                         on = np.abs(V[chain_v] @ n2 - d2) <= 1e-9; fixed.update(int(chain_v[k]) for k in np.where(on)[0])
+                     on_t = np.abs(cpts_arr @ n2 - d2) <= 1e-9; fixed_t.update(int(k) for k in np.where(on_t)[0])
++            fixed_t.update(k for k, key in enumerate(ckeys) if isinstance(key, (int, np.integer)) and int(key) < 0)   # support points: never snap targets
+             v2t: dict[int, list[int]] = defaultdict(list)
+             if chain_v:
+                 chain_set = set(chain_v)
+@@ -1594,7 +1716,8 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_
+                 return True
+             new_xyz, tris_g, cids, splits, merged = triangulate_plane_region(V, chains, closed, n, d, is_material, level_fn=clipped_level, constraint_points=np.asarray(cpts).reshape(-1, 3),
+                                                                        constraint_segments=(np.asarray(cedges).reshape(-1, 2) if (len(cedges) and constrain_carrier_edges) else None), max_area=cap_max_area, quality=quality,
+-                                                                       classification_report=cls_rep, unseeded_material=False, feature_size=feature_size, fixed_vertices=fixed, can_move=can_move, fixed_targets=fixed_t)
++                                                                       classification_report=cls_rep, unseeded_material=False, feature_size=feature_size, fixed_vertices=fixed, can_move=can_move, fixed_targets=fixed_t,
++                                                                       removable_points=[k for k, key in enumerate(ckeys) if isinstance(key, (int, np.integer)) and int(key) < 0])
+             carrier_nodes[name] = {g: int(c) for g, c in zip(ckeys, cids) if not (isinstance(g, (int, np.integer)) and int(g) < 0)}
+         elif not chains:
+             caps[name] = {"chains": 0, "open_chains": 0, "triangles": 0, "area": 0.0, "edge_splits": 0}; continue
+@@ -1614,6 +1737,10 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_
+         P = V[tris_g]; area = 0.5 * np.linalg.norm(np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0]), axis=1).sum() if len(tris_g) else 0.0
+         caps[name] = {"chains": len(chains), "open_chains": int(sum(1 for c in closed if not c)), "triangles": int(len(tris_g)), "area": float(area), "edge_splits": len(splits)}
+     report["caps"] = caps; report["cap_classification"] = {k: v for k, v in classification.items() if v}
++    report["cap_needles"] = {"remaining": int(sum(v.get("cap_needles_remaining", 0) for v in classification.values())),
++                             "min_angle_degrees": float(min([v.get("cap_min_angle_degrees", 90.0) for v in classification.values()] or [90.0])),
++                             "apex_collapsed": int(sum(v.get("cap_needle_apex_collapsed", 0) for v in classification.values())),
++                             "apex_moved": int(sum(v.get("cap_needle_apex_moved", 0) for v in classification.values()))}
+     report["cap_classification_conflicts"] = int(sum(v.get("conflicts", 0) for v in classification.values()))
+     report["cap_level_disagreements"] = int(sum(v.get("level_disagreements", 0) for v in classification.values()))
+     F, labels, nfix2 = split_all_t_junctions(V, F, labels); report["t_junction_splits"] = int(nfix2)
+@@ -1684,13 +1811,83 @@ class SheetMeshResult:
+     carrier_nodes_preserved: int
+     algorithm3d: int = 0
+     nonmanifold_facets: int = 0       # volume facets with more than two tetrahedra (a boundary-recovery failure); 0 in a valid mesh
++    sliver_smooth: dict | None = None  # boundary-locked sliver perturbation (smooth_slivers), opt-in: it trades slivers on sound bases for flat tetrahedra on the port face, which are worse for the operator (A/B 2026-09-05)
+ 
+ 
+ MESH_GENERATION_THREADS = 1     # HXT is deterministic for a fixed thread count only: pinned, so the mesh is byte-identical everywhere
+ 
+ 
++
++_TET_FACES = np.asarray([(1, 2, 3), (0, 3, 2), (0, 1, 3), (0, 2, 1)])
++_DIRS26 = np.asarray([d for d in np.array(np.meshgrid([-1, 0, 1], [-1, 0, 1], [-1, 0, 1])).T.reshape(-1, 3) if np.any(d)], dtype=np.float64)
++_DIRS26 /= np.linalg.norm(_DIRS26, axis=1)[:, None]
++
++
++def _tet_min_dihedral(P: np.ndarray) -> np.ndarray:
++    """P: (n, 4, 3).  Minimum dihedral angle in degrees; -1 for a non-positive volume."""
++    vol = np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0])) / 6.0
++    N = []
++    for k in range(4):
++        a, b, c = P[:, _TET_FACES[k, 0]], P[:, _TET_FACES[k, 1]], P[:, _TET_FACES[k, 2]]
++        n = np.cross(b - a, c - a); n /= np.maximum(np.linalg.norm(n, axis=1), 1e-300)[:, None]
++        n[np.einsum("ij,ij->i", n, P[:, k] - a) > 0] *= -1.0
++        N.append(n)
++    out = np.full(len(P), 180.0)
++    for i in range(4):
++        for j in range(i + 1, 4):
++            out = np.minimum(out, 180.0 - np.degrees(np.arccos(np.clip(np.einsum("ij,ij->i", N[i], N[j]), -1, 1))))
++    out[vol <= 0] = -1.0
++    return out
++
++
++def smooth_slivers(V: np.ndarray, T: np.ndarray, *, theta: float = 5.0, sweeps: int = 4) -> tuple[np.ndarray, dict]:
++    """Sliver perturbation with every surface vertex locked: the interior vertex of each tetrahedron below `theta`
++    degrees is moved to the position maximising the minimum dihedral angle over its star (pattern search over the 26
++    lattice directions with a halving step), connectivity unchanged.  Every sliver Gmsh leaves in a sheet-solid mesh
++    has three vertices on a boundary cap triangle and one interior vertex almost in that plane (2026-09-05), so this is
++    the whole remedy for the ones a needle-free cap still admits.  Returns the new coordinates and a report."""
++    V = np.asarray(V, dtype=np.float64).copy(); T = np.asarray(T, dtype=np.int64)
++    faces = np.sort(np.vstack([T[:, [0, 1, 2]], T[:, [0, 1, 3]], T[:, [0, 2, 3]], T[:, [1, 2, 3]]]), axis=1)
++    u, cnt = np.unique(faces, axis=0, return_counts=True)
++    on_surface = np.zeros(len(V), bool); on_surface[np.unique(u[cnt == 1])] = True
++    inc: dict[int, list[int]] = defaultdict(list)
++    for i, t in enumerate(T):
++        for v in t:
++            inc[int(v)].append(i)
++    d = _tet_min_dihedral(V[T]); before = {"min_dihedral_degrees": float(d.min()), "tets_below_5deg": int((d < 5).sum()), "tets_below_1deg": int((d < 1).sum())}
++    moved_total = 0
++    for _ in range(sweeps):
++        cand = sorted({int(v) for t in np.flatnonzero(d < theta) for v in T[t] if not on_surface[v]})
++        if not cand:
++            break
++        moved = 0
++        for v in cand:
++            star = np.asarray(inc[v]); Tt = T[star]; local = (Tt == v); Pst = V[Tt]
++            cur = float(_tet_min_dihedral(Pst).min())
++            L = float(np.median(np.linalg.norm(Pst.reshape(-1, 3) - V[v], axis=1))); h = 0.5 * L
++            best, best_x = cur, V[v].copy()
++            for _it in range(24):
++                X = best_x + h * _DIRS26
++                Pc = np.repeat(Pst[None], len(X), axis=0); Pc[:, local] = X[:, None, :]
++                vals = _tet_min_dihedral(Pc.reshape(-1, 4, 3)).reshape(len(X), -1).min(axis=1); k = int(np.argmax(vals))
++                if vals[k] > best + 1e-9:
++                    best, best_x = float(vals[k]), X[k].copy()
++                else:
++                    h *= 0.5
++                if h < 1e-7 * max(L, 1e-12):
++                    break
++            if best > cur + 1e-9:
++                V[v] = best_x; moved += 1
++        moved_total += moved
++        d = _tet_min_dihedral(V[T])
++        if moved == 0:
++            break
++    after = {"min_dihedral_degrees": float(d.min()), "tets_below_5deg": int((d < 5).sum()), "tets_below_1deg": int((d < 1).sum())}
++    return V, {"before": before, "after": after, "vertices_moved": int(moved_total), "inverted": int((d < 0).sum()), "theta": theta, "sweeps": sweeps}
++
++
+ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior_size_max: float = 0.05, algorithm3d: int = 10,
+-                     netgen_optimize: bool = True, optimize_passes: int = 2, threads: int = 8, isolate: bool = True) -> SheetMeshResult:
++                     netgen_optimize: bool = True, optimize_passes: int = 2, threads: int = 8, isolate: bool = True, sliver_smooth: bool = False) -> SheetMeshResult:
+     """Gmsh volume mesh of the closed surface.  With isolate=True Gmsh runs in a child process, so a Gmsh crash is
+     reported as a RuntimeError instead of killing the production worker.
+ 
+@@ -1713,7 +1910,7 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+                     "cn = {k: {int(g): v for g, v in m.items()} for k, m in json.loads(str(z['carrier_json'])).items()}\n"
+                     "surf = SheetSurfaceResult(V=z['V'], F=z['F'], labels=z['labels'].astype(str), carrier_nodes=cn)\n"
+                     f"m = mesh_sheet_solid(surf, Path({str(output_path)!r}), interior_size_max={float(interior_size_max)!r}, algorithm3d={int(algorithm3d)}, "
+-                    f"netgen_optimize={bool(netgen_optimize)}, optimize_passes={int(optimize_passes)}, threads={int(threads)}, isolate=False)\n"
++                    f"netgen_optimize={bool(netgen_optimize)}, optimize_passes={int(optimize_passes)}, threads={int(threads)}, isolate=False, sliver_smooth={bool(sliver_smooth)})\n"
+                     f"Path({str(result_path)!r}).write_text(json.dumps({{k: (str(v) if isinstance(v, Path) else v) for k, v in m.__dict__.items()}}))\n")
+             proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+             if proc.returncode != 0 or not result_path.exists():
+@@ -1777,6 +1974,12 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+         gmsh.finalize()
+     P = nxyz[tets]; vol = np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0])) / 6.0
+     neg = vol < 0; tets[neg, 1], tets[neg, 2] = tets[neg, 2].copy(), tets[neg, 1].copy(); vol = np.abs(vol)
++    sliver = None
++    if sliver_smooth and len(tets):
++        nxyz, sliver = smooth_slivers(nxyz, tets)
++        if sliver["inverted"]:
++            raise RuntimeError(f"sliver perturbation inverted {sliver['inverted']} tetrahedra")
++        P = nxyz[tets]; vol = np.abs(np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0])) / 6.0)
+     dih = _min_dihedral(nxyz, tets)
+     faces = np.sort(np.vstack([tets[:, [0, 1, 2]], tets[:, [0, 1, 3]], tets[:, [0, 2, 3]], tets[:, [1, 2, 3]]]), axis=1)
+     nonmanifold = int((np.unique(faces, axis=0, return_counts=True)[1] > 2).sum())
+@@ -1788,4 +1991,5 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+         fh.write("End\n")
+     return SheetMeshResult(mesh_path=output_path, node_count=int(len(nxyz)), tet_count=int(len(tets)), material_volume=float(vol.sum()),
+                            min_dihedral_degrees=float(dih.min()), tets_below_5deg=int((dih < 5).sum()), tets_below_10deg=int((dih < 10).sum()),
+-                           seconds=time.perf_counter() - t0, carrier_nodes_preserved=preserved, algorithm3d=int(algorithm3d), nonmanifold_facets=nonmanifold)
++                           seconds=time.perf_counter() - t0, carrier_nodes_preserved=preserved, algorithm3d=int(algorithm3d), nonmanifold_facets=nonmanifold,
++                           sliver_smooth=sliver)
+diff --git a/tests/pred777h_full_cube_v1/test_sliver_repair.py b/tests/pred777h_full_cube_v1/test_sliver_repair.py
+new file mode 100644
+index 0000000..f12df72
+--- /dev/null
++++ b/tests/pred777h_full_cube_v1/test_sliver_repair.py
+@@ -0,0 +1,48 @@
++"""Root-cause fixes of the sliver artefact (2026-09-05): cap needle repair and boundary-locked sliver perturbation."""
++from __future__ import annotations
++
++import numpy as np
++
++from pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1 import sheet_solid_surface as sss
++
++
++def test_repair_cap_needles_removes_a_steiner_apex_beside_a_chain_edge() -> None:
++    # a cap region: chain edge A-B on the bottom, Steiner apex P a hair above it, a fan of two triangles to W1, W2
++    A, B, W1, W2 = (0.0, 0.0), (0.02, 0.0), (0.0, 0.015), (0.02, 0.015)
++    P = (0.011, 3e-7)                                              # 3e-7 off the chain edge: a needle of ~0.002 degrees
++    pts = np.asarray([A, B, W1, W2, P], dtype=np.float64)          # inputs first, the Steiner point last
++    tris = np.asarray([[0, 1, 4], [0, 4, 2], [4, 1, 3], [4, 3, 2]], dtype=np.int64)
++    before = sss._tri_min_angle_2d(pts, tris).min()
++    assert before < 0.01
++    out, rep = sss._repair_cap_needles(pts, tris, n_input=4)
++    assert rep["cap_needle_apex_collapsed"] + rep["cap_needle_apex_moved"] >= 1
++    assert rep["cap_needles_remaining"] == 0 and rep["cap_min_angle_degrees"] > 2.0
++    # inputs untouched, orientation kept, region still covered (same total area)
++    assert np.allclose(pts[:4], [A, B, W1, W2])
++    a2 = lambda T: (pts[T[:, 1], 0] - pts[T[:, 0], 0]) * (pts[T[:, 2], 1] - pts[T[:, 0], 1]) - (pts[T[:, 1], 1] - pts[T[:, 0], 1]) * (pts[T[:, 2], 0] - pts[T[:, 0], 0])
++    assert np.all(a2(out) > 0) and abs(a2(out).sum() - a2(tris).sum()) < 1e-12
++
++
++def test_repair_cap_needles_never_touches_an_input_apex() -> None:
++    pts = np.asarray([(0.0, 0.0), (0.02, 0.0), (0.011, 3e-7), (0.0, 0.015), (0.02, 0.015)])
++    tris = np.asarray([[0, 1, 2], [0, 2, 3], [2, 1, 4], [2, 4, 3]])
++    out, rep = sss._repair_cap_needles(pts, tris, n_input=5)     # the apex is an input vertex (a chain vertex)
++    assert rep["cap_needle_apex_collapsed"] == 0 and rep["cap_needle_apex_moved"] == 0 and len(out) == 4
++
++
++def test_smooth_slivers_lifts_an_interior_apex_off_a_cap_and_keeps_the_surface() -> None:
++    # a cube [0,1]^3 corner block: cap triangle on z=0 with an interior apex 1e-6 above it, closed by surface vertices
++    V = np.asarray([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],          # z = 0 cap
++                    [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1],          # top
++                    [0.4, 0.4, 1e-6]], dtype=np.float64)                # interior apex, a sliver over (0,1,2)
++    # tets: the sliver plus a fan closing the volume around the apex (all other vertices are on the surface)
++    T = np.asarray([[0, 1, 2, 8], [1, 3, 2, 8], [0, 2, 6, 8], [0, 6, 4, 8], [0, 4, 5, 8], [0, 5, 1, 8],
++                    [1, 5, 7, 8], [1, 7, 3, 8], [3, 7, 6, 8], [3, 6, 2, 8], [4, 6, 7, 8], [4, 7, 5, 8]], dtype=np.int64)
++    P = V[T]; vol = np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0]))
++    T[vol < 0, 1], T[vol < 0, 2] = T[vol < 0, 2].copy(), T[vol < 0, 1].copy()
++    d0 = sss._tet_min_dihedral(V[T]).min(); assert d0 < 0.01
++    V2, rep = sss.smooth_slivers(V, T)
++    assert rep["inverted"] == 0 and rep["vertices_moved"] == 1
++    assert rep["after"]["min_dihedral_degrees"] > 5.0 and rep["after"]["min_dihedral_degrees"] > d0
++    assert np.array_equal(V2[:8], V[:8])                                # every surface vertex exactly where it was
++    P2 = V2[T]; assert abs(np.abs(np.einsum("ij,ij->i", P2[:, 1] - P2[:, 0], np.cross(P2[:, 2] - P2[:, 0], P2[:, 3] - P2[:, 0]))).sum() / 6 - 1.0) < 1e-12
+-- 
+2.34.1
+

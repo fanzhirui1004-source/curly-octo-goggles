@@ -1,0 +1,273 @@
+{
+ "case_id": "sl_pop_cut_1107",
+ "geometry_manifest": "/root/autodl-tmp/_claude_diag/population/cells/pop_cut_1107/geometry_material_manifest.json",
+ "git_head": "ff9d147ee33dcb6c688a3e8b7c0a8c93ef98b8f6",
+ "resolution": {
+  "preset": "production",
+  "n_per_unit": 64,
+  "remesh_size": 0.02,
+  "size_max": 0.04,
+  "carrier_n": 32,
+  "algorithm3d": 1
+ },
+ "execution": {
+  "workers": 2,
+  "threads": 2,
+  "column_chunk": 1024,
+  "omp_num_threads": "2",
+  "mkl_cbwr": null
+ },
+ "contract": {
+  "schema": "pred777h_sheet_solid_label_contract_v1",
+  "material": "abs(phi) <= tau(x), phi = sum cos(2 pi x_i) (Schwarz P), tau trilinear from the global P1 thickness field",
+  "domain": "unit cube clipped by the world cut plane; the cut surface is a free surface, never a port",
+  "port_collar_enabled": false,
+  "carrier_grid_per_face": 32,
+  "carrier_triangulation": "union jack: each carrier square is split by the diagonal joining its two corners of even lattice coordinate sum (exactly invariant under the 48 cube symmetries for an even carrier grid)",
+  "carrier_active_rule": "geometric superset: vertices of carrier triangles the band reaches within level tolerance 0.05",
+  "empty_volume": 1e-06,
+  "floating_fragments": "connected components touching no port face are removed",
+  "resolution_presets": {
+   "reference": {
+    "n_per_unit": 96,
+    "remesh_size": 0.015,
+    "size_max": 0.03
+   },
+   "production": {
+    "n_per_unit": 64,
+    "remesh_size": 0.02,
+    "size_max": 0.04
+   },
+   "fast": {
+    "n_per_unit": 48,
+    "remesh_size": 0.03,
+    "size_max": 0.05
+   }
+  },
+  "thickness_scaling": "t_min = 0.184 tau_min; remesh size <= 0.6 t_min; marching-cubes grid >= 3 cells per t_min",
+  "surface_gates": "watertight, zero verified self-intersections, zero cap-classification conflicts, boundary on planes",
+  "element": "TET10 (straight-sided promotion of the Gmsh Tet4 mesh), E = 1, nu = 0.3",
+  "schur_solver": "MKL Pardiso on the internal block, supported carrier columns only",
+  "operator_gates": "rigid-body residual <= 1e-10, min eigenvalue >= -1e-8 lambda_max, mesh port support inside the geometric active set",
+  "density_law_reference": "Hao 2023 Table 2.2: C = 1.755 rho (tau = 0.4 -> rho = 0.228; measured 0.2286)"
+ },
+ "timing": {
+  "empty_screen": 0.9180014953017235,
+  "surface_and_mesh": 0.972251083701849,
+  "fixed_port": 0.35899684950709343,
+  "schur": 0.717271700501442,
+  "total": 10.357191924005747
+ },
+ "carrier_triangulation": "unionjack",
+ "geometry": {
+  "spec_hash": "34899967f0a1a17df29c5587f78fe9884dfc227ff9e0daf5563c0e8580c74afa",
+  "tau_corners": [
+   0.5090619642419789,
+   0.5296147851258072,
+   0.5347377380572401,
+   0.5369779026695619,
+   0.5453166477057262,
+   0.5611900923347501,
+   0.5577585307315037,
+   0.5553193643081283
+  ],
+  "cut_plane": [
+   0.9715806386824664,
+   0.2367086773866435,
+   0.0,
+   0.0452987632245567
+  ],
+  "material_volume_estimate": 1.171875e-05
+ },
+ "surface": {
+  "resolution_effective": {
+   "n_per_unit": 64,
+   "remesh_size": 0.02,
+   "requested": {
+    "n_per_unit": 64,
+    "remesh_size": 0.02
+   },
+   "wall_thickness_min": 0.09355352348225936
+  },
+  "marching_cubes": {
+   "vertices": 37529,
+   "triangles": 73452,
+   "h": 0.015625
+  },
+  "projection": {
+   "max_level_residual_before": 0.001203083552754003,
+   "max_level_residual_after": 1.5543122344752192e-15
+  },
+  "sheet_remesh": {
+   "size": 0.02,
+   "remeshed": {
+    "vertices": 225,
+    "triangles": 311
+   },
+   "tangent_patches_flattened": 5,
+   "flat_dropped": 5,
+   "line_edges_collapsed": 0,
+   "flat_dropped_late": 0,
+   "short_edges_collapsed": 3,
+   "needles": {
+    "collapsed": 0,
+    "flipped": 0,
+    "remaining_below": 0,
+    "min_quality": 0.36461829970770576
+   },
+   "nonmanifold_dropped": 0,
+   "edges_with_3_or_more_triangles": 0,
+   "boundary_vertices_off_plane": 0,
+   "self_intersecting_triangles": 0,
+   "self_intersection_candidates": 0,
+   "fold_pairs": 0,
+   "vertices": 18,
+   "triangles": 16,
+   "min_quality": 0.36461829970770576,
+   "max_level_residual": 0.09508714080215508
+  },
+  "flat_sheet_triangles": {
+   "dropped": 5,
+   "lifted": 0
+  },
+  "flat_sheet_triangles_before_caps": 0,
+  "clipped": {
+   "vertices": 18,
+   "triangles": 16
+  },
+  "sheet_orientation": {
+   "outward_triangles": 16,
+   "inward_triangles": 0
+  },
+  "active_carrier_nodes": {
+   "box_x_min": 26,
+   "box_y_min": 0,
+   "box_z_max": 0,
+   "box_z_min": 0
+  },
+  "cap_classification": {
+   "box_x_min": {
+    "chain_edges": 10,
+    "level_checked": 7,
+    "level_disagreements": 0,
+    "conflicts": 0,
+    "unseeded_triangles": 0,
+    "cap_flips": 0,
+    "cap_min_quality": 0.019587226213787994,
+    "cap_below_flip_quality": 18
+   },
+   "cut_0": {
+    "chain_edges": 15,
+    "level_checked": 13,
+    "level_disagreements": 0,
+    "conflicts": 0,
+    "unseeded_triangles": 0,
+    "cap_flips": 0,
+    "cap_min_quality": 0.31293197315298055,
+    "cap_below_flip_quality": 0
+   }
+  },
+  "cap_classification_conflicts": 0,
+  "cap_level_disagreements": 0,
+  "t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 117,
+   "non_two_manifold_edges": 0
+  },
+  "self_intersecting_triangles": 0,
+  "self_intersection_candidates": 0,
+  "closed_surface_fold_pairs": 6,
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.019587226213787994,
+   "p01": 0.03221213730658584,
+   "below_0.3": 18,
+   "triangles": 78
+  },
+  "carrier_nodes_on_surface": {
+   "box_x_min": 7,
+   "box_y_min": 0,
+   "box_z_max": 0,
+   "box_z_min": 0
+  },
+  "carrier_nodes_not_on_surface": 19,
+  "volume": 8.643402868253867e-06,
+  "seconds": 0.6741716042160988,
+  "active_ports": [
+   "box_x_min",
+   "cut_0"
+  ]
+ },
+ "mesh": {
+  "mesh_path": "/root/autodl-tmp/_claude_diag/sliver_labels/pop_cut_1107/mesh.mesh",
+  "node_count": 52,
+  "tet_count": 129,
+  "material_volume": 8.643402868253914e-06,
+  "min_dihedral_degrees": 0.1932360720955728,
+  "tets_below_5deg": 42,
+  "tets_below_10deg": 63,
+  "seconds": 0.04145112633705139,
+  "carrier_nodes_preserved": 7,
+  "algorithm3d": 1
+ },
+ "fixed_port": {
+  "carrier_scalar_nodes": 264,
+  "active_carrier_nodes": 30,
+  "q_active": 90,
+  "fine_port_nodes": 31,
+  "active_set_check": {
+   "active": 30,
+   "support": 16,
+   "support_outside_active": 0,
+   "active_without_support": 14
+  },
+  "active_ports": [
+   "box_x_min"
+  ],
+  "partition_of_unity_error": 0.0,
+  "affine_reproduction_error": 3.3422138886441676e-16,
+  "deterministic_replay_sha256": "d28268a26918f594a859346b4e4e1743ec8a4a5297f2dc03601d8f6d6c725265"
+ },
+ "schur_timing": {
+  "tet10_promotion": 0.005261283367872238,
+  "assembly": 0.06824629008769989,
+  "solver": 2.0,
+  "schur_total": 0.709687139838934,
+  "fine_dof": 813.0,
+  "internal_dof": 492.0
+ },
+ "schur": {
+  "q_active": 90,
+  "rigid_residual_relative": 3.4492263840627738e-15,
+  "min_eigenvalue": -2.1180054683808176e-16,
+  "max_eigenvalue": 0.3330256025506295,
+  "inactive_block_max": 0.0,
+  "storage": {
+   "format": "upper_triangle_float32",
+   "entries": 4095,
+   "bytes": 16380,
+   "float32_rounding_relative": 2.269501819450695e-08
+  }
+ },
+ "outputs": {
+  "mesh.mesh": {
+   "path": "mesh.mesh",
+   "sha256": "7b5654d10fbf822671d8e6dfddeb3d13af2c25f1b1ab0295466958a035cc4a29"
+  },
+  "SHEET_SOLID_SURFACE.off": {
+   "path": "SHEET_SOLID_SURFACE.off",
+   "sha256": "fc8a069f28fa4e3695883c6d6799dabf16078c4236a0f5191f0f0aa3c0314b81"
+  },
+  "FIXED_PORT_SCHUR_TET10.npz": {
+   "path": "FIXED_PORT_SCHUR_TET10.npz",
+   "sha256": "e64a49f16f7dc5b949df836b2175769d0c1a2d0e96229d08ccb42a1dfee75e22"
+  }
+ },
+ "status": "PASS"
+}

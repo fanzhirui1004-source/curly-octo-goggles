@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(pred777h_sliver_remesh LANGUAGES CXX)
+find_package(CGAL REQUIRED)
+add_executable(pred777h_sliver_remesh pred777h_sliver_remesh.cpp)
+target_compile_features(pred777h_sliver_remesh PRIVATE cxx_std_17)
+target_link_libraries(pred777h_sliver_remesh PRIVATE CGAL::CGAL)
+target_compile_options(pred777h_sliver_remesh PRIVATE -Wall -Wextra)

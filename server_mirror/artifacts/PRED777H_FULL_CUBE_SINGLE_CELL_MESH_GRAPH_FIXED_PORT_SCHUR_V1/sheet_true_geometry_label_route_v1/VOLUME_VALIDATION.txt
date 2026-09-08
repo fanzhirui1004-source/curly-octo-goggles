@@ -1,0 +1,4 @@
+case             tau(mean C) rho exact(full)  rho paper=C/1.755     dev rho exact(clipped)  rho mesh mesh-exact
+G0 uncut              0.4000          0.2284             0.2279   0.23%             0.2284    0.2288      0.16%
+G1 shallow cut        0.4000          0.2284             0.2279   0.23%             0.1138    0.1140      0.15%
+G5 thin+cut           0.4000          0.2284             0.2279   0.23%             0.0193    0.0193     -0.12%

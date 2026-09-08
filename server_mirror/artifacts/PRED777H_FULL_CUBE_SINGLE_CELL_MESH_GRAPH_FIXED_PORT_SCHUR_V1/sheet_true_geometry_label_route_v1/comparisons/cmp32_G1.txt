@@ -1,0 +1,2 @@
+supported carrier nodes 890, q_supported 2670, lowfreq vector modes 183
+G1_c32_alg1 vs G1_c32_alg10: lowfreq 0.0015 whitened 0.0884 raw 0.0798 p50 +0.0000 p95 0.0008

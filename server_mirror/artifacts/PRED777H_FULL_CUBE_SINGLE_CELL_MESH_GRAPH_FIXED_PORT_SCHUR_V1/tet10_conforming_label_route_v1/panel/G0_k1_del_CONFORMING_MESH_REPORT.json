@@ -1,0 +1,52 @@
+{
+ "mesh_path": "/root/autodl-tmp/_claude_diag/step2s/G0/k1_del/mesh.mesh",
+ "node_count": 19249,
+ "tet_count": 66802,
+ "carrier_node_count": 1538,
+ "inner_component_count": 2,
+ "material_volume": 0.3867386283721218,
+ "outer_shell_volume": 1.0,
+ "min_dihedral_degrees": 9.766950020919978,
+ "tets_below_5deg": 0,
+ "tets_below_10deg": 1,
+ "seconds": 15.146862000226974,
+ "gmsh_options": {
+  "Algorithm3D": 1,
+  "MeshSizeMax": 0.05,
+  "seed": 1,
+  "optimize_passes": 3,
+  "port_refine_levels": 1,
+  "shell_triangles": 12288,
+  "netgen_optimize": true,
+  "cavity_remesh_size": null,
+  "inner_triangles": 20184,
+  "cavity_smooth": {
+   "moved_vertices": 13745,
+   "crease_frozen": 1690,
+   "q_min_before": 0.0036913476511955734,
+   "q_min_after": 0.2336034165031378,
+   "q_p5_before": 0.16116815459727987,
+   "q_p5_after": 0.6015425498898999
+  }
+ },
+ "active_ports": [
+  "box_x_max",
+  "box_x_min",
+  "box_y_max",
+  "box_y_min",
+  "box_z_max",
+  "box_z_min"
+ ],
+ "fine_port_nodes": 6146,
+ "carrier_scalar_nodes": 1538,
+ "P_is_exact_nested": true,
+ "P_weights_dyadic": true,
+ "affine_reproduction_error": 0.0,
+ "P_nnz": 10754,
+ "max_offdiag_weight": 0.5,
+ "q": 4614,
+ "zero_support_columns": 0,
+ "nonmanifold_boundary_edge_count": 0,
+ "boundary_component_count": 3,
+ "adapter_seconds": 23.8
+}

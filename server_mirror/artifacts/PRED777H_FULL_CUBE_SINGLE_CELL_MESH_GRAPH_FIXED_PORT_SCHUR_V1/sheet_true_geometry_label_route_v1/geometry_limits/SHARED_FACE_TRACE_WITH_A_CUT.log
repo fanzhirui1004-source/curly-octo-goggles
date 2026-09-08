@@ -1,0 +1,10 @@
+plane class: <class 'generated_cell.pred768_canonical_geometry_spec.CanonicalRationalPlane'>
+world d=1.30: cut meets the shared face at y=0.8333
+   A box_x_max: 1728 triangles, 924 nodes | B box_x_min: 1728 triangles, 924 nodes
+   nodes only in A 0 | only in B 0 | triangles only in A 0 | only in B 0
+world d=1.50: cut meets the shared face at y=1.1667
+   A box_x_max: 2048 triangles, 1089 nodes | B box_x_min: 2048 triangles, 1089 nodes
+   nodes only in A 0 | only in B 0 | triangles only in A 0 | only in B 0
+world d=1.70: cut meets the shared face at y=1.5000
+   A box_x_max: 2048 triangles, 1089 nodes | B box_x_min: 2048 triangles, 1089 nodes
+   nodes only in A 0 | only in B 0 | triangles only in A 0 | only in B 0

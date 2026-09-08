@@ -1,0 +1,205 @@
+{
+ "case_id": "G5_v12_h03",
+ "carrier_n": 32,
+ "surface": {
+  "marching_cubes": {
+   "vertices": 23282,
+   "triangles": 45316,
+   "h": 0.020833333333333332
+  },
+  "projection": {
+   "max_level_residual_before": 0.0021343664619236646,
+   "max_level_residual_after": 1.4988010832439613e-15
+  },
+  "flat_sheet_triangles": {
+   "dropped": 62,
+   "lifted": 0
+  },
+  "boundary_collapse": {
+   "collapsed": 154,
+   "non_two_manifold_edges_open": 189
+  },
+  "flat_after_remesh": {
+   "dropped": 5,
+   "lifted": 0
+  },
+  "boundary_collapse_2": 0,
+  "boundary_resnap": 14,
+  "post_remesh_cleanup": {
+   "dropped_flat": 0,
+   "dropped_nonmanifold": 0
+  },
+  "corner_restores": 0,
+  "boundary_vertices_off_plane": 0,
+  "sheet_remesh": {
+   "vertices": 558,
+   "triangles": 963,
+   "size": 0.03,
+   "max_level_residual": 6.106226635438361e-16,
+   "non_two_manifold_edges_open": 149
+  },
+  "clipped": {
+   "vertices": 558,
+   "triangles": 963
+  },
+  "active_carrier_nodes": {
+   "box_x_max": 0,
+   "box_x_min": 44,
+   "box_y_min": 78,
+   "box_z_min": 172
+  },
+  "caps": {
+   "box_x_min": {
+    "chains": 1,
+    "open_chains": 1,
+    "triangles": 105,
+    "area": 0.007867561460432881,
+    "edge_splits": 4
+   },
+   "box_x_max": {
+    "chains": 0,
+    "open_chains": 0,
+    "triangles": 0,
+    "area": 0.0,
+    "edge_splits": 0
+   },
+   "box_y_min": {
+    "chains": 1,
+    "open_chains": 1,
+    "triangles": 332,
+    "area": 0.03626245560958176,
+    "edge_splits": 12
+   },
+   "box_y_max": {
+    "chains": 0,
+    "open_chains": 0,
+    "triangles": 0,
+    "area": 0.0,
+    "edge_splits": 0
+   },
+   "box_z_min": {
+    "chains": 2,
+    "open_chains": 2,
+    "triangles": 766,
+    "area": 0.09062084382256852,
+    "edge_splits": 24
+   },
+   "box_z_max": {
+    "chains": 0,
+    "open_chains": 0,
+    "triangles": 0,
+    "area": 0.0,
+    "edge_splits": 0
+   },
+   "cut_0": {
+    "chains": 1,
+    "open_chains": 0,
+    "triangles": 200,
+    "area": 0.27222854935175395,
+    "edge_splits": 0
+   }
+  },
+  "line_t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 3624,
+   "non_two_manifold_edges": 0
+  },
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.005252019595113283,
+   "p01": 0.06768217721282686,
+   "below_0.3": 255,
+   "triangles": 2416
+  },
+  "surface_quality_by_label": {
+   "box_x_min": {
+    "min": 0.02101300210622126,
+    "below_0.3": 32,
+    "n": 105
+   },
+   "box_y_min": {
+    "min": 0.008603183680360133,
+    "below_0.3": 67,
+    "n": 332
+   },
+   "box_z_min": {
+    "min": 0.005252019595113283,
+    "below_0.3": 145,
+    "n": 766
+   },
+   "cut_0": {
+    "min": 0.2007234217980895,
+    "below_0.3": 1,
+    "n": 200
+   },
+   "tpms_free": {
+    "min": 0.10824564140977432,
+    "below_0.3": 10,
+    "n": 1013
+   }
+  },
+  "volume": 0.019310628139147978,
+  "seconds": 1.4904017187654972,
+  "active_ports": [
+   "box_x_min",
+   "box_y_min",
+   "box_z_min",
+   "cut_0"
+  ],
+  "seconds_total": 1.4955275058746338
+ },
+ "mesh": {
+  "mesh_path": "/root/autodl-tmp/_claude_diag/sheet/G5_v12_h03/mesh.mesh",
+  "node_count": 1502,
+  "tet_count": 4570,
+  "material_volume": 0.01931062813914798,
+  "min_dihedral_degrees": 0.3411285543938618,
+  "tets_below_5deg": 50,
+  "tets_below_10deg": 196,
+  "seconds": 0.5986327081918716,
+  "carrier_nodes_preserved": 172
+ },
+ "active_set": {
+  "active": 294,
+  "support": 266,
+  "support_outside_active": 0,
+  "active_without_support": 28
+ },
+ "fixed_port": {
+  "q": 3432,
+  "carrier_scalar_nodes": 1144,
+  "supported_carrier_nodes": 294,
+  "fine_port_nodes": 689,
+  "affine_reproduction_error": 2.220446049250313e-16,
+  "partition_of_unity_error": 2.220446049250313e-16,
+  "zero_support_columns": 878,
+  "active_ports": [
+   "box_x_min",
+   "box_y_min",
+   "box_z_min"
+  ],
+  "seconds": 2.2315729334950447
+ },
+ "schur": {
+  "timing": {
+   "tet10_promotion": 0.1237318217754364,
+   "assembly": 0.7192306220531464,
+   "solver": 2.0,
+   "schur_total": 3.22725460678339,
+   "fine_dof": 26343.0,
+   "internal_dof": 18609.0
+  },
+  "rigid_residual": 4.697081299529627e-15,
+  "q_supported": 882,
+  "unsupported_block_max": 0.0,
+  "min_eig_supported": -1.924989002212507e-17,
+  "max_eig_supported": 0.0543254102938207,
+  "rigid_residual_supported": 4.694202194050561e-15
+ }
+}

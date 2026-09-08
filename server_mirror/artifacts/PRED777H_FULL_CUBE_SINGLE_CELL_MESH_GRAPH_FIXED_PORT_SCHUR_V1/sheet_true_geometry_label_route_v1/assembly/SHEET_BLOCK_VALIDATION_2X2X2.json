@@ -1,0 +1,196 @@
+{
+ "shape": [
+  2,
+  2,
+  2
+ ],
+ "carrier_n": 32,
+ "cells": 8,
+ "surface": {
+  "resolution_effective": {
+   "n_per_unit": 48,
+   "remesh_size": 0.03,
+   "requested": {
+    "n_per_unit": 48,
+    "remesh_size": 0.03
+   },
+   "wall_thickness_min": 0.0712133156586493
+  },
+  "marching_cubes": {
+   "vertices": 175704,
+   "triangles": 345968,
+   "h": 0.020833333333333332
+  },
+  "projection": {
+   "max_level_residual_before": 0.00213507447317568,
+   "max_level_residual_after": 2.9976021664879227e-15
+  },
+  "sheet_remesh": {
+   "size": 0.03,
+   "remeshed": {
+    "vertices": 50996,
+    "triangles": 99565
+   },
+   "flat_dropped": 0,
+   "line_edges_collapsed": 0,
+   "flat_dropped_late": 0,
+   "short_edges_collapsed": 323,
+   "needles": {
+    "collapsed": 0,
+    "flipped": 0,
+    "remaining_below": 0,
+    "min_quality": 0.2155655003307091
+   },
+   "nonmanifold_dropped": 0,
+   "edges_with_3_or_more_triangles": 0,
+   "boundary_vertices_off_plane": 0,
+   "self_intersecting_triangles": 0,
+   "self_intersection_candidates": 0,
+   "fold_pairs": 0,
+   "vertices": 47210,
+   "triangles": 91368,
+   "min_quality": 0.2155655003307091,
+   "max_level_residual": 3.0531133177191805e-15
+  },
+  "flat_sheet_triangles": {
+   "dropped": 0,
+   "lifted": 0
+  },
+  "flat_sheet_triangles_before_caps": 0,
+  "clipped": {
+   "vertices": 47210,
+   "triangles": 91368
+  },
+  "sheet_orientation": {
+   "outward_triangles": 91368,
+   "inward_triangles": 0
+  },
+  "cap_classification_conflicts": 0,
+  "cap_level_disagreements": 0,
+  "t_junction_splits": 0,
+  "degenerate_triangles_dropped": 0,
+  "components": {
+   "components": 1,
+   "dropped": 0,
+   "dropped_area": 0.0
+  },
+  "watertight": {
+   "edges": 161208,
+   "non_two_manifold_edges": 0
+  },
+  "self_intersecting_triangles": 0,
+  "self_intersection_candidates": 0,
+  "closed_surface_fold_pairs": 0,
+  "vertices_outside_box": 0,
+  "surface_quality": {
+   "min": 0.0012246991149502194,
+   "p01": 0.21113245250924126,
+   "below_0.3": 1924,
+   "triangles": 107472
+  },
+  "carrier_nodes_on_surface": {
+   "box_x_min": 0,
+   "box_x_max": 0,
+   "box_y_min": 0,
+   "box_y_max": 0,
+   "box_z_min": 0,
+   "box_z_max": 0
+  },
+  "carrier_nodes_not_on_surface": 0,
+  "volume": 1.830281335141369,
+  "seconds": 97.42290488630533,
+  "active_ports": [
+   "box_x_min",
+   "box_x_max",
+   "box_y_min",
+   "box_y_max",
+   "box_z_min",
+   "box_z_max"
+  ]
+ },
+ "mesh": {
+  "mesh_path": "/root/autodl-tmp/_claude_diag/block222/block.mesh",
+  "node_count": 74690,
+  "tet_count": 278767,
+  "material_volume": 1.830281335141373,
+  "min_dihedral_degrees": 0.04107677790852904,
+  "tets_below_5deg": 330,
+  "tets_below_10deg": 1326,
+  "seconds": 36.2709540463984,
+  "carrier_nodes_preserved": 0,
+  "algorithm3d": 1
+ },
+ "interface_pairs": 12,
+ "interface_active_mismatch": 0,
+ "zero_stiffness_carrier_nodes": 943,
+ "assembled_smallest_eigenvalues": [
+  2.0642003357421296e-08,
+  2.3000818981581418e-08,
+  5.134166076046487e-08,
+  5.256550050169878e-08
+ ],
+ "results": {
+  "tension_x": {
+   "compliance_monolithic": 5.306376537975478,
+   "compliance_assembled": 5.270277710156719,
+   "compliance_constrained": 5.271872026440245,
+   "assembled_vs_free": -0.006802914862979348,
+   "constrained_vs_free": -0.006502461950881,
+   "assembled_vs_constrained": -0.0003024193826272059,
+   "interface_disp_rel_l2_vs_free": 0.002308335400264894,
+   "interface_disp_rel_l2_vs_constrained": 0.0016767942430540494
+  },
+  "shear_y": {
+   "compliance_monolithic": 29.93639854590775,
+   "compliance_assembled": 29.85101326298364,
+   "compliance_constrained": 29.85637147561381,
+   "assembled_vs_free": -0.0028522229483674,
+   "constrained_vs_free": -0.0026732364005382925,
+   "assembled_vs_constrained": -0.00017946630368481653,
+   "interface_disp_rel_l2_vs_free": 0.0022715772783918394,
+   "interface_disp_rel_l2_vs_constrained": 0.0007902240862714751
+  },
+  "bending_z": {
+   "compliance_monolithic": 1.5106456927911727,
+   "compliance_assembled": 1.4991595030515195,
+   "compliance_constrained": 1.4991053642331602,
+   "assembled_vs_free": -0.007603496832159551,
+   "constrained_vs_free": -0.007639335029440142,
+   "assembled_vs_constrained": 3.611408487413925e-05,
+   "interface_disp_rel_l2_vs_free": 0.003126865453174421,
+   "interface_disp_rel_l2_vs_constrained": 0.001286922752168262
+  },
+  "wave_16H": {
+   "compliance_monolithic": 0.9941209690540567,
+   "compliance_assembled": 0.9782826466334169,
+   "compliance_constrained": 0.9771608544530133,
+   "assembled_vs_free": -0.015931987065628928,
+   "constrained_vs_free": -0.0170604132987775,
+   "assembled_vs_constrained": 0.0011480117887363583,
+   "interface_disp_rel_l2_vs_free": 0.005162744008010361,
+   "interface_disp_rel_l2_vs_constrained": 0.004414989543757859
+  },
+  "wave_8H": {
+   "compliance_monolithic": 0.05984691926598755,
+   "compliance_assembled": 0.05455000882075592,
+   "compliance_constrained": 0.05418398653100689,
+   "assembled_vs_free": -0.08850765436546026,
+   "constrained_vs_free": -0.0946236298281613,
+   "assembled_vs_constrained": 0.006755174603839453,
+   "interface_disp_rel_l2_vs_free": 0.011401440717333674,
+   "interface_disp_rel_l2_vs_constrained": 0.008669212479486077
+  },
+  "wave_4H": {
+   "compliance_monolithic": 0.024531031216776397,
+   "compliance_assembled": 0.018421371302349117,
+   "compliance_constrained": 0.018016544739804047,
+   "assembled_vs_free": -0.249058421573773,
+   "constrained_vs_free": -0.2655610528316149,
+   "assembled_vs_constrained": 0.02246971150082322,
+   "interface_disp_rel_l2_vs_free": 0.017090653919988177,
+   "interface_disp_rel_l2_vs_constrained": 0.010114235685653089
+  }
+ },
+ "block_tet10_dof": 1445745,
+ "global_carrier_nodes": 11283
+}

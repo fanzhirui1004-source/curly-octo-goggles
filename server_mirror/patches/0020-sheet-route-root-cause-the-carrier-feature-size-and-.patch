@@ -1,0 +1,505 @@
+From fc361f8f03cd1599c65975012cc6ad1065d754d3 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Sat, 5 Sep 2026 01:58:02 +0800
+Subject: [PATCH 20/24] sheet route: root-cause the carrier feature size and
+ the volume mesher instead of gating
+
+Two things were being papered over: a gate that refused cells whose cut nearly contains a cell edge or corner, and an
+HXT retry when Gmsh produced a nonmanifold volume mesh. Both are removed; the causes are fixed upstream.
+
+The residual sliver families are harmless. Sweeping the gap from 0.2 h to 0.002 h with the gate disabled: the strip
+family passes every guard at every gap and the operator converges smoothly (energy steps 5.1e-3 down to 1.7e-4, the
+geometry itself changing by the gap); the corner family gives the identical operator at every gap because the corner
+region is void and its slivers are zero rows. The gate becomes a receipt diagnostic.
+
+The Gmsh failure was a feature-size problem, not a sliver problem: the frozen carrier with aspect-1e3 slivers meshes
+cleanly, while a merge radius of 1/10 h left 0.003 carrier edges next to 0.03 sheet triangles and the cap, a
+constrained triangulation of the carrier, was refined to that size. The merge radius is now set by the surface scale
+(1/3 h = 0.0104, at least half the remesh size), so no carrier edge is below it: the failing cell goes from 31
+nonmanifold facets to 0, and the carrier improves as well (maximum aspect ratio median 7.0 to 2.7 on the c=0
+population, 8.0 to 3.1 on tilted planes).
+
+The cap PSLG carried features of 1e-4 and below. A feature-size invariant (0.2 remesh) moves a chain vertex onto a
+nearby carrier node or edge and snaps a crossing to a nearby chain vertex. Keeping the sheet a manifold needed five
+rules, each found by a failure: carrier nodes never move; ring nodes on another clip plane are never targets and
+vertices on another plane never move; one chain vertex per target and none chain-adjacent to an assigned vertex; a
+fold check on the incident sheet triangles; and crossings are never snapped onto a carrier node.
+
+After both, legacy Delaunay still overlapped tetrahedra on an ordinary quality-0.15 cap triangle and segfaulted on 2
+of 60 cells, while HXT meshed every one at equal quality. HXT is now the algorithm of record with the generation
+thread count pinned to 1 (it is byte-identical at a fixed count and differs between counts); the crash retry is gone
+and a nonmanifold mesh fails closed.
+
+Results: the six cells that ever failed all PASS with 0 nonmanifold facets and 0 non-manifold surface edges; 60-cell
+run 58 PASS + 2 EMPTY, 0 failures; 2x1x1 cut block assembled vs constrained monolithic -4.5e-5 to 4.5e-3 (was 1.4e-4
+to 6.4e-3), interface mismatch 0; 21 tests pass. STEP6 report section 7 records the analysis.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X77H1Uihff2oEyM5T4qg7v
+---
+ .../STEP6_CUT_CARRIER_REPORT.md               |  82 ++++++++++
+ .../produce_sheet_label.py                    |   9 +-
+ .../sheet_block_validation.py                 |   2 +-
+ .../cut_carrier.py                            |  21 ++-
+ .../sheet_contract.py                         |   4 +-
+ .../sheet_solid_surface.py                    | 153 +++++++++++++++---
+ .../pred777h_full_cube_v1/test_cut_carrier.py |  13 +-
+ 7 files changed, 247 insertions(+), 37 deletions(-)
+
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
+index 79835f7..1560a0c 100644
+--- a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
+@@ -166,3 +166,85 @@ EMPTY cell pop_cut_0015 (volume 0) exports 228 nodes / 384 triangles / 70 ring n
+ **Cost of the cut port**: q grows by ×1.25 to ×1.51 on the cells above (the cut trace is 20 to 45 % of the carrier
+ nodes and its band-touched fraction is comparable to the box faces); dense storage grows by the square.  The
+ production plan's storage and throughput figures must be re-measured on the new definition (open item).
++
++## 7. Root causes instead of gates (revision of sections 2.3 and 5)
++
++The gate on the residual sliver families and the HXT retry on a nonmanifold Gmsh mesh were both removed.  Both
++problems were root-caused; the fixes are upstream of the mesher, plus one decision on the mesher itself.
++
++**7.1 The Gmsh failure was a feature-size problem, not a sliver problem.**  On pop_cut_0003 the frozen carrier
++(slivers of aspect 1e3, minimum cap quality 0.0016) meshes cleanly with Delaunay; the merged carrier at eps = 1/10 h
++fails with 31 nonmanifold facets, and a size floor on the interior field (Mesh.MeshSizeMin) changes nothing.  The merge
++at 1/10 h left carrier edges of 0.003 to 0.005 next to sheet triangles of 0.03; the cap, a constrained triangulation of
++the carrier, is refined to that size (cap triangles of area 1e-5, hub vertices with 8 to 16 incident triangles, all of
++them the nonmanifold facets' vertices) and Delaunay's boundary recovery overlaps tetrahedra while grading from 0.003 to
++0.03.  A long thin sliver is a single constrained cap triangle that nothing refines, which is why the census carried
++box-face strips of aspect 2.4e4 without a failure.  Frequency at eps = 1/10: 11 of 55 labelled cut cells (20 %) needed
++the HXT retry.
++
++*Fix:* the merge radius is set by the surface scale: eps = 1/3 h = 0.0104 (≥ 0.5 remesh size; the Labelle-Shewchuk
++snapping range), so every carrier edge is ≥ 1/3 h (test).  Failing cell: minimum carrier edge 0.0046 → 0.0138,
++cut-face aspect 12.2 → 2.7, Delaunay nonmanifold facets 31 → 0.  Survey at eps = 1/3 (240 c = 0 cells / 160 tilted
++planes): cut-face maximum aspect median 2.69 / 3.13 (was 7.0 / 8.0), box faces 3.80 / 4.28, cells with any triangle
++above 10: 5 / 4 (was 70 / 24), carrier nodes after/before median 0.992 / 0.856 (the tilted cut face loses 44 % of its
++nodes), audits 400 / 400 PASS, 48-symmetry invariance 0 / 48 broken on the four real cells.
++
++**7.2 The cap carried features far below the sheet scale.**  A sheet chain vertex a hair from a carrier node or edge,
++and chain/carrier-edge crossings a few 1e-3 from a chain vertex (the relative 30 % snap of a short chain edge), gave
++cap triangles of area 1e-9 to 1e-5 and the 1e-22-volume tetrahedra of every mesh; on pop_cut_0645 they made HXT leave
++flat tetrahedra that Netgen's optimiser turned into 4 nonmanifold facets.  *Fix:* a feature-size invariant in the cap
++PSLG (`triangulate_plane_region(feature_size = 0.2 remesh)`): a chain vertex within that distance of a carrier node is
++moved onto it, one within that distance of a carrier edge is projected onto it, and a crossing within that distance of
++a chain vertex is snapped to the chain vertex (absolute, on top of the relative rule).  Rules that keep the sheet a
++manifold, each found by a failure: carrier nodes never move; a carrier node on another clip plane (a ring node, already
++a vertex of that plane's cap) is never a target and a chain vertex on another plane never moves (pinch of two caps:
++the uncut fixture, 4 non-manifold edges); one chain vertex per target and none adjacent on the chain to an assigned
++vertex; a fold check on the incident sheet triangles; and crossings are never snapped to a carrier node (that
++duplicates the node on the sheet: pop_cut_0165 and pop_cut_1125, 1 and 5 non-manifold edges; the A/B test isolated
++it).  Effect on the four probe cells: 434 to 663 chain vertices moved, minimum surface quality 0.0006 → 0.0027 to
++0.0031, minimum dihedral angle of the volume mesh 0.04° → 0.13° to 0.15°, sub-5° tetrahedra 379 / 151 / 289 → 129 /
++76 / 75 (Delaunay, before 7.3).
++
++**7.3 The volume mesher.**  After 7.1 and 7.2, Gmsh's legacy Delaunay still overlapped four tetrahedra on an ordinary
++cut-cap triangle of quality 0.15 (pop_cut_0245, edges 0.017 to 0.031, nothing small anywhere near it) and segfaulted
++on two of 60 cut cells (pop_cut_0305, pop_cut_0745).  HXT meshed every one of those surfaces with the same quality
++(pop_cut_0003: minimum dihedral 0.149° vs 0.149°, 128 vs 129 sub-5° tetrahedra).  HXT's mesh depends on the thread
++count and on nothing else (two runs at the same count are byte-identical; 1, 8 and 16 threads differ), so HXT is the
++algorithm of record with the generation thread count pinned to 1 (`MESH_GENERATION_THREADS`; 12 s instead of 8 s on
++65k tetrahedra), the crash retry is deleted and a nonmanifold mesh fails closed with a MESH_FAIL receipt.  This is a
++decision about which mesher to trust, made on the failure analysis, not a retry.
++
++**7.4 The residual families are harmless; the gate is gone.**  Sweep with the gate disabled (pop_cut_0003 base, fast
++preset, energies of 9 smooth port fields): the strip family (plane nearly containing the vertical edge (1, 0, z), gap
++0.2 h → 0.002 h) passes every guard at every gap (rigid residual ≤ 2.8e-14, q 8088 to 8328) and the operator
++converges smoothly, relative energy steps 5.1e-3, 2.6e-3, 1.6e-3, 5.4e-4, 2.5e-4, 1.7e-4 as the gap shrinks (the
++geometry itself changes by the gap); the corner family (tilted plane cutting off corner (1, 1, 1) within 0.2 h → 0.002
++h) gives the identical operator at every gap (q 7779, energies equal to all digits): the corner region is void, its
++box-face slivers are zero rows.  The receipt keeps the residual gap as a diagnostic (`cut_carrier_residual_strip`);
++nothing is refused.
++
++**7.5 Re-validation under the final code** (eps = 1/3, cap feature size 0.2 remesh, HXT at 1 thread, no retry, no gate;
++fast preset):
++
++| cell | status | q | rigid residual | nonmanifold | tets < 5° | min dihedral | surface min quality |
++|---|---|---|---|---|---|---|---|
++| pop_cut_0645 (HXT + Netgen failed before 7.2) | PASS | 2319 | 1.3e-15 | 0 | 152 | 0.305° | 0.0052 |
++| pop_cut_0245 (Delaunay overlapped) | PASS | 4395 | 1.0e-14 | 0 | 83 | 0.050° | 0.0011 |
++| pop_cut_0305 (Delaunay segfault) | PASS | 9381 | 2.4e-15 | 0 | 125 | 0.096° | 0.0035 |
++| pop_cut_0745 (Delaunay segfault) | PASS | 4395 | 3.0e-15 | 0 | 115 | 0.141° | 0.0029 |
++| pop_cut_0165 (pinched by the crossing snap) | PASS | 222 | 2.4e-15 | 0 | 16 | 0.700° | 0.0138 |
++| pop_cut_1125 (pinched by the crossing snap) | PASS | 8100 | 2.5e-15 | 0 | 108 | 0.173° | 0.0033 |
++
++60-cell run (the same 60 cut cells as the eps = 1/10 baseline): 60 cells, 58 PASS + 2 EMPTY, 0 failures (the
++eps = 1/10 baseline had 11 of 55 needing the HXT retry and, after 7.1 and 7.2 alone, 1 hard failure and 2 crashes).
++Volume mesh: minimum dihedral angle min 0.0037° median 0.103°, sub-5° tetrahedra median 90 max 162; surface minimum
++quality min 0.0001 median 0.0022.  q median 4977, max 10194; total time per cell median 143 s, max 358 s (fast preset,
++10 workers).
++
++2 × 1 × 1 cut block (cut face a port, HXT): assembled vs constrained monolithic −4.5e-5 (tension),
++6.5e-6 (shear), −5.7e-5 (bending), −1.2e-5 (16H), 1.9e-3 (8H), 4.5e-3 (4H); interface active-set mismatch 0.  The
++assembly now reproduces the constrained monolithic model of the same block to five significant figures on the smooth
++loads (it was 1.4e-4 to 6.4e-3 before 7.1 to 7.3).  Block mesh: minimum dihedral angle 0.494°, 57 sub-5° tetrahedra
++(140 at eps = 1/10 with Delaunay).
++
++Test suites: 21 tests pass (test_cut_carrier, test_sheet_solid_surface).
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index dd4a67a..a8e9341 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -56,7 +56,7 @@ def main() -> int:
+     ap.add_argument("--resolution", choices=sorted(RESOLUTION_PRESETS), default="production")
+     ap.add_argument("--n-per-unit", type=int); ap.add_argument("--remesh-size", type=float); ap.add_argument("--size-max", type=float)
+     ap.add_argument("--carrier-n", type=int, default=CARRIER_N)
+-    ap.add_argument("--algorithm3d", type=int, default=1, help="Gmsh 3D algorithm: 1 Delaunay (default), 10 HXT")
++    ap.add_argument("--algorithm3d", type=int, default=10, help="Gmsh 3D algorithm: 10 HXT (algorithm of record, deterministic at the pinned thread count), 1 legacy Delaunay")
+     ap.add_argument("--workers", type=int, default=8); ap.add_argument("--threads", type=int, default=8)
+     ap.add_argument("--chunk", type=int, default=1024)
+     ap.add_argument("--memory-budget-dir", type=Path, help="directory of the cooperative memory budget shared by the jobs of this machine (see MemoryBudget)")
+@@ -88,12 +88,7 @@ def main() -> int:
+     receipt["carrier_triangulation"] = pipe.CARRIER_TRIANGULATION
+     receipt["cut_carrier_merge"] = layout.diagnostics.get("cut_carrier_merge")
+     receipt["cut_face_trace"] = pipe.write_cut_face_trace(out / "CUT_FACE_TRACE.npz", layout, spec)
+-    near = pipe.cc.cut_carrier_gate(receipt["cut_carrier_merge"])
+-    if near is not None:                        # the plane nearly contains a cell corner or edge: same status and remedy
+-        receipt["status"] = "GEOMETRY_DEGENERATE"; receipt["geometry_degeneracy"] = near
+-        (out / "LABEL_RECEIPT.json").write_text(json.dumps(receipt, indent=1, default=float))
+-        (out / "LABEL_RECEIPT.md").write_text(f"# Sheet label: {a.case_id}\n\n- status: **GEOMETRY_DEGENERATE**: {near['reason']}\n- remedy: {near['remedy']}\n")
+-        print(f"{a.case_id}: GEOMETRY_DEGENERATE ({near['reason']})"); return 0
++    receipt["cut_carrier_residual_strip"] = pipe.cc.cut_carrier_gate(receipt["cut_carrier_merge"])   # diagnostic only (harmless, see cut_carrier)
+     receipt["geometry"] = {"spec_hash": spec.spec_hash, "tau_corners": [float(t) for t in geom.tau_corners],
+                            "cut_plane": None if geom.cut_plane is None else [float(v) for v in geom.cut_plane]}
+ 
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+index ef3b2be..a140596 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_block_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -293,7 +293,7 @@ def main() -> int:
+     Kff = K[free][:, free].tocsr(); sol = pypardiso.PyPardisoSolver(); sol.set_iparm(1, 1); sol.set_iparm(2, 3); t0 = time.perf_counter(); sol.factorize(Kff); print(f"monolithic factorized {time.perf_counter()-t0:.0f}s ({Kff.shape[0]} dof)", flush=True)
+     # ---- (b) assembled ----
+     fixedG = np.zeros(3 * nG, bool); fixedG[(3 * np.where(np.abs(gcoords[:, 0]) < 1e-9)[0][:, None] + np.arange(3)).ravel()] = True; freeG = ~fixedG
+-    dg = np.diag(KG); zero_nodes = np.where((dg.reshape(-1, 3) == 0).all(axis=1))[0]; rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))
++    dg = np.diag(KG); zero_nodes = np.where((dg.reshape(-1, 3) <= 1e-12 * dg.max()).all(axis=1))[0]; rep["zero_stiffness_carrier_nodes"] = int(len(zero_nodes))   # carrier nodes the band only grazes carry a negligible support: removed from the free system like the unsupported ones
+     if len(zero_nodes):
+         zmask = np.zeros(3 * nG, bool); zmask[(3 * zero_nodes[:, None] + np.arange(3)).ravel()] = True; freeG &= ~zmask
+     KGf = KG[np.ix_(freeG, freeG)]; evs = np.linalg.eigvalsh(KGf)[:4]; rep["assembled_smallest_eigenvalues"] = evs.tolist()
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py
+index dc215a6..a3e0b23 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py
+@@ -37,16 +37,25 @@ from scipy.sparse import csr_matrix
+ 
+ __all__ = ["merge_cut_carrier", "polygon_fan", "cut_carrier_gate", "CUT_CARRIER_MERGE_EPS", "CUT_CARRIER_MIN_GAP"]
+ 
+-CUT_CARRIER_MERGE_EPS = Fraction(1, 10)      # merge radius in carrier spacings h = 1/carrier_n
+-CUT_CARRIER_MIN_GAP = Fraction(1, 50)        # smallest tolerated residual strip width / h of the unfixable families (aspect <= 50)
++# Merge radius in carrier spacings h = 1/carrier_n.  1/3 h = 0.0104 is set by the SURFACE scale, not by the sliver
++# bound alone: the cap of a port face is a constrained triangulation of the carrier, so a carrier edge much shorter than
++# the sheet remesh size (0.02 to 0.03) is refined by the cap and forces the volume mesh to grade from that size to the
++# sheet size.  At eps = 1/10 (edges down to 0.003) Gmsh Delaunay's boundary recovery overlapped tetrahedra on 11 of 55
++# cut cells; at 1/3 (edges >= 0.0104, i.e. >= 0.5 remesh) the same cells mesh cleanly, the carrier aspect ratio bound
++# drops to ~3 and the node count falls (2026-09-05).  1/3 is also the Labelle-Shewchuk snapping range.
++CUT_CARRIER_MERGE_EPS = Fraction(1, 3)
++CUT_CARRIER_MIN_GAP = Fraction(1, 50)        # diagnostic threshold: a residual strip narrower than this is reported (never refused)
+ _TIE = 1e-9                                  # relative tie tolerance of the angle-list anchor rule
+ 
+ 
+ def cut_carrier_gate(report: dict | None, *, min_gap: Fraction = CUT_CARRIER_MIN_GAP) -> dict | None:
+-    """The residual families no in-face move can fix: the plane within eps h of a cell corner, or nearly containing
+-    a cell edge (a face cut line within eps h of the edge while the plane/edge crossing is not).  Their strips have
+-    aspect ratio ~ h / gap, so a cell whose smallest such gap is below min_gap h is refused with the degenerate-cut
+-    remedy (shift the world plane by one exact rational epsilon; every cell of the block shares it)."""
++    """DIAGNOSTIC (not a refusal): the residual families no in-face move can fix, the plane within eps h of a cell
++    corner or nearly containing a cell edge (a face cut line within eps h of the edge while the plane/edge crossing is
++    not).  Their strips have aspect ratio ~ h / gap.  They are harmless to the operator: a sweep of the strip family
++    to gap 0.002 h (pop_cut_0003, 2026-09-05) keeps every guard and the operator converges smoothly (energy steps
++    5e-3 -> 1.7e-4 as the gap shrinks), and the corner family lies in void (identical operator at every gap).  Their
++    long thin carrier triangles are single constrained cap triangles (no refinement, no size gradation) which the
++    volume mesher handles; the census carried strips of aspect 2.4e4 without a failure.  Kept for the receipt."""
+     if not report or not report.get("applied"):
+         return None
+     gap = report.get("min_unfixed_gap_over_h")
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+index 18252fd..ee29a9b 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+@@ -16,7 +16,8 @@ class SheetSolidContract:
+     port_collar_enabled: bool = False
+     carrier_grid_per_face: int = 32                      # P1 carrier 1/32 on every box face (decision of record 2026-09-03)
+     carrier_triangulation: str = "union jack: each carrier square is split by the diagonal joining its two corners of even lattice coordinate sum (exactly invariant under the 48 cube symmetries for an even carrier grid)"
+-    cut_carrier_merge: str = "cut cells: grid nodes within 1/10 carrier spacing of the cut have their crossings (and the node, on a box face) merged to one canonical point on the plane; every cut-face and clipped polygon is fanned by an isometry-invariant rule (lattice parity square, angle-list anchor, parity quad, exact centroid)"
++    cut_carrier_merge: str = "cut cells: grid nodes within 1/3 carrier spacing of the cut have their crossings (and the node, on a box face) merged to one canonical point on the plane (no carrier feature below 1/3 h = 0.0104, i.e. below half the sheet remesh size); every cut-face and clipped polygon is fanned by an isometry-invariant rule (lattice parity square, angle-list anchor, parity quad, exact centroid); residual strips of a plane nearly containing a cell edge or corner are reported, never refused (harmless: see cut_carrier)"
++    cap_feature_size: str = "cap PSLG feature-size invariant: a sheet chain vertex within 0.15 remesh size of a carrier node or carrier edge is moved onto it and a chain/carrier-edge crossing within that distance of the carrier node is snapped to it (carrier nodes never move); a nonmanifold volume mesh fails closed"
+     carrier_active_rule: str = "geometric superset: vertices of carrier triangles the band reaches within level tolerance 0.05"
+     empty_volume: float = 1.0e-6                        # material volume below which a cell carries no label (status EMPTY)
+     floating_fragments: str = "connected components touching no port face are removed"
+@@ -24,6 +25,7 @@ class SheetSolidContract:
+     thickness_scaling: str = "t_min = 0.184 tau_min; remesh size <= 0.6 t_min; marching-cubes grid >= 3 cells per t_min"
+     surface_gates: str = "watertight, zero verified self-intersections, zero cap-classification conflicts, boundary on planes"
+     element: str = "TET10 (straight-sided promotion of the Gmsh Tet4 mesh), E = 1, nu = 0.3"
++    volume_mesher: str = "Gmsh HXT (Algorithm3D 10) at a pinned generation thread count of 1 (byte-identical meshes), Netgen optimisation; a nonmanifold or crashed mesh fails closed, no retry (legacy Delaunay overlapped tetrahedra on well-shaped cap triangles and segfaulted on 2 of 60 cut cells)"
+     schur_solver: str = "MKL Pardiso on the internal block, supported carrier columns only"
+     operator_gates: str = "rigid-body residual <= 1e-10, min eigenvalue >= -1e-8 lambda_max, mesh port support inside the geometric active set"
+     density_law_reference: str = "Hao 2023 Table 2.2: C = 1.755 rho (tau = 0.4 -> rho = 0.228; measured 0.2286)"
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index aebccee..29ee8cb 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -266,13 +266,24 @@ def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: lis
+                              constraint_points: np.ndarray | None = None, constraint_segments: np.ndarray | None = None,
+                              max_area: float | None = None, quality: str = "q20", steiner_on_chains: bool = False, snap_relative: float = 0.3,
+                              orientation_sign: float = 1.0, classification_report: dict | None = None, unseeded_material: bool = True,
+-                             cap_flip_quality: float = 0.3):
++                             cap_flip_quality: float = 0.3, feature_size: float | None = None, fixed_vertices=None, can_move=None, fixed_targets=None):
+     """Constrained Delaunay triangulation of the material region on the plane.
+ 
+     chains: boundary chains (global vertex ids) of the already-built surface on this plane (closed or open);
+     constraint_points/segments: extra 3D points and 3D segments (pairs of points) that must appear in the triangulation
+     (carrier trace on a port face, the cube polygon on the cut plane).  Every chain edge crossed by a constraint is split
+     and the split is reported so the neighbouring surface triangles can be split identically.
++    feature_size: PSLG feature-size invariant.  A chain vertex within feature_size of a constraint point is moved onto
++    it and one within feature_size of a constraint segment is projected onto it, and a chain/constraint-segment crossing
++    within feature_size of a chain vertex is snapped to that chain vertex (the constraint segment is rerouted through
++    it, as the relative snap_relative rule already does); constraint points never move, chain
++    vertices in `fixed_vertices` (global ids on another clip plane) never move, constraint points in `fixed_targets`
++    (on another clip plane: ring nodes, already vertices of that plane's cap) are never targets, one chain vertex per
++    target, no vertex adjacent on the chain to a vertex already assigned to that target, and `can_move` (the caller's
++    fold check on the incident sheet triangles) must agree.  V is updated IN PLACE for moved chain vertices.  Snapping
++    chain/constraint-segment CROSSINGS to a carrier node is not done: it duplicates the node on the sheet and pinches
++    the surface (pop_cut_0165 / pop_cut_1125, 2026-09-05).  Without the invariant the cap carries features of 1e-4 and
++    smaller (a sheet vertex a hair from a carrier node) that Triangle refines and the volume mesher must grade to.
+     Returns (new vertex xyz, triangles in global ids, global ids of constraint points, chain-edge splits)."""
+     sheet_level_2d = level_fn if level_fn is not None else (lambda P3: np.where(is_material(P3), -1.0, 1.0))
+     classification_conflicts = [0]
+@@ -289,6 +300,74 @@ def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: lis
+             for g, k in lid.items():
+                 if k == j2:
+                     lid[g] = i2
++    moved_vertices = 0
++    if feature_size is not None and constraint_points is not None and len(pts2):
++        # feature-size invariant: chain vertices closer than feature_size to a carrier node / carrier edge are moved
++        # onto it (the sheet boundary shifts by at most feature_size, within the near-plane snap budget).  Rules that
++        # keep the sheet a manifold: one chain vertex per carrier node (the nearest), never a vertex adjacent on the
++        # chain to one already assigned to that node (no chain edge collapses onto a node), never a vertex that another
++        # PSLG vertex already occupies within 1e-7 after the move, never a vertex whose move folds an incident sheet
++        # triangle (can_move callback of the caller), never a vertex on another clip plane.
++        cpts2 = to2(constraint_points); fixed_local = {lid[g] for g in (fixed_vertices or ()) if g in lid}
++        segs_c = np.asarray(constraint_segments, dtype=np.int64).reshape(-1, 2) if constraint_segments is not None else np.zeros((0, 2), np.int64)
++        # a carrier node on another clip plane (a ring node) already is a vertex of that plane's cap: a chain vertex
++        # of this plane moved onto it would merge two surface vertices of different caps (a pinch); such nodes and
++        # the ring segments between them are never targets
++        ft = set(int(i) for i in (fixed_targets or ()))
++        dd_big = np.full(len(cpts2), np.inf)
++        if len(segs_c):
++            segs_c = segs_c[~(np.isin(segs_c[:, 0], list(ft)) & np.isin(segs_c[:, 1], list(ft)))]
++        nbr: dict[int, set[int]] = defaultdict(set)
++        for ch, cl in zip(chains, closed):
++            m = len(ch) if cl else len(ch) - 1
++            for k in range(m):
++                a_, b_ = lid[ch[k]], lid[ch[(k + 1) % len(ch)]]; nbr[a_].add(b_); nbr[b_].add(a_)
++        local_to_global = {}
++        for g, k in lid.items():
++            local_to_global.setdefault(k, g)
++        # candidates to carrier nodes, nearest first, one vertex per node
++        cand = []
++        for k, g in local_to_global.items():
++            if k in fixed_local:
++                continue
++            dd = np.linalg.norm(cpts2 - pts2[k], axis=1)
++            if ft:
++                dd[list(ft)] = np.inf
++            j = int(np.argmin(dd))
++            if dd[j] <= feature_size:
++                cand.append((float(dd[j]), k, j))
++        taken: dict[int, int] = {}; moved_local: dict[int, np.ndarray] = {}
++        for dist_, k, j in sorted(cand):
++            if j in taken:
++                continue
++            if any(taken.get(x) == j for x in nbr[k]):
++                continue
++            target = cpts2[j]
++            if np.any(np.linalg.norm(pts2 - target, axis=1) <= 1e-7):
++                continue                         # another chain vertex already sits on this node
++            if can_move is not None and not can_move(local_to_global[k], to3(target[None])[0]):
++                continue
++            taken[j] = k; moved_local[k] = target
++        # remaining vertices: project onto a nearby carrier edge (never onto a node another vertex took)
++        for k, g in local_to_global.items():
++            if k in fixed_local or k in moved_local or not len(segs_c):
++                continue
++            Pa = cpts2[segs_c[:, 0]]; Pb = cpts2[segs_c[:, 1]]; e = Pb - Pa; L2 = np.einsum("ij,ij->i", e, e)
++            w = pts2[k] - Pa; t = np.einsum("ij,ij->i", w, e) / L2; dist = np.abs(w[:, 0] * e[:, 1] - w[:, 1] * e[:, 0]) / np.sqrt(L2)
++            inner = (t > 1e-9) & (t < 1 - 1e-9) & (dist <= feature_size)
++            if not inner.any():
++                continue
++            i = int(np.argmin(np.where(inner, dist, np.inf))); target = Pa[i] + t[i] * e[i]
++            if np.any(np.linalg.norm(pts2 - target, axis=1) <= 1e-7) or (can_move is not None and not can_move(g, to3(target[None])[0])):
++                continue
++            moved_local[k] = target
++        for k, target in moved_local.items():
++            pts2[k] = target; V[local_to_global[k]] = to3(target[None])[0]; moved_vertices += 1
++        for g, k in lid.items():                    # collapsed duplicates (the 1e-7 pass above) follow their representative
++            if g != local_to_global[k] and k in moved_local:
++                V[g] = V[local_to_global[k]]
++    if classification_report is not None:
++        classification_report["chain_vertices_moved_by_feature_size"] = int(moved_vertices)
+     segs = []
+     for ch, cl in zip(chains, closed):
+         m = len(ch) if cl else len(ch) - 1
+@@ -336,9 +415,14 @@ def triangulate_plane_region(V: np.ndarray, chains: list[list[int]], closed: lis
+                     hit = np.where(np.isfinite(t) & (t > 1e-9) & (t < 1 - 1e-9) & (s > 1e-9) & (s < 1 - 1e-9))[0]
+                     for i in hit:
+                         # crossings close to a chain vertex are snapped onto it (avoids sliver splits of the sheet)
+-                        if s[i] < snap_relative:
++                        Lch = float(np.linalg.norm(B[i] - A[i]))
++                        near_a = s[i] < snap_relative or (feature_size is not None and s[i] * Lch <= feature_size)
++                        near_b = s[i] > 1 - snap_relative or (feature_size is not None and (1 - s[i]) * Lch <= feature_size)
++                        if near_a and near_b:                       # a chain edge shorter than two feature sizes: the nearer vertex
++                            near_a, near_b = (s[i] <= 0.5), (s[i] > 0.5)
++                        if near_a:
+                             splits.append((float(t[i]), int(seg_arr[i, 0])))
+-                        elif s[i] > 1 - snap_relative:
++                        elif near_b:
+                             splits.append((float(t[i]), int(seg_arr[i, 1])))
+                         else:
+                             j = add_point(p + t[i] * (q - p)); splits.append((float(t[i]), j)); chain_splits[int(i)].append((float(s[i]), j))
+@@ -1388,7 +1472,8 @@ class SheetSurfaceResult:
+ 
+ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_size: float = 0.02, carrier_n: int = 32, pad: int = 4, cap_max_area: float | None = None,
+                               quality: str = "q20", port_constraints: dict | None = None, constrain_carrier_edges: bool = True,
+-                              remesh_retry_factors: tuple[float, ...] = (1.0, 0.9, 1.12, 0.8), needle_quality: float = 0.05, thickness_scaling: bool = True) -> SheetSurfaceResult:
++                              remesh_retry_factors: tuple[float, ...] = (1.0, 0.9, 1.12, 0.8), needle_quality: float = 0.05, thickness_scaling: bool = True,
++                              cap_feature_fraction: float = 0.2) -> SheetSurfaceResult:
+     """Closed, carrier-conforming surface of the sheet solid.
+ 
+     n_per_unit / remesh_size: marching-cubes grid and isotropic remesh target (both refined automatically for thin walls
+@@ -1478,13 +1563,38 @@ def build_sheet_solid_surface(geometry, layout, *, n_per_unit: int = 64, remesh_
+             port_constraints[src] = (np.asarray(pts), np.asarray(edges, dtype=np.int64), keys)
+             report["active_carrier_nodes"][src] = int(len(used))
+     carrier_nodes: dict[str, dict[int, int]] = {}; caps = {}; classification: dict[str, dict] = {}
++    feature_size = cap_feature_fraction * float(remesh_size if remesh_size is not None else h)
++    report["cap_feature_size"] = feature_size
+     for name, n, d in planes:
+         chains, closed = boundary_chains_on_plane(V, F, n, d); cls_rep: dict = {}; classification[name] = cls_rep
+         if name in port_constraints and len(port_constraints[name][0]):
+             cpts, cedges, ckeys = port_constraints[name]
++            # chain vertices that also lie on another clip plane may not move (they belong to that plane's cap too)
++            chain_v = sorted({i for ch in chains for i in ch}); fixed = set(); fixed_t = set()
++            cpts_arr = np.asarray(cpts).reshape(-1, 3)
++            for other, n2, d2 in planes:
++                if other != name:
++                    if chain_v:
++                        on = np.abs(V[chain_v] @ n2 - d2) <= 1e-9; fixed.update(int(chain_v[k]) for k in np.where(on)[0])
++                    on_t = np.abs(cpts_arr @ n2 - d2) <= 1e-9; fixed_t.update(int(k) for k in np.where(on_t)[0])
++            v2t: dict[int, list[int]] = defaultdict(list)
++            if chain_v:
++                chain_set = set(chain_v)
++                for t_, f_ in enumerate(F):
++                    for v_ in f_:
++                        if int(v_) in chain_set:
++                            v2t[int(v_)].append(t_)
++            def can_move(g, xyz, _V=V, _F=F, _v2t=v2t):
++                """No incident sheet triangle may fold (normal turning by more than ~78 degrees) or degenerate."""
++                for t_ in _v2t.get(int(g), ()):
++                    f_ = _F[t_]; P_ = _V[f_].copy(); n0 = np.cross(P_[1] - P_[0], P_[2] - P_[0])
++                    P_[list(f_).index(int(g))] = xyz; n1 = np.cross(P_[1] - P_[0], P_[2] - P_[0])
++                    if np.linalg.norm(n1) < 1e-14 or (n0 @ n1) <= 0.2 * np.linalg.norm(n0) * np.linalg.norm(n1):
++                        return False
++                return True
+             new_xyz, tris_g, cids, splits, merged = triangulate_plane_region(V, chains, closed, n, d, is_material, level_fn=clipped_level, constraint_points=np.asarray(cpts).reshape(-1, 3),
+                                                                        constraint_segments=(np.asarray(cedges).reshape(-1, 2) if (len(cedges) and constrain_carrier_edges) else None), max_area=cap_max_area, quality=quality,
+-                                                                       classification_report=cls_rep, unseeded_material=False)
++                                                                       classification_report=cls_rep, unseeded_material=False, feature_size=feature_size, fixed_vertices=fixed, can_move=can_move, fixed_targets=fixed_t)
+             carrier_nodes[name] = {g: int(c) for g, c in zip(ckeys, cids) if not (isinstance(g, (int, np.integer)) and int(g) < 0)}
+         elif not chains:
+             caps[name] = {"chains": 0, "open_chains": 0, "triangles": 0, "area": 0.0, "edge_splits": 0}; continue
+@@ -1576,11 +1686,21 @@ class SheetMeshResult:
+     nonmanifold_facets: int = 0       # volume facets with more than two tetrahedra (a boundary-recovery failure); 0 in a valid mesh
+ 
+ 
++MESH_GENERATION_THREADS = 1     # HXT is deterministic for a fixed thread count only: pinned, so the mesh is byte-identical everywhere
++
++
+ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior_size_max: float = 0.05, algorithm3d: int = 10,
+                      netgen_optimize: bool = True, optimize_passes: int = 2, threads: int = 8, isolate: bool = True) -> SheetMeshResult:
+-    """Gmsh volume mesh of the closed surface.  With isolate=True Gmsh runs in a child process, so a Gmsh crash
+-    (segmentation fault on a degenerate boundary triangle) is reported as a RuntimeError instead of killing the
+-    production worker."""
++    """Gmsh volume mesh of the closed surface.  With isolate=True Gmsh runs in a child process, so a Gmsh crash is
++    reported as a RuntimeError instead of killing the production worker.
++
++    Algorithm of record (2026-09-05): HXT (algorithm3d = 10).  Gmsh's legacy Delaunay (1) overlaps tetrahedra on
++    ordinary, well-shaped cap triangles (pop_cut_0245: a cut-cap triangle of quality 0.15 with four tetrahedra on it)
++    and segfaults on two of 60 cut cells even after the carrier and cap feature-size invariants removed every small
++    feature; HXT meshed every one of those surfaces with the same quality (min dihedral 0.149 vs 0.149, 128 vs 129
++    sub-5 degree tetrahedra on pop_cut_0003).  HXT's result depends on the thread count (and only on it: two runs at
++    the same count are byte-identical), so generation runs with MESH_GENERATION_THREADS regardless of `threads`.
++    A nonmanifold or crashed mesh fails closed: there is no retry."""
+     if isolate:
+         import json, subprocess, sys, tempfile
+         with tempfile.TemporaryDirectory() as td:
+@@ -1598,19 +1718,14 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+             proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+             if proc.returncode != 0 or not result_path.exists():
+                 tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-6:]
+-                if algorithm3d != 10:      # Gmsh Delaunay occasionally crashes on a boundary sliver: one deterministic retry with HXT
+-                    return mesh_sheet_solid(surface, output_path, interior_size_max=interior_size_max, algorithm3d=10, netgen_optimize=netgen_optimize,
+-                                            optimize_passes=optimize_passes, threads=threads, isolate=True)
+                 raise RuntimeError(f"Gmsh worker failed (return code {proc.returncode}): " + " | ".join(tail))
+             payload = json.loads(result_path.read_text()); payload["mesh_path"] = Path(payload["mesh_path"])
+             if payload.get("nonmanifold_facets", 0):
+-                # Gmsh Delaunay's boundary recovery can overlap tetrahedra on a sliver-rich cap (first seen with the cut
+-                # cap constrained to the carrier, pop_cut_0003: 31 facets with up to 14 owners); the mesh is rejected here,
+-                # not downstream, and HXT is the same deterministic retry as for a crash
+-                if algorithm3d != 10:
+-                    return mesh_sheet_solid(surface, output_path, interior_size_max=interior_size_max, algorithm3d=10, netgen_optimize=netgen_optimize,
+-                                            optimize_passes=optimize_passes, threads=threads, isolate=True)
+-                raise RuntimeError(f"Gmsh (HXT) produced {payload['nonmanifold_facets']} nonmanifold volume facets")
++                # Gmsh Delaunay's boundary recovery overlaps tetrahedra when the surface carries features much smaller
++                # than the sheet triangles (a carrier merge radius of 1/10 h produced 0.003 cap edges next to 0.03 sheet
++                # triangles: 11 of 55 cut cells, 2026-09-05).  The root fix is upstream (carrier merge radius 1/3 h and
++                # the cap feature-size invariant); a nonmanifold mesh is a defect and fails closed here.
++                raise RuntimeError(f"Gmsh (algorithm {algorithm3d}) produced {payload['nonmanifold_facets']} nonmanifold volume facets")
+             return SheetMeshResult(**payload)
+     import gmsh
+     t0 = time.perf_counter(); V, F, labels = surface.V, surface.F, surface.labels
+@@ -1635,7 +1750,7 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+         gmsh.model.geo.synchronize()
+         gmsh.option.setNumber("Mesh.Algorithm3D", algorithm3d); gmsh.option.setNumber("Mesh.MeshSizeMax", interior_size_max)
+         gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1); gmsh.option.setNumber("Mesh.Optimize", 1)
+-        gmsh.option.setNumber("Mesh.OptimizeThreshold", 0.3); gmsh.option.setNumber("General.NumThreads", threads)
++        gmsh.option.setNumber("Mesh.OptimizeThreshold", 0.3); gmsh.option.setNumber("General.NumThreads", MESH_GENERATION_THREADS)
+         gmsh.option.setNumber("Mesh.OptimizeNetgen", 1 if netgen_optimize else 0)
+         gmsh.model.mesh.generate(3)
+         for _ in range(optimize_passes):
+diff --git a/tests/pred777h_full_cube_v1/test_cut_carrier.py b/tests/pred777h_full_cube_v1/test_cut_carrier.py
+index 228dcc5..a14fd44 100644
+--- a/tests/pred777h_full_cube_v1/test_cut_carrier.py
++++ b/tests/pred777h_full_cube_v1/test_cut_carrier.py
+@@ -65,6 +65,10 @@ def test_merge_bounds_the_aspect_ratio_and_keeps_the_trace_exact(plane) -> None:
+     after = aspect(merged)
+     assert before["cut_0"] > 100, "the fixture must exercise a near-degenerate crossing"
+     assert after["cut_0"] < 30 and max(after.values()) < 60
++    # the carrier has no feature below the merge radius (the surface-scale invariant behind the volume mesher's robustness)
++    coords, tris, _ = cpm.carrier_shell(merged, tuple(str(t.source_id) for t in merged.local_traces))
++    E = np.vstack([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [0, 2]]]); L = np.linalg.norm(coords[E[:, 0]] - coords[E[:, 1]], axis=1)
++    assert L.min() >= float(cc.CUT_CARRIER_MERGE_EPS * H) * 0.999
+     assert report["clusters"] >= 1 and report["merged_nodes"] >= 1
+     # the trace is still one conforming P1 surface: shared edges agree, every triangle is invertible for the prolongation
+     assert audit_global_cell_patch_shared_edge_trace_agreement(merged)["status"] == "PASS"
+@@ -82,13 +86,16 @@ def test_merge_bounds_the_aspect_ratio_and_keeps_the_trace_exact(plane) -> None:
+         assert tuple(merged.global_scalar_node_keys[i] for i in M.indices) == tuple(trace.global_node_ids)
+ 
+ 
+-def test_near_corner_cut_is_reported_and_gated() -> None:
++def test_near_corner_cut_is_reported_not_refused() -> None:
++    """A plane through a cell corner leaves box-face slivers no in-face move can remove; they are reported in the
++    receipt (diagnostic) and the trace is still a valid conforming carrier: the family is harmless (sweep 2026-09-05)."""
+     spec = spec_with(*NEAR_CORNER); base = base_layout(spec)
+     merged, report = cc.merge_cut_carrier(base, spec, carrier_n=N)
+     assert report["skipped"].get("corner", 0) >= 1
+     assert report["min_unfixed_gap_over_h"] < 0.01
+-    gate = cc.cut_carrier_gate(merged.diagnostics["cut_carrier_merge"])
+-    assert gate is not None and "corner" in gate["skipped"]
++    diag = cc.cut_carrier_gate(merged.diagnostics["cut_carrier_merge"])
++    assert diag is not None and "corner" in diag["skipped"]
++    assert audit_global_cell_patch_shared_edge_trace_agreement(merged)["status"] == "PASS"
+     assert cc.cut_carrier_gate(cc.merge_cut_carrier(base_layout(spec_with(*NEAR_TILTED)), spec_with(*NEAR_TILTED), carrier_n=N)[1] | {"applied": True}) is None
+ 
+ 
+-- 
+2.34.1
+

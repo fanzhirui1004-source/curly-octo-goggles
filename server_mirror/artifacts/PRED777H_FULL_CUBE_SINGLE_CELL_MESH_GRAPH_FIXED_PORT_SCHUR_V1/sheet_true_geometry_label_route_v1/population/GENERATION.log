@@ -1,0 +1,4 @@
+uncut: 700 cells from 1358 draws (rejection rate 0.48)
+cut: 1300 cells from 2514 draws (rejection rate 0.48)
+{"cut": {"bins": 124, "min_occupancy": 1, "max_occupancy": 21, "cells": 1300}, "uncut": {"bins": 11, "min_occupancy": 1, "max_occupancy": 104, "cells": 700}}
+2009 cells written to /root/autodl-tmp/_claude_diag/population/cells

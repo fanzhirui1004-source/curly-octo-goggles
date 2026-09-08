@@ -1,0 +1,480 @@
+From e1a465a683bdfcc4dfad2784919e3f5cfda017fc Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 23:59:57 +0800
+Subject: [PATCH 19/24] sheet route: the cut face is a port (skin coupling),
+ cut-face trace deliverable, Gmsh manifold check
+
+The cut surface carries load (a skin is attached to it), so it is a port like the box faces: the cut cap is built on
+the cut_0 carrier trace, the mesh adapter classifies cut facets as cut_0 and P interpolates them on that trace, the
+cut-face active set is the geometric triangle rule, a fragment attached to the cut face alone is kept, the rotation
+check matches carrier nodes by exact coordinates, and the contract domain says so. The block validation constrains
+the block's cut cap to the union of the cells' cut traces and ties its fine nodes in the constrained control.
+
+Gmsh Delaunay produced a volume mesh with 31 nonmanifold facets on a sliver-rich cut cap (pop_cut_0003, up to 14
+tetrahedra per facet); the cut caps are no worse than the box caps (59 cells), so mesh_sheet_solid now counts
+nonmanifold volume facets, rejects such a mesh itself and retries once with HXT (the existing crash retry), and the
+receipt records algorithm3d and nonmanifold_facets.
+
+Deliverable of the coupling contract: every label directory, PASS or EMPTY, writes CUT_FACE_TRACE.npz, the cell's
+cut_0 trace in world coordinates with global keys; the union over a block is one conforming triangulation of the cut
+plane (2x1x1 cut block: 3182 nodes, 0 key/coordinate conflicts, every edge in 2 triangles except the outer boundary).
+
+Results: pop_cut_0003 / pop_cut_0623 / tilt60_mid PASS with q 8868 / 4224 / 6804 (x1.25 to x1.51 over the free cut),
+rigid residual <= 1.9e-13; 2x1x1 cut block assembled vs constrained monolithic 4.0e-4 (tension) to 1.25e-2 (4H),
+interface mismatch 0. STEP6 report added. merge_cut_carrier refuses a second application.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X77H1Uihff2oEyM5T4qg7v
+---
+ .../STEP6_CUT_CARRIER_REPORT.md               | 168 ++++++++++++++++++
+ .../produce_sheet_label.py                    |   1 +
+ .../sheet_block_validation.py                 |  28 ++-
+ .../sheet_rotation_check.py                   |   4 +-
+ .../cut_carrier.py                            |   2 +
+ .../sheet_contract.py                         |   2 +-
+ .../sheet_label_pipeline.py                   |  27 ++-
+ .../sheet_solid_surface.py                    |  26 ++-
+ .../pred777h_full_cube_v1/test_cut_carrier.py |  21 +++
+ 9 files changed, 263 insertions(+), 16 deletions(-)
+ create mode 100644 artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
+
+diff --git a/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
+new file mode 100644
+index 0000000..79835f7
+--- /dev/null
++++ b/artifacts/PRED777H_FULL_CUBE_SINGLE_CELL_MESH_GRAPH_FIXED_PORT_SCHUR_V1/sheet_true_geometry_label_route_v1/STEP6_CUT_CARRIER_REPORT.md
+@@ -0,0 +1,168 @@
++# Step 6: cut-face carrier conditioning (fixed index set, bounded aspect ratio, symmetric fans)
++
++Sheet route, 2026-09-04.  Module `cut_carrier.py`, wired into `sheet_label_pipeline.build_carrier_layout` (constant
++`CUT_CARRIER_MERGE = True`), gate in `produce_sheet_label.py`, contract field `cut_carrier_merge`.
++
++## 1. Findings that motivated the change
++
++* **Index set.**  Every cut-face carrier node is a crossing of the cut plane with a line of the 1/32 background grid,
++  for any plane orientation: 160 random planes (polar angle 10.9° to 89.7°), 182 587 cut-face nodes, 0 off a grid
++  line.  The fixed index set of the cut port is therefore the 3·33·33 = 3267 grid lines (2·33·33 = 2178 for the c = 0
++  family, which is a prism: a 2-D polyline × 33 z-levels); the only continuous data per node is its crossing
++  parameter, a function of the plane.  Observed node counts: c = 0 population min 66 / median 1188 / max 2046;
++  tilted min 70 / median 1292 / max 2336.
++* **Conditioning.**  The frozen fan degenerates when the plane passes near a grid node (crossings nearly coincide)
++  or when a face cut line runs close to a face grid line (thin strips):
++
++  | population | metric | frozen carrier |
++  |---|---|---|
++  | c = 0, 240 real cells | cut-face max aspect ratio: median / p90 / worst | 19 / 94 / 6.3e3 |
++  | | box-face max aspect ratio: median / p90 / worst | 66 / 297 / 2.4e4 |
++  | | cells with a triangle above 100 / 1000 | 91 / 6 |
++  | tilted, 160 random planes | cut-face: median / p90 / worst | 854 / 6361 / 4.0e5 |
++  | | box-face: median / p90 / worst | 266 / 1472 / 1.9e4 |
++  | | cells with a triangle above 100 / 1000 | 152 / 71 |
++
++  The carrier slivers do not reach the volume mesh (the sub-5° tetrahedra of the census, median 0.19 %, are the same
++  in uncut cells and come from the sheet surface), so the damage is confined to the port basis: the carrier mass
++  whitening, the active-set rule and the training target.
++
++## 2. The pass (plan A)
++
++With h = 1/32 and eps = 1/10:
++
++1. **In-plane merge.**  For every grid node N near the cut (interior N: dist(N, plane) < eps h; N on one box face:
++   distance to that face's cut line < eps h; N on a cell edge: plane/edge crossing within eps h of N), the
++   crossings of the grid lines through N within √3 eps h of N, and N itself when it is a carrier node, are moved to
++   one canonical point: the projection of N on the plane / the nearest point of the face cut line / the plane-edge
++   crossing.  The point is on the plane and on every box face the merged nodes were on, so the trace stays exactly
++   planar and conforming with the box faces; the rule is a function of the global plane and grid only, so
++   neighbouring cells make the same decision (test: shared-face keys, coordinates and triangles identical).  A
++   carrier lattice node keeps its key (its slot moves by < eps h); other merged nodes are keyed by the exact world
++   coordinate of the canonical point.
++2. **Symmetric fans.**  Every cut-face polygon (plane ∩ grid cell) and every box-face polygon is retriangulated by
++   isometry-invariant rules: lattice squares by the Union Jack parity diagonal; other polygons by the fan whose sorted
++   angle list is lexicographically largest; a tied quadrilateral by the diagonal joining opposite vertices of even grid
++   parity; a remaining tie (a symmetric polygon: the c = 0 rectangles with mixed line families, the regular hexagons of
++   a body-diagonal plane) by a centroid node keyed by the exact centroid.  For the c = 0 rectangles no invariant
++   diagonal exists (the x↔y mirror maps each diagonal's labels to the other's), so the centroid there is forced.
++3. **Gate.**  Two families no in-face move can fix: the plane within eps h of a cell corner, and the plane nearly
++   containing a cell edge (a face cut line within eps h of the edge while the plane/edge crossing is not).  Their
++   strips have aspect ≈ h / gap.  A cell whose smallest such gap is below 1/50 h (aspect above 50) is refused with
++   status GEOMETRY_DEGENERATE and the existing remedy (translate the world plane by one exact rational epsilon).
++
++## 3. Results
++
++| population | metric | before | after |
++|---|---|---|---|
++| c = 0, 240 | cut-face max aspect: median / p90 / worst | 19.2 / 94.3 / 6325 | 7.00 / 11.3 / 22.9 |
++| | box-face max aspect: median / p90 / worst | 65.8 / 297 / 24400 | 7.65 / 12.4 / 40.8 |
++| | cells with a triangle above 30 / 100 | 189 / 91 | 1 / 0 |
++| | carrier nodes after / before (median, max) | | 1.057, 1.97 |
++| | cut-face polygons: parity quads / centroids (median) | | 672 / 288 |
++| tilted, 160 | cut-face max aspect: median / p90 / worst | 854 / 6361 / 403000 | 8.02 / 9.72 / 18.0 |
++| | box-face max aspect: median / p90 / worst | 266 / 1472 / 18800 | 9.03 / 9.94 / 45.6 |
++| | cells with a triangle above 30 / 100 | 160 / 152 | 1 / 0 |
++| | carrier nodes after / before (median, max) | | 0.951, 0.998 |
++| | cut-face polygons: anchor fans / centroids (median) | | 1124 / 0 |
++
++Shared-edge trace audit: 400 / 400 PASS.  Prolongation on interior samples of every rebuilt triangle: OK.  Merge time
++median 1.1 s per cell.  Residual worst triangles are needles of the unfixable families (edge lengths h, 0.02 h, h).
++
++**Gate frequency (full population, gap < 0.02 h):** c = 0 population, 1301 cells: 236 (18.1 %) carry an unfixable family within eps h, 11 (0.85 %) fall below the 0.02 h gate (smallest residual gap 0.0034 h; p10 0.030 h; median 0.071 h); carrier nodes after / before median 1.057, p95 1.175, max 1.97.  Tilted, 160 planes: 70 (43.8 %) carry a family, 2 (1.25 %) gated (smallest gap 0.0126 h); nodes after / before median 0.951, max 0.998.  One c = 0 cell is the exact degenerate case already refused by the chart compiler.
++
++**Tests** (`tests/pred777h_full_cube_v1/test_cut_carrier.py`, carrier 1/16): aspect bound and exact planarity for a
++near-degenerate vertical and a near-degenerate tilted plane; near-corner plane reported and gated; uncut cell untouched;
++two neighbouring cells agree on the shared face (keys, world coordinates, triangles); merged carrier invariant under all
++48 cube symmetries (node set and triangle set).  20 tests pass with the existing sheet-surface suite.
++
++**48-symmetry invariance at carrier 1/32, real cells:** 0 of 48 symmetries broken for pop_cut_0623 (4563 nodes, 192 centroids, 231 clusters), pop_cut_0003 (6387 nodes, 416 centroids, 132 clusters), tilt60_mid (5334 nodes, 0 centroids, 271 clusters) and tilt45_mid (4147 nodes, 0 centroids, 258 clusters): node set and triangle set of the merged layout of every symmetry image equal the image of the merged layout.
++
++**End-to-end labels through the merged pipeline** (fast preset):
++
++| cell | status | q | rigid residual | min eigenvalue | tets < 5° | clusters | carrier nodes |
++|---|---|---|---|---|---|---|---|
++| pop_cut_0623 (worst c = 0 sliver, aspect 6325) | PASS | 3066 | 1.7e-13 | −4.7e-17 | 115 | 231 | 4478 → 4563 |
++| pop_cut_0003 | PASS | 7116 | 1.0e-14 | −2.2e-17 | 260 | 132 | 6041 → 6387 |
++| tilt60_mid (polar 49.6°) | PASS | 4512 | 4.8e-15 | −2.1e-17 | 154 | 271 | 5749 → 5334 |
++| tilt45_mid (polar 49.1°) | PASS | 3549 | 9.0e-15 | −2.2e-17 | 84 | 258 | 4591 → 4147 |
++
++**Operator continuity across merge events** (pop_cut_0003, plane offset swept in 11 steps of 1/1500, each offset
++labelled independently at the fast preset; energies of 9 fixed smooth port fields, 6 uniform strains and 3 quadratics):
++the relative step between consecutive offsets is 0.9e-3 to 1.2e-3 at every step; the four steps at which the cluster
++count changes (165→132, 132→99, 99→132, 132→99) give 1.20e-3, 1.16e-3, 0.89e-3, 1.12e-3, indistinguishable from the
++steps without an event (0.89e-3 to 1.12e-3).  The threshold rule's discontinuity is below the geometric and mesh
++variation of one step; q was 7116 at all 11 offsets.
++
++## 4. What this settles and what it does not
++
++* The cut port has a fixed index set for any orientation (grid lines, plus grid-cell centroids where a fan tie is
++  forced); its conditioning is bounded (aspect ≤ ~25 on the cut face, ≤ ~50 on box faces at eps = 1/10) except for the
++  gated families; the rules are cube-symmetric and cross-cell consistent.
++* Not settled here: the cut face is still excluded from the port (task 2); the global cut-plane triangulation and the
++  EMPTY-cell geometry for the skin coupling (task 3); the residual families are gated, not fixed, and their frequency
++  is reported above.
++
++## 5. The cut face as a port (task 2)
++
++The cut face was excluded from the port at two places (`carrier_active_set` / `equivariant_active_nodes` dropped
++`cut_0` from the carrier shell; `compile_port` hid the cut plane from the mesh adapter).  Now: the cut cap is built on
++the `cut_0` carrier trace like a box-face cap (constraint points and carrier edges), the mesh adapter classifies cut
++facets as the port `cut_0`, P interpolates them on the cut trace, the active set on the cut face is the geometric
++triangle rule (the trace is cube-symmetric by construction), a fragment attached to the cut face alone is kept (it is
++load bearing through the skin), and the rotation check matches carrier nodes by exact coordinates.  The contract
++`domain` now reads "the cut surface is a port (cut_0 carrier trace, skin coupling), like the box faces".
++
++**Mesher.**  With the cut cap constrained to the carrier, Gmsh Delaunay (algorithm 1) produced a volume mesh with 31
++nonmanifold facets (up to 14 tetrahedra sharing a facet, volumes 1e-7 to 1e-22) on pop_cut_0003: a boundary-recovery
++failure on a sliver-rich cap.  The cut caps are not worse than the box caps (59 cut cells: cut-cap minimum quality median
++0.0028, fraction below 0.3 median 0.197; box caps 0.0012 and 0.160), so this is Gmsh, not the cut trace.  HXT on the
++same surface gives 0 nonmanifold facets.  `mesh_sheet_solid` now counts nonmanifold volume facets, rejects such a mesh
++itself (not downstream in the adapter) and retries once with HXT, the same deterministic retry already used for a
++Gmsh crash; the receipt records `algorithm3d` and `nonmanifold_facets`.
++
++**End-to-end labels with the cut port** (fast preset):
++
++| cell | status | ports | q (cut free → cut port) | rigid residual | min eigenvalue | algorithm3d |
++|---|---|---|---|---|---|---|
++| pop_cut_0003 | PASS | 6 box + cut_0 | 7116 → 8868 | 7.9e-15 | −3.2e-17 | 10 (HXT retry) |
++| pop_cut_0623 | PASS | 5 box + cut_0 | 3066 → 4224 | 1.9e-13 | −5.0e-17 | 1 |
++| tilt60_mid | PASS | 5 box + cut_0 | 4512 → 6804 | 3.9e-15 | −2.9e-17 | 1 |
++| pop_anchor_rho20 (uncut control) | PASS | 6 box | 5544 → 5544 | 2.9e-15 | −1.6e-17 | 1 |
++
++**2 × 1 × 1 cut block (plane 3x + 10y ≤ 9), cut face as a port in both cells and in the constrained monolithic control**
++(the block's cut cap conforms to the union of the two cut traces; the control ties the cut-face fine nodes of each
++cell to that cell's cut trace):
++
++| load | assembled vs constrained (cut port) | assembled vs constrained (cut free, before) | constrained vs free (cut port) | constrained vs free (cut free, before) |
++|---|---|---|---|---|
++| tension x | 4.0e-4 | 2.7e-4 | −0.99 % | −0.84 % |
++| shear y | 6.7e-4 | 1.3e-4 | −0.87 % | −0.39 % |
++| bending z | 8.7e-4 | 6.0e-4 | −5.2 % | −4.6 % |
++| wave 16H | 8.5e-4 | 5.3e-4 | −5.3 % | −4.6 % |
++| wave 8H | 4.1e-3 | 2.3e-3 | −12.8 % | −10.7 % |
++| wave 4H | 1.25e-2 | 9.1e-3 | −26.2 % | −23.5 % |
++
++Interface active-set mismatch 0; interface displacement vs the constrained control 0.0010 to 0.0033.  The assembly of the
++two labels reproduces the constrained monolithic model of the same block to the same order as before (the residual is
++the independent meshing of the two cells and the block).  The constrained-vs-free column is larger than before by 0.2 to
++2.7 points: it now includes the Ritz restriction of the cut face itself, which is exactly the coupling contract (the cut
++face displacement is a carrier P1 field).  Global carrier nodes of the block: 3264 (2230 with the cut free).
++
++## 6. The coupling deliverable (task 3)
++
++Every label directory, PASS or EMPTY, now carries `CUT_FACE_TRACE.npz` (`sheet_label_pipeline.write_cut_face_trace`):
++the cell's `cut_0` carrier trace in world coordinates (`node_keys`, `node_xyz_world`, `triangles`, `on_box_face_ring`,
++`plane_world`, the placement, the layout signature).  Node keys are the global carrier keys, identical in neighbouring
++cells for the ring nodes on a shared face, so the union over a block is one conforming triangulation of the cut plane.
++
++Checks: the 2 × 1 × 1 cut block stitches to 3182 nodes / 6144 triangles with 0 key-or-coordinate conflicts, every edge
++in exactly 2 triangles except the 218 outer-boundary edges, all of which lie on the block's outer box faces (the 33
++shared ring nodes of the internal face are the vertical cut line's 33 z-levels); a 2 × 2 × 1 block with two cells
++entirely on the discarded side of the plane skips those cells (no material, no cut face) and stitches identically.
++EMPTY cell pop_cut_0015 (volume 0) exports 228 nodes / 384 triangles / 70 ring nodes with status EMPTY.  Test:
++`test_cut_face_trace_export_stitches_across_neighbours`.
++
++**Cost of the cut port**: q grows by ×1.25 to ×1.51 on the cells above (the cut trace is 20 to 45 % of the carrier
++nodes and its band-touched fraction is comparable to the box faces); dense storage grows by the square.  The
++production plan's storage and throughput figures must be re-measured on the new definition (open item).
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index b53dee1..dd4a67a 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -87,6 +87,7 @@ def main() -> int:
+     layout = pipe.build_carrier_layout(charts, spec, carrier_n=a.carrier_n)
+     receipt["carrier_triangulation"] = pipe.CARRIER_TRIANGULATION
+     receipt["cut_carrier_merge"] = layout.diagnostics.get("cut_carrier_merge")
++    receipt["cut_face_trace"] = pipe.write_cut_face_trace(out / "CUT_FACE_TRACE.npz", layout, spec)
+     near = pipe.cc.cut_carrier_gate(receipt["cut_carrier_merge"])
+     if near is not None:                        # the plane nearly contains a cell corner or edge: same status and remedy
+         receipt["status"] = "GEOMETRY_DEGENERATE"; receipt["geometry_degeneracy"] = near
+diff --git a/scripts/pred777h_full_cube_v1/sheet_block_validation.py b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+index 8b21b20..ef3b2be 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_block_validation.py
++++ b/scripts/pred777h_full_cube_v1/sheet_block_validation.py
+@@ -2,6 +2,8 @@
+ """N x N x N block of sheet cells (true geometry, no collars) under the parent thickness field: monolithic Tet10 (free
+ interfaces, free external faces) vs fixed-port assembly of the per-cell labels, plus the constrained-monolithic
+ control (all external port traces tied to the P1 carrier, interfaces free).  Loads on the x = N face, x = 0 fixed.
++The cut face is a port (2026-09-04): the block's cut cap conforms to the union of the cells' cut_0 traces and the
++constrained control ties its fine nodes to those traces, like the box faces.
+ 
+ --shape 2 1 1 reproduces the STEP3 block; --shape 2 2 2 is the eight-cell assembly validation.
+ """
+@@ -157,6 +159,9 @@ def main() -> int:
+     for src, (axis, side) in FACE_AXIS.items():
+         shifts = [off for off, _, _ in cells if off[axis] == (shape[axis] - 1 if side else 0)]
+         pc[src] = face_constraint(src, shifts)
++    if local_cut_plane(spec) is not None:          # the cut face is a port: its cap conforms to every cell's cut_0 trace
++        pc["cut_0"] = face_constraint("cut_0", [off for off, _, _ in cells])
++        rep["cut_face_constraint"] = {"points": int(len(pc["cut_0"][0])), "segments": int(len(pc["cut_0"][1]))}
+     bg = BlockGeom(spec, geom, shape); t0 = time.perf_counter()
+     surf = sss.build_sheet_solid_surface(bg, layout0, n_per_unit=a.n_per_unit, remesh_size=a.remesh_size, carrier_n=a.carrier_n, port_constraints=pc, pad=6)
+     rep["surface"] = {k: v for k, v in surf.report.items() if k not in ("caps", "remesh_attempts", "non_manifold_examples", "surface_quality_by_label", "cap_classification")}
+@@ -229,6 +234,19 @@ def main() -> int:
+         Ploc = build_global_cell_patch_p1_prolongation(tr, fxyz - offv, geometric_tolerance=1e-9)
+         Pg = (Ploc @ lay.local_to_global_scalar[src].tocsr()).tocsr()
+         return np.array([fine_lookup[key(p)] for p in fxyz]), Pg
++    def cut_P(off):
++        """Fine cut-face vertices inside the cell at `off` -> that cell's cut_0 trace (the cut face is a port)."""
++        fv = np.unique(F[labs == "cut_0"]); fxyz = V[fv]; offv = np.array(off, dtype=float)
++        lay = layouts[off]; traces = {str(t.source_id): t for t in lay.local_traces}
++        if "cut_0" not in traces or not len(fv):
++            return np.zeros(0, dtype=np.int64), sp.csr_matrix((0, lay.scalar_node_count))
++        inside = np.all((fxyz >= offv - 1e-9) & (fxyz <= offv + 1.0 + 1e-9), axis=1)
++        fv = fv[inside]; fxyz = fxyz[inside]
++        if not len(fv):
++            return np.zeros(0, dtype=np.int64), sp.csr_matrix((0, lay.scalar_node_count))
++        Ploc = build_global_cell_patch_p1_prolongation(traces["cut_0"], fxyz - offv, geometric_tolerance=1e-9)
++        Pg = (Ploc @ lay.local_to_global_scalar["cut_0"].tocsr()).tocsr()
++        return np.array([fine_lookup[key(p)] for p in fxyz]), Pg
+     def clip_P(Pg, off):
+         Pl = Pg.tolil(copy=True); c2s_ = c2s[off]; lay2c_ = labels[off][3]
+         for r in range(Pl.shape[0]):
+@@ -282,11 +300,11 @@ def main() -> int:
+     print(f"assembled carrier system: {nG} nodes, zero-stiffness nodes {len(zero_nodes)}, smallest eigenvalues {evs}", flush=True)
+     # ---- (c) constrained monolithic: every external port-face fine node tied to the carrier ----
+     tied = {}
+-    for src, (axis, side) in FACE_AXIS.items():
+-        if src == "box_x_min": continue
+-        for off, _, _ in cells:
+-            if off[axis] != (shape[axis] - 1 if side else 0): continue
+-            fids, Pg = face_P(src, off)
++    tie_jobs = [(src, off) for src, (axis, side) in FACE_AXIS.items() if src != "box_x_min" for off, _, _ in cells if off[axis] == (shape[axis] - 1 if side else 0)]
++    tie_jobs += [("cut_0", off) for off, _, _ in cells]          # the cut face is a port in every cut cell
++    for src, off in tie_jobs:
++        if True:
++            fids, Pg = cut_P(off) if src == "cut_0" else face_P(src, off)
+             if not len(fids):
+                 continue
+             Pl = clip_P(Pg, off).tolil(); cols = global_cols(off, Pg.shape[1])
+diff --git a/scripts/pred777h_full_cube_v1/sheet_rotation_check.py b/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
+index 8ff3634..c812096 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
++++ b/scripts/pred777h_full_cube_v1/sheet_rotation_check.py
+@@ -78,8 +78,8 @@ def main() -> int:
+         R = np.eye(3, dtype=np.int8) if tag == "ID" else ((-np.eye(3)).astype(np.int8) if tag == "INV" else (proper[int(tag[1:])].matrix if tag[0] == "R" else improper[int(tag[1:])]))
+         man = rotated_manifest(payload, R, out / f"cell_{tag}")
+         S1, C1, act1, norms1, layout1, port1 = label(man, a, out / f"label_{tag}")
+-        # permutation of active carrier nodes induced by R (by exact grid coordinates, denominator carrier_n)
+-        key = lambda p: tuple(np.rint(np.asarray(p) * a.carrier_n).astype(int).tolist())
++        # permutation of active carrier nodes induced by R (by coordinates rounded to 1e-9; box-face lattice, cut-face crossings and merged nodes alike)
++        key = lambda p: tuple(np.round(np.asarray(p) * 1e9).astype(np.int64).tolist())      # exact coordinates: cut-face nodes are off the lattice
+         idx1 = {key(p): i for i, p in enumerate(C1)}; perm = np.empty(len(C0), dtype=np.int64); missing = 0
+         for i, p in enumerate(C0):
+             k = key(rot.rotate_points(p[None], R)[0]); perm[i] = idx1.get(k, -1); missing += perm[i] < 0
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py
+index 3213918..dc215a6 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/cut_carrier.py
+@@ -142,6 +142,8 @@ def merge_cut_carrier(layout, spec, *, carrier_n: int, eps: Fraction = CUT_CARRI
+     """A copy of the layout with the cut-face merge and the symmetric polygon fans applied; (layout, report)."""
+     if not any(str(t.source_id) == "cut_0" for t in layout.local_traces):
+         return layout, {"applied": False, "reason": "no cut face"}
++    if (layout.diagnostics.get("cut_carrier_merge") or {}).get("applied"):
++        raise ValueError("merge_cut_carrier applied twice: the pass is not idempotent (build_carrier_layout already merges)")
+     # the vendored generator is importable once the backend has registered it (same lazy idiom as the pipeline)
+     from cctpms.port.global_cell_patch_trace_layout import _world_to_uv_exact
+     from cctpms.port.global_planar_surface_p1 import _canonical_hash, _point_payload, _world_identity_point
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+index fd1a78e..18252fd 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_contract.py
+@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
+ class SheetSolidContract:
+     schema: str = "pred777h_sheet_solid_label_contract_v1"
+     material: str = "abs(phi) <= tau(x), phi = sum cos(2 pi x_i) (Schwarz P), tau trilinear from the global P1 thickness field"
+-    domain: str = "unit cube clipped by the world cut plane; the cut surface is a free surface, never a port"
++    domain: str = "unit cube clipped by the world cut plane; the cut surface is a port (cut_0 carrier trace, skin coupling), like the box faces"
+     port_collar_enabled: bool = False
+     carrier_grid_per_face: int = 32                      # P1 carrier 1/32 on every box face (decision of record 2026-09-03)
+     carrier_triangulation: str = "union jack: each carrier square is split by the diagonal joining its two corners of even lattice coordinate sum (exactly invariant under the 48 cube symmetries for an even carrier grid)"
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+index b07c905..08c3ef8 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -47,6 +47,28 @@ def build_carrier_layout(charts, spec, *, carrier_n: int = 32, triangulation: st
+     return layout
+ 
+ 
++def write_cut_face_trace(path: Path, layout, spec) -> dict | None:
++    """The cell's cut_0 carrier trace in world coordinates: the coupling deliverable of the skin (decision of record
++    2026-09-04: the cut face is a port).  Node keys are the global carrier keys (identical in neighbouring cells for
++    shared ring nodes), so the union over a block is one conforming triangulation of the cut plane.  Written for
++    EMPTY cells too (the plane crosses them; the skin has no hole there).  Returns a summary or None without a cut."""
++    traces = {str(t.source_id): t for t in layout.local_traces}
++    if "cut_0" not in traces:
++        return None
++    tr = traces["cut_0"]; R = np.asarray(spec.placement.rotation, dtype=np.float64); T = np.asarray([float(v) for v in spec.placement.translation])
++    local = np.asarray(tr.node_coordinates, dtype=np.float64); world = local @ R.T + T
++    ring = np.zeros(len(local), dtype=bool)
++    for src, other in traces.items():                       # nodes shared with a box face lie on the boundary ring of the cut polygon
++        if src != "cut_0":
++            ring |= np.isin(np.asarray(tr.global_node_ids), np.asarray(other.global_node_ids))
++    chart = tr.chart; n = np.asarray([float(v) for v in chart.plane_normal_exact]); d = float(chart.plane_offset_exact)
++    n_world = R @ n; d_world = d + float(n_world @ T)
++    np.savez(path, node_keys=np.asarray(tr.global_node_ids), node_xyz_world=world, node_xyz_local=local, triangles=np.asarray(tr.triangles, dtype=np.int64),
++             on_box_face_ring=ring, plane_world=np.asarray([*n_world, d_world]), placement_translation=T, placement_rotation=R,
++             carrier_triangulation=np.asarray([layout.diagnostics.get("carrier_triangulation", "")]), layout_semantic_signature=np.asarray([layout.semantic_signature]))
++    return {"path": str(path), "nodes": int(len(local)), "triangles": int(len(tr.triangles)), "ring_nodes": int(ring.sum())}
++
++
+ @dataclass
+ class PortStage:
+     artifact: object
+@@ -59,9 +81,10 @@ class PortStage:
+ 
+ def compile_port(mesh_path: Path, geometry, spec, layout, *, carrier_n: int = 32) -> PortStage:
+     """Fixed port of a sheet-solid mesh on the geometric active carrier set (P is never modified).  Raises when the
+-    mesh port support escapes the geometric active set."""
++    mesh port support escapes the geometric active set.  The cut face is a port (its facets are classified as cut_0
++    and interpolated by the cut_0 carrier trace), so a skin attached to it couples through the carrier."""
+     t0 = time.perf_counter()
+-    art = adapter.mesh_artifact_from_cgal_medit(mesh_path, geometry=dc_replace(geometry, cut_plane=None), mesher_version="5.4",
++    art = adapter.mesh_artifact_from_cgal_medit(mesh_path, geometry=geometry, mesher_version="5.4",       # cut_0 is a port
+                                                 mesher_parameters=MESHER_PARAMETERS, plane_tolerance=1e-10, source_geometry_hash=spec.spec_hash)
+     port = fpa.compile_fixed_port(art, spec, layout)
+     active = sss.geometric_active_mask(geometry, layout, port, carrier_n=carrier_n)
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+index b2a33a0..aebccee 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_solid_surface.py
+@@ -1009,10 +1009,12 @@ def _face_band_samples(geometry, planes, box_max, src, carrier_n: int, samples_p
+ def carrier_active_set(geometry, layout, active_ports, *, carrier_n: int | None = None, samples: int = 48, interior_margin: float = 0.003, level_tolerance: float = 0.05) -> tuple[np.ndarray, list, dict]:
+     """Mesh-independent carrier TRIANGLES the material band reaches on each port face (band = |phi| <= tau within
+     level_tolerance, retained side of the cut), by barycentric sampling of every carrier trace triangle: these are the
+-    cap constraints (PSLG) and the support points.  Returns (shell coords, per-face triangle arrays restricted to the
++    cap constraints (PSLG) and the support points.  The cut face is a port like the box faces (skin coupling,
++    decision of record 2026-09-04): its cap is constrained to the cut_0 carrier trace and its nodes are active by
++    the same triangle rule (the trace is cube-symmetric by construction, see cut_carrier).  Returns (shell coords, per-face triangle arrays restricted to the
+     touched triangles, {face: {triangle index: material support point well inside the triangle and the band}}).
+     carrier_n is accepted for API symmetry with equivariant_active_nodes and unused here."""
+-    shell_coords, _, per_face = carrier_shell(layout, tuple(a for a in active_ports if a != "cut_0"))
++    shell_coords, _, per_face = carrier_shell(layout, tuple(active_ports))       # box faces AND the cut face (a port)
+     planes = clip_planes(geometry)
+     bary = np.asarray([(i / samples, j / samples, 1 - (i + j) / samples) for i in range(samples + 1) for j in range(samples + 1 - i)])
+     kept = []; support_points: dict[str, dict[int, np.ndarray]] = {}
+@@ -1125,13 +1127,14 @@ def split_all_t_junctions(V: np.ndarray, F: np.ndarray, labels, tol: float = 1e-
+ 
+ 
+ def drop_floating_components(V: np.ndarray, F: np.ndarray, labels: np.ndarray) -> tuple[np.ndarray, np.ndarray, dict]:
+-    """Connected components (by shared edges) of the closed surface that contain no port-face triangle are loose fragments
+-    of the sheet cut off by the clip planes; they carry no load and are removed (they would add floating rigid modes)."""
++    """Connected components (by shared edges) of the closed surface that contain no port-face triangle (box face or cut
++    face) are loose fragments of the sheet cut off by the clip planes; they carry no load and are removed (they would
++    add floating rigid modes).  A fragment attached to the cut face alone is kept: the cut face is a port."""
+     comps = _components(F); keep = np.zeros(len(F), bool); dropped = 0; dropped_area = 0.0
+     P = V[F]; area = 0.5 * np.linalg.norm(np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0]), axis=1)
+     for c in comps:
+         c = np.asarray(c)
+-        if np.any((labels[c] != "tpms_free") & (labels[c] != "cut_0")):
++        if np.any(labels[c] != "tpms_free"):
+             keep[c] = True
+         else:
+             dropped += 1; dropped_area += float(area[c].sum())
+@@ -1570,6 +1573,7 @@ class SheetMeshResult:
+     seconds: float
+     carrier_nodes_preserved: int
+     algorithm3d: int = 0
++    nonmanifold_facets: int = 0       # volume facets with more than two tetrahedra (a boundary-recovery failure); 0 in a valid mesh
+ 
+ 
+ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior_size_max: float = 0.05, algorithm3d: int = 10,
+@@ -1599,6 +1603,14 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+                                             optimize_passes=optimize_passes, threads=threads, isolate=True)
+                 raise RuntimeError(f"Gmsh worker failed (return code {proc.returncode}): " + " | ".join(tail))
+             payload = json.loads(result_path.read_text()); payload["mesh_path"] = Path(payload["mesh_path"])
++            if payload.get("nonmanifold_facets", 0):
++                # Gmsh Delaunay's boundary recovery can overlap tetrahedra on a sliver-rich cap (first seen with the cut
++                # cap constrained to the carrier, pop_cut_0003: 31 facets with up to 14 owners); the mesh is rejected here,
++                # not downstream, and HXT is the same deterministic retry as for a crash
++                if algorithm3d != 10:
++                    return mesh_sheet_solid(surface, output_path, interior_size_max=interior_size_max, algorithm3d=10, netgen_optimize=netgen_optimize,
++                                            optimize_passes=optimize_passes, threads=threads, isolate=True)
++                raise RuntimeError(f"Gmsh (HXT) produced {payload['nonmanifold_facets']} nonmanifold volume facets")
+             return SheetMeshResult(**payload)
+     import gmsh
+     t0 = time.perf_counter(); V, F, labels = surface.V, surface.F, surface.labels
+@@ -1651,6 +1663,8 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+     P = nxyz[tets]; vol = np.einsum("ij,ij->i", P[:, 1] - P[:, 0], np.cross(P[:, 2] - P[:, 0], P[:, 3] - P[:, 0])) / 6.0
+     neg = vol < 0; tets[neg, 1], tets[neg, 2] = tets[neg, 2].copy(), tets[neg, 1].copy(); vol = np.abs(vol)
+     dih = _min_dihedral(nxyz, tets)
++    faces = np.sort(np.vstack([tets[:, [0, 1, 2]], tets[:, [0, 1, 3]], tets[:, [0, 2, 3]], tets[:, [1, 2, 3]]]), axis=1)
++    nonmanifold = int((np.unique(faces, axis=0, return_counts=True)[1] > 2).sum())
+     output_path.parent.mkdir(parents=True, exist_ok=True)
+     with open(output_path, "w") as fh:
+         fh.write("MeshVersionFormatted 2\nDimension 3\n")
+@@ -1659,4 +1673,4 @@ def mesh_sheet_solid(surface: SheetSurfaceResult, output_path: Path, *, interior
+         fh.write("End\n")
+     return SheetMeshResult(mesh_path=output_path, node_count=int(len(nxyz)), tet_count=int(len(tets)), material_volume=float(vol.sum()),
+                            min_dihedral_degrees=float(dih.min()), tets_below_5deg=int((dih < 5).sum()), tets_below_10deg=int((dih < 10).sum()),
+-                           seconds=time.perf_counter() - t0, carrier_nodes_preserved=preserved, algorithm3d=int(algorithm3d))
++                           seconds=time.perf_counter() - t0, carrier_nodes_preserved=preserved, algorithm3d=int(algorithm3d), nonmanifold_facets=nonmanifold)
+diff --git a/tests/pred777h_full_cube_v1/test_cut_carrier.py b/tests/pred777h_full_cube_v1/test_cut_carrier.py
+index bbd1b7e..228dcc5 100644
+--- a/tests/pred777h_full_cube_v1/test_cut_carrier.py
++++ b/tests/pred777h_full_cube_v1/test_cut_carrier.py
+@@ -140,3 +140,24 @@ def test_merged_carrier_is_invariant_under_the_48_cube_symmetries() -> None:
+         perm = np.array([idx1.get(key(p), -1) for p in RC])
+         assert (perm >= 0).all() and len(C1) == len(C0), f"node set not invariant under {R.tolist()}"
+         assert {tuple(sorted(int(perm[v]) for v in t)) for t in F0} == {tuple(sorted(int(v) for v in t)) for t in F1}, f"triangulation not invariant under {R.tolist()}"
++
++
++def test_cut_face_trace_export_stitches_across_neighbours(tmp_path) -> None:
++    """The coupling deliverable: two neighbouring cells export their cut_0 traces in world coordinates with global keys;
++    the ring nodes on the shared face have the same keys and coordinates in both files."""
++    a, b, c = 9, 4, 5; d = Fraction(9) + Fraction(4, 2) + Fraction(5, 2) + Fraction(1, 1000)
++    infos = {}; files = {}
++    for tag, origin in (("left", (0, 0, 0)), ("right", (1, 0, 0))):
++        spec = spec_with(a, b, c, d, origin=origin); charts, *_ = compile_full_cube_geometry_inputs(spec)
++        layout = pipe.build_carrier_layout(charts, spec, carrier_n=N)
++        infos[tag] = pipe.write_cut_face_trace(tmp_path / f"{tag}.npz", layout, spec); files[tag] = np.load(tmp_path / f"{tag}.npz")
++    assert infos["left"]["nodes"] > 0 and infos["right"]["nodes"] > 0
++    L, R = files["left"], files["right"]
++    lk = {str(k): tuple(np.round(x, 9).tolist()) for k, x in zip(L["node_keys"], L["node_xyz_world"])}
++    rk = {str(k): tuple(np.round(x, 9).tolist()) for k, x in zip(R["node_keys"], R["node_xyz_world"])}
++    shared = set(lk) & set(rk)
++    assert len(shared) >= 3, "the cut polygons of the two cells share their ring on the common face"
++    assert all(lk[k] == rk[k] for k in shared), "shared ring nodes have identical world coordinates in both exports"
++    assert all(abs(lk[k][0] - 1.0) < 1e-9 for k in shared), "the shared ring lies on the common face x = 1"
++    n, dd = L["plane_world"][:3], L["plane_world"][3]
++    assert np.abs(L["node_xyz_world"] @ n - dd).max() < 1e-9 and np.abs(R["node_xyz_world"] @ n - dd).max() < 1e-9
+-- 
+2.34.1
+

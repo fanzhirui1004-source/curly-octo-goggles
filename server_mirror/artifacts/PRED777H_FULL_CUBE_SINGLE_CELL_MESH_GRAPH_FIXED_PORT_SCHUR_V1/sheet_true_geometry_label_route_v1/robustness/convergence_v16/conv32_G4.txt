@@ -1,0 +1,4 @@
+supported carrier nodes 1572, q_supported 4716, lowfreq vector modes 300
+G4_v16_h03 vs G4_v16_h02: lowfreq 0.0130 whitened 1.2761 raw 1.2575 p50 +0.0048 p95 0.0109
+G4_v16_h03 vs G4_v16_h015: lowfreq 0.0145 whitened 1.3111 raw 1.2845 p50 +0.0067 p95 0.0142
+G4_v16_h02 vs G4_v16_h015: lowfreq 0.0028 whitened 0.0735 raw 0.0637 p50 +0.0018 p95 0.0035

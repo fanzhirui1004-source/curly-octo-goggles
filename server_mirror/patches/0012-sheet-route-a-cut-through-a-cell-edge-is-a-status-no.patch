@@ -1,0 +1,169 @@
+From 288b1c21d108580df8da6f2494945d4c4cefee80 Mon Sep 17 00:00:00 2001
+From: Codex Executor <codex-executor@local>
+Date: Fri, 4 Sep 2026 15:21:07 +0800
+Subject: [PATCH 12/24] sheet route: a cut through a cell edge is a status, not
+ a crash
+
+The census of record lost one cell without a JSON line: the 45 degree
+centred anchor, whose plane x + y = 1 CONTAINS two vertical cell edges.
+The exact chart compiler refuses such a plane ("patch box_x_min has
+coincident semantic edges"), and the refusal happens in geometry
+compilation, before the mesher's own error handling, so both the census
+tool and the production command died with a traceback and produced no
+record at all.  Measured across a sweep of vertical planes: the compiler
+refuses exactly when the plane contains a cell edge, that is when the
+local offset d equals one of 0, a, b, a + b, and accepts every other
+offset.
+
+sheet_label_pipeline.cut_contains_a_cell_edge decides this by exact
+rational arithmetic on the cell's local cut plane, before any meshing.
+The production command now writes a receipt with status
+GEOMETRY_DEGENERATE, the census tool prints the same status on its JSON
+line, and the population generator moves its 45 degree anchor off the
+degenerate offset (0.53 instead of 0.50).
+
+The remedy for a real structure is in the receipt: move the WORLD cut
+plane by one exact rational epsilon.  All cells keep the same plane, so
+the shared-face carrier traces still agree exactly (verified today for a
+cut crossing a shared face: identical node and triangle sets on both
+sides).
+---
+ .../make_sheet_population.py                  |  6 ++--
+ .../produce_sheet_label.py                    |  6 ++++
+ .../sheet_surface_check.py                    |  5 +++
+ .../sheet_label_pipeline.py                   | 33 +++++++++++++++++++
+ .../test_sheet_solid_surface.py               | 30 +++++++++++++++++
+ 5 files changed, 78 insertions(+), 2 deletions(-)
+
+diff --git a/scripts/pred777h_full_cube_v1/make_sheet_population.py b/scripts/pred777h_full_cube_v1/make_sheet_population.py
+index a2987c7..2060a9a 100644
+--- a/scripts/pred777h_full_cube_v1/make_sheet_population.py
++++ b/scripts/pred777h_full_cube_v1/make_sheet_population.py
+@@ -86,8 +86,10 @@ def main() -> int:
+     for name, direction in (("axis_x", np.array([1.0, 0, 0])), ("diag", np.array([1.0, 1.0, 1.0]) / np.sqrt(3))):
+         g = DTAU_MAX * direction; mean = 0.5 * (TAU_MIN + TAU_MAX); corners = np.clip(corners_from(mean, g, np.zeros(3)), TAU_MIN, TAU_MAX)
+         records.append(write_case(out, f"{a.prefix}_anchor_grad_{name}", corners, None, {"kind": "anchor_gradient", "tau_mean": mean, "gradient_magnitude": float(DTAU_MAX), "corner_span": float(corners.max() - corners.min())}))
+-    for name, (na, nb) in (("theta00", (1.0, 0.0)), ("theta45", (1.0, 1.0))):
+-        records.append(write_case(out, f"{a.prefix}_anchor_cut_{name}", [0.4] * 8, (na, nb, 0.0, 0.5 * (na + nb)), {"kind": "anchor_cut", "tau_mean": 0.4, "gradient_magnitude": 0.0, "corner_span": 0.0, "theta_deg": 45.0 if nb else 0.0, "offset_fraction": 0.5}))
++    # the centred 45 deg plane x + y = 1 CONTAINS two vertical cell edges, which the exact chart compiler refuses
++    # (measured 2026-09-04; see sheet_label_pipeline.cut_contains_a_cell_edge), so the anchor is offset off it.
++    for name, (na, nb), off in (("theta00", (1.0, 0.0), 0.5), ("theta45", (1.0, 1.0), 0.53)):
++        records.append(write_case(out, f"{a.prefix}_anchor_cut_{name}", [0.4] * 8, (na, nb, 0.0, off * (na + nb)), {"kind": "anchor_cut", "tau_mean": 0.4, "gradient_magnitude": 0.0, "corner_span": 0.0, "theta_deg": 45.0 if nb else 0.0, "offset_fraction": off}))
+     # Sobol designs
+     for kind, n, dims in (("uncut", a.n_uncut, 7), ("cut", a.n_cut, 9)):
+         sampler = qmc.Sobol(d=dims, scramble=True, seed=a.seed + (1 if kind == "cut" else 0))
+diff --git a/scripts/pred777h_full_cube_v1/produce_sheet_label.py b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+index a6d19aa..ef8d5f9 100644
+--- a/scripts/pred777h_full_cube_v1/produce_sheet_label.py
++++ b/scripts/pred777h_full_cube_v1/produce_sheet_label.py
+@@ -75,6 +75,12 @@ def main() -> int:
+                      "contract": SheetSolidContract().as_dict(), "timing": {}}
+ 
+     _, spec, geom = snap.load_geometry_manifest(a.geometry_manifest)
++    degenerate = pipe.cut_contains_a_cell_edge(spec)
++    if degenerate is not None:
++        receipt["status"] = "GEOMETRY_DEGENERATE"; receipt["geometry_degeneracy"] = degenerate
++        (out / "LABEL_RECEIPT.json").write_text(json.dumps(receipt, indent=1, default=float))
++        (out / "LABEL_RECEIPT.md").write_text(f"# Sheet label: {a.case_id}\n\n- status: **GEOMETRY_DEGENERATE**: {degenerate['reason']}\n- remedy: {degenerate['remedy']}\n")
++        print(f"{a.case_id}: GEOMETRY_DEGENERATE ({degenerate['reason']})"); return 0
+     charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
+     layout = pipe.build_carrier_layout(charts, spec, carrier_n=a.carrier_n)
+     receipt["carrier_triangulation"] = pipe.CARRIER_TRIANGULATION
+diff --git a/scripts/pred777h_full_cube_v1/sheet_surface_check.py b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+index bfd965d..1502c9f 100644
+--- a/scripts/pred777h_full_cube_v1/sheet_surface_check.py
++++ b/scripts/pred777h_full_cube_v1/sheet_surface_check.py
+@@ -13,6 +13,11 @@ fcb = import_module(f'{P}.full_cube_backend'); snap = import_module(f'{P}.mesher
+ ap = argparse.ArgumentParser(); ap.add_argument('manifest'); ap.add_argument('n', type=int); ap.add_argument('h', type=float); ap.add_argument('--mesh', action='store_true'); ap.add_argument('--size-max', type=float, default=0.04); ap.add_argument('--carrier-n', type=int, default=32); ap.add_argument('--threads', type=int, default=2)
+ a = ap.parse_args(); gm = Path(a.manifest)
+ _, spec, geom = snap.load_geometry_manifest(gm)
++_degenerate = pipe.cut_contains_a_cell_edge(spec)
++if _degenerate is not None:
++    print(json.dumps({'case': gm.parent.name, 'n': a.n, 'h': a.h, 'status': 'GEOMETRY_DEGENERATE', 'error': _degenerate['reason'],
++                      'tau': [round(float(t), 4) for t in geom.tau_corners], 'cut': None if geom.cut_plane is None else [round(float(v), 4) for v in geom.cut_plane]}))
++    sys.exit(0)
+ charts, *_ = fcb.compile_full_cube_geometry_inputs(spec)
+ layout = pipe.build_carrier_layout(charts, spec, carrier_n=a.carrier_n)
+ out = {'case': gm.parent.name, 'n': a.n, 'h': a.h, 'tau': [round(float(t), 4) for t in geom.tau_corners], 'cut': None if geom.cut_plane is None else [round(float(v), 4) for v in geom.cut_plane]}
+diff --git a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+index f87bb1b..cef14b6 100644
+--- a/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
++++ b/src/pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1/sheet_label_pipeline.py
+@@ -129,3 +129,36 @@ def load_carrier_norms(npz_path: Path) -> tuple[np.ndarray, np.ndarray]:
+ 
+ 
+ __all__ = ["MESHER_PARAMETERS", "PortStage", "SchurStage", "carrier_norms", "compile_port", "load_carrier_norms", "load_schur", "schur_label"]
++
++
++def cut_contains_a_cell_edge(spec) -> dict | None:
++    """The exact chart compiler refuses a world cut plane that CONTAINS one of the cell's box edges: the cut's trace
++    on a port face then coincides with an edge of that face ("coincident semantic edges"), and for a plane through
++    an edge of the retained side the half-space intersection degenerates.  Measured 2026-09-04: a vertical plane
++    a x + b y <= d is refused exactly when d is one of {0, a, b, a+b} in the cell's local frame, that is when the
++    plane passes through a vertical edge of the cell, and accepted otherwise.
++
++    This is not a hazard of the mesher but of the geometry: it is decided by exact rational arithmetic before any
++    meshing, so it is reported as a status rather than raised as a crash.  A world cut that hits it can be moved by
++    one exact rational epsilon GLOBALLY (all cells keep the same plane, so the shared-face traces still agree).
++
++    Returns None when the cut is admissible, else a dict describing the coincidence."""
++    from fractions import Fraction
++
++    cut = getattr(spec, "cut_plane_local", None)           # make_cell_spec already carries the world cut in cell coordinates
++    if cut is None:
++        return None
++    a, b, c, d_local = (Fraction(cut.a), Fraction(cut.b), Fraction(cut.c), Fraction(cut.d))
++    coefficients = (a, b, c)
++    for axis in range(3):                                   # edges along `axis`: the other two coordinates are 0 or 1
++        if coefficients[axis] != 0:
++            continue                                        # a plane not parallel to this edge direction cannot contain such an edge
++        others = [k for k in range(3) if k != axis]
++        for u in (Fraction(0), Fraction(1)):
++            for v in (Fraction(0), Fraction(1)):
++                if coefficients[others[0]] * u + coefficients[others[1]] * v == d_local:
++                    return {"reason": "the cut plane contains a cell edge (the exact chart compiler refuses it)",
++                            "edge_direction_axis": axis, "edge_coordinates": {f"x{others[0]}": str(u), f"x{others[1]}": str(v)},
++                            "plane_local": [str(a), str(b), str(c), str(d_local)],
++                            "remedy": "move the WORLD cut plane by one exact rational epsilon (all cells share it, so the shared-face traces still agree)"}
++    return None
+diff --git a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+index 910f6b1..1beaeb1 100644
+--- a/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
++++ b/tests/pred777h_full_cube_v1/test_sheet_solid_surface.py
+@@ -263,3 +263,33 @@ def test_unionjack_carrier_triangulation_is_cube_symmetric(fixture) -> None:
+     assert broken_frozen >= len(matrices) - 1, "the frozen fan is not symmetric (this is the defect being fixed)"
+     # node identity is untouched: only which diagonal splits each square changes
+     assert unionjack.global_scalar_node_keys == layout.global_scalar_node_keys
++
++
++def test_degenerate_cut_through_a_cell_edge_is_detected_before_meshing() -> None:
++    """The exact chart compiler refuses a cut plane containing a cell edge; the route detects it by exact arithmetic
++    so the case gets a status and a receipt instead of an uncaught error (population census 2026-09-04)."""
++    from fractions import Fraction
++
++    from pred777h_full_cube_single_cell_mesh_graph_fixed_port_schur_v1 import sheet_label_pipeline as pipe
++    from generated_cell.pred768_canonical_geometry_spec import CanonicalRationalPlane
++
++    field = make_parent_p1_field(field_id="DEGENERATE_TEST", base=Fraction(2, 5))
++
++    def spec_with(a, b, d, origin=(Fraction(0), Fraction(0), Fraction(0))):
++        return make_cell_spec(thickness_field=field, cell_world_origin=origin, cell_id="degenerate",
++                              parent_world_cut_id="CUT", world_cut=CanonicalRationalPlane("cut_0", "cut_0", Fraction(a), Fraction(b), Fraction(0), Fraction(d)))
++
++    # x + y <= 1 passes through the vertical edges at (1,0) and (0,1): refused by the compiler
++    assert pipe.cut_contains_a_cell_edge(spec_with(1, 1, 1)) is not None
++    assert pipe.cut_contains_a_cell_edge(spec_with(1, 1, 0)) is not None
++    assert pipe.cut_contains_a_cell_edge(spec_with(1, 1, 2)) is not None
++    assert pipe.cut_contains_a_cell_edge(spec_with(2, 1, 3)) is not None
++    # generic offsets are admissible
++    assert pipe.cut_contains_a_cell_edge(spec_with(1, 1, Fraction(53, 50))) is None
++    assert pipe.cut_contains_a_cell_edge(spec_with(2, 1, Fraction(3, 2))) is None
++    assert pipe.cut_contains_a_cell_edge(spec_with(1, 0, Fraction(1, 2))) is None
++    # the test is in the CELL's frame: one world plane can be degenerate for one cell and generic for its neighbour,
++    # so the check belongs to the cell, not to the cut
++    world = (Fraction(1), Fraction(3), Fraction(3))          # x + 3y = 3 contains the edge (0,1) of the cell at the origin
++    assert pipe.cut_contains_a_cell_edge(spec_with(*world)) is not None
++    assert pipe.cut_contains_a_cell_edge(spec_with(*world, origin=(Fraction(1), Fraction(0), Fraction(0)))) is None
+-- 
+2.34.1
+

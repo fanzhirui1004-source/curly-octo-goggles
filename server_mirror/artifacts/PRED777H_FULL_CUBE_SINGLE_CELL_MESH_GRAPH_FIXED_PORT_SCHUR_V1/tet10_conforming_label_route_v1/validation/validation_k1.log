@@ -1,0 +1,11 @@
+monolithic mesh: 37083 nodes, 131757 tets, volume 0.77294 (2 cells = 0.77294), 11s
+Tet10 dof 709056, assembled 10s
+monolithic factorized 12s
+constrained system: dropped 3747 empty (unsupported carrier) rows
+constrained-monolithic factorized
+tension_x {'compliance_monolithic': 12.93786, 'compliance_fixed_port': 12.10888, 'compliance_rel_diff': -0.064074, 'compliance_monolithic_x2_constrained': 12.335854, 'constrained_vs_free': -0.046531, 'assembled_vs_constrained': -0.0184, 'interface_disp_rel_l2': 0.009231, 'loaded_face_disp_rel_l2': 0.084539}
+shear_y {'compliance_monolithic': 136.732318, 'compliance_fixed_port': 135.741122, 'compliance_rel_diff': -0.007249, 'compliance_monolithic_x2_constrained': 136.641171, 'constrained_vs_free': '-6.666e-04', 'assembled_vs_constrained': -0.006587, 'interface_disp_rel_l2': 0.007766, 'loaded_face_disp_rel_l2': 0.007209}
+bending_z {'compliance_monolithic': 0.717614, 'compliance_fixed_port': 0.654485, 'compliance_rel_diff': -0.08797, 'compliance_monolithic_x2_constrained': 0.671089, 'constrained_vs_free': -0.064834, 'assembled_vs_constrained': -0.024741, 'interface_disp_rel_l2': 0.008215, 'loaded_face_disp_rel_l2': 0.042694}
+wave_8H {'compliance_monolithic': 1.038011, 'compliance_fixed_port': 0.762609, 'compliance_rel_diff': -0.265317, 'compliance_monolithic_x2_constrained': 0.816741, 'constrained_vs_free': -0.213167, 'assembled_vs_constrained': -0.066279, 'interface_disp_rel_l2': 0.023584, 'loaded_face_disp_rel_l2': 0.281798}
+wave_4H {'compliance_monolithic': 0.273497, 'compliance_fixed_port': 0.181491, 'compliance_rel_diff': -0.336405, 'compliance_monolithic_x2_constrained': 0.191119, 'constrained_vs_free': -0.301201, 'assembled_vs_constrained': -0.050378, 'interface_disp_rel_l2': 0.050986, 'loaded_face_disp_rel_l2': 0.314991}
+wave_2H {'compliance_monolithic': 0.050188, 'compliance_fixed_port': 0.024258, 'compliance_rel_diff': -0.516656, 'compliance_monolithic_x2_constrained': 0.024968, 'constrained_vs_free': -0.502517, 'assembled_vs_constrained': -0.028422, 'interface_disp_rel_l2': 0.012367, 'loaded_face_disp_rel_l2': 0.439785}

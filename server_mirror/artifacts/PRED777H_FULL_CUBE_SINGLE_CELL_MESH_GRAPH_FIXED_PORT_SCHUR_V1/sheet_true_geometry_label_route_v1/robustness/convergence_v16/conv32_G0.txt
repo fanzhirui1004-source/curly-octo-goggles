@@ -1,0 +1,4 @@
+supported carrier nodes 1881, q_supported 5643, lowfreq vector modes 360
+G0_v16_h03 vs G0_v16_h02: lowfreq 0.0063 whitened 0.1535 raw 0.1371 p50 +0.0044 p95 0.0079
+G0_v16_h03 vs G0_v16_h015: lowfreq 0.0086 whitened 0.1648 raw 0.1456 p50 +0.0061 p95 0.0106
+G0_v16_h02 vs G0_v16_h015: lowfreq 0.0026 whitened 0.0732 raw 0.0635 p50 +0.0016 p95 0.0032

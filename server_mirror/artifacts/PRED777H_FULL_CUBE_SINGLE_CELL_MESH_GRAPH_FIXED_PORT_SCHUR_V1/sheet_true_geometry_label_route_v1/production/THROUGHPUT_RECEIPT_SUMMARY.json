@@ -1,0 +1,966 @@
+{
+ "throughput": [
+  {
+   "case": "pop_cut_0050",
+   "status": "PASS",
+   "tau_min": 0.1826078173921826,
+   "tets": 70254,
+   "q": 4149,
+   "timing": {
+    "empty_screen": 1.5023737139999866,
+    "surface_and_mesh": 31.03255808725953,
+    "fixed_port": 27.97226842865348,
+    "memory_budget_wait": 18.0,
+    "schur": 47.22519963979721,
+    "total": 157.23659550398588
+   },
+   "memory_reserved_gb": 13.960619999999999
+  },
+  {
+   "case": "pop_cut_0161",
+   "status": "PASS",
+   "tau_min": 0.4988807488807489,
+   "tets": 30093,
+   "q": 2499,
+   "timing": {
+    "empty_screen": 0.9039589166641235,
+    "surface_and_mesh": 8.821976091712713,
+    "fixed_port": 11.188997473567724,
+    "memory_budget_wait": 0.0,
+    "schur": 14.53093959018588,
+    "total": 52.9551016241312
+   },
+   "memory_reserved_gb": 5.954445
+  },
+  {
+   "case": "pop_cut_0203",
+   "status": "PASS",
+   "tau_min": 0.5397389033942559,
+   "tets": 117249,
+   "q": 6288,
+   "timing": {
+    "empty_screen": 1.0100755989551544,
+    "surface_and_mesh": 29.275202378630638,
+    "fixed_port": 40.29130193218589,
+    "memory_budget_wait": 156.0,
+    "schur": 186.33684888482094,
+    "total": 450.4672170430422
+   },
+   "memory_reserved_gb": 22.90221
+  },
+  {
+   "case": "pop_cut_0217",
+   "status": "PASS",
+   "tau_min": 0.4351668444309005,
+   "tets": 114148,
+   "q": 6399,
+   "timing": {
+    "empty_screen": 2.0230947099626064,
+    "surface_and_mesh": 39.07573501393199,
+    "fixed_port": 49.44769720733166,
+    "memory_budget_wait": 0.0,
+    "schur": 169.4061898700893,
+    "total": 300.73879113420844
+   },
+   "memory_reserved_gb": 22.399065
+  },
+  {
+   "case": "pop_cut_0233",
+   "status": "PASS",
+   "tau_min": 0.3790523690773067,
+   "tets": 124412,
+   "q": 6942,
+   "timing": {
+    "empty_screen": 1.6911741681396961,
+    "surface_and_mesh": 59.882919393479824,
+    "fixed_port": 57.86496624723077,
+    "memory_budget_wait": 9.0,
+    "schur": 195.04618879035115,
+    "total": 364.9684512540698
+   },
+   "memory_reserved_gb": 24.32592
+  },
+  {
+   "case": "pop_cut_0346",
+   "status": "PASS",
+   "tau_min": 0.4817872117400419,
+   "tets": 10503,
+   "q": 1599,
+   "timing": {
+    "empty_screen": 1.1060390137135983,
+    "surface_and_mesh": 4.584308885037899,
+    "fixed_port": 8.571137148886919,
+    "memory_budget_wait": 0.0,
+    "schur": 3.966553684324026,
+    "total": 30.292843837291002
+   },
+   "memory_reserved_gb": 2.1539249999999996
+  },
+  {
+   "case": "pop_cut_0349",
+   "status": "PASS",
+   "tau_min": 0.6958591147072822,
+   "tets": 140510,
+   "q": 7200,
+   "timing": {
+    "empty_screen": 0.9727405644953251,
+    "surface_and_mesh": 32.194026712328196,
+    "fixed_port": 47.40595806390047,
+    "memory_budget_wait": 348.0,
+    "schur": 213.56099097803235,
+    "total": 678.0187593698502
+   },
+   "memory_reserved_gb": 27.27918
+  },
+  {
+   "case": "pop_cut_0573",
+   "status": "PASS",
+   "tau_min": 0.27226044983054326,
+   "tets": 53113,
+   "q": 3264,
+   "timing": {
+    "empty_screen": 0.9399245232343674,
+    "surface_and_mesh": 15.32193973660469,
+    "fixed_port": 18.20315307378769,
+    "memory_budget_wait": 0.0,
+    "schur": 26.82729122787714,
+    "total": 87.26632134988904
+   },
+   "memory_reserved_gb": 10.59264
+  },
+  {
+   "case": "pop_cut_0655",
+   "status": "PASS",
+   "tau_min": 0.7066526365018122,
+   "tets": 95693,
+   "q": 5940,
+   "timing": {
+    "empty_screen": 0.9685525670647621,
+    "surface_and_mesh": 27.790234085172415,
+    "fixed_port": 40.85014436021447,
+    "memory_budget_wait": 9.0,
+    "schur": 139.44631649181247,
+    "total": 249.10402020812035
+   },
+   "memory_reserved_gb": 18.665235
+  },
+  {
+   "case": "pop_cut_0715",
+   "status": "PASS",
+   "tau_min": 0.42934377330350487,
+   "tets": 53070,
+   "q": 3453,
+   "timing": {
+    "empty_screen": 1.7399185709655285,
+    "surface_and_mesh": 15.419667448848486,
+    "fixed_port": 24.21729389578104,
+    "memory_budget_wait": 63.0,
+    "schur": 44.35666321218014,
+    "total": 170.8260141685605
+   },
+   "memory_reserved_gb": 10.42308
+  },
+  {
+   "case": "pop_cut_0735",
+   "status": "PASS",
+   "tau_min": 0.44262131065532767,
+   "tets": 130521,
+   "q": 7164,
+   "timing": {
+    "empty_screen": 0.9136900193989277,
+    "surface_and_mesh": 29.886198543012142,
+    "fixed_port": 43.41226518899202,
+    "memory_budget_wait": 171.0,
+    "schur": 185.96947947889566,
+    "total": 469.7852511666715
+   },
+   "memory_reserved_gb": 25.41861
+  },
+  {
+   "case": "pop_cut_0760",
+   "status": "PASS",
+   "tau_min": 0.5510611735330836,
+   "tets": 40726,
+   "q": 3216,
+   "timing": {
+    "empty_screen": 0.9765651263296604,
+    "surface_and_mesh": 13.028573386371136,
+    "fixed_port": 14.76416763663292,
+    "memory_budget_wait": 99.0,
+    "schur": 32.172930642962456,
+    "total": 180.06449504196644
+   },
+   "memory_reserved_gb": 8.02629
+  },
+  {
+   "case": "pop_cut_1008",
+   "status": "PASS",
+   "tau_min": 0.44803334201615,
+   "tets": 10296,
+   "q": 1110,
+   "timing": {
+    "empty_screen": 0.8688004463911057,
+    "surface_and_mesh": 3.9936160556972027,
+    "fixed_port": 4.324177008122206,
+    "memory_budget_wait": 0.0,
+    "schur": 3.545150939375162,
+    "total": 25.370591964572668
+   },
+   "memory_reserved_gb": 2.078865
+  },
+  {
+   "case": "pop_cut_1031",
+   "status": "PASS",
+   "tau_min": 0.5826931284677763,
+   "tets": 120227,
+   "q": 6417,
+   "timing": {
+    "empty_screen": 1.0466405302286148,
+    "surface_and_mesh": 38.029357962310314,
+    "fixed_port": 56.53611722588539,
+    "memory_budget_wait": 222.0,
+    "schur": 173.94216490909457,
+    "total": 530.7195841409266
+   },
+   "memory_reserved_gb": 23.45598
+  },
+  {
+   "case": "pop_cut_1085",
+   "status": "PASS",
+   "tau_min": 0.7458814372811,
+   "tets": 17326,
+   "q": 1923,
+   "timing": {
+    "empty_screen": 0.9218901917338371,
+    "surface_and_mesh": 6.722337648272514,
+    "fixed_port": 10.505398698151112,
+    "memory_budget_wait": 0.0,
+    "schur": 6.393842324614525,
+    "total": 38.882616963237524
+   },
+   "memory_reserved_gb": 3.497715
+  },
+  {
+   "case": "pop_cut_1090",
+   "status": "PASS",
+   "tau_min": 0.4453012543697306,
+   "tets": 9388,
+   "q": 1080,
+   "timing": {
+    "empty_screen": 1.0900703743100166,
+    "surface_and_mesh": 4.046666175127029,
+    "fixed_port": 6.363758657127619,
+    "memory_budget_wait": 0.0,
+    "schur": 3.1440873481333256,
+    "total": 26.466398131102324
+   },
+   "memory_reserved_gb": 1.917675
+  },
+  {
+   "case": "pop_cut_1094",
+   "status": "PASS",
+   "tau_min": 0.6477836453832613,
+   "tets": 8166,
+   "q": 1488,
+   "timing": {
+    "empty_screen": 1.8920021429657936,
+    "surface_and_mesh": 5.313290625810623,
+    "fixed_port": 8.842363562434912,
+    "memory_budget_wait": 0.0,
+    "schur": 3.8286224864423275,
+    "total": 29.421438973397017
+   },
+   "memory_reserved_gb": 1.6903350000000001
+  },
+  {
+   "case": "pop_cut_1137",
+   "status": "PASS",
+   "tau_min": 0.2246578660530459,
+   "tets": 31497,
+   "q": 2160,
+   "timing": {
+    "empty_screen": 1.1120289899408817,
+    "surface_and_mesh": 12.763689689338207,
+    "fixed_port": 11.868953868746758,
+    "memory_budget_wait": 0.0,
+    "schur": 12.744795843958855,
+    "total": 59.879950758069754
+   },
+   "memory_reserved_gb": 6.341219999999999
+  },
+  {
+   "case": "pop_cut_1225",
+   "status": "PASS",
+   "tau_min": 0.3079064587973274,
+   "tets": 18511,
+   "q": 1287,
+   "timing": {
+    "empty_screen": 1.3171919286251068,
+    "surface_and_mesh": 7.546429358422756,
+    "fixed_port": 10.99888152629137,
+    "memory_budget_wait": 51.0,
+    "schur": 8.654643580317497,
+    "total": 95.2877884246409
+   },
+   "memory_reserved_gb": 3.6940049999999998
+  },
+  {
+   "case": "pop_cut_1261",
+   "status": "PASS",
+   "tau_min": 0.531740614334471,
+   "tets": 88970,
+   "q": 5451,
+   "timing": {
+    "empty_screen": 0.9611250124871731,
+    "surface_and_mesh": 20.292960911989212,
+    "fixed_port": 28.249963872134686,
+    "memory_budget_wait": 93.0,
+    "schur": 110.08986892551184,
+    "total": 281.34298648685217
+   },
+   "memory_reserved_gb": 17.405955
+  },
+  {
+   "case": "pop_uncut_0296",
+   "status": "PASS",
+   "tau_min": 0.28259855376720316,
+   "tets": 116682,
+   "q": 6492,
+   "timing": {
+    "empty_screen": 0.9163304157555103,
+    "surface_and_mesh": 32.85192096233368,
+    "fixed_port": 58.94284712523222,
+    "memory_budget_wait": 93.0,
+    "schur": 145.12857816368341,
+    "total": 366.6989799067378
+   },
+   "memory_reserved_gb": 22.869
+  },
+  {
+   "case": "pop_uncut_0302",
+   "status": "PASS",
+   "tau_min": 0.4142894530227689,
+   "tets": 115121,
+   "q": 6429,
+   "timing": {
+    "empty_screen": 0.9284543320536613,
+    "surface_and_mesh": 28.772876348346472,
+    "fixed_port": 44.37917943671346,
+    "memory_budget_wait": 0.0,
+    "schur": 176.89277927577496,
+    "total": 286.00600650534034
+   },
+   "memory_reserved_gb": 22.588335
+  },
+  {
+   "case": "pop_uncut_0334",
+   "status": "PASS",
+   "tau_min": 0.6940913775334936,
+   "tets": 155605,
+   "q": 8859,
+   "timing": {
+    "empty_screen": 0.9659562334418297,
+    "surface_and_mesh": 32.658375319093466,
+    "fixed_port": 57.09694115817547,
+    "memory_budget_wait": 555.0,
+    "schur": 281.4724996201694,
+    "total": 961.2701408676803
+   },
+   "memory_reserved_gb": 30.189104999999998
+  },
+  {
+   "case": "pop_uncut_0411",
+   "status": "PASS",
+   "tau_min": 0.43107117521872784,
+   "tets": 153226,
+   "q": 8742,
+   "timing": {
+    "empty_screen": 0.9124651066958904,
+    "surface_and_mesh": 34.20035618916154,
+    "fixed_port": 56.28230020403862,
+    "memory_budget_wait": 300.0,
+    "schur": 311.495090585202,
+    "total": 739.4319592751563
+   },
+   "memory_reserved_gb": 29.735504999999996
+  },
+  {
+   "case": "pop_uncut_0486",
+   "status": "PASS",
+   "tau_min": 0.36082615237313637,
+   "tets": 101270,
+   "q": 5793,
+   "timing": {
+    "empty_screen": 0.9914183355867863,
+    "surface_and_mesh": 25.202576514333487,
+    "fixed_port": 37.950608499348164,
+    "memory_budget_wait": 0.0,
+    "schur": 106.10591062530875,
+    "total": 203.43086309358478
+   },
+   "memory_reserved_gb": 19.972844999999996
+  },
+  {
+   "case": "pop_uncut_0536",
+   "status": "PASS",
+   "tau_min": 0.32679738562091504,
+   "tets": 101299,
+   "q": 5769,
+   "timing": {
+    "empty_screen": 0.9426103755831718,
+    "surface_and_mesh": 25.16989816725254,
+    "fixed_port": 37.84442961961031,
+    "memory_budget_wait": 0.0,
+    "schur": 104.58734348788857,
+    "total": 201.2988896779716
+   },
+   "memory_reserved_gb": 19.974059999999998
+  },
+  {
+   "case": "pop_uncut_0590",
+   "status": "PASS",
+   "tau_min": 0.2236003445305771,
+   "tets": 116211,
+   "q": 6345,
+   "timing": {
+    "empty_screen": 0.9583060406148434,
+    "surface_and_mesh": 29.231500286608934,
+    "fixed_port": 44.485251270234585,
+    "memory_budget_wait": 0.0,
+    "schur": 174.70837748795748,
+    "total": 282.78831792250276
+   },
+   "memory_reserved_gb": 22.797584999999998
+  },
+  {
+   "case": "pop_uncut_0653",
+   "status": "PASS",
+   "tau_min": 0.23224717642476958,
+   "tets": 76725,
+   "q": 4680,
+   "timing": {
+    "empty_screen": 1.0309216640889645,
+    "surface_and_mesh": 23.887844990938902,
+    "fixed_port": 31.005762994289398,
+    "memory_budget_wait": 0.0,
+    "schur": 74.07926839590073,
+    "total": 162.83239299431443
+   },
+   "memory_reserved_gb": 15.39297
+  },
+  {
+   "case": "pop_uncut_0657",
+   "status": "PASS",
+   "tau_min": 0.2896973466003317,
+   "tets": 90290,
+   "q": 4968,
+   "timing": {
+    "empty_screen": 0.8503879085183144,
+    "surface_and_mesh": 25.4669356495142,
+    "fixed_port": 36.111735582351685,
+    "memory_budget_wait": 42.0,
+    "schur": 84.6325527317822,
+    "total": 222.406178727746
+   },
+   "memory_reserved_gb": 17.910854999999998
+  },
+  {
+   "case": "pop_uncut_0682",
+   "status": "PASS",
+   "tau_min": 0.31900357368089133,
+   "tets": 103506,
+   "q": 5832,
+   "timing": {
+    "empty_screen": 1.0538193695247173,
+    "surface_and_mesh": 42.68546121940017,
+    "fixed_port": 46.13468688726425,
+    "memory_budget_wait": 39.0,
+    "schur": 148.9465337395668,
+    "total": 311.6342148296535
+   },
+   "memory_reserved_gb": 20.400389999999998
+  }
+ ],
+ "throughput2": [
+  {
+   "case": "pop_cut_0229",
+   "status": "PASS",
+   "tau_min": 0.7294201861130994,
+   "tets": 112275,
+   "q": 6885,
+   "timing": {
+    "empty_screen": 0.8655394539237022,
+    "surface_and_mesh": 25.491356391459703,
+    "fixed_port": 40.59859064593911,
+    "memory_budget_wait": 0.0,
+    "schur": 135.7619971781969,
+    "total": 234.18688299879432
+   },
+   "memory_reserved_gb": 21.874184999999997
+  },
+  {
+   "case": "pop_cut_0239",
+   "status": "PASS",
+   "tau_min": 0.5956647398843931,
+   "tets": 143325,
+   "q": 8007,
+   "timing": {
+    "empty_screen": 0.926307737827301,
+    "surface_and_mesh": 33.66800360754132,
+    "fixed_port": 59.866858664900064,
+    "memory_budget_wait": 54.0,
+    "schur": 213.79389384761453,
+    "total": 401.52033714205027
+   },
+   "memory_reserved_gb": 27.861164999999996
+  },
+  {
+   "case": "pop_cut_0329",
+   "status": "PASS",
+   "tau_min": 0.2837003378771991,
+   "tets": 89655,
+   "q": 4962,
+   "timing": {
+    "empty_screen": 1.075489830225706,
+    "surface_and_mesh": 23.586652033030987,
+    "fixed_port": 30.86707127839327,
+    "memory_budget_wait": 0.0,
+    "schur": 79.58332591503859,
+    "total": 169.2831002511084
+   },
+   "memory_reserved_gb": 17.641934999999997
+  },
+  {
+   "case": "pop_cut_0335",
+   "status": "PASS",
+   "tau_min": 0.29125106868053574,
+   "tets": 45867,
+   "q": 2889,
+   "timing": {
+    "empty_screen": 1.1982177309691906,
+    "surface_and_mesh": 13.079506941139698,
+    "fixed_port": 15.131903409957886,
+    "memory_budget_wait": 54.0,
+    "schur": 28.14916991814971,
+    "total": 135.63958502188325
+   },
+   "memory_reserved_gb": 9.049859999999999
+  },
+  {
+   "case": "pop_cut_0338",
+   "status": "PASS",
+   "tau_min": 0.2596124269455552,
+   "tets": 68959,
+   "q": 4053,
+   "timing": {
+    "empty_screen": 1.3513321280479431,
+    "surface_and_mesh": 23.60610667988658,
+    "fixed_port": 30.22872230038047,
+    "memory_budget_wait": 441.0,
+    "schur": 44.243546806275845,
+    "total": 573.6219708323479
+   },
+   "memory_reserved_gb": 13.765949999999998
+  },
+  {
+   "case": "pop_cut_0456",
+   "status": "PASS",
+   "tau_min": 0.334734428735193,
+   "tets": 70609,
+   "q": 4206,
+   "timing": {
+    "empty_screen": 4.00243566557765,
+    "surface_and_mesh": 26.600833170115948,
+    "fixed_port": 29.058513708412647,
+    "memory_budget_wait": 57.0,
+    "schur": 46.311002884060144,
+    "total": 196.07029474154115
+   },
+   "memory_reserved_gb": 13.980195
+  },
+  {
+   "case": "pop_cut_0681",
+   "status": "PASS",
+   "tau_min": 0.6264540112723348,
+   "tets": 15448,
+   "q": 2040,
+   "timing": {
+    "empty_screen": 1.1562346667051315,
+    "surface_and_mesh": 5.983778890222311,
+    "fixed_port": 9.218219637870789,
+    "memory_budget_wait": 0.0,
+    "schur": 7.145800933241844,
+    "total": 36.54314363375306
+   },
+   "memory_reserved_gb": 3.1232249999999997
+  },
+  {
+   "case": "pop_cut_0699",
+   "status": "PASS",
+   "tau_min": 0.3294961877709673,
+   "tets": 106015,
+   "q": 5925,
+   "timing": {
+    "empty_screen": 1.3793538324534893,
+    "surface_and_mesh": 46.84461102262139,
+    "fixed_port": 55.10825724154711,
+    "memory_budget_wait": 366.0,
+    "schur": 111.90626648813486,
+    "total": 623.5808199569583
+   },
+   "memory_reserved_gb": 20.874509999999997
+  },
+  {
+   "case": "pop_cut_0806",
+   "status": "PASS",
+   "tau_min": 0.30561508786969566,
+   "tets": 97452,
+   "q": 5448,
+   "timing": {
+    "empty_screen": 1.0061853006482124,
+    "surface_and_mesh": 24.798261884599924,
+    "fixed_port": 33.24715734645724,
+    "memory_budget_wait": 0.0,
+    "schur": 90.2609349526465,
+    "total": 186.3529063910246
+   },
+   "memory_reserved_gb": 19.140165
+  },
+  {
+   "case": "pop_cut_0928",
+   "status": "PASS",
+   "tau_min": 0.343536640873919,
+   "tets": 73942,
+   "q": 4551,
+   "timing": {
+    "empty_screen": 0.8642844557762146,
+    "surface_and_mesh": 18.551268804818392,
+    "fixed_port": 24.368256609886885,
+    "memory_budget_wait": 0.0,
+    "schur": 51.13284460455179,
+    "total": 123.63203725591302
+   },
+   "memory_reserved_gb": 14.537609999999999
+  },
+  {
+   "case": "pop_cut_1072",
+   "status": "PASS",
+   "tau_min": 0.39637979622805114,
+   "tets": 132885,
+   "q": 6909,
+   "timing": {
+    "empty_screen": 2.7344816848635674,
+    "surface_and_mesh": 48.47638165578246,
+    "fixed_port": 49.750592675060034,
+    "memory_budget_wait": 276.0,
+    "schur": 128.4335344210267,
+    "total": 547.2221331521869
+   },
+   "memory_reserved_gb": 25.875584999999997
+  },
+  {
+   "case": "pop_cut_1091",
+   "status": "PASS",
+   "tau_min": 0.548756923869638,
+   "tets": 132838,
+   "q": 7263,
+   "timing": {
+    "empty_screen": 0.9731279090046883,
+    "surface_and_mesh": 33.2146674990654,
+    "fixed_port": 48.29804861545563,
+    "memory_budget_wait": 243.0,
+    "schur": 194.06519359350204,
+    "total": 559.1577671989799
+   },
+   "memory_reserved_gb": 25.896105
+  },
+  {
+   "case": "pop_cut_1096",
+   "status": "PASS",
+   "tau_min": 0.6446461774034781,
+   "tets": 53854,
+   "q": 3408,
+   "timing": {
+    "empty_screen": 1.0432532615959644,
+    "surface_and_mesh": 17.386693313717842,
+    "fixed_port": 22.69763346388936,
+    "memory_budget_wait": 165.0,
+    "schur": 37.652054499834776,
+    "total": 266.3857111148536
+   },
+   "memory_reserved_gb": 10.543365
+  },
+  {
+   "case": "pop_cut_1198",
+   "status": "PASS",
+   "tau_min": 0.6527820316488004,
+   "tets": 75805,
+   "q": 4464,
+   "timing": {
+    "empty_screen": 2.2886355631053448,
+    "surface_and_mesh": 27.339441817253828,
+    "fixed_port": 29.444195102900267,
+    "memory_budget_wait": 327.0,
+    "schur": 61.98633425310254,
+    "total": 479.1943066753447
+   },
+   "memory_reserved_gb": 14.81166
+  },
+  {
+   "case": "pop_cut_1256",
+   "status": "PASS",
+   "tau_min": 0.6690257657856906,
+   "tets": 148277,
+   "q": 8493,
+   "timing": {
+    "empty_screen": 0.9276965819299221,
+    "surface_and_mesh": 33.959061820060015,
+    "fixed_port": 63.88574721291661,
+    "memory_budget_wait": 96.0,
+    "schur": 258.1431189663708,
+    "total": 493.63559233769774
+   },
+   "memory_reserved_gb": 28.806974999999998
+  },
+  {
+   "case": "pop_uncut_0142",
+   "status": "PASS",
+   "tau_min": 0.2816987848287713,
+   "tets": 126537,
+   "q": 7032,
+   "timing": {
+    "empty_screen": 1.0109790414571762,
+    "surface_and_mesh": 40.48969554901123,
+    "fixed_port": 54.83507752791047,
+    "memory_budget_wait": 393.0,
+    "schur": 143.52580973133445,
+    "total": 670.3075855709612
+   },
+   "memory_reserved_gb": 24.718365
+  },
+  {
+   "case": "pop_uncut_0175",
+   "status": "PASS",
+   "tau_min": 0.8049064062318335,
+   "tets": 166917,
+   "q": 10011,
+   "timing": {
+    "empty_screen": 1.4174249842762947,
+    "surface_and_mesh": 37.985807206481695,
+    "fixed_port": 64.74937778711319,
+    "memory_budget_wait": 708.0,
+    "schur": 295.9600290954113,
+    "total": 1143.3435556292534
+   },
+   "memory_reserved_gb": 32.297399999999996
+  },
+  {
+   "case": "pop_uncut_0226",
+   "status": "PASS",
+   "tau_min": 0.2554198473282443,
+   "tets": 121085,
+   "q": 6780,
+   "timing": {
+    "empty_screen": 1.0643298998475075,
+    "surface_and_mesh": 39.12264137715101,
+    "fixed_port": 47.851482667028904,
+    "memory_budget_wait": 543.0,
+    "schur": 125.31996006146073,
+    "total": 792.1919103488326
+   },
+   "memory_reserved_gb": 23.698439999999998
+  },
+  {
+   "case": "pop_uncut_0247",
+   "status": "PASS",
+   "tau_min": 0.3516968851696885,
+   "tets": 132361,
+   "q": 7326,
+   "timing": {
+    "empty_screen": 1.5508024096488953,
+    "surface_and_mesh": 33.647494565695524,
+    "fixed_port": 49.79026774689555,
+    "memory_budget_wait": 432.0,
+    "schur": 161.31726818159223,
+    "total": 712.4662588872015
+   },
+   "memory_reserved_gb": 25.810785
+  },
+  {
+   "case": "pop_uncut_0286",
+   "status": "PASS",
+   "tau_min": 0.6757626063498651,
+   "tets": 154570,
+   "q": 8757,
+   "timing": {
+    "empty_screen": 2.3407834991812706,
+    "surface_and_mesh": 43.29347974807024,
+    "fixed_port": 69.747014477849,
+    "memory_budget_wait": 186.0,
+    "schur": 275.8487257026136,
+    "total": 614.8283481150866
+   },
+   "memory_reserved_gb": 29.991465
+  },
+  {
+   "case": "pop_uncut_0295",
+   "status": "PASS",
+   "tau_min": 0.554891436935838,
+   "tets": 140214,
+   "q": 7869,
+   "timing": {
+    "empty_screen": 1.070967797189951,
+    "surface_and_mesh": 36.224154714494944,
+    "fixed_port": 51.610035732388496,
+    "memory_budget_wait": 225.0,
+    "schur": 203.4077869988978,
+    "total": 550.6823290586472
+   },
+   "memory_reserved_gb": 27.281474999999997
+  },
+  {
+   "case": "pop_uncut_0365",
+   "status": "PASS",
+   "tau_min": 0.22277595164881772,
+   "tets": 88882,
+   "q": 5013,
+   "timing": {
+    "empty_screen": 1.489337533712387,
+    "surface_and_mesh": 26.919980838894844,
+    "fixed_port": 34.832813706249,
+    "memory_budget_wait": 0.0,
+    "schur": 87.90062335506082,
+    "total": 184.45519621297717
+   },
+   "memory_reserved_gb": 17.66583
+  },
+  {
+   "case": "pop_uncut_0366",
+   "status": "PASS",
+   "tau_min": 0.7359953024075161,
+   "tets": 157551,
+   "q": 8928,
+   "timing": {
+    "empty_screen": 1.4948029667139053,
+    "surface_and_mesh": 37.0829112008214,
+    "fixed_port": 63.43571550399065,
+    "memory_budget_wait": 423.0,
+    "schur": 285.3953123539686,
+    "total": 846.6550305224955
+   },
+   "memory_reserved_gb": 30.575474999999997
+  },
+  {
+   "case": "pop_uncut_0418",
+   "status": "PASS",
+   "tau_min": 0.3275195822454308,
+   "tets": 121987,
+   "q": 6795,
+   "timing": {
+    "empty_screen": 1.1605074815452099,
+    "surface_and_mesh": 31.019722070544958,
+    "fixed_port": 45.17071056738496,
+    "memory_budget_wait": 60.0,
+    "schur": 146.36307083070278,
+    "total": 316.7307670004666
+   },
+   "memory_reserved_gb": 23.867594999999998
+  },
+  {
+   "case": "pop_uncut_0501",
+   "status": "PASS",
+   "tau_min": 0.5076374177723268,
+   "tets": 139697,
+   "q": 7890,
+   "timing": {
+    "empty_screen": 1.5036379508674145,
+    "surface_and_mesh": 33.023910474032164,
+    "fixed_port": 52.600882560014725,
+    "memory_budget_wait": 45.0,
+    "schur": 180.56274856999516,
+    "total": 347.0635091997683
+   },
+   "memory_reserved_gb": 27.185489999999998
+  },
+  {
+   "case": "pop_uncut_0503",
+   "status": "PASS",
+   "tau_min": 0.358600583090379,
+   "tets": 99078,
+   "q": 5688,
+   "timing": {
+    "empty_screen": 1.3024460263550282,
+    "surface_and_mesh": 40.84638760611415,
+    "fixed_port": 40.16673452779651,
+    "memory_budget_wait": 120.0,
+    "schur": 83.18125935643911,
+    "total": 320.2825395166874
+   },
+   "memory_reserved_gb": 19.54233
+  },
+  {
+   "case": "pop_uncut_0515",
+   "status": "PASS",
+   "tau_min": 0.24455634186173109,
+   "tets": 86725,
+   "q": 4968,
+   "timing": {
+    "empty_screen": 0.8620601147413254,
+    "surface_and_mesh": 23.440453950315714,
+    "fixed_port": 34.07796438038349,
+    "memory_budget_wait": 0.0,
+    "schur": 73.87760032713413,
+    "total": 166.00177995488048
+   },
+   "memory_reserved_gb": 17.252325
+  },
+  {
+   "case": "pop_uncut_0517",
+   "status": "PASS",
+   "tau_min": 0.4687776793622675,
+   "tets": 118530,
+   "q": 6480,
+   "timing": {
+    "empty_screen": 1.5243979021906853,
+    "surface_and_mesh": 43.16653826460242,
+    "fixed_port": 48.94315515831113,
+    "memory_budget_wait": 219.0,
+    "schur": 122.22606426477432,
+    "total": 470.51160863414407
+   },
+   "memory_reserved_gb": 23.2227
+  },
+  {
+   "case": "pop_uncut_0607",
+   "status": "PASS",
+   "tau_min": 0.5215662282043438,
+   "tets": 134737,
+   "q": 7506,
+   "timing": {
+    "empty_screen": 1.7350639291107655,
+    "surface_and_mesh": 48.902809128165245,
+    "fixed_port": 56.9602015465498,
+    "memory_budget_wait": 24.0,
+    "schur": 201.36923329159617,
+    "total": 368.63738825544715
+   },
+   "memory_reserved_gb": 26.248185
+  },
+  {
+   "case": "pop_uncut_0669",
+   "status": "PASS",
+   "tau_min": 0.4651655896607431,
+   "tets": 122902,
+   "q": 6750,
+   "timing": {
+    "empty_screen": 0.8584374152123928,
+    "surface_and_mesh": 29.227549877017736,
+    "fixed_port": 45.9795092754066,
+    "memory_budget_wait": 384.0,
+    "schur": 161.3784139715135,
+    "total": 654.6332631967962
+   },
+   "memory_reserved_gb": 24.05025
+  }
+ ]
+}

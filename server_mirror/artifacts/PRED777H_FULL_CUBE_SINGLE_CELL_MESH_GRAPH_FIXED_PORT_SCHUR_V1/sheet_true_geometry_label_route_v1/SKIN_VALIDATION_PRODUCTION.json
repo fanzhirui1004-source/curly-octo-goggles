@@ -1,0 +1,110 @@
+{
+ "shape": [
+  2,
+  1,
+  1
+ ],
+ "skin": {
+  "thickness": 0.05,
+  "refine": 2,
+  "modulus": 1.0
+ },
+ "resolution": {
+  "n_per_unit": 64,
+  "remesh_size": 0.02,
+  "size_max": 0.04,
+  "carrier_n": 32
+ },
+ "cells": 2,
+ "empty_cells": [],
+ "block_mesh": {
+  "nodes": 29700,
+  "tets": 119219,
+  "min_dihedral": 0.6381922841646315,
+  "tets_below_5deg": 12
+ },
+ "carrier": {
+  "active_nodes": 3116,
+  "union_nodes": 4825,
+  "joint_nodes": 2721,
+  "joint_triangles": 5248,
+  "joint_nodes_inactive": 1709,
+  "joint_edges": {
+   "edges": 7968,
+   "non_two_manifold_edges": 192
+  },
+  "nonjoint_nodes": 2104
+ },
+ "skin_mesh": {
+  "joint_nodes": 42369,
+  "joint_triangles": 83968,
+  "tet10_nodes": 506115,
+  "tets": 251904,
+  "volume": 0.10440306508910546,
+  "joint_edge_median": 0.0078125
+ },
+ "tied_fine_nodes": 11347,
+ "cut_fine_nodes_slaved": 4392,
+ "cut_fine_nodes_not_on_skin": 0,
+ "load_wavelengths_in_carrier_spacings": {
+  "wave_L2": 16.0,
+  "wave_L4": 8.0,
+  "wave_L8": 4.0
+ },
+ "results": {
+  "pull_n": {
+   "compliance_reference": 587.1583839403521,
+   "compliance_contract": 589.2998352767402,
+   "compliance_assembled": 589.4881048091335,
+   "contract_vs_reference": 0.003647144271392344,
+   "assembled_vs_contract": 0.00031948003566784067,
+   "skin_disp_rel_l2_contract_vs_reference": 0.003435756276276758,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.00032782668288838156
+  },
+  "shear_t": {
+   "compliance_reference": 546.007627876239,
+   "compliance_contract": 548.806767153875,
+   "compliance_assembled": 548.9106403449323,
+   "contract_vs_reference": 0.005126557093210415,
+   "assembled_vs_contract": 0.0001892709734538922,
+   "skin_disp_rel_l2_contract_vs_reference": 0.005318132175680685,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.00023210945127254273
+  },
+  "bend_t": {
+   "compliance_reference": 87.23454569538372,
+   "compliance_contract": 87.6467117367289,
+   "compliance_assembled": 87.66564898554066,
+   "contract_vs_reference": 0.0047248029786781665,
+   "assembled_vs_contract": 0.0002160634259575911,
+   "skin_disp_rel_l2_contract_vs_reference": 0.005090338255747494,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.0002456860182781212
+  },
+  "wave_L2": {
+   "compliance_reference": 7.669959450699833,
+   "compliance_contract": 7.849065723854651,
+   "compliance_assembled": 7.854792710834214,
+   "contract_vs_reference": 0.023351658415674548,
+   "assembled_vs_contract": 0.0007296393202771423,
+   "skin_disp_rel_l2_contract_vs_reference": 0.016013648858426776,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.0008933149050961252
+  },
+  "wave_L4": {
+   "compliance_reference": 1.111037769887382,
+   "compliance_contract": 1.1609493304321856,
+   "compliance_assembled": 1.1630490915842855,
+   "contract_vs_reference": 0.044923369751743714,
+   "assembled_vs_contract": 0.0018086587390666597,
+   "skin_disp_rel_l2_contract_vs_reference": 0.030779513280303275,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.002181226758487403
+  },
+  "wave_L8": {
+   "compliance_reference": 0.19850528119362798,
+   "compliance_contract": 0.20513817210332322,
+   "compliance_assembled": 0.2054306685288981,
+   "contract_vs_reference": 0.03341417855389617,
+   "assembled_vs_contract": 0.0014258507940081433,
+   "skin_disp_rel_l2_contract_vs_reference": 0.01994938807458485,
+   "skin_disp_rel_l2_assembled_vs_contract": 0.0016868446996345572
+  }
+ }
+}
