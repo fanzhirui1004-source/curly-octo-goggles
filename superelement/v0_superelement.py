@@ -227,6 +227,14 @@ class SuperElement(torch.nn.Module):
         return 0.5 * (S + S.T)
 
 
+class LUFactor:
+    """action/solve interface for a dense symmetric operator via pivoted LU; no PSD assumption for evaluation."""
+    def __init__(self, M):
+        self.M = M; self.lu, self.piv = torch.linalg.lu_factor(M)
+    def action(self, x): return self.M @ x
+    def solve(self, f): return torch.linalg.lu_solve(self.lu, self.piv, f)
+
+
 # ----------------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -236,8 +244,9 @@ def main():
     ap.add_argument('--probes', type=int, default=32); ap.add_argument('--lr', type=float, default=1e-3); ap.add_argument('--warmup', type=int, default=100)
     ap.add_argument('--eval-every', type=int, default=500); ap.add_argument('--seed', type=int, default=2026091206)
     ap.add_argument('--seat', type=int, default=415); ap.add_argument('--no-material-filter', action='store_true')
+    ap.add_argument('--reevaluate', default=None, help='directory with CHECKPOINT_*.pt to re-evaluate; no training')
     args = ap.parse_args()
-    out = __import__('pathlib').Path(args.output); out.mkdir(parents=True, exist_ok=False)
+    out = __import__('pathlib').Path(args.output); out.mkdir(parents=True, exist_ok=args.reevaluate is not None)
     t_start = time.perf_counter(); torch.manual_seed(args.seed)
     protocol = dict(vars(args), schema='CUTFEM_SUPERELEMENT_V0', loss='energy metric ||R*^-T (A_hat-A) z||^2 / ||R* z||^2',
                     probes='half coarse-space random fields P z, half support-weighted fine random fields', script_sha256=sha256(__file__))
@@ -296,35 +305,51 @@ def main():
         e = num / den
         return e.mean() if reduce else e
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
-    def evaluate_full(step):
+    def energy_norm_error(xm, xr):
+        return (torch.linalg.vector_norm(Rstar @ (xm - xr), dim=0) / torch.linalg.vector_norm(Rstar @ xr, dim=0))
+    def evaluate_full(step, tag='EVALUATION'):
         tick = sync()
         with torch.no_grad():
             e_held = energy_loss(held, reduce=False)
             Shat = model.materialize(); Ahat, _ = quotient_dense(Shat, data.quotient); del Shat
-            Rhat, info = torch.linalg.cholesky_ex(Ahat, upper=True)
+            _, info = torch.linalg.cholesky_ex(Ahat, upper=True)
             res = dict(step=step, held_energy_error=float(e_held.mean()), held_energy_error_coarse=float(e_held[:32].mean()),
-                       held_energy_error_fine=float(e_held[32:].mean()), cholesky_info=int(info))
-            if int(info) == 0:
-                res.update(exact_offdiagonal_alignment(Rhat, A))
-                mech = evaluate(DenseUpperFactor(Rhat), lambda v: A @ v, x_dirs, names, force, fref)
-                res['groups'] = mech['groups']; res['independent_force_summary'] = mech['independent_force_summary']
-                # support-weighted smooth forces: f = B (w * P z)
-                gf = torch.Generator(device=DEV).manual_seed(args.seed + 3)
-                zc = torch.randn(P3.shape[1], 16, dtype=torch.float64, device=DEV, generator=gf)
-                f = data.quotient(wq[:, None] * (P3 @ zc))
-                xr = DenseUpperFactor(Rstar).solve(f); xm = DenseUpperFactor(Rhat).solve(f)
-                disp = torch.linalg.vector_norm(xm - xr, dim=0) / torch.linalg.vector_norm(xr, dim=0)
-                comp = ((f * xm).sum(0) / (f * xr).sum(0) - 1).abs()
-                res['physical_force'] = dict(displacement_relative_rms=float(disp.square().mean().sqrt()), displacement_relative_max=float(disp.max()), compliance_relative_max=float(comp.max()))
-            del Ahat, Rhat
+                       held_energy_error_fine=float(e_held[32:].mean()), cholesky_info=int(info), sigma=model.sigma)
+            fac = LUFactor(Ahat)
+            # exact Frobenius components without a factor of A_hat
+            D = Ahat - A; res['schur_relative_error'] = float(torch.linalg.vector_norm(D) / torch.linalg.vector_norm(A))
+            off = D.clone(); off.diagonal().zero_(); Aoff = A.clone(); Aoff.diagonal().zero_()
+            res['offdiagonal_relative_error'] = float(torch.linalg.vector_norm(off) / torch.linalg.vector_norm(Aoff)); del off, Aoff, D
+            mech = evaluate(fac, lambda v: A @ v, x_dirs, names, force, fref)
+            res['groups'] = mech['groups']; res['independent_force_summary'] = mech['independent_force_summary']
+            # energy-norm versions of the inverse metrics (sliver displacements weighted by their stiffness)
+            g = A @ x_dirs; xh = fac.solve(g); e_inv = energy_norm_error(xh, x_dirs)
+            res['inverse_energy_norm_rms'] = {grp: float(e_inv[[i for i, nm in enumerate(names) if nm.startswith(grp)]].square().mean().sqrt())
+                                              for grp in ('regression/random', 'regression/cos', 'independent_random/', 'independent_smooth/', 'independent_local/')}
+            xg = fac.solve(force); res['gauss_force_energy_norm_rms'] = float(energy_norm_error(xg, fref).square().mean().sqrt())
+            gf = torch.Generator(device=DEV).manual_seed(args.seed + 3)
+            zc = torch.randn(P3.shape[1], 16, dtype=torch.float64, device=DEV, generator=gf)
+            f = data.quotient(wq[:, None] * (P3 @ zc))
+            xr = DenseUpperFactor(Rstar).solve(f); xm = fac.solve(f)
+            disp = torch.linalg.vector_norm(xm - xr, dim=0) / torch.linalg.vector_norm(xr, dim=0)
+            en = energy_norm_error(xm, xr); comp = ((f * xm).sum(0) / (f * xr).sum(0) - 1).abs()
+            res['physical_force'] = dict(displacement_relative_rms=float(disp.square().mean().sqrt()), displacement_energy_norm_rms=float(en.square().mean().sqrt()),
+                                         displacement_energy_norm_max=float(en.max()), compliance_relative_max=float(comp.max()))
+            del Ahat, fac
         res['evaluation_seconds'] = sync() - tick
-        write_json(out / f'EVALUATION_{step:06d}.json', json_finite(res))
-        brief = {k: res.get(k) for k in ('step', 'held_energy_error', 'schur_relative_error', 'offdiagonal_relative_error', 'cholesky_info', 'evaluation_seconds')}
-        if 'groups' in res:
-            brief['smooth_energy_max'] = res['groups']['independent_smooth/']['energy_relative_max']; brief['smooth_inverse_rms'] = res['groups']['independent_smooth/']['inverse_relative_rms']
-            brief['gauss_force_disp_rms'] = res['independent_force_summary']['displacement_relative_rms']; brief['physical_force_disp_rms'] = res['physical_force']['displacement_relative_rms']
+        write_json(out / f'{tag}_{step:06d}.json', json_finite(res))
+        brief = dict(step=step, held=res['held_energy_error'], eA=res['schur_relative_error'], eO=res['offdiagonal_relative_error'], chol=res['cholesky_info'],
+                     smooth_E=res['groups']['independent_smooth/']['energy_relative_max'], smooth_inv_energy=res['inverse_energy_norm_rms']['independent_smooth/'],
+                     local_inv_energy=res['inverse_energy_norm_rms']['independent_local/'], phys_force_energy=res['physical_force']['displacement_energy_norm_rms'],
+                     phys_force_compl=res['physical_force']['compliance_relative_max'], gauss_force_energy=res['gauss_force_energy_norm_rms'], sec=res['evaluation_seconds'])
         print(json.dumps(dict(stage='evaluation', **brief)), flush=True)
         torch.cuda.empty_cache(); return res
+    if args.reevaluate:
+        import glob
+        for ck in sorted(glob.glob(str(__import__('pathlib').Path(args.reevaluate) / 'CHECKPOINT_*.pt'))):
+            saved = torch.load(ck, map_location='cuda', weights_only=False); model.load_state_dict(saved['model'])
+            evaluate_full(int(saved['step']), tag='REEVALUATION')
+        return
     evaluations = [evaluate_full(0)]
     history = []
     for step in range(1, args.steps + 1):
@@ -336,6 +361,8 @@ def main():
         loss = energy_loss(z)
         if not torch.isfinite(loss): raise FloatingPointError('Nonfinite energy loss')
         loss.backward(); opt.step()
+        if model.sigma > 1.0:
+            with torch.no_grad(): model.gi_theta.mul_(0.999 / model.sigma)
         row = dict(step=step, lr=lr, loss=float(loss.detach()), sigma=model.sigma, seconds=sync() - tick)
         history.append(row); append_json(out / 'HISTORY.jsonl', row)
         if step <= 5 or step % 50 == 0:
