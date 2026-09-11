@@ -92,7 +92,7 @@ class Label:
         S, _ = load_teacher_dense(self.record['packet'], data.quotient.dimension, DEV)
         A, _ = quotient_dense(S, data.quotient); del S
         Rstar = load_upper_factor(Path(self.record['reference']) / 'R_UPPER.npy', self.d, DEV)
-        g.update(data=data, A=A, Rstar=Rstar)
+        g.update(data=data, A=A, Rstar=Rstar, rigid=torch.from_numpy(self.sample.cache['rigid']).to(DEV).double())
         return g
 
     def release(self):
@@ -165,6 +165,12 @@ class Operator:
         u = torch.sparse.mm(self.L, x); t = self.M.T @ u
         u = u - self.M @ torch.cholesky_solve(t, self.C)
         return torch.sparse.mm(self.LT, u)
+    def restricted_inverse(self, quotient, rigid, y):
+        """x_hat = (B S_hat B^T)^-1 y via full-space solves S_hat^-1 = L^-1 (I + M M^T) L^-T and a rank-6 rigid correction."""
+        Ld = self.L.to_dense(); Fm = torch.cat((quotient.lift(y), rigid), dim=1)
+        Z = torch.linalg.solve_triangular(Ld.T, Fm, upper=False); Z = Z + self.M @ (self.M.T @ Z)
+        U = torch.linalg.solve_triangular(Ld, Z, upper=True); m = y.shape[1]; UF, UN = U[:, :m], U[:, m:]
+        return quotient(UF - UN @ torch.linalg.solve(rigid.T @ UN, rigid.T @ UF))
     @torch.no_grad()
     def materialize(self):
         Y = torch.linalg.solve_triangular(self.C, self.M.T, upper=False)
@@ -191,6 +197,12 @@ def energy_error(g, op, z):
     return torch.linalg.solve_triangular(g['Rstar'].T, pred - ref, upper=False).square().sum(0) / (g['Rstar'] @ z).square().sum(0)
 
 
+def dual_error(g, op, m, generator):
+    xi = torch.randn(g['A'].shape[0], m, dtype=torch.float64, device=DEV, generator=generator)
+    xh = op.restricted_inverse(g['data'].quotient, g['rigid'], g['Rstar'].T @ xi)
+    return (g['Rstar'] @ xh - xi).square().sum(0) / xi.square().sum(0)
+
+
 def action_error(g, op, z):
     ref = g['A'] @ z; pred = g['data'].quotient(op.apply(g['data'].quotient.lift(z)))
     return (pred - ref).square().sum(0) / ref.square().sum(0)
@@ -202,7 +214,8 @@ def evaluate_label(label, g, net, seed):
     values, M = net(g, g['w'].log()); op = Operator(g, values, M)
     held = draw_probes(g, 64, 32, torch.Generator(device=DEV).manual_seed(seed + 2))
     e = energy_error(g, op, held)
-    res = dict(seat=label.seat, q=label.q, held_energy_error=float(e[:64].mean()), held_coarse=float(e[:32].mean()), held_fine=float(e[32:64].mean()), held_white=float(e[64:].mean()))
+    res = dict(seat=label.seat, q=label.q, held_energy_error=float(e[:64].mean()), held_coarse=float(e[:32].mean()), held_fine=float(e[32:64].mean()), held_white=float(e[64:].mean()),
+               held_dual=float(dual_error(g, op, 32, torch.Generator(device=DEV).manual_seed(seed + 4)).mean()))
     A, R = g['A'], g['Rstar']
     Shat = op.materialize(); Ahat, _ = quotient_dense(Shat, g['data'].quotient); del Shat
     _, info = torch.linalg.cholesky_ex(Ahat, upper=True); res['cholesky_info'] = int(info)
@@ -229,7 +242,7 @@ def evaluate_label(label, g, net, seed):
 
 
 def brief(res):
-    return dict(seat=res['seat'], held=round(res['held_energy_error'], 4), white=round(res['held_white'], 4), eA=round(res['schur_relative_error'], 4), chol=res['cholesky_info'],
+    return dict(seat=res['seat'], held=round(res['held_energy_error'], 4), white=round(res['held_white'], 4), dual=round(res['held_dual'], 4), eA=round(res['schur_relative_error'], 4), chol=res['cholesky_info'],
                 smooth_E=round(res['groups']['independent_smooth/']['energy_relative_max'], 4), smooth_inv=round(res['inverse_energy_norm_rms']['independent_smooth/'], 3),
                 local_inv=round(res['inverse_energy_norm_rms']['independent_local/'], 3), phys_force=round(res['physical_force']['displacement_energy_norm_rms'], 3),
                 compl=round(res['physical_force']['compliance_relative_max'], 3), sec=round(res['evaluation_seconds'], 1))
@@ -243,7 +256,7 @@ def main():
     ap.add_argument('--eval-every', type=int, default=2000); ap.add_argument('--eval-max-q', type=int, default=23000); ap.add_argument('--eval-labels', type=int, default=3)
     ap.add_argument('--r-near', type=float, default=0.2); ap.add_argument('--decay', type=float, default=0.03); ap.add_argument('--off-scale', type=float, default=0.3)
     ap.add_argument('--rank', type=int, default=512); ap.add_argument('--width', type=int, default=64); ap.add_argument('--hidden', type=int, default=128)
-    ap.add_argument('--probes', type=int, default=32); ap.add_argument('--white-probes', type=int, default=32); ap.add_argument('--action-probes', type=int, default=16); ap.add_argument('--action-weight', type=float, default=3.0)
+    ap.add_argument('--probes', type=int, default=32); ap.add_argument('--white-probes', type=int, default=32); ap.add_argument('--action-probes', type=int, default=16); ap.add_argument('--action-weight', type=float, default=3.0); ap.add_argument('--dual-weight', type=float, default=1.0); ap.add_argument('--dual-probes', type=int, default=16)
     ap.add_argument('--lr', type=float, default=1e-3); ap.add_argument('--warmup', type=int, default=200); ap.add_argument('--lr-floor', type=float, default=0.1)
     ap.add_argument('--seed', type=int, default=2026091209); ap.add_argument('--init-checkpoint', default=None); ap.add_argument('--max-train-labels', type=int, default=1000)
     args = ap.parse_args()
@@ -286,11 +299,12 @@ def main():
                 values, M = net(g, log_w); op = Operator(g, values, M)
                 z = draw_probes(g, args.probes, args.white_probes, gen); loss_e = energy_error(g, op, z).mean()
                 zw = torch.randn(g['A'].shape[0], args.action_probes, dtype=torch.float64, device=DEV, generator=gen); loss_a = action_error(g, op, zw).mean()
-                loss = loss_e + args.action_weight * loss_a
+                loss_d = dual_error(g, op, args.dual_probes, gen).mean() if args.dual_weight > 0 else torch.zeros((), dtype=torch.float64, device=DEV)
+                loss = loss_e + args.action_weight * loss_a + args.dual_weight * loss_d
                 if not torch.isfinite(loss):
                     print(json.dumps(dict(stage='guard', step=step, seat=l.seat)), flush=True); continue
                 loss.backward(); torch.nn.utils.clip_grad_norm_(net.parameters(), 10.0); opt.step()
-                row = dict(step=step, seat=l.seat, lr=args.lr * sched, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), seconds=sync() - tick)
+                row = dict(step=step, seat=l.seat, lr=args.lr * sched, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), dual_loss=float(loss_d.detach()), seconds=sync() - tick)
                 history.append(row); append_json(out / 'HISTORY.jsonl', row)
                 if step <= 5 or step % 50 == 0:
                     print(json.dumps(dict(**row, mean_loss_200=float(np.mean([r['loss'] for r in history[-200:]])), elapsed=time.perf_counter() - t_start, peak_gib=torch.cuda.max_memory_allocated() / 2**30)), flush=True)

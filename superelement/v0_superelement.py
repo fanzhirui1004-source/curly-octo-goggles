@@ -320,6 +320,24 @@ class ContractionSuperElement(torch.nn.Module):
         u = u - self.M_apply(gi, torch.cholesky_solve(t, C))
         return torch.sparse.mm(self.sparse_gg(transpose=True), u)
 
+    def dense_L(self):
+        return torch.sparse_coo_tensor(self.gg_index, self.gg_values(), (self.q, self.q), is_coalesced=True).to_dense()
+
+    def restricted_inverse(self, quotient, rigid, y, state=None, soft_floor=0.0):
+        """x_hat = (B S_hat B^T)^-1 y for quotient forces y (d x m), via full-space solves and a rank-6 rigid correction.
+        S_hat^-1 = L^-1 (I + M M^T) L^-T  (Woodbury inverse of the softening)."""
+        gi, C = self.state() if state is None else state
+        Ld = self.dense_L(); Fm = torch.cat((quotient.lift(y), rigid), dim=1)
+        Z = torch.linalg.solve_triangular(Ld.T, Fm, upper=False)
+        t = self.M_apply_T(gi, Z)
+        if soft_floor > 0:      # inverse of (1-e)(I+MM^T)^-1 + e I  is not Woodbury-simple; use (I+MM^T) when e=0 only
+            raise ValueError('restricted_inverse requires soft_floor=0')
+        Z = Z + self.M_apply(gi, t)
+        U = torch.linalg.solve_triangular(Ld, Z, upper=True); m = y.shape[1]
+        UF, UN = U[:, :m], U[:, m:]
+        mu = torch.linalg.solve(rigid.T @ UN, rigid.T @ UF)
+        return quotient(UF - UN @ mu)
+
     @torch.no_grad()
     def materialize(self):
         gi, C = self.state()
@@ -359,6 +377,8 @@ def main():
     ap.add_argument('--lr-floor', type=float, default=0.1, help='cosine schedule floor as a fraction of lr'); ap.add_argument('--gg-lr-mult', type=float, default=3.0)
     ap.add_argument('--init-checkpoint', default=None)
     ap.add_argument('--form', default='contraction', choices=['contraction', 'interior'])
+    ap.add_argument('--dual-weight', type=float, default=0.0, help='weight of the dual (inverse) energy error on whitened force probes')
+    ap.add_argument('--dual-probes', type=int, default=16)
     ap.add_argument('--diag-init', default='teacher', choices=['teacher', 'geometry'])
     args = ap.parse_args()
     out = __import__('pathlib').Path(args.output); out.mkdir(parents=True, exist_ok=args.reevaluate is not None)
@@ -434,6 +454,12 @@ def main():
         den = (Rstar @ z).square().sum(0)
         e = num / den
         return e.mean() if reduce else e
+    rigid_full = torch.from_numpy(sample.cache['rigid']).to(DEV).double()
+    def dual_loss(m, state, generator):
+        """Whitened force probes y = R*^T xi; model solution x_hat = (B S_hat B^T)^-1 y; error ||R* x_hat - xi||^2/||xi||^2."""
+        xi = torch.randn(d, m, dtype=torch.float64, device=DEV, generator=generator)
+        y = Rstar.T @ xi; xh = model.restricted_inverse(data.quotient, rigid_full, y, state)
+        return ((Rstar @ xh - xi).square().sum(0) / xi.square().sum(0)).mean()
     def action_loss(z, state=None):
         """Isotropic relative action error on white probes: E||(A_hat-A)z||^2/||Az||^2 ~ ||A_hat-A||_F^2/||A||_F^2."""
         ref = A @ z; pred = data.quotient(model.apply(data.quotient.lift(z), state))
@@ -453,6 +479,8 @@ def main():
             _, info = torch.linalg.cholesky_ex(Ahat, upper=True)
             res = dict(step=step, held_energy_error=float(e_held[:64].mean()), held_energy_error_coarse=float(e_held[:32].mean()),
                        held_energy_error_fine=float(e_held[32:64].mean()), held_energy_error_white=float(e_held[64:].mean()), cholesky_info=int(info), sigma=model.sigma)
+            if hasattr(model, 'restricted_inverse'):
+                res['held_dual_error'] = float(dual_loss(32, None, torch.Generator(device=DEV).manual_seed(args.seed + 4)))
             fac = LUFactor(Ahat)
             # exact Frobenius components without a factor of A_hat
             D = Ahat - A; res['schur_relative_error'] = float(torch.linalg.vector_norm(D) / torch.linalg.vector_norm(A))
@@ -476,7 +504,7 @@ def main():
             del Ahat, fac
         res['evaluation_seconds'] = sync() - tick
         write_json(out / f'{tag}_{step:06d}.json', json_finite(res))
-        brief = dict(step=step, held=res['held_energy_error'], white=res['held_energy_error_white'], eA=res['schur_relative_error'], eO=res['offdiagonal_relative_error'], chol=res['cholesky_info'],
+        brief = dict(step=step, held=res['held_energy_error'], white=res['held_energy_error_white'], dual=res.get('held_dual_error'), eA=res['schur_relative_error'], eO=res['offdiagonal_relative_error'], chol=res['cholesky_info'],
                      smooth_E=res['groups']['independent_smooth/']['energy_relative_max'], smooth_inv_energy=res['inverse_energy_norm_rms']['independent_smooth/'],
                      local_inv_energy=res['inverse_energy_norm_rms']['independent_local/'], phys_force_energy=res['physical_force']['displacement_energy_norm_rms'],
                      phys_force_compl=res['physical_force']['compliance_relative_max'], gauss_force_energy=res['gauss_force_energy_norm_rms'], sec=res['evaluation_seconds'])
@@ -502,7 +530,10 @@ def main():
         if args.action_weight > 0:
             zw = torch.randn(d, args.action_probes, dtype=torch.float64, device=DEV, generator=gen)
             loss_a = action_loss(zw, state)
-        loss = loss_e + args.action_weight * loss_a
+        loss_d = torch.zeros((), dtype=torch.float64, device=DEV)
+        if args.dual_weight > 0:
+            loss_d = dual_loss(args.dual_probes, state, gen)
+        loss = loss_e + args.action_weight * loss_a + args.dual_weight * loss_d
         if not torch.isfinite(loss) or model.sigma > 1e6:
             bad += 1; lr_scale *= 0.5; print(json.dumps(dict(stage='guard', step=step, loss=float(loss.detach()), sigma=model.sigma, lr_scale=lr_scale)), flush=True)
             if bad > 8: raise FloatingPointError('Repeated nonfinite loss or divergent coupling')
@@ -511,7 +542,7 @@ def main():
         if hasattr(model, 'project'): model.project()
         elif model.sigma > 1.0:
             with torch.no_grad(): model.gi_theta.mul_(0.999 / model.sigma)
-        row = dict(step=step, lr=lr, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), sigma=model.sigma, seconds=sync() - tick)
+        row = dict(step=step, lr=lr, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), dual_loss=float(loss_d.detach()), sigma=model.sigma, seconds=sync() - tick)
         history.append(row); append_json(out / 'HISTORY.jsonl', row)
         if step <= 5 or step % 50 == 0:
             print(json.dumps(dict(**row, mean_loss_50=float(np.mean([r['loss'] for r in history[-50:]])), elapsed=time.perf_counter() - t_start, peak_gib=torch.cuda.max_memory_allocated() / 2**30)), flush=True)
