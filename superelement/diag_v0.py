@@ -1,7 +1,7 @@
 """Whitened residual spectrum and component ablation of a trained V0 checkpoint. Read-only."""
 import sys, json, time, torch, numpy as np
 sys.path.insert(0, '/root/cutfem_neural_a_20260910/superelement_v0'); sys.path.insert(0, '/root/cutfem_neural_a_20260910/source_14301bc56')
-import v0_superelement_next as V
+import v0_superelement as V
 from stage_cutfem_neural_a.data import load_teacher_dense
 from stage_cutfem_neural_a.dense_fit import FactorSample
 from stage_cutfem_neural_a.elimination_reference import load_upper_factor, quotient_dense
