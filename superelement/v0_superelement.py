@@ -245,10 +245,15 @@ def main():
     ap.add_argument('--eval-every', type=int, default=500); ap.add_argument('--seed', type=int, default=2026091206)
     ap.add_argument('--seat', type=int, default=415); ap.add_argument('--no-material-filter', action='store_true')
     ap.add_argument('--reevaluate', default=None, help='directory with CHECKPOINT_*.pt to re-evaluate; no training')
+    ap.add_argument('--action-weight', type=float, default=1.0, help='weight of the isotropic relative action term on white probes')
+    ap.add_argument('--action-probes', type=int, default=16)
+    ap.add_argument('--off-scale', type=float, default=0.3); ap.add_argument('--gi-scale', type=float, default=0.1); ap.add_argument('--ii-scale', type=float, default=0.05)
+    ap.add_argument('--lr-floor', type=float, default=0.1, help='cosine schedule floor as a fraction of lr')
+    ap.add_argument('--init-checkpoint', default=None)
     args = ap.parse_args()
     out = __import__('pathlib').Path(args.output); out.mkdir(parents=True, exist_ok=args.reevaluate is not None)
     t_start = time.perf_counter(); torch.manual_seed(args.seed)
-    protocol = dict(vars(args), schema='CUTFEM_SUPERELEMENT_V0', loss='energy metric ||R*^-T (A_hat-A) z||^2 / ||R* z||^2',
+    protocol = dict(vars(args), schema='CUTFEM_SUPERELEMENT_V0', loss='energy metric ||R*^-T (A_hat-A) z||^2 / ||R* z||^2 + action_weight * isotropic relative action error on white probes',
                     probes='half coarse-space random fields P z, half support-weighted fine random fields', script_sha256=sha256(__file__))
     write_json(out / 'PROTOCOL.json', protocol)
     records = json.load(open('/root/autodl-tmp/CUTFEM_NEURAL_DENSE_20260911_P01/INPUT_MANIFEST.json'))['samples']
@@ -278,7 +283,10 @@ def main():
         grid = grid[np.array(keep)]
     xyz_int = torch.from_numpy(grid * stride / (N - 1)).to(DEV).double()
     s_unit = float(A.diagonal().median())
-    model = SuperElement(xyz_face, xyz_int, args.r_near, args.rho, args.rank, torch.from_numpy(w).double(), s_unit, args.seed)
+    model = SuperElement(xyz_face, xyz_int, args.r_near, args.rho, args.rank, torch.from_numpy(w).double(), s_unit, args.seed,
+                         off_scale=args.off_scale, gi_scale=args.gi_scale, ii_scale=args.ii_scale)
+    if args.init_checkpoint:
+        model.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda', weights_only=False)['model'])
     nparam = sum(p.numel() for p in model.parameters())
     write_json(out / 'MODEL.json', dict(counts=model.counts, parameters=nparam, interior_nodes=len(grid), interior_dofs=3 * len(grid),
         coarse_face_dofs=P3.shape[1], face_dofs=q, quotient_dim=d, s_unit=s_unit, support_weight_quantiles=[float(v) for v in np.quantile(w, [0, .1, .5, .9, 1])],
@@ -304,6 +312,10 @@ def main():
         den = (Rstar @ z).square().sum(0)
         e = num / den
         return e.mean() if reduce else e
+    def action_loss(z, state=None):
+        """Isotropic relative action error on white probes: E||(A_hat-A)z||^2/||Az||^2 ~ ||A_hat-A||_F^2/||A||_F^2."""
+        ref = A @ z; pred = data.quotient(model.apply(data.quotient.lift(z), state))
+        return ((pred - ref).square().sum(0) / ref.square().sum(0)).mean()
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     def energy_norm_error(xm, xr):
         return (torch.linalg.vector_norm(Rstar @ (xm - xr), dim=0) / torch.linalg.vector_norm(Rstar @ xr, dim=0))
@@ -354,16 +366,21 @@ def main():
     history = []
     for step in range(1, args.steps + 1):
         tick = sync()
-        lr = args.lr * min(1.0, step / args.warmup) * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * (step - 1) / max(args.steps - 1, 1))))
+        lr = args.lr * min(1.0, step / args.warmup) * (args.lr_floor + (1 - args.lr_floor) * 0.5 * (1 + math.cos(math.pi * (step - 1) / max(args.steps - 1, 1))))
         for g_ in opt.param_groups: g_['lr'] = lr
         z = draw_probes(args.probes, gen)
         opt.zero_grad(set_to_none=True)
-        loss = energy_loss(z)
-        if not torch.isfinite(loss): raise FloatingPointError('Nonfinite energy loss')
+        state = model.state()
+        loss_e = energy_loss(z, state); loss_a = torch.zeros((), dtype=torch.float64, device=DEV)
+        if args.action_weight > 0:
+            zw = torch.randn(d, args.action_probes, dtype=torch.float64, device=DEV, generator=gen)
+            loss_a = action_loss(zw, state)
+        loss = loss_e + args.action_weight * loss_a
+        if not torch.isfinite(loss): raise FloatingPointError('Nonfinite loss')
         loss.backward(); opt.step()
         if model.sigma > 1.0:
             with torch.no_grad(): model.gi_theta.mul_(0.999 / model.sigma)
-        row = dict(step=step, lr=lr, loss=float(loss.detach()), sigma=model.sigma, seconds=sync() - tick)
+        row = dict(step=step, lr=lr, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), sigma=model.sigma, seconds=sync() - tick)
         history.append(row); append_json(out / 'HISTORY.jsonl', row)
         if step <= 5 or step % 50 == 0:
             print(json.dumps(dict(**row, mean_loss_50=float(np.mean([r['loss'] for r in history[-50:]])), elapsed=time.perf_counter() - t_start, peak_gib=torch.cuda.max_memory_allocated() / 2**30)), flush=True)
