@@ -44,7 +44,7 @@ def face_ids(ijk, N):
     return face
 
 
-def support_weights(ijk, N, tau_corners, cut_plane, sub=8):
+def support_weights(ijk, N, tau_corners, cut_plane, sub=16):
     """Material area fraction of each face node's Q2 basis support, from the analytic level set only."""
     n = (N - 1) // 2
     weights = np.zeros(len(ijk))
@@ -247,6 +247,7 @@ def main():
     ap.add_argument('--reevaluate', default=None, help='directory with CHECKPOINT_*.pt to re-evaluate; no training')
     ap.add_argument('--action-weight', type=float, default=1.0, help='weight of the isotropic relative action term on white probes')
     ap.add_argument('--action-probes', type=int, default=16)
+    ap.add_argument('--white-probes', type=int, default=0, help='probes z = R*^-1 xi, uniform over modes in the energy metric')
     ap.add_argument('--off-scale', type=float, default=0.3); ap.add_argument('--gi-scale', type=float, default=0.1); ap.add_argument('--ii-scale', type=float, default=0.05)
     ap.add_argument('--lr-floor', type=float, default=0.1, help='cosine schedule floor as a fraction of lr')
     ap.add_argument('--init-checkpoint', default=None)
@@ -297,13 +298,16 @@ def main():
     # probes
     wq = torch.from_numpy(w).to(DEV).double().repeat_interleave(3)
     gen = torch.Generator(device=DEV).manual_seed(args.seed + 1)
-    def draw_probes(m, generator):
+    def draw_probes(m, generator, white=0):
         mc = m // 2
         zc = torch.randn(P3.shape[1], mc, dtype=torch.float64, device=DEV, generator=generator)
         xf = torch.randn(q, m - mc, dtype=torch.float64, device=DEV, generator=generator) * wq.sqrt()[:, None]
-        x = torch.cat((P3 @ zc, xf), dim=1)
-        return data.quotient(x)                                            # B x, quotient coordinates
-    held = draw_probes(64, torch.Generator(device=DEV).manual_seed(args.seed + 2))
+        z = data.quotient(torch.cat((P3 @ zc, xf), dim=1))                 # B x, quotient coordinates
+        if white:
+            xi = torch.randn(d, white, dtype=torch.float64, device=DEV, generator=generator)
+            z = torch.cat((z, torch.linalg.solve_triangular(Rstar, xi, upper=True)), dim=1)
+        return z
+    held = draw_probes(64, torch.Generator(device=DEV).manual_seed(args.seed + 2), white=32)   # 32 coarse, 32 fine, 32 white
     def energy_loss(z, state=None, reduce=True):
         ref = A @ z
         xq = data.quotient.lift(z)
@@ -325,8 +329,8 @@ def main():
             e_held = energy_loss(held, reduce=False)
             Shat = model.materialize(); Ahat, _ = quotient_dense(Shat, data.quotient); del Shat
             _, info = torch.linalg.cholesky_ex(Ahat, upper=True)
-            res = dict(step=step, held_energy_error=float(e_held.mean()), held_energy_error_coarse=float(e_held[:32].mean()),
-                       held_energy_error_fine=float(e_held[32:].mean()), cholesky_info=int(info), sigma=model.sigma)
+            res = dict(step=step, held_energy_error=float(e_held[:64].mean()), held_energy_error_coarse=float(e_held[:32].mean()),
+                       held_energy_error_fine=float(e_held[32:64].mean()), held_energy_error_white=float(e_held[64:].mean()), cholesky_info=int(info), sigma=model.sigma)
             fac = LUFactor(Ahat)
             # exact Frobenius components without a factor of A_hat
             D = Ahat - A; res['schur_relative_error'] = float(torch.linalg.vector_norm(D) / torch.linalg.vector_norm(A))
@@ -350,7 +354,7 @@ def main():
             del Ahat, fac
         res['evaluation_seconds'] = sync() - tick
         write_json(out / f'{tag}_{step:06d}.json', json_finite(res))
-        brief = dict(step=step, held=res['held_energy_error'], eA=res['schur_relative_error'], eO=res['offdiagonal_relative_error'], chol=res['cholesky_info'],
+        brief = dict(step=step, held=res['held_energy_error'], white=res['held_energy_error_white'], eA=res['schur_relative_error'], eO=res['offdiagonal_relative_error'], chol=res['cholesky_info'],
                      smooth_E=res['groups']['independent_smooth/']['energy_relative_max'], smooth_inv_energy=res['inverse_energy_norm_rms']['independent_smooth/'],
                      local_inv_energy=res['inverse_energy_norm_rms']['independent_local/'], phys_force_energy=res['physical_force']['displacement_energy_norm_rms'],
                      phys_force_compl=res['physical_force']['compliance_relative_max'], gauss_force_energy=res['gauss_force_energy_norm_rms'], sec=res['evaluation_seconds'])
@@ -368,7 +372,7 @@ def main():
         tick = sync()
         lr = args.lr * min(1.0, step / args.warmup) * (args.lr_floor + (1 - args.lr_floor) * 0.5 * (1 + math.cos(math.pi * (step - 1) / max(args.steps - 1, 1))))
         for g_ in opt.param_groups: g_['lr'] = lr
-        z = draw_probes(args.probes, gen)
+        z = draw_probes(args.probes, gen, white=args.white_probes)
         opt.zero_grad(set_to_none=True)
         state = model.state()
         loss_e = energy_loss(z, state); loss_a = torch.zeros((), dtype=torch.float64, device=DEV)
