@@ -119,6 +119,7 @@ class GeometryNet(nn.Module):
         self.stem = nn.Conv2d(c_in, width, 3, padding=1)
         self.blocks = nn.ModuleList([ResBlock(width, dl) for dl in dilations])
         self.context = nn.Sequential(nn.Linear(width + 12, width), nn.SiLU(), nn.Linear(width, width))
+        self.node_norm = nn.LayerNorm(width)
         self.diag = nn.Sequential(nn.Linear(width, hidden), nn.SiLU(), nn.Linear(hidden, 6))          # 3 log-diag corrections + 3 in-block off values
         self.pair = nn.Sequential(nn.Linear(2 * width + 4 + 12, hidden), nn.SiLU(), nn.Linear(hidden, hidden), nn.SiLU(), nn.Linear(hidden, 9))
         self.mode = nn.Sequential(nn.Linear(width, hidden), nn.SiLU(), nn.Linear(hidden, 3 * rank))
@@ -135,23 +136,23 @@ class GeometryNet(nn.Module):
         n = int(g['face_of_node'].shape[0])
         h = torch.zeros((n, self.width), device=DEV, dtype=feats.dtype).index_add_(0, g['mem_node'], feats)
         cnt = torch.zeros(n, device=DEV, dtype=feats.dtype).index_add_(0, g['mem_node'], torch.ones_like(feats[:, 0]))
-        return h / cnt[:, None] + ctx[None, :]
+        return self.node_norm(h / cnt[:, None] + ctx[None, :])
 
     def forward(self, g, log_w):
         """Returns band COO values (sorted order, float64) and M (q x rank, float64)."""
         h = self.node_features(g); n = h.shape[0]
         dg = self.diag(h)                                                    # (n, 6)
-        logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + dg[:, :3].double()      # log sqrt(S0 w) + correction
-        diag_off = (0.3 * math.sqrt(S0)) * dg[:, 3:].double()               # in-block (0,1),(0,2),(1,2)
+        logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + 3.0 * torch.tanh(dg[:, :3] / 3.0).double()   # bounded log correction (+-3)
+        diag_off = (0.3 * math.sqrt(S0)) * (3.0 * torch.tanh(dg[:, 3:] / 3.0)).double()                      # in-block (0,1),(0,2),(1,2)
         ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
         dvals = torch.empty((n, 6), dtype=torch.float64, device=DEV)
         dvals[:, is_d] = logdiag.exp(); dvals[:, ~is_d] = diag_off
         fi = F.one_hot(g['face_of_node'], 6).float()
         pi, pj = g['pair_i'], g['pair_j']
         inp = torch.cat((h[pi], h[pj], 5.0 * g['pair_dx'], (g['face_of_node'][pi] == g['face_of_node'][pj]).float()[:, None], fi[pi], fi[pj]), dim=1)
-        blocks = self.pair(inp).double() * g['pair_scale'][:, None]          # (npair, 9)
+        blocks = (3.0 * torch.tanh(self.pair(inp) / 3.0)).double() * g['pair_scale'][:, None]     # bounded |theta| <= 3
         values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
-        M = self.mode(h).double().view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]      # (q, rank)
+        M = (0.1 * torch.tanh(self.mode(h))).double().view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]      # (q, rank), bounded entries
         return values, M
 
 
