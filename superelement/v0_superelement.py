@@ -232,6 +232,90 @@ class SuperElement(torch.nn.Module):
         return 0.5 * (S + S.T)
 
 
+
+class ContractionSuperElement(torch.nn.Module):
+    """S_hat = L_GG^T (I - M M^T) L_GG,  M = [M_sparse (face->coarse interior), U (dense global columns)],  ||M||_2 <= 1.
+    The interior factor is eliminated analytically: the Schur complement depends on M only."""
+    def __init__(self, xyz_face, xyz_int, r_near, rho, rank, log_diag_init, s_unit, seed, decay=0.03, off_scale=0.3, gi_scale=0.1):
+        super().__init__()
+        g = torch.Generator(device='cpu').manual_seed(seed)
+        q, nI = 3 * len(xyz_face), 3 * len(xyz_int)
+        self.q, self.nI, self.root, self.rank = q, nI, math.sqrt(s_unit), rank
+        ni, nj = pairs_within(xyz_face, xyz_face, r_near, upper=True)
+        I, J = expand_dofs(ni, nj, upper=True)
+        order = torch.argsort(I * q + J); I, J = I[order], J[order]
+        diag = I == J
+        dist = torch.linalg.vector_norm(xyz_face[I // 3] - xyz_face[J // 3], dim=1)
+        self.register_buffer('gg_index', torch.stack((I, J))); self.register_buffer('gg_index_t', torch.stack((J, I)))
+        self.register_buffer('gg_diag', diag)
+        self.register_buffer('gg_scale', (off_scale * self.root * torch.exp(-dist / decay))[~diag])
+        self.gg_logdiag = torch.nn.Parameter(log_diag_init.to(DEV).clone())
+        self.gg_theta = torch.nn.Parameter(torch.zeros(int((~diag).sum()), dtype=torch.float64, device=DEV))
+        mi, mj = pairs_within(xyz_face, xyz_int, rho)
+        Ig, Ji = expand_dofs(mi, mj, upper=False)
+        order = torch.argsort(Ig * nI + Ji); Ig, Ji = Ig[order], Ji[order]
+        self.register_buffer('gi_index', torch.stack((Ig, Ji))); self.register_buffer('gi_index_t', torch.stack((Ji, Ig)))
+        self.gi_scale = gi_scale
+        self.gi_theta = torch.nn.Parameter((1e-2 * torch.randn(len(Ig), dtype=torch.float64, generator=g)).to(DEV))
+        self.U = torch.nn.Parameter((1e-3 * torch.randn(q, rank, dtype=torch.float64, generator=g)).to(DEV)) if rank else None
+        self.register_buffer('power_vec', torch.randn(q, 1, dtype=torch.float64, generator=g).to(DEV))
+        self.sigma = 0.0
+        self.counts = dict(gg_diag=int(diag.sum()), gg_off=int((~diag).sum()), gi=len(Ig), U=int(q * rank))
+
+    def gg_values(self):
+        v = torch.zeros(self.gg_index.shape[1], dtype=torch.float64, device=DEV)
+        return v.masked_scatter(self.gg_diag, self.gg_logdiag.exp()).masked_scatter(~self.gg_diag, self.gg_scale * self.gg_theta)
+
+    def sparse_gg(self, transpose=False):
+        return torch.sparse_coo_tensor(self.gg_index_t if transpose else self.gg_index, self.gg_values(), (self.q, self.q), is_coalesced=not transpose)
+
+    def sparse_gi(self, values, transpose=False):
+        if transpose: return torch.sparse_coo_tensor(self.gi_index_t, values, (self.nI, self.q))
+        return torch.sparse_coo_tensor(self.gi_index, values, (self.q, self.nI), is_coalesced=True)
+
+    def M_apply_T(self, gi, u):              # M^T u  -> (nI + rank) x m
+        t = torch.sparse.mm(self.sparse_gi(gi, transpose=True), u)
+        return (t, self.U.T @ u) if self.rank else (t, None)
+
+    def M_apply(self, gi, t, s):             # M [t; s] -> q x m
+        out = torch.sparse.mm(self.sparse_gi(gi), t)
+        return out + self.U @ s if self.rank else out
+
+    def state(self, iters=6):
+        gi = self.gi_scale * self.gi_theta
+        with torch.no_grad():
+            v = self.power_vec; g_ = gi.detach()
+            for _ in range(iters):
+                t, s_ = self.M_apply_T(g_, v); v = self.M_apply(g_, t, s_)
+                nrm = torch.linalg.vector_norm(v); v = v / nrm
+            self.power_vec.copy_(v); self.sigma = float(nrm.sqrt())
+        return gi
+
+    def project(self):
+        """Scale M back to the contraction boundary after an optimizer step."""
+        if self.sigma > 1.0:
+            with torch.no_grad():
+                f = 0.999 / self.sigma; self.gi_theta.mul_(f)
+                if self.rank: self.U.mul_(f)
+
+    def apply(self, x, state=None):
+        gi = self.state() if state is None else state
+        u = torch.sparse.mm(self.sparse_gg(), x)
+        t, s_ = self.M_apply_T(gi, u)
+        u = u - self.M_apply(gi, t, s_)
+        return torch.sparse.mm(self.sparse_gg(transpose=True), u)
+
+    @torch.no_grad()
+    def materialize(self):
+        gi = self.state()
+        M = self.sparse_gi(gi).to_dense()
+        if self.rank: M = torch.cat((M, self.U), dim=1)
+        T = -(M @ M.T); del M; T.diagonal().add_(1.0)
+        Q1 = torch.sparse.mm(self.sparse_gg(transpose=True), T); del T
+        S = torch.sparse.mm(self.sparse_gg(transpose=True), Q1.T.contiguous()); del Q1
+        return 0.5 * (S + S.T)
+
+
 class LUFactor:
     """action/solve interface for a dense symmetric operator via pivoted LU; no PSD assumption for evaluation."""
     def __init__(self, M):
@@ -256,6 +340,8 @@ def main():
     ap.add_argument('--off-scale', type=float, default=0.3); ap.add_argument('--gi-scale', type=float, default=0.1); ap.add_argument('--ii-scale', type=float, default=0.05)
     ap.add_argument('--lr-floor', type=float, default=0.1, help='cosine schedule floor as a fraction of lr'); ap.add_argument('--gg-lr-mult', type=float, default=3.0)
     ap.add_argument('--init-checkpoint', default=None)
+    ap.add_argument('--form', default='contraction', choices=['contraction', 'interior'])
+    ap.add_argument('--diag-init', default='teacher', choices=['teacher', 'geometry'])
     args = ap.parse_args()
     out = __import__('pathlib').Path(args.output); out.mkdir(parents=True, exist_ok=args.reevaluate is not None)
     t_start = time.perf_counter(); torch.manual_seed(args.seed)
@@ -269,6 +355,7 @@ def main():
     assert np.all(np.diff(cache['indptr']) == 1) and np.allclose(cache['coefficients'], 1.0), 'V0 assumes nodal trace functionals'
     ijk = np.stack(np.unravel_index(cache['background_nodes'][cache['indices']], (N, N, N)), axis=1)
     S, _ = load_teacher_dense(record['packet'], data.quotient.dimension, DEV)
+    S_diag = S.diagonal().clone().cpu()
     A, construction = quotient_dense(S, data.quotient); del S; torch.cuda.empty_cache()
     Rstar = load_upper_factor(sample.reference / 'R_UPPER.npy', sample.n, DEV)
     q, d = 3 * len(ijk), A.shape[0]
@@ -289,8 +376,16 @@ def main():
         grid = grid[np.array(keep)]
     xyz_int = torch.from_numpy(grid * stride / (N - 1)).to(DEV).double()
     s_unit = float(A.diagonal().median())
-    model = SuperElement(xyz_face, xyz_int, args.r_near, args.rho, args.rank, torch.from_numpy(w).double(), s_unit, args.seed,
-                         off_scale=args.off_scale, gi_scale=args.gi_scale, ii_scale=args.ii_scale)
+    if args.form == 'interior':
+        model = SuperElement(xyz_face, xyz_int, args.r_near, args.rho, args.rank, torch.from_numpy(w).double(), s_unit, args.seed,
+                             off_scale=args.off_scale, gi_scale=args.gi_scale, ii_scale=args.ii_scale)
+    else:
+        if args.diag_init == 'teacher':
+            log_diag = 0.5 * torch.log(S_diag)
+        else:
+            log_diag = 0.5 * torch.log(s_unit * torch.from_numpy(w).double().repeat_interleave(3))
+        model = ContractionSuperElement(xyz_face, xyz_int, args.r_near, args.rho, args.rank, log_diag, s_unit, args.seed,
+                                        off_scale=args.off_scale, gi_scale=args.gi_scale)
     if args.init_checkpoint:
         model.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda', weights_only=False)['model'])
     nparam = sum(p.numel() for p in model.parameters())
@@ -393,7 +488,8 @@ def main():
             if bad > 8: raise FloatingPointError('Repeated nonfinite loss or divergent coupling')
             continue
         loss.backward(); opt.step()
-        if model.sigma > 1.0:
+        if hasattr(model, 'project'): model.project()
+        elif model.sigma > 1.0:
             with torch.no_grad(): model.gi_theta.mul_(0.999 / model.sigma)
         row = dict(step=step, lr=lr, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), sigma=model.sigma, seconds=sync() - tick)
         history.append(row); append_json(out / 'HISTORY.jsonl', row)
