@@ -176,8 +176,13 @@ class SuperElement(torch.nn.Module):
     def sparse_gg(self, transpose=False):
         return torch.sparse_coo_tensor(self.gg_index_t if transpose else self.gg_index, self.gg_values(), (self.q, self.q), is_coalesced=not transpose)
 
-    def C_ii(self):
-        return torch.diag(self.ii_logdiag.exp()) + (self.ii_scale * self.ii_theta) * self.ii_mask
+    def C_ii(self, dominance=0.5):
+        """Upper factor with strict row diagonal dominance, so triangular solves stay bounded."""
+        dg = self.ii_logdiag.exp()
+        off = (self.ii_scale * self.ii_theta) * self.ii_mask
+        rowsum = off.abs().sum(1)
+        off = off * torch.clamp(dominance * dg / rowsum.clamp(min=1e-300), max=1.0)[:, None]
+        return torch.diag(dg) + off
 
     def sparse_gi(self, values, transpose=False):
         if transpose: return torch.sparse_coo_tensor(self.gi_index_t, values, (self.nI, self.q))
@@ -249,7 +254,7 @@ def main():
     ap.add_argument('--action-probes', type=int, default=16)
     ap.add_argument('--white-probes', type=int, default=0, help='probes z = R*^-1 xi, uniform over modes in the energy metric')
     ap.add_argument('--off-scale', type=float, default=0.3); ap.add_argument('--gi-scale', type=float, default=0.1); ap.add_argument('--ii-scale', type=float, default=0.05)
-    ap.add_argument('--lr-floor', type=float, default=0.1, help='cosine schedule floor as a fraction of lr')
+    ap.add_argument('--lr-floor', type=float, default=0.1, help='cosine schedule floor as a fraction of lr'); ap.add_argument('--gg-lr-mult', type=float, default=3.0)
     ap.add_argument('--init-checkpoint', default=None)
     args = ap.parse_args()
     out = __import__('pathlib').Path(args.output); out.mkdir(parents=True, exist_ok=args.reevaluate is not None)
@@ -320,7 +325,9 @@ def main():
         """Isotropic relative action error on white probes: E||(A_hat-A)z||^2/||Az||^2 ~ ||A_hat-A||_F^2/||A||_F^2."""
         ref = A @ z; pred = data.quotient(model.apply(data.quotient.lift(z), state))
         return ((pred - ref).square().sum(0) / ref.square().sum(0)).mean()
-    opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+    groups = [dict(params=[model.gg_theta, model.gg_logdiag], lr=args.lr * args.gg_lr_mult),
+              dict(params=[p_ for n_, p_ in model.named_parameters() if n_ not in ('gg_theta', 'gg_logdiag')], lr=args.lr)]
+    opt = torch.optim.Adam(groups, lr=args.lr); base_lrs = [g_['lr'] for g_ in opt.param_groups]
     def energy_norm_error(xm, xr):
         return (torch.linalg.vector_norm(Rstar @ (xm - xr), dim=0) / torch.linalg.vector_norm(Rstar @ xr, dim=0))
     def evaluate_full(step, tag='EVALUATION'):
@@ -367,11 +374,12 @@ def main():
             evaluate_full(int(saved['step']), tag='REEVALUATION')
         return
     evaluations = [evaluate_full(0)]
-    history = []
+    history = []; lr_scale = 1.0; bad = 0
     for step in range(1, args.steps + 1):
         tick = sync()
-        lr = args.lr * min(1.0, step / args.warmup) * (args.lr_floor + (1 - args.lr_floor) * 0.5 * (1 + math.cos(math.pi * (step - 1) / max(args.steps - 1, 1))))
-        for g_ in opt.param_groups: g_['lr'] = lr
+        sched = min(1.0, step / args.warmup) * (args.lr_floor + (1 - args.lr_floor) * 0.5 * (1 + math.cos(math.pi * (step - 1) / max(args.steps - 1, 1)))) * lr_scale
+        lr = args.lr * sched
+        for g_, b_ in zip(opt.param_groups, base_lrs): g_['lr'] = b_ * sched
         z = draw_probes(args.probes, gen, white=args.white_probes)
         opt.zero_grad(set_to_none=True)
         state = model.state()
@@ -380,7 +388,10 @@ def main():
             zw = torch.randn(d, args.action_probes, dtype=torch.float64, device=DEV, generator=gen)
             loss_a = action_loss(zw, state)
         loss = loss_e + args.action_weight * loss_a
-        if not torch.isfinite(loss): raise FloatingPointError('Nonfinite loss')
+        if not torch.isfinite(loss) or model.sigma > 1e6:
+            bad += 1; lr_scale *= 0.5; print(json.dumps(dict(stage='guard', step=step, loss=float(loss.detach()), sigma=model.sigma, lr_scale=lr_scale)), flush=True)
+            if bad > 8: raise FloatingPointError('Repeated nonfinite loss or divergent coupling')
+            continue
         loss.backward(); opt.step()
         if model.sigma > 1.0:
             with torch.no_grad(): model.gi_theta.mul_(0.999 / model.sigma)
