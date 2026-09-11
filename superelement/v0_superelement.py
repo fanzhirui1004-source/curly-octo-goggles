@@ -252,16 +252,20 @@ class ContractionSuperElement(torch.nn.Module):
         self.register_buffer('gg_scale', (off_scale * self.root * torch.exp(-dist / decay))[~diag])
         self.gg_logdiag = torch.nn.Parameter(log_diag_init.to(DEV).clone())
         self.gg_theta = torch.nn.Parameter(torch.zeros(int((~diag).sum()), dtype=torch.float64, device=DEV))
-        mi, mj = pairs_within(xyz_face, xyz_int, rho)
-        Ig, Ji = expand_dofs(mi, mj, upper=False)
-        order = torch.argsort(Ig * nI + Ji); Ig, Ji = Ig[order], Ji[order]
+        self.use_interior = rho > 0
+        if self.use_interior:
+            mi, mj = pairs_within(xyz_face, xyz_int, rho)
+            Ig, Ji = expand_dofs(mi, mj, upper=False)
+            order = torch.argsort(Ig * nI + Ji); Ig, Ji = Ig[order], Ji[order]
+        else:
+            Ig = Ji = torch.zeros(0, dtype=torch.long, device=DEV); self.nI = nI = 0
         self.register_buffer('gi_index', torch.stack((Ig, Ji))); self.register_buffer('gi_index_t', torch.stack((Ji, Ig)))
         self.gi_theta = torch.nn.Parameter((1e-2 * torch.randn(len(Ig), dtype=torch.float64, generator=g)).to(DEV))
-        self.gi_logscale = torch.nn.Parameter(torch.full((nI,), math.log(gi_scale), dtype=torch.float64, device=DEV))      # per interior column
+        self.gi_logscale = torch.nn.Parameter(torch.full((max(nI, 1),), math.log(gi_scale), dtype=torch.float64, device=DEV))      # per interior column
         self.U = torch.nn.Parameter((1e-2 * torch.randn(q, rank, dtype=torch.float64, generator=g)).to(DEV)) if rank else None
         self.U_logscale = torch.nn.Parameter(torch.full((rank,), math.log(0.1), dtype=torch.float64, device=DEV)) if rank else None
         self.sigma = 0.0
-        self.counts = dict(gg_diag=int(diag.sum()), gg_off=int((~diag).sum()), gi=len(Ig), U=int(q * rank))
+        self.counts = dict(gg_diag=int(diag.sum()), gg_off=int((~diag).sum()), gi=len(Ig), U=int(q * rank), interior_used=self.use_interior)
 
     def gg_values(self):
         v = torch.zeros(self.gg_index.shape[1], dtype=torch.float64, device=DEV)
@@ -281,22 +285,27 @@ class ContractionSuperElement(torch.nn.Module):
         return self.U * self.U_logscale.exp()[None, :]
 
     def M_apply_T(self, gi, u):
+        if not self.use_interior: return self.Ucol().T @ u
         t = torch.sparse.mm(self.sparse_gi(gi, transpose=True), u)
         return torch.cat((t, self.Ucol().T @ u), 0) if self.rank else t
 
     def M_apply(self, gi, t):
+        if not self.use_interior: return self.Ucol() @ t
         out = torch.sparse.mm(self.sparse_gi(gi), t[:self.nI])
         return out + self.Ucol() @ t[self.nI:] if self.rank else out
 
     def state(self):
         """Cholesky factor of G = I + M^T M (dense, nI + rank)."""
         gi = self.gi_values()
-        Ms = self.sparse_gi(gi).to_dense()
-        G11 = torch.sparse.mm(self.sparse_gi(gi, transpose=True), Ms)
-        if self.rank:
-            Uc = self.Ucol(); G12 = Ms.T @ Uc; G22 = Uc.T @ Uc
-            G = torch.cat((torch.cat((G11, G12), 1), torch.cat((G12.T, G22), 1)), 0)
-        else: G = G11
+        if not self.use_interior:
+            Uc = self.Ucol(); G = Uc.T @ Uc
+        else:
+            Ms = self.sparse_gi(gi).to_dense()
+            G11 = torch.sparse.mm(self.sparse_gi(gi, transpose=True), Ms)
+            if self.rank:
+                Uc = self.Ucol(); G12 = Ms.T @ Uc; G22 = Uc.T @ Uc
+                G = torch.cat((torch.cat((G11, G12), 1), torch.cat((G12.T, G22), 1)), 0)
+            else: G = G11
         G = G + torch.eye(G.shape[0], dtype=torch.float64, device=DEV)
         C = torch.linalg.cholesky(G)
         with torch.no_grad(): self.sigma = float(G.diagonal().max().sqrt())
@@ -314,8 +323,10 @@ class ContractionSuperElement(torch.nn.Module):
     @torch.no_grad()
     def materialize(self):
         gi, C = self.state()
-        M = self.sparse_gi(gi).to_dense()
-        if self.rank: M = torch.cat((M, self.Ucol()), dim=1)
+        if self.use_interior:
+            M = self.sparse_gi(gi).to_dense()
+            if self.rank: M = torch.cat((M, self.Ucol()), dim=1)
+        else: M = self.Ucol()
         Y = torch.linalg.solve_triangular(C, M.T, upper=False); del M                      # C^-1 M^T
         T = -(Y.T @ Y); del Y; T.diagonal().add_(1.0)
         Q1 = torch.sparse.mm(self.sparse_gg(transpose=True), T); del T
