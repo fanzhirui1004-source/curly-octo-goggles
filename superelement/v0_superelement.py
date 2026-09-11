@@ -234,8 +234,9 @@ class SuperElement(torch.nn.Module):
 
 
 class ContractionSuperElement(torch.nn.Module):
-    """S_hat = L_GG^T (I - M M^T) L_GG,  M = [M_sparse (face->coarse interior), U (dense global columns)],  ||M||_2 <= 1.
-    The interior factor is eliminated analytically: the Schur complement depends on M only."""
+    """Exact-PSD form:  S_hat = L_GG^T (I + M M^T)^-1 L_GG,  M = [M_sparse (face->coarse interior), U (dense global columns)].
+    Applied by Woodbury: (I + M M^T)^-1 u = u - M (I + M^T M)^-1 M^T u, with a dense Cholesky of G = I + M^T M.
+    Equivalent to the super-element with interior block K_II = I + M^T M; strictly positive definite for any M."""
     def __init__(self, xyz_face, xyz_int, r_near, rho, rank, log_diag_init, s_unit, seed, decay=0.03, off_scale=0.3, gi_scale=0.1):
         super().__init__()
         g = torch.Generator(device='cpu').manual_seed(seed)
@@ -255,10 +256,10 @@ class ContractionSuperElement(torch.nn.Module):
         Ig, Ji = expand_dofs(mi, mj, upper=False)
         order = torch.argsort(Ig * nI + Ji); Ig, Ji = Ig[order], Ji[order]
         self.register_buffer('gi_index', torch.stack((Ig, Ji))); self.register_buffer('gi_index_t', torch.stack((Ji, Ig)))
-        self.gi_scale = gi_scale
         self.gi_theta = torch.nn.Parameter((1e-2 * torch.randn(len(Ig), dtype=torch.float64, generator=g)).to(DEV))
-        self.U = torch.nn.Parameter((1e-3 * torch.randn(q, rank, dtype=torch.float64, generator=g)).to(DEV)) if rank else None
-        self.register_buffer('power_vec', torch.randn(q, 1, dtype=torch.float64, generator=g).to(DEV))
+        self.gi_logscale = torch.nn.Parameter(torch.full((nI,), math.log(gi_scale), dtype=torch.float64, device=DEV))      # per interior column
+        self.U = torch.nn.Parameter((1e-2 * torch.randn(q, rank, dtype=torch.float64, generator=g)).to(DEV)) if rank else None
+        self.U_logscale = torch.nn.Parameter(torch.full((rank,), math.log(0.1), dtype=torch.float64, device=DEV)) if rank else None
         self.sigma = 0.0
         self.counts = dict(gg_diag=int(diag.sum()), gg_off=int((~diag).sum()), gi=len(Ig), U=int(q * rank))
 
@@ -269,48 +270,54 @@ class ContractionSuperElement(torch.nn.Module):
     def sparse_gg(self, transpose=False):
         return torch.sparse_coo_tensor(self.gg_index_t if transpose else self.gg_index, self.gg_values(), (self.q, self.q), is_coalesced=not transpose)
 
+    def gi_values(self):
+        return self.gi_theta * self.gi_logscale.exp()[self.gi_index[1]]
+
     def sparse_gi(self, values, transpose=False):
         if transpose: return torch.sparse_coo_tensor(self.gi_index_t, values, (self.nI, self.q))
         return torch.sparse_coo_tensor(self.gi_index, values, (self.q, self.nI), is_coalesced=True)
 
-    def M_apply_T(self, gi, u):              # M^T u  -> (nI + rank) x m
+    def Ucol(self):
+        return self.U * self.U_logscale.exp()[None, :]
+
+    def M_apply_T(self, gi, u):
         t = torch.sparse.mm(self.sparse_gi(gi, transpose=True), u)
-        return (t, self.U.T @ u) if self.rank else (t, None)
+        return torch.cat((t, self.Ucol().T @ u), 0) if self.rank else t
 
-    def M_apply(self, gi, t, s):             # M [t; s] -> q x m
-        out = torch.sparse.mm(self.sparse_gi(gi), t)
-        return out + self.U @ s if self.rank else out
+    def M_apply(self, gi, t):
+        out = torch.sparse.mm(self.sparse_gi(gi), t[:self.nI])
+        return out + self.Ucol() @ t[self.nI:] if self.rank else out
 
-    def state(self, iters=6):
-        gi = self.gi_scale * self.gi_theta
-        with torch.no_grad():
-            v = self.power_vec; g_ = gi.detach()
-            for _ in range(iters):
-                t, s_ = self.M_apply_T(g_, v); v = self.M_apply(g_, t, s_)
-                nrm = torch.linalg.vector_norm(v); v = v / nrm
-            self.power_vec.copy_(v); self.sigma = float(nrm.sqrt())
-        return gi
+    def state(self):
+        """Cholesky factor of G = I + M^T M (dense, nI + rank)."""
+        gi = self.gi_values()
+        Ms = self.sparse_gi(gi).to_dense()
+        G11 = torch.sparse.mm(self.sparse_gi(gi, transpose=True), Ms)
+        if self.rank:
+            Uc = self.Ucol(); G12 = Ms.T @ Uc; G22 = Uc.T @ Uc
+            G = torch.cat((torch.cat((G11, G12), 1), torch.cat((G12.T, G22), 1)), 0)
+        else: G = G11
+        G = G + torch.eye(G.shape[0], dtype=torch.float64, device=DEV)
+        C = torch.linalg.cholesky(G)
+        with torch.no_grad(): self.sigma = float(G.diagonal().max().sqrt())
+        return gi, C
 
-    def project(self):
-        """Scale M back to the contraction boundary after an optimizer step."""
-        if self.sigma > 1.0:
-            with torch.no_grad():
-                f = 0.999 / self.sigma; self.gi_theta.mul_(f)
-                if self.rank: self.U.mul_(f)
+    def project(self): pass
 
     def apply(self, x, state=None):
-        gi = self.state() if state is None else state
+        gi, C = self.state() if state is None else state
         u = torch.sparse.mm(self.sparse_gg(), x)
-        t, s_ = self.M_apply_T(gi, u)
-        u = u - self.M_apply(gi, t, s_)
+        t = self.M_apply_T(gi, u)
+        u = u - self.M_apply(gi, torch.cholesky_solve(t, C))
         return torch.sparse.mm(self.sparse_gg(transpose=True), u)
 
     @torch.no_grad()
     def materialize(self):
-        gi = self.state()
+        gi, C = self.state()
         M = self.sparse_gi(gi).to_dense()
-        if self.rank: M = torch.cat((M, self.U), dim=1)
-        T = -(M @ M.T); del M; T.diagonal().add_(1.0)
+        if self.rank: M = torch.cat((M, self.Ucol()), dim=1)
+        Y = torch.linalg.solve_triangular(C, M.T, upper=False); del M                      # C^-1 M^T
+        T = -(Y.T @ Y); del Y; T.diagonal().add_(1.0)
         Q1 = torch.sparse.mm(self.sparse_gg(transpose=True), T); del T
         S = torch.sparse.mm(self.sparse_gg(transpose=True), Q1.T.contiguous()); del Q1
         return 0.5 * (S + S.T)
@@ -420,8 +427,10 @@ def main():
         """Isotropic relative action error on white probes: E||(A_hat-A)z||^2/||Az||^2 ~ ||A_hat-A||_F^2/||A||_F^2."""
         ref = A @ z; pred = data.quotient(model.apply(data.quotient.lift(z), state))
         return ((pred - ref).square().sum(0) / ref.square().sum(0)).mean()
+    scale_names = ('gi_logscale', 'U_logscale')
     groups = [dict(params=[model.gg_theta, model.gg_logdiag], lr=args.lr * args.gg_lr_mult),
-              dict(params=[p_ for n_, p_ in model.named_parameters() if n_ not in ('gg_theta', 'gg_logdiag')], lr=args.lr)]
+              dict(params=[p_ for n_, p_ in model.named_parameters() if n_ in scale_names], lr=args.lr * 3),
+              dict(params=[p_ for n_, p_ in model.named_parameters() if n_ not in ('gg_theta', 'gg_logdiag') + scale_names], lr=args.lr)]
     opt = torch.optim.Adam(groups, lr=args.lr); base_lrs = [g_['lr'] for g_ in opt.param_groups]
     def energy_norm_error(xm, xr):
         return (torch.linalg.vector_norm(Rstar @ (xm - xr), dim=0) / torch.linalg.vector_norm(Rstar @ xr, dim=0))
