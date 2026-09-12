@@ -32,8 +32,11 @@ def student_v1(run, ckpt, record):
     proto = json.load(open(Path(run) / 'PROTOCOL.json')); off_scale = proto.get('off_scale', 1.0)
     label = V1.Label(record, proto['r_near'], proto['decay'], off_scale)
     sd = torch.load(ckpt, map_location='cpu')['net']
-    vw = proto.get('volume_width', 0) if any(k.startswith('volume.') for k in sd) else 0
-    net = V1.GeometryNet(label.images.shape[1], proto['width'], proto['rank'], proto['hidden'], off_scale=off_scale, volume_width=vw)
+    if proto.get('model', 'net') == 'free':
+        net = V1.FreeCoefficientModel(label, proto['rank'], off_scale)
+    else:
+        vw = proto.get('volume_width', 0) if any(k.startswith('volume.') for k in sd) else 0
+        net = V1.GeometryNet(label.images.shape[1], proto['width'], proto['rank'], proto['hidden'], off_scale=off_scale, volume_width=vw)
     net.load_state_dict(sd); net.eval()
     g = dict(images=label.images, theta=label.theta, mem_node=label.mem_node, mem_face=label.mem_face, mem_pix=label.mem_pix, volume=label.volume, xyz=label.xyz_nodes,
              Q=torch.eye(3, dtype=torch.float64), face_of_node=label.face_of_node, pair_i=label.pair_i, pair_j=label.pair_j, pair_dx=label.pair_dx, pair_decay=label.pair_decay,
@@ -48,7 +51,7 @@ def student_v1(run, ckpt, record):
         rigid = torch.from_numpy(label.sample.cache['rigid']).double()
         closed = dict(logdet_S=2 * float(diag.log().sum()) - float(torch.logdet(G)), rigid_term=logdet_rigid(rigid, solve_S))
         del L
-    return S, label.data, label.sample, label.ijk, label.w, closed, dict(schema='V1', seat=label.seat, q=label.q, d=label.d, off_scale=off_scale, rank=proto['rank'], r_near=proto['r_near'])
+    return S, label.data, label.sample, label.ijk, label.w, closed, dict(schema='V1', model=proto.get('model', 'net'), seat=label.seat, q=label.q, d=label.d, off_scale=off_scale, rank=proto['rank'], r_near=proto['r_near'])
 
 
 def student_v0(run, ckpt):

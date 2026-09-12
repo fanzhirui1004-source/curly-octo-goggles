@@ -225,48 +225,51 @@ class GeometryNet(nn.Module):
         cnt = torch.zeros(n, device=DEV, dtype=feats.dtype).index_add_(0, g['mem_node'], torch.ones_like(feats[:, 0]))
         return self.node_norm(h / cnt[:, None] + ctx[None, :])
 
+    def preactivations(self, g):
+        """Head outputs before the bounded maps: dg (n, 6), pair (npair, 9), mode (n, 3 rank)."""
+        h = self.node_features(g)
+        fi = F.one_hot(g['face_of_node'], 6).float(); pi, pj = g['pair_i'], g['pair_j']
+        inp = torch.cat((h[pi], h[pj], 5.0 * g['pair_dx'], (g['face_of_node'][pi] == g['face_of_node'][pj]).float()[:, None], fi[pi], fi[pj]), dim=1)
+        hm = torch.cat((h, self.vol_norm(self.volume(g['volume'], g['xyz']))), dim=1) if self.volume is not None else h
+        return self.diag(h), self.pair(inp), self.mode(hm)
+
     def forward(self, g, log_w):
         """Returns band COO values (sorted order, float64) and M (q x rank, float64).
         Off-diagonal band entries are bounded by the smaller of the two diagonals they connect, times a distance prior,
         so every row of L stays within a bounded ratio of its diagonal and the triangular solves stay stable."""
-        h = self.node_features(g); n = h.shape[0]
-        dg = self.diag(h)                                                    # (n, 6)
-        logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + 3.0 * torch.tanh(dg[:, :3] / 3.0).double()   # bounded log correction (+-3)
-        D = logdiag.exp()                                                    # (n, 3)
-        ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
-        dmin_in = torch.minimum(D[:, ua[~is_d]], D[:, ub[~is_d]])            # (n, 3) in-block pairs (0,1),(0,2),(1,2)
-        dvals = torch.empty((n, 6), dtype=torch.float64, device=DEV)
-        dvals[:, is_d] = D; dvals[:, ~is_d] = self.off_scale * dmin_in * torch.tanh(dg[:, 3:]).double()
-        fi = F.one_hot(g['face_of_node'], 6).float()
-        pi, pj = g['pair_i'], g['pair_j']
-        inp = torch.cat((h[pi], h[pj], 5.0 * g['pair_dx'], (g['face_of_node'][pi] == g['face_of_node'][pj]).float()[:, None], fi[pi], fi[pj]), dim=1)
-        dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)      # (npair, 9)
-        blocks = torch.tanh(self.pair(inp)).double() * dmin * (self.off_scale * g['pair_decay'])[:, None]
-        values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
-        hm = torch.cat((h, self.vol_norm(self.volume(g['volume'], g['xyz']))), dim=1) if self.volume is not None else h
-        M = (0.1 * torch.tanh(self.mode(hm))).double().view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]      # (q, rank), bounded entries
-        return values, M
+        dg, pair, mode = self.preactivations(g)
+        return bounded_values(dg.double(), pair.double(), mode.double(), self.mode_logscale.double(), g, log_w, self.rank, self.off_scale)
+
+
+def bounded_values(dg, pair, mode, mode_logscale, g, log_w, rank, off_scale):
+    """The bounded maps shared by the geometry network and the free-coefficient model (all float64):
+    diag = sqrt(S0 w) exp(3 tanh(dg/3)); in-block and pair entries = tanh(.) min(D_i, D_j) off_scale [exp(-d/decay)]; M = 0.1 tanh(.) exp(logscale)."""
+    n = dg.shape[0]
+    logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + 3.0 * torch.tanh(dg[:, :3] / 3.0); D = logdiag.exp()
+    ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
+    dvals = torch.empty((n, 6), dtype=torch.float64, device=DEV)
+    dvals[:, is_d] = D; dvals[:, ~is_d] = off_scale * torch.minimum(D[:, ua[~is_d]], D[:, ub[~is_d]]) * torch.tanh(dg[:, 3:])
+    pi, pj = g['pair_i'], g['pair_j']; dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)
+    blocks = torch.tanh(pair) * dmin * (off_scale * g['pair_decay'])[:, None]
+    values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
+    M = (0.1 * torch.tanh(mode)).view(-1, rank) * mode_logscale.exp()[None, :]
+    return values, M
 
 
 class FreeCoefficientModel(nn.Module):
-    """Free coefficients through exactly the same bounded maps as the GeometryNet heads (diag +-3 log correction, pair tanh times
-    min(D_i, D_j) times off_scale times the distance prior, modes 0.1 tanh times a per-column scale). Single label, no symmetry frames:
-    a capacity test of the representation under the network's feasible set."""
+    """Free coefficients through exactly the same bounded maps as the GeometryNet heads (pre-activations become parameters).
+    Single label, no symmetry frames: a capacity test of the representation under the network's feasible set."""
     def __init__(self, label, rank=512, off_scale=OFF_SCALE):
         super().__init__(); self.rank, self.off_scale = rank, off_scale
         self.dg = nn.Parameter(torch.zeros(label.nn, 6, dtype=torch.float64)); self.pair_p = nn.Parameter(torch.zeros(len(label.pair_i), 9, dtype=torch.float64))
-        self.mode_p = nn.Parameter(1e-2 * torch.randn(label.nn, 3 * rank, dtype=torch.float64)); self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.03)))
+        self.mode_p = nn.Parameter(1e-2 * torch.randn(label.nn, 3 * rank, dtype=torch.float64)); self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.03), dtype=torch.float64))
+    @torch.no_grad()
+    def from_network(self, net, g):
+        dg, pair, mode = net.preactivations(g)
+        self.dg.copy_(dg.double()); self.pair_p.copy_(pair.double()); self.mode_p.copy_(mode.double()); self.mode_logscale.copy_(net.mode_logscale.double())
+        return self
     def forward(self, g, log_w):
-        dg = self.dg; n = dg.shape[0]
-        logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + 3.0 * torch.tanh(dg[:, :3] / 3.0); D = logdiag.exp()
-        ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
-        dvals = torch.empty((n, 6), dtype=torch.float64, device=DEV)
-        dvals[:, is_d] = D; dvals[:, ~is_d] = self.off_scale * torch.minimum(D[:, ua[~is_d]], D[:, ub[~is_d]]) * torch.tanh(dg[:, 3:])
-        pi, pj = g['pair_i'], g['pair_j']; dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)
-        blocks = torch.tanh(self.pair_p) * dmin * (self.off_scale * g['pair_decay'])[:, None]
-        values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
-        M = (0.1 * torch.tanh(self.mode_p)).view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]
-        return values, M
+        return bounded_values(self.dg, self.pair_p, self.mode_p, self.mode_logscale, g, log_w, self.rank, self.off_scale)
 
 
 class BandTriSolve(torch.autograd.Function):
@@ -532,8 +535,8 @@ def main():
     write_json(out / 'PROTOCOL.json', dict(vars(args), schema='CUTFEM_SUPERELEMENT_V1', script_sha256=V0.sha256(__file__)))
     records = json.load(open(args.labels))
     train_recs = [r for r in records if r['split'] == 'train' and r['q'] <= args.train_max_q][:args.max_train_labels]; val_recs = [r for r in records if r['split'] != 'train' and r['q'] <= args.train_max_q]
-    if args.seats:
-        keep = {int(x) for x in args.seats.split(',')}; train_recs = [r for r in train_recs if int(r['seat']) in keep]; val_recs = [r for r in val_recs if int(r['seat']) in keep]
+    if args.seats:                                                       # explicit seats: trained regardless of split (a known-label diagnostic, recorded as such)
+        keep = {int(x) for x in args.seats.split(',')}; train_recs = [r for r in records if int(r['seat']) in keep]; val_recs = []
     if args.model == 'free': assert len(train_recs) == 1 and args.aug_prob == 0, 'free coefficients: one training label, no augmentation'
     print(json.dumps(dict(stage='labels', train=[r['seat'] for r in train_recs], validation=[r['seat'] for r in val_recs])), flush=True)
     labels = {int(r['seat']): Label(r, args.r_near, args.decay, args.off_scale) for r in train_recs + val_recs}
@@ -542,13 +545,23 @@ def main():
     first = labels[int(train_recs[0]['seat'])]
     net = (FreeCoefficientModel(first, args.rank, args.off_scale) if args.model == 'free' else GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width)).to(DEV)
     group = cube_group()
-    if args.init_checkpoint: net.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net'])
+    if args.init_checkpoint and args.model == 'free':                     # free coefficients start from the network's own prediction for this label (original frame)
+        ref = GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
+        ref.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net']); ref.eval()
+        g0 = first.to_gpu(need_A=False, need_Z=True, z_dtype=torch.float64); log_w0 = g0['w'].log()
+        with torch.no_grad():
+            net.from_network(ref, g0); v_ref, M_ref = ref(g0, log_w0); v_free, M_free = net(g0, log_w0)
+            D_ref = divergence_terms(g0, Operator(g0, v_ref, M_ref), torch.float64)[0] / g0['d']; D_free = divergence_terms(g0, Operator(g0, v_free, M_free), torch.float64)[0] / g0['d']
+        check = dict(stage='free_init', seat=first.seat, checkpoint=args.init_checkpoint, values_max_rel_diff=float((v_ref - v_free).abs().max() / v_ref.abs().max()),
+                     M_max_rel_diff=float((M_ref - M_free).abs().max() / M_ref.abs().max()), divergence_per_mode_net=float(D_ref), divergence_per_mode_free=float(D_free))
+        print(json.dumps(check), flush=True); write_json(out / 'FREE_INIT_CHECK.json', check); del ref, g0, v_ref, M_ref, v_free, M_free; first.release(); torch.cuda.empty_cache()
+    elif args.init_checkpoint: net.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net'])
     nparam = sum(p.numel() for p in net.parameters()); write_json(out / 'MODEL.json', dict(parameters=nparam, model=str(net)))
     print(json.dumps(dict(stage='setup', parameters=nparam)), flush=True)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr)
     gen = torch.Generator(device=DEV).manual_seed(args.seed + 1)
-    eval_train = [l for l in labels.values() if l.record['split'] == 'train' and l.q <= args.eval_max_q][:args.eval_labels]
-    eval_val = [l for l in labels.values() if l.record['split'] != 'train' and l.q <= args.eval_max_q][:args.eval_labels]
+    eval_train = [l for l in labels.values() if (args.seats or l.record['split'] == 'train') and l.q <= args.eval_max_q][:args.eval_labels]
+    eval_val = [l for l in labels.values() if not args.seats and l.record['split'] != 'train' and l.q <= args.eval_max_q][:args.eval_labels]
     probe_objective = args.energy_weight > 0 or args.action_weight > 0 or args.dual_weight > 0 or args.compliance_weight > 0
     exact_objective = args.divergence_weight > 0 or args.extreme_weight > 0
     z_dtype = torch.float32 if args.trace_dtype == 'float32' else torch.float64
