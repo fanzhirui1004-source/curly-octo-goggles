@@ -122,6 +122,7 @@ class Label:
         order = torch.argsort(I * self.q + J)
         self.band_index = torch.stack((I[order], J[order])).cpu(); self.band_index_t = torch.stack((J[order], I[order])).cpu()
         self.band_perm = order.cpu()                                       # position in [off entries (npair*9) | diag entries (nn*6)]
+        crow = torch.zeros(self.q + 1, dtype=torch.int64); crow[1:] = torch.bincount(I[order].cpu(), minlength=self.q).cumsum(0); self.band_crow = crow
         self.n_off_entries = npair * 9
         self.dirs = None                                                   # evaluation directions, built lazily on GPU
 
@@ -129,13 +130,13 @@ class Label:
         g = dict(images=self.images.to(DEV), theta=self.theta.to(DEV), mem_node=self.mem_node.to(DEV), mem_face=self.mem_face.to(DEV), mem_pix=self.mem_pix.to(DEV),
                  volume=self.volume.to(DEV), xyz=self.xyz_nodes.to(DEV), Q=torch.eye(3, dtype=torch.float64, device=DEV),
                  face_of_node=self.face_of_node.to(DEV), pair_i=self.pair_i.to(DEV), pair_j=self.pair_j.to(DEV), pair_dx=self.pair_dx.to(DEV), pair_decay=self.pair_decay.to(DEV),
-                 band_index=self.band_index.to(DEV), band_index_t=self.band_index_t.to(DEV), band_perm=self.band_perm.to(DEV), wq=self.wq.to(DEV), P3=self.P3.to(DEV),
+                 band_index=self.band_index.to(DEV), band_index_t=self.band_index_t.to(DEV), band_perm=self.band_perm.to(DEV), band_crow=self.band_crow.to(DEV), wq=self.wq.to(DEV), P3=self.P3.to(DEV),
                  w=torch.from_numpy(self.w).double().to(DEV))
         data = self.data.cuda()
         S, _ = load_teacher_dense(self.record['packet'], data.quotient.dimension, DEV)
         A, _ = quotient_dense(S, data.quotient); del S
         Rstar = load_upper_factor(Path(self.record['reference']) / 'R_UPPER.npy', self.d, DEV)
-        g.update(data=data, A=A, Rstar=Rstar, rigid=torch.from_numpy(self.sample.cache['rigid']).to(DEV).double())
+        g.update(data=data, A=A, Rstar=Rstar, rigid=torch.from_numpy(self.sample.cache['rigid']).to(DEV).double(), tri_mode=getattr(self, 'tri_mode', 'dense'))
         return g
 
     def transformed(self, perm, sign):
@@ -233,31 +234,38 @@ class GeometryNet(nn.Module):
 
 
 class BandTriSolve(torch.autograd.Function):
-    """Solve L X = B (upper=True) or L^T X = B (upper=False) for a banded upper-triangular L given by COO (index, values).
-    Backward computes the gradient only on the band, never a dense q x q gradient; the dense L is rebuilt in backward."""
+    """Solve L X = B (upper=True) or L^T X = B (upper=False) for the banded upper-triangular L given by COO (index, values).
+    mode='dense': cuBLAS trsm on a dense copy of L (fast, q^2 memory, rebuilt in backward).
+    mode='sparse': cuSPARSE CSR triangular solve (no q^2 memory, slower on long dependency chains).
+    Backward computes the gradient only on the band."""
     @staticmethod
-    def forward(ctx, values, B, index, q, upper):
-        L = torch.sparse_coo_tensor(index, values.detach(), (q, q), is_coalesced=True).to_dense()
-        X = torch.linalg.solve_triangular(L if upper else L.T, B, upper=upper); del L
-        ctx.save_for_backward(values.detach(), X, index); ctx.q, ctx.upper = q, upper
+    def solve(values, B, index, crow, q, upper, mode):
+        if mode == 'sparse':
+            csr = torch.sparse_csr_tensor(crow, index[1], values, (q, q))
+            return torch.triangular_solve(B, csr, upper=True, transpose=not upper)[0]
+        L = torch.sparse_coo_tensor(index, values, (q, q), is_coalesced=True).to_dense()
+        return torch.linalg.solve_triangular(L if upper else L.T, B, upper=upper)
+    @staticmethod
+    def forward(ctx, values, B, index, crow, q, upper, mode):
+        X = BandTriSolve.solve(values.detach(), B, index, crow, q, upper, mode)
+        ctx.save_for_backward(values.detach(), X, index, crow); ctx.q, ctx.upper, ctx.mode = q, upper, mode
         return X
     @staticmethod
     def backward(ctx, dX):
-        values, X, index = ctx.saved_tensors; q, upper = ctx.q, ctx.upper
-        L = torch.sparse_coo_tensor(index, values, (q, q), is_coalesced=True).to_dense()
+        values, X, index, crow = ctx.saved_tensors; q, upper, mode = ctx.q, ctx.upper, ctx.mode
         # X = L^-1 B:  dB = L^-T dX,  dL[i,j] = -(L^-T dX)_i . X_j ;   X = L^-T B:  dB = L^-1 dX,  dL[i,j] = -X_i . (L^-1 dX)_j
-        Y = torch.linalg.solve_triangular(L.T if upper else L, dX, upper=not upper); del L
+        Y = BandTriSolve.solve(values, dX, index, crow, q, not upper, mode)
         I, J = index[0], index[1]; g = torch.empty(I.shape[0], dtype=values.dtype, device=values.device)
         for b in range(0, I.shape[0], 2_000_000):
             i, j = I[b:b + 2_000_000], J[b:b + 2_000_000]
             g[b:b + 2_000_000] = -((Y[i] * X[j]).sum(1) if upper else (X[i] * Y[j]).sum(1))
-        return g, Y, None, None, None
+        return g, Y, None, None, None, None, None
 
 
 class Operator:
     """S_hat = L^T (I + M M^T)^-1 L, applied by Woodbury with G = I + M^T M."""
     def __init__(self, g, values, M):
-        self.q = int(M.shape[0]); self.values = values; self.index = g['band_index']
+        self.q = int(M.shape[0]); self.values = values; self.index = g['band_index']; self.crow = g['band_crow']; self.tri_mode = g.get('tri_mode', 'dense')
         Q = g.get('Q'); self.Q = None if Q is None or bool(torch.equal(Q, torch.eye(3, dtype=Q.dtype, device=Q.device))) else Q
         self.L = torch.sparse_coo_tensor(g['band_index'], values, (self.q, self.q), is_coalesced=True)
         self.LT = torch.sparse_coo_tensor(g['band_index_t'], values, (self.q, self.q)); self.M = M
@@ -275,8 +283,8 @@ class Operator:
     def restricted_inverse(self, quotient, rigid, y):
         """x_hat = (B S_hat B^T)^-1 y via full-space solves S_hat^-1 = L^-1 (I + M M^T) L^-T and a rank-6 rigid correction."""
         Fm = self.pi(torch.cat((quotient.lift(y), rigid), dim=1))
-        Z = BandTriSolve.apply(self.values, Fm, self.index, self.q, False); Z = Z + self.M @ (self.M.T @ Z)
-        U = self.pi(BandTriSolve.apply(self.values, Z, self.index, self.q, True), inverse=True); m = y.shape[1]; UF, UN = U[:, :m], U[:, m:]
+        Z = BandTriSolve.apply(self.values, Fm, self.index, self.crow, self.q, False, self.tri_mode); Z = Z + self.M @ (self.M.T @ Z)
+        U = self.pi(BandTriSolve.apply(self.values, Z, self.index, self.crow, self.q, True, self.tri_mode), inverse=True); m = y.shape[1]; UF, UN = U[:, :m], U[:, m:]
         return quotient(UF - UN @ torch.linalg.solve(rigid.T @ UN, rigid.T @ UF))
     @torch.no_grad()
     def materialize(self):
@@ -385,6 +393,7 @@ def main():
     ap.add_argument('--lr', type=float, default=1e-3); ap.add_argument('--warmup', type=int, default=200); ap.add_argument('--lr-floor', type=float, default=0.1)
     ap.add_argument('--seed', type=int, default=2026091209); ap.add_argument('--init-checkpoint', default=None); ap.add_argument('--max-train-labels', type=int, default=1000); ap.add_argument('--train-max-q', type=int, default=24000)
     ap.add_argument('--aug-prob', type=float, default=0.5, help='probability of a random cube symmetry per step'); ap.add_argument('--volume-width', type=int, default=32)
+    ap.add_argument('--tri-solver', default='auto', choices=['auto', 'dense', 'sparse']); ap.add_argument('--dense-max-q', type=int, default=26000, help='auto: dense trsm up to this q, cuSPARSE CSR above')
     args = ap.parse_args()
     out = Path(args.output); out.mkdir(parents=True, exist_ok=False); t_start = time.perf_counter(); torch.manual_seed(args.seed)
     write_json(out / 'PROTOCOL.json', dict(vars(args), schema='CUTFEM_SUPERELEMENT_V1', script_sha256=V0.sha256(__file__)))
@@ -392,6 +401,7 @@ def main():
     train_recs = [r for r in records if r['split'] == 'train' and r['q'] <= args.train_max_q][:args.max_train_labels]; val_recs = [r for r in records if r['split'] != 'train' and r['q'] <= args.train_max_q]
     print(json.dumps(dict(stage='labels', train=[r['seat'] for r in train_recs], validation=[r['seat'] for r in val_recs])), flush=True)
     labels = {int(r['seat']): Label(r, args.r_near, args.decay, args.off_scale) for r in train_recs + val_recs}
+    for l in labels.values(): l.tri_mode = args.tri_solver if args.tri_solver != 'auto' else ('dense' if l.q <= args.dense_max_q else 'sparse')
     print(json.dumps(dict(stage='prepared', seconds=time.perf_counter() - t_start, q={s: l.q for s, l in labels.items()})), flush=True)
     net = GeometryNet(labels[int(train_recs[0]['seat'])].images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
     group = cube_group()
