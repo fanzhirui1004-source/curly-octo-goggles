@@ -226,10 +226,24 @@ def energy_error(g, op, z):
     return torch.linalg.solve_triangular(g['Rstar'].T, pred - ref, upper=False).square().sum(0) / (g['Rstar'] @ z).square().sum(0)
 
 
-def dual_error(g, op, m, generator):
-    xi = torch.randn(g['A'].shape[0], m, dtype=torch.float64, device=DEV, generator=generator)
-    xh = op.restricted_inverse(g['data'].quotient, g['rigid'], g['Rstar'].T @ xi)
-    return (g['Rstar'] @ xh - xi).square().sum(0) / xi.square().sum(0)
+def dual_error(g, op, m, generator, kind='white'):
+    """Inverse (response) error. kind='white': forces uniform over modes in the energy metric.
+    kind='physical': support-weighted smooth tractions (half) and support-weighted random balanced loads (half).
+    Returns (energy-norm relative displacement error, relative compliance error) per probe."""
+    R = g['Rstar']; d = g['A'].shape[0]
+    if kind == 'white':
+        xi = torch.randn(d, m, dtype=torch.float64, device=DEV, generator=generator); y = R.T @ xi
+        xr = torch.linalg.solve_triangular(R, xi, upper=True)
+    else:
+        q = g['P3'].shape[0]; mc = m // 2
+        zc = torch.randn(g['P3'].shape[1], mc, dtype=torch.float64, device=DEV, generator=generator)
+        xf = torch.randn(q, m - mc, dtype=torch.float64, device=DEV, generator=generator)
+        y = g['data'].quotient(g['wq'][:, None] * torch.cat((g['P3'] @ zc, xf), dim=1))
+        xr = torch.linalg.solve_triangular(R, torch.linalg.solve_triangular(R.T, y, upper=False), upper=True)
+    xh = op.restricted_inverse(g['data'].quotient, g['rigid'], y)
+    e_disp = (R @ (xh - xr)).square().sum(0) / (R @ xr).square().sum(0)
+    e_comp = ((y * xh).sum(0) - (y * xr).sum(0)).abs() / (y * xr).sum(0).abs()
+    return e_disp, e_comp
 
 
 def action_error(g, op, z):
@@ -244,7 +258,7 @@ def evaluate_label(label, g, net, seed):
     held = draw_probes(g, 64, 32, torch.Generator(device=DEV).manual_seed(seed + 2))
     e = energy_error(g, op, held)
     res = dict(seat=label.seat, q=label.q, held_energy_error=float(e[:64].mean()), held_coarse=float(e[:32].mean()), held_fine=float(e[32:64].mean()), held_white=float(e[64:].mean()),
-               held_dual=float(dual_error(g, op, 32, torch.Generator(device=DEV).manual_seed(seed + 4)).mean()))
+               held_dual=float(dual_error(g, op, 32, torch.Generator(device=DEV).manual_seed(seed + 4))[0].mean()))
     A, R = g['A'], g['Rstar']
     Shat = op.materialize(); Ahat, _ = quotient_dense(Shat, g['data'].quotient); del Shat
     _, info = torch.linalg.cholesky_ex(Ahat, upper=True); res['cholesky_info'] = int(info)
@@ -286,6 +300,7 @@ def main():
     ap.add_argument('--r-near', type=float, default=0.2); ap.add_argument('--decay', type=float, default=0.03); ap.add_argument('--off-scale', type=float, default=OFF_SCALE, help='bound of |L_ij| relative to min(L_ii,L_jj)*exp(-d/decay)')
     ap.add_argument('--rank', type=int, default=512); ap.add_argument('--width', type=int, default=64); ap.add_argument('--hidden', type=int, default=128)
     ap.add_argument('--probes', type=int, default=32); ap.add_argument('--white-probes', type=int, default=32); ap.add_argument('--action-probes', type=int, default=16); ap.add_argument('--action-weight', type=float, default=3.0); ap.add_argument('--dual-weight', type=float, default=1.0); ap.add_argument('--dual-probes', type=int, default=16); ap.add_argument('--dual-start', type=int, default=0); ap.add_argument('--dual-clip', type=float, default=1e4); ap.add_argument('--energy-ramp', type=int, default=3000, help='energy-loss weight ramps linearly from 0 to 1 over this many steps')
+    ap.add_argument('--dual-kind', default='white', choices=['white', 'physical']); ap.add_argument('--dual-log', type=int, default=1); ap.add_argument('--compliance-weight', type=float, default=0.0); ap.add_argument('--energy-weight', type=float, default=1.0)
     ap.add_argument('--lr', type=float, default=1e-3); ap.add_argument('--warmup', type=int, default=200); ap.add_argument('--lr-floor', type=float, default=0.1)
     ap.add_argument('--seed', type=int, default=2026091209); ap.add_argument('--init-checkpoint', default=None); ap.add_argument('--max-train-labels', type=int, default=1000); ap.add_argument('--train-max-q', type=int, default=24000)
     args = ap.parse_args()
@@ -329,18 +344,22 @@ def main():
                     values, M = net(g, log_w); op = Operator(g, values, M)
                     z = draw_probes(g, args.probes, args.white_probes, gen); loss_e = energy_error(g, op, z).mean()
                     zw = torch.randn(g['A'].shape[0], args.action_probes, dtype=torch.float64, device=DEV, generator=gen); loss_a = action_error(g, op, zw).mean()
-                    loss_d = torch.log1p(dual_error(g, op, args.dual_probes, gen)).mean() if (args.dual_weight > 0 and step >= args.dual_start) else torch.zeros((), dtype=torch.float64, device=DEV)
+                    loss_d = loss_c = torch.zeros((), dtype=torch.float64, device=DEV)
+                    if args.dual_weight > 0 and step >= args.dual_start:
+                        e_disp, e_comp = dual_error(g, op, args.dual_probes, gen, kind=args.dual_kind)
+                        loss_d = (torch.log1p(e_disp) if args.dual_log else e_disp.clamp(max=args.dual_clip)).mean()
+                        loss_c = e_comp.clamp(max=args.dual_clip).mean()
                 except torch._C._LinAlgError as err:
                     print(json.dumps(dict(stage='guard', step=step, seat=l.seat, reason=repr(err)[:120])), flush=True); continue
                 w_e = min(1.0, step / max(args.energy_ramp, 1))
-                loss = w_e * loss_e + args.action_weight * loss_a + args.dual_weight * loss_d
+                loss = args.energy_weight * w_e * loss_e + args.action_weight * loss_a + args.dual_weight * loss_d + args.compliance_weight * loss_c
                 if not torch.isfinite(loss):
                     print(json.dumps(dict(stage='guard', step=step, seat=l.seat)), flush=True); continue
                 loss.backward(); gn = torch.nn.utils.clip_grad_norm_(net.parameters(), 10.0)
                 if not torch.isfinite(gn):
                     opt.zero_grad(set_to_none=True); print(json.dumps(dict(stage='guard', step=step, seat=l.seat, reason='nonfinite gradient')), flush=True); continue
                 opt.step()
-                row = dict(step=step, seat=l.seat, lr=args.lr * sched, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), dual_loss=float(loss_d.detach()), grad_norm=float(gn), seconds=sync() - tick)
+                row = dict(step=step, seat=l.seat, lr=args.lr * sched, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), dual_loss=float(loss_d.detach()), compliance_loss=float(loss_c.detach()), grad_norm=float(gn), seconds=sync() - tick)
                 history.append(row); append_json(out / 'HISTORY.jsonl', row)
                 if step <= 5 or step % 50 == 0:
                     print(json.dumps(dict(**row, mean_loss_200=float(np.mean([r['loss'] for r in history[-200:]])), elapsed=time.perf_counter() - t_start, peak_gib=torch.cuda.max_memory_allocated() / 2**30)), flush=True)
