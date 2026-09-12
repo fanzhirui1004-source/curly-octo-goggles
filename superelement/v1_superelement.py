@@ -123,7 +123,7 @@ class GeometryNet(nn.Module):
         self.diag = nn.Sequential(nn.Linear(width, hidden), nn.SiLU(), nn.Linear(hidden, 6))          # 3 log-diag corrections + 3 in-block off values
         self.pair = nn.Sequential(nn.Linear(2 * width + 4 + 12, hidden), nn.SiLU(), nn.Linear(hidden, hidden), nn.SiLU(), nn.Linear(hidden, 9))
         self.mode = nn.Sequential(nn.Linear(width, hidden), nn.SiLU(), nn.Linear(hidden, 3 * rank))
-        self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.1)))
+        self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.03)))
         for head in (self.diag, self.pair, self.mode):
             nn.init.normal_(head[-1].weight, std=1e-2); nn.init.zeros_(head[-1].bias)
 
@@ -156,10 +156,33 @@ class GeometryNet(nn.Module):
         return values, M
 
 
+class BandTriSolve(torch.autograd.Function):
+    """Solve L X = B (upper=True) or L^T X = B (upper=False) for a banded upper-triangular L given by COO (index, values).
+    Backward computes the gradient only on the band, never a dense q x q gradient; the dense L is rebuilt in backward."""
+    @staticmethod
+    def forward(ctx, values, B, index, q, upper):
+        L = torch.sparse_coo_tensor(index, values.detach(), (q, q), is_coalesced=True).to_dense()
+        X = torch.linalg.solve_triangular(L if upper else L.T, B, upper=upper); del L
+        ctx.save_for_backward(values.detach(), X, index); ctx.q, ctx.upper = q, upper
+        return X
+    @staticmethod
+    def backward(ctx, dX):
+        values, X, index = ctx.saved_tensors; q, upper = ctx.q, ctx.upper
+        L = torch.sparse_coo_tensor(index, values, (q, q), is_coalesced=True).to_dense()
+        # X = L^-1 B:  dB = L^-T dX,  dL[i,j] = -(L^-T dX)_i . X_j ;   X = L^-T B:  dB = L^-1 dX,  dL[i,j] = -X_i . (L^-1 dX)_j
+        Y = torch.linalg.solve_triangular(L.T if upper else L, dX, upper=not upper); del L
+        I, J = index[0], index[1]; g = torch.empty(I.shape[0], dtype=values.dtype, device=values.device)
+        for b in range(0, I.shape[0], 2_000_000):
+            i, j = I[b:b + 2_000_000], J[b:b + 2_000_000]
+            g[b:b + 2_000_000] = -((Y[i] * X[j]).sum(1) if upper else (X[i] * Y[j]).sum(1))
+        return g, Y, None, None, None
+
+
 class Operator:
     """S_hat = L^T (I + M M^T)^-1 L, applied by Woodbury with G = I + M^T M."""
     def __init__(self, g, values, M):
-        self.q = int(M.shape[0]); self.L = torch.sparse_coo_tensor(g['band_index'], values, (self.q, self.q), is_coalesced=True)
+        self.q = int(M.shape[0]); self.values = values; self.index = g['band_index']
+        self.L = torch.sparse_coo_tensor(g['band_index'], values, (self.q, self.q), is_coalesced=True)
         self.LT = torch.sparse_coo_tensor(g['band_index_t'], values, (self.q, self.q)); self.M = M
         G = M.T @ M; G.diagonal().add_(1.0); self.C = torch.linalg.cholesky(G)
     def apply(self, x):
@@ -168,9 +191,9 @@ class Operator:
         return torch.sparse.mm(self.LT, u)
     def restricted_inverse(self, quotient, rigid, y):
         """x_hat = (B S_hat B^T)^-1 y via full-space solves S_hat^-1 = L^-1 (I + M M^T) L^-T and a rank-6 rigid correction."""
-        Ld = self.L.to_dense(); Fm = torch.cat((quotient.lift(y), rigid), dim=1)
-        Z = torch.linalg.solve_triangular(Ld.T, Fm, upper=False); Z = Z + self.M @ (self.M.T @ Z)
-        U = torch.linalg.solve_triangular(Ld, Z, upper=True); m = y.shape[1]; UF, UN = U[:, :m], U[:, m:]
+        Fm = torch.cat((quotient.lift(y), rigid), dim=1)
+        Z = BandTriSolve.apply(self.values, Fm, self.index, self.q, False); Z = Z + self.M @ (self.M.T @ Z)
+        U = BandTriSolve.apply(self.values, Z, self.index, self.q, True); m = y.shape[1]; UF, UN = U[:, :m], U[:, m:]
         return quotient(UF - UN @ torch.linalg.solve(rigid.T @ UN, rigid.T @ UF))
     @torch.no_grad()
     def materialize(self):
@@ -259,12 +282,12 @@ def main():
     ap.add_argument('--rank', type=int, default=512); ap.add_argument('--width', type=int, default=64); ap.add_argument('--hidden', type=int, default=128)
     ap.add_argument('--probes', type=int, default=32); ap.add_argument('--white-probes', type=int, default=32); ap.add_argument('--action-probes', type=int, default=16); ap.add_argument('--action-weight', type=float, default=3.0); ap.add_argument('--dual-weight', type=float, default=1.0); ap.add_argument('--dual-probes', type=int, default=16); ap.add_argument('--dual-start', type=int, default=0); ap.add_argument('--dual-clip', type=float, default=1e4); ap.add_argument('--energy-ramp', type=int, default=3000, help='energy-loss weight ramps linearly from 0 to 1 over this many steps')
     ap.add_argument('--lr', type=float, default=1e-3); ap.add_argument('--warmup', type=int, default=200); ap.add_argument('--lr-floor', type=float, default=0.1)
-    ap.add_argument('--seed', type=int, default=2026091209); ap.add_argument('--init-checkpoint', default=None); ap.add_argument('--max-train-labels', type=int, default=1000)
+    ap.add_argument('--seed', type=int, default=2026091209); ap.add_argument('--init-checkpoint', default=None); ap.add_argument('--max-train-labels', type=int, default=1000); ap.add_argument('--train-max-q', type=int, default=24000)
     args = ap.parse_args()
     out = Path(args.output); out.mkdir(parents=True, exist_ok=False); t_start = time.perf_counter(); torch.manual_seed(args.seed)
     write_json(out / 'PROTOCOL.json', dict(vars(args), schema='CUTFEM_SUPERELEMENT_V1', script_sha256=V0.sha256(__file__)))
     records = json.load(open(args.labels))
-    train_recs = [r for r in records if r['split'] == 'train'][:args.max_train_labels]; val_recs = [r for r in records if r['split'] != 'train']
+    train_recs = [r for r in records if r['split'] == 'train' and r['q'] <= args.train_max_q][:args.max_train_labels]; val_recs = [r for r in records if r['split'] != 'train' and r['q'] <= args.train_max_q]
     print(json.dumps(dict(stage='labels', train=[r['seat'] for r in train_recs], validation=[r['seat'] for r in val_recs])), flush=True)
     labels = {int(r['seat']): Label(r, args.r_near, args.decay, args.off_scale) for r in train_recs + val_recs}
     print(json.dumps(dict(stage='prepared', seconds=time.perf_counter() - t_start, q={s: l.q for s, l in labels.items()})), flush=True)
@@ -300,7 +323,7 @@ def main():
                 values, M = net(g, log_w); op = Operator(g, values, M)
                 z = draw_probes(g, args.probes, args.white_probes, gen); loss_e = energy_error(g, op, z).mean()
                 zw = torch.randn(g['A'].shape[0], args.action_probes, dtype=torch.float64, device=DEV, generator=gen); loss_a = action_error(g, op, zw).mean()
-                loss_d = (args.dual_clip * torch.tanh(dual_error(g, op, args.dual_probes, gen) / args.dual_clip)).mean() if (args.dual_weight > 0 and step >= args.dual_start) else torch.zeros((), dtype=torch.float64, device=DEV)
+                loss_d = torch.log1p(dual_error(g, op, args.dual_probes, gen)).mean() if (args.dual_weight > 0 and step >= args.dual_start) else torch.zeros((), dtype=torch.float64, device=DEV)
                 w_e = min(1.0, step / max(args.energy_ramp, 1))
                 loss = w_e * loss_e + args.action_weight * loss_a + args.dual_weight * loss_d
                 if not torch.isfinite(loss):
