@@ -553,7 +553,7 @@ def main():
                 opt.step()
                 row = dict(step=step, seat=l.seat, lr=args.lr * sched, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), dual_loss=float(loss_d.detach()), compliance_loss=float(loss_c.detach()), grad_norm=float(gn), seconds=sync() - tick)
                 if args.divergence_weight > 0: row.update(divergence_per_mode=float(loss_D.detach()), trace_per_mode=float(trace.detach()) / label_d(g), logdet_gap=float(gap.detach()))
-                if ritz is not None: row.update(extreme_loss=float(loss_x.detach()), ritz_max=float(ritz.max()), ritz_min=float(ritz.min()))
+                if ritz is not None: row.update(extreme_loss=float(loss_x.detach()), ritz_max=float(ritz.detach().max()), ritz_min=float(ritz.detach().min()))
                 history.append(row); append_json(out / 'HISTORY.jsonl', row)
                 if step <= 5 or step % 50 == 0:
                     print(json.dumps(dict(**row, mean_loss_200=float(np.mean([r['loss'] for r in history[-200:]])), elapsed=time.perf_counter() - t_start, peak_gib=torch.cuda.max_memory_allocated() / 2**30)), flush=True)
