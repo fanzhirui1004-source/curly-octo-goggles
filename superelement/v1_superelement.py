@@ -248,6 +248,27 @@ class GeometryNet(nn.Module):
         return values, M
 
 
+class FreeCoefficientModel(nn.Module):
+    """Free coefficients through exactly the same bounded maps as the GeometryNet heads (diag +-3 log correction, pair tanh times
+    min(D_i, D_j) times off_scale times the distance prior, modes 0.1 tanh times a per-column scale). Single label, no symmetry frames:
+    a capacity test of the representation under the network's feasible set."""
+    def __init__(self, label, rank=512, off_scale=OFF_SCALE):
+        super().__init__(); self.rank, self.off_scale = rank, off_scale
+        self.dg = nn.Parameter(torch.zeros(label.nn, 6, dtype=torch.float64)); self.pair_p = nn.Parameter(torch.zeros(len(label.pair_i), 9, dtype=torch.float64))
+        self.mode_p = nn.Parameter(1e-2 * torch.randn(label.nn, 3 * rank, dtype=torch.float64)); self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.03)))
+    def forward(self, g, log_w):
+        dg = self.dg; n = dg.shape[0]
+        logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + 3.0 * torch.tanh(dg[:, :3] / 3.0); D = logdiag.exp()
+        ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
+        dvals = torch.empty((n, 6), dtype=torch.float64, device=DEV)
+        dvals[:, is_d] = D; dvals[:, ~is_d] = self.off_scale * torch.minimum(D[:, ua[~is_d]], D[:, ub[~is_d]]) * torch.tanh(dg[:, 3:])
+        pi, pj = g['pair_i'], g['pair_j']; dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)
+        blocks = torch.tanh(self.pair_p) * dmin * (self.off_scale * g['pair_decay'])[:, None]
+        values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
+        M = (0.1 * torch.tanh(self.mode_p)).view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]
+        return values, M
+
+
 class BandTriSolve(torch.autograd.Function):
     """Solve L X = B (upper=True) or L^T X = B (upper=False) for the banded upper-triangular L given by COO (index, values).
     mode='dense': cuBLAS trsm on a dense copy of L (fast, q^2 memory, rebuilt in backward).
@@ -355,21 +376,43 @@ def dual_error(g, op, m, generator, kind='white'):
 
 
 # ----------------------------------------------------------------------------- probe-free objective: log-det divergence + extreme whitened modes
-def divergence_terms(g, op, trace_dtype=torch.float32):
+def divergence_terms(g, op, trace_dtype=torch.float32, solve_tol=1e-6):
     """Exact log-det divergence of the student against the teacher, D = tr(A^-1 A_hat) - log det(A^-1 A_hat) - d = sum_i (mu_i - log mu_i - 1)
     over the whitened spectrum mu of R*^-T A_hat R*^-1.  No probes:
       tr(A^-1 A_hat) = ||(I + M M^T)^-1/2 L Pi Z^T||_F^2 with Z = R*^-T B (Pi: augmentation frame),
       log det A_hat  = 2 sum log L_ii - log det(I + M^T M) + log det(N^T S_hat^-1 N) - log det(N^T N)   (orthonormal rigid quotient B).
-    The trace is evaluated in trace_dtype (float32 is enough for its gradient); the value logged is exact up to that rounding."""
+    The trace is evaluated in trace_dtype (float32 is enough for its gradient); the value logged is exact up to that rounding.
+    Returns (D, trace, log-det gap, solve residual). When the rigid-correction solve residual exceeds solve_tol the step is numerically
+    unreliable: the rigid term is dropped (gap then lacks a per-label constant) so that no gradient flows through the ill-conditioned solve."""
     ZT = op.pi(g['ZT']).to(trace_dtype)
     L = torch.sparse_coo_tensor(op.index, op.values.to(trace_dtype), (op.q, op.q), is_coalesced=True)
     T = torch.sparse.mm(L, ZT)                                                                          # (q, d)
     Y = torch.linalg.solve_triangular(op.C.to(trace_dtype), op.M.to(trace_dtype).T @ T, upper=False)   # C^-1 M^T T
     trace = (T.square().sum() - Y.square().sum()).double(); del T, Y
     logdet_S = 2.0 * op.values[g['band_is_diag']].log().sum() - 2.0 * op.C.diagonal().log().sum()
-    N = g['rigid']; logdet_hat = logdet_S + torch.logdet(N.T @ op.solve_full(N)) - g['logdet_NtN']
+    N = g['rigid']; U = op.solve_full(N)
+    with torch.no_grad(): residual = float(torch.linalg.matrix_norm(op.apply(U) - N) / torch.linalg.matrix_norm(N))   # K0 U = N solve residual
+    if residual > solve_tol:                                                                             # ill-conditioned K0: keep only the solve-free part
+        return trace - (logdet_S - g['logdet_A']) - g['d'], trace, logdet_S - g['logdet_A'], residual
+    logdet_hat = logdet_S + torch.logdet(N.T @ U) - g['logdet_NtN']
     gap = logdet_hat - g['logdet_A']
-    return trace - gap - g['d'], trace, gap
+    return trace - gap - g['d'], trace, gap, residual
+
+
+@torch.no_grad()
+def factor_conditioning(op, iters=30):
+    """Estimates of sigma_max(L), sigma_min(L) (power / inverse iteration on L^T L) and ||M||_2; K0 is bounded by
+    sigma_min(L)^2 / (1 + ||M||^2) <= K0 <= sigma_max(L)^2."""
+    q = op.q; v = torch.randn(q, 1, dtype=torch.float64, device=DEV); v /= v.norm()
+    for _ in range(iters):
+        v = torch.sparse.mm(op.LT, torch.sparse.mm(op.L, v)); smax = v.norm().sqrt(); v /= v.norm()
+    v = torch.randn(q, 1, dtype=torch.float64, device=DEV); v /= v.norm()
+    Ld = torch.sparse_coo_tensor(op.index, op.values, (q, q), is_coalesced=True).to_dense()
+    for _ in range(iters):
+        v = torch.linalg.solve_triangular(Ld, torch.linalg.solve_triangular(Ld.T, v, upper=False), upper=True); smin = 1.0 / v.norm().sqrt(); v /= v.norm()
+    del Ld
+    mnorm = torch.linalg.eigvalsh(op.M.T @ op.M).max().sqrt()
+    return dict(L_sigma_max=float(smax), L_sigma_min=float(smin), M_norm=float(mnorm), K0_condition_bound=float(smax ** 2 * (1 + mnorm ** 2) / smin ** 2))
 
 
 def whiten_apply(g, op, V):
@@ -417,10 +460,11 @@ def evaluate_label(label, g, net, seed):
     res = dict(seat=label.seat, q=label.q, held_energy_error=float(e[:64].mean()), held_coarse=float(e[:32].mean()), held_fine=float(e[32:64].mean()), held_white=float(e[64:].mean()),
                held_dual=float(dual_error(g, op, 32, torch.Generator(device=DEV).manual_seed(seed + 4))[0].mean()))
     if 'ZT' in g:
-        D, trace, gap = divergence_terms(g, op, trace_dtype=g['ZT'].dtype)
+        D, trace, gap, residual = divergence_terms(g, op, trace_dtype=g['ZT'].dtype)
         ge = dict(g); ge.pop('ext', None)
         _, ritz = extreme_terms(ge, op, 40, 8, torch.Generator(device=DEV).manual_seed(seed + 5))
-        res.update(divergence_per_mode=float(D) / label.d, trace_per_mode=float(trace) / label.d, logdet_gap=float(gap), mu_max_lower=float(ritz.max()), mu_min_upper=float(ritz.min()))
+        res.update(divergence_per_mode=float(D) / label.d, trace_per_mode=float(trace) / label.d, logdet_gap=float(gap), solve_residual=residual,
+                   mu_max_lower=float(ritz.max()), mu_min_upper=float(ritz.min()), **factor_conditioning(op))
     A, R = g['A'], g['Rstar']
     if A is None:
         res['evaluation_seconds'] = sync() - tick; return res
@@ -454,7 +498,7 @@ def label_d(g): return int(g['d'])
 def brief(res):
     out = dict(seat=res['seat'], held=round(res['held_energy_error'], 4), white=round(res['held_white'], 4), dual=round(res['held_dual'], 4))
     if 'divergence_per_mode' in res:
-        out.update(D=round(res['divergence_per_mode'], 5), gap=round(res['logdet_gap'], 2), mu_max=round(res['mu_max_lower'], 3), mu_min=round(res['mu_min_upper'], 4))
+        out.update(D=round(res['divergence_per_mode'], 5), gap=round(res['logdet_gap'], 2), mu_max=round(res['mu_max_lower'], 3), mu_min=round(res['mu_min_upper'], 4), resid=float('%.1e' % res['solve_residual']), condL=float('%.2e' % (res['L_sigma_max'] / res['L_sigma_min'])), normM=round(res['M_norm'], 3))
     if 'schur_relative_error' in res:
         out.update(eA=round(res['schur_relative_error'], 4), chol=res['cholesky_info'],
                    smooth_E=round(res['groups']['registered_smooth/']['energy_relative_max'], 4), smooth_inv=round(res['inverse_energy_norm_rms']['independent_smooth/'], 3),
@@ -480,16 +524,23 @@ def main():
     ap.add_argument('--divergence-weight', type=float, default=0.0, help='weight of the exact log-det divergence per mode (probe-free objective)')
     ap.add_argument('--extreme-weight', type=float, default=0.0, help='weight of the extreme whitened-mode term'); ap.add_argument('--extreme-block', type=int, default=8); ap.add_argument('--extreme-iters', type=int, default=2)
     ap.add_argument('--trace-dtype', default='float32', choices=['float32', 'float64']); ap.add_argument('--eval-dense', type=int, default=1, help='legacy dense evaluation (materialized A_hat, probe metrics)')
+    ap.add_argument('--solve-tol', type=float, default=1e-6, help='rigid-correction solve residual above which a step is treated as ill-conditioned (no extreme term, no rigid log-det term)')
+    ap.add_argument('--model', default='net', choices=['net', 'free'], help='free: free coefficients under the network head bounds, single label, no augmentation')
+    ap.add_argument('--seats', default=None, help='comma-separated seats to train on (subset of the label file)')
     args = ap.parse_args()
     out = Path(args.output); out.mkdir(parents=True, exist_ok=False); t_start = time.perf_counter(); torch.manual_seed(args.seed)
     write_json(out / 'PROTOCOL.json', dict(vars(args), schema='CUTFEM_SUPERELEMENT_V1', script_sha256=V0.sha256(__file__)))
     records = json.load(open(args.labels))
     train_recs = [r for r in records if r['split'] == 'train' and r['q'] <= args.train_max_q][:args.max_train_labels]; val_recs = [r for r in records if r['split'] != 'train' and r['q'] <= args.train_max_q]
+    if args.seats:
+        keep = {int(x) for x in args.seats.split(',')}; train_recs = [r for r in train_recs if int(r['seat']) in keep]; val_recs = [r for r in val_recs if int(r['seat']) in keep]
+    if args.model == 'free': assert len(train_recs) == 1 and args.aug_prob == 0, 'free coefficients: one training label, no augmentation'
     print(json.dumps(dict(stage='labels', train=[r['seat'] for r in train_recs], validation=[r['seat'] for r in val_recs])), flush=True)
     labels = {int(r['seat']): Label(r, args.r_near, args.decay, args.off_scale) for r in train_recs + val_recs}
     for l in labels.values(): l.tri_mode = args.tri_solver if args.tri_solver != 'auto' else ('dense' if l.q <= args.dense_max_q else 'sparse')
     print(json.dumps(dict(stage='prepared', seconds=time.perf_counter() - t_start, q={s: l.q for s, l in labels.items()})), flush=True)
-    net = GeometryNet(labels[int(train_recs[0]['seat'])].images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
+    first = labels[int(train_recs[0]['seat'])]
+    net = (FreeCoefficientModel(first, args.rank, args.off_scale) if args.model == 'free' else GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width)).to(DEV)
     group = cube_group()
     if args.init_checkpoint: net.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net'])
     nparam = sum(p.numel() for p in net.parameters()); write_json(out / 'MODEL.json', dict(parameters=nparam, model=str(net)))
@@ -533,9 +584,10 @@ def main():
                         z = draw_probes(g, args.probes, args.white_probes, gen); loss_e = energy_error(g, op, z).mean()
                     if args.action_weight > 0:
                         zw = torch.randn(g['A'].shape[0], args.action_probes, dtype=torch.float64, device=DEV, generator=gen); loss_a = action_error(g, op, zw).mean()
+                    residual = 0.0
                     if args.divergence_weight > 0:
-                        D, trace, gap = divergence_terms(g, op, z_dtype); loss_D = D / g['d']
-                    if args.extreme_weight > 0:
+                        D, trace, gap, residual = divergence_terms(g, op, z_dtype, args.solve_tol); loss_D = D / g['d']
+                    if args.extreme_weight > 0 and residual <= args.solve_tol:
                         loss_x, ritz = extreme_terms(g, op, args.extreme_iters, args.extreme_block, gen)
                     if args.dual_weight > 0 and step >= args.dual_start:
                         e_disp, e_comp = dual_error(g, op, args.dual_probes, gen, kind=args.dual_kind)
@@ -552,7 +604,7 @@ def main():
                     opt.zero_grad(set_to_none=True); print(json.dumps(dict(stage='guard', step=step, seat=l.seat, reason='nonfinite gradient')), flush=True); continue
                 opt.step()
                 row = dict(step=step, seat=l.seat, lr=args.lr * sched, loss=float(loss.detach()), energy_loss=float(loss_e.detach()), action_loss=float(loss_a.detach()), dual_loss=float(loss_d.detach()), compliance_loss=float(loss_c.detach()), grad_norm=float(gn), seconds=sync() - tick)
-                if args.divergence_weight > 0: row.update(divergence_per_mode=float(loss_D.detach()), trace_per_mode=float(trace.detach()) / label_d(g), logdet_gap=float(gap.detach()))
+                if args.divergence_weight > 0: row.update(divergence_per_mode=float(loss_D.detach()), trace_per_mode=float(trace.detach()) / label_d(g), logdet_gap=float(gap.detach()), solve_residual=residual, ill_conditioned=int(residual > args.solve_tol), augmented=int(ga is not g))
                 if ritz is not None: row.update(extreme_loss=float(loss_x.detach()), ritz_max=float(ritz.detach().max()), ritz_min=float(ritz.detach().min()))
                 history.append(row); append_json(out / 'HISTORY.jsonl', row)
                 if step <= 5 or step % 50 == 0:

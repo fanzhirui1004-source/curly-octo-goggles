@@ -106,9 +106,12 @@ def main():
     R = load_upper_factor(sample.reference / 'R_UPPER.npy', d, CPU)
     logdet_A = 2 * float(R.diagonal().log().sum())
     chol, code = torch.linalg.cholesky_ex(Ahat); logdet_Ahat_chol = 2 * float(chol.diagonal().log().sum()) if int(code) == 0 else float('nan'); del chol
-    Y = tri(R.T, Ahat, False); del Ahat; W = tri(R.T, Y.T.contiguous(), False); del Y; W = 0.5 * (W + W.T)
+    Y = tri(R.T, Ahat, False); del Ahat; W = tri(R.T, Y.T.contiguous(), False); del Y
+    symmetry_defect = float(torch.linalg.matrix_norm(W - W.T) / torch.linalg.matrix_norm(W)); W = 0.5 * (W + W.T)
     print(json.dumps(dict(stage='whitened', seconds=time.perf_counter() - t0, cholesky_info=int(code))), flush=True)
-    mu, V = torch.linalg.eigh(W); del W
+    mu, V = torch.linalg.eigh(W)
+    ext = torch.cat((torch.argsort(mu)[:args.k], torch.argsort(mu, descending=True)[:args.k]))
+    eig_residual = (torch.linalg.vector_norm(W @ V[:, ext] - V[:, ext] * mu[ext][None, :], dim=0) / mu[ext].abs().clamp(min=1e-300)).tolist(); del W
     print(json.dumps(dict(stage='eigh', seconds=time.perf_counter() - t0)), flush=True)
     mu_np = mu.numpy(); pos = mu_np > 0
     terms = np.where(pos, mu_np - np.log(np.maximum(mu_np, 1e-300)) - 1.0, np.inf)
@@ -146,13 +149,13 @@ def main():
                below_0_5=int((mu_np < 0.5).sum()), below_0_9=int((mu_np < 0.9).sum()), above_1_1=int((mu_np > 1.1).sum()), above_2=int((mu_np > 2).sum()),
                divergence=float(terms.sum()), divergence_per_mode=float(terms.mean()), whitened_rms=float(np.sqrt(np.mean((mu_np - 1) ** 2))),
                forward_bound=float(np.abs(mu_np - 1).max()), inverse_bound=float(np.abs(1 / mu_np - 1).max()) if pos.all() else float('inf'),
-               logdet_gap_eigen=logdet_gap, logdet_gap_cholesky=logdet_Ahat_chol - logdet_A, logdet_gap_closed=closed['logdet_S'] + closed['rigid_term'] - logdet_A, closed=closed,
+               whitening_symmetry_defect=symmetry_defect, extreme_eigenpair_residuals=eig_residual, logdet_gap_eigen=logdet_gap, logdet_gap_cholesky=logdet_Ahat_chol - logdet_A, logdet_gap_closed=closed['logdet_S'] + closed['rigid_term'] - logdet_A, closed=closed,
                groups=groups, stiffness_buckets=stiff_buckets, divergence_share_oversoft=soft_share, softest=modes(order[:args.k], 0), stiffest=modes(order[::-1][:args.k], args.k), sliver_node_fraction=float((w < args.sliver_w).mean()), seconds=time.perf_counter() - t0)
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True); tag = f"{Path(args.run).name}_{Path(args.checkpoint).stem}_{info['seat']:04d}"
     write_json(out / f'SPECTRUM_{tag}.json', json_finite(res))
     np.savez(out / f'SPECTRUM_{tag}.npz', mu=mu_np, sliver=sliver, coarse=coarse, stiffness=stiffness)
     print(json.dumps(dict(stage='done', tag=tag, mu_min=res['mu_min'], mu_max=res['mu_max'], D=res['divergence'], D_per_mode=res['divergence_per_mode'], forward=res['forward_bound'], inverse=res['inverse_bound'],
-                          logdet_gap=dict(eig=res['logdet_gap_eigen'], chol=res['logdet_gap_cholesky'], closed=res['logdet_gap_closed']), groups={k: (v['modes'], round(v['divergence'], 3), round(v['mu_min'], 4), round(v['mu_max'], 3)) for k, v in groups.items()}, stiffness={k: (v['modes'], round(v['divergence'], 3), round(v['mu_min'], 4), round(v['mu_max'], 3)) for k, v in stiff_buckets.items()}, oversoft_share=round(soft_share, 3),
+                          logdet_gap=dict(eig=res['logdet_gap_eigen'], chol=res['logdet_gap_cholesky'], closed=res['logdet_gap_closed']), symmetry_defect=symmetry_defect, eig_residual_max=max(eig_residual), groups={k: (v['modes'], round(v['divergence'], 3), round(v['mu_min'], 4), round(v['mu_max'], 3)) for k, v in groups.items()}, stiffness={k: (v['modes'], round(v['divergence'], 3), round(v['mu_min'], 4), round(v['mu_max'], 3)) for k, v in stiff_buckets.items()}, oversoft_share=round(soft_share, 3),
                           seconds=res['seconds'])), flush=True)
 
 

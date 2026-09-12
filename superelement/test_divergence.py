@@ -23,7 +23,7 @@ for frame in frames:
         _, Q = V1.transform_grid(label.grid_np, *group[int(frame[1:])], V1.N); ga['Q'] = torch.from_numpy(Q)
     elif frame: ga.update(label.transformed(*group[frame]))
     values, M = net(ga, g['w'].log()); op = V1.Operator(ga, values, M)
-    D, trace, gap = V1.divergence_terms(g, op, torch.float64)
+    D, trace, gap, residual = V1.divergence_terms(g, op, torch.float64)
     (D / g['d'] + 0.1 * V1.extreme_terms(g, op, 2, 4)[0]).backward(); grads = [p.grad for p in net.parameters() if p.grad is not None]
     finite = all(bool(torch.isfinite(x).all()) for x in grads); net.zero_grad(set_to_none=True)
     with torch.no_grad():
@@ -33,4 +33,4 @@ for frame in frames:
         W = torch.linalg.solve_triangular(R.T, Y.T.contiguous(), upper=False); del Y; mu = torch.linalg.eigvalsh(0.5 * (W + W.T)); del W
     D_exact = float((mu - mu.log() - 1).sum()); gap_exact = float(mu.log().sum())
     print(json.dumps(dict(frame=str(frame), D=float(D), D_exact=D_exact, gap=float(gap), gap_exact=gap_exact, trace_per_mode=float(trace) / g['d'],
-                          ritz_max=float(ritz.max()), mu_max=float(mu.max()), ritz_min=float(ritz.min()), mu_min=float(mu.min()), grad_finite=finite, seconds=round(time.time() - t0, 1))), flush=True)
+                          ritz_max=float(ritz.max()), mu_max=float(mu.max()), ritz_min=float(ritz.min()), mu_min=float(mu.min()), solve_residual=residual, conditioning=V1.factor_conditioning(op), grad_finite=finite, seconds=round(time.time() - t0, 1))), flush=True)
