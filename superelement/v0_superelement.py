@@ -65,7 +65,7 @@ def support_weights(ijk, N, tau_corners, cut_plane, sub=16):
         if nrm > 0:
             material &= ((offset - xyz @ normal) / nrm >= 0)
         cum = np.zeros((material.shape[0] + 1, material.shape[1] + 1)); cum[1:, 1:] = material.cumsum(0).cumsum(1)
-        on = np.nonzero(face_ids(ijk, N) == f)[0]
+        on = np.nonzero(ijk[:, ax] == (0 if side == 0 else N - 1))[0]     # every node on this face, including edge and corner nodes
         for idx in on:
             a, b = ijk[idx, free[0]], ijk[idx, free[1]]
             ha = 2 if a % 2 == 0 else 1; hb = 2 if b % 2 == 0 else 1     # support half-width in fine steps

@@ -27,6 +27,64 @@ def sync():
     torch.cuda.synchronize(); return time.perf_counter()
 
 
+# ----------------------------------------------------------------------------- cube symmetries
+def cube_group():
+    """All 48 signed axis permutations x' = Q (x - c) + c of the unit cube; identity first."""
+    import itertools
+    elems = []
+    for perm in itertools.permutations(range(3)):
+        for sign in itertools.product((1, -1), repeat=3):
+            elems.append((perm, sign))
+    elems.sort(key=lambda e: (e != ((0, 1, 2), (1, 1, 1))))
+    return elems
+
+
+def transform_grid(grid, perm, sign, N):
+    """grid: (11, N, N, N) analytic field. Returns the field of the transformed geometry (vector channels rotated)."""
+    Q = np.zeros((3, 3)); 
+    for a in range(3): Q[a, perm[a]] = sign[a]
+    idx = np.stack(np.meshgrid(*[np.arange(N)] * 3, indexing='ij'), axis=-1) - (N - 1) / 2      # target indices centered
+    src = (idx @ Q) + (N - 1) / 2                                                                  # source = Q^-1 target = Q^T target
+    src = np.rint(src).astype(int)
+    out = grid[:, src[..., 0], src[..., 1], src[..., 2]]
+    out[0:3] = np.einsum('ab,bxyz->axyz', Q, out[0:3] - 0.5) + 0.5
+    out[7:10] = np.einsum('ab,bxyz->axyz', Q, out[7:10])
+    return out, Q
+
+
+def transform_theta(theta, perm, sign):
+    """tau corners permuted with the cube corners, cut plane a.x <= b mapped through x' = Q(x-c)+c."""
+    import itertools
+    Q = np.zeros((3, 3)); 
+    for a in range(3): Q[a, perm[a]] = sign[a]
+    corners = np.array(list(itertools.product((0, 1), repeat=3)), dtype=float)
+    moved = (corners - 0.5) @ Q.T + 0.5
+    order = [int(np.argmin(np.abs(corners - m).sum(1))) for m in moved]          # corner k moves to corners[order[k]]
+    tau = np.zeros(8); tau[order] = theta[:8]
+    a, b = theta[8:11], theta[11]; c = np.full(3, 0.5)
+    a2 = Q @ a; b2 = b - a @ c + a2 @ c
+    return np.concatenate((tau, a2, [b2]))
+
+
+def build_images(grid, ijk, w, N):
+    """Six face images from an analytic field: channels at several depths, node mask, support weight, coordinates, face one-hot."""
+    mem = []
+    for f in range(6):
+        ax, side = f // 2, f % 2; on = np.nonzero(ijk[:, ax] == (0 if side == 0 else N - 1))[0]
+        free = [a for a in range(3) if a != ax]
+        for i in on: mem.append((i, f, ijk[i, free[0]], ijk[i, free[1]]))
+    mem = np.array(mem); imgs = []
+    for f in range(6):
+        ax, side = f // 2, f % 2
+        ch = [np.take(grid, dep if side == 0 else N - 1 - dep, axis=1 + ax) for dep in DEPTHS]
+        mask = np.zeros((N, N)); wimg = np.zeros((N, N)); sel = mem[mem[:, 1] == f]
+        mask[sel[:, 2], sel[:, 3]] = 1.0; wimg[sel[:, 2], sel[:, 3]] = w[sel[:, 0]]
+        uu, vv = np.meshgrid(np.linspace(0, 1, N), np.linspace(0, 1, N), indexing='ij')
+        onehot = np.zeros((6, N, N)); onehot[f] = 1.0
+        imgs.append(np.concatenate(ch + [mask[None], wimg[None], uu[None], vv[None], onehot], axis=0))
+    return np.stack(imgs).astype(np.float32), mem
+
+
 # ----------------------------------------------------------------------------- label container
 class Label:
     def __init__(self, record, r_near, decay, off_scale, coarse_stride=4):
@@ -40,36 +98,19 @@ class Label:
         self.wq = torch.from_numpy(self.w).double().repeat_interleave(3)
         self.P3 = torch.from_numpy(np.kron(V0.coarse_interpolation(self.ijk, N, coarse_stride), np.eye(3)))
         self.theta = torch.from_numpy(np.concatenate((cache['tau_corners'], cache['cut_plane']))).float()
-        # face membership of every node (edges/corners belong to several faces)
-        mem = []
-        for f in range(6):
-            ax, side = f // 2, f % 2; on = np.nonzero(self.ijk[:, ax] == (0 if side == 0 else N - 1))[0]
-            free = [a for a in range(3) if a != ax]
-            for i in on: mem.append((i, f, self.ijk[i, free[0]], self.ijk[i, free[1]]))
-        mem = np.array(mem); self.mem_node = torch.from_numpy(mem[:, 0]); self.mem_face = torch.from_numpy(mem[:, 1])
+        self.grid_np = self.data.grid[0].numpy().copy()                        # (11, 65, 65, 65)
+        imgs, mem = build_images(self.grid_np, self.ijk, self.w, N)
+        self.images = torch.from_numpy(imgs); self.mem_node = torch.from_numpy(mem[:, 0]); self.mem_face = torch.from_numpy(mem[:, 1])
         self.mem_pix = torch.from_numpy(mem[:, 2] * N + mem[:, 3]); self.face_of_node = torch.from_numpy(V0.face_ids(self.ijk, N))
-        # face images: analytic channels at several depths, node mask, support weight, in-plane coordinates, face one-hot
-        grid = self.data.grid[0].numpy()                                   # (11, 65, 65, 65)
-        imgs = []
-        for f in range(6):
-            ax, side = f // 2, f % 2; free = [a for a in range(3) if a != ax]
-            ch = []
-            for dep in DEPTHS:
-                p = dep if side == 0 else N - 1 - dep
-                sl = np.take(grid, p, axis=1 + ax)                         # (11, 65, 65) in ascending free axes
-                ch.append(sl)
-            mask = np.zeros((N, N)); wimg = np.zeros((N, N))
-            sel = mem[mem[:, 1] == f]; mask[sel[:, 2], sel[:, 3]] = 1.0; wimg[sel[:, 2], sel[:, 3]] = self.w[sel[:, 0]]
-            uu, vv = np.meshgrid(np.linspace(0, 1, N), np.linspace(0, 1, N), indexing='ij')
-            onehot = np.zeros((6, N, N)); onehot[f] = 1.0
-            imgs.append(np.concatenate(ch + [mask[None], wimg[None], uu[None], vv[None], onehot], axis=0))
-        self.images = torch.from_numpy(np.stack(imgs)).float()            # (6, C_in, 65, 65)
+        self.volume = torch.from_numpy(self.grid_np[:, ::2, ::2, ::2].copy())    # (11, 33, 33, 33) coarse volume field
+        self._aug_cache = {}
         # near-field node pairs and the sorted DOF band
         xyz = torch.from_numpy(self.ijk / (N - 1)).to(DEV).double()
         ni, nj = V0.pairs_within(xyz, xyz, r_near, upper=True)
         off = ni != nj; pi, pj = ni[off], nj[off]
         self.pair_i, self.pair_j = pi.cpu(), pj.cpu()
         dvec = (xyz[pj] - xyz[pi]); self.pair_dx = dvec.float().cpu(); dist = torch.linalg.vector_norm(dvec, dim=1)
+        self.xyz_nodes = torch.from_numpy(self.ijk / (N - 1)).float()
         self.pair_decay = torch.exp(-dist / decay).cpu()
         # DOF entries: off-diagonal blocks (9 per pair) and diagonal blocks (6 per node)
         a = torch.arange(3); npair = len(pi)
@@ -86,6 +127,7 @@ class Label:
 
     def to_gpu(self):
         g = dict(images=self.images.to(DEV), theta=self.theta.to(DEV), mem_node=self.mem_node.to(DEV), mem_face=self.mem_face.to(DEV), mem_pix=self.mem_pix.to(DEV),
+                 volume=self.volume.to(DEV), xyz=self.xyz_nodes.to(DEV), Q=torch.eye(3, dtype=torch.float64, device=DEV),
                  face_of_node=self.face_of_node.to(DEV), pair_i=self.pair_i.to(DEV), pair_j=self.pair_j.to(DEV), pair_dx=self.pair_dx.to(DEV), pair_decay=self.pair_decay.to(DEV),
                  band_index=self.band_index.to(DEV), band_index_t=self.band_index_t.to(DEV), band_perm=self.band_perm.to(DEV), wq=self.wq.to(DEV), P3=self.P3.to(DEV),
                  w=torch.from_numpy(self.w).double().to(DEV))
@@ -95,6 +137,19 @@ class Label:
         Rstar = load_upper_factor(Path(self.record['reference']) / 'R_UPPER.npy', self.d, DEV)
         g.update(data=data, A=A, Rstar=Rstar, rigid=torch.from_numpy(self.sample.cache['rigid']).to(DEV).double())
         return g
+
+    def transformed(self, perm, sign):
+        """Geometry inputs of the symmetry-transformed label (node order unchanged); Q maps original to transformed components."""
+        key = (tuple(perm), tuple(sign))
+        if key not in self._aug_cache:
+            grid2, Q = transform_grid(self.grid_np, perm, sign, N)
+            ijk2 = np.rint((self.ijk - (N - 1) / 2) @ Q.T + (N - 1) / 2).astype(int)
+            imgs, mem = build_images(grid2, ijk2, self.w, N)
+            self._aug_cache[key] = dict(images=torch.from_numpy(imgs), mem_node=torch.from_numpy(mem[:, 0]), mem_face=torch.from_numpy(mem[:, 1]),
+                mem_pix=torch.from_numpy(mem[:, 2] * N + mem[:, 3]), face_of_node=torch.from_numpy(V0.face_ids(ijk2, N)),
+                pair_dx=(self.pair_dx.double() @ torch.from_numpy(Q).T).float(), theta=torch.from_numpy(transform_theta(self.theta.numpy(), perm, sign)).float(),
+                volume=torch.from_numpy(grid2[:, ::2, ::2, ::2].copy()), xyz=torch.from_numpy(ijk2 / (N - 1)).float(), Q=torch.from_numpy(Q))
+        return {k: v.to(DEV) for k, v in self._aug_cache[key].items()}
 
     def release(self):
         self.data = self.data.cpu(); torch.cuda.empty_cache()
@@ -113,17 +168,32 @@ class ResBlock(nn.Module):
         return x + self.c2(F.silu(self.c1(F.silu(self.norm(x)))))
 
 
+class VolumeNet(nn.Module):
+    """Coarse 3D branch on the 33^3 analytic field; features sampled at the face nodes feed the mode head."""
+    def __init__(self, c_in=11, width=32):
+        super().__init__()
+        self.net = nn.Sequential(nn.Conv3d(c_in, 16, 3, padding=1), nn.SiLU(), nn.Conv3d(16, width, 3, stride=2, padding=1), nn.SiLU(),
+                                 nn.Conv3d(width, width, 3, padding=1), nn.SiLU(), nn.Conv3d(width, width, 3, padding=1))
+        self.width = width
+    def forward(self, volume, xyz):
+        f = self.net(volume[None])                                            # (1, C, 17, 17, 17)
+        pts = (2 * xyz[:, [2, 1, 0]] - 1)[None, :, None, None]                # grid_sample takes z,y,x order
+        return F.grid_sample(f, pts, mode='bilinear', align_corners=True, padding_mode='border')[0, :, :, 0, 0].T    # (n, C)
+
+
 class GeometryNet(nn.Module):
-    def __init__(self, c_in, width=64, rank=512, hidden=128, dilations=(1, 2, 4, 8), off_scale=OFF_SCALE):
+    def __init__(self, c_in, width=64, rank=512, hidden=128, dilations=(1, 2, 4, 8), off_scale=OFF_SCALE, volume_width=32):
         super().__init__()
         self.width, self.rank, self.off_scale = width, rank, off_scale
+        self.volume = VolumeNet(11, volume_width) if volume_width else None
+        self.vol_norm = nn.LayerNorm(volume_width) if volume_width else None
         self.stem = nn.Conv2d(c_in, width, 3, padding=1)
         self.blocks = nn.ModuleList([ResBlock(width, dl) for dl in dilations])
         self.context = nn.Sequential(nn.Linear(width + 12, width), nn.SiLU(), nn.Linear(width, width))
         self.node_norm = nn.LayerNorm(width)
         self.diag = nn.Sequential(nn.Linear(width, hidden), nn.SiLU(), nn.Linear(hidden, 6))          # 3 log-diag corrections + 3 in-block off values
         self.pair = nn.Sequential(nn.Linear(2 * width + 4 + 12, hidden), nn.SiLU(), nn.Linear(hidden, hidden), nn.SiLU(), nn.Linear(hidden, 9))
-        self.mode = nn.Sequential(nn.Linear(width, hidden), nn.SiLU(), nn.Linear(hidden, 3 * rank))
+        self.mode = nn.Sequential(nn.Linear(width + (volume_width or 0), hidden), nn.SiLU(), nn.Linear(hidden, 3 * rank))
         self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.03)))
         for head in (self.diag, self.pair, self.mode):
             nn.init.normal_(head[-1].weight, std=1e-2); nn.init.zeros_(head[-1].bias)
@@ -157,7 +227,8 @@ class GeometryNet(nn.Module):
         dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)      # (npair, 9)
         blocks = torch.tanh(self.pair(inp)).double() * dmin * (self.off_scale * g['pair_decay'])[:, None]
         values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
-        M = (0.1 * torch.tanh(self.mode(h))).double().view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]      # (q, rank), bounded entries
+        hm = torch.cat((h, self.vol_norm(self.volume(g['volume'], g['xyz']))), dim=1) if self.volume is not None else h
+        M = (0.1 * torch.tanh(self.mode(hm))).double().view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]      # (q, rank), bounded entries
         return values, M
 
 
@@ -187,18 +258,25 @@ class Operator:
     """S_hat = L^T (I + M M^T)^-1 L, applied by Woodbury with G = I + M^T M."""
     def __init__(self, g, values, M):
         self.q = int(M.shape[0]); self.values = values; self.index = g['band_index']
+        Q = g.get('Q'); self.Q = None if Q is None or bool(torch.equal(Q, torch.eye(3, dtype=Q.dtype, device=Q.device))) else Q
         self.L = torch.sparse_coo_tensor(g['band_index'], values, (self.q, self.q), is_coalesced=True)
         self.LT = torch.sparse_coo_tensor(g['band_index_t'], values, (self.q, self.q)); self.M = M
         G = M.T @ M; G.diagonal().add_(1.0); self.C = torch.linalg.cholesky(G)
+    def pi(self, x, inverse=False):
+        """Apply Pi = I (x) Q (or its transpose) to node-major vectors: original frame <-> transformed frame."""
+        if self.Q is None: return x
+        X = x.reshape(-1, 3, x.shape[1]); Qm = self.Q.T if inverse else self.Q
+        return torch.einsum('ab,nbm->nam', Qm, X).reshape(x.shape)
     def apply(self, x):
+        x = self.pi(x)
         u = torch.sparse.mm(self.L, x); t = self.M.T @ u
         u = u - self.M @ torch.cholesky_solve(t, self.C)
-        return torch.sparse.mm(self.LT, u)
+        return self.pi(torch.sparse.mm(self.LT, u), inverse=True)
     def restricted_inverse(self, quotient, rigid, y):
         """x_hat = (B S_hat B^T)^-1 y via full-space solves S_hat^-1 = L^-1 (I + M M^T) L^-T and a rank-6 rigid correction."""
-        Fm = torch.cat((quotient.lift(y), rigid), dim=1)
+        Fm = self.pi(torch.cat((quotient.lift(y), rigid), dim=1))
         Z = BandTriSolve.apply(self.values, Fm, self.index, self.q, False); Z = Z + self.M @ (self.M.T @ Z)
-        U = BandTriSolve.apply(self.values, Z, self.index, self.q, True); m = y.shape[1]; UF, UN = U[:, :m], U[:, m:]
+        U = self.pi(BandTriSolve.apply(self.values, Z, self.index, self.q, True), inverse=True); m = y.shape[1]; UF, UN = U[:, :m], U[:, m:]
         return quotient(UF - UN @ torch.linalg.solve(rigid.T @ UN, rigid.T @ UF))
     @torch.no_grad()
     def materialize(self):
@@ -206,7 +284,10 @@ class Operator:
         T = -(Y.T @ Y); del Y; T.diagonal().add_(1.0)
         Q1 = torch.sparse.mm(self.LT, T); del T
         S = torch.sparse.mm(self.LT, Q1.T.contiguous()); del Q1
-        return 0.5 * (S + S.T)
+        S = 0.5 * (S + S.T)
+        if self.Q is not None:                                                # back to the original frame: Pi^T S' Pi
+            S = self.pi(self.pi(S, inverse=True).T, inverse=True).T
+        return S
 
 
 # ----------------------------------------------------------------------------- probes, loss, evaluation
@@ -270,7 +351,7 @@ def evaluate_label(label, g, net, seed):
         x, names, force = make_directions(label.data, label.sample.cache); label.dirs = (x, names, force, DenseUpperFactor(R).solve(force))
     x, names, force, fref = label.dirs
     mech = evaluate(fac, lambda v: A @ v, x, names, force, fref)
-    res['groups'] = mech['groups']; res['independent_force_summary'] = mech['independent_force_summary']
+    res['groups'] = {k.replace('independent_', 'registered_'): v for k, v in mech['groups'].items()}; res['gaussian_force_summary'] = mech['independent_force_summary']
     def en(xm, xr): return torch.linalg.vector_norm(R @ (xm - xr), dim=0) / torch.linalg.vector_norm(R @ xr, dim=0)
     e_inv = en(fac.solve(A @ x), x)
     res['inverse_energy_norm_rms'] = {grp: float(e_inv[[i for i, nm in enumerate(names) if nm.startswith(grp)]].square().mean().sqrt())
@@ -286,7 +367,7 @@ def evaluate_label(label, g, net, seed):
 
 def brief(res):
     return dict(seat=res['seat'], held=round(res['held_energy_error'], 4), white=round(res['held_white'], 4), dual=round(res['held_dual'], 4), eA=round(res['schur_relative_error'], 4), chol=res['cholesky_info'],
-                smooth_E=round(res['groups']['independent_smooth/']['energy_relative_max'], 4), smooth_inv=round(res['inverse_energy_norm_rms']['independent_smooth/'], 3),
+                smooth_E=round(res['groups']['registered_smooth/']['energy_relative_max'], 4), smooth_inv=round(res['inverse_energy_norm_rms']['independent_smooth/'], 3),
                 local_inv=round(res['inverse_energy_norm_rms']['independent_local/'], 3), phys_force=round(res['physical_force']['displacement_energy_norm_rms'], 3),
                 compl=round(res['physical_force']['compliance_relative_max'], 3), sec=round(res['evaluation_seconds'], 1))
 
@@ -303,6 +384,7 @@ def main():
     ap.add_argument('--dual-kind', default='white', choices=['white', 'physical']); ap.add_argument('--dual-log', type=int, default=1); ap.add_argument('--compliance-weight', type=float, default=0.0); ap.add_argument('--energy-weight', type=float, default=1.0)
     ap.add_argument('--lr', type=float, default=1e-3); ap.add_argument('--warmup', type=int, default=200); ap.add_argument('--lr-floor', type=float, default=0.1)
     ap.add_argument('--seed', type=int, default=2026091209); ap.add_argument('--init-checkpoint', default=None); ap.add_argument('--max-train-labels', type=int, default=1000); ap.add_argument('--train-max-q', type=int, default=24000)
+    ap.add_argument('--aug-prob', type=float, default=0.5, help='probability of a random cube symmetry per step'); ap.add_argument('--volume-width', type=int, default=32)
     args = ap.parse_args()
     out = Path(args.output); out.mkdir(parents=True, exist_ok=False); t_start = time.perf_counter(); torch.manual_seed(args.seed)
     write_json(out / 'PROTOCOL.json', dict(vars(args), schema='CUTFEM_SUPERELEMENT_V1', script_sha256=V0.sha256(__file__)))
@@ -311,7 +393,8 @@ def main():
     print(json.dumps(dict(stage='labels', train=[r['seat'] for r in train_recs], validation=[r['seat'] for r in val_recs])), flush=True)
     labels = {int(r['seat']): Label(r, args.r_near, args.decay, args.off_scale) for r in train_recs + val_recs}
     print(json.dumps(dict(stage='prepared', seconds=time.perf_counter() - t_start, q={s: l.q for s, l in labels.items()})), flush=True)
-    net = GeometryNet(labels[int(train_recs[0]['seat'])].images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale).to(DEV)
+    net = GeometryNet(labels[int(train_recs[0]['seat'])].images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
+    group = cube_group()
     if args.init_checkpoint: net.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net'])
     nparam = sum(p.numel() for p in net.parameters()); write_json(out / 'MODEL.json', dict(parameters=nparam, model=str(net)))
     print(json.dumps(dict(stage='setup', parameters=nparam)), flush=True)
@@ -341,7 +424,11 @@ def main():
                 for g_ in opt.param_groups: g_['lr'] = args.lr * sched
                 opt.zero_grad(set_to_none=True)
                 try:
-                    values, M = net(g, log_w); op = Operator(g, values, M)
+                    if args.aug_prob > 0 and rng.random() < args.aug_prob:
+                        perm, sign = group[int(rng.integers(1, len(group)))]
+                        ga = dict(g); ga.update(l.transformed(perm, sign))
+                    else: ga = g
+                    values, M = net(ga, log_w); op = Operator(ga, values, M)
                     z = draw_probes(g, args.probes, args.white_probes, gen); loss_e = energy_error(g, op, z).mean()
                     zw = torch.randn(g['A'].shape[0], args.action_probes, dtype=torch.float64, device=DEV, generator=gen); loss_a = action_error(g, op, zw).mean()
                     loss_d = loss_c = torch.zeros((), dtype=torch.float64, device=DEV)
