@@ -455,22 +455,42 @@ def action_error(g, op, z):
 
 
 @torch.no_grad()
+def evaluate_spectral(label, g, net, seed):
+    """Probe-free metrics: exact divergence per mode (float32 trace), log-det gap, Ritz bounds on the extreme whitened modes, factor conditioning."""
+    tick = sync()
+    values, M = net(g, g['w'].log()); op = Operator(g, values, M)
+    held = draw_probes_noA(g, 32, torch.Generator(device=DEV).manual_seed(seed + 2))
+    res = dict(seat=label.seat, q=label.q, held_white=float(energy_error_ref(g, op, held).mean()))
+    D, trace, gap, residual = divergence_terms(g, op, trace_dtype=g['ZT'].dtype)
+    ge = dict(g); ge.pop('ext', None)
+    _, ritz = extreme_terms(ge, op, 40, 8, torch.Generator(device=DEV).manual_seed(seed + 5))
+    res.update(divergence_per_mode=float(D) / label.d, trace_per_mode=float(trace) / label.d, logdet_gap=float(gap), solve_residual=residual,
+               mu_max_lower=float(ritz.max()), mu_min_upper=float(ritz.min()), **factor_conditioning(op))
+    res['spectral_seconds'] = sync() - tick
+    return res
+
+
+def draw_probes_noA(g, white, generator):
+    d = g['Rstar'].shape[0]; xi = torch.randn(d, white, dtype=torch.float64, device=DEV, generator=generator)
+    return torch.linalg.solve_triangular(g['Rstar'], xi, upper=True)
+
+
+def energy_error_ref(g, op, z):
+    """Energy-metric error on whitened probes without the dense teacher: A z = R*^T (R* z)."""
+    Rz = g['Rstar'] @ z; ref = g['Rstar'].T @ Rz; pred = g['data'].quotient(op.apply(g['data'].quotient.lift(z)))
+    return torch.linalg.solve_triangular(g['Rstar'].T, pred - ref, upper=False).square().sum(0) / Rz.square().sum(0)
+
+
+@torch.no_grad()
 def evaluate_label(label, g, net, seed):
+    """Legacy dense evaluation (materialized A_hat against the dense teacher A): probe metrics, e_A, mechanical directions."""
     tick = sync()
     values, M = net(g, g['w'].log()); op = Operator(g, values, M)
     held = draw_probes(g, 64, 32, torch.Generator(device=DEV).manual_seed(seed + 2))
     e = energy_error(g, op, held)
     res = dict(seat=label.seat, q=label.q, held_energy_error=float(e[:64].mean()), held_coarse=float(e[:32].mean()), held_fine=float(e[32:64].mean()), held_white=float(e[64:].mean()),
                held_dual=float(dual_error(g, op, 32, torch.Generator(device=DEV).manual_seed(seed + 4))[0].mean()))
-    if 'ZT' in g:
-        D, trace, gap, residual = divergence_terms(g, op, trace_dtype=g['ZT'].dtype)
-        ge = dict(g); ge.pop('ext', None)
-        _, ritz = extreme_terms(ge, op, 40, 8, torch.Generator(device=DEV).manual_seed(seed + 5))
-        res.update(divergence_per_mode=float(D) / label.d, trace_per_mode=float(trace) / label.d, logdet_gap=float(gap), solve_residual=residual,
-                   mu_max_lower=float(ritz.max()), mu_min_upper=float(ritz.min()), **factor_conditioning(op))
     A, R = g['A'], g['Rstar']
-    if A is None:
-        res['evaluation_seconds'] = sync() - tick; return res
     Shat = op.materialize(); Ahat, _ = quotient_dense(Shat, g['data'].quotient); del Shat
     _, info = torch.linalg.cholesky_ex(Ahat, upper=True); res['cholesky_info'] = int(info)
     D = Ahat - A; res['schur_relative_error'] = float(torch.linalg.vector_norm(D) / torch.linalg.vector_norm(A))
@@ -479,7 +499,7 @@ def evaluate_label(label, g, net, seed):
     fac = V0.LUFactor(Ahat)
     if label.dirs is None:
         x, names, force = make_directions(label.data, label.sample.cache); label.dirs = (x, names, force, DenseUpperFactor(R).solve(force))
-    x, names, force, fref = label.dirs
+    x, names, force, fref = [t.to(DEV) if torch.is_tensor(t) else t for t in label.dirs]
     mech = evaluate(fac, lambda v: A @ v, x, names, force, fref)
     res['groups'] = {k.replace('independent_', 'registered_'): v for k, v in mech['groups'].items()}; res['gaussian_force_summary'] = mech['independent_force_summary']
     def en(xm, xr): return torch.linalg.vector_norm(R @ (xm - xr), dim=0) / torch.linalg.vector_norm(R @ xr, dim=0)
@@ -490,6 +510,7 @@ def evaluate_label(label, g, net, seed):
     zc = torch.randn(g['P3'].shape[1], 16, dtype=torch.float64, device=DEV, generator=gf)
     f = g['data'].quotient(g['wq'][:, None] * (g['P3'] @ zc)); xr = DenseUpperFactor(R).solve(f); xm = fac.solve(f)
     res['physical_force'] = dict(displacement_energy_norm_rms=float(en(xm, xr).square().mean().sqrt()), compliance_relative_max=float(((f * xm).sum(0) / (f * xr).sum(0) - 1).abs().max()))
+    label.dirs = tuple(t.cpu() if torch.is_tensor(t) else t for t in label.dirs)
     del Ahat, fac; torch.cuda.empty_cache()
     res['evaluation_seconds'] = sync() - tick
     return res
@@ -499,7 +520,8 @@ def label_d(g): return int(g['d'])
 
 
 def brief(res):
-    out = dict(seat=res['seat'], held=round(res['held_energy_error'], 4), white=round(res['held_white'], 4), dual=round(res['held_dual'], 4))
+    out = dict(seat=res['seat'], white=round(res['held_white'], 4))
+    if 'held_energy_error' in res: out.update(held=round(res['held_energy_error'], 4), dual=round(res['held_dual'], 4))
     if 'divergence_per_mode' in res:
         out.update(D=round(res['divergence_per_mode'], 5), gap=round(res['logdet_gap'], 2), mu_max=round(res['mu_max_lower'], 3), mu_min=round(res['mu_min_upper'], 4), resid=float('%.1e' % res['solve_residual']), condL=float('%.2e' % (res['L_sigma_max'] / res['L_sigma_min'])), normM=round(res['M_norm'], 3))
     if 'schur_relative_error' in res:
@@ -568,9 +590,13 @@ def main():
     def run_eval(step):
         rows = []
         for l in eval_train + eval_val:
-            g = l.to_gpu(need_A=bool(args.eval_dense), need_Z=True, z_dtype=torch.float32); res = evaluate_label(l, g, net, args.seed); res['step'] = step; res['split'] = l.record['split']; rows.append(res)
-            print(json.dumps(dict(stage='evaluation', step=step, split=l.record['split'], **brief(res))), flush=True)
+            g = l.to_gpu(need_A=False, need_Z=True, z_dtype=torch.float32); res = evaluate_spectral(l, g, net, args.seed)
             del g; l.release(); torch.cuda.empty_cache()
+            if args.eval_dense:
+                g = l.to_gpu(need_A=True, need_Z=False); res.update(evaluate_label(l, g, net, args.seed)); del g; l.release(); torch.cuda.empty_cache()
+            else: res['evaluation_seconds'] = res['spectral_seconds']
+            res['step'] = step; res['split'] = l.record['split'] if not args.seats else 'known-label'; rows.append(res)
+            print(json.dumps(dict(stage='evaluation', step=step, split=res['split'], **brief(res))), flush=True)
         write_json(out / f'EVALUATION_{step:06d}.json', json_finite(rows)); return rows
     evaluations = [run_eval(0)]
     step = 0; order = list(labels[int(r['seat'])] for r in train_recs); rng = np.random.default_rng(args.seed)
