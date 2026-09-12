@@ -19,6 +19,7 @@ from stage_cutfem_neural_a.elimination_reference import DenseUpperFactor, load_u
 torch.backends.cuda.matmul.allow_tf32 = False; torch.backends.cudnn.allow_tf32 = False
 DEV = torch.device('cuda'); N = 65
 S0 = 0.01          # geometry-only stiffness unit (S_ii ~ 0.01 w on 0415)
+OFF_SCALE = 1.0    # bound of |L_ij| relative to min(L_ii, L_jj) times the distance prior
 DEPTHS = (0, 1, 2, 4)
 
 
@@ -69,7 +70,7 @@ class Label:
         off = ni != nj; pi, pj = ni[off], nj[off]
         self.pair_i, self.pair_j = pi.cpu(), pj.cpu()
         dvec = (xyz[pj] - xyz[pi]); self.pair_dx = dvec.float().cpu(); dist = torch.linalg.vector_norm(dvec, dim=1)
-        self.pair_scale = (off_scale * math.sqrt(S0) * torch.exp(-dist / decay)).cpu()
+        self.pair_decay = torch.exp(-dist / decay).cpu()
         # DOF entries: off-diagonal blocks (9 per pair) and diagonal blocks (6 per node)
         a = torch.arange(3); npair = len(pi)
         I_off = (pi[:, None, None] * 3 + a[None, :, None].to(DEV)).expand(-1, 3, 3).reshape(-1)
@@ -85,7 +86,7 @@ class Label:
 
     def to_gpu(self):
         g = dict(images=self.images.to(DEV), theta=self.theta.to(DEV), mem_node=self.mem_node.to(DEV), mem_face=self.mem_face.to(DEV), mem_pix=self.mem_pix.to(DEV),
-                 face_of_node=self.face_of_node.to(DEV), pair_i=self.pair_i.to(DEV), pair_j=self.pair_j.to(DEV), pair_dx=self.pair_dx.to(DEV), pair_scale=self.pair_scale.to(DEV),
+                 face_of_node=self.face_of_node.to(DEV), pair_i=self.pair_i.to(DEV), pair_j=self.pair_j.to(DEV), pair_dx=self.pair_dx.to(DEV), pair_decay=self.pair_decay.to(DEV),
                  band_index=self.band_index.to(DEV), band_index_t=self.band_index_t.to(DEV), band_perm=self.band_perm.to(DEV), wq=self.wq.to(DEV), P3=self.P3.to(DEV),
                  w=torch.from_numpy(self.w).double().to(DEV))
         data = self.data.cuda()
@@ -139,18 +140,22 @@ class GeometryNet(nn.Module):
         return self.node_norm(h / cnt[:, None] + ctx[None, :])
 
     def forward(self, g, log_w):
-        """Returns band COO values (sorted order, float64) and M (q x rank, float64)."""
+        """Returns band COO values (sorted order, float64) and M (q x rank, float64).
+        Off-diagonal band entries are bounded by the smaller of the two diagonals they connect, times a distance prior,
+        so every row of L stays within a bounded ratio of its diagonal and the triangular solves stay stable."""
         h = self.node_features(g); n = h.shape[0]
         dg = self.diag(h)                                                    # (n, 6)
         logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + 3.0 * torch.tanh(dg[:, :3] / 3.0).double()   # bounded log correction (+-3)
-        diag_off = (0.3 * math.sqrt(S0)) * (3.0 * torch.tanh(dg[:, 3:] / 3.0)).double()                      # in-block (0,1),(0,2),(1,2)
+        D = logdiag.exp()                                                    # (n, 3)
         ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
+        dmin_in = torch.minimum(D[:, ua[~is_d]], D[:, ub[~is_d]])            # (n, 3) in-block pairs (0,1),(0,2),(1,2)
         dvals = torch.empty((n, 6), dtype=torch.float64, device=DEV)
-        dvals[:, is_d] = logdiag.exp(); dvals[:, ~is_d] = diag_off
+        dvals[:, is_d] = D; dvals[:, ~is_d] = OFF_SCALE * dmin_in * torch.tanh(dg[:, 3:]).double()
         fi = F.one_hot(g['face_of_node'], 6).float()
         pi, pj = g['pair_i'], g['pair_j']
         inp = torch.cat((h[pi], h[pj], 5.0 * g['pair_dx'], (g['face_of_node'][pi] == g['face_of_node'][pj]).float()[:, None], fi[pi], fi[pj]), dim=1)
-        blocks = (3.0 * torch.tanh(self.pair(inp) / 3.0)).double() * g['pair_scale'][:, None]     # bounded |theta| <= 3
+        dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)      # (npair, 9)
+        blocks = torch.tanh(self.pair(inp)).double() * dmin * (OFF_SCALE * g['pair_decay'])[:, None]
         values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
         M = (0.1 * torch.tanh(self.mode(h))).double().view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]      # (q, rank), bounded entries
         return values, M
@@ -320,10 +325,13 @@ def main():
                 sched = min(1.0, step / args.warmup) * (args.lr_floor + (1 - args.lr_floor) * 0.5 * (1 + math.cos(math.pi * (step - 1) / max(args.steps - 1, 1))))
                 for g_ in opt.param_groups: g_['lr'] = args.lr * sched
                 opt.zero_grad(set_to_none=True)
-                values, M = net(g, log_w); op = Operator(g, values, M)
-                z = draw_probes(g, args.probes, args.white_probes, gen); loss_e = energy_error(g, op, z).mean()
-                zw = torch.randn(g['A'].shape[0], args.action_probes, dtype=torch.float64, device=DEV, generator=gen); loss_a = action_error(g, op, zw).mean()
-                loss_d = torch.log1p(dual_error(g, op, args.dual_probes, gen)).mean() if (args.dual_weight > 0 and step >= args.dual_start) else torch.zeros((), dtype=torch.float64, device=DEV)
+                try:
+                    values, M = net(g, log_w); op = Operator(g, values, M)
+                    z = draw_probes(g, args.probes, args.white_probes, gen); loss_e = energy_error(g, op, z).mean()
+                    zw = torch.randn(g['A'].shape[0], args.action_probes, dtype=torch.float64, device=DEV, generator=gen); loss_a = action_error(g, op, zw).mean()
+                    loss_d = torch.log1p(dual_error(g, op, args.dual_probes, gen)).mean() if (args.dual_weight > 0 and step >= args.dual_start) else torch.zeros((), dtype=torch.float64, device=DEV)
+                except torch._C._LinAlgError as err:
+                    print(json.dumps(dict(stage='guard', step=step, seat=l.seat, reason=repr(err)[:120])), flush=True); continue
                 w_e = min(1.0, step / max(args.energy_ramp, 1))
                 loss = w_e * loss_e + args.action_weight * loss_a + args.dual_weight * loss_d
                 if not torch.isfinite(loss):
