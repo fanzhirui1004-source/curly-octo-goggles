@@ -273,6 +273,22 @@ def bounded_band(dg, pair, g, log_w, off_scale):
     return torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
 
 
+class FreeCoefficientModel(nn.Module):
+    """Free coefficients through exactly the same bounded maps as the GeometryNet heads (pre-activations become parameters).
+    Single label, no symmetry frames: a capacity test of the representation under the network's feasible set."""
+    def __init__(self, label, rank=512, off_scale=OFF_SCALE):
+        super().__init__(); self.rank, self.off_scale = rank, off_scale
+        self.dg = nn.Parameter(torch.zeros(label.nn, 6, dtype=torch.float64)); self.pair_p = nn.Parameter(torch.zeros(len(label.pair_i), 9, dtype=torch.float64))
+        self.mode_p = nn.Parameter(1e-2 * torch.randn(label.nn, 3 * rank, dtype=torch.float64)); self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.03), dtype=torch.float64))
+    @torch.no_grad()
+    def from_network(self, net, g):
+        dg, pair, mode = net.preactivations(g)
+        self.dg.copy_(dg.double()); self.pair_p.copy_(pair.double()); self.mode_p.copy_(mode.double()); self.mode_logscale.copy_(net.mode_logscale.double())
+        return self
+    def forward(self, g, log_w):
+        return bounded_values(self.dg, self.pair_p, self.mode_p, self.mode_logscale, g, log_w, self.rank, self.off_scale)
+
+
 class FreeUnboundedModel(nn.Module):
     """Free band coefficients (network head bounds) plus a free, unbounded M (q x rank): the representation class itself, no head bound on M."""
     def __init__(self, label, rank=1024, off_scale=OFF_SCALE):
@@ -639,7 +655,7 @@ def main():
             net.from_network(ref, g0); v_ref, M_ref = ref(g0, log_w0); v_free, M_free = net(g0, log_w0)
             D_ref = divergence_terms(g0, Operator(g0, v_ref, M_ref), torch.float64)[0] / g0['d']; D_free = divergence_terms(g0, Operator(g0, v_free, M_free), torch.float64)[0] / g0['d']
         check = dict(stage='free_init', seat=first.seat, checkpoint=args.init_checkpoint, values_max_rel_diff=float((v_ref - v_free).abs().max() / v_ref.abs().max()),
-                     M_max_rel_diff=float((M_ref - M_free).abs().max() / M_ref.abs().max()), divergence_per_mode_net=float(D_ref), divergence_per_mode_free=float(D_free))
+                     M_max_rel_diff=float((M_ref[:, :min(M_ref.shape[1], M_free.shape[1])] - M_free[:, :min(M_ref.shape[1], M_free.shape[1])]).abs().max() / M_ref.abs().max()), divergence_per_mode_net=float(D_ref), divergence_per_mode_free=float(D_free))
         print(json.dumps(check), flush=True); write_json(out / 'FREE_INIT_CHECK.json', check); del ref, g0, v_ref, M_ref, v_free, M_free; first.release(); torch.cuda.empty_cache()
     elif args.init_checkpoint: net.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net'])
     nparam = sum(p.numel() for p in net.parameters()); write_json(out / 'MODEL.json', dict(parameters=nparam, model=str(net)))

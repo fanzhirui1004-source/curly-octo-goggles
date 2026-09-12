@@ -66,32 +66,60 @@ def stats(mu, taus=(0.03, 0.1, 0.3), ranks=(512, 1500, 3000)):
     return out
 
 
-def check_truncation(L, radii, out):
+def node_order(L, kind):
+    """Elimination order of the nodes: 'packet' (as stored), 'rcm' (reverse Cuthill-McKee on the material face graph: along thin curves),
+    'raster' (face, then row, then column)."""
+    ijk = L['ijk']; n = len(ijk)
+    if kind == 'packet': return np.arange(n)
+    if kind == 'raster':
+        faces = V0.face_ids(ijk, N); return np.lexsort((ijk[:, 2], ijk[:, 1], ijk[:, 0], faces))
+    import scipy.sparse as sp
+    from scipy.sparse.csgraph import reverse_cuthill_mckee
+    faces = V0.face_ids(ijk, N); xyz = torch.from_numpy(ijk.astype(np.float64))
+    ni, nj = V0.pairs_within(xyz, xyz, 1.5, upper=True); ni, nj = ni.numpy(), nj.numpy(); keep = (ni != nj) & (faces[ni] == faces[nj]); ni, nj = ni[keep], nj[keep]
+    Adj = sp.coo_matrix((np.ones(2 * len(ni)), (np.concatenate((ni, nj)), np.concatenate((nj, ni)))), shape=(n, n)).tocsr()
+    return np.asarray(reverse_cuthill_mckee(Adj, symmetric_mode=True))
+
+
+def check_truncation(L, radii, out, order='packet'):
     q, ijk = L['q'], L['ijk']
     S, _ = load_teacher_dense(L['record']['packet'], q, CPU)
     Nr = L['rigid']; s = float(S.diagonal().median())
     S_reg = S + s * (Nr @ torch.linalg.solve(Nr.T @ Nr, Nr.T)); del S
-    t0 = time.time(); Rs = torch.linalg.cholesky(S_reg, upper=True); del S_reg; print(json.dumps(dict(stage='cholesky', seconds=time.time() - t0)), flush=True)
-    xyz = torch.from_numpy(ijk / (N - 1)).double()
-    A_full, _ = quotient_dense(Rs.T @ Rs, L['quotient']); mu_ref = whitened_spectrum(L, A_full); del A_full
-    res = dict(seat=int(L['record']['seat']), q=q, d=L['d'], regularized_reference=stats(mu_ref), factor_frobenius=float(torch.linalg.matrix_norm(Rs)), radii={})
+    perm_nodes = node_order(L, order); perm = torch.from_numpy((perm_nodes[:, None] * 3 + np.arange(3)[None, :]).reshape(-1)); inv = torch.argsort(perm)
+    S_reg = S_reg[perm][:, perm]                                          # eliminate in the chosen order
+    t0 = time.time(); Rs = torch.linalg.cholesky(S_reg, upper=True); del S_reg; print(json.dumps(dict(stage='cholesky', order=order, seconds=time.time() - t0)), flush=True)
+    ijk = ijk[perm_nodes]; xyz = torch.from_numpy(ijk / (N - 1)).double()
+    def back(Sb): return Sb[inv][:, inv]
+    A_full, _ = quotient_dense(back(Rs.T @ Rs), L['quotient']); mu_ref = whitened_spectrum(L, A_full); del A_full
+    res = dict(seat=int(L['record']['seat']), q=q, d=L['d'], order=order, regularized_reference=stats(mu_ref), factor_frobenius=float(torch.linalg.matrix_norm(Rs)), radii={})
     print(json.dumps(dict(stage='reference', **res['regularized_reference'])), flush=True)
     node = torch.arange(q) // 3; Qs = sliver_subspace(L)
+    Nr = L['rigid']; Pn = torch.eye(q, dtype=torch.float64) - Nr @ torch.linalg.solve(Nr.T @ Nr, Nr.T); coarse_bases = {}
+    for name, P in (('stride4', torch.from_numpy(np.kron(V0.coarse_interpolation(L['ijk'], N, 4), np.eye(3)))), ('stride2', torch.from_numpy(np.kron(V0.coarse_interpolation(L['ijk'], N, 2), np.eye(3)))), ('graph600w', graph_basis(L, 600, True))):
+        Qb, _ = torch.linalg.qr(L['R'] @ L['quotient'](Pn @ P)); coarse_bases[name] = Qb
     for r in radii:
         ni, nj = V0.pairs_within(xyz, xyz, r, upper=True)
         keep = torch.zeros((len(ijk), len(ijk)), dtype=torch.bool); keep[ni, nj] = True; keep[nj, ni] = True
         mask = keep[node[:, None], node[None, :]]; del keep
         Rb = torch.where(mask, Rs, torch.zeros((), dtype=torch.float64)); del mask
         dropped = float(torch.linalg.matrix_norm(Rs - Rb) / torch.linalg.matrix_norm(Rs))
-        Ab, _ = quotient_dense(Rb.T @ Rb, L['quotient']); del Rb
+        Ab, _ = quotient_dense(back(Rb.T @ Rb), L['quotient']); del Rb
         mu, V = whitened_spectrum(L, Ab, vectors=True)
-        damaged = np.abs(mu - 1) > 0.1; sf = (Qs.T @ V[:, torch.from_numpy(damaged)]).square().sum(0).numpy() if damaged.any() else np.zeros(0); del V
+        damaged = np.abs(mu - 1) > 0.1; Vd = V[:, torch.from_numpy(damaged)]; sf = (Qs.T @ Vd).square().sum(0).numpy() if damaged.any() else np.zeros(0)
+        if damaged.any():                                                  # what the truncation damages: teacher stiffness of those directions, and their coarse content
+            Ud = tri(L['R'], Vd, True); stiff = (1.0 / Ud.square().sum(0)).numpy(); del Ud
+            cov = {name: float((Qb.T @ Vd).square().sum(0).numpy().mean()) for name, Qb in coarse_bases.items()}
+            dam = dict(stiffness_median=float(np.median(stiff)), stiffness_q10=float(np.quantile(stiff, 0.1)), stiffness_q90=float(np.quantile(stiff, 0.9)),
+                       below_1e_5=int((stiff < 1e-5).sum()), coarse_coverage_mean=cov, coarse_coverage_stiff_side={name: float((Qb.T @ Vd[:, torch.from_numpy(mu[damaged] > 1)]).square().sum(0).numpy().mean()) for name, Qb in coarse_bases.items()})
+        else: dam = {}
+        del V, Vd
         mu_e = shifted_spectrum(L, Ab); del Ab
         res['radii'][str(r)] = dict(dropped_factor_fraction=dropped, band_entries=int(9 * len(ni) - 3 * len(ijk)), **stats(mu),
                                     damaged_modes_0_1=int(damaged.sum()), damaged_sliver_dominated=int((sf > 0.5).sum()), damaged_sliver_fraction_mean=float(sf.mean()) if len(sf) else 0.0,
-                                    shifted=stats(mu_e))
+                                    damaged=dam, shifted=stats(mu_e))
         print(json.dumps(dict(stage='truncation', radius=r, **res['radii'][str(r)])), flush=True)
-    write_json(out / f"TRUNCATION_{int(L['record']['seat']):04d}.json", json_finite(res))
+    write_json(out / f"TRUNCATION_{int(L['record']['seat']):04d}_{order}.json", json_finite(res))
 
 
 def graph_basis(L, n_modes, weighted=True):
@@ -155,10 +183,10 @@ def main():
     ap.add_argument('--check', required=True, choices=['truncation', 'coverage']); ap.add_argument('--seat', type=int, required=True)
     ap.add_argument('--labels', default='/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/V1_LABELS.json'); ap.add_argument('--out', default='/root/autodl-tmp/CUTFEM_BACKEND_CHECKS_20260912')
     ap.add_argument('--radii', default='0.05,0.1,0.2,0.35'); ap.add_argument('--strides', default='4,2'); ap.add_argument('--prunes', default='0,0.05,0.2'); ap.add_argument('--counts', default='200,500,1000,1500,2400')
-    ap.add_argument('--threads', type=int, default=12); ap.add_argument('--graph-modes', default='')
+    ap.add_argument('--threads', type=int, default=12); ap.add_argument('--graph-modes', default=''); ap.add_argument('--order', default='packet', choices=['packet', 'rcm', 'raster'])
     args = ap.parse_args(); torch.set_num_threads(args.threads); out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     L = load(args.seat, args.labels)
-    if args.check == 'truncation': check_truncation(L, [float(x) for x in args.radii.split(',')], out)
+    if args.check == 'truncation': check_truncation(L, [float(x) for x in args.radii.split(',')], out, order=args.order)
     else: check_coverage(L, [int(x) for x in args.strides.split(',') if x], [float(x) for x in args.prunes.split(',')], [int(x) for x in args.counts.split(',')], out,
                          graph_modes=[int(x) for x in args.graph_modes.split(',') if x])
 
