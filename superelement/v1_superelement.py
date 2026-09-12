@@ -275,47 +275,33 @@ def bounded_band(dg, pair, g, log_w, off_scale):
 
 class FreeCoarseModel(nn.Module):
     """Free band coefficients (same bounded maps as the network heads) plus a coarse-space compliance:
-    K0^-1 = L^-1 L^-T + Pq G Pq^T with G = exp(H), H free symmetric (k x k) on the orthonormal coarse basis Pq; M = L Pq G^1/2."""
+    K0^-1 = L^-1 L^-T + Pq G Pq^T with G = C C^T, C lower triangular with positive diagonal (free k x k) on the orthonormal
+    coarse basis Pq; M = L Pq C. Cholesky-type parameterization: unique, positive definite, no eigen-decomposition in the graph."""
     def __init__(self, label, off_scale=OFF_SCALE, k=None):
         super().__init__(); self.off_scale = off_scale; self.k = k
         self.dg = nn.Parameter(torch.zeros(label.nn, 6, dtype=torch.float64)); self.pair_p = nn.Parameter(torch.zeros(len(label.pair_i), 9, dtype=torch.float64))
-        self.H = nn.Parameter(torch.zeros(k, k, dtype=torch.float64))
+        self.C_raw = nn.Parameter(torch.zeros(k, k, dtype=torch.float64))
     @torch.no_grad()
     def from_network(self, net, g):
         dg, pair, _ = net.preactivations(g); self.dg.copy_(dg.double()); self.pair_p.copy_(pair.double()); return self
-    def sqrt_G(self):
-        lam, U = torch.linalg.eigh(0.5 * (self.H + self.H.T)); return (U * (0.5 * lam).exp()[None, :]) @ U.T
-    def logdet_G(self): return float(self.H.diagonal().sum())
+    def C(self):
+        return torch.tril(self.C_raw, -1) + torch.diag(self.C_raw.diagonal().exp())
+    def logdet_G(self): return 2.0 * float(self.C_raw.diagonal().sum())
     def forward(self, g, log_w):
         values = bounded_band(self.dg, self.pair_p, g, log_w, self.off_scale)
         q = g['Pq'].shape[0]; L = torch.sparse_coo_tensor(g['band_index'], values, (q, q), is_coalesced=True)
-        return values, torch.sparse.mm(L, g['Pq'] @ self.sqrt_G())
+        return values, torch.sparse.mm(L, g['Pq'] @ self.C())
     @torch.no_grad()
-    def init_coarse_from_teacher(self, g, values, floor=1e-3):
-        """G = Pq^T (A^-1 - L^-1 L^-T) Pq on the quotient, eigenvalues floored: the coarse compliance the teacher has beyond the current L."""
+    def init_coarse_from_teacher(self, g, values, floor=1e-4):
+        """G = Pq^T (A^-1 - L^-1 L^-T) Pq on the quotient, eigenvalues floored at floor x the teacher's coarse compliance scale."""
         Pq = g['Pq']; q = Pq.shape[0]
         Zc = torch.linalg.solve_triangular(g['Rstar'].T, g['data'].quotient(Pq), upper=False); Gt = Zc.T @ Zc; del Zc            # coarse teacher compliance
         Ld = torch.sparse_coo_tensor(g['band_index'], values, (q, q), is_coalesced=True).to_dense()
         X = torch.linalg.solve_triangular(Ld.T, Pq, upper=False); del Ld; Gl = X.T @ X; del X                                   # coarse local compliance
-        lam, U = torch.linalg.eigh(Gt - Gl); lam = lam.clamp(min=floor * float(lam.max()))
-        self.H.copy_((U * lam.log()[None, :]) @ U.T)
-        return dict(coarse_teacher_compliance_max=float(torch.linalg.eigvalsh(Gt).max()), coarse_local_compliance_max=float(torch.linalg.eigvalsh(Gl).max()), floored=int((lam <= floor * float(lam.max()) * 1.0000001).sum()))
-
-
-class FreeCoefficientModel(nn.Module):
-    """Free coefficients through exactly the same bounded maps as the GeometryNet heads (pre-activations become parameters).
-    Single label, no symmetry frames: a capacity test of the representation under the network's feasible set."""
-    def __init__(self, label, rank=512, off_scale=OFF_SCALE):
-        super().__init__(); self.rank, self.off_scale = rank, off_scale
-        self.dg = nn.Parameter(torch.zeros(label.nn, 6, dtype=torch.float64)); self.pair_p = nn.Parameter(torch.zeros(len(label.pair_i), 9, dtype=torch.float64))
-        self.mode_p = nn.Parameter(1e-2 * torch.randn(label.nn, 3 * rank, dtype=torch.float64)); self.mode_logscale = nn.Parameter(torch.full((rank,), math.log(0.03), dtype=torch.float64))
-    @torch.no_grad()
-    def from_network(self, net, g):
-        dg, pair, mode = net.preactivations(g)
-        self.dg.copy_(dg.double()); self.pair_p.copy_(pair.double()); self.mode_p.copy_(mode.double()); self.mode_logscale.copy_(net.mode_logscale.double())
-        return self
-    def forward(self, g, log_w):
-        return bounded_values(self.dg, self.pair_p, self.mode_p, self.mode_logscale, g, log_w, self.rank, self.off_scale)
+        lam, U = torch.linalg.eigh(Gt - Gl); scale = float(torch.linalg.eigvalsh(Gt).max()); floored = int((lam < floor * scale).sum()); lam = lam.clamp(min=floor * scale)
+        Cc = torch.linalg.cholesky((U * lam[None, :]) @ U.T)
+        self.C_raw.copy_(torch.tril(Cc, -1) + torch.diag(Cc.diagonal().log()))
+        return dict(coarse_teacher_compliance_max=scale, coarse_local_compliance_max=float(torch.linalg.eigvalsh(Gl).max()), floored=floored)
 
 
 class BandTriSolve(torch.autograd.Function):
