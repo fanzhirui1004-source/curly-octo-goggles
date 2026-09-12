@@ -128,6 +128,18 @@ class Label:
         self.dirs = None                                                   # evaluation directions, built lazily on GPU
         self.ext_max = self.ext_min = None                                 # warm-started blocks of the extreme whitened modes
 
+    def coarse_basis(self, stride=4, prune=0.05):
+        """Orthonormal basis (q x k) of the coarse face space: Q2 interpolation from the stride grid, coarse nodes with negligible
+        material overlap pruned, rigid modes projected out. Cached on the CPU."""
+        key = (stride, prune)
+        if getattr(self, '_coarse', None) is None or self._coarse[0] != key:
+            P = torch.from_numpy(np.kron(V0.coarse_interpolation(self.ijk, N, stride), np.eye(3)))
+            colnorm = P.abs().sum(0); P = P[:, colnorm >= prune * colnorm.max()]
+            Nr = torch.from_numpy(self.sample.cache['rigid']).double(); P = P - Nr @ torch.linalg.solve(Nr.T @ Nr, Nr.T @ P)
+            Q, Rf = torch.linalg.qr(P); keep = Rf.diagonal().abs() > 1e-8 * Rf.diagonal().abs().max()
+            self._coarse = (key, Q[:, keep].contiguous())
+        return self._coarse[1]
+
     def to_gpu(self, need_A=True, need_Z=False, z_dtype=torch.float32):
         """need_A: dense teacher quotient A (probe losses, legacy evaluation). need_Z: Z^T = B^T R*^-1 (q x d) for the exact trace term."""
         g = dict(images=self.images.to(DEV), theta=self.theta.to(DEV), mem_node=self.mem_node.to(DEV), mem_face=self.mem_face.to(DEV), mem_pix=self.mem_pix.to(DEV),
@@ -148,6 +160,7 @@ class Label:
             B = data.quotient(torch.eye(self.q, dtype=torch.float64, device=DEV))                       # (d, q), orthonormal rows
             Z = torch.linalg.solve_triangular(Rstar.T, B, upper=False); del B                            # Z = R*^-T B
             g['ZT'] = Z.T.contiguous().to(z_dtype); del Z
+        if getattr(self, '_coarse', None) is not None: g['Pq'] = self._coarse[1].to(DEV)
         if self.ext_max is not None: g['ext'] = (self.ext_max.to(DEV), self.ext_min.to(DEV))
         return g
 
@@ -244,6 +257,12 @@ class GeometryNet(nn.Module):
 def bounded_values(dg, pair, mode, mode_logscale, g, log_w, rank, off_scale):
     """The bounded maps shared by the geometry network and the free-coefficient model (all float64):
     diag = sqrt(S0 w) exp(3 tanh(dg/3)); in-block and pair entries = tanh(.) min(D_i, D_j) off_scale [exp(-d/decay)]; M = 0.1 tanh(.) exp(logscale)."""
+    values = bounded_band(dg, pair, g, log_w, off_scale)
+    M = (0.1 * torch.tanh(mode)).view(-1, rank) * mode_logscale.exp()[None, :]
+    return values, M
+
+
+def bounded_band(dg, pair, g, log_w, off_scale):
     n = dg.shape[0]
     logdiag = math.log(S0) * 0.5 + 0.5 * log_w[:, None] + 3.0 * torch.tanh(dg[:, :3] / 3.0); D = logdiag.exp()
     ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
@@ -251,9 +270,36 @@ def bounded_values(dg, pair, mode, mode_logscale, g, log_w, rank, off_scale):
     dvals[:, is_d] = D; dvals[:, ~is_d] = off_scale * torch.minimum(D[:, ua[~is_d]], D[:, ub[~is_d]]) * torch.tanh(dg[:, 3:])
     pi, pj = g['pair_i'], g['pair_j']; dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)
     blocks = torch.tanh(pair) * dmin * (off_scale * g['pair_decay'])[:, None]
-    values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
-    M = (0.1 * torch.tanh(mode)).view(-1, rank) * mode_logscale.exp()[None, :]
-    return values, M
+    return torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
+
+
+class FreeCoarseModel(nn.Module):
+    """Free band coefficients (same bounded maps as the network heads) plus a coarse-space compliance:
+    K0^-1 = L^-1 L^-T + Pq G Pq^T with G = exp(H), H free symmetric (k x k) on the orthonormal coarse basis Pq; M = L Pq G^1/2."""
+    def __init__(self, label, off_scale=OFF_SCALE, k=None):
+        super().__init__(); self.off_scale = off_scale; self.k = k
+        self.dg = nn.Parameter(torch.zeros(label.nn, 6, dtype=torch.float64)); self.pair_p = nn.Parameter(torch.zeros(len(label.pair_i), 9, dtype=torch.float64))
+        self.H = nn.Parameter(torch.zeros(k, k, dtype=torch.float64))
+    @torch.no_grad()
+    def from_network(self, net, g):
+        dg, pair, _ = net.preactivations(g); self.dg.copy_(dg.double()); self.pair_p.copy_(pair.double()); return self
+    def sqrt_G(self):
+        lam, U = torch.linalg.eigh(0.5 * (self.H + self.H.T)); return (U * (0.5 * lam).exp()[None, :]) @ U.T
+    def logdet_G(self): return float(self.H.diagonal().sum())
+    def forward(self, g, log_w):
+        values = bounded_band(self.dg, self.pair_p, g, log_w, self.off_scale)
+        q = g['Pq'].shape[0]; L = torch.sparse_coo_tensor(g['band_index'], values, (q, q), is_coalesced=True)
+        return values, torch.sparse.mm(L, g['Pq'] @ self.sqrt_G())
+    @torch.no_grad()
+    def init_coarse_from_teacher(self, g, values, floor=1e-3):
+        """G = Pq^T (A^-1 - L^-1 L^-T) Pq on the quotient, eigenvalues floored: the coarse compliance the teacher has beyond the current L."""
+        Pq = g['Pq']; q = Pq.shape[0]
+        Zc = torch.linalg.solve_triangular(g['Rstar'].T, g['data'].quotient(Pq), upper=False); Gt = Zc.T @ Zc; del Zc            # coarse teacher compliance
+        Ld = torch.sparse_coo_tensor(g['band_index'], values, (q, q), is_coalesced=True).to_dense()
+        X = torch.linalg.solve_triangular(Ld.T, Pq, upper=False); del Ld; Gl = X.T @ X; del X                                   # coarse local compliance
+        lam, U = torch.linalg.eigh(Gt - Gl); lam = lam.clamp(min=floor * float(lam.max()))
+        self.H.copy_((U * lam.log()[None, :]) @ U.T)
+        return dict(coarse_teacher_compliance_max=float(torch.linalg.eigvalsh(Gt).max()), coarse_local_compliance_max=float(torch.linalg.eigvalsh(Gl).max()), floored=int((lam <= floor * float(lam.max()) * 1.0000001).sum()))
 
 
 class FreeCoefficientModel(nn.Module):
@@ -550,7 +596,8 @@ def main():
     ap.add_argument('--extreme-weight', type=float, default=0.0, help='weight of the extreme whitened-mode term'); ap.add_argument('--extreme-block', type=int, default=8); ap.add_argument('--extreme-iters', type=int, default=2)
     ap.add_argument('--trace-dtype', default='float32', choices=['float32', 'float64']); ap.add_argument('--eval-dense', type=int, default=1, help='legacy dense evaluation (materialized A_hat, probe metrics)')
     ap.add_argument('--solve-tol', type=float, default=1e-6, help='rigid-correction solve residual above which a step is treated as ill-conditioned (no extreme term, no rigid log-det term)')
-    ap.add_argument('--model', default='net', choices=['net', 'free'], help='free: free coefficients under the network head bounds, single label, no augmentation')
+    ap.add_argument('--model', default='net', choices=['net', 'free', 'free_coarse'], help='free: free coefficients under the network head bounds; free_coarse: free band + coarse-space compliance G = exp(H); single label, no augmentation')
+    ap.add_argument('--coarse-stride', type=int, default=4); ap.add_argument('--coarse-prune', type=float, default=0.05); ap.add_argument('--coarse-init', default='teacher', choices=['teacher', 'identity'])
     ap.add_argument('--seats', default=None, help='comma-separated seats to train on (subset of the label file)')
     args = ap.parse_args()
     out = Path(args.output); out.mkdir(parents=True, exist_ok=False); t_start = time.perf_counter(); torch.manual_seed(args.seed)
@@ -559,15 +606,30 @@ def main():
     train_recs = [r for r in records if r['split'] == 'train' and r['q'] <= args.train_max_q][:args.max_train_labels]; val_recs = [r for r in records if r['split'] != 'train' and r['q'] <= args.train_max_q]
     if args.seats:                                                       # explicit seats: trained regardless of split (a known-label diagnostic, recorded as such)
         keep = {int(x) for x in args.seats.split(',')}; train_recs = [r for r in records if int(r['seat']) in keep]; val_recs = []
-    if args.model == 'free': assert len(train_recs) == 1 and args.aug_prob == 0, 'free coefficients: one training label, no augmentation'
+    if args.model != 'net': assert len(train_recs) == 1 and args.aug_prob == 0, 'free coefficients: one training label, no augmentation'
     print(json.dumps(dict(stage='labels', train=[r['seat'] for r in train_recs], validation=[r['seat'] for r in val_recs])), flush=True)
     labels = {int(r['seat']): Label(r, args.r_near, args.decay, args.off_scale) for r in train_recs + val_recs}
     for l in labels.values(): l.tri_mode = args.tri_solver if args.tri_solver != 'auto' else ('dense' if l.q <= args.dense_max_q else 'sparse')
     print(json.dumps(dict(stage='prepared', seconds=time.perf_counter() - t_start, q={s: l.q for s, l in labels.items()})), flush=True)
     first = labels[int(train_recs[0]['seat'])]
-    net = (FreeCoefficientModel(first, args.rank, args.off_scale) if args.model == 'free' else GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width)).to(DEV)
+    if args.model == 'free_coarse':
+        Pq = first.coarse_basis(args.coarse_stride, args.coarse_prune); net = FreeCoarseModel(first, args.off_scale, Pq.shape[1]).to(DEV)
+        print(json.dumps(dict(stage='coarse_basis', stride=args.coarse_stride, prune=args.coarse_prune, columns=int(Pq.shape[1]))), flush=True)
+    else:
+        net = (FreeCoefficientModel(first, args.rank, args.off_scale) if args.model == 'free' else GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width)).to(DEV)
     group = cube_group()
-    if args.init_checkpoint and args.model == 'free':                     # free coefficients start from the network's own prediction for this label (original frame)
+    if args.model == 'free_coarse':                                        # band from a network checkpoint if given, coarse compliance from the teacher (or identity)
+        g0 = first.to_gpu(need_A=False, need_Z=True, z_dtype=torch.float64); log_w0 = g0['w'].log()
+        if args.init_checkpoint:
+            ref = GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
+            ref.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net']); ref.eval(); net.from_network(ref, g0); del ref
+        with torch.no_grad():
+            values0 = bounded_band(net.dg, net.pair_p, g0, log_w0, args.off_scale)
+            info = net.init_coarse_from_teacher(g0, values0) if args.coarse_init == 'teacher' else {}
+            v_free, M_free = net(g0, log_w0); D0 = divergence_terms(g0, Operator(g0, v_free, M_free), torch.float64)[0] / g0['d']
+        check = dict(stage='free_coarse_init', seat=first.seat, checkpoint=args.init_checkpoint, columns=int(g0['Pq'].shape[1]), divergence_per_mode_init=float(D0), **info)
+        print(json.dumps(check), flush=True); write_json(out / 'FREE_INIT_CHECK.json', check); del g0, v_free, M_free; first.release(); torch.cuda.empty_cache()
+    elif args.init_checkpoint and args.model == 'free':                   # free coefficients start from the network's own prediction for this label (original frame)
         ref = GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
         ref.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net']); ref.eval()
         g0 = first.to_gpu(need_A=False, need_Z=True, z_dtype=torch.float64); log_w0 = g0['w'].log()

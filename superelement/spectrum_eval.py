@@ -34,6 +34,8 @@ def student_v1(run, ckpt, record):
     sd = torch.load(ckpt, map_location='cpu')['net']
     if proto.get('model', 'net') == 'free':
         net = V1.FreeCoefficientModel(label, proto['rank'], off_scale)
+    elif proto.get('model', 'net') == 'free_coarse':
+        Pq = label.coarse_basis(proto['coarse_stride'], proto['coarse_prune']); net = V1.FreeCoarseModel(label, off_scale, Pq.shape[1])
     else:
         vw = proto.get('volume_width', 0) if any(k.startswith('volume.') for k in sd) else 0
         net = V1.GeometryNet(label.images.shape[1], proto['width'], proto['rank'], proto['hidden'], off_scale=off_scale, volume_width=vw)
@@ -41,6 +43,7 @@ def student_v1(run, ckpt, record):
     g = dict(images=label.images, theta=label.theta, mem_node=label.mem_node, mem_face=label.mem_face, mem_pix=label.mem_pix, volume=label.volume, xyz=label.xyz_nodes,
              Q=torch.eye(3, dtype=torch.float64), face_of_node=label.face_of_node, pair_i=label.pair_i, pair_j=label.pair_j, pair_dx=label.pair_dx, pair_decay=label.pair_decay,
              band_index=label.band_index, band_index_t=label.band_index_t, band_perm=label.band_perm, band_crow=label.band_crow, w=torch.from_numpy(label.w).double())
+    if getattr(label, '_coarse', None) is not None: g['Pq'] = label._coarse[1]
     with torch.no_grad():
         values, M = net(g, g['w'].log()); op = V1.Operator(g, values, M); S = op.materialize()
         diag = values[label.band_index[0] == label.band_index[1]]
@@ -96,6 +99,7 @@ def main():
     ap.add_argument('--run', required=True); ap.add_argument('--checkpoint', required=True); ap.add_argument('--out', required=True)
     ap.add_argument('--labels', default='/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/V1_LABELS.json'); ap.add_argument('--seat', type=int, default=None)
     ap.add_argument('--threads', type=int, default=12); ap.add_argument('--k', type=int, default=4); ap.add_argument('--sliver-w', type=float, default=1e-2)
+    ap.add_argument('--shift-c', type=float, default=0.0, help='E-shifted metric: compare A + E and A_hat + E with E = shift_c * S0 * max(0, shift_w - w) per DOF (ghost-penalty band)'); ap.add_argument('--shift-w', type=float, default=1e-2)
     args = ap.parse_args(); torch.set_num_threads(args.threads); t0 = time.perf_counter()
     proto = json.load(open(Path(args.run) / 'PROTOCOL.json'))
     if proto['schema'] == 'CUTFEM_SUPERELEMENT_V0':
@@ -109,6 +113,15 @@ def main():
     R = load_upper_factor(sample.reference / 'R_UPPER.npy', d, CPU)
     logdet_A = 2 * float(R.diagonal().log().sum())
     chol, code = torch.linalg.cholesky_ex(Ahat); logdet_Ahat_chol = 2 * float(chol.diagonal().log().sum()) if int(code) == 0 else float('nan'); del chol
+    shifted = None
+    if args.shift_c > 0:
+        e_dof = torch.from_numpy(np.repeat(args.shift_c * V1.S0 * np.maximum(0.0, args.shift_w - w), 3)).double()
+        Ye = quotient(torch.diag(e_dof.sqrt())); Es = Ye @ Ye.T; del Ye
+        Re = torch.linalg.cholesky(R.T @ R + Es, upper=True)
+        Y = tri(Re.T, Ahat + Es, False); We = tri(Re.T, Y.T.contiguous(), False); del Y, Es, Re; We = 0.5 * (We + We.T); mu_e = torch.linalg.eigvalsh(We).numpy(); del We
+        shifted = dict(shift_c=args.shift_c, shift_w=args.shift_w, shifted_dofs=int((e_dof > 0).sum()), mu_min=float(mu_e.min()), mu_max=float(mu_e.max()),
+                       divergence_per_mode=float(np.mean(mu_e - np.log(mu_e) - 1)), below_0_9=int((mu_e < 0.9).sum()), above_1_1=int((mu_e > 1.1).sum()), below_0_97=int((mu_e < 0.97).sum()), above_1_03=int((mu_e > 1.03).sum()))
+        print(json.dumps(dict(stage='shifted', **shifted)), flush=True)
     Y = tri(R.T, Ahat, False); del Ahat; W = tri(R.T, Y.T.contiguous(), False); del Y
     symmetry_defect = float(torch.linalg.matrix_norm(W - W.T) / torch.linalg.matrix_norm(W)); W = 0.5 * (W + W.T)
     print(json.dumps(dict(stage='whitened', seconds=time.perf_counter() - t0, cholesky_info=int(code))), flush=True)
@@ -152,7 +165,7 @@ def main():
                below_0_5=int((mu_np < 0.5).sum()), below_0_9=int((mu_np < 0.9).sum()), above_1_1=int((mu_np > 1.1).sum()), above_2=int((mu_np > 2).sum()),
                divergence=float(terms.sum()), divergence_per_mode=float(terms.mean()), whitened_rms=float(np.sqrt(np.mean((mu_np - 1) ** 2))),
                forward_bound=float(np.abs(mu_np - 1).max()), inverse_bound=float(np.abs(1 / mu_np - 1).max()) if pos.all() else float('inf'),
-               whitening_symmetry_defect=symmetry_defect, extreme_eigenpair_residuals=eig_residual, logdet_gap_eigen=logdet_gap, logdet_gap_cholesky=logdet_Ahat_chol - logdet_A, logdet_gap_closed=closed['logdet_S'] + closed['rigid_term'] - logdet_A, closed=closed,
+               shifted_metric=shifted, whitening_symmetry_defect=symmetry_defect, extreme_eigenpair_residuals=eig_residual, logdet_gap_eigen=logdet_gap, logdet_gap_cholesky=logdet_Ahat_chol - logdet_A, logdet_gap_closed=closed['logdet_S'] + closed['rigid_term'] - logdet_A, closed=closed,
                groups=groups, stiffness_buckets=stiff_buckets, divergence_share_oversoft=soft_share, softest=modes(order[:args.k], 0), stiffest=modes(order[::-1][:args.k], args.k), sliver_node_fraction=float((w < args.sliver_w).mean()), seconds=time.perf_counter() - t0)
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True); tag = f"{Path(args.run).name}_{Path(args.checkpoint).stem}_{info['seat']:04d}"
     write_json(out / f'SPECTRUM_{tag}.json', json_finite(res))
