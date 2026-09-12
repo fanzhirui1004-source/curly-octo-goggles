@@ -273,6 +273,21 @@ def bounded_band(dg, pair, g, log_w, off_scale):
     return torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
 
 
+class FreeUnboundedModel(nn.Module):
+    """Free band coefficients (network head bounds) plus a free, unbounded M (q x rank): the representation class itself, no head bound on M."""
+    def __init__(self, label, rank=1024, off_scale=OFF_SCALE):
+        super().__init__(); self.rank, self.off_scale = rank, off_scale
+        self.dg = nn.Parameter(torch.zeros(label.nn, 6, dtype=torch.float64)); self.pair_p = nn.Parameter(torch.zeros(len(label.pair_i), 9, dtype=torch.float64))
+        self.M = nn.Parameter(1e-3 * torch.randn(label.q, rank, dtype=torch.float64))
+    @torch.no_grad()
+    def from_network(self, net, g):
+        dg, pair, mode = net.preactivations(g); self.dg.copy_(dg.double()); self.pair_p.copy_(pair.double())
+        Mn = (0.1 * torch.tanh(mode.double())).view(-1, net.rank) * net.mode_logscale.exp().double()[None, :]; k = min(net.rank, self.rank)
+        self.M[:, :k].copy_(Mn[:, :k]); self.M[:, k:].mul_(float(Mn.abs().mean())); return self
+    def forward(self, g, log_w):
+        return bounded_band(self.dg, self.pair_p, g, log_w, self.off_scale), self.M
+
+
 class FreeCoarseModel(nn.Module):
     """Free band coefficients (same bounded maps as the network heads) plus a coarse-space compliance:
     K0^-1 = L^-1 L^-T + Pq G Pq^T with G = C C^T, C lower triangular with positive diagonal (free k x k) on the orthonormal
@@ -582,7 +597,7 @@ def main():
     ap.add_argument('--extreme-weight', type=float, default=0.0, help='weight of the extreme whitened-mode term'); ap.add_argument('--extreme-block', type=int, default=8); ap.add_argument('--extreme-iters', type=int, default=2)
     ap.add_argument('--trace-dtype', default='float32', choices=['float32', 'float64']); ap.add_argument('--eval-dense', type=int, default=1, help='legacy dense evaluation (materialized A_hat, probe metrics)')
     ap.add_argument('--solve-tol', type=float, default=1e-6, help='rigid-correction solve residual above which a step is treated as ill-conditioned (no extreme term, no rigid log-det term)')
-    ap.add_argument('--model', default='net', choices=['net', 'free', 'free_coarse'], help='free: free coefficients under the network head bounds; free_coarse: free band + coarse-space compliance G = exp(H); single label, no augmentation')
+    ap.add_argument('--model', default='net', choices=['net', 'free', 'free_unbounded', 'free_coarse'], help='free: free coefficients under the network head bounds; free_coarse: free band + coarse-space compliance G = exp(H); single label, no augmentation')
     ap.add_argument('--coarse-stride', type=int, default=4); ap.add_argument('--coarse-prune', type=float, default=0.05); ap.add_argument('--coarse-init', default='teacher', choices=['teacher', 'identity'])
     ap.add_argument('--seats', default=None, help='comma-separated seats to train on (subset of the label file)')
     args = ap.parse_args()
@@ -602,7 +617,8 @@ def main():
         Pq = first.coarse_basis(args.coarse_stride, args.coarse_prune); net = FreeCoarseModel(first, args.off_scale, Pq.shape[1]).to(DEV)
         print(json.dumps(dict(stage='coarse_basis', stride=args.coarse_stride, prune=args.coarse_prune, columns=int(Pq.shape[1]))), flush=True)
     else:
-        net = (FreeCoefficientModel(first, args.rank, args.off_scale) if args.model == 'free' else GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width)).to(DEV)
+        net = (FreeCoefficientModel(first, args.rank, args.off_scale) if args.model == 'free' else FreeUnboundedModel(first, args.rank, args.off_scale) if args.model == 'free_unbounded'
+               else GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width)).to(DEV)
     group = cube_group()
     if args.model == 'free_coarse':                                        # band from a network checkpoint if given, coarse compliance from the teacher (or identity)
         g0 = first.to_gpu(need_A=False, need_Z=True, z_dtype=torch.float64); log_w0 = g0['w'].log()
@@ -615,8 +631,8 @@ def main():
             v_free, M_free = net(g0, log_w0); D0 = divergence_terms(g0, Operator(g0, v_free, M_free), torch.float64)[0] / g0['d']
         check = dict(stage='free_coarse_init', seat=first.seat, checkpoint=args.init_checkpoint, columns=int(g0['Pq'].shape[1]), divergence_per_mode_init=float(D0), **info)
         print(json.dumps(check), flush=True); write_json(out / 'FREE_INIT_CHECK.json', check); del g0, v_free, M_free; first.release(); torch.cuda.empty_cache()
-    elif args.init_checkpoint and args.model == 'free':                   # free coefficients start from the network's own prediction for this label (original frame)
-        ref = GeometryNet(first.images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
+    elif args.init_checkpoint and args.model in ('free', 'free_unbounded'):   # free coefficients start from the network's own prediction for this label (original frame)
+        ref = GeometryNet(first.images.shape[1], args.width, 512, args.hidden, off_scale=args.off_scale, volume_width=args.volume_width).to(DEV)
         ref.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net']); ref.eval()
         g0 = first.to_gpu(need_A=False, need_Z=True, z_dtype=torch.float64); log_w0 = g0['w'].log()
         with torch.no_grad():

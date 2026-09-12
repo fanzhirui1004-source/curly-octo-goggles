@@ -34,6 +34,8 @@ def student_v1(run, ckpt, record):
     sd = torch.load(ckpt, map_location='cpu')['net']
     if proto.get('model', 'net') == 'free':
         net = V1.FreeCoefficientModel(label, proto['rank'], off_scale)
+    elif proto.get('model', 'net') == 'free_unbounded':
+        net = V1.FreeUnboundedModel(label, proto['rank'], off_scale)
     elif proto.get('model', 'net') == 'free_coarse':
         Pq = label.coarse_basis(proto['coarse_stride'], proto['coarse_prune']); net = V1.FreeCoarseModel(label, off_scale, Pq.shape[1])
     else:
