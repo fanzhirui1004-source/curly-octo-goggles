@@ -70,7 +70,7 @@ def support_weights(ijk, N, tau_corners, cut_plane, sub=16):
             a, b = ijk[idx, free[0]], ijk[idx, free[1]]
             ha = 2 if a % 2 == 0 else 1; hb = 2 if b % 2 == 0 else 1     # support half-width in fine steps
             a0, a1 = max(a - ha, 0), min(a + ha, 2 * n); b0, b1 = max(b - hb, 0), min(b + hb, 2 * n)
-            A0, A1, B0, B1 = a0 * sub, a1 * sub, b0 * sub, b1 * sub
+            A0, A1, B0, B1 = a0 * sub, a1 * sub + 1, b0 * sub, b1 * sub + 1        # closed box: reflection-symmetric
             area = (A1 - A0) * (B1 - B0)
             filled = cum[A1, B1] - cum[A0, B1] - cum[A1, B0] + cum[A0, B0]
             weights[idx] = max(weights[idx], filled / area if area > 0 else 0.0)
