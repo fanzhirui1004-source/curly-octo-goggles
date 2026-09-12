@@ -19,7 +19,7 @@ from stage_cutfem_neural_a.elimination_reference import DenseUpperFactor, load_u
 torch.backends.cuda.matmul.allow_tf32 = False; torch.backends.cudnn.allow_tf32 = False
 DEV = torch.device('cuda'); N = 65
 S0 = 0.01          # geometry-only stiffness unit (S_ii ~ 0.01 w on 0415)
-OFF_SCALE = 1.0    # bound of |L_ij| relative to min(L_ii, L_jj) times the distance prior
+OFF_SCALE = 10.0   # default bound of |L_ij| relative to min(L_ii, L_jj) times the distance prior; overridden by --off-scale
 DEPTHS = (0, 1, 2, 4)
 
 
@@ -114,9 +114,9 @@ class ResBlock(nn.Module):
 
 
 class GeometryNet(nn.Module):
-    def __init__(self, c_in, width=64, rank=512, hidden=128, dilations=(1, 2, 4, 8)):
+    def __init__(self, c_in, width=64, rank=512, hidden=128, dilations=(1, 2, 4, 8), off_scale=OFF_SCALE):
         super().__init__()
-        self.width, self.rank = width, rank
+        self.width, self.rank, self.off_scale = width, rank, off_scale
         self.stem = nn.Conv2d(c_in, width, 3, padding=1)
         self.blocks = nn.ModuleList([ResBlock(width, dl) for dl in dilations])
         self.context = nn.Sequential(nn.Linear(width + 12, width), nn.SiLU(), nn.Linear(width, width))
@@ -150,12 +150,12 @@ class GeometryNet(nn.Module):
         ua, ub = torch.triu_indices(3, 3, device=DEV); is_d = ua == ub
         dmin_in = torch.minimum(D[:, ua[~is_d]], D[:, ub[~is_d]])            # (n, 3) in-block pairs (0,1),(0,2),(1,2)
         dvals = torch.empty((n, 6), dtype=torch.float64, device=DEV)
-        dvals[:, is_d] = D; dvals[:, ~is_d] = OFF_SCALE * dmin_in * torch.tanh(dg[:, 3:]).double()
+        dvals[:, is_d] = D; dvals[:, ~is_d] = self.off_scale * dmin_in * torch.tanh(dg[:, 3:]).double()
         fi = F.one_hot(g['face_of_node'], 6).float()
         pi, pj = g['pair_i'], g['pair_j']
         inp = torch.cat((h[pi], h[pj], 5.0 * g['pair_dx'], (g['face_of_node'][pi] == g['face_of_node'][pj]).float()[:, None], fi[pi], fi[pj]), dim=1)
         dmin = torch.minimum(D[pi][:, :, None], D[pj][:, None, :]).reshape(-1, 9)      # (npair, 9)
-        blocks = torch.tanh(self.pair(inp)).double() * dmin * (OFF_SCALE * g['pair_decay'])[:, None]
+        blocks = torch.tanh(self.pair(inp)).double() * dmin * (self.off_scale * g['pair_decay'])[:, None]
         values = torch.cat((blocks.reshape(-1), dvals.reshape(-1)))[g['band_perm']]
         M = (0.1 * torch.tanh(self.mode(h))).double().view(-1, self.rank) * self.mode_logscale.exp().double()[None, :]      # (q, rank), bounded entries
         return values, M
@@ -283,7 +283,7 @@ def main():
     ap.add_argument('--labels', required=True, help='JSON list of records with packet, receipt, reference, trace_cache, seat, split')
     ap.add_argument('--output', required=True); ap.add_argument('--steps', type=int, default=20000); ap.add_argument('--chunk', type=int, default=50)
     ap.add_argument('--eval-every', type=int, default=2000); ap.add_argument('--eval-max-q', type=int, default=23000); ap.add_argument('--eval-labels', type=int, default=3)
-    ap.add_argument('--r-near', type=float, default=0.2); ap.add_argument('--decay', type=float, default=0.03); ap.add_argument('--off-scale', type=float, default=0.3)
+    ap.add_argument('--r-near', type=float, default=0.2); ap.add_argument('--decay', type=float, default=0.03); ap.add_argument('--off-scale', type=float, default=OFF_SCALE, help='bound of |L_ij| relative to min(L_ii,L_jj)*exp(-d/decay)')
     ap.add_argument('--rank', type=int, default=512); ap.add_argument('--width', type=int, default=64); ap.add_argument('--hidden', type=int, default=128)
     ap.add_argument('--probes', type=int, default=32); ap.add_argument('--white-probes', type=int, default=32); ap.add_argument('--action-probes', type=int, default=16); ap.add_argument('--action-weight', type=float, default=3.0); ap.add_argument('--dual-weight', type=float, default=1.0); ap.add_argument('--dual-probes', type=int, default=16); ap.add_argument('--dual-start', type=int, default=0); ap.add_argument('--dual-clip', type=float, default=1e4); ap.add_argument('--energy-ramp', type=int, default=3000, help='energy-loss weight ramps linearly from 0 to 1 over this many steps')
     ap.add_argument('--lr', type=float, default=1e-3); ap.add_argument('--warmup', type=int, default=200); ap.add_argument('--lr-floor', type=float, default=0.1)
@@ -296,7 +296,7 @@ def main():
     print(json.dumps(dict(stage='labels', train=[r['seat'] for r in train_recs], validation=[r['seat'] for r in val_recs])), flush=True)
     labels = {int(r['seat']): Label(r, args.r_near, args.decay, args.off_scale) for r in train_recs + val_recs}
     print(json.dumps(dict(stage='prepared', seconds=time.perf_counter() - t_start, q={s: l.q for s, l in labels.items()})), flush=True)
-    net = GeometryNet(labels[int(train_recs[0]['seat'])].images.shape[1], args.width, args.rank, args.hidden).to(DEV)
+    net = GeometryNet(labels[int(train_recs[0]['seat'])].images.shape[1], args.width, args.rank, args.hidden, off_scale=args.off_scale).to(DEV)
     if args.init_checkpoint: net.load_state_dict(torch.load(args.init_checkpoint, map_location='cuda')['net'])
     nparam = sum(p.numel() for p in net.parameters()); write_json(out / 'MODEL.json', dict(parameters=nparam, model=str(net)))
     print(json.dumps(dict(stage='setup', parameters=nparam)), flush=True)
