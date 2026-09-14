@@ -4,9 +4,10 @@ Question: the coverage envelope is `3000 < q <= 23127`, which admits 488 of the
 1024 identities on a 32 vCPU / 64 GB node. Is the cap set by the machine, or by
 how we account for the machine?
 
-Answer: by how we account for it. The peak is real but it is in the dense tail,
-not the QR, and the admission forecast that draws the line is systematically
-about 1.5x the peak that is actually measured.
+Answer: by how we account for it. The peak is real, and it sits in the dense
+tail rather than the QR, but only by 8%: the two stages are close enough that
+fixing the tail buys little. The admission forecast that draws the line, on the
+other hand, is systematically about 1.5x the peak that is actually measured.
 
 ## Method
 
@@ -112,11 +113,11 @@ forecast-with-margin of 36.7 GiB on a 56 GiB reservation, and then measured
 
 2. **Release the interior of R across the dense tail.** The tail reads only the
    trace block; for seat 85 that is 1.97 GiB out of 14.31 GiB retained. Spilling
-   the interior and restoring it for the four backsolves moves the tail stage to
-   roughly (trace block + tail buffer + packed) ~ 11.9 GiB and makes the QR the
-   peak again: 24.2 -> ~22.0 GiB for seat 85. Costs one write and one read of
-   ~15 GB. Changes `complete_sparse_R_written`, which is a recorded contract
-   property, so it needs registering rather than just editing.
+   the interior and restoring it for the four backsolves makes the QR the peak
+   again, which is worth about 8-9%: seat 52 6.95 -> 6.42, seat 85 24.2 -> ~22.0.
+   Costs one write and one read of ~15 GB, and changes
+   `complete_sparse_R_written`, a recorded contract property, so it needs
+   registering rather than just editing. Do it after 1, not instead of it.
 
 3. **Substructuring**, if 1 and 2 together still do not reach 1024. Partition
    cells into groups, eliminate each group's private interior by QR, stack the
@@ -125,16 +126,53 @@ forecast-with-margin of 36.7 GiB on a 56 GiB reservation, and then measured
    exists to protect. Peak becomes the larger of one group and the final trace
    triangle.
 
+## Measured, not inferred
+
+seat 52 rerun end to end with 50 ms whole-tree RSS sampling, stage boundaries
+placed from the run's own `timings` anchored at the `ORDER_AND_SCALES.npz`
+marker:
+
+| stage | window (s) | peak GiB | GiB at exit |
+|---|---|---|---|
+| assemble | 0.0 - 22.7 | 2.270 | 0.153 |
+| load + ordering + symbolic | 22.7 - 30.5 | 0.568 | 0.216 |
+| sparse_qr | 30.5 - 5300.4 | 6.419 | 5.130 |
+| tail_load_unscale | 5300.4 - 5307.0 | 6.321 | 6.321 |
+| tail_transform | 5307.0 - 5323.0 | 6.336 | 6.336 |
+| **storage** | 5323.0 - 5327.3 | **6.948** | 6.343 |
+| screen | 5327.3 - 5345.4 | 6.343 | 5.689 |
+| four_rhs_backsolve | 5345.4 - 5388.6 | 5.689 | 5.099 |
+| replay + original_G | 5388.6 - 5407.3 | 5.108 | 0.097 |
+
+whole-run peak 6.948 GiB, against production's recorded 6.997 GiB for the same
+seat.
+
+The peak is the 4.3-second `storage` window, and it decomposes exactly:
+retained native R 3.993 + the long-double root buffer 2.452 + the packed writer
+~0.50 = 6.945 GiB. The QR's own peak is 6.419 GiB = native 6.156 + input and
+interpreter ~0.26.
+
+So the earlier inference was right about which stage but overstated the gap: the
+QR is only 0.53 GiB below the peak, not 0.76. Releasing R's interior across the
+tail would take the tail stages to roughly 3.6 GiB and leave the QR as the peak,
+i.e. 6.95 -> 6.42 GiB, about 8%. The same change on seat 85 gives 24.2 -> ~22.0,
+about 9%. Worth doing, but it is not the lever.
+
+The ceiling is structural: at every point after the QR completes, the retained R
+is resident, and R is the deliverable's own factor. Getting materially below
+`|R| + max(QR transient, tail buffer)` requires not holding all of R at once,
+which is option 3.
+
+Validation of the rerun: this run's arithmetic was 69x slower than production
+(sparse_qr 5270 s vs 76 s) because of BLAS binding, and yet
+`sparse.native_peak_bytes` came out 6.156 GiB against production's 6.155 GiB.
+The memory profile is set by the symbolic plan, which was bit-identical, and is
+independent of how fast the arithmetic runs.
+
 ## Open
 
-- An instrumented rerun of seat 52 (50 ms whole-tree RSS sampling, stage markers
-  from artifact creation) is in flight to confirm the stage attribution
-  directly. Its symbolic analysis is bit-identical to production (same fronts,
-  same `stack_entries`, same `flop_upper_bound`), so the memory plan is the same
-  run; only the arithmetic is slower.
-- That rerun is ~25x slower than production at identical flop count, which means
-  production bound a different BLAS than this environment does.
-  `M2_NATIVE_RUNTIME_R1/lib` ships a reference `libblas.so.3` alongside
-  `libspqr.so.2`, and `libmkl_rt.so.3` lives in a different directory, so the
-  QR's throughput depends on `LD_LIBRARY_PATH` order. Worth pinning explicitly;
-  it is a throughput lever, not a memory one.
+- The 69x slowdown: `M2_NATIVE_RUNTIME_R1/lib` ships a reference `libblas.so.3`
+  alongside `libspqr.so.2`, while `libmkl_rt.so.3` lives in
+  `runtime/r13_pardiso_v1/lib`, so which BLAS the QR binds depends on
+  `LD_LIBRARY_PATH` order. Worth pinning explicitly. It is a throughput lever,
+  not a memory one, and it does not affect anything above.
