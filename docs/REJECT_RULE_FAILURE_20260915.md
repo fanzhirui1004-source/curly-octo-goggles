@@ -1,7 +1,10 @@
-# The rejection rule stalled three runs, and it was gating on the wrong quantity
+# The rejection rule stalled three runs and could not recover by construction
 
 Date: 2026-09-15. Runs R2, R4, R5 on seat 0328.
 Audit added as `--gap-audit` in `v1_scaled.py`; function `gap_audit`.
+
+Read the correction section before the audit numbers: the first version of this document drew
+a conclusion from an invalid measurement, and that conclusion is withdrawn here.
 
 ## What happened
 
@@ -40,31 +43,35 @@ Worse, the threshold is guaranteed to be crossed eventually: the residual grows 
 and `cond(L)` necessarily grows as the student fits a stiff operator. R1 saw it reach 5.1e6 from
 an initial 84.7. Any fixed absolute tolerance stalls the run at some step.
 
-## The gate was measuring the wrong quantity
+## Correction: the first audit was invalid
 
-The residual passes `U` back through `L` via `apply`, so it carries `U`'s error amplified by
-`cond(L)`. The objective does not consume `U` that way. It consumes `logdet(N^T U)`, which
-depends on `U` directly.
+An initial audit appeared to show the residual moving 34000x while `logdet(N^T U)` moved only
+3.2e-4, which would have meant the gate was measuring a quantity the objective barely depends
+on. **That measurement was wrong and the conclusion drawn from it is withdrawn.**
 
-The audit computes both at a range of refinement counts. At step 25 of R6:
+`FreeScaledModel.forward` returns `self.M`, the live `nn.Parameter`, so `Operator.M` is that
+tensor and `opt.step()` mutates it in place. `Operator.C = cholesky(I + M^T M)` is built once at
+construction. The audit call sat after `opt.step()`, so it measured an operator holding
+post-step `M` against pre-step `C`. The residuals it reported were that inconsistency, not the
+operator the loss was computed from.
 
-| refinement | residual | `logdet(N^T U)` |
-|---|---|---|
-| 0 | 1.256e-2 | 111.22838673 |
-| 1 | 3.127e-3 | 111.22864269 |
-| 2 | 8.192e-4 | 111.22869054 |
-| 4 | 5.956e-5 | 111.22870526 |
-| 8 | 3.680e-7 | 111.22870628 |
+The tell was in the same log: at step 100 the audit reported a refine-0 residual of 1.333e-2
+while the training path's own residual for that step read 1.30e-14, twelve orders apart for
+what should have been the same computation.
 
-The residual moves by a factor of 34000. The log-det moves by 3.2e-4 absolute, 2.9e-6 relative.
+With the call moved before `loss.backward()`, the two agree and the picture is different:
 
-That 3.2e-4 is the entire error the gate was defending against. It enters the divergence `D`
-additively. `D` is about 6270 where the gate was firing, so the error was 5e-8 relative. At the
-target `D/d = 1e-4`, `D` is about 1.28 and the error is 2.5e-4 relative, which moves `D/d` by
-2.5e-8 against a gate of 1e-4.
+| | step 25 of R7 |
+|---|---|
+| training-path residual | 1.2530e-15 |
+| audit refine-0 residual | 1.2565e-15 |
+| `logdet(N^T U)` at refine 0, 1, 2, 4 | 111.2292965885176, unchanged to all printed digits |
 
-**The rule rejected 427 steps to avoid an error five to eight orders of magnitude below what
-matters.**
+Early in training the solve is clean and refinement changes nothing. So the audit says nothing
+yet about the regime where R5 failed. R5's residual was 1.81e-14 at step 150 and 1.04e-4 at
+step 198, a real ten-order jump in 48 steps, measured on a consistent operator. What caused
+that jump is still unknown. R7 runs the same configuration with the corrected audit through
+that range, which is the measurement that will settle it.
 
 ## Why the earlier patches did not help
 
@@ -80,18 +87,27 @@ was being judged against. Knife-edge, then permanent rejection.
 
 Neither patch questioned whether the residual was the right thing to gate on.
 
-## The fix
+## The fix, so far
 
-Drop the rejection. Never truncate the rigid log-det term. R6 runs with
-`--reject-ill 0 --solve-tol 1e30 --rigid-refine 0 --gap-audit 25`, so the objective is the same
-function at every step and the audit reports whether that assumption holds as `cond(L)` grows.
+Drop the rejection. R7 runs with `--reject-ill 0 --solve-tol 1e30 --rigid-refine 0
+--gap-audit 25`, so the objective is the same function at every step and the audit records
+both the residual and the log-det through the range where R5 died.
 
-If the audit ever shows `logdet_drift` large enough to matter against the current `D`, the
-response is refinement, which demonstrably reduces the residual, not a learning-rate cut, which
-demonstrably does not.
+This is justified by the structural argument above, which stands on the R5 log alone: the rule
+could not recover once triggered. It is not yet justified by a measurement showing the residual
+is harmless, because that measurement has not been made. If R7 reaches the same residual regime
+and the audit shows the log-det moving enough to matter against the current `D`, the answer is
+refinement, which does reduce the residual, and the capacity result will have to be read with
+that error budget attached.
 
 ## What to carry forward
 
-A guard should gate on the quantity the objective consumes, and its response has to be able to
-change that quantity. This one failed both tests. It was added to protect the objective's
-integrity and instead cost three runs and roughly four hours of GPU time.
+A guard has to be able to change the thing it gates on. This one could not: it responded to a
+solve residual by cutting the learning rate, which does not affect a solve residual. Once
+triggered it could only trigger again, and it rejected 512 consecutive steps before the run was
+killed. That is a design fault independent of whether the residual was worth worrying about.
+
+The second lesson is about the audit itself. A diagnostic added to check an objective has to be
+evaluated on the same object the objective used. Placing it one line after `opt.step()` was
+enough to make it measure something else entirely, and the numbers it produced were plausible
+enough to be written up before the twelve-order disagreement with the training path was noticed.
