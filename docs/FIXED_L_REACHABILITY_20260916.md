@@ -3,6 +3,14 @@
 Date: 2026-09-16. Seat 0328.
 Script: `superelement/factor_fit/reachability.py`.
 
+> **Scope correction (2026-09-16).** "The low-rank term can only soften" is true **relative to
+> `H_0`**, and that is the only way it is used below — both necessary conditions are stated against
+> `H_0` and remain valid.  It was separately over-read elsewhere as "the parameterisation's sign is
+> backwards, so the model can never stiffen", which is **false**: reducing an existing `M` stiffens
+> the current operator (`L=2, M^2=7 -> K0=0.5`; `M^2=3 -> K0=1.0`), and `L` is trainable as well.
+> This document rules out the **three specific `L` measured**, not the joint `(L, M)` class.  See
+> `docs/CLAIM_SCOPE_20260916.md`.
+
 ## The criterion
 
 The backend is `A_hat = W^T (I + M M^T)^-1 W` with `W = L pi(B^T)` (q x d). Since
