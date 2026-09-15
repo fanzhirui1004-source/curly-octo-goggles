@@ -119,19 +119,41 @@ def main():
     dense_params = d*(d+1)//2
     print('%-8s %-12s %-11s %-11s %-11s %-9s' % ('tol', 'params', 'frac dense', 'eps_op', 'D/d', 'sec'), flush=True)
     rows = []
-    for tol in TOLS:
+    first = True
+    for tol in (0.0,) + TOLS:          # tol 0 keeps every stored rank: a self-test that must return ~0
         ts = time.time()
         Ah = torch.zeros(d, d, dtype=torch.float64, device=V.DEV)
+        cover = torch.zeros(d, d, dtype=torch.uint8, device=V.DEV) if first else None
         for s, t in near:
             I = torch.as_tensor(s.idx, device=V.DEV); J = torch.as_tensor(t.idx, device=V.DEV)
-            Ah[I.unsqueeze(1), J.unsqueeze(0)] = A[I][:, J]
+            M = A[I][:, J]
+            Ah[I.unsqueeze(1), J.unsqueeze(0)] = M
+            if s.nid != t.nid:
+                Ah[J.unsqueeze(1), I.unsqueeze(0)] = M.T
+            cover[I.unsqueeze(1), J.unsqueeze(0)] += 1
+            if s.nid != t.nid:
+                cover[J.unsqueeze(1), I.unsqueeze(0)] += 1
         lr_params = 0
         for I, J, U, S, Vh, nrm, tail in store:
-            k = int(torch.searchsorted(-tail, torch.tensor(-tol*nrm, device=V.DEV)).item()) if nrm > 0 else 0
-            k = max(1, min(k + 1, len(S)))
-            Ah[I.unsqueeze(1), J.unsqueeze(0)] = (U[:, :k] * S[:k]) @ Vh[:k]
+            if tol == 0.0:
+                k = len(S)
+            else:
+                k = int(torch.searchsorted(-tail, torch.tensor(-tol*nrm, device=V.DEV)).item()) if nrm > 0 else 0
+                k = max(1, min(k + 1, len(S)))
+            M = (U[:, :k] * S[:k]) @ Vh[:k]
+            Ah[I.unsqueeze(1), J.unsqueeze(0)] = M
+            if not torch.equal(I, J):
+                Ah[J.unsqueeze(1), I.unsqueeze(0)] = M.T
+            cover[I.unsqueeze(1), J.unsqueeze(0)] += 1
+            if not torch.equal(I, J):
+                cover[J.unsqueeze(1), I.unsqueeze(0)] += 1
             lr_params += k * (len(I) + len(J))
-        Ah = torch.triu(Ah) ; Ah = Ah + torch.triu(Ah, 1).T          # symmetrise from the upper half
+        Ah = 0.5 * (Ah + Ah.T)            # blocks are already transposes of each other; this is a no-op guard
+        if first:
+            miss = int((cover == 0).sum()); dup = int((cover > 1).sum())
+            print('COVERAGE: %d entries uncovered, %d entries written more than once' % (miss, dup), flush=True)
+            if miss:
+                raise SystemExit('PARTITION_DOES_NOT_COVER')
         H = Rinv.T @ Ah @ Rinv
         del Ah; torch.cuda.empty_cache()
         H = 0.5*(H + H.T)
@@ -145,14 +167,18 @@ def main():
         if neg: mark = '%d non-positive mu' % neg
         print('%-8.0e %-12d %-11.4f %-11.4e %-11.4e %-9.0f %s'
               % (tol, params, params/dense_params, eps_op, Dd, time.time()-ts, mark), flush=True)
+        if first:
+            print('  ^ self-test row (tol=0, full stored rank): eps_op must be ~1e-10, not %s' % ('ok' if eps_op < 1e-6 else 'BROKEN'), flush=True)
+            del cover; torch.cuda.empty_cache()
+        first = False
         rows.append(dict(tol=tol, params=params, near_params=near_params, lr_params=lr_params,
                          frac_of_dense=params/dense_params, eps_op=eps_op,
                          divergence_per_d=None if neg else Dd, nonpositive_mu=neg))
-    Path('/root/autodl-tmp/NEURAL_SCHUR/HMAT_ECONOMY.json').write_text(json.dumps(
+    Path('/root/autodl-tmp/NEURAL_SCHUR/HMAT_ECONOMY2.json').write_text(json.dumps(
         dict(seat=328, d=int(d), dense_params=int(dense_params), leaf=LEAF, eta=ETA,
              n_admissible=len(adm), n_near=len(near), near_params=int(near_params),
              nec3=NEC3, nec10=NEC10, rows=rows, seconds=time.time()-t0), indent=1))
-    print('\nwritten HMAT_ECONOMY.json (%.0f s)' % (time.time()-t0), flush=True)
+    print('\nwritten HMAT_ECONOMY2.json (%.0f s)' % (time.time()-t0), flush=True)
 
 
 if __name__ == '__main__':
