@@ -132,14 +132,37 @@ same `Â` while holding a fixed rigid block. The gauge loss climbs steadily rath
 which suggests the model is pushing against the pin. Note also that R7's step-200 and step-250
 figures are themselves overstatements, so the true gap may be wider than the table shows.
 
+## The pin makes the loss exact
+
+`ahat_audit.py` on R8's step-500 checkpoint, which is the test that matters:
+
+| route | R8 step 500, gauge weight 1 | R7 step 1000, gauge free |
+|---|---:|---:|
+| identity, via `logdet(NᵀK0⁻¹N)` | 0.260700 | 0.086341 |
+| direct, Cholesky of `Â` | 0.260700 | 0.034952 |
+| exact spectrum | 0.260700 | 0.034952 |
+| identity / direct | **1.000** | **2.470** |
+| log-det gap, both routes | −7101.574 / −7101.574 | −2559.594 / −1902.220 |
+| rigid solve residual | 2.79e-12 | 2.93e+87 |
+
+All three routes agree to six digits under the pin, and the log-det gap matches exactly. The
+distortion is gone, not merely reduced.
+
+What the pin costs on the true objective is a separate number, and the honest comparison is at
+matched steps on the direct route. R8 step 500 is at true D/d 0.2607 with μ ∈ [0.0011, 116.96]
+and 79.9% outside the work gate; R7 step 1000 is at true D/d 0.0350 with μ ∈ [0.0695, 1.2045]
+and 35.9% outside. Those are different steps and R7 has no step-500 checkpoint, so the
+comparison waits for R8 to reach step 1000.
+
 A sweep over `--gauge-weight` in {0.01, 0.1, 1, 10} at 400 steps separates the two: if a much
 smaller weight still bounds the residual while D/d tracks R7, the cost was the penalty.
 
 ## Open
 
-- Whether the pin keeps the identity accurate, measurable by `ahat_audit.py` on an R8 checkpoint.
-  This is the test that matters; the residual staying small is necessary, not sufficient.
-- How much of R8's 12-18% deficit is penalty cost and how much is reachability.
+- How much the pin costs on the true objective, measured at step 1000 against R7's 0.034952,
+  and how much of that is the penalty diverting gradient versus the banded `L` not reaching the
+  same `Â` under a fixed rigid block. A sweep over the weight at matched steps, each scored by
+  `ahat_audit.py`, separates them.
 - What the local class reaches at 6000 steps under an undistorted signal.
 - A layered cost profile on a real n32 GP teacher. The packets hold only the condensed
   `S_UPPER.npy` (12798 x 12798), `TRACE.npz` and `PROBES.npz`, so the pre-condensation coupling
