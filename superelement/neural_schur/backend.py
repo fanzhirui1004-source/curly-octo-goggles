@@ -43,23 +43,33 @@ class LiftingLayer:
         self.n_coeff = len(pairs)
         self.device, self.dtype = device, dtype
 
+    def _sparse(self, k: torch.Tensor, transpose: bool) -> torch.Tensor:
+        """(I + K) or its transpose as a sparse matrix.
+
+        index_add on (n_pairs, n_cols) intermediates is fine for a few right-hand sides and
+        impossible at d = 12792 with 400k pairs: the intermediate alone would be 41 GB in
+        float64.  A sparse product never forms it.
+        """
+        dev, dt = k.device, k.dtype
+        diag = torch.arange(self.d, device=dev)
+        rows, cols = self.pairs[:, 0].to(dev), self.pairs[:, 1].to(dev)
+        if transpose:
+            rows, cols = cols, rows
+        idx = torch.stack([torch.cat([diag, rows]), torch.cat([diag, cols])])
+        val = torch.cat([torch.ones(self.d, device=dev, dtype=dt), k])
+        return torch.sparse_coo_tensor(idx, val, (self.d, self.d)).coalesce()
+
     def apply(self, k: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         """T_layer x."""
         if self.n_coeff == 0:
             return x
-        out = x.clone()
-        contrib = k.unsqueeze(-1) * x[self.pairs[:, 1]]
-        out.index_add_(0, self.pairs[:, 0], contrib)
-        return out
+        return torch.sparse.mm(self._sparse(k, False), x)
 
     def apply_transpose(self, k: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         """T_layer^T x.  Exactly the transpose of `apply`, not a second learned map."""
         if self.n_coeff == 0:
             return x
-        out = x.clone()
-        contrib = k.unsqueeze(-1) * x[self.pairs[:, 0]]
-        out.index_add_(0, self.pairs[:, 1], contrib)
-        return out
+        return torch.sparse.mm(self._sparse(k, True), x)
 
     def dense(self, k: torch.Tensor) -> torch.Tensor:
         """Explicit matrix, for tests only."""
