@@ -154,8 +154,48 @@ and 79.9% outside the work gate; R7 step 1000 is at true D/d 0.0350 with μ ∈ 
 and 35.9% outside. Those are different steps and R7 has no step-500 checkpoint, so the
 comparison waits for R8 to reach step 1000.
 
-A sweep over `--gauge-weight` in {0.01, 0.1, 1, 10} at 400 steps separates the two: if a much
-smaller weight still bounds the residual while D/d tracks R7, the cost was the penalty.
+## The sweep: there is no cheap weight
+
+Matched-step comparison at step 1000, every number scored by `ahat_audit.py` on the direct
+route, so "true D/d" touches no inverse of `K0`:
+
+| gauge weight | rigid residual | identity / direct | true D/d at step 1000 |
+|---:|---:|---:|---:|
+| 0 (R7) | 2.93e+87 | 2.470 | **0.034952** |
+| 0.001 | 9.54e+25 by step 290 | — | — |
+| 0.01 | 6.11e+19 by step 290 | — | — |
+| 0.1 | running | — | — |
+| 1 (R8) | 8.58e-12 | 1.000 | **0.096171** |
+
+Weights of 0.01 and below do not hold. Their residuals are already past 1e19 by step 290, which
+is the unpinned behaviour with a short delay, so they buy nothing. Weight 1 holds and makes the
+loss exact, and costs a factor of 2.75 on the true objective.
+
+**The pin is a constraint on the parameterization, not on a free gauge.** The earlier claim that
+pinning a gauge cannot bias the fit is withdrawn. It holds only if the model can realize any
+rigid block independently of `Â`. With `L` banded it cannot: fixing `K0 N` fixes a combination of
+`L` and `M`, and through the parameterization that restricts which `Â` is reachable. The
+evidence is direct: R7 optimizing a loss wrong by 2.47x reached true D/d 0.034952, while R8
+optimizing an exact loss under the pin reached only 0.096171, with μ ∈ [0.0014, 107.4] against
+R7's [0.0695, 1.2045].
+
+So neither setting is right. Unpinned gives a good fit under a signal you cannot trust; pinned
+gives a trustworthy signal under a constrained fit.
+
+## What is actually running now
+
+**R9, unpinned, 6000 steps, checkpointed every 1000.** The capacity question is whether this
+operator class can reach the gate at all, and that can be answered by training under the
+distorted signal and *measuring* with the direct route at checkpoints. R7 showed the distorted
+gradient still descends the true objective, reaching 0.034952 by step 1000 against a truncation
+baseline of 0.030-0.032. If R9 reaches D/d below 1e-4 on the direct route, capacity is
+established regardless of what the training signal was doing.
+
+The principled fix remains evaluating `logdet(B K0 B^T)` from a Cholesky of `Â`, which is exact
+and constrains nothing. Its cost is the open question: the audit does materialize, quotient and
+Cholesky in about 5 s, but that path forms the full `q x q` `K0` unnecessarily. Going through
+`W = L B^T` directly is roughly `2 d^2 q + d^3/3` = 4.9e12 flops, about 3 s forward and 9 s per
+step with backward, against 2.1 s now.
 
 ## Open
 
