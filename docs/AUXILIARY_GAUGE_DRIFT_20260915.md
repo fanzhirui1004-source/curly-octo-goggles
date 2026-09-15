@@ -107,9 +107,41 @@ response, halving the learning rate, cannot change a solve residual, so once tri
 only trigger again. R5 rejected 512 consecutive steps. That remains a design fault independent of
 everything above: a guard has to be able to move the thing it gates on.
 
+## The gauge pin holds
+
+R8 runs the same configuration as R7 with `--gauge-weight 1`, holding the q by 6 block `K0 N`
+at the value the initial operator had.
+
+| step | R7 D/d | R8 D/d | R7 rigid residual | R8 rigid residual | R8 gauge loss |
+|---:|---:|---:|---:|---:|---:|
+| 50 | 0.7731 | 0.8686 | 4.21e-15 | 3.96e-14 | 9.5e-3 |
+| 100 | 0.6272 | 0.7079 | 1.25e-14 | 1.68e-13 | 9.5e-3 |
+| 150 | 0.5598 | 0.6309 | 1.84e-14 | 2.62e-13 | 1.13e-2 |
+| 200 | 0.4859 | 0.5558 | 1.23e-03 | 3.48e-13 | 1.30e-2 |
+| 250 | 0.4093 | 0.4844 | 4.22e+16 | 4.30e-13 | 1.41e-2 |
+| 444 | — | 0.3048 | — | 1.94e-12 | 1.82e-2 |
+
+R7's residual crosses 1e-3 at step 200 and 1e+16 at step 250. R8's is still 1.9e-12 at step
+444, a 28-order difference, so pinning `K0 N` does stop the drift. It creeps, 4.3e-13 to
+1.9e-12 over 200 steps, which is worth watching but is not the same phenomenon.
+
+**It is not free.** R8's D/d runs 12% to 18% above R7's at matched steps and the gap widens.
+Two causes are not yet separated: the penalty diverting gradient, which at a gauge loss of
+1.4e-2 against a total loss of 0.48 is about 3%, and the banded `L` being unable to reach the
+same `Â` while holding a fixed rigid block. The gauge loss climbs steadily rather than settling,
+which suggests the model is pushing against the pin. Note also that R7's step-200 and step-250
+figures are themselves overstatements, so the true gap may be wider than the table shows.
+
+A sweep over `--gauge-weight` in {0.01, 0.1, 1, 10} at 400 steps separates the two: if a much
+smaller weight still bounds the residual while D/d tracks R7, the cost was the penalty.
+
 ## Open
 
-- Whether `--gauge-weight` keeps the identity accurate, measurable by `ahat_audit.py` on an R8
-  checkpoint.
-- Whether a banded `L` can reach a good `Â` under a pinned rigid block.
+- Whether the pin keeps the identity accurate, measurable by `ahat_audit.py` on an R8 checkpoint.
+  This is the test that matters; the residual staying small is necessary, not sufficient.
+- How much of R8's 12-18% deficit is penalty cost and how much is reachability.
 - What the local class reaches at 6000 steps under an undistorted signal.
+- A layered cost profile on a real n32 GP teacher. The packets hold only the condensed
+  `S_UPPER.npy` (12798 x 12798), `TRACE.npz` and `PROBES.npz`, so the pre-condensation coupling
+  graph has to be rebuilt from `SAMPLE.json` through `stage_cutfem_full_interface`. That path is
+  being mapped; nothing has been assembled yet.
