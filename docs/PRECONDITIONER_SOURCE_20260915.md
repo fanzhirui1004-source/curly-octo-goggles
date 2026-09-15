@@ -48,11 +48,22 @@ is not noise: it beats the best possible relabelling of `c`, which means no inde
 
 The cause is the 0.1% off-peak energy. The rigid-mode correction puts it on directions whose
 compliance is up to 7000 times larger, so a 1e-3 admixture contributes roughly 45% of the
-value. The diagonal pullback `(B.^2) c` weights each `c_k` by `B_jk^2` and recovers `s`
-to within 1.17.
+value.
 
-`B` depends only on node positions and the stored ordering. It is pure geometry, so the
-pullback is available at prediction time at no cost.
+**The pullback is an approximation, not a change of coordinates.** Writing the full-interface
+compliance as `C = Bᵀ A⁻¹ B` with `c = diag(C)`, the exact relation is
+
+```
+(A⁻¹)_jj = (B C Bᵀ)_jj = Σ_{k,l} B_jk B_jl C_kl
+```
+
+whereas `(B∘B) c = Σ_k B_jk² C_kk` keeps only `C`'s diagonal. The 1.165 residual spread in the
+table above is exactly the error of dropping the off-diagonal terms, which is why the oracle
+floor is 1.125–1.215 rather than 1.
+
+`B` depends only on node positions and the stored ordering, so the map is available at
+prediction time at no cost. Nothing here needs `C` off the diagonal, because `c` is what the
+regression predicts.
 
 ## Within one body, holding out 20% of nodes (seat 0328)
 
@@ -104,8 +115,8 @@ local geometry, then apply the exact `(B.^2)` map. On a geometry never seen this
 curvature spread from about 1e4 down to a median of 16.8, against an oracle floor of 1.13 to
 1.21. The original target was "about 10 is enough for one learning rate".
 
-**The remaining gap is regression error, not the coordinate mismatch.** With true `c` the
-pullback lands at 1.17. Everything above that is the geometry model.
+**The remaining gap is regression error plus the diagonal approximation.** With true `c` the
+pullback lands at 1.125–1.215. Everything above that is the geometry model.
 
 **The premise that sent step 2 to physical compliance was wrong, but the destination was
 right.** Quotient coordinates do index nodes. Regressing `s` directly works and is simpler.
@@ -118,5 +129,8 @@ It is just slightly worse, because `c` is the more local quantity.
 - Ridge regression on 28 hand-built features with a quadratic expansion, 435 parameters, about
   72000 training rows per fold. This is a floor on what a network should achieve, not a ceiling.
 - One cut-plane family. Whether the features transfer across topologies is untested.
-- The scores are spreads of `s / s-hat` over all coordinates. They say the learning rate can be
-  shared; they do not say the factor fit succeeds.
+- The scores are spreads of `s / s-hat` over all coordinates. They say one learning rate can
+  serve all columns; they do not say the factor fit succeeds, and no run has yet used a
+  predicted scale.
+- The pullback drops `C`'s off-diagonal terms, so 1.125–1.215 is a floor this route cannot go
+  below without computing more of `C`.

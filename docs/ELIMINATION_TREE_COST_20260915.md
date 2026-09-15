@@ -70,10 +70,15 @@ the top two levels carry 79% of the work and the bottom three carry 3.6%.
 A tree operator that spends its parameters uniformly per level would be
 spending them where the flops are not.
 
-**The root front is the memory-binding object.** It is `(e+b)^2` with
-`b` the full external trace, so it never shrinks below the size of the
-deliverable itself. That is the one cost the tree structurally cannot
-remove.
+**The root front is the memory-binding object for a dense delivery.** It is
+`(e+b)^2` with `b` the full external trace. That bound applies to writing
+out every entry of `S`; it does not apply to an implicit operator that
+answers `u ↦ Su` while keeping all `q` interface degrees of freedom. Any
+single column is still available as `S e_j`. Keeping the whole interface
+and declining to expand the matrix is not port reduction. An implicit tree
+is not free either — internal factors, tree construction and each
+application have to be timed — but the cost of dense delivery cannot by
+itself rule the architecture out.
 
 ## Caveat that limits these numbers
 
@@ -104,18 +109,17 @@ Absolute elimination cost at these scales is not the obstacle. The largest
 body profiled needs 3.49e10 flops for the whole tree, which is well under a
 second of dense GPU throughput. Even the monolithic 6.64e11 is seconds.
 
-The binding cost is the `O(q^2)` deliverable, and the tree does not reduce
-it. Whatever the operator's internal structure, it must emit something that
-acts like a `q x q` Schur complement, and the root front already carries an
-object of that size.
+If the deliverable is written out entry by entry, `O(q^2)` is unavoidable
+and no tree removes it. If the deliverable is an operator, it is not.
 
-That reframes what a tree would buy. It is not a compute saving we need at
-this scale. Its value would be representational: a tree makes the operator
-a composition of small local eliminations, each of which sees only local
-geometry, so the geometry front-end never has to map a whole cell's shape
-to a `q x q` object in one shot. Whether that representation is easier to
-learn than the single-shot one is a separate question, and this profile
-does not answer it.
+The measurement that matters for the leaf-versus-root question is not here.
+On the largest body profiled the leaves carry 1.1% of the work, so a
+network replacing leaf construction entirely would save 1.1%. But these
+bodies are trace-dominated and small, so that number does not transfer to
+production, and it is equally not a proven bound in the other direction.
+**A layered cost profile on a real n32 GP teacher is what would decide
+which level a network should replace, and it has not been run.** These
+no-GP bodies give a hint and nothing more.
 
 ## Note on GP labels
 
