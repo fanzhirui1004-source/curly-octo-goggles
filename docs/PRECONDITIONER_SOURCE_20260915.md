@@ -1,6 +1,6 @@
 # Where the column scale comes from at prediction time
 
-Date: 2026-09-15. Seat 0328 for the structural measurement; leave-one-seat-out over six seats
+Date: 2026-09-15. Seat 0328 for the structural measurement; leave-one-seat-out over twelve seats
 for the transfer measurement.
 Scripts: `superelement/factor_fit/step2_bridge.py`, `step2_quotient_scale.py`, `step2_cross.py`.
 
@@ -69,30 +69,40 @@ pullback that turns one into the other is exact and free.
 
 ## Across bodies: leave one seat out
 
-Each row fits on the other five seats and scores on the held-out one, so the test geometry is
+Each row fits on the other eleven seats and scores on the held-out one, so the test geometry is
 never seen.
 
-| held-out seat | raw spread | direct, quad | pullback, quad | 5-95% core (pullback) | oracle |
-|---|---|---|---|---|---|
-| 0328 | 2.70e3 | 25.1 | 19.9 | 3.10 | 1.165 |
-| 0253 | 2.94e3 | 25.6 | 20.3 | 3.29 | 1.175 |
-| 0403 | 1.64e4 | 23.6 | 16.7 | 3.32 | 1.206 |
-| 0347 | 1.18e4 | 17.8 | 13.7 | 3.48 | 1.133 |
-| 0974 | 1.01e4 | 19.9 | 16.8 | 2.81 | 1.125 |
-| 0575 | 1.13e4 | 156.0 | 65.5 | 3.08 | 1.133 |
+| held-out seat | d | raw spread | direct, quad | pullback, quad | 5-95% core (pullback) | oracle |
+|---|---:|---:|---:|---:|---:|---:|
+| 0120 | 16914 | 1.48e4 | 104.2 | 55.3 | 2.69 | 1.144 |
+| 0196 | 18066 | 1.38e4 | 270.4 | 146.6 | 3.00 | 1.132 |
+| 0244 | 17574 | 7.98e3 | 19.4 | 14.2 | 2.71 | 1.208 |
+| 0253 | 12822 | 2.94e3 | 23.1 | 14.8 | 3.41 | 1.175 |
+| 0328 | 12792 | 2.70e3 | 18.5 | 14.3 | 3.28 | 1.165 |
+| 0347 | 15702 | 1.18e4 | 16.7 | 12.8 | 3.19 | 1.133 |
+| 0403 | 14562 | 1.64e4 | 25.8 | 14.9 | 3.21 | 1.206 |
+| 0575 | 16122 | 1.13e4 | 35.0 | 18.8 | 2.72 | 1.133 |
+| 0882 | 16158 | 1.26e4 | 67.2 | 30.8 | 2.74 | 1.142 |
+| 0920 | 17106 | 1.29e4 | 30.5 | 20.6 | 2.52 | 1.138 |
+| 0941 | 16542 | 2.29e4 | 40.6 | 24.1 | 2.97 | 1.215 |
+| 0974 | 16050 | 1.01e4 | 16.0 | 12.3 | 2.95 | 1.125 |
 
-Linear features are not enough anywhere: 109 to 316 on the pullback route. Quadratic features
-reach 14 to 20 on five of six seats.
+Pullback route, quadratic features: median 16.8, range 12.3 to 146.6. Its 5-95% core is
+median 2.96, range 2.52 to 3.41. Direct regression of `log s`: median 28.2, range 16.0 to 270.4.
 
-Seat 0575 is the exception at 65.5, but its 5-95% core is 3.08, in line with everything else.
-A handful of extreme coordinates miss, not the body as a whole.
+Two seats miss on the full spread, 0196 at 146.6 and 0120 at 55.3, yet both have 5-95% cores
+tighter than the median. The misses are a handful of extreme coordinates, not the body. Seat
+0575 read 65.5 when the fit used five training seats and 18.8 with eleven, so the outliers
+shrink as training geometry is added rather than being intrinsic.
+
+Linear features are not enough anywhere: 109 to 316 on the pullback route at six seats.
 
 ## Reading
 
 **A network can carry its own preconditioner.** Predict `log c` per physical trace dof from
 local geometry, then apply the exact `(B.^2)` map. On a geometry never seen this brings the
-curvature spread from about 1e4 down to 14 to 20, against an oracle floor of 1.13 to 1.21. The
-original target was "about 10 is enough for one learning rate".
+curvature spread from about 1e4 down to a median of 16.8, against an oracle floor of 1.13 to
+1.21. The original target was "about 10 is enough for one learning rate".
 
 **The remaining gap is regression error, not the coordinate mismatch.** With true `c` the
 pullback lands at 1.17. Everything above that is the geometry model.
@@ -103,7 +113,8 @@ It is just slightly worse, because `c` is the more local quantity.
 
 ## Limits
 
-- Six seats, `d` from 12792 to 16122. The larger seats in the set were not tested.
+- Twelve seats, `d` from 12792 to 18066, of the 32 that have reference factors. The largest
+  (`d` above 25000) were not tested.
 - Ridge regression on 28 hand-built features with a quadratic expansion, 435 parameters, about
   72000 training rows per fold. This is a floor on what a network should achieve, not a ceiling.
 - One cut-plane family. Whether the features transfer across topologies is untested.
