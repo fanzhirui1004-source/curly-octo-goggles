@@ -1,0 +1,100 @@
+{
+ "seat": 328,
+ "d": 12792,
+ "q": 12798,
+ "assembled_dofs": 23508,
+ "shared_nodes": 696,
+ "exact_compliance": {
+  "compression_x": 294481.313298695,
+  "shear_y": 176985.95209565503,
+  "shear_z": 177055.4392678431,
+  "bending_xy": 231004.3693379406
+ },
+ "rows": {
+  "0.03": {
+   "tol": 0.03,
+   "eps_op": 0.1523958364636313,
+   "params": 8581236,
+   "compression_x": {
+    "displacement_rel": 0.04085402394786912,
+    "compliance_rel": 0.0012943659263926612
+   },
+   "shear_y": {
+    "displacement_rel": 0.02327207163629957,
+    "compliance_rel": 0.0026065426772736255
+   },
+   "shear_z": {
+    "displacement_rel": 0.024343565778747932,
+    "compliance_rel": 0.0030880852155671028
+   },
+   "bending_xy": {
+    "displacement_rel": 0.01774725098037428,
+    "compliance_rel": 0.0014964940826002163
+   }
+  },
+  "0.01": {
+   "tol": 0.01,
+   "eps_op": 0.08077824167816317,
+   "params": 10221964,
+   "compression_x": {
+    "displacement_rel": 0.022739339138769302,
+    "compliance_rel": 0.003301852414300256
+   },
+   "shear_y": {
+    "displacement_rel": 0.014822813040987976,
+    "compliance_rel": 0.0001805373234590076
+   },
+   "shear_z": {
+    "displacement_rel": 0.015928580201216846,
+    "compliance_rel": 0.0012056187305803832
+   },
+   "bending_xy": {
+    "displacement_rel": 0.011399564282328318,
+    "compliance_rel": 0.00046743041350425337
+   }
+  },
+  "0.003": {
+   "tol": 0.003,
+   "eps_op": 0.025966762529024745,
+   "params": 12229217,
+   "compression_x": {
+    "displacement_rel": 0.009408545076617453,
+    "compliance_rel": 0.002539612401549465
+   },
+   "shear_y": {
+    "displacement_rel": 0.0063382233231380385,
+    "compliance_rel": 0.000945206453192818
+   },
+   "shear_z": {
+    "displacement_rel": 0.007469605121951904,
+    "compliance_rel": 0.0013693864100885595
+   },
+   "bending_xy": {
+    "displacement_rel": 0.004693371878693943,
+    "compliance_rel": 0.0003290154561214065
+   }
+  },
+  "0.001": {
+   "tol": 0.001,
+   "eps_op": 0.010558943828580358,
+   "params": 14083953,
+   "compression_x": {
+    "displacement_rel": 0.0036386579517883972,
+    "compliance_rel": 0.0010375786696287248
+   },
+   "shear_y": {
+    "displacement_rel": 0.0021491515272436465,
+    "compliance_rel": 0.00037421928374377675
+   },
+   "shear_z": {
+    "displacement_rel": 0.002145791521135241,
+    "compliance_rel": 0.00024563650609444687
+   },
+   "bending_xy": {
+    "displacement_rel": 0.0020754491530537125,
+    "compliance_rel": 5.012103777270683e-06
+   }
+  }
+ },
+ "seconds": 401.1931777000427
+}
