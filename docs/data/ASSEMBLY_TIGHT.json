@@ -1,0 +1,100 @@
+{
+ "seat": 328,
+ "d": 12792,
+ "q": 12798,
+ "assembled_dofs": 23508,
+ "shared_nodes": 696,
+ "exact_compliance": {
+  "compression_x": 294481.313298695,
+  "shear_y": 176985.95209565503,
+  "shear_z": 177055.4392678431,
+  "bending_xy": 231004.3693379406
+ },
+ "rows": {
+  "0.0003": {
+   "tol": 0.0003,
+   "eps_op": 0.0033530504977723474,
+   "params": 16070495,
+   "compression_x": {
+    "displacement_rel": 0.0007186257449136866,
+    "compliance_rel": 0.00017614438826269328
+   },
+   "shear_y": {
+    "displacement_rel": 0.0003972321044408886,
+    "compliance_rel": 4.38400330651372e-05
+   },
+   "shear_z": {
+    "displacement_rel": 0.00047002817903885166,
+    "compliance_rel": 5.708085269344508e-05
+   },
+   "bending_xy": {
+    "displacement_rel": 0.000510569966694218,
+    "compliance_rel": 2.8142363475881626e-06
+   }
+  },
+  "0.0001": {
+   "tol": 0.0001,
+   "eps_op": 0.0011747353836445429,
+   "params": 17782950,
+   "compression_x": {
+    "displacement_rel": 0.0001432288559072108,
+    "compliance_rel": 3.463017494745819e-05
+   },
+   "shear_y": {
+    "displacement_rel": 9.57486271136829e-05,
+    "compliance_rel": 6.888104997073778e-06
+   },
+   "shear_z": {
+    "displacement_rel": 0.00010785532934100601,
+    "compliance_rel": 6.388407152404439e-06
+   },
+   "bending_xy": {
+    "displacement_rel": 0.00012308108801257825,
+    "compliance_rel": 1.2779401781726835e-06
+   }
+  },
+  "3e-05": {
+   "tol": 3e-05,
+   "eps_op": 0.00023905439503535408,
+   "params": 19596334,
+   "compression_x": {
+    "displacement_rel": 2.759691129130311e-05,
+    "compliance_rel": 4.2209074829708085e-06
+   },
+   "shear_y": {
+    "displacement_rel": 2.1130805051099415e-05,
+    "compliance_rel": 4.5769363073187755e-07
+   },
+   "shear_z": {
+    "displacement_rel": 1.987760486138461e-05,
+    "compliance_rel": 5.707209311297974e-07
+   },
+   "bending_xy": {
+    "displacement_rel": 2.5461010165405917e-05,
+    "compliance_rel": 3.4989588606345998e-06
+   }
+  },
+  "1e-05": {
+   "tol": 1e-05,
+   "eps_op": 0.0001075488350810172,
+   "params": 21218248,
+   "compression_x": {
+    "displacement_rel": 7.559612261665354e-06,
+    "compliance_rel": 1.839816267793844e-07
+   },
+   "shear_y": {
+    "displacement_rel": 8.312318519917274e-06,
+    "compliance_rel": 4.865215209832762e-07
+   },
+   "shear_z": {
+    "displacement_rel": 6.53179523999534e-06,
+    "compliance_rel": 4.098990349772835e-07
+   },
+   "bending_xy": {
+    "displacement_rel": 6.45152674308418e-06,
+    "compliance_rel": 5.743499038984535e-07
+   }
+  }
+ },
+ "seconds": 402.98862385749817
+}
