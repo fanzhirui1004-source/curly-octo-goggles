@@ -188,6 +188,21 @@ class QuotientOperator:
             z = layer.apply_transpose(k, z)
         return z
 
+    def apply_T_inverse(self, coeff, z):
+        """T^-1 z, exactly.  Each layer's row and column sets are disjoint, so K^2 = 0 and
+        (I + K)^-1 = I - K on the same support; the product inverts in reverse order."""
+        ks, _ = self.split(coeff)
+        for layer, k in zip(reversed(self.layers), reversed(ks)):
+            z = layer.apply(-k, z)
+        return z
+
+    def apply_T_inverse_transpose(self, coeff, z):
+        """T^-T z.  The transpose of apply_T_inverse, so forward order."""
+        ks, _ = self.split(coeff)
+        for layer, k in zip(self.layers, ks):
+            z = layer.apply_transpose(-k, z)
+        return z
+
     def apply_D(self, coeff, z):
         _, cs = self.split(coeff)
         out = torch.zeros_like(z)

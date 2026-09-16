@@ -147,3 +147,68 @@ def test_floor_constant_logdet_is_exact():
     a = float(floor_objective(op, c, Rinv, groups=g))
     b = float(floor_objective(op, c, Rinv, groups=g, logdet_G=torch.tensor(const, dtype=torch.float64)))
     assert abs(a - b) < 1e-12, (a, b)
+
+
+def test_T_inverse_is_exact():
+    """T^-1 must be exact, not iterative: it is what makes power iteration on H^-1 affordable."""
+    rng = np.random.default_rng(7)
+    d = 34
+    pts = rng.random((d, 3))
+    layers = []
+    for _ in range(3):
+        perm = rng.permutation(d)
+        pairs = np.unique(np.stack([rng.choice(perm[:17], 45), rng.choice(perm[17:], 45)], 1), axis=0)
+        layers.append(LiftingLayer(d, pairs, chunk=6))
+    op = QuotientOperator(d, layers, spatial_blocks(pts, 6))
+    c = op.identity_coefficients()
+    c[: op.n_layer_coeff] = torch.randn(op.n_layer_coeff, dtype=torch.float64) * 0.4
+    I = torch.eye(d, dtype=torch.float64)
+    T = op.apply_T(c, I)
+    Tinv = op.apply_T_inverse(c, I)
+    assert torch.allclose(T @ Tinv, I, atol=1e-11), (T @ Tinv - I).abs().max()
+    assert torch.allclose(Tinv @ T, I, atol=1e-11)
+    assert torch.allclose(op.apply_T_inverse_transpose(c, I), Tinv.T, atol=1e-11)
+    # and it must agree with a dense inverse, not merely be self-consistent
+    assert torch.allclose(Tinv, torch.linalg.inv(T), atol=1e-10)
+
+
+def test_smallest_eigenvalue_by_inverse_iteration():
+    """H = M^T M with M = C T R^-1, so H^-1 = M^-1 M^-T and the top of H^-1 is the bottom of H."""
+    rng = np.random.default_rng(8)
+    d = 40
+    pts = rng.random((d, 3))
+    perm = rng.permutation(d)
+    pairs = np.unique(np.stack([rng.choice(perm[:20], 60), rng.choice(perm[20:], 60)], 1), axis=0)
+    op = QuotientOperator(d, [LiftingLayer(d, pairs, chunk=8)], spatial_blocks(pts, 7))
+    c = op.identity_coefficients()
+    c[: op.n_layer_coeff] = torch.randn(op.n_layer_coeff, dtype=torch.float64) * 0.3
+    L = torch.tril(torch.randn(d, d, dtype=torch.float64)) + d * torch.eye(d, dtype=torch.float64)
+    R = L.T.contiguous()
+    Rinv = torch.linalg.inv(R)
+    _, cs = op.split(c)
+    chols = op._chol_blocks(cs)
+    G = op.apply_T(c, Rinv)
+    M = torch.empty_like(G)
+    for idx, Cb in zip(op.blocks, chols):
+        M[idx] = Cb @ G[idx]
+    H = M.T @ M
+    ref = torch.linalg.eigvalsh(0.5 * (H + H.T))
+
+    def Minv(v):                              # M^-1 = R T^-1 C^-1
+        w = torch.empty_like(v)
+        for idx, Cb in zip(op.blocks, chols):
+            w[idx] = torch.linalg.solve_triangular(Cb, v[idx], upper=True)
+        return R @ op.apply_T_inverse(c, w)
+
+    def MinvT(v):                             # M^-T = C^-T T^-T R^T
+        w = op.apply_T_inverse_transpose(c, R.T @ v)
+        out = torch.empty_like(w)
+        for idx, Cb in zip(op.blocks, chols):
+            out[idx] = torch.linalg.solve_triangular(Cb.T, w[idx], upper=False)
+        return out
+
+    v = torch.randn(d, 1, dtype=torch.float64)
+    for _ in range(300):
+        v = Minv(MinvT(v)); v = v / v.norm()
+    mu_min = float((M @ v).pow(2).sum())
+    assert abs(mu_min - float(ref[0])) < 1e-8 * float(ref[-1]), (mu_min, float(ref[0]))
