@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
-"""Parameter economy of the HIERARCHICALLY LOW-RANK class, on the same axes as the banded curve.
+"""Hierarchical low-rank parameter economy -- rewritten, with the invariants asserted.
 
-The banded sweep (PARAM_ECONOMY.json) truncated the teacher's own Cholesky factor to a spatial
-band.  It flattens out far above the gate.  The structural reason to suspect is that an interface
-Schur complement of an elliptic operator is not banded -- it is a Dirichlet-to-Neumann-like
-nonlocal operator whose FAR-FIELD BLOCKS ARE LOW RANK.  That is the H-matrix / FMM structure, and
-it is a different parameterisation class, not a bigger band.
+Two earlier versions of this script were wrong in ways that produced confident numbers:
+  v1  filled one orientation per block and then called triu.  The block index sets come from a
+      spatial bisection, so they are scattered, not contiguous ranges: triu discarded whichever
+      half of each off-diagonal block fell below the diagonal.  Symptom, and the reason it was
+      caught: eps_op sat at ~778 across four decades of tolerance instead of decreasing.
+  v2  fixed that but (a) double-counted parameters, because the recursion visits each
+      off-diagonal node pair twice, and (b) had a "self-test" that could not pass, because the
+      SVD store only keeps the rank needed at the tightest tolerance.
 
-So: partition A hierarchically, approximate every admissible (far-field) block by a truncated SVD,
-keep near-field leaf blocks dense, and place the result on the same (params, D/d) plane.  Unlike a
-floor, every point here is ACHIEVED by an explicit Ahat, so a point that passes is a real pass and
-a point that fails only rejects this construction at that tolerance.
+So this version asserts three things before any number is read:
+  EXACT   fill every block straight from A -> eps_op must be < 1e-9.  This is the real test of
+          partition coverage and block orientation, and it needs no SVD store.
+  COVER   every one of the d^2 entries written exactly once.
+  DEDUP   each unordered node pair appears once in the block list.
+
+Each row is an ACHIEVED operator with a real full-spectrum audit, so a pass is a pass and a
+failure rejects this construction at that tolerance -- not the hierarchical class.  See
+docs/CLAIM_SCOPE_20260916.md.
 """
 import json, sys, time
 from pathlib import Path
@@ -33,7 +41,7 @@ class Node:
 
 
 def build_tree(pts):
-    nodes, root = [], None
+    nodes = []
     def rec(idx):
         n = Node(idx, pts, len(nodes)); nodes.append(n)
         if len(idx) > LEAF:
@@ -42,8 +50,7 @@ def build_tree(pts):
             h = len(o) // 2
             n.kids = [rec(o[:h]), rec(o[h:])]
         return n
-    root = rec(np.arange(len(pts), dtype=np.int64))
-    return root, nodes
+    return rec(np.arange(len(pts), dtype=np.int64)), nodes
 
 
 def diam(n):  return float(np.linalg.norm(n.hi - n.lo))
@@ -53,22 +60,45 @@ def dist(a, b):
 
 
 def block_partition(root):
-    """Standard H-matrix admissibility: min(diam) <= ETA * dist."""
-    adm, near = [], []
+    """Admissibility min(diam) <= ETA*dist.  `seen` dedupes: the recursion reaches each
+    off-diagonal node pair from both orderings."""
+    adm, near, seen = [], [], set()
     def rec(s, t):
-        if s.nid > t.nid:   # symmetric: keep the upper half only
+        key = (s.nid, t.nid) if s.nid <= t.nid else (t.nid, s.nid)
+        if key in seen:
             return
+        seen.add(key)
         if min(diam(s), diam(t)) <= ETA * dist(s, t):
             adm.append((s, t)); return
         if not s.kids and not t.kids:
             near.append((s, t)); return
-        ss = s.kids if s.kids else [s]
-        tt = t.kids if t.kids else [t]
-        for a in ss:
-            for b in tt:
-                rec(a, b) if a.nid <= b.nid else rec(b, a)
+        for a in (s.kids or [s]):
+            for b in (t.kids or [t]):
+                rec(a, b)
     rec(root, root)
     return adm, near
+
+
+def place(Ah, cover, s, t, I, J, M):
+    """Write a block and its transpose.  Diagonal blocks are written once."""
+    Ah[I.unsqueeze(1), J.unsqueeze(0)] = M
+    if cover is not None:
+        cover[I.unsqueeze(1), J.unsqueeze(0)] += 1
+    if s.nid != t.nid:
+        Ah[J.unsqueeze(1), I.unsqueeze(0)] = M.T
+        if cover is not None:
+            cover[J.unsqueeze(1), I.unsqueeze(0)] += 1
+
+
+def spectrum(Ah, Rinv, d):
+    H = Rinv.T @ Ah @ Rinv
+    H = 0.5 * (H + H.T)
+    mu = torch.linalg.eigvalsh(H)
+    del H; torch.cuda.empty_cache()
+    neg = int((mu <= 0).sum())
+    eps = float((mu - 1).abs().max())
+    div = float('inf') if neg else float((mu - torch.log(mu) - 1).sum()) / d
+    return eps, div, neg
 
 
 def main():
@@ -82,26 +112,43 @@ def main():
     R = load_upper_factor(Path(rec['reference']) / 'R_UPPER.npy', d, V.DEV)
     order = g['data'].quotient.order.cpu().numpy(); posn = order[6:]
     pts = label.ijk[posn // 3].astype(float) / 64.0
-    A = R.T @ R                                  # the teacher label, exactly
-    print('seat 328  d %d   ||A|| %.3e   dense %.3e entries' % (d, float(A.norm()), d*(d+1)/2), flush=True)
+    A = R.T @ R
+    Rinv = torch.linalg.solve_triangular(R, torch.eye(d, dtype=torch.float64, device=V.DEV), upper=True)
+    dense_params = d * (d + 1) // 2
+    print('seat 328  d %d   dense %.3e independent entries' % (d, dense_params), flush=True)
 
     root, nodes = build_tree(pts)
     adm, near = block_partition(root)
-    print('tree: %d nodes, leaf %d | partition: %d admissible + %d near-field (eta=%.1f)'
+    idxs = {}
+    for s, t in adm + near:
+        for n in (s, t):
+            if n.nid not in idxs:
+                idxs[n.nid] = torch.as_tensor(n.idx, device=V.DEV)
+    print('tree %d nodes (leaf %d) | %d admissible + %d near-field (eta %.1f)'
           % (len(nodes), LEAF, len(adm), len(near), ETA), flush=True)
 
-    near_params = 0
-    for s, t in near:
-        near_params += len(s.idx)*(len(s.idx)+1)//2 if s.nid == t.nid else len(s.idx)*len(t.idx)
+    near_params = sum(len(s.idx)*(len(s.idx)+1)//2 if s.nid == t.nid else len(s.idx)*len(t.idx)
+                      for s, t in near)
 
-    # one SVD pass per admissible block, kept at the tightest tolerance
+    # ---- EXACT: coverage + orientation, with no SVD in the way -------------------------------
+    Ah = torch.zeros(d, d, dtype=torch.float64, device=V.DEV)
+    cover = torch.zeros(d, d, dtype=torch.uint8, device=V.DEV)
+    for s, t in adm + near:
+        I, J = idxs[s.nid], idxs[t.nid]
+        place(Ah, cover, s, t, I, J, A[I][:, J])
+    miss, dup = int((cover == 0).sum()), int((cover > 1).sum())
+    eps, div, neg = spectrum(Ah, Rinv, d)
+    print('\nEXACT fill: %d uncovered, %d written twice, eps_op %.3e  ->  %s'
+          % (miss, dup, eps, 'OK' if (miss == 0 and dup == 0 and eps < 1e-9) else 'BROKEN'), flush=True)
+    assert miss == 0 and dup == 0 and eps < 1e-9, 'ASSEMBLY_SELF_TEST_FAILED'
+    del cover, Ah; torch.cuda.empty_cache()
+
+    # ---- one SVD pass, kept at the tightest tolerance ----------------------------------------
     tmin = min(TOLS); store = []; capped = 0
     for s, t in adm:
-        I = torch.as_tensor(s.idx, device=V.DEV); J = torch.as_tensor(t.idx, device=V.DEV)
-        M = A[I][:, J]
-        mn = min(M.shape)
-        q = min(mn, RANK_CAP)
-        if mn <= 2*RANK_CAP:
+        I, J = idxs[s.nid], idxs[t.nid]
+        M = A[I][:, J]; mn = min(M.shape); q = min(mn, RANK_CAP)
+        if mn <= 2 * RANK_CAP:
             U, S, Vh = torch.linalg.svd(M, full_matrices=False)
         else:
             U, S, Vt = torch.svd_lowrank(M, q=min(mn, q + 24)); Vh = Vt.T
@@ -109,76 +156,50 @@ def main():
         tail = torch.sqrt(torch.clamp(torch.flip(torch.cumsum(torch.flip(S, [0])**2, 0), [0]), min=0))
         k = int(torch.searchsorted(-tail, torch.tensor(-tmin*nrm, device=V.DEV)).item()) if nrm > 0 else 0
         k = max(1, min(k + 1, q))
-        if k >= q: capped += 1
-        store.append((I, J, U[:, :k].contiguous(), S[:k].contiguous(), Vh[:k].contiguous(), nrm, tail[:k].contiguous()))
+        capped += k >= q
+        store.append((s, t, U[:, :k].contiguous(), S[:k].contiguous(), Vh[:k].contiguous(), nrm,
+                      tail[:k].contiguous()))
         del M, U, S, Vh
     torch.cuda.empty_cache()
-    print('svd pass done (%.0f s), %d/%d blocks hit the rank cap %d\n' % (time.time()-t0, capped, len(adm), RANK_CAP), flush=True)
+    print('svd pass %.0f s, %d/%d blocks at the rank cap %d\n' % (time.time()-t0, capped, len(adm), RANK_CAP), flush=True)
 
-    Rinv = torch.linalg.solve_triangular(R, torch.eye(d, dtype=torch.float64, device=V.DEV), upper=True)
-    dense_params = d*(d+1)//2
-    print('%-8s %-12s %-11s %-11s %-11s %-9s' % ('tol', 'params', 'frac dense', 'eps_op', 'D/d', 'sec'), flush=True)
+    print('%-8s %-12s %-11s %-12s %-12s %-6s %s'
+          % ('tol', 'params', 'frac dense', 'eps_op', 'D/d', 'sec', 'verdict'), flush=True)
     rows = []
-    first = True
-    for tol in (0.0,) + TOLS:          # tol 0 keeps every stored rank: a self-test that must return ~0
+    for tol in TOLS:
         ts = time.time()
         Ah = torch.zeros(d, d, dtype=torch.float64, device=V.DEV)
-        cover = torch.zeros(d, d, dtype=torch.uint8, device=V.DEV) if first else None
         for s, t in near:
-            I = torch.as_tensor(s.idx, device=V.DEV); J = torch.as_tensor(t.idx, device=V.DEV)
-            M = A[I][:, J]
-            Ah[I.unsqueeze(1), J.unsqueeze(0)] = M
-            if s.nid != t.nid:
-                Ah[J.unsqueeze(1), I.unsqueeze(0)] = M.T
-            cover[I.unsqueeze(1), J.unsqueeze(0)] += 1
-            if s.nid != t.nid:
-                cover[J.unsqueeze(1), I.unsqueeze(0)] += 1
+            I, J = idxs[s.nid], idxs[t.nid]
+            place(Ah, None, s, t, I, J, A[I][:, J])
         lr_params = 0
-        for I, J, U, S, Vh, nrm, tail in store:
-            if tol == 0.0:
-                k = len(S)
-            else:
-                k = int(torch.searchsorted(-tail, torch.tensor(-tol*nrm, device=V.DEV)).item()) if nrm > 0 else 0
-                k = max(1, min(k + 1, len(S)))
-            M = (U[:, :k] * S[:k]) @ Vh[:k]
-            Ah[I.unsqueeze(1), J.unsqueeze(0)] = M
-            if not torch.equal(I, J):
-                Ah[J.unsqueeze(1), I.unsqueeze(0)] = M.T
-            cover[I.unsqueeze(1), J.unsqueeze(0)] += 1
-            if not torch.equal(I, J):
-                cover[J.unsqueeze(1), I.unsqueeze(0)] += 1
-            lr_params += k * (len(I) + len(J))
-        Ah = 0.5 * (Ah + Ah.T)            # blocks are already transposes of each other; this is a no-op guard
-        if first:
-            miss = int((cover == 0).sum()); dup = int((cover > 1).sum())
-            print('COVERAGE: %d entries uncovered, %d entries written more than once' % (miss, dup), flush=True)
-            if miss:
-                raise SystemExit('PARTITION_DOES_NOT_COVER')
-        H = Rinv.T @ Ah @ Rinv
+        for s, t, U, S, Vh, nrm, tail in store:
+            k = int(torch.searchsorted(-tail, torch.tensor(-tol*nrm, device=V.DEV)).item()) if nrm > 0 else 0
+            k = max(1, min(k + 1, len(S)))
+            I, J = idxs[s.nid], idxs[t.nid]
+            place(Ah, None, s, t, I, J, (U[:, :k] * S[:k]) @ Vh[:k])
+            lr_params += k * (len(I) + len(J)) if s.nid != t.nid else k * len(I)
+        eps, div, neg = spectrum(Ah, Rinv, d)
         del Ah; torch.cuda.empty_cache()
-        H = 0.5*(H + H.T)
-        mu = torch.linalg.eigvalsh(H)
-        del H; torch.cuda.empty_cache()
-        neg = int((mu <= 0).sum())
-        eps_op = float((mu - 1).abs().max())
-        Dd = float('inf') if neg else float((mu - torch.log(mu) - 1).sum()) / d
         params = near_params + lr_params
-        mark = 'PASSES +-3%' if Dd <= NEC3 else ('passes +-10% nec' if Dd <= NEC10 else '')
-        if neg: mark = '%d non-positive mu' % neg
-        print('%-8.0e %-12d %-11.4f %-11.4e %-11.4e %-9.0f %s'
-              % (tol, params, params/dense_params, eps_op, Dd, time.time()-ts, mark), flush=True)
-        if first:
-            print('  ^ self-test row (tol=0, full stored rank): eps_op must be ~1e-10, not %s' % ('ok' if eps_op < 1e-6 else 'BROKEN'), flush=True)
-            del cover; torch.cuda.empty_cache()
-        first = False
+        if neg:
+            v = '%d non-positive mu' % neg
+        elif eps <= 0.03:
+            v = 'PASSES +-3%'
+        elif eps <= 0.10:
+            v = 'PASSES +-10%'
+        else:
+            v = 'fails (nec. cond. %s)' % ('met' if div <= NEC3 else 'met@10%' if div <= NEC10 else 'also fails')
+        print('%-8.0e %-12d %-11.4f %-12.4e %-12.4e %-6.0f %s'
+              % (tol, params, params/dense_params, eps, div, time.time()-ts, v), flush=True)
         rows.append(dict(tol=tol, params=params, near_params=near_params, lr_params=lr_params,
-                         frac_of_dense=params/dense_params, eps_op=eps_op,
-                         divergence_per_d=None if neg else Dd, nonpositive_mu=neg))
-    Path('/root/autodl-tmp/NEURAL_SCHUR/HMAT_ECONOMY2.json').write_text(json.dumps(
+                         frac_of_dense=params/dense_params, eps_op=eps,
+                         divergence_per_d=None if neg else div, nonpositive_mu=neg))
+    Path('/root/autodl-tmp/NEURAL_SCHUR/HMAT_ECONOMY3.json').write_text(json.dumps(
         dict(seat=328, d=int(d), dense_params=int(dense_params), leaf=LEAF, eta=ETA,
              n_admissible=len(adm), n_near=len(near), near_params=int(near_params),
              nec3=NEC3, nec10=NEC10, rows=rows, seconds=time.time()-t0), indent=1))
-    print('\nwritten HMAT_ECONOMY2.json (%.0f s)' % (time.time()-t0), flush=True)
+    print('\nwritten HMAT_ECONOMY3.json (%.0f s)' % (time.time()-t0), flush=True)
 
 
 if __name__ == '__main__':
