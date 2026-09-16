@@ -28,10 +28,52 @@ import numpy as np
 import torch
 
 
+class _LiftApply(torch.autograd.Function):
+    """y = (I + K) x with K[rows[i], cols[i]] = k[i], carrying its own gradient.
+
+    torch.sparse.mm is fine forwards but its gradient with respect to the SPARSE operand's values
+    materialises a dense d x d product: measured at d = 12792, nnz = 220k, float64, forward alone
+    is 0.078 s and forward+backward is 5.419 s -- a 70x backward.  The required work is only
+    nnz * d, so the whole cost is an implementation artefact.
+
+    Writing the rule out by hand fixes it.  With y = x + sum_i k_i e_{rows[i]} x[cols[i], :],
+
+        dL/dk_i = sum_j  gy[rows[i], j] * x[cols[i], j]
+        dL/dx   = gy + K^T gy,   i.e.  gx[cols[i], :] += k_i * gy[rows[i], :]
+
+    Both cost nnz * d.  Column chunking bounds the (nnz, chunk) temporaries; the backward
+    recomputes them instead of storing them, which a plain chunked loop under autograd cannot do
+    (that version held 29 GB of graph at this scale before running out of memory).
+    """
+
+    @staticmethod
+    def forward(ctx, k, x, rows, cols, chunk):
+        ctx.save_for_backward(k, x, rows, cols)
+        ctx.chunk = chunk
+        y = x.clone()
+        for j in range(0, x.shape[1], chunk):
+            hi = min(j + chunk, x.shape[1])
+            y[:, j:hi].index_add_(0, rows, k.unsqueeze(1) * x[:, j:hi].index_select(0, cols))
+        return y
+
+    @staticmethod
+    def backward(ctx, gy):
+        k, x, rows, cols = ctx.saved_tensors
+        chunk, n = ctx.chunk, x.shape[1]
+        gx = gy.clone()
+        gk = torch.zeros_like(k)
+        for j in range(0, n, chunk):
+            hi = min(j + chunk, n)
+            g = gy[:, j:hi].index_select(0, rows)
+            gk += (g * x[:, j:hi].index_select(0, cols)).sum(1)
+            gx[:, j:hi].index_add_(0, cols, k.unsqueeze(1) * g)
+        return gk, gx, None, None, None
+
+
 class LiftingLayer:
     """x[rows] += K x[cols], with K supported on `pairs`.  Determinant 1, always invertible."""
 
-    def __init__(self, d: int, pairs: np.ndarray, device=None, dtype=torch.float64):
+    def __init__(self, d: int, pairs: np.ndarray, device=None, dtype=torch.float64, chunk: int = 256):
         pairs = np.asarray(pairs, dtype=np.int64).reshape(-1, 2)
         if pairs.size and (pairs[:, 0] == pairs[:, 1]).any():
             raise ValueError('LIFTING_DIAGONAL_PAIR')          # a diagonal entry would change det
@@ -42,6 +84,7 @@ class LiftingLayer:
         self.pairs = torch.as_tensor(pairs, device=device)
         self.n_coeff = len(pairs)
         self.device, self.dtype = device, dtype
+        self.chunk = chunk
 
     def _sparse(self, k: torch.Tensor, transpose: bool) -> torch.Tensor:
         """(I + K) or its transpose as a sparse matrix.
@@ -63,13 +106,15 @@ class LiftingLayer:
         """T_layer x."""
         if self.n_coeff == 0:
             return x
-        return torch.sparse.mm(self._sparse(k, False), x)
+        rows, cols = self.pairs[:, 0].to(x.device), self.pairs[:, 1].to(x.device)
+        return _LiftApply.apply(k, x, rows, cols, self.chunk)
 
     def apply_transpose(self, k: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         """T_layer^T x.  Exactly the transpose of `apply`, not a second learned map."""
         if self.n_coeff == 0:
             return x
-        return torch.sparse.mm(self._sparse(k, True), x)
+        rows, cols = self.pairs[:, 0].to(x.device), self.pairs[:, 1].to(x.device)
+        return _LiftApply.apply(k, x, cols, rows, self.chunk)
 
     def dense(self, k: torch.Tensor) -> torch.Tensor:
         """Explicit matrix, for tests only."""
@@ -216,6 +261,48 @@ def multiscale_layers(points: np.ndarray, levels: int, radius0: float, growth: f
         layers.append(LiftingLayer(d, np.asarray(pairs, dtype=np.int64).reshape(-1, 2), device=device))
         meta.append(dict(level=lv, radius=float(r), axis=int(axis),
                          updated=int(len(A)), pairs=int(len(pairs))))
+    return layers, meta
+
+
+def checkerboard_layers(points: np.ndarray, levels: int, radius0: float, growth: float = 2.0,
+                        max_pairs_per_level: int | None = None, device=None, seed: int = 0):
+    """A lifting schedule that couples near neighbours EVERYWHERE at each level's own scale.
+
+    `multiscale_layers` splits by a median plane on one axis and couples across it within radius
+    r.  For a small r only a slab of thickness ~2r around that plane contains any pair, so the
+    local layers are local to a plane rather than local everywhere.  Measured on seat 0328 with
+    levels=4, radius0=0.035: level 0 touched 744 of 12792 coordinates (5.8%), and 2278
+    coordinates (17.8%) appeared in no pair at any level -- their rows of T are forced to stay
+    exactly the identity.
+
+    Colouring by the parity of a coarse cell index of side r fixes that: every coordinate has
+    opposite-coloured neighbours within r, so coverage does not depend on where a plane fell.
+    Rows are drawn from one colour and columns from the other, which keeps the row and column
+    sets disjoint and so keeps each layer unit-triangular with determinant exactly 1.
+    """
+    from scipy.spatial import cKDTree
+
+    d = len(points)
+    rng = np.random.default_rng(seed)
+    layers, meta = [], []
+    for lv in range(levels):
+        r = radius0 * (growth ** lv)
+        cell = np.floor(points / r).astype(np.int64)
+        red = (cell.sum(1) + lv) % 2 == 0          # the +lv swaps which colour is updated
+        A, B = np.flatnonzero(red), np.flatnonzero(~red)
+        if len(A) == 0 or len(B) == 0:
+            continue
+        nbr = cKDTree(points[B]).query_ball_point(points[A], r)
+        pairs = [(int(A[i]), int(B[j])) for i, js in enumerate(nbr) for j in js]
+        if not pairs:
+            continue
+        if max_pairs_per_level and len(pairs) > max_pairs_per_level:
+            keep = rng.choice(len(pairs), max_pairs_per_level, replace=False)
+            pairs = [pairs[i] for i in keep]
+        pr = np.asarray(pairs, dtype=np.int64).reshape(-1, 2)
+        layers.append(LiftingLayer(d, pr, device=device))
+        meta.append(dict(level=lv, radius=float(r), rule='checkerboard',
+                         updated=int(len(np.unique(pr[:, 0]))), pairs=int(len(pr))))
     return layers, meta
 
 

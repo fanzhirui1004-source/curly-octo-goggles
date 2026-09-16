@@ -31,18 +31,14 @@ sys.path.insert(0, '/root/autodl-tmp/NEURAL_SCHUR')
 import v1_scaled as V
 from stage_cutfem_neural_a.elimination_reference import load_upper_factor
 from backend import LiftingLayer, QuotientOperator, multiscale_layers, spatial_blocks
+from fit import block_groups, floor_objective
 
 NEC3, NEC10 = 4.5921e-4, 5.3605e-3
 
 
-def floor_fast(op, coeff, Rinv, logdet_const):
-    """floor(T) using det(T) = 1 to skip the dense slogdet."""
-    G = op.apply_T(coeff, Rinv)
-    total = 0.0
-    for idx in op.blocks:
-        Gb = G[idx.to(G.device)]
-        total = total + torch.linalg.slogdet(Gb @ Gb.T)[1]
-    return (total - 2.0 * logdet_const) / op.d
+def floor_fast(op, coeff, Rinv, logdet_const, groups):
+    """floor(T) with det(T) = 1 skipping the dense slogdet and blocks gathered by size."""
+    return floor_objective(op, coeff, Rinv, groups=groups, logdet_G=logdet_const)
 
 
 def main():
@@ -79,34 +75,55 @@ def main():
     assert abs(ld_meas - logdet_Rinv) < 1e-6 * max(1.0, abs(logdet_Rinv)), 'DET_NOT_ONE'
     del Gp, probe; torch.cuda.empty_cache()
 
-    f0 = float(floor_fast(op, coeff, Rinv, logdet_Rinv))
+    groups = block_groups(op, V.DEV)
+    ld = torch.tensor(logdet_Rinv, dtype=torch.float64, device=V.DEV)
+    print('block groups by size: ' + ', '.join('%d blocks of %d' % (g.shape[0], n) for n, g in groups), flush=True)
+    f0 = float(floor_fast(op, coeff, Rinv, ld, groups))
     print('\nanchor  T = I (pure block diagonal, 64):            floor D/d = %.6e' % f0, flush=True)
     print('anchor  T = R* truncated (PARAM_ECONOMY best point): floor D/d = %.6e   at %d params'
           % (2.9519e-2, 4_931_495), flush=True)
     print('gates   +-3%%  %.4e   +-10%%  %.4e\n' % (NEC3, NEC10), flush=True)
 
-    k = coeff[:op.n_layer_coeff].clone().requires_grad_(True)
     tail = coeff[op.n_layer_coeff:].detach()
-    opt = torch.optim.Adam([k], lr=3e-3)
-    hist, best = [], f0
-    STEPS = 1500
-    for step in range(1, STEPS + 1):
-        opt.zero_grad()
-        f = floor_fast(op, torch.cat([k, tail]), Rinv, logdet_Rinv)
-        f.backward(); opt.step()
-        fv = float(f)
-        best = min(best, fv)
-        if step % 50 == 0 or step == 1:
-            hist.append((step, fv))
-            print('  step %-5d  floor D/d %.6e   (x%.3f from T=I)   %.0f s'
-                  % (step, fv, f0 / max(fv, 1e-300), time.time() - t0), flush=True)
+
+    def descend(lr, steps, log_every, k0=None, tag=''):
+        k = (coeff[:op.n_layer_coeff].clone() if k0 is None else k0.clone()).requires_grad_(True)
+        opt = torch.optim.Adam([k], lr=lr)
+        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=steps)
+        h, best = [], float('inf')
+        for step in range(1, steps + 1):
+            opt.zero_grad()
+            f = floor_fast(op, torch.cat([k, tail]), Rinv, ld, groups)
+            f.backward(); opt.step(); sched.step()
+            fv = f.detach().item()
+            best = min(best, fv)
+            if step % log_every == 0 or step in (1, 10):
+                h.append((step, fv))
+                print('  %slr %.0e  step %-5d  floor D/d %.6e   (x%.3f from T=I)   %.0f s'
+                      % (tag, lr, step, fv, f0 / max(fv, 1e-300), time.time() - t0), flush=True)
+        return k.detach(), best, h
+
+    print('--- learning-rate probe, 120 steps each ---', flush=True)
+    probe = {}
+    for lr in (3e-3, 1e-2, 3e-2):
+        _, b, _ = descend(lr, 120, 40, tag='probe ')
+        probe[lr] = b
+    lr_best = min(probe, key=probe.get)
+    print('\nprobe best: ' + '  '.join('%.0e -> %.4e' % (l, b) for l, b in probe.items())
+          + '   picking %.0e\n' % lr_best, flush=True)
+
+    STEPS = 2500
+    print('--- long descent, %d steps at lr %.0e ---' % (STEPS, lr_best), flush=True)
+    kfin, best, hist = descend(lr_best, STEPS, 100)
+    k = kfin
     print('\nbest floor reached: %.6e   = %.2fx above the +-10%% necessary line, %.2fx above +-3%%'
           % (best, best / NEC10, best / NEC3), flush=True)
     Path('/root/autodl-tmp/NEURAL_SCHUR/E1C.json').write_text(json.dumps(
         dict(seat=328, d=int(d), params=int(n_par), frac_of_dense=n_par/(d*(d+1)/2),
              layers=meta, floor_T_identity=f0, floor_best=best, history=hist,
+             lr_probe={('%.0e' % l): b for l, b in probe.items()}, lr_used=lr_best,
              nec3=NEC3, nec10=NEC10, steps=STEPS, seconds=time.time()-t0), indent=1))
-    torch.save(torch.cat([k.detach(), tail]).cpu(), '/root/autodl-tmp/NEURAL_SCHUR/E1C_coeff.pt')
+    torch.save(torch.cat([k, tail]).cpu(), '/root/autodl-tmp/NEURAL_SCHUR/E1C_coeff.pt')
     print('written E1C.json + E1C_coeff.pt (%.0f s)' % (time.time()-t0), flush=True)
 
 

@@ -20,15 +20,36 @@ import torch
 from oracle import oracle_floor
 
 
-def floor_objective(op, coeff, Rinv):
-    """Differentiable floor(T).  Rinv = R*^-1 is precomputed and fixed."""
-    G = op.apply_T(coeff, Rinv)
-    sign, logdet_G = torch.linalg.slogdet(G)
-    total = 0.0
+def block_groups(op, device):
+    """Block index tensors grouped by size, so equal-sized blocks can be gathered in one go.
+
+    Indexing G per block costs far more than the arithmetic: each `G[idx]` allocates a full
+    zeros_like(G) for its gradient, so 200 blocks at d = 12792 push ~260 GB of allocation traffic
+    per step.  Grouping turns 200 gathers into one per distinct block size.
+    """
+    groups = {}
     for idx in op.blocks:
-        idx = idx.to(G.device)
-        Gb = G[idx]
-        total = total + torch.linalg.slogdet(Gb @ Gb.T)[1]
+        groups.setdefault(len(idx), []).append(idx.to(device))
+    return [(n, torch.stack(v)) for n, v in sorted(groups.items())]
+
+
+def floor_objective(op, coeff, Rinv, groups=None, logdet_G=None):
+    """Differentiable floor(T).  Rinv = R*^-1 is precomputed and fixed.
+
+    `logdet_G` may be passed as a constant: T is a product of unit-triangular lifting layers, so
+    det T = 1 exactly and logdet(T R*^-1) = -logdet R* whatever the coefficients are.  Skipping
+    that dense d x d slogdet every step is free, and the identity is asserted by
+    test_lift.test_operator_product_and_det_one.
+    """
+    G = op.apply_T(coeff, Rinv)
+    if logdet_G is None:
+        logdet_G = torch.linalg.slogdet(G)[1]
+    if groups is None:
+        groups = block_groups(op, G.device)
+    total = 0.0
+    for n, idx in groups:                                  # idx: (m, n)
+        Gb = G[idx.reshape(-1)].view(idx.shape[0], n, -1)  # (m, n, d), one gather per size
+        total = total + torch.linalg.slogdet(Gb @ Gb.transpose(1, 2))[1].sum()
     return (total - 2.0 * logdet_G) / op.d
 
 
