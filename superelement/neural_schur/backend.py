@@ -73,7 +73,8 @@ class _LiftApply(torch.autograd.Function):
 class LiftingLayer:
     """x[rows] += K x[cols], with K supported on `pairs`.  Determinant 1, always invertible."""
 
-    def __init__(self, d: int, pairs: np.ndarray, device=None, dtype=torch.float64, chunk: int = 256):
+    def __init__(self, d: int, pairs: np.ndarray, device=None, dtype=torch.float64,
+                 chunk: int | None = None):
         pairs = np.asarray(pairs, dtype=np.int64).reshape(-1, 2)
         if pairs.size and (pairs[:, 0] == pairs[:, 1]).any():
             raise ValueError('LIFTING_DIAGONAL_PAIR')          # a diagonal entry would change det
@@ -84,7 +85,9 @@ class LiftingLayer:
         self.pairs = torch.as_tensor(pairs, device=device)
         self.n_coeff = len(pairs)
         self.device, self.dtype = device, dtype
-        self.chunk = chunk
+        # The (nnz, chunk) temporaries are what bound memory, so size the chunk to the layer:
+        # at 2.8e6 pairs a fixed chunk of 256 would allocate 5.7 GB per temporary.
+        self.chunk = chunk if chunk is not None else max(8, min(256, int(1.2e8 // max(self.n_coeff, 1))))
 
     def _sparse(self, k: torch.Tensor, transpose: bool) -> torch.Tensor:
         """(I + K) or its transpose as a sparse matrix.
