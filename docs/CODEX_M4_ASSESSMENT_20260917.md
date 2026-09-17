@@ -1,5 +1,11 @@
 # Assessment of the Codex M4 CutFEM baseline (`CUTFEM_M4_BASELINE_20260917`)
 
+
+> **Superseded in scope** by `docs/CODEX_M4_MULTI_20260917.md`, which covers the
+> 26/32-geometry runs, the bucket-substitution attribution, the paired loss A/B and
+> the algebraic loss identity. This document covers only the 01:41-02:28 single-seat
+> baseline.
+
 Read on 2026-09-17 from `/root/autodl-tmp/CUTFEM_M4_BASELINE_20260917` on the AutoDL box
 (`a841046-9982-eae5cdfb.bjb2`). Sources: `source/stage_cutfem_m4/`,
 `DELIVERY/reports/m4_cutfem_20260917/{M4_CUTFEM_BASELINE.md,SUMMARY.json}` and the
