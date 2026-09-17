@@ -1,0 +1,201 @@
+{
+ "seat": 328,
+ "d": 12792,
+ "q": 12798,
+ "assembled_dofs": 23508,
+ "shared_nodes": 696,
+ "design": "uniform stiffness multiplier per module; dc/drho_m = -u_m^T S_m u_m",
+ "exact": {
+  "compression_x": {
+   "compliance": 294481.313298695,
+   "sens": {
+    "A": -154113.11329371727,
+    "B": -140368.20000497423
+   }
+  },
+  "shear_y": {
+   "compliance": 176985.95209565503,
+   "sens": {
+    "A": -93860.90885412491,
+    "B": -83125.04324153079
+   }
+  },
+  "shear_z": {
+   "compliance": 177055.4392678431,
+   "sens": {
+    "A": -93905.35210150055,
+    "B": -83150.08716634256
+   }
+  },
+  "bending_xy": {
+   "compliance": 231004.3693379406,
+   "sens": {
+    "A": -119127.18569835476,
+    "B": -111877.18363958705
+   }
+  }
+ },
+ "rows": {
+  "0.03": {
+   "tol": 0.03,
+   "eps_op": 0.1523958364636313,
+   "params": 8581236,
+   "loads": {
+    "compression_x": {
+     "displacement_rel": 0.04085402394786912,
+     "compliance_rel": 0.0012943659263926612,
+     "sensitivity_rel": {
+      "A": 1.574280736756672e-05,
+      "B": 0.0027327610594056863
+     }
+    },
+    "shear_y": {
+     "displacement_rel": 0.02327207163629957,
+     "compliance_rel": 0.0026065426772736255,
+     "sensitivity_rel": {
+      "A": 0.0033624384811042807,
+      "B": 0.0017530205089865958
+     }
+    },
+    "shear_z": {
+     "displacement_rel": 0.024343565778747932,
+     "compliance_rel": 0.0030880852155671028,
+     "sensitivity_rel": {
+      "A": 0.0037353358027761977,
+      "B": 0.002357114312697106
+     }
+    },
+    "bending_xy": {
+     "displacement_rel": 0.01774725098037428,
+     "compliance_rel": 0.0014964940826002163,
+     "sensitivity_rel": {
+      "A": 0.002565490526868359,
+      "B": 0.00035822322358130133
+     }
+    }
+   },
+   "worst_sensitivity_rel": 0.0037353358027761977
+  },
+  "0.01": {
+   "tol": 0.01,
+   "eps_op": 0.08077824167816317,
+   "params": 10221964,
+   "loads": {
+    "compression_x": {
+     "displacement_rel": 0.022739339138769302,
+     "compliance_rel": 0.003301852414300256,
+     "sensitivity_rel": {
+      "A": 0.0025628683533594657,
+      "B": 0.004113198105900837
+     }
+    },
+    "shear_y": {
+     "displacement_rel": 0.014822813040987976,
+     "compliance_rel": 0.0001805373234590076,
+     "sensitivity_rel": {
+      "A": 0.0004820849813096742,
+      "B": 0.0001599561803936665
+     }
+    },
+    "shear_z": {
+     "displacement_rel": 0.015928580201216846,
+     "compliance_rel": 0.0012056187305803832,
+     "sensitivity_rel": {
+      "A": 0.0011057680964597083,
+      "B": 0.0013183848054274861
+     }
+    },
+    "bending_xy": {
+     "displacement_rel": 0.011399564282328318,
+     "compliance_rel": 0.00046743041350425337,
+     "sensitivity_rel": {
+      "A": 0.00017335352511173744,
+      "B": 0.001149739216477419
+     }
+    }
+   },
+   "worst_sensitivity_rel": 0.004113198105900837
+  },
+  "0.003": {
+   "tol": 0.003,
+   "eps_op": 0.025966762529024745,
+   "params": 12229217,
+   "loads": {
+    "compression_x": {
+     "displacement_rel": 0.009408545076617453,
+     "compliance_rel": 0.002539612401549465,
+     "sensitivity_rel": {
+      "A": 0.002588097636519243,
+      "B": 0.002486379472005663
+     }
+    },
+    "shear_y": {
+     "displacement_rel": 0.0063382233231380385,
+     "compliance_rel": 0.000945206453192818,
+     "sensitivity_rel": {
+      "A": 0.0010717300511194714,
+      "B": 0.0008023419272987132
+     }
+    },
+    "shear_z": {
+     "displacement_rel": 0.007469605121951904,
+     "compliance_rel": 0.0013693864100885595,
+     "sensitivity_rel": {
+      "A": 0.0014356641167369043,
+      "B": 0.0012945358405666754
+     }
+    },
+    "bending_xy": {
+     "displacement_rel": 0.004693371878693943,
+     "compliance_rel": 0.0003290154561214065,
+     "sensitivity_rel": {
+      "A": 2.88725541739656e-05,
+      "B": 0.000710095762911918
+     }
+    }
+   },
+   "worst_sensitivity_rel": 0.002588097636519243
+  },
+  "0.001": {
+   "tol": 0.001,
+   "eps_op": 0.010558943828580358,
+   "params": 14083953,
+   "loads": {
+    "compression_x": {
+     "displacement_rel": 0.0036386579517883972,
+     "compliance_rel": 0.0010375786696287248,
+     "sensitivity_rel": {
+      "A": 0.001109181127423081,
+      "B": 0.0009589648690484223
+     }
+    },
+    "shear_y": {
+     "displacement_rel": 0.0021491515272436465,
+     "compliance_rel": 0.00037421928374377675,
+     "sensitivity_rel": {
+      "A": 0.00023978091389566383,
+      "B": 0.0005260207997116107
+     }
+    },
+    "shear_z": {
+     "displacement_rel": 0.002145791521135241,
+     "compliance_rel": 0.00024563650609444687,
+     "sensitivity_rel": {
+      "A": 0.0002393858770597063,
+      "B": 0.00025269563904467584
+     }
+    },
+    "bending_xy": {
+     "displacement_rel": 0.0020754491530537125,
+     "compliance_rel": 5.012103777270683e-06,
+     "sensitivity_rel": {
+      "A": 0.0003022879892021711,
+      "B": 0.00033222623314773547
+     }
+    }
+   },
+   "worst_sensitivity_rel": 0.001109181127423081
+  }
+ },
+ "seconds": 542.9691431522369
+}

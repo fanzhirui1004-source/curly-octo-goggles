@@ -1,0 +1,122 @@
+{
+ "seat": 253,
+ "d": 12822,
+ "q": 12828,
+ "assembled_dofs": 23508,
+ "shared_nodes": 716,
+ "design": "uniform stiffness multiplier per module; dc/drho_m = -u_m^T S_m u_m",
+ "modules": "Codex RUN_TRAIN32_ACCEL_V1 predicted factors at 40000 steps, seat 0253",
+ "exact": {
+  "compression_x": {
+   "compliance": 294518.23908501887,
+   "sens": {
+    "A": -146022.38400976392,
+    "B": -148495.85507525268
+   }
+  },
+  "shear_y": {
+   "compliance": 175599.9627130775,
+   "sens": {
+    "A": -86929.62394411802,
+    "B": -88670.33876895407
+   }
+  },
+  "shear_z": {
+   "compliance": 175649.1634103598,
+   "sens": {
+    "A": -86988.41874466685,
+    "B": -88660.74466568937
+   }
+  },
+  "bending_xy": {
+   "compliance": 236475.3339799167,
+   "sens": {
+    "A": -117948.5908191367,
+    "B": -118526.74316078072
+   }
+  }
+ },
+ "rows": {
+  "baseline": {
+   "arm": "baseline",
+   "eps_op": 273.9397750956523,
+   "params": 82208253,
+   "loads": {
+    "compression_x": {
+     "displacement_rel": 1.1560664805473997,
+     "compliance_rel": 0.4629267759670524,
+     "sensitivity_rel": {
+      "A": 0.4817273418649926,
+      "B": 0.4444393680070442
+     }
+    },
+    "shear_y": {
+     "displacement_rel": 2.0875324018773767,
+     "compliance_rel": 0.001970943058555354,
+     "sensitivity_rel": {
+      "A": 0.03192313606956485,
+      "B": 0.035199637043880565
+     }
+    },
+    "shear_z": {
+     "displacement_rel": 2.5153646056661993,
+     "compliance_rel": 0.052794676010117725,
+     "sensitivity_rel": {
+      "A": 0.0628124681888183,
+      "B": 0.042965840213371576
+     }
+    },
+    "bending_xy": {
+     "displacement_rel": 0.8609867738308568,
+     "compliance_rel": 0.37393623634677664,
+     "sensitivity_rel": {
+      "A": 0.3465186960090774,
+      "B": 0.40122003880621565
+     }
+    }
+   },
+   "worst_sensitivity_rel": 0.4817273418649926
+  },
+  "relative": {
+   "arm": "relative",
+   "eps_op": 264.00777997901855,
+   "params": 82208253,
+   "loads": {
+    "compression_x": {
+     "displacement_rel": 1.0597495757405697,
+     "compliance_rel": 0.1876303083942132,
+     "sensitivity_rel": {
+      "A": 0.1892953427832141,
+      "B": 0.18599300820948744
+     }
+    },
+    "shear_y": {
+     "displacement_rel": 1.0760846147354644,
+     "compliance_rel": 0.08039131883905579,
+     "sensitivity_rel": {
+      "A": 0.16747086763219318,
+      "B": 0.00497874441886178
+     }
+    },
+    "shear_z": {
+     "displacement_rel": 1.4213831100867245,
+     "compliance_rel": 0.31496873021717087,
+     "sensitivity_rel": {
+      "A": 0.40775092753620373,
+      "B": 0.22393659798245766
+     }
+    },
+    "bending_xy": {
+     "displacement_rel": 1.2304508626842405,
+     "compliance_rel": 0.22972409294597335,
+     "sensitivity_rel": {
+      "A": 0.2775646625776952,
+      "B": 0.18211688109175178
+     }
+    }
+   },
+   "worst_sensitivity_rel": 0.40775092753620373
+  }
+ },
+ "seconds": 39.250850677490234
+}
