@@ -104,3 +104,115 @@ Ordered by (value / effort). None of these requires abandoning anything.
    changes accordingly.
 3. **Is an inference-time coarse solve allowed?** The collar route needs one. If it
    is not allowed, that route is out regardless of what the floor scan says.
+
+---
+
+## 7. Addendum: what the literature already knows (all citations verified by fetching
+## the arXiv pages, not from memory)
+
+### 7.1 Someone has already done the geometry-parameterized version of this, and it works
+
+**Jiang, Zhan, Zhang & Wang, "Convex Neural Energy Elements: Monolithic Finite-Element
+Assembly of Geometry-Parameterized Neural Operators with Stability and Error
+Guarantees", arXiv:2608.02036.** A geometry-parameterized hypernetwork emits a
+Cholesky-like factor so the assembled element is convex in the boundary dofs by
+construction - structurally the same idea as Codex's `exp(log_pivot)` SPD head.
+Reported: **0.6-1.0% relative error on unseen geometries** and 175x faster setup, on
+heat conduction, extensible to 3D and to mixed element types in one assembly.
+
+Two transfers matter more than the headline:
+
+1. **Field-regression-then-assemble is a documented dead end.** Training an operator
+   to predict fields and then assembling gives an indefinite Hessian and Newton
+   converging to a wrong answer at 247% error. Anyone tempted by "predict the local
+   displacement field instead" should read this first.
+2. **The regularization-nullspace principle.** If the regulariser's nullspace does
+   not contain the *entire* physics nullspace, there is an irreducible error floor at
+   **every** value of the regularisation parameter - in plane-strain elasticity,
+   omitting only the rotation mode pins the floor at 0.85%, full Tikhonov at 6.7%.
+   The stated signature of this failure is **a single-signed bias**.
+
+   Codex measures a single-signed bias: `c18_signed_error` negative on all 8 seats,
+   `c6_mu_max < 1` on all 8, 8-70x too stiff. That is the signature. Our quotient `B`
+   removes exactly the 6 rigid modes and the teacher's `A = B S B^T` is built the same
+   way, so on the face of it the nullspace is handled exactly - **but this is now a
+   specific, cheap, checkable hypothesis** rather than an open question, and it should
+   be checked before anything expensive.
+
+### 7.2 The mean-versus-max diagnosis is confirmed independently, with a proposed fix
+
+**Oh, Lee, Darbon & Karniadakis, arXiv:2606.21828.** An operator trained to relative
+L2 of O(1e-3) still produces an indefinite discrete Jacobian, "because the
+mean-squared training controls error on average while leaving localized pointwise
+violations of the underlying physics". Their remedy is a short **label-free
+fine-tuning phase penalising the operator against the discrete energy**, which moves
+the Jacobian spectrum back to positive definite; 5.4x wall-clock speedup on a 3D
+6.4M-dof hyperelasticity problem.
+
+This is section 3 of `OBJECTIVE_FIX_20260917.md` reached by a different route, and it
+supplies the missing half: the fix is not a differently-shaped mean, it is an
+energy-based fine-tune that acts pointwise.
+
+### 7.3 There is a named remedy for the near/far cancellation problem
+
+**Ling, Ying & Zhou, "PPDNO", arXiv:2606.25952.** For Dirichlet-to-Neumann operator
+learning across varying domains, the geometry-independent **leading operator is a
+universal Fourier multiplier** computable by FFT; the remaining geometry-dependent
+correction is **smoother**. They compute the principal part exactly and train a
+low-rank DeepONet on the residual only.
+
+Our `S` is a DtN-type operator and its near field is exactly the singular,
+geometry-insensitive part that is eating 97% of the factor norm. **Subtracting an
+analytically known principal part and learning only the residual is directly
+implementable inside Codex's existing head** and attacks the measured problem at its
+root rather than reweighting around it.
+
+### 7.4 A deterministic algorithm with our exact acceptance metric may reduce the need
+### to learn at all
+
+**Schäfer & Owhadi, "Sparse recovery of elliptic solvers from matrix-vector products",
+arXiv:2110.05351** (with the earlier Schäfer-Katzfuss-Owhadi, *SIAM J. Sci. Comput.*
+43(3), 2021, arXiv:2004.14455). An elliptic solution operator is recovered to accuracy
+`eps` **in operator norm** - the same norm as `eps_op` - as a sparse Cholesky
+factorisation with `O(N log N log^d(N/eps))` nonzeros, from only
+`O(log N log^d(N/eps))` matrix-vector products, total complexity
+`O(N log^2 N log^{2d}(N/eps))`.
+
+Two consequences:
+
+1. **It turns section 7 of `WHERE_THE_ERROR_IS` from a scan into a theorem.** For
+   `N = 12822` on a 2-manifold interface at `eps = 0.03`, the predicted nonzero count
+   is `~2e7` - the same order as the measured hierarchical low-rank result of
+   `1.22e7` at `eps_op = 2.6e-2`. Theory and measurement agree that **an
+   operator-norm-accurate factor of this `S` costs ~1e7 numbers**. At the cost
+   analysis's 2486 FLOP/number ceiling that is ~20 ms, so the factor route's floor is
+   tens of milliseconds and **no factor-shaped output reaches 1 ms** - now with a
+   proof behind it, not just a truncation scan.
+2. **It may make the learning step unnecessary for the compression half.** If the
+   constants are tolerable at our `N`, the sparse factor is computable deterministically
+   with a guarantee, and the only thing left to learn is whatever is cheaper to predict
+   than to compute. This has never been considered in this project and it is a
+   one-day check of constants, not a research programme. The honest caveat: each
+   matvec needs a solve with `K_ww`, and at `N ~ 2e5`, `d = 3`, `eps = 1e-2` the
+   asymptotic count is tens of thousands of matvecs, which may lose to one direct
+   factorisation. **The constants decide it, and they are cheap to evaluate.**
+
+### 7.5 The one hard negative
+
+The exact condensed operator is **provably nonlocal**; a local multiplicative
+coefficient field cannot reproduce it exactly, only up to exponential-in-radius
+truncation. So "amplification is exactly 1" holds for the *exact* local model and
+every finite-radius local parameterisation carries an approximation floor. The
+collar's proved `mu_max >= 1.111` at depth 1 with a Q1 core is an instance of exactly
+this floor - which is why section 4's item A (the Smetana-Patera floor scan over
+depth and enrichment) is the right experiment and not an optional one.
+
+## 8. Revised priority, after the addendum
+
+| | action | cost | decides |
+|---|---|---|---|
+| **A0** | Check the Schäfer-Owhadi constants for our `N` and interface dimension. | ~1 day, no training | whether a deterministic operator-norm-accurate factor is cheaper than learning one |
+| **A** | Smetana-Patera Loewner floor scan (§4A). | no training, existing fine factors | whether any reduced local representation can reach `eta <= 0.05`; kills or sets the local route |
+| **A1** | Test the regularization-nullspace hypothesis (§7.1) against our `B`. | hours | whether the single-signed 8-70x stiffness has a known, structural cause |
+| **B** | Harness upgrades §5, plus **principal-part subtraction (§7.3)** as a new item between #3 and #7, and **energy fine-tuning (§7.2)** as the objective change that §3 says a differently-shaped mean cannot deliver. | days | - |
+| **C** | Codex's 2x2, with the falsifiable prediction of §4C. | weeks of GPU | - |
