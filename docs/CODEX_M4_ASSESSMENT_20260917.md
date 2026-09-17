@@ -25,7 +25,9 @@ A complete geometry -> operator pipeline:
   quotient `B`, `d = 12,792`.
 
 Reported cost: complete-factor inference ~3.25 s on seat 0328 (teacher condensation
-31.85 s), whitened spectrum ~7.2 s, 0.127 s/step training, peak 11.045 GiB.
+31.85 s for the PARDISO numeric factorization alone on the smallest production
+seat; the full per-cell teacher cost is 39-95 s, see docs/TEACHER_COST_20260917.md),
+whitened spectrum ~7.2 s, 0.127 s/step training, peak 11.045 GiB.
 
 ## 2. What it measures
 
@@ -85,7 +87,9 @@ gap is structural, not a budget problem.
   quotient.
 - **SPD by construction.** Predicting `L` and forming `L Lt` puts the prediction in the
   right cone for free. We have spent real effort on this question elsewhere.
-- **The cost case works.** 3.25 s versus 31.85 s is ~10x before any optimisation, and the
+- **The cost case works.** 3.25 s versus a 39-95 s per-cell teacher (not the 31.85 s
+  factorization-only line; see docs/TEACHER_COST_20260917.md) is 12-29x before any
+  optimisation, and the
   bottleneck is assembling 81.8M factor entries, not the network forward pass. A head that
   emits far fewer numbers moves this a long way.
 - **Honest acceptance reporting.** They report the full whitened spectrum, the mode counts
