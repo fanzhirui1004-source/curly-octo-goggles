@@ -133,3 +133,39 @@ The complete factor is ~1900x from the millisecond target **at perfect accuracy*
 and cannot be trained out of that. Only an O(1e4-1e5)-number representation is
 admissible on cost, and of the three that have been measured, only the local field
 route is.
+
+## 7. How few factor entries could represent S at all? Not few enough
+
+Keep the k largest-magnitude entries of the **teacher's** factor (pivots always
+kept) and measure the gate. The network is removed entirely; this is pure
+representability. Seat 0253, dense = 82,208,253 entries.
+
+| kept | % of dense | time to emit at 3.97e7/s | eps_op |
+|---|---|---|---|
+| 12,823 | 0.016% | 0.32 ms | 8031 |
+| 30,001 | 0.036% | 0.75 ms | 2978 |
+| 100,000 | 0.122% | 2.5 ms | 733 |
+| 300,000 | 0.365% | 7.6 ms | 305 |
+| 1,000,000 | 1.22% | 25 ms | 93.9 |
+| 3,000,002 | 3.65% | 75 ms | 20.2 |
+| 10,000,001 | 12.2% | 252 ms | 1.15 |
+| 30,000,001 | 36.5% | 755 ms | **0.192** |
+
+At 36.5% of dense - 755 ms just to write the numbers out - naive magnitude
+truncation still fails the +-10% work gate.
+
+Magnitude truncation is a weak compressor and this is an upper bound on `eps_op`,
+not the optimum: the project's hierarchical low-rank compression reaches
+`eps_op = 2.6e-2` at 12.23e6 numbers (14.95% of dense), where magnitude truncation
+at 12.2% gives 1.15 - **structure is worth ~44x at equal budget**. So the right
+statement is not "sparsity fails" but:
+
+> The best factor-shaped representation anyone here has produced needs 1.2e7 numbers
+> and 309 ms to emit. A millisecond budget allows ~4e4 numbers. No factor-shaped
+> output closes that gap, and the gap is ~300x against a compressor that already
+> exploits the physics (low rank of far-field interaction).
+
+Combined with sections 3-5, the complete-dense-factor route is disqualified twice
+over and independently: on per-entry accuracy (4 orders short, not a coherence
+problem) and on emission cost at perfect accuracy (~1900x). Neither is a training
+problem.
