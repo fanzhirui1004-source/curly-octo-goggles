@@ -1,0 +1,172 @@
+{
+ "angle": "Architectures that emit very large linear operators without a proportional output head (query/kernel-based decoders, Galerkin/linear-attention transformers, hierarchical/H-matrix and FMM-structured networks), learned interface/DtN/Schur-complement surrogates that are assembled in FE, SPD/factor-parametrised outputs, cube-group equivariance, learned sparse factorisations and preconditioners, and the theory of data requirements / spectral bias / non-local dependence failure modes. 24 candidate abstracts were fetched and read; 15 are reported below, all 'verified'. Search budget was exhausted after the first sweep, so a few relevant items seen only as snippets are mentioned in the synthesis with arXiv ids but not listed as papers.",
+ "papers": [
+  {
+   "title": "Embedded symmetric positive semi-definite machine-learned elements for reduced-order modeling in finite-element simulations with application to threaded fasteners",
+   "authors": "Eric Parish, Payton Lindsay, Timothy Shelton, John Mersch",
+   "year": "2023 (Comput. Mech. 2024)",
+   "venue_or_arxiv": "arXiv:2307.05434; Computational Mechanics 2024",
+   "url": "https://arxiv.org/abs/2307.05434",
+   "what_it_does": "Replaces a complex inner sub-domain (fastener/bushing with contact) by a machine-learned element that maps interface displacements to interface forces, i.e. a learned static condensation. Two variants: an unconstrained displacement-to-force map and one that outputs an SPSD stiffness matrix (via a triangular-factor construction). Proves that the SPSD form keeps the coarse assembled problem well-posed and shows numerically that enforcing SPSD is critical for accurate FEM-ML coupled simulation; reports speedups and out-of-sample loading accuracy.",
+   "relevance_to_goal": "This is the closest published analogue of [GOAL]: a learned interface operator embedded in FE assembly. Their finding that unconstrained (field-regression) surrogates break coupled solves while SPSD-parametrised ones do not corroborates our factor-based route (multiplicative error on R* is not amplified by cond(A) [METRIC]). Their interface dimension is small (tens-hundreds of dofs), not q=12,798, and accuracy is judged by assembled response, not worst-direction spectrum.",
+   "transferable_idea": "Parametrise the output as a factor product L L^T and train on (virtual displacement, force) action pairs drawn from the loading distribution the element will see when assembled; report the assembled task-level error alongside the module-level one (bears on open decision 1).",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Convex Neural Energy Elements: Monolithic Finite-Element Assembly of Geometry-Parameterized Neural Operators with Stability and Error Guarantees",
+   "authors": "Hongyue Jiang, Jianjiang Zhan, Chenzhuo Zhang, Fan Wang",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2608.02036",
+   "url": "https://arxiv.org/abs/2608.02036",
+   "what_it_does": "Defines a 'neural energy element': a hypernetwork maps element geometry to a positive-semidefinite quadratic form in the element's boundary dofs; elements are assembled monolithically by standard FE. Shows that a field-predicting operator trained by value regression induces an indefinite assembled Hessian, whereas the energy element is convex by construction. Introduces a 'regularisation-nullspace principle' (the regulariser's nullspace must contain the physics nullspace, e.g. rigid modes) and proves conditional error bounds for energy-to-solution accuracy, element-count scaling and geometry generalisation. Heat conduction: one trained element assembles across unseen geometries at 0.6-1.0% rel. L2 (3D: 0.23%); plane-strain elasticity elements validate the bounds.",
+   "relevance_to_goal": "Exactly our deliverable shape (geometry -> boundary quadratic form -> assembly), with the rigid-mode handling we already use (quotient map B) elevated to a design principle. Their boundary-dof counts are small and the error metric is assembled L2, so the 12k-dof, worst-direction (eps_op) regime is untested.",
+   "transferable_idea": "Use a hypernetwork that emits the parameters of a structured PSD quadratic form on the quotient space (our B S B^T) rather than a field; make every regulariser/prior act only on the rigid-mode complement so the attractor at 'diagonal-only error 38.8%' [LEARNING ATTEMPTS] cannot recur.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Learning Composable Energy Surrogates for PDE Order Reduction",
+   "authors": "Alex Beatson, Jordan T. Ash, Geoffrey Roeder, Tianju Xue, Ryan P. Adams",
+   "year": "2020",
+   "venue_or_arxiv": "NeurIPS 2020; arXiv:2005.06549",
+   "url": "https://arxiv.org/abs/2005.06549",
+   "what_it_does": "For cellular metamaterials with modular unit cells, trains a neural surrogate of each cell's stored potential energy as a function of its boundary (interface) displacements; the macroscopic response is obtained by minimising the sum of surrogate energies over the reduced boundary basis. Uses dataset aggregation (iteratively collecting the boundary conditions that actually arise in assembled solves) so the surrogates are accurate where the assembled system visits.",
+   "relevance_to_goal": "Same application (unit cells of a lattice, assembled through boundary dofs) but nonlinear and with a coarse boundary parameterisation; our S is the exact linear analogue (S = Hessian of that energy). Their key practical lesson is that accuracy must be measured/enforced on the boundary-condition distribution induced by assembly, which is precisely the task-level contract alternative in open decision (1).",
+   "transferable_idea": "Data aggregation on assembled loads: after training, assemble lattices with Shat, collect the interface displacement patterns that occur, and add worst-error directions from those patterns to the training/validation loss (a cheap, physically motivated proxy for the extreme-mode term).",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Principal-Part Decomposition for Neural Operator Learning of Dirichlet-to-Neumann Maps",
+   "authors": "Shuo Ling, Wenjun Ying, Han Zhou",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2606.25952",
+   "url": "https://arxiv.org/abs/2606.25952",
+   "what_it_does": "Learns DtN (Steklov-Poincare) maps across varying planar domains by splitting the boundary-integral representation into a geometry-independent singular principal part (a universal Fourier multiplier, applied exactly by FFT) plus a smoother geometry-dependent residual that is learned with a low-rank DeepONet-type net. Retains the exact linear action on boundary data; tested on interior Laplace and exterior Helmholtz with generalisation to unseen boundary data.",
+   "relevance_to_goal": "The DtN map is the continuum object whose discretisation is our S. The paper demonstrates that the hard, near-singular part of a DtN operator should not be learned at all; only a smooth residual. In our setting the 'principal part' could be a cheap deterministic operator (collar + coarse core, or the H-matrix of the nearest seat) and the network learns a multiplicative correction on the factor.",
+   "transferable_idea": "Residual/multiplicative learning: Rhat = (I + Delta(geometry)) R_ref with R_ref computed by a fast deterministic surrogate; eps_op ~ 1.42||Delta|| [METRIC] makes the learned part directly gate-able.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Sparse recovery of elliptic solvers from matrix-vector products",
+   "authors": "Florian Schafer, Houman Owhadi",
+   "year": "2021 (SISC 2023)",
+   "venue_or_arxiv": "arXiv:2110.05351; SIAM J. Sci. Comput.",
+   "url": "https://arxiv.org/abs/2110.05351",
+   "what_it_does": "Shows that the solution operator (Green's matrix) of an elliptic BVP of arbitrary order can be recovered as a sparse Cholesky factor to accuracy eps from only O(log N log^d(N/eps)) black-box matrix-vector products with carefully chosen (multiscale-coloured) probe vectors, at O(N log^2 N log^{2d}(N/eps)) cost. The recovered factor doubles as a homogenised solution operator.",
+   "relevance_to_goal": "We found the factor of S itself has no useful spatial band (near/far cancellation, [STRUCTURE OF S]), but this paper says the inverse object (the compliance / Neumann-to-Dirichlet operator, whose diagonal already predicts our column scaling with R^2 0.98) has an exponentially sparse Cholesky factor under a coarse-to-fine ordering. That is the representation whose entries are local and hence learnable from local geometry. Whether the sparsity survives restriction to the trace and the GP teacher is an untested hypothesis.",
+   "transferable_idea": "Parametrise Shat^{-1} (compliance) with a sparse Cholesky factor in maximin/coarse-to-fine ordering and supervise it with a handful of structured matvecs of S^{-1} (which the teacher can provide cheaply from the existing factorisation); then S enters assembly through its inverse action or is re-factored.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Mitigating spectral bias for the multiscale operator learning",
+   "authors": "Xinliang Liu, Bo Xu, Shuhao Cao, Lei Zhang",
+   "year": "2022 (J. Comput. Phys. 2024)",
+   "venue_or_arxiv": "arXiv:2210.10890; JCP 2024",
+   "url": "https://arxiv.org/abs/2210.10890",
+   "what_it_does": "Documents that FNO/Galerkin-transformer-type operators have a strong low-frequency bias on multiscale (rough, high-contrast coefficient) PDEs and proposes HANO, a hierarchical attention neural operator patterned on H-matrices: scale-adaptive interaction ranges with self-attention over a hierarchy of levels, linear cost, trained with an empirical H1 loss to recover high-frequency content.",
+   "relevance_to_goal": "Two direct lessons: (i) an H-matrix-structured network is an established way to emit a large operator with linear cost and fixed ranks per level, matching our best unfitted representation (H-matrix at 14.95% of dense passes +-3%); (ii) averaged losses hide fine-scale error, the operator-space version of our finding that D/d misleads by ~100x.",
+   "transferable_idea": "Implement the learnable H-matrix as hierarchical attention over the boundary-node bisection tree with fixed per-level ranks, supervise far-field blocks through their products/actions (gauge-free), and use an energy-weighted rather than plain L2 loss.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A multiscale neural network based on hierarchical matrices",
+   "authors": "Yuwei Fan, Lin Lin, Lexing Ying, Leonardo Zepeda-Nunez",
+   "year": "2019",
+   "venue_or_arxiv": "arXiv:1807.01883; Multiscale Model. Simul.",
+   "url": "https://arxiv.org/abs/1807.01883",
+   "what_it_does": "Builds a neural network whose connectivity reproduces the H-matrix (block low-rank, nested-level) structure: locally connected restriction/interpolation layers per level with a priori fixed ranks and dense near-field blocks, then inserts small local DNNs at each scale to extend to nonlinear maps. Demonstrated on nonlinear Schrodinger and Kohn-Sham maps with parameter counts far below dense.",
+   "relevance_to_goal": "Provides the canonical parameter layout for a 'learnable H-matrix with fixed ranks per level', which our hierarchical builder currently chooses adaptively from the true blocks [REPRESENTATIONS TRIED (a)]. Caveat: they learn one fixed operator's action, not a geometry-to-operator map, so the geometry-conditioning of the level-wise factors remains ours to design.",
+   "transferable_idea": "Fix the ranks per level from the seat-wide statistics (top-8 carries >=99.5% of far-field block energy) and let a geometry encoder emit only the near-field dense blocks and the per-level low-rank factors; sign/rotation gauge is removed by supervising block products.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Message-Passing GNNs Fail to Approximate Sparse Triangular Factorizations",
+   "authors": "Vladislav Trifonov, Ekaterina Muravleva, Ivan Oseledets",
+   "year": "2025 (TMLR 2026)",
+   "venue_or_arxiv": "arXiv:2502.01397; Transactions on Machine Learning Research",
+   "url": "https://arxiv.org/abs/2502.01397",
+   "what_it_does": "Shows, across GAT, graph transformers and global graph transformers, that message-passing GNNs cannot approximate sparse Cholesky/LU factors whose entries depend non-locally on the matrix (cosine similarity <= 0.7 to the true factors), attributing it to the locality of message passing; even fully non-local graph transformers did not recover baseline quality, so tailored architectures are needed.",
+   "relevance_to_goal": "A published negative result matching our V1 experience: a receptive-radius-0.23 CNN emitting a banded factor plateaued at 27% [LEARNING ATTEMPTS], and our factor entries are set by near/far cancellations of ratio 1e3-1e4. Predicting factor entries with a local network is the wrong target.",
+   "transferable_idea": "Do not regress factor entries from local features; predict quantities that are local (column scales, near-field blocks) with a local net, and route the non-local content through an explicit multilevel/hierarchical pathway or a deterministic solve at inference.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Spectral Analysis of the Weighted Frobenius Objective",
+   "authors": "Vladislav Trifonov, Ivan Oseledets, Ekaterina Muravleva",
+   "year": "2025",
+   "venue_or_arxiv": "arXiv:2509.16783",
+   "url": "https://arxiv.org/abs/2509.16783",
+   "what_it_does": "Analyses the weighted Frobenius loss used to train SPD preconditioners (weighting the residual by the system matrix). Shows each eigenmode of the error is scaled by the square of its eigenvalue, so under a fixed error budget the minimiser concentrates all error in the largest-eigenvalue direction and suppresses error in small-eigenvalue (low-frequency) modes; the result is independent of the sparsity pattern or approximation scheme.",
+   "relevance_to_goal": "Gives the exact mechanism behind our observation that averaged losses miss the deciding modes: any weighted Frobenius loss redistributes a fixed error budget across the spectrum according to the weight, and the unweighted or A-weighted choices push error into the soft directions where cond(A)=7.2e4 amplifies it. It also clarifies that whitening by R*^{-1} (our eps_op metric) is the weight that equalises modes, after which only a max-type or top-k term can control the few deciding modes.",
+   "transferable_idea": "Train with the whitened residual R*^{-T}(Ahat - A)R*^{-1} (needs the reference factor, available for 33 seats) plus a soft-max/top-k penalty on its eigenvalues estimated by a few Lanczos steps per iteration.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Neural incomplete factorization: learning preconditioners for the conjugate gradient method",
+   "authors": "Paul Hausner, Ozan Oktem, Jens Sjolund",
+   "year": "2023 (TMLR 2024)",
+   "venue_or_arxiv": "arXiv:2305.16368; Transactions on Machine Learning Research",
+   "url": "https://arxiv.org/abs/2305.16368",
+   "what_it_does": "NeuralIF: a GNN predicts the non-zeros of a sparse triangular factor L with the sparsity of A so that L L^T preconditions CG; trained with a stochastic (matvec-only) approximation of the Frobenius loss and a message-passing block motivated by sparse-matrix theory. About 25% faster than incomplete Cholesky at similar iteration counts; a 2025 follow-up (NLDL, arXiv:2409.08262) adds an output activation guaranteeing invertibility for GMRES.",
+   "relevance_to_goal": "Establishes the standard toolkit for learning factor-form operators from matvecs, and its ceiling: preconditioner-grade accuracy (iteration reduction), not the +-3% worst-direction accuracy needed for mode A deployment. It is directly usable for deployment mode B (Shat as preconditioner with refinement), where the gate is ~30x looser [ASSEMBLY / DELIVERABLE].",
+   "transferable_idea": "Matvec-only stochastic losses on the product L L^T sidestep the gauge non-uniqueness of factors and scale to d ~ 1e4; combine with an invertibility-guaranteeing diagonal activation.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "When can a neural operator replace a coarse solve? Architectural principles for two-level preconditioning",
+   "authors": "Hugo Melchers, Victorita Dolean, Michael Abdelmalik",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2605.19867",
+   "url": "https://arxiv.org/abs/2605.19867",
+   "what_it_does": "Studies neural operators used as the coarse-space correction in two-level preconditioners. Identifies a 2x2 design space (input discretisation: sampling vs basis integration; source-term linearity) and shows only the Neural Green's Operator corner (inputs integrated against the same basis used for the output, linear in the source) yields a Galerkin-type correction; other choices produce non-symmetric preconditioned spectra, PCG breakdown on self-adjoint problems and stagnation on non-self-adjoint ones. The NGO matches exact-coarse-solve iteration counts on diffusion and advection-diffusion.",
+   "relevance_to_goal": "Directly informs deployment mode B: a learned Shat used inside iterative refinement must be symmetric and Galerkin-consistent or PCG on the assembled SPD system fails, independent of its accuracy. It also argues that a learned operator paired with an exact fine action can recover exactness, which is the trade our mode B makes.",
+   "transferable_idea": "Keep Shat = Rhat^T Rhat (symmetric, Galerkin form) and validate it as a preconditioner by PCG iteration counts on assembled lattices, a cheap surrogate gate that is monotone in eps_op.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Data Complexity Estimates for Operator Learning",
+   "authors": "Nikola B. Kovachki, Samuel Lanthaler, Hrushikesh Mhaskar",
+   "year": "2024",
+   "venue_or_arxiv": "arXiv:2405.15992",
+   "url": "https://arxiv.org/abs/2405.15992",
+   "what_it_does": "Derives n-width lower bounds showing that learning general Lipschitz or Frechet-differentiable operators needs a number of samples exponential in 1/eps (curse of data complexity), and upper bounds showing that for operator classes that FNO approximates with algebraically many parameters, algebraically many samples suffice.",
+   "relevance_to_goal": "Frames our 33-label situation: polynomial data requirements exist only for operator classes with algebraic parametric complexity. Our geometry-to-S map is not even Lipschitz at the scale of interest (a 0.01% thickness change moves one mode by 59.8% via a 5.6e-15-volume cell and 3 new GP faces [GEOMETRY SENSITIVITY]), so no sample-efficiency guarantee applies to the raw teacher, strengthening the case for regenerating labels with a continuous stabilisation (open decision 4) or contracting at task level.",
+   "transferable_idea": "Estimate the effective Lipschitz constant of the label map along the 1024-geometry batch (eps_op between neighbouring geometries) before choosing a model class; if the map is discontinuous, fix the teacher, not the network.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Spectral bias in physics-informed and operator learning: Analysis and mitigation guidelines",
+   "authors": "Siavash Khodakarami, Vivek Oommen, Nazanin Ahmadi Daryakenari, Maxim Beekenkamp, George Em Karniadakis",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2602.19265",
+   "url": "https://arxiv.org/abs/2602.19265",
+   "what_it_does": "Systematic study of spectral bias in PINNs and neural operators (KdV, wave, diffusion-reaction, turbulence reconstruction, earthquake dynamics). Concludes the bias is dynamical (optimisation-driven) rather than purely representational; second-order optimisers substantially improve recovery of high-frequency/small modes across all cases, spectral-aware losses reduce bias without inference cost, and the magnitude depends on architecture.",
+   "relevance_to_goal": "Consistent with our own optimisation history: Newton+Armijo with compliance column scaling fitted a dense factor to mu in [0.956,1.047] while Adam in raw coordinates NaN'd [REPRESENTATIONS TRIED (b)]. The soft modes of S are the 'high-frequency' analogue here; first-order training of a geometry->operator network should be expected to underfit them unless the loss and optimiser are spectrally aware.",
+   "transferable_idea": "Use Gauss-Newton/K-FAC-type or preconditioned second-order steps on the operator-fitting stage and precondition the parameter space by the predictable compliance column scales.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "CubeNet: Equivariance to 3D Rotation and Translation",
+   "authors": "Daniel E. Worrall, Gabriel J. Brostow",
+   "year": "2018",
+   "venue_or_arxiv": "ECCV 2018; arXiv:1804.04458",
+   "url": "https://arxiv.org/abs/1804.04458",
+   "what_it_does": "First 3D group-equivariant CNN on voxel grids: group convolutions over discrete right-angle rotation subgroups of the cube (V, T4, S4 in the released code) with translation; activations carry a group axis; state of the art on ModelNet10 and competitive on ISBI connectome segmentation. Winkels and Cohen (MIDL 2018, arXiv:1804.04656, verified) show the same 3D G-convs reach the accuracy of a CNN trained on 10x more data.",
+   "relevance_to_goal": "Our 48-element cube group acts as exact node permutations on the fixed grid and is currently used only as augmentation. A G-CNN over the 65^3 analytic field stack makes the geometry encoder exactly equivariant and buys roughly an order of magnitude in data efficiency, which matters with 33 factor labels. The output must transform as P S P^T, so the operator head (not just the encoder) needs to be equivariant; CubeNet handles only rotations, so reflections (full O_h) need an extension.",
+   "transferable_idea": "Encode geometry with O_h-equivariant 3D group convolutions and build the operator head from equivariant pairwise features so that the emitted H-matrix/factor blocks permute exactly with the cell symmetries.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Choose a Transformer: Fourier or Galerkin",
+   "authors": "Shuhao Cao",
+   "year": "2021",
+   "venue_or_arxiv": "NeurIPS 2021; arXiv:2105.14995",
+   "url": "https://arxiv.org/abs/2105.14995",
+   "what_it_does": "Introduces softmax-free (linear) attention for operator learning and proves that a layer of it is a learnable Petrov-Galerkin projection with approximation estimates independent of sequence length; proposes a layer-normalisation scheme that lets scale propagate so unnormalised data can be learned. Galerkin Transformer beats softmax attention in cost and accuracy on Burgers, interface Darcy and an inverse coefficient problem. OFormer (Li, Meidani, Farimani, TMLR 2023, arXiv:2205.13671, verified) adds a cross-attention decoder that evaluates the output at arbitrary query points.",
+   "relevance_to_goal": "Softmax-free attention Q K^T V is literally a rank-(head-dim) factorisation of an n x n kernel matrix produced without an n^2 output head, i.e. the 'emit a large linear operator implicitly' mechanism. It is the natural output head for the far-field low-rank blocks of S (rank <= 8 per block pair) with per-node query/key features from the geometry encoder; the near-field dense blocks still need a separate local head.",
+   "transferable_idea": "Represent far-field blocks as S_ij ~ Q_i K_j^T with node-wise features, supervise via block products S_ij S_ij^T or actions (gauge-free), and use the Galerkin-style normalisation to keep the 1e-7..1e-2 stiffness scale range trainable.",
+   "confidence_real": "verified"
+  }
+ ],
+ "synthesis": "What the field already knows, and that we should use directly:\n\n1. Learned interface/condensed operators exist and the successful ones are all energy/PSD-parametrised and assembled by ordinary FE (Parish 2023; Jiang 2026; Beatson 2020). Every one of them found that unconstrained field regression yields indefinite or ill-posed assembled systems, while a factor/quadratic-form output stays well-posed. This validates our factor route and our quotient-map treatment of rigid modes (Jiang's 'regularisation-nullspace principle' is exactly that). None of them operates at trace dimension ~1e4 or measures a worst-direction spectral error, so their accuracy numbers (0.2-1% assembled L2) are not evidence for our +-3% eps_op gate.\n\n2. Emitting a large operator without an n^2 head is solved structurally: hierarchical/H-matrix networks with fixed ranks per level (Fan 2019; HANO, Liu 2024; MGNO, Li 2020, arXiv:2006.09535 verified; Neural-HSS, Sittoni 2026, arXiv:2602.18248 verified; Neural FMM, McAllister Fognini 2025, arXiv:2509.20591 verified) and softmax-free attention as a learnable low-rank kernel (Cao 2021; OFormer). Our measured structure of S (99.98% of off-diagonal energy within distance 0.1, top-8 singular values per far-field block) maps one-to-one onto these architectures: dense near-field head + attention/low-rank far-field head over a bisection tree. The gauge non-uniqueness of factors is handled in this literature by supervising products or actions with matvec-only stochastic losses (Hausner 2024).\n\n3. Factor entries are non-local functions of the operator and cannot be regressed by local/message-passing architectures (Trifonov 2026). Combined with our near/far cancellation finding this says: predict local things locally (compliance column scales, near-field blocks), route global content through a hierarchy or a deterministic inference-time solve, and never expect a receptive-radius-0.23 CNN to emit a factor.\n\n4. Averaged losses are spectrally blind by construction: a weighted Frobenius objective redistributes a fixed error budget across eigenmodes according to the weight (Trifonov 2025), and spectral bias in operator learning is largely an optimisation phenomenon that second-order optimisers and spectral-aware losses relieve (Khodakarami 2026; HANO's H1 loss). This is the general form of our D/d-misleads-by-100x observation and of our Newton-vs-Adam experience. The literature therefore supports: whiten by the reference factor, add a max/top-k eigenvalue term, and use second-order steps on the operator-fitting stage.\n\n5. Learning a DtN-type operator should learn only a smooth residual on top of a deterministic principal part (Ling 2026 PPDNO; also the local-DtN substructuring of Boutilier, Brenner, Miguez 2024, arXiv:2405.04433 verified, which supervises the DtN action on a coarse trace subspace). For us the principal part is a cheap surrogate (collar+coarse core, or nearest-seat H-matrix) and the network emits a multiplicative correction (I+Delta) on the factor, which is exactly the error model that is not amplified by cond(A).\n\n6. The inverse object is where sparsity lives: Schafer and Owhadi show elliptic solution operators have exponentially sparse Cholesky factors under coarse-to-fine orderings and can be recovered from O(log N log^d(N/eps)) matvecs. Our column scaling 1/sqrt((A^-1)_jj) is already predictable from local geometry (R^2 0.98), which is consistent with this. A compliance-side sparse factor is an untested but literature-backed representation.\n\n7. Deployment: a learned operator used as a coarse/preconditioning correction must be symmetric and Galerkin-consistent, otherwise PCG on the assembled SPD system breaks regardless of accuracy (Melchers 2026); with that structure, learned preconditioners routinely reach incomplete-Cholesky quality (Hausner 2024), which is the ~30x looser mode-B gate.\n\n8. Data: polynomial sample complexity is available only for operator classes with algebraic parametric complexity (Kovachki, Lanthaler, Mhaskar 2024); a label map with a 59.8% single-mode jump for a 0.01% geometry change is outside any such class. Cube-group equivariant 3D convolutions give roughly 10x data efficiency on voxel data (Worrall and Brostow 2018; Winkels and Cohen 2018) and should be used for the geometry encoder, with the operator head also made equivariant so that S transforms as P S P^T. Related verified items not listed above: GINO (Li et al., NeurIPS 2023, arXiv:2309.00583) for GNO-encoder/latent-grid/GNO-query-decoder pipelines trained on 500 3D samples; Grega et al. (ICLR 2024, arXiv:2401.16914) for energy-conserving equivariant prediction of lattice stiffness tensors; Gupta et al. 2026 (arXiv:2608.28513) for Cholesky-constrained homogenised-stiffness surrogates in multiscale TO; Huang et al. 2025/26 (arXiv:2504.00510) for local-operator plus Schwarz stitching; Shikhman 2026 (arXiv:2601.11428) showing in-distribution accuracy does not predict robustness under structured shift across 750 operator models.",
+ "gaps": "Nobody has done, and we need:\n\n1. Geometry-to-operator learning at interface dimension ~1e4 with a worst-direction (whitened spectral) acceptance metric. All learned condensed elements/DtN surrogates are evaluated by averaged norms or assembled L2 on small interfaces; no paper reports or optimises max|mu-1| over ~1e4 modes, and no paper reports how many of the deciding modes are soft thin-material modes.\n\n2. A gauge-free, geometry-conditioned learnable H-matrix. H-matrix/FMM/HSS networks learn one fixed operator (or the input->output map for fixed geometry) with fixed ranks; hierarchical attention (HANO) conditions on a coefficient field but emits a function, not the operator. A hypernetwork that emits per-level low-rank factors and near-field blocks for a new geometry, supervised through block products/actions, does not exist in the literature.\n\n3. Positive results on non-local factor prediction. The only rigorous result is negative (message-passing and even global graph transformers fail on sparse triangular factors); no architecture has been shown to predict a Cholesky/DtN factor whose entries are dominated by near/far cancellations at ratio 1e3-1e4.\n\n4. A loss that certifies the worst direction. Weighted-Frobenius theory tells where an averaged loss puts its error, but no work trains an operator surrogate with a whitened top-k/max eigenvalue objective, nor studies the trade-off (our single experiment moved mu_max 15->5 while mu_min 0.13->0.05).\n\n5. Sparse compliance-side (inverse) factors for trace operators. Schafer-Owhadi sparsity is proven for Green's matrices of elliptic operators on volumes; whether the Neumann-to-Dirichlet trace operator of a CutFEM/ghost-penalty Q2 discretisation inherits an exponentially sparse coarse-to-fine Cholesky factor, and whether its entries are learnable from local geometry, is untested.\n\n6. Label-map regularity. No operator-learning paper addresses a teacher whose geometry-to-operator map is discontinuous (classifier thresholds, cut-fragment activation); data-complexity theory presupposes Lipschitz/Frechet regularity. The choice between regenerating labels with a continuous stabilisation and contracting at task level (compliance/displacement/sensitivities, where our derivatives are stable to 0.023%) has no literature precedent for cut-cell teachers.\n\n7. O_h-equivariant operator heads. Cube-group G-CNNs exist for scalar/segmentation outputs and SE(3)-equivariant nets for 4th-order homogenised tensors, but no architecture emits a node-indexed operator on a 65^3 grid that transforms as P S P^T under all 48 symmetries including reflections.\n\n8. Certified mode-B deployment for assembled lattices: neural coarse-correction theory (Melchers 2026) covers two-level preconditioning of a single domain; using per-cell learned Schur complements as a block preconditioner for a lattice assembly, with the exact cell action supplied by the teacher's pre-elimination, and a guaranteed iteration bound in terms of eps_op, has not been written down."
+}

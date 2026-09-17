@@ -1,0 +1,172 @@
+{
+ "angle": "Hierarchical / structured matrix representations of elliptic operators (H, HSS/HODLR, FMM, butterfly, interpolative factorisations) and their neural analogues (H-matrix nets, BCR-Net, multipole GNO, hierarchical attention, Neural-HSS); learning compressed operators from actions; rank bounds for far-field blocks of inverses and Schur complements / DtN maps; attention as a low-rank kernel; gauge-free supervision of low-rank factors; KL/averaged-loss theory for sparse factors.",
+ "papers": [
+  {
+   "title": "Existence of H-matrix approximants to the inverse FE-matrix of elliptic operators with L-infinity coefficients",
+   "authors": "Mario Bebendorf, Wolfgang Hackbusch",
+   "year": "2003",
+   "venue_or_arxiv": "Numerische Mathematik 95, 1-28 (published online Dec 2002)",
+   "url": "https://link.springer.com/article/10.1007/s00211-002-0445-6",
+   "what_it_does": "Proves that the inverse of a FEM stiffness matrix of a uniformly elliptic operator with merely L-infinity (possibly discontinuous) coefficients admits blockwise low-rank (H-matrix) approximants under the standard admissibility condition, by approximating the Green function on admissible (well-separated) box pairs by degenerate (separable) functions; the block rank needed for accuracy eps grows only polylogarithmically in 1/eps, independent of coefficient smoothness.",
+   "relevance_to_goal": "This is the theoretical licence for [REPRESENTATIONS TRIED](a): far-field blocks of the inverse (hence of the Green's-function-like objects S^-1 and R*^-1) are low rank with ranks that do not depend on mesh size, even for our piecewise-constant material/void coefficient. Caveat that matters for the project: the constants depend on the ellipticity contrast; the GP-stabilised void (effective stiffness ~1e-6 of the mean, [GEOMETRY SENSITIVITY]) is exactly the regime where those constants degrade, which is consistent with the observed 1e3-1e4 near/far cancellation in soft modes.",
+   "transferable_idea": "Fix ranks per level a priori from a polylog(1/eps) rule (rank ~ log^{d+1}(1/eps)) rather than from adaptive SVD tolerances, which is what a learnable version needs; treat the material/void contrast as the parameter that sets the rank budget and verify empirically on the 4 seats where +-3% costs were measured.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "H-matrix approximability of the inverses of FEM matrices",
+   "authors": "Markus Faustmann, Jens Markus Melenk, Dirk Praetorius",
+   "year": "2015",
+   "venue_or_arxiv": "Numerische Mathematik 131(4), 615-642; arXiv:1308.0499",
+   "url": "https://arxiv.org/abs/1308.0499",
+   "what_it_does": "Sharpens Bebendorf-Hackbusch: exponential convergence in the local block rank for H-approximations of inverse FEM stiffness matrices, with no coupling between rank and mesh width, covering mixed Dirichlet/Neumann/Robin boundary conditions, and crucially proves that exponentially accurate LU (and hence Cholesky) decompositions in the H-matrix format exist.",
+   "relevance_to_goal": "Directly underwrites the choice to approximate the FACTOR R* rather than A in hierarchical format ([REPRESENTATIONS TRIED](a): factor is 1.17x cheaper than A and multiplicative factor errors are not amplified by cond(A) [METRIC]). It says an H-Cholesky of an elliptic FEM operator exists with exponentially small error in rank; the project measured that at +-3% this costs ~15% of dense, i.e. the cost is dominated by near-field leaves, not by far-field ranks.",
+   "transferable_idea": "Parameterise the network output as an H-Cholesky factor with fixed per-level ranks and a dense near-field, and use the exponential-in-rank theorem to argue that a rank budget of a few units per far-field block (top-8 already carries 99.5% [STRUCTURE OF S]) is enough in principle; spend learnable capacity on the near-field leaves where the cost actually is.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "On the numerical rank of the off-diagonal blocks of Schur complements of discretized elliptic PDEs",
+   "authors": "S. Chandrasekaran, P. Dewilde, M. Gu, N. Somasunderam",
+   "year": "2010",
+   "venue_or_arxiv": "SIAM J. Matrix Anal. Appl. 31(5), 2261-2290",
+   "url": "https://epubs.siam.org/doi/10.1137/090775932",
+   "what_it_does": "Shows that for finite-difference discretisations of constant-coefficient elliptic PDEs the off-diagonal blocks of nested-dissection Schur complements have numerical rank bounded independently of grid size in 2D, and only slowly growing with grid size in 3D (the Schur complements are HSS under a suitable ordering).",
+   "relevance_to_goal": "This is the rank result for the object we actually output (a Schur complement / discrete DtN map on the cell boundary), not for the inverse. It explains why far-field face-face blocks of S have top-8 singular values carrying >=99.5% [STRUCTURE OF S] and warns that 3D ranks grow with resolution, so the fixed-rank budget must be set at the production n=32 grid and re-validated if the grid changes.",
+   "transferable_idea": "Use an HSS (nested-basis) rather than plain H format for S: HSS ranks of 3D separator Schur complements are provably modest, and nested bases allow a hierarchy of shared per-level projection matrices, which is far more learnable (fewer, geometrically tied parameters) than independent SVD factors per block.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Hierarchical interpolative factorization for elliptic operators: differential equations",
+   "authors": "Kenneth L. Ho, Lexing Ying",
+   "year": "2016",
+   "venue_or_arxiv": "Comm. Pure Appl. Math. 69(8); arXiv:1307.2895",
+   "url": "https://arxiv.org/abs/1307.2895",
+   "what_it_does": "HIF-DE: a multifrontal (nested dissection) LDL factorisation in which the dense separator fronts (Schur complements) are compressed by skeletonization, i.e. interpolative decomposition (ID) that selects a subset of physical DOFs (skeletons) and expresses the remaining (redundant) DOFs as interpolants of them; gives an approximate generalized LU/LDL with linear complexity in 2D and quasilinear in 3D.",
+   "relevance_to_goal": "Two points for the project: (1) it is the classical algorithm for exactly our object (compressing separator Schur complements) and confirms they are compressible by dimensional reduction; (2) the ID/skeleton representation is gauge-fixed: once the skeleton DOF set is chosen, the interpolation matrix is unique and continuous in the operator, unlike SVD factors whose signs/rotations are non-unique ([REPRESENTATIONS TRIED](a)).",
+   "transferable_idea": "Replace SVD-truncated far-field blocks by interpolative decompositions with a FIXED, geometrically chosen skeleton set per block (e.g. nodes on face boundaries / coarse sublattice); the network then predicts interpolation coefficients that are continuous labels, and the skeleton Schur complement stays SPD by construction.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "An overlapping domain decomposition method based on solution-transfer operators",
+   "authors": "Simon Dirckx, Anna Yesypenko, Per-Gunnar Martinsson",
+   "year": "2025 (rev. 2026)",
+   "venue_or_arxiv": "arXiv:2510.25991",
+   "url": "https://arxiv.org/abs/2510.25991",
+   "what_it_does": "Represents global solutions of variable-coefficient elliptic problems through interface traces coupled by local Dirichlet solution-transfer operators between SEPARATED interfaces; these maps are smooth-kernel integral operators (no singular DtN kernel), the discrete system is a block-Jacobi-preconditioned Schur complement system, and off-diagonal blocks are highly amenable to hierarchical low-rank compression via randomized sampling (28M dof experiments).",
+   "relevance_to_goal": "Explains the structure seen in [STRUCTURE OF S]: the singular, order +1 part of a DtN/Schur complement lives on the diagonal (same-face, 99.87% of energy within distance 0.05) while operators between separated interfaces are smooth and very low rank. It also shows that Schur-complement-type interface systems can be built from randomized actions rather than explicit elimination.",
+   "transferable_idea": "Split S into a near-diagonal singular part (same-face and adjacent-face blocks, learned densely or with a local stencil) and smooth face-to-opposite-face transfer blocks of tiny fixed rank; and supervise the smooth part through randomized-sampling actions (Gaussian test vectors restricted to a face), which is gauge-free.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A multiscale neural network based on hierarchical matrices (and companion: A multiscale neural network based on hierarchical nested bases)",
+   "authors": "Yuwei Fan, Lin Lin, Lexing Ying, Leonardo Zepeda-Nunez (companion adds Jordi Feliu-Faba)",
+   "year": "2019",
+   "venue_or_arxiv": "Multiscale Model. Simul. 17(4), arXiv:1807.01883; companion Res. Math. Sci. 6:21, arXiv:1808.02376",
+   "url": "https://arxiv.org/abs/1807.01883",
+   "what_it_does": "Maps the H-matrix (resp. H2/FMM nested-basis) matrix-vector product to a linear neural network where each level is a locally connected layer with fixed per-level rank, then replaces each per-level linear map by a small nonlinear locally-connected network. Learns the nonlinear discrete solution map (coefficient/potential field -> solution) for NLSE and Kohn-Sham problems; parameter count grows linearly with the discretisation size. (Abstract verified; the level-wise architecture details above are from my reading of the PDF and a small-model summary, so treat quantitative accuracy claims as unverified.)",
+   "relevance_to_goal": "The canonical neural H-matrix. Its rank-per-level is a fixed hyperparameter, exactly the constraint noted in [REPRESENTATIONS TRIED](a). But it learns the SOLUTION map, with an averaged L2 loss, on a periodic grid; it does not output an SPD operator or factor and offers no worst-direction control, so it cannot be used as-is for the [METRIC] gate.",
+   "transferable_idea": "Reuse the locally-connected-per-level design as the output head that emits our fixed-rank far-field factors and dense near-field leaves from the 65^3 analytic field stack, with the cube symmetry group as augmentation, but change the target from the solution map to the operator factor and the loss to an action/extreme-mode loss.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Meta-learning pseudo-differential operators with deep neural networks",
+   "authors": "Jordi Feliu-Faba, Yuwei Fan, Lexing Ying",
+   "year": "2020",
+   "venue_or_arxiv": "J. Comput. Phys. 408, 109309; arXiv:1906.06782",
+   "url": "https://arxiv.org/abs/1906.06782",
+   "what_it_does": "Learns the map from a PDE parameter (e.g. coefficient field) to the COMPRESSED OPERATOR itself: the pseudo-differential operator (Green's function of elliptic PDEs, radiative transfer) is represented in the nonstandard wavelet form (Beylkin-Coifman-Rokhlin, BCR-Net lineage) as a collection of coefficient vectors; a network maps parameter -> those vectors and the wavelet transform is learned jointly, trained from a small number of matrix-vector products of the true operator.",
+   "relevance_to_goal": "The closest published analogue of [GOAL]: geometry/coefficient -> a compressed representation of an operator, supervised by ACTIONS (matvecs) rather than by the non-unique factor coefficients, which is precisely the recommendation recorded in [REPRESENTATIONS TRIED](a). Its loss is an averaged action-MSE, which [METRIC] shows cannot see the 3 deciding modes, and it targets smoothing (order <= 0) operators, not an order +1 DtN map.",
+   "transferable_idea": "Adopt parameter -> compressed-operator-coefficients with matvec supervision, but replace the average action loss by (i) actions on the whitened teacher basis (R*^-1 columns, available for the 33 seats) and (ii) a Lanczos/power-iteration extreme-mode term on the whitened residual, so the training signal is dominated by worst directions.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Multipole Graph Neural Operator for Parametric Partial Differential Equations",
+   "authors": "Zongyi Li, Nikola Kovachki, Kamyar Azizzadenesheli, Burigede Liu, Kaushik Bhattacharya, Andrew Stuart, Anima Anandkumar",
+   "year": "2020",
+   "venue_or_arxiv": "NeurIPS 33, 6755-6766; arXiv:2006.09535",
+   "url": "https://arxiv.org/abs/2006.09535",
+   "what_it_does": "Multi-level graph kernel network inspired by FMM: interactions at each range are handled by a graph at a corresponding resolution, built by recursively adding inducing points to the kernel matrix (a V-cycle of downsample / kernel-integration / upsample), which is equivalent to a multi-resolution low-rank factorisation of the kernel. Learns discretisation-invariant solution operators for parametric PDEs (Darcy-type coefficient -> solution) in linear time.",
+   "relevance_to_goal": "Shows that a learnable hierarchical kernel with inducing points (i.e. learned nested bases) generalises across coefficient fields on unstructured node sets, which is our setting (boundary trace nodes of a cut cell). Again a solution-operator learner with averaged loss, no SPD structure.",
+   "transferable_idea": "Use inducing points on the cell faces (coarse face lattice) as the shared H2 nested basis of the far field; the kernel between inducing points is small and can be predicted from local geometry features that are already known to be predictive (R^2 0.98 for compliance scales, [REPRESENTATIONS TRIED](b)).",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Choose a Transformer: Fourier or Galerkin",
+   "authors": "Shuhao Cao",
+   "year": "2021",
+   "venue_or_arxiv": "NeurIPS 2021; arXiv:2105.14995",
+   "url": "https://arxiv.org/abs/2105.14995",
+   "what_it_does": "Shows that softmax normalisation in attention is unnecessary for operator learning; softmax-free (linear) attention Q(K^T V) is layer-wise a Petrov-Galerkin projection, i.e. a learnable low-rank kernel with rank = number of heads/channels, with approximation estimates independent of sequence length; proposes a Galerkin-type layer normalisation to handle unnormalised data (interface Darcy flow, inverse coefficient identification).",
+   "relevance_to_goal": "Gives the theoretical reading of attention as a low-rank kernel: a linear-attention block over face nodes IS a learned rank-r far-field block, with K and V columns as basis functions. This is a natural way to emit the rank-8 face-to-face blocks from node features without SVD gauge issues (the product K^T V is the object, the factor gauge is free). HANO (Liu, Xu, Cao, Zhang, arXiv:2210.10890, verified) is the hierarchical, H-matrix-inspired version with an H1 loss for high-frequency content.",
+   "transferable_idea": "Build each far-field block as a linear attention map restricted by an admissibility mask, with symmetric weight sharing (K=V structure) so the assembled far-field is symmetric; the Petrov-Galerkin bound then gives rank-r error control per block, and the near field stays a local dense stencil.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Neural-HSS: Hierarchical Semi-Separable Neural PDE Solver",
+   "authors": "Pietro Sittoni, Emanuele Zangrando, Angelo A. Casugli, Nicola Guglielmi, Francesco Tudisco",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2602.18248",
+   "url": "https://arxiv.org/abs/2602.18248",
+   "what_it_does": "A layer whose weight is an HSS matrix (learnable leaf diagonal blocks D, per-level coupling U,V of fixed rank r with the HSS telescoping structure); in m-D the layer is a sum of tensor outer products of 1-D HSS factors. Learns source -> solution for elliptic/time-dependent PDEs. Theorem 2.3: if the data come from G u = b with G^-1 in HSS(r,T), then for N >= C * sum_l r_l samples every global minimiser recovers G^-1 exactly with zero generalisation gap. 3D Poisson on 128^3: 37k params, test error ~7e-8 vs FNO 132k params / 7e-6.",
+   "relevance_to_goal": "The most recent and most explicit 'learnable HSS with fixed ranks per level' construction, with an exactness/sample-count theorem in terms of total rank: precisely the object the project needs as an output representation. It learns one fixed operator (not geometry -> operator), it learns the inverse, and it is tested with averaged L2 error, so nothing is said about worst-direction spectra.",
+   "transferable_idea": "Use the Neural-HSS parameterisation as the output head for R* (or S) with per-level fixed ranks taken from the measured H-matrix ranks, and use its sample-count theorem to size the per-seat action supervision (N ~ sum of ranks actions per seat, which is trivially available because the full teacher matrix exists for each seat).",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Learning elliptic partial differential equations with randomized linear algebra",
+   "authors": "Nicolas Boulle, Alex Townsend",
+   "year": "2023 (arXiv 2021)",
+   "venue_or_arxiv": "Found. Comput. Math. 23, 709-739; arXiv:2102.00491",
+   "url": "https://arxiv.org/abs/2102.00491",
+   "what_it_does": "First rigorous learning-rate result for elliptic PDEs in 3D: by exploiting the hierarchical low-rank structure of the Green's function (Bebendorf-Hackbusch admissibility) and a randomized SVD generalised to Gaussian-process inputs and Hilbert-Schmidt operators, an approximant with relative error O(Gamma_eps^{-1/2} log^3(1/eps) eps) is built from O(eps^-6 log^4(1/eps)) input-output pairs, where Gamma_eps quantifies how well the training forcing covariance covers the relevant subspaces.",
+   "relevance_to_goal": "Formalises 'learning a compressed operator from actions' and, importantly, makes the data-quality factor Gamma_eps explicit: accuracy is only guaranteed in directions the probing data excite. That is the theoretical form of the project's finding that averaged losses miss the deciding soft modes [METRIC]: random forcings barely excite the 3 decisive directions.",
+   "transferable_idea": "Probe the teacher with structured rather than isotropic random test vectors: draw actions in the whitened basis and enrich the probe distribution with the softest teacher eigenvectors (they are known per seat), so Gamma_eps is large in the directions that decide eps_op.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Sparse Cholesky factorization by Kullback-Leibler minimization",
+   "authors": "Florian Schafer, Matthias Katzfuss, Houman Owhadi",
+   "year": "2021",
+   "venue_or_arxiv": "SIAM J. Sci. Comput. 43(3); arXiv:2004.14455",
+   "url": "https://arxiv.org/abs/2004.14455",
+   "what_it_does": "Computes a sparse inverse-Cholesky factor L of a dense covariance Theta (Green's-function matrix) by minimising KL(N(0,Theta) || N(0,L^-T L^-1)) under a prescribed sparsity pattern; the problem has a closed-form columnwise solution (recovering Vecchia). With a maximin (coarse-to-fine) ordering and a length-scale-dependent multiscale sparsity pattern the factor is eps-accurate in O(N log^d(N/eps)) space, based on the screening effect of elliptic Green's functions.",
+   "relevance_to_goal": "Their objective is exactly the project's divergence D/d, and their theory is the sparsity counterpart of the H-matrix theory. Two lessons: (1) the closed-form KL-optimal factor for ANY prescribed pattern is an oracle floor (like the project's block-diagonal oracle), usable to test multiscale patterns before learning; (2) their guarantees are in KL, which [METRIC] shows can be 100x misleading in worst-direction terms; their sparsity is multiscale (coarse-to-fine), not a spatial band, which matches the finding that banding a fine-scale factor fails ([STRUCTURE OF S]).",
+   "transferable_idea": "Compute the closed-form KL-optimal factor of A for a maximin-ordered multiscale pattern and then evaluate eps_op with the full-spectrum evaluator; this decides cheaply whether any multiscale sparse factor can pass the gate, and gives a sparse warm-start whose columns are conditional regressions (continuous labels).",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Message-Passing GNNs Fail to Approximate Sparse Triangular Factorizations",
+   "authors": "Vladislav Trifonov, Ekaterina Muravleva, Ivan Oseledets",
+   "year": "2025 (TMLR 2026)",
+   "venue_or_arxiv": "Transactions on Machine Learning Research; arXiv:2502.01397",
+   "url": "https://arxiv.org/abs/2502.01397",
+   "what_it_does": "Shows, on synthetic and SuiteSparse matrices, that message-passing GNNs (including graph attention and graph transformers, and even a fully non-local global graph transformer) cannot approximate sparse Cholesky/LU factors that require non-local dependencies (cosine similarity <= 0.7 with reference factors), even though good preconditioners of that sparsity exist; concludes that architectures beyond message passing are needed.",
+   "relevance_to_goal": "Independent negative evidence aligned with [LEARNING ATTEMPTS] (CNN with receptive radius 0.23 plateaued at 27% on train) and [STRUCTURE OF S] (factor entries are a 1e3-1e4 near/far cancellation): factor entries are global functions of geometry, so local message passing or local convolution cannot represent them; the failure is a representational one (underfitting), not a data one.",
+   "transferable_idea": "Do not predict factor entries with a local network; predict a hierarchical (H/HSS) object whose per-level components are local at their own scale, i.e. give the network the same multiscale information flow as the factorisation algorithm (nested dissection / HIF), so every factor entry is a short composition of level-local predictions.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Principal-Part Decomposition for Neural Operator Learning of Dirichlet-to-Neumann Maps",
+   "authors": "Shuo Ling, Wenjun Ying, Han Zhou",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2606.25952",
+   "url": "https://arxiv.org/abs/2606.25952",
+   "what_it_does": "For DtN maps on smooth planar boundaries, uses the boundary-integral representation to split the map into a geometry-independent principal part (a universal Fourier multiplier of order +1, computed exactly by FFT) plus a smoother, geometry-dependent residual which is learned with a low-rank DeepONet-type network across families of boundaries; proves smoothing and separated-approximation properties of the residual and gives finite-node and training-error bounds for the reconstructed map.",
+   "relevance_to_goal": "The only work found that learns a DtN/Schur-type map across varying geometry, and it succeeds only by removing the unsmooth principal part analytically. For the project, the analogue of the principal part is a cheap per-geometry operator (e.g. the collar-and-coarse-core operator of [REPRESENTATIONS TRIED](e), or a neighbour seat's S) and the network learns a smoother, lower-rank correction; cross-seat differences are huge ([GEOMETRY SENSITIVITY]), so the base must be geometry-specific, not a single reference.",
+   "transferable_idea": "Learn S as (cheap geometry-conditioned base) + (low-rank / hierarchical correction), where the base is computed by a fast deterministic step (collar + coarse core, seconds per cell) and the network only has to fix the 6-modes-out-of-12,792 that the Loewner bound says the collar cannot get right.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Operator SVD with Neural Networks via Nested Low-Rank Approximation",
+   "authors": "J. Jon Ryu, Xiangxiang Xu, H. S. Melihcan Erol, Yuheng Bu, Lizhong Zheng, Gregory W. Wornell",
+   "year": "2024",
+   "venue_or_arxiv": "ICML 2024; arXiv:2402.03655",
+   "url": "https://arxiv.org/abs/2402.03655",
+   "what_it_does": "Learns the top-L singular functions/values of a linear operator with neural networks through an unconstrained objective based on the low-rank-approximation (Eckart-Young) characterisation of the truncated SVD, plus a 'nesting' technique that trains the L-truncations jointly so that singular functions come out in the correct order with orthogonality enforced implicitly.",
+   "relevance_to_goal": "Addresses head-on the gauge problem recorded in [REPRESENTATIONS TRIED](a): factor coefficients of SVD-truncated far-field blocks are not continuous labels. The Eckart-Young-type loss is invariant to the factor gauge (it compares the block product to the truth), and nesting resolves ordering/rotation ambiguities in repeated singular subspaces.",
+   "transferable_idea": "Supervise far-field blocks with a nested low-rank (Eckart-Young) loss on the block PRODUCT, not on U,V,Sigma, so the network's factor parameterisation can be free while the loss is gauge-invariant and rank-ordered.",
+   "confidence_real": "verified"
+  }
+ ],
+ "synthesis": "What the field already knows and we should use. (1) Existence: inverses of FEM elliptic operators with L-infinity coefficients, and their LU/Cholesky factors, admit H-matrix approximations with exponential convergence in the per-level rank, with ranks independent of mesh size (Bebendorf-Hackbusch 2003; Faustmann-Melenk-Praetorius 2015). Nested-dissection Schur complements (the object we output) have off-diagonal blocks of bounded rank in 2D and slowly growing rank in 3D (Chandrasekaran et al. 2010), and separator fronts are compressible by skeletonization/ID (HIF-DE, Ho-Ying 2016). Operators between SEPARATED interfaces have smooth kernels and are extremely low rank, while the singular, order +1 part of a DtN/Schur map is concentrated on the same-interface diagonal blocks (Dirckx-Yesypenko-Martinsson 2025; Ling-Ying-Zhou 2026). This matches the measured structure of S (99.87% off-diagonal energy within distance 0.05; far-field blocks top-8 >= 99.5%) and justifies the fixed-rank-per-level H/HSS factor as the target representation, with the caveat that the theory's constants degrade with the material/void contrast that produces our 1e-6 soft modes. (2) Neural analogues exist for every classical hierarchical format: H-matrix nets and H2/nested-basis nets (Fan et al. 2019), BCR-Net (nonstandard wavelet form, Fan-Orozco Bohorquez-Ying JCP 2019, search-result-only), Butterfly-Net (Li-Cheng-Lu CiCP 2020, search-result-only), multipole GNO with inducing points (Li et al. 2020), hierarchical attention (HANO, Liu-Xu-Cao-Zhang 2022/24; Cao 2021 shows linear attention is a Petrov-Galerkin low-rank kernel), Neural FMM (McAllister Fognini-Betcke-Cox arXiv:2509.20591, verified abstract, few details), and Neural-HSS (2026) whose HSS layer has fixed per-level ranks and an exact-recovery theorem with sample count linear in the total rank. All of these learn the SOLUTION (inverse) map from a coefficient/source field with averaged L2-type losses; none outputs an SPD operator or factor for assembly. (3) Learning a compressed operator from actions is established and gauge-free: Feliu-Faba-Fan-Ying 2020 learn parameter -> compressed operator coefficients from a few matvecs; Boulle-Townsend 2023 give sample-complexity bounds via hierarchical low rank and randomized SVD, and make explicit that guarantees hold only in directions the probe distribution excites (Gamma_eps). Gauge-invariant low-rank supervision (Eckart-Young loss on products, nesting for ordering; Ryu et al. 2024) and ID/skeleton parameterisations (HIF) remove the sign/rotation non-uniqueness that makes SVD factor coefficients discontinuous labels. (4) Loss theory: the KL-optimal sparse inverse-Cholesky factor for any prescribed pattern has a closed form (Schafer-Katzfuss-Owhadi 2021) and is accurate with a coarse-to-fine multiscale pattern, not a spatial band; this is a ready-made oracle floor for multiscale sparse factors of A, but its guarantee is in the averaged KL divergence, which the project has shown misleads by ~100x on eps_op. (5) Negative result: message-passing/local architectures cannot approximate sparse triangular factors that need non-local dependencies (Trifonov-Muravleva-Oseledets 2025), consistent with the project's local-CNN plateau and the near/far cancellation in factor entries; the field's answer is to give the network the hierarchical information flow of the factorisation algorithm itself. Concretely, the literature supports a design: geometry -> per-level local predictions of (a) dense near-field leaves and (b) fixed-rank far-field blocks parameterised as ID skeletons or linear-attention products with shared nested bases, trained on whitened/soft-mode-enriched actions with a gauge-invariant product loss plus an extreme-mode term, optionally as a correction on top of a cheap deterministic base operator (collar + coarse core).",
+ "gaps": "Nobody has done: (1) geometry -> H/HSS-structured SPD operator or factor with a worst-direction (spectral, eps_op-type) acceptance criterion; every neural hierarchical method above targets the inverse/solution map and reports averaged errors, and Neural-HSS, the only fixed-rank HSS learner with an exactness theorem, learns one fixed operator, not a geometry-conditioned family. (2) Rank/approximability theory for cut-cell, ghost-penalty-stabilised operators with near-void material: Bebendorf-Hackbusch/Faustmann constants depend on the ellipticity contrast and no result covers the regime where 188 physical modes sit at 1e-6 of the mean stiffness and near/far field cancel by 1e3-1e4; the project's measured 15%-of-dense cost at +-3% has no theoretical counterpart. (3) Learning with probe distributions enriched in the deciding directions: Boulle-Townsend expose the Gamma_eps data-quality factor but no operator-learning work chooses probes from the target's soft eigenvectors or uses a max-mode (Lanczos on the whitened residual) loss; the one extreme-mode experiment in the project (mu_max 15 -> 5, mu_min worse) has no literature guidance. (4) Gauge-fixed hierarchical parameterisation for learning: ID/skeleton (HIF) and nested Eckart-Young losses (Ryu et al.) exist separately, but no one has combined a fixed geometric skeleton set with a network predicting interpolation coefficients across geometries, nor studied continuity of such labels under geometry perturbation. (5) Label regularity: no operator-learning paper addresses teachers whose operator is discontinuous in the geometry parameter (GP classifier flips move mu_max to 1.25-1.6 for 1e-4 to 1e-12 perturbations) while task-level responses are smooth; the principal-part/residual decomposition (Ling-Ying-Zhou) is the closest idea but assumes smooth boundaries and a single analytic principal part. (6) Multiscale-pattern oracle: the closed-form KL-optimal sparse factor has never been evaluated with a worst-direction metric on an elliptic Schur complement, so it is unknown whether any coarse-to-fine sparse factor (as opposed to a spatial band, which fails) can pass +-10% at low storage. (7) Deployment coupling: no work compares 'use the learned structured operator directly' versus 'use it as a hierarchical preconditioner with iterative refinement' in terms of the accuracy gate each requires, which is exactly the project's open decision (A vs B)."
+}

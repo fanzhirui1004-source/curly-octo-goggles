@@ -1,0 +1,205 @@
+{
+ "angle": "CutFEM / immersed / unfitted finite elements: small-cut-cell problem, ghost penalty, AgFEM/discrete extension, shape/geometry sensitivity and continuity of the discrete operator w.r.t. geometry, discontinuities from active-set changes, shape derivatives in CutFEM/XFEM, regularised/smooth alternatives (FCM-type volumetric stabilisation, phi-FEM, shifted boundary, agglomeration, weighted/partial redistribution), unfitted Schur complements/BDDC, and geometry-parametrised ROMs for cut cells.",
+ "papers": [
+  {
+   "title": "Shape optimization using the cut finite element method",
+   "authors": "Erik Burman, Daniel Elfverson, Peter Hansbo, Mats G. Larson, Karl Larsson",
+   "year": "2018 (arXiv 2016)",
+   "venue_or_arxiv": "Computer Methods in Applied Mechanics and Engineering 328, 242-261; arXiv:1611.05673",
+   "url": "https://arxiv.org/abs/1611.05673",
+   "what_it_does": "Level-set shape optimisation of linear elasticity on a fixed background mesh with CutFEM; ghost-penalty stabilisation near cut elements; shape derivative computed in volume form; level set advected by a regularised descent velocity so no remeshing is needed.",
+   "relevance_to_goal": "This is the canonical setting of our teacher (fixed grid, GP-stabilised elasticity, geometry as level set). It establishes that the shape derivative of a FUNCTIONAL is well-behaved for descent even though the underlying discrete operator changes its active set as the level set moves; the paper does not analyse the operator's own sensitivity, which is exactly the quantity we measured to be unstable [GEOMETRY SENSITIVITY].",
+   "transferable_idea": "Use the volume-form (distributed) shape derivative of compliance with the CutFEM adjoint as the task-level sensitivity contract: it is the quantity TO consumes and it is smooth on the same geometry paths where our operator derivative is not (our 0.023% vs 87% observation).",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Neural Level Set Topology Optimization Using Unfitted Finite Elements",
+   "authors": "Connor N. Mallon, Aaron W. Thornton, Matthew R. Hill, Santiago Badia",
+   "year": "2023 (rev. 2024)",
+   "venue_or_arxiv": "arXiv:2303.13672",
+   "url": "https://arxiv.org/abs/2303.13672",
+   "what_it_does": "CNN parameterisation of a level set coupled to an unfitted FE solver in Gridap, differentiated end-to-end (forward-mode duals through cell integrals, adjoint for the PDE, reverse mode through the network). Explicitly shows that the CutFEM ghost-penalty term is discontinuous in the level set: when the zero iso-surface crosses a mesh node the ghost skeleton gains new faces and lim_{eps->0}[j_Gamma_eps - j_Gamma] != 0. They therefore switch to a fictitious-cell (FCM-type, volumetric) stabilisation applied everywhere outside the physical domain 'because it is differentiable with respect to the level set parameterization'.",
+   "relevance_to_goal": "Direct literature confirmation of our measured discontinuity (a 1e-4 relative thickness change activating a 5.6e-15-volume cell plus 3 GP faces and moving one mode by 59.8%). It also names the only published continuous-in-geometry stabilisation used in practice for unfitted level-set TO: penalise the whole fictitious region rather than a cut-dependent face skeleton.",
+   "transferable_idea": "If labels are regenerated (open decision 4), replace the face-skeleton GP by a volumetric fictitious-domain stiffness (alpha-scaled material in the void, or a GP whose face weights are smooth functions of the neighbouring cells' volume fractions) so the teacher map geometry->S is continuous; then a network can in principle interpolate between the 33 seats.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Level-set topology optimisation with unfitted finite elements and automatic shape differentiation",
+   "authors": "Zachary J. Wegert, Jordi Manyer, Connor Mallon, Santiago Badia, Vivien J. Challis",
+   "year": "2025",
+   "venue_or_arxiv": "Computer Methods in Applied Mechanics and Engineering (2025); arXiv:2504.09748",
+   "url": "https://arxiv.org/abs/2504.09748",
+   "what_it_does": "Automatic shape differentiation for unfitted (CutFEM with ghost penalty) discretisations in GridapTopOpt; recovers analytic shape derivatives to machine precision independent of mesh size and symmetric shape Hessians. Their theory needs Assumption 2: 'the boundary does not intersect any mesh points', which is what guarantees agreement of the one-sided semiderivatives t->0+ and t->0-. The GP term appears in the weak form but its shape derivative is not developed.",
+   "relevance_to_goal": "States precisely where the unfitted operator is non-differentiable in geometry (iso-surface through mesh nodes) and that away from those events the derivative is exact and computable. Our TPMS unit cells with n=32 and 7,478 active cells will cross such events continuously along any TO path, so the teacher is piecewise smooth with a dense set of kinks; the network must either learn a piecewise map or the labels must be smoothed.",
+   "transferable_idea": "Measure, for each seat, the distance in thickness-parameter space to the nearest node-crossing event and the size of the induced operator jump; this gives an empirical 'kink density' that bounds what any smooth network can achieve on the eps_op gate and justifies a task-level contract instead.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Shape calculus for fitted and unfitted discretizations: domain transformations vs. boundary-face dilations",
+   "authors": "Martin Berggren",
+   "year": "2023 (arXiv 2022)",
+   "venue_or_arxiv": "arXiv:2210.10411 (published in Shape Optimization, Homogenization and Control volume / journal version 2023)",
+   "url": "https://arxiv.org/abs/2210.10411",
+   "what_it_does": "Derives shape derivatives for fixed-mesh (CutFEM/fictitious-domain) discretisations through localised dilation of boundary faces via level-set perturbations. Shows the resulting derivative is purely boundary-supported and only element-wise smooth, so 'only one-sided differentiability can be guaranteed in general', and that it differs from the body-fitted domain-transformation derivative, which carries interior information.",
+   "relevance_to_goal": "Gives the theoretical reason the discrete CutFEM operator is only one-sided differentiable in geometry: the cut-dependent integration domain changes topology (faces appear/disappear). This is the mathematical statement behind our unstable central differences of the full operator.",
+   "transferable_idea": "Use one-sided (forward/backward) finite differences of the operator rather than central ones when building any geometry-sensitivity dataset or Lipschitz estimate; and split the geometry-to-operator map into a smooth part (integrand changes on fixed cut topology) and a jump part (active-set changes), which is the decomposition a network could exploit.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "On shape sensitivities with heaviside-enriched XFEM",
+   "authors": "Ashesh Sharma, Hernan Villanueva, Kurt Maute",
+   "year": "2017",
+   "venue_or_arxiv": "Structural and Multidisciplinary Optimization 55(2), 385-408, doi:10.1007/s00158-016-1640-x",
+   "url": "https://link.springer.com/article/10.1007/s00158-016-1640-x",
+   "what_it_does": "Studies adjoint shape sensitivities in Heaviside-enriched XFEM stabilised by face-oriented ghost penalty, on 2D diffusion and 3D flow. Reports that XFEM shape sensitivities are less smooth than body-fitted ones because the design geometry is discretised on a background mesh, and analyses the contribution of the enrichment/ghost terms.",
+   "relevance_to_goal": "Independent (Maute group, engineering TO) confirmation that GP-stabilised unfitted sensitivities are mesh-dependent and non-smooth in the design variables, in the same Nitsche + face-GP setting as our teacher. Their remedy is at the objective level (regularised level set, smoothing), never at the operator level.",
+   "transferable_idea": "Regularise the level set/design field (their later 'regularization scheme for explicit level-set XFEM TO') so that node-crossing events are traversed slowly; equivalently, for our lattice, restrict the admissible thickness parameterisation so that per-step geometry changes stay inside one cut topology and validate module accuracy per topology class.",
+   "confidence_real": "search-result-only"
+  },
+  {
+   "title": "Comparison of Shape Derivatives using CutFEM for Ill-posed Bernoulli Free Boundary Problem",
+   "authors": "Erik Burman, Cuiyu He, Mats G. Larson",
+   "year": "2020",
+   "venue_or_arxiv": "arXiv:2008.09668 (J. Sci. Comput. 2021)",
+   "url": "https://arxiv.org/abs/2008.09668",
+   "what_it_does": "Compares three ways of getting a descent direction with CutFEM: optimise-then-discretise, discretise-then-optimise (differentiating the CutFEM functional including stabilisation), and a boundary-value-correction variant that perturbs a distance parameter in the weak form instead of the domain; all three give similar results for the Bernoulli free-boundary problem.",
+   "relevance_to_goal": "Shows that at the level of functionals, the CutFEM discrete shape derivative (with stabilisation) and the continuous one agree well in practice; supports our observation that task-level derivatives are stable even when operator-level derivatives are not.",
+   "transferable_idea": "Boundary-value correction: keep the cut topology fixed and encode small geometry changes as a Taylor/distance correction in the Nitsche boundary terms. For the surrogate this suggests predicting S for a fixed reference cut topology per seat plus a smooth correction in the corner thicknesses, rather than a single global map.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "The aggregated unfitted finite element method for elliptic problems",
+   "authors": "Santiago Badia, Francesc Verdugo, Alberto F. Martín",
+   "year": "2018 (arXiv 2017)",
+   "venue_or_arxiv": "Computer Methods in Applied Mechanics and Engineering 336, 533-553; arXiv:1709.09122",
+   "url": "https://arxiv.org/abs/1709.09122",
+   "what_it_does": "AgFEM: cells are classified as well-posed or ill-posed by a volume-fraction threshold; ill-posed cells are aggregated to a well-posed root and their DOFs constrained by extrapolation of the root's polynomial. Condition number scales as for body-fitted FE independent of cut size; optimal convergence; conforming Lagrangian spaces.",
+   "relevance_to_goal": "The 'strong' alternative to GP that removes small-cut modes by construction; our prototype 'internal extension GP' is a weak version of exactly this. Note the classification threshold is a hard switch, so AgFEM is also discontinuous in geometry at threshold crossings (our observed 1e-12 threshold flip -> mu_max 1.25 is the same phenomenon).",
+   "transferable_idea": "Build the condensed operator on the AgFEM-constrained space: constrained DOFs are eliminated exactly (they are linear combinations of root DOFs), so the trace space shrinks and the soft small-cut modes disappear from S; the remaining discontinuity is only at aggregation-threshold crossings, which can be logged and made rare by hysteresis.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Robust high-order unfitted finite elements by interpolation-based discrete extension",
+   "authors": "Santiago Badia, Eric Neiva, Francesc Verdugo",
+   "year": "2022",
+   "venue_or_arxiv": "Computers & Mathematics with Applications 127, 105-126; arXiv:2201.06632",
+   "url": "https://arxiv.org/abs/2201.06632",
+   "what_it_does": "Replaces the extrapolation-based extension of AgFEM by an interpolation-based discrete extension for orders > 2, so stability constants grow polynomially rather than exponentially in p; robust with respect to the location of the boundary within the cell.",
+   "relevance_to_goal": "Our teacher is Q2; if labels are regenerated with an aggregation-type stabilisation, this is the variant with controlled constants at p=2-3. Also relevant to the spread of soft-mode stiffness across geometries: extension operators bound the ratio between the constrained and root DOF energies uniformly in the cut.",
+   "transferable_idea": "Use the discrete extension operator E (root DOFs -> cut DOFs) as a fixed, geometry-dependent but cheap-to-compute linear map, and let the network predict only the operator on the root/well-posed DOF space; S_full = E^T S_root E is then guaranteed to inherit conditioning bounds.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Linking ghost penalty and aggregated unfitted methods",
+   "authors": "Santiago Badia, Eric Neiva, Francesc Verdugo",
+   "year": "2021",
+   "venue_or_arxiv": "Computer Methods in Applied Mechanics and Engineering 388 (2022); arXiv:2106.13728",
+   "url": "https://arxiv.org/abs/2106.13728",
+   "what_it_does": "Shows classical GP locks as the penalty grows, and that a GP that penalises the distance between the solution and its aggregated extension is locking-free and converges to AgFEM as penalty -> infinity. Includes numerical comparison of errors, condition numbers and sensitivity across geometries and cut configurations.",
+   "relevance_to_goal": "Already in the repo. New relevance here: it gives a one-parameter family (penalty gamma) interpolating continuously between our current GP teacher and AgFEM, so a teacher can be moved toward aggregation without changing its discontinuity structure abruptly; and it documents the locking mechanism that would hit us if we tried to 'smooth the spectrum' by raising gamma from 1e-4.",
+   "transferable_idea": "Sweep gamma on one seat and record eps_op between neighbouring geometries versus gamma; the locking-free (extension-based) GP should reduce the small-cut-fragment soft modes without stiffening the 188 physical thin-material modes.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "On the design of locking free ghost penalty stabilization and the relation to CutFEM with discrete extension",
+   "authors": "Erik Burman, Peter Hansbo, Mats G. Larson",
+   "year": "2022",
+   "venue_or_arxiv": "arXiv:2205.01340 (CMAME 2023)",
+   "url": "https://arxiv.org/abs/2205.01340",
+   "what_it_does": "Generalises GP in (1) what is stabilised (functionals such as DOF values) and (2) which elements are connected, showing the relation to discrete-extension spaces and designing locking-free variants.",
+   "relevance_to_goal": "Already in the repo. Relevant because it frees the choice of which elements are connected: connections can be chosen by a smooth rule (e.g. weights decaying with volume fraction) rather than the binary 'face adjacent to a cut cell' rule that produces our 3-new-faces jumps.",
+   "transferable_idea": "Design the stabilised functional as DOF-value differences between a cut cell and its strong root, weighted by a C^1 function of the cut cell's volume fraction that vanishes when the fraction reaches a threshold; this makes the GP matrix continuous in geometry while retaining the locking-free analysis.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Stability and conditioning of immersed finite element methods: analysis and remedies",
+   "authors": "Frits de Prenter, Clemens V. Verhoosel, E. Harald van Brummelen, Mats G. Larson, Santiago Badia",
+   "year": "2023 (arXiv 2022)",
+   "venue_or_arxiv": "Archives of Computational Methods in Engineering 30, 3187-3232; arXiv:2208.08538",
+   "url": "https://arxiv.org/abs/2208.08538",
+   "what_it_does": "Review separating stability problems from conditioning problems for small cut elements, and surveying remedies: Schwarz/additive preconditioning, element aggregation, ghost penalty, basis-function removal, plus quadrature and weak BC enforcement.",
+   "relevance_to_goal": "Single reference for the taxonomy of remedies and their scaling laws (which eigenvalues go to zero as the cut fraction eta -> 0, and how fast) — the analytical version of our per-mode storage-floor and 'small-cut fragment mode' diagnostics.",
+   "transferable_idea": "Their eigenvalue-scaling analysis (lambda ~ eta^{2p+1-2/d}-type dependence on cut fraction for unstabilised cells) can be used to predict which background cells will produce soft trace modes from the analytic level set alone, i.e. as a per-cell input feature or as a mask for a mode-aware loss.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Robust and scalable domain decomposition solvers for unfitted finite element methods",
+   "authors": "Santiago Badia, Francesc Verdugo",
+   "year": "2018 (arXiv 2017)",
+   "venue_or_arxiv": "Journal of Computational and Applied Mathematics 344, 740-759; arXiv:1703.06323",
+   "url": "https://arxiv.org/abs/1703.06323",
+   "what_it_does": "BDDC preconditioners for unfitted grids; shows the standard interface (Schur-complement) preconditioner behaves very poorly because the polylogarithmic bound is not robust to how the surface cuts the background mesh; remedies are stiffness-based weighting of interface DOFs and modified coarse DOFs (edge subdivision).",
+   "relevance_to_goal": "Directly about the interface Schur complement of unfitted subdomains, our deliverable. The cut-sensitivity of the trace operator's conditioning is exactly why the module gate is so tight; stiffness-based weighting is the DD-community analogue of the compliance column scaling 1/sqrt((A^-1)_jj) that made our Newton fit converge.",
+   "transferable_idea": "Formulate the learned operator in stiffness-weighted (diagonally scaled) trace coordinates and, for deployment mode B, use the learned S-hat as the local block in a BDDC/Schur preconditioner, where a 30x looser accuracy is acceptable and the coarse space absorbs the few worst modes.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A ROM-based BDDC solver for unfitted p-FEM level-set-based two-dimensional lattice structures",
+   "authors": "Gonzalo Bonilla Moreno, Giuliano Guarino, Pablo Antolin",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2604.09113",
+   "url": "https://arxiv.org/abs/2604.09113",
+   "what_it_does": "Each level-set-defined lattice cell is one BDDC subdomain on an unfitted p-FEM background; cell stiffness matrices are assembled fast by a matrix-DEIM reduced model trained offline that separates the geometric-mapping contribution from the trimmed-domain contribution; the global Schur system is solved by PCG-BDDC with modest iteration growth.",
+   "relevance_to_goal": "Closest existing 'geometry -> cell operator' surrogate for unfitted lattice cells: same decomposition (cell = subdomain, interface Schur complement assembled), but the surrogate is an affine/interpolatory MDEIM of the cut-quadrature integrals, not a learned map, in 2D, and validated on iterative-solver behaviour rather than a worst-mode operator metric.",
+   "transferable_idea": "Use MDEIM-style affine decomposition of the cell stiffness over the geometry parameters (thickness at corners, cut plane) as an intermediate representation: the network predicts a few hundred interpolation coefficients of K(geometry), and S follows by exact condensation of the reduced K; this preserves SPD structure and makes the geometry dependence explicit.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Projection-based reduced order models for a cut finite element method in parametrized domains",
+   "authors": "Efthymios N. Karatzas, Francesco Ballarin, Gianluigi Rozza",
+   "year": "2020 (arXiv 2019)",
+   "venue_or_arxiv": "Computers & Mathematics with Applications 79(3), 833-851; arXiv:1901.03846",
+   "url": "https://arxiv.org/abs/1901.03846",
+   "what_it_does": "POD-Galerkin ROM built on CutFEM snapshots for geometrically parametrised domains; analyses how embedded solutions must be extended and transported to a common background so that snapshots with different active DOF sets can be compared; avoids reference-domain maps. Follow-ups (arXiv:2301.12401, Karatzas-Stabile-Ballarin-Rozza 2023) do the same with SBM and CutFEM for level-set parametrised geometry.",
+   "relevance_to_goal": "Addresses the data problem we face: labels for different geometries live on different active DOF sets and cut topologies. Their answer (extend to the full background space and learn there) is what our fixed 65^3 grid representation already does implicitly; they note the extension choice matters for ROM accuracy.",
+   "transferable_idea": "Define all trace operators on the FULL fixed-grid trace space (inactive nodes carry a canonical extension, e.g. the AgFEM/ghost extension) so that S-hat across geometries is a continuous field over the same index set; evaluate errors only on the physical subspace.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Concurrent multiscale analysis without meshing: Microscale representation with CutFEM and micro/macro model blending",
+   "authors": "Ehsan Mikaeili, Susanne Claus, Pierre Kerfriden",
+   "year": "2022 (arXiv 2021)",
+   "venue_or_arxiv": "Computer Methods in Applied Mechanics and Engineering 393, 114807; arXiv:2111.03199",
+   "url": "https://arxiv.org/abs/2111.03199",
+   "what_it_does": "One background mesh carries a CutFEM-resolved microscale in regions of interest and a homogenised macro model elsewhere, coupled through a smooth blending function in a transition region; ghost penalty on normal-gradient jumps stabilises both the cut elements and the blending zone, giving mesh-independent responses in 2D/3D elasticity.",
+   "relevance_to_goal": "Supports the collar + coarse core idea (e): fine cut cells only where the boundary needs them, blended smoothly into a coarse/homogenised interior, with GP handling the transition. Their smooth blending is a continuous (in geometry) coupling, unlike our fixed collar which the Loewner bound proved cannot pass +-10%.",
+   "transferable_idea": "Replace the fixed one-layer collar by a smooth blending weight w(x) between fine cut stiffness and coarse learned stiffness; learn both the coarse tensors and the blending width, which removes the hard collar boundary that produced the mu_max >= 1.111 lower bound.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "CutIGA with basis function removal",
+   "authors": "Daniel Elfverson, Mats G. Larson, Karl Larsson",
+   "year": "2018",
+   "venue_or_arxiv": "Advanced Modeling and Simulation in Engineering Sciences 5:6; arXiv:1801.00673",
+   "url": "https://arxiv.org/abs/1801.00673",
+   "what_it_does": "Stabilises cut isogeometric analysis by removing basis functions whose support has small intersection with the domain, with criteria on the intersection size that keep optimal energy-norm convergence; smoother B-spline bases give better bounds than Lagrange elements.",
+   "relevance_to_goal": "Another hard-threshold remedy: it changes the DOF set discretely as geometry moves, hence the same active-set discontinuity as GP faces and AgFEM aggregation. Useful as evidence that every standard remedy is threshold-based.",
+   "transferable_idea": "If a threshold-based remedy is kept, adopt smoother (B-spline/Q2-serendipity) bases: the paper shows the removal threshold can be much larger for higher-regularity bases, so far fewer near-threshold events occur along a TO path.",
+   "confidence_real": "search-result-only"
+  },
+  {
+   "title": "phi-FEM: a finite element method on domains defined by level-sets",
+   "authors": "Michel Duprez, Alexei Lozinski",
+   "year": "2020 (arXiv 2019)",
+   "venue_or_arxiv": "ESAIM: M2AN 54(2), 2020; arXiv:1903.03703",
+   "url": "https://arxiv.org/abs/1903.03703",
+   "what_it_does": "Seeks the solution as phi_h * w_h (product with the FE level set) so Dirichlet conditions are exact without cut-cell quadrature or boundary integrals; adds stabilisation on cells cut by the boundary; proves optimal H1 convergence and a condition number of body-fitted order.",
+   "relevance_to_goal": "A 'smooth alternative' in the sense that the geometry enters through the analytic level set multiplying the basis (continuous in phi), but its stabilisation is still applied on the set of cut cells, so the operator retains active-set jumps; conditioning is good. Our geometry is available as analytic fields, which phi-FEM consumes directly.",
+   "transferable_idea": "Let geometry enter the operator through a multiplicative analytic field (as phi-FEM does) rather than through integration-domain changes: e.g. S-hat = T(phi)^T S_0 T(phi) where T(phi) is a cheap analytic, geometry-continuous map and S_0 is learned; the continuous part of the geometry dependence is then exact.",
+   "confidence_real": "search-result-only"
+  },
+  {
+   "title": "Level-set shape optimization via polytopic discontinuous Galerkin methods",
+   "authors": "Raphael S. Fernandes, Emmanuil H. Georgoulis, Alberto Paganini",
+   "year": "2024 (rev. 2025)",
+   "venue_or_arxiv": "arXiv:2408.13206",
+   "url": "https://arxiv.org/abs/2408.13206",
+   "what_it_does": "Shape optimisation where the zero level set is resolved exactly by cutting a simplicial mesh into polytopic elements handled by polytopic DG (agglomeration), with RK-DG level-set updates and modified shape-derivative formulas consistent with the DG discretisation.",
+   "relevance_to_goal": "Agglomeration-based alternative to GP: cut fragments are absorbed into polytopal elements with no penalty parameter. As with AgFEM, the agglomeration map is a discrete choice, so continuity in geometry is not addressed; but the shape derivative is derived consistently for the agglomerated discretisation.",
+   "transferable_idea": "Consistent discrete shape derivative on an agglomerated discretisation: derive dS/d(geometry) for the condensed operator of the agglomerated cell within a fixed agglomeration, and treat agglomeration changes as explicit events.",
+   "confidence_real": "verified"
+  }
+ ],
+ "synthesis": "What the field already knows, and that we should use directly:\n\n1. The discontinuity we measured is a known, named property of GP-stabilised CutFEM. Mallon et al. (arXiv:2303.13672) state that when the zero iso-surface crosses a mesh node the ghost skeleton acquires new faces and the stabilisation functional has a non-zero jump; Wegert et al. (arXiv:2504.09748) need the assumption 'boundary intersects no mesh points' to get two-sided derivatives; Berggren (arXiv:2210.10411) proves that for fixed-mesh discretisations only one-sided differentiability is guaranteed in general. Our [GEOMETRY SENSITIVITY] result (59.8% stiffness jump of one mode from a 1e-4 thickness change that activated a 5.6e-15-volume cell and 3 GP faces; central differences of the operator disagreeing by 87%) is this phenomenon, not a bug. The teacher map geometry -> S is piecewise smooth with a dense set of kinks along any TO path, and the size of the kink is governed by the softest cut-fragment modes. A smooth network trained on 33 seats cannot represent this map to eps_op tolerance unless the kinks are removed at the source.\n\n2. The community has already separated 'operator smoothness' from 'functional smoothness'. Burman-He-Larson (arXiv:2008.09668) and Burman-Elfverson-Hansbo-Larson-Larsson (arXiv:1611.05673, 1809.07503) run level-set shape/topology optimisation successfully with GP-CutFEM because compliance-type shape derivatives, computed by the adjoint, are boundary-supported and insensitive to the cut-fragment modes. Sharma-Villanueva-Maute (SMO 2017) document the residual mesh-dependence and non-smoothness of XFEM+GP sensitivities and cure it at the design-field level (level-set regularisation), not at the operator level. This is the literature's answer to open decision (1): the accepted accuracy contract in unfitted TO is task-level (objective and its adjoint sensitivity), with the operator treated as a means. Our own 0.023% agreement of the compliance derivative on the same path where the operator derivative is unstable is fully consistent with this.\n\n3. Every standard small-cut remedy is threshold-based and therefore geometry-discontinuous: GP face selection (Burman et al.), AgFEM aggregation by volume-fraction threshold (arXiv:1709.09122, 2201.06632), basis-function removal (arXiv:1801.00673), polytopic agglomeration (arXiv:2408.13206), and the shifted boundary method's surrogate-boundary selection. The only published continuous-in-geometry stabilisation actually used for differentiable unfitted TO is the fictitious-cell/FCM-type volumetric penalty applied everywhere in the void (Mallon et al.), which trades continuity for an alpha-dependent perturbation of the operator and alpha-dependent conditioning. Badia-Neiva-Verdugo (arXiv:2106.13728) and Burman-Hansbo-Larson (arXiv:2205.01340) provide the analytic tools to design GP variants with free choice of stabilised functional and element connectivity, and show that raising the classical GP parameter to 'smooth the spectrum' causes locking; extension-based (aggregation-limit) GP is locking-free. This tells us how to regenerate labels (open decision 4): keep a GP form, but make the face/aggregate weights a C^1 function of cell volume fraction (vanishing at the threshold), or adopt FCM-type volumetric stabilisation, so that the geometry -> S map becomes Lipschitz; our prototype 'internal extension GP' was on the right track but used a hard classifier, which is why a 1e-12 threshold flip moved mu_max to 1.25.\n\n4. Unfitted Schur complements are known to be cut-sensitive in conditioning: Badia-Verdugo (arXiv:1703.06323) show naive BDDC on unfitted grids fails and that stiffness-based interface weighting plus modified coarse DOFs restore robustness. Our column scaling by dof compliance, which was necessary to make the dense-factor Newton fit converge and which is predictable from local geometry (R^2 0.98), is the same stiffness weighting. de Prenter et al. (arXiv:2208.08538) give the eigenvalue-scaling laws in the cut fraction that can predict from the analytic level set which cells will spawn soft trace modes.\n\n5. Geometry-parametrised surrogates for cut cells exist but are affine/ROM, not learned, and not validated in operator norm: Karatzas-Ballarin-Rozza (arXiv:1901.03846, 2301.12401) build POD-Galerkin ROMs on CutFEM/SBM snapshots and show that the choice of extension of embedded solutions to the common background space is decisive; Bonilla Moreno-Guarino-Antolin (arXiv:2604.09113) build MDEIM surrogates of unfitted lattice-cell stiffness matrices and assemble them by BDDC on the interface Schur complement, in 2D. These fix two of our design choices: represent all cells on the full fixed-grid trace space with a canonical extension for inactive DOFs, and consider predicting an affine decomposition of K(geometry) (from which S follows by exact condensation) instead of predicting S or its factor directly. Mikaeili-Claus-Kerfriden (arXiv:2111.03199) show smooth blending between a CutFEM-resolved fine region and a coarse/homogenised model, with GP on the blend zone; this is the continuous version of our collar + coarse core (e), whose fixed hard collar is what the Loewner bound penalises.",
+ "gaps": "What nobody has done that we need:\n\n1. No paper analyses the geometry sensitivity of the CONDENSED operator (interface Schur complement) of an unfitted cell, nor of its spectrum. All shape-derivative work (Burman et al., Berggren, Wegert et al., Sharma et al.) concerns functionals; the ROM/BDDC work (Karatzas et al., Bonilla Moreno et al., Badia-Verdugo) reports solver iterations or energy-norm errors, never a worst-direction relative stiffness error like our eps_op. A Lipschitz or one-sided-derivative bound on S(geometry) in the whitened operator norm, and its dependence on the stabilisation choice (GP gamma, extension-based GP, AgFEM threshold, FCM alpha), does not exist.\n\n2. No continuous-in-geometry stabilisation with a proven conditioning bound. FCM-type volumetric penalty (Mallon et al.) is continuous but its conditioning and consistency depend on alpha; GP/AgFEM/removal/agglomeration are threshold-based. A 'soft aggregation' or volume-fraction-weighted GP whose matrix is C^1 in the level set, with coercivity and condition-number bounds uniform in the cut, is an open construction; Burman-Hansbo-Larson 2022 and Badia-Neiva-Verdugo 2021 supply the analysis framework but do not do it. This is the prerequisite for regenerating labels that a smooth network could fit.\n\n3. No learned geometry -> operator map for unfitted cells exists in 3D; the closest (MDEIM lattice cells) is 2D, affine in precomputed integrals, and does not address SPD/gauge structure of learned factors or the amplification of additive error by cond(A) that we measured (worst case 4.2e-7 relative for +-3%).\n\n4. No study quantifies the 'kink density' of a GP teacher along realistic design paths (how often node-crossing/threshold events occur per unit geometry change and how large the induced operator jump is), which is what decides whether module-level eps_op is achievable at all by any smooth surrogate, or whether the contract must be task-level with registered scope.\n\n5. No work connects stiffness-based interface weighting (Badia-Verdugo BDDC) or discrete extension operators (AgFEM) to surrogate parameterisation, i.e. predicting an operator on the well-posed/root DOF space and reconstructing the full trace operator through a geometry-determined extension E; this could remove most cut-fragment soft modes from the learning target by construction.\n\n6. Deployment mode B (learned S-hat as a BDDC-type preconditioner block with iterative refinement) has literature support for the preconditioner side but no analysis of what accuracy in S-hat is needed for a given PCG iteration count on lattice assemblies, nor whether the few worst modes can be absorbed by a small coarse space, which would loosen the module gate by the 30x we estimated."
+}
