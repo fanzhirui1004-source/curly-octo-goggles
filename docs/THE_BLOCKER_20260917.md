@@ -1,3 +1,14 @@
+> **Corrected 2026-09-17, later the same day.** The central claim here — *"nobody in this
+> workstream can drive the frozen CutFEM pipeline"* — is wrong for the label stage. I was
+> reading `full_factor_geometry.py`; the label producer is
+> `stage_cutfem_neural_a/dense_reference.py`, and its trace-compile step
+> (`data.prepare`) builds `TRACE_CACHE.npz` from the packet's own `TRACE.npz` in plain
+> numpy — no solver, no topology compile. Running it on seat 0253's packet reproduced the
+> frozen `R_UPPER.npy` **bit-for-bit** (`factor_sha256 7ee508ff…f96a453`) in 4.65 s.
+> The doc's own unblocking self-test therefore passes for the label stage. See
+> `docs/PIPELINE_UNBLOCKED_20260917.md`. The *upstream* ingest (geometry → `K` → `S`)
+> is still unrun here, so the fine-`K` floor scan and the gamma sweep remain blocked.
+
 # Four gating measurements, one blocker
 
 2026-09-17, found while executing the approved plan. This changes the priority order.

@@ -1,3 +1,10 @@
+> **Corrected 2026-09-17, later the same day.** `dS/dtau` is not unavailable. Four
+> tau-perturbed operators for seat 0328 already exist on disk at
+> `CUTFEM_FULL_FACTOR_LOCAL_GEOMETRY_20260913T2330/ANALYSIS_R1/PATH_{1..4}/R_UPPER.npy`,
+> at `eps` = -1e-3, -1e-4, +1e-4, +1e-3 (`tau_corners` scaled by `1+eps`), all admitted
+> `ADMITTED_SAME_TRACE` with the same `q`, the same order and the same quotient to
+> 2.9e-15. See `docs/PIPELINE_UNBLOCKED_20260917.md`.
+
 # The tau-sensitivity gate needs new teacher labels, and why I did not fake it
 
 2026-09-17. The user set the design variable to TPMS thickness `tau`. This records
