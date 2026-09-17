@@ -1,0 +1,166 @@
+{
+ "measured": {
+  "fine_dofs_per_cell": 231192,
+  "interface_dofs_per_cell": 12798,
+  "teacher_seconds_per_cell": [
+   39,
+   95
+  ],
+  "teacher_assembly_seconds": 0.6,
+  "dense_S_numbers": 81900801,
+  "hmat_numbers_at_gate": 8581236,
+  "hmat_numbers_at_3pct": 12229217,
+  "predict_dense_flops": 56747000000000.0,
+  "gpu_tf32_peak": 420000000000000.0,
+  "gpu_fp64_effective": 1000000000000.0
+ },
+ "assumptions": {
+  "matvec_flops_per_dof": 1000,
+  "mg_matvec_equivalents": [
+   30,
+   150
+  ],
+  "interface_iterations": [
+   20,
+   80
+  ],
+  "geometry_seconds_per_cell": [
+   0.05,
+   5.0
+  ],
+  "N_cells": [
+   100,
+   1000,
+   10000
+  ],
+  "M_iterations": [
+   100,
+   500
+  ]
+ },
+ "rows": [
+  {
+   "N": 100,
+   "label": "predicted dense S",
+   "emit_seconds": 13.511190476190476,
+   "storage_GiB": 61.020851880311966,
+   "matvec_seconds": 0.0163801602,
+   "solve": [
+    13.838793680190477,
+    14.821603292190476
+   ]
+  },
+  {
+   "N": 100,
+   "label": "predicted H-matrix S @0.15",
+   "emit_seconds": 1.415648109682625,
+   "storage_GiB": 6.393519043922424,
+   "matvec_seconds": 0.0017162472,
+   "solve": [
+    1.449973053682625,
+    1.552947885682625
+   ]
+  },
+  {
+   "N": 100,
+   "label": "fine matrix-free",
+   "dofs": 23119200,
+   "matvec_seconds": 0.0231192,
+   "solve": [
+    0.693576,
+    3.46788
+   ],
+   "memory_GiB": 1.7225146293640137,
+   "geometry": [
+    5.0,
+    500.0
+   ],
+   "total": [
+    5.693576,
+    503.46788
+   ]
+  },
+  {
+   "N": 1000,
+   "label": "predicted dense S",
+   "emit_seconds": 135.11190476190475,
+   "storage_GiB": 610.2085188031197,
+   "matvec_seconds": 0.163801602,
+   "solve": [
+    138.38793680190474,
+    148.21603292190474
+   ]
+  },
+  {
+   "N": 1000,
+   "label": "predicted H-matrix S @0.15",
+   "emit_seconds": 14.15648109682625,
+   "storage_GiB": 63.93519043922424,
+   "matvec_seconds": 0.017162472,
+   "solve": [
+    14.499730536826249,
+    15.52947885682625
+   ]
+  },
+  {
+   "N": 1000,
+   "label": "fine matrix-free",
+   "dofs": 231192000,
+   "matvec_seconds": 0.231192,
+   "solve": [
+    6.93576,
+    34.6788
+   ],
+   "memory_GiB": 17.225146293640137,
+   "geometry": [
+    50.0,
+    5000.0
+   ],
+   "total": [
+    56.93576,
+    5034.6788
+   ]
+  },
+  {
+   "N": 10000,
+   "label": "predicted dense S",
+   "emit_seconds": 1351.1190476190477,
+   "storage_GiB": 6102.085188031197,
+   "matvec_seconds": 1.63801602,
+   "solve": [
+    1383.8793680190477,
+    1482.1603292190478
+   ]
+  },
+  {
+   "N": 10000,
+   "label": "predicted H-matrix S @0.15",
+   "emit_seconds": 141.5648109682625,
+   "storage_GiB": 639.3519043922424,
+   "matvec_seconds": 0.17162472,
+   "solve": [
+    144.9973053682625,
+    155.2947885682625
+   ]
+  },
+  {
+   "N": 10000,
+   "label": "fine matrix-free",
+   "dofs": 2311920000,
+   "matvec_seconds": 2.31192,
+   "solve": [
+    69.3576,
+    346.788
+   ],
+   "memory_GiB": 172.25146293640137,
+   "geometry": [
+    500.0,
+    50000.0
+   ],
+   "total": [
+    569.3576,
+    50346.788
+   ]
+  }
+ ]
+}
