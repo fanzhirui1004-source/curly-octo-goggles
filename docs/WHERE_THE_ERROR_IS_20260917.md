@@ -118,21 +118,40 @@ magnitude, distributed over essentially every off-diagonal entry, with no
 concentrated sub-block and no coherence pathology to blame. That is not a shape-of-
 loss problem and not a training-budget problem.
 
-It is also independently disqualified on cost. Codex's own measurement: 5.67e13
-trunk FLOP and ~1.9-2.07 s per cell, of which geometry encoding is 0.031 s. At the
-measured emission rate of 3.97e7 numbers/s:
+**On cost the picture is different, and an earlier draft of this document
+overstated it.** The bound is FLOP-limited, not implementation-limited. Codex's own
+speed audit gives 5.67e13 trunk FLOP per cell (6.21 MFLOP per emitted 3x3 block):
 
-| representation | numbers per cell | time |
+| | FLOP/s | ms per cell |
 |---|---|---|
-| complete factor, d = 12792 | 8.18e7 | 2060 ms |
-| complete factor, d = 25932 | 3.36e8 | 8460 ms |
-| H-matrix at 15% of dense (**proved to pass +-3%**) | 1.23e7 | 309 ms |
-| per-element field, 32^3 | 3.28e4 | **0.82 ms** |
+| measured, Codex (TF32 off) | 2.74e13 | 2070 |
+| RTX 5090 fp32 peak | 1.05e14 | 540 |
+| RTX 5090 TF32 tensor peak | 4.20e14 | **135** |
 
-The complete factor is ~1900x from the millisecond target **at perfect accuracy**,
-and cannot be trained out of that. Only an O(1e4-1e5)-number representation is
-admissible on cost, and of the three that have been measured, only the local field
-route is.
+So the complete-factor decode can in principle reach ~135 ms, which is a **236x
+speedup over the 31.85 s teacher** - real, and not to be dismissed. It is 135x from
+a literal 1 ms, not the ~1900x an implementation-bound reading suggests. Whether
+that matters is a question about the target, not a disqualification.
+
+What is a disqualification is section 4: the accuracy shortfall is ~1e4 and it is
+not a cost, budget, or coherence problem.
+
+For reference, the same FLOP bound applied to the other representations
+(seat 0253, at TF32 peak):
+
+| representation | numbers | ms at peak | gate reached |
+|---|---|---|---|
+| complete factor | 8.22e7 | 135 | 264 (network), 0 (teacher) |
+| H-matrix at 15% of dense | 1.22e7 | 20 | **2.6e-2** (compression of the teacher) |
+| collar core material | 2.3e4 | 0.04 | **0.15** (fit to one seat) |
+
+The last row's 0.04 ms is only the cost of emitting the parameters. The collar route
+still has to **condense** at inference: measured at 0.27x the teacher's dofs, 0.076x
+its factorisation and 0.105x one right-hand-side application. Per cell that is
+seconds, not milliseconds. Its cost advantage is architectural - assemble the
+reduced models of all cells into one global reduced system and never form a per-cell
+S at all - which is a different contract from the one this project has been
+measuring against, and one of the open user decisions.
 
 ## 7. How few factor entries could represent S at all? Not few enough
 
