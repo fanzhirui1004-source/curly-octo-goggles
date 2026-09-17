@@ -54,10 +54,8 @@ edit(run, """        rows=selected_rows(args.manifest,args.seats,args.known_328)
 edit(run, """            tick=sync();sample=samples[(step-1)%len(samples)];ctx=sample['context'];d=sample['d']""",
 """            tick=sync();sample=train[(step-1)%len(train)];ctx=sample['context'];d=sample['d']""")
 
-edit(run, """        manifest_sha256=sha256(args.manifest),checkpoint_every=64,seed=args.seed,
-        evaluated_seats='all training seats' if args.eval_seats is None else args.eval_seats,""",
-"""        manifest_sha256=sha256(args.manifest),checkpoint_every=64,seed=args.seed,
-        evaluated_seats='all prepared seats' if args.eval_seats is None else args.eval_seats,
+edit(run, """        evaluated_seats='all prepared seats' if args.eval_seats is None else args.eval_seats,""",
+"""        evaluated_seats='all prepared seats' if args.eval_seats is None else args.eval_seats,
         presented_seats='all prepared seats' if args.train_seats is None else args.train_seats,
         calibrate_pairs=args.calibrate_pairs,""")
 
