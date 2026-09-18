@@ -296,7 +296,7 @@ def response_term(model, enc, ctx, conditioning, bank, load_index, rows, g, Q, d
     r = np.repeat(rows, m); c = np.tile(members, R)
     lo = np.minimum(r, c); hi = np.maximum(r, c); swapped = r < c
     hi_t = torch.as_tensor(hi, device=device); lo_t = torch.as_tensor(lo, device=device)
-    blocks = model.decode(enc, ctx, hi_t, lo_t, conditioning)              # (R*m, 3, 3) in frame g
+    blocks = model.decode(enc, ctx, hi_t, lo_t, conditioning).float()      # (R*m, 3, 3) in frame g
     diag = hi_t == lo_t
     if bool(diag.any()):
         blocks = blocks.clone()
@@ -329,7 +329,7 @@ def column_term(model, enc, ctx, conditioning, sample, read_blocks, bank, column
     bucket = torch.as_tensor(np.where(diag_np, 0, 2), device=device)
     target = tables.rotate_target_blocks(target, bucket, g)
     hi_t = torch.as_tensor(hi, device=device); lo_t = torch.as_tensor(lo, device=device)
-    pred = model.decode(enc, ctx, hi_t, lo_t, conditioning)
+    pred = model.decode(enc, ctx, hi_t, lo_t, conditioning).float()
     diag = hi_t == lo_t
     if bool(diag.any()):                                   # lower-masked diagonal blocks, both sides
         pred = pred.clone(); pred[diag] = torch.tril(pred[diag])
@@ -648,6 +648,7 @@ def main():
     ap.add_argument('--proper-only', action='store_true', help='augment with the 24 rotations only')
     ap.add_argument('--canonical', action='store_true', help='always present the cell in its canonical frame')
     ap.add_argument('--diagonal-loss', choices=['absolute', 'log'], default='log')
+    ap.add_argument('--bf16', action='store_true', help='bf16 autocast for the training forward pass (losses in fp32; evaluation stays fp32)')
     ap.add_argument('--scale-importance', type=float, default=0.0,
                     help='tilt the near/far draws by (s_r s_c)^alpha and weight the diagonal by '
                          's^alpha, s = the mean pivot of the label diagonal block (0 = uniform)')
@@ -797,8 +798,10 @@ def main():
             bucket = torch.as_tensor(b, device=device)
             target = tables.rotate_target_blocks(target, bucket, g)
             ctx = tables.rotate_context(sample['ctx_t'], g)
+            autocast = torch.autocast('cuda', dtype=torch.bfloat16, enabled=bool(args.bf16 and device.type == 'cuda'))
+            autocast.__enter__()
             enc = model.encode(ctx)
-            pred = model.decode(enc, ctx, torch.as_tensor(r, device=device), torch.as_tensor(c, device=device), conditioning)
+            pred = model.decode(enc, ctx, torch.as_tensor(r, device=device), torch.as_tensor(c, device=device), conditioning).float()
             weight = None
             if sample['weight'] is not None:
                 weight = torch.cat((sample['weight'],
@@ -824,6 +827,7 @@ def main():
                 colt = column_term(model, enc, ctx, conditioning, sample, read_blocks, bank, cols_c, rows_c, g, tables, device)
                 loss = loss + args.column_weight * colt
                 parts = torch.cat((parts, colt.detach()[None]))
+            autocast.__exit__(None, None, None)
             if not torch.isfinite(loss):
                 raise ValueError('NONFINITE_LOSS_NO_REPAIR')
             loss.backward()
