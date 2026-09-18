@@ -198,6 +198,164 @@ def sample_pairs_geometric(sample, per_bucket, rng, tilt=None):
     return r, c, bucket
 
 
+def smooth_face_loads(ctx, per_face, rng, degree=2):
+    """Random polynomial tractions on each box face -- the load a lattice cell sees from a neighbour.
+
+    The exact single-cell law is c(f) = ||M_q f||^2, so the compliance error under a load is the
+    relative error of the label's ACTION on it.  A point load concentrates that action on a few
+    modes and the network is 10-20 % off there; a smooth face traction spreads it over thousands
+    and the +-random per-mode errors cancel to ~1 % (measured, 12 seats).  The loads that occur in
+    a lattice are the smooth ones, so that is the family to train and to gate on.  Each load is
+    (members, values): the face's coordinates and a (members x 3) field, a degree-<=2 polynomial in
+    the two in-face coordinates with a random 3-vector per monomial.  Not rigid-projected: M_q has
+    the rigid nullspace, so M_q f = M_q (Pi f) exactly, and a prediction's rigid leak is charged.
+    """
+    faces = ctx['faces']; pos = ctx['pos']
+    loads = []
+    for f_id in range(6):
+        members = np.flatnonzero(faces[:, f_id])
+        if len(members) < 8:
+            continue
+        axis = f_id // 2; u = [k for k in range(3) if k != axis]
+        st = pos[members][:, u] - .5
+        cols = [np.ones(len(members))]
+        for dg in range(1, degree + 1):
+            for i in range(dg + 1):
+                cols.append(st[:, 0] ** (dg - i) * st[:, 1] ** i)
+        basis = np.stack(cols, axis=1)
+        for _ in range(per_face):
+            values = basis @ rng.standard_normal((basis.shape[1], 3))
+            values /= np.sqrt((values * values).sum())
+            loads.append((members.astype(np.int64), values.astype(np.float64), int(f_id)))
+    if not loads:
+        raise ValueError('NO_FACE_WITH_ENOUGH_COORDINATES')
+    return loads
+
+
+def smooth_global_loads(ctx, n_loads, rng):
+    """Low-frequency cosine fields over the whole trace: the easiest realistic family, gate only."""
+    pos = ctx['pos']; count = ctx['count']; loads = []
+    for _ in range(n_loads):
+        k = rng.integers(1, 3, size=3); ph = rng.uniform(0, 2 * np.pi)
+        field = np.cos(2 * np.pi * (pos @ k) + ph)[:, None] * rng.standard_normal(3)[None, :]
+        field /= np.sqrt((field * field).sum())
+        loads.append((np.arange(count, dtype=np.int64), field, -1))
+    return loads
+
+
+def dense_label(path, q):
+    p = np.load(path, mmap_mode='r', allow_pickle=False)
+    M = np.zeros((q, q)); off = 0
+    for i in range(q):
+        M[i, i:] = p[off:off + q - i]; off += q - i
+    return M + np.triu(M, 1).T
+
+
+def load_vectors(loads, q):
+    F = np.zeros((len(loads), q))
+    for i, (members, values, _) in enumerate(loads):
+        F[i, (members[:, None] * 3 + np.arange(3)).ravel()] = values.ravel()
+    return F
+
+
+def response_bank(sample, per_face, seed, cache_dir, n_global=32):
+    """The training family's exact responses y = M_q f from the label, cached by label sha."""
+    cache_dir = Path(cache_dir); cache_dir.mkdir(parents=True, exist_ok=True)
+    sha = sample['record']['bindings']['mq_label_sha256'][:16]
+    path = cache_dir / f"seat{sample['seat']}_{sha}_s{seed}_f{per_face}_g{n_global}.npz"
+    q = sample['q']; ctx = sample['ctx']
+    rng = np.random.default_rng((seed * 1000003 + int(sample['seat'])) % (2 ** 32))
+    train_loads = smooth_face_loads(ctx, per_face, rng)
+    held = smooth_face_loads(ctx, per_face, rng) + smooth_global_loads(ctx, n_global, rng)
+    if path.exists():
+        z = np.load(path)
+        bank = dict(Y=z['Y'], ynorm2=z['ynorm2'], Yh=z['Yh'], yhnorm2=z['yhnorm2'])
+    else:
+        M = dense_label(sample['label'], q)
+        F = load_vectors(train_loads, q); Fh = load_vectors(held, q)
+        Y = F @ M; Yh = Fh @ M; del M
+        bank = dict(Y=Y, ynorm2=(Y * Y).sum(axis=1), Yh=Yh, yhnorm2=(Yh * Yh).sum(axis=1))
+        np.savez(path, **bank)
+    bank.update(train=train_loads, held=held, path=str(path))
+    return bank
+
+
+def response_term(model, enc, ctx, conditioning, bank, load_index, rows, g, Q, device):
+    """Row-subsampled, unbiased estimate of ||(M_hat - M) f||^2 / ||M f||^2 in the view frame g.
+
+    In the frame the model sees, blocks are Q B Q^T at the SAME index pair, so the response to the
+    rotated load Q f_c is Q y_r: rotate the load and the bank response instead of the prediction.
+    The prediction is queried on the lower pair (max, min) and transposed back where r < c; the
+    diagonal block is the masked lower triangle plus its pivots, symmetrised like `evaluate` does.
+    """
+    members, values, _ = bank['train'][load_index]
+    count = int(ctx['pos'].shape[0]); R = len(rows); m = len(members)
+    r = np.repeat(rows, m); c = np.tile(members, R)
+    lo = np.minimum(r, c); hi = np.maximum(r, c); swapped = r < c
+    hi_t = torch.as_tensor(hi, device=device); lo_t = torch.as_tensor(lo, device=device)
+    blocks = model.decode(enc, ctx, hi_t, lo_t, conditioning)              # (R*m, 3, 3) in frame g
+    diag = hi_t == lo_t
+    if bool(diag.any()):
+        blocks = blocks.clone()
+        blocks[diag] = blocks[diag] + torch.tril(blocks[diag], -1).transpose(1, 2)
+    sw = torch.as_tensor(swapped, device=device)
+    blocks = torch.where(sw[:, None, None], blocks.transpose(1, 2), blocks)   # now B_rc for every (r, c)
+    f = torch.as_tensor(values, dtype=torch.float32, device=device) @ Q.T    # Q f_c, (m, 3)
+    contrib = torch.einsum('pij,pj->pi', blocks, f.repeat(R, 1))             # (R*m, 3)
+    resp = contrib.reshape(R, m, 3).sum(dim=1)                               # (R, 3) = (M_hat f)_r
+    y = torch.as_tensor(bank['Y'][load_index].reshape(count, 3)[rows], dtype=torch.float32, device=device) @ Q.T
+    num = (count / R) * (resp - y).square().sum()
+    return num / float(bank['ynorm2'][load_index])
+
+
+def response_gate(M, bank, q):
+    """Assembly-free compliance errors ||M_hat f||^2 / ||M f||^2 - 1 on the held-out family."""
+    Fh = torch.as_tensor(load_vectors(bank['held'], q), dtype=M.dtype, device=M.device)
+    Yh = Fh @ M
+    err = ((Yh * Yh).sum(dim=1) / torch.as_tensor(bank['yhnorm2'], dtype=M.dtype, device=M.device) - 1.0).cpu().numpy()
+    kinds = np.array([k for _, _, k in bank['held']])
+    face = err[kinds >= 0]; glob = err[kinds < 0]
+    summary = lambda v: dict(n=int(len(v)), median_abs=float(np.median(np.abs(v))), p90_abs=float(np.percentile(np.abs(v), 90)),
+                             max_abs=float(np.abs(v).max()), signed_mean=float(v.mean()),
+                             frac_within_3pct=float((np.abs(v) <= .03).mean()))
+    return dict(face=summary(face), global_smooth=summary(glob), worst_abs=float(np.abs(err).max()))
+
+
+def response_selftest(device, seed=20260919, n=6, q_nodes=40):
+    """The estimator: exact label -> 0; scaled label -> the exact ratio; row subsampling unbiased."""
+    rng = np.random.default_rng(seed)
+    count = q_nodes; q = 3 * count
+    A = rng.standard_normal((q, q)); M = A @ A.T / q + np.eye(q)
+    pos = rng.random((count, 3)); faces = np.zeros((count, 6), dtype=bool)
+    faces[:, 0] = pos[:, 0] < .3; faces[:, 1] = pos[:, 0] > .7
+    ctx = dict(pos=pos, faces=faces, count=count)
+    loads = smooth_face_loads(ctx, 2, rng)
+    F = load_vectors(loads, q); Y = F @ M
+    bank = dict(train=loads, Y=Y, ynorm2=(Y * Y).sum(axis=1))
+    out = {}
+    for scale in (1.0, 1.1):
+        Mh = scale * M
+        # emulate response_term with a "model" that returns the true (scaled) blocks
+        worst = 0.; ests = []
+        for li in range(len(loads)):
+            members, values, _ = loads[li]; m = len(members)
+            for trial in range(200):
+                rows = rng.integers(0, count, size=4)
+                resp = np.stack([sum(Mh[3 * r:3 * r + 3, 3 * c:3 * c + 3] @ values[k] for k, c in enumerate(members)) for r in rows])
+                y = Y[li].reshape(count, 3)[rows]
+                ests.append((count / 4) * ((resp - y) ** 2).sum() / bank['ynorm2'][li])
+            exact = ((Mh @ F[li] - Y[li]) ** 2).sum() / bank['ynorm2'][li]
+            worst = max(worst, abs(np.mean(ests[-200:]) - exact) / max(exact, 1e-12) if exact > 0 else abs(np.mean(ests[-200:])))
+        out[f'scale_{scale}'] = dict(exact=float(exact), estimator_mean=float(np.mean(ests[-200:])), relative_bias=float(worst))
+    if out['scale_1.0']['estimator_mean'] > 1e-24:          # summation-order noise only
+        raise ValueError('EXACT_LABEL_MUST_GIVE_ZERO_RESPONSE_LOSS')
+    if abs(out['scale_1.1']['exact'] - 0.1 ** 2) > 1e-9:
+        raise ValueError('SCALED_LABEL_MUST_GIVE_EPSILON_SQUARED')
+    if out['scale_1.1']['relative_bias'] > 0.2:      # 200 draws of 4 rows: a Monte-Carlo tolerance
+        raise ValueError(f'ROW_SUBSAMPLING_IS_BIASED {out}')
+    return out
+
+
 def equi_loss(prediction, target, buckets, conditioning, weight=None, asymmetry=0.0, tail_beta=0.0,
               diagonal_loss='log'):
     """The frozen three-bucket loss plus three knobs; at neutral knobs it reproduces it exactly.
@@ -356,6 +514,7 @@ def evaluate(model, sample, tables, conditioning, out, args, RigidQuotient):
                      scalar_entries=sample['q'] * (sample['q'] + 1) // 2, complete=True)
     pack(M, out / 'MQ_PRED_UPPER.npy')
     q, d = sample['q'], sample['d']
+    gate = response_gate(M, sample['bank'], q) if sample.get('bank') is not None else None
     label = unpack(sample['label'], q, dev)
     label = label + torch.triu(label, 1).T      # unpack fills the upper triangle only; M is full symmetric
     e_factor = float((M - label).norm() / label.norm())
@@ -436,6 +595,7 @@ def evaluate(model, sample, tables, conditioning, out, args, RigidQuotient):
     del Mp, back, M0; gc.collect()
     write(out / 'PROBES.json', probes)
     result = dict(seat=sample['seat'], split=sample['split'], inference=inference, spectrum=spectrum, probes=probes,
+                  response_gate=gate,
                   seconds=time.perf_counter() - tick)
     write(out / 'RESULT.json', result)
     print(json.dumps(dict(phase='probes', seat=sample['seat'], rotation=[r['relative_discrepancy'] for r in rotation],
@@ -464,6 +624,12 @@ def main():
     ap.add_argument('--pivot-asymmetry', type=float, default=0.0,
                     help='extra weight on pivots predicted softer than the truth; over-softness is '
                          'the direction the assembled compliance sum_i w_i/mu_i can blow up on')
+    ap.add_argument('--response-weight', type=float, default=0.0,
+                    help='weight of the smooth-face-load response term ||(M_hat-M)f||^2/||Mf||^2 (0 = off)')
+    ap.add_argument('--response-rows', type=int, default=8, help='rows sampled per step for the response term')
+    ap.add_argument('--response-per-face', type=int, default=16, help='training loads per face in the bank')
+    ap.add_argument('--response-seed', type=int, default=20260919)
+    ap.add_argument('--response-bank-dir', type=Path, default=None, help='cache of exact bank responses (default OUTPUT/../RESPONSE_BANK)')
     ap.add_argument('--tail-beta', type=float, default=0.0,
                     help='smooth-max sharpness over the per-coordinate diagonal error, added to its '
                          'mean; g is a max and a handful of coordinates set it')
@@ -547,7 +713,17 @@ def main():
                                      pivot_scale_median=float(np.median(scales)),
                                      pivot_scale_p999=float(np.percentile(scales, 99.9)),
                                      tilted=bool(s_['tilt'] is not None)))
+        bank_dir = args.response_bank_dir or (args.output.parent / 'RESPONSE_BANK')
+        response_report = dict(selftest=response_selftest(device), weight=args.response_weight,
+                               rows=args.response_rows, per_face=args.response_per_face, seed=args.response_seed)
+        tick_b = time.perf_counter()
+        for s_ in samples:
+            s_['bank'] = response_bank(s_, args.response_per_face, args.response_seed, bank_dir)
+        response_report.update(bank_seconds=time.perf_counter() - tick_b,
+                               train_loads=[len(s_['bank']['train']) for s_ in samples],
+                               held_loads=[len(s_['bank']['held']) for s_ in samples])
         write(args.output / 'LOSS_SETUP.json', dict(
+            response=response_report,
             loss_selftest=selftest, scale_importance=args.scale_importance,
             pivot_asymmetry=args.pivot_asymmetry, tail_beta=args.tail_beta, scales=scale_report,
             note='equi_loss equals the frozen bucket_loss bit for bit at neutral knobs; the tilt '
@@ -583,13 +759,22 @@ def main():
             bucket = torch.as_tensor(b, device=device)
             target = tables.rotate_target_blocks(target, bucket, g)
             ctx = tables.rotate_context(sample['ctx_t'], g)
-            pred = model(ctx, torch.as_tensor(r, device=device), torch.as_tensor(c, device=device), conditioning)
+            enc = model.encode(ctx)
+            pred = model.decode(enc, ctx, torch.as_tensor(r, device=device), torch.as_tensor(c, device=device), conditioning)
             weight = None
             if sample['weight'] is not None:
                 weight = torch.cat((sample['weight'],
                                     torch.ones(2 * args.pairs_per_bucket, device=device)))
             loss, parts = equi_loss(pred, target, bucket, conditioning, weight, args.pivot_asymmetry,
                                     args.tail_beta, args.diagonal_loss)
+            if args.response_weight > 0:
+                bank = sample['bank']
+                li = int(rng.integers(0, len(bank['train'])))
+                rows_r = rng.integers(0, sample['count'], size=args.response_rows)
+                Qg = torch.as_tensor(CG.Q_ALL[g], dtype=torch.float32, device=device)
+                resp = response_term(model, enc, ctx, conditioning, bank, li, rows_r, g, Qg, device)
+                loss = loss + args.response_weight * resp
+                parts = torch.cat((parts, resp.detach()[None]))
             if not torch.isfinite(loss):
                 raise ValueError('NONFINITE_LOSS_NO_REPAIR')
             loss.backward()
@@ -624,6 +809,7 @@ def main():
                       evaluations={str(r['seat']): dict(g=r['spectrum'].get('g'), mu_min=r['spectrum'].get('mu_min'),
                                                        mu_max=r['spectrum'].get('mu_max'), e_A=r['spectrum']['e_A'],
                                                        factor_relative=r['spectrum']['factor_relative'],
+                                                       response_gate=r.get('response_gate'),
                                                        rotation=[p['relative_discrepancy'] for p in r['probes']['rotation_consistency']],
                                                        index_shuffle=r['probes']['index_shuffle_relative_discrepancy']) for r in results},
                       interpretation='run completion does not imply accuracy, generalisation or physical validation')

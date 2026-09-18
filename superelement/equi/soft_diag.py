@@ -45,6 +45,9 @@ def main():
     ap.add_argument('--accept', type=Path, default=None, help='ASSEMBLE_TWO.json for the measured errors')
     ap.add_argument('--source', type=Path, default=Path('/root/autodl-tmp/CLAUDE_SQRTHEAD_20260917/src_v5'))
     ap.add_argument('--softk', default='16,64,256,1024')
+    ap.add_argument('--tails', type=int, default=0,
+                    help='lift this many extreme pencil modes per side to the trace and report where they live')
+    ap.add_argument('--mq-pred', type=Path, default=None, help='MQ_PRED_UPPER.npy, for the signed pivot error')
     ap.add_argument('--device', default='cuda:0')
     ap.add_argument('--threads', type=int, default=8)
     ap.add_argument('--output', type=Path, required=True)
@@ -53,7 +56,7 @@ def main():
     sys.path.insert(0, str(a.source))
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from stage_cutfem_m4.quotient import RigidQuotient
-    from superelement.equi.context import compile_equi_inputs, rigid_span_residual
+    from superelement.equi.context import compile_equi_inputs, rigid_span_residual, NODE_SCALAR_NAMES, FIELD_SCALE
     from superelement.equi.assemble_two import unpack, dense_S, rigid_trace, pick_glue
     torch.set_num_threads(a.threads)
     torch.backends.cuda.matmul.allow_tf32 = False
@@ -138,12 +141,14 @@ def main():
     scale = float(K.diagonal().abs().mean())
     K.addmm_(Nrb, Nrb.T, alpha=scale)
     root = torch.linalg.cholesky(K)
+    del K; _free(dev)                                              # K = root root^T from here on
     F = torch.stack([loads[k] for k in names], dim=1)
-    U = torch.cholesky_solve(F, root)
+    U = torch.linalg.solve_triangular(root, F, upper=False, left=True)
+    U = torch.linalg.solve_triangular(root.T, U, upper=True, left=True)
+    resid = float(((root @ (root.T @ U) - F).norm(dim=0) / F.norm(dim=0)).max())
     del root; _free(dev)
-    resid = float(((K @ U - F).norm(dim=0) / F.norm(dim=0)).max())
     cexact = (F * U).sum(dim=0)
-    del K, F; _free(dev)
+    del F; _free(dev)
     report['solve_residual'] = resid
     report['c_exact'] = [float(v) for v in cexact]
 
@@ -186,7 +191,9 @@ def main():
     W = torch.linalg.solve_triangular(Rstar.T, Ahat, upper=False, left=True)
     del Ahat; _free(dev)
     Z = torch.linalg.solve_triangular(Rstar.T, W.T.contiguous(), upper=False, left=True).T.contiguous()
-    del W, Rstar; _free(dev)
+    del W; _free(dev)
+    if not a.tails:
+        del Rstar; _free(dev)
     Z = .5 * (Z + Z.T)
     mu, V = torch.linalg.eigh(Z)
     del Z; _free(dev)
@@ -195,12 +202,53 @@ def main():
     report.update(g=g, mu_min=float(mu.min()), mu_max=float(mu.max()),
                   frac_within_3pct=float(((mu - 1).abs() <= 0.03).double().mean()))
 
+    if a.tails:
+        # Where do the extreme modes live?  A pencil eigenvector v is whitened; the quotient
+        # vector is x = Rstar^-1 v (y = Rstar x), and the trace displacement is B^T x.
+        sel = torch.cat((torch.arange(a.tails, device=dev), torch.arange(d - a.tails, d, device=dev)))
+        Vt = V[:, sel].contiguous()
+        X = torch.linalg.solve_triangular(Rstar, Vt, upper=True, left=True)
+        U = quotient.lift(X)                                          # q x 2*tails
+        nodal = U.reshape(count, 3, -1).pow(2).sum(dim=1)
+        nodal = nodal / nodal.sum(dim=0, keepdim=True)
+        part = 1.0 / nodal.pow(2).sum(dim=0)
+        top = torch.topk(nodal, 3, dim=0)
+        scal = ctx['node_scalar']; names = {k: i for i, k in enumerate(NODE_SCALAR_NAMES)}
+        signed = None
+        if a.mq_pred is not None and a.mq_pred.exists():
+            def diag_of(path):
+                pk = np.load(path, mmap_mode='r', allow_pickle=False)
+                idx = np.array([row * q - row * (row - 1) // 2 for row in range(q)], dtype=np.int64)
+                return np.asarray(pk[idx], dtype=np.float64)
+            tpiv = diag_of(ref / 'MQ_UPPER.npy').reshape(count, 3); ppiv = diag_of(a.mq_pred).reshape(count, 3)
+            signed = (ppiv / tpiv - 1.0)
+            worst = np.argsort(-np.abs(signed).max(axis=1))[:12]
+            report['worst_pivot_nodes'] = [dict(node=int(i), signed_rel=[float(v) for v in signed[i]],
+                                                true_pivot=[float(v) for v in tpiv[i]],
+                                                margin=float(scal[i, names['margin']] * FIELD_SCALE['margin']),
+                                                kind=int(kind[i]), faces=int(ctx['faces'][i].sum()))
+                                           for i in worst]
+        tails = []
+        for j in range(2 * a.tails):
+            i = int(sel[j]); rows_ = [int(v) for v in top.indices[:, j]]
+            tails.append(dict(mode=i, mu=float(mu[i]), side='soft' if j < a.tails else 'stiff',
+                              participation=float(part[j]), w=None,
+                              top_nodes=[dict(node=r_, share=float(top.values[k_, j]), kind=int(kind[r_]),
+                                              margin=float(scal[r_, names['margin']] * FIELD_SCALE['margin']),
+                                              faces=int(ctx['faces'][r_].sum()),
+                                              signed_pivot_rel=[float(v) for v in signed[r_]] if signed is not None else None)
+                                         for k_, r_ in enumerate(rows_)]))
+        report['tails'] = tails
+        del Vt, X, U, nodal, Rstar; _free(dev)
     C = V.T @ Ysoft                                                # d x kmax
     del Ysoft; _free(dev)
     cA = V.T @ YA; cB = V.T @ YB
     del V, YA, YB; _free(dev)
     wtot = cA * cA + cB * cB
     wtot = wtot / wtot.sum(dim=0, keepdim=True)
+    if a.tails:
+        for t_ in report['tails']:
+            t_['w'] = [float(v) for v in wtot[t_['mode']]]
     imax = int(torch.argmax(mu)); imin = int(torch.argmin(mu))
     report['mu_max_index'] = imax; report['mu_min_index'] = imin
     report['w_at_mu_max'] = [float(v) for v in wtot[imax]]
@@ -250,7 +298,7 @@ def main():
     (a.output / 'SOFT_DIAG.json').write_text(json.dumps(report, indent=1))
     keys = ('seat', 'g', 'mu_min', 'mu_max', 'w_at_mu_max', 'w_at_mu_min', 'first_order_predictor',
             'measured_signed_compliance_rel', 'energy_share_outside_3pct', 'soft32_participation_min',
-            'soft', 'seconds')
+            'soft', 'tails', 'worst_pivot_nodes', 'seconds')
     print(json.dumps({k: report[k] for k in keys if k in report}, indent=1), flush=True)
 
 
