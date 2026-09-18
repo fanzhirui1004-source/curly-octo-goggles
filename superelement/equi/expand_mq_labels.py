@@ -16,8 +16,15 @@ import argparse, json, subprocess, sys, time
 from pathlib import Path
 
 
+# Measured, not counted: at q = 18048 the builder's resident GPU allocation peaked at 28 GB,
+# i.e. about twelve q x q float64 buffers once the eigendecomposition's workspace and the
+# allocator's fragmentation are included.  Counting the buffers in the source gives seven and
+# underestimates by 1.6x, which is the difference between fitting a 32 GB card and not.
+PEAK_BUFFERS = 12
+
+
 def peak_gib(q):
-    return 7 * q * q * 8 / 2 ** 30
+    return PEAK_BUFFERS * q * q * 8 / 2 ** 30
 
 
 def main():
