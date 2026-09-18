@@ -56,6 +56,8 @@ def main():
     ap.add_argument('--a-factor', type=Path, required=True, help='A_PRED_UPPER.npy (d x d upper Cholesky of A_hat)')
     ap.add_argument('--grid', type=int, nargs=3, default=[2, 2, 2])
     ap.add_argument('--check-two', type=Path, default=None, help='ASSEMBLE_TWO.json to reproduce with --grid 2 1 1 along its axis')
+    ap.add_argument('--solver', choices=['dense', 'pcg'], default='pcg')
+    ap.add_argument('--rtol', type=float, default=1e-12); ap.add_argument('--max-iterations', type=int, default=4000)
     ap.add_argument('--source', type=Path, default=Path('/root/autodl-tmp/CLAUDE_SQRTHEAD_20260917/src_v5'))
     ap.add_argument('--threads', type=int, default=8)
     ap.add_argument('--output', type=Path, required=True)
@@ -146,7 +148,69 @@ def main():
     quotient = RigidQuotient(torch.from_numpy(np.asarray(cache['rigid'], dtype=np.float64)),
                              torch.from_numpy(np.asarray(cache['order'])))
 
-    def solve(S):
+    rb_basis = None
+
+    def solve_pcg(S):
+        """K is never formed.  K u = sum_m scatter_m(S gather_m(u)) + scale Nrb (Nrb^T u), and the
+        preconditioner is additive Schwarz with one exact local solve, reused by every module.
+
+        A dense K costs N^2 doubles, and torch's CPU indexing caps a tensor at 2^31 elements, so
+        the dense path stops at N = 46340 -- two cells of a 4176-coordinate seat, not a lattice.
+        The local solve is shared because the cell's rigid trace spans the SAME six-dimensional
+        space at every integer offset (shifting the origin mixes the rotations into translations,
+        which are in the space already), so S + sigma Pi_rigid is one factorisation for all
+        modules.
+        """
+        nonlocal rb_basis
+        diag = torch.zeros(N, dtype=F64)
+        sd = S.diagonal()
+        for m in range(len(copies)):
+            diag.index_add_(0, dofs[m], sd)
+        scale = float(diag.abs().mean())
+        if rb_basis is None:
+            rb, _ = torch.linalg.qr(torch.from_numpy(np.asarray(cache['rigid'], dtype=np.float64)))
+            rb_basis = rb
+        sigma = float(S.diagonal().abs().mean())
+        local = S + sigma * (rb_basis @ rb_basis.T)
+        root = torch.linalg.cholesky(.5 * (local + local.T)); del local; gc.collect()
+
+        def apply(u):
+            out = torch.zeros_like(u)
+            for m in range(len(copies)):
+                out.index_add_(0, dofs[m], S @ u[dofs[m]])
+            return out + scale * (Nrb @ (Nrb.T @ u))
+
+        def precondition(r):
+            out = torch.zeros_like(r)
+            for m in range(len(copies)):
+                out.index_add_(0, dofs[m], torch.cholesky_solve(r[dofs[m]].unsqueeze(1), root).squeeze(1))
+            return out
+
+        out = {}; tick = time.time(); iterations = {}
+        for j, name in enumerate(names):
+            f = Fm[:, j]
+            u = torch.zeros(N, dtype=F64); r = f.clone(); z = precondition(r); p = z.clone()
+            rz = float(r @ z); fn = float(f.norm()); it = 0
+            for it in range(1, a.max_iterations + 1):
+                Kp = apply(p); alpha = rz / float(p @ Kp)
+                u += alpha * p; r -= alpha * Kp
+                if float(r.norm()) / fn <= a.rtol:
+                    break
+                z = precondition(r); rz_new = float(r @ z)
+                p = z + (rz_new / rz) * p; rz = rz_new
+            resid = float((apply(u) - f).norm() / fn)
+            c = float(f @ u)
+            sens = [float(-(u[dofs[m]] @ (S @ u[dofs[m]]))) for m in range(len(copies))]
+            iterations[name] = it
+            out[name] = dict(compliance=c, sens=sens, solve_residual=resid, iterations=it,
+                             adjoint_identity_relative=float((sum(sens) + c) / c),
+                             cholesky_seconds=time.time() - tick)
+            if resid > 100 * a.rtol:
+                raise ValueError(f'PCG_DID_NOT_CONVERGE {name} residual {resid:.3e} in {it} iterations')
+        del root; gc.collect()
+        return out
+
+    def solve_dense(S):
         K = torch.zeros((N, N), dtype=F64)
         for m in range(len(copies)):
             K.index_put_((dofs[m][:, None], dofs[m][None, :]), S, accumulate=True)
@@ -165,6 +229,11 @@ def main():
             out[name] = dict(compliance=c, sens=sens, solve_residual=resid,
                              adjoint_identity_relative=float((sum(sens) + c) / c), cholesky_seconds=time.time() - tick)
         return out
+
+    if a.solver == 'dense' and N > 46340:
+        raise ValueError(f'DENSE_SOLVER_EXCEEDS_TORCH_INDEX_LIMIT N={N}; use --solver pcg')
+    solve = solve_dense if a.solver == 'dense' else solve_pcg
+    report['solver'] = a.solver
 
     Rstar = unpack(ref / 'R_UPPER.npy', d, dev); Astar = Rstar.T @ Rstar; Astar = .5 * (Astar + Astar.T)
     Sstar = dense_S(Astar, quotient); del Astar; gc.collect()
@@ -189,7 +258,10 @@ def main():
     report['worst_exact_adjoint_identity'] = max(abs(v['adjoint_identity_relative']) for v in report['exact'].values())
     if a.check_two is not None:
         two = json.loads(a.check_two.read_text())
-        diffs = {nm: abs(rel[nm]['compliance_rel'] - two['relative'][nm]['compliance_rel']) for nm in names if nm in two['relative']}
+        # assemble_two reports |compliance_rel|; this reports it signed, so compare magnitudes
+        diffs = {nm: abs(abs(rel[nm]['compliance_rel']) - two['relative'][nm]['compliance_rel']) for nm in names if nm in two['relative']}
+        diffs.update({f'{nm}/exact_compliance': abs(report['exact'][nm]['compliance'] / two['exact'][nm]['compliance'] - 1.0)
+                      for nm in names if nm in two['exact']})
         report['check_two'] = dict(max_compliance_rel_difference=max(diffs.values()), per_load=diffs)
     report['seconds'] = time.time() - t0; report['status'] = 'ASSEMBLE_LATTICE_COMPLETE'
     (a.output / 'ASSEMBLE_LATTICE.json').write_text(json.dumps(report, indent=1))
