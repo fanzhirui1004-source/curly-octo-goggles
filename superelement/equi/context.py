@@ -20,9 +20,19 @@ from .cubic_group import (map_int_positions, permute_corners, permute_faces, rot
 
 SCALAR_NAMES = ('tau', 'phi', 'margin', 'grad_tau_norm', 'grad_phi_norm')
 VECTOR_NAMES = ('grad_tau', 'grad_phi')
-VOLUME_SCALAR_NAMES = ('tau', 'phi', 'margin', 'solid')
+VOLUME_SCALAR_NAMES = ('tau', 'phi', 'margin')
 VOLUME_VECTOR_NAMES = ('grad_tau', 'grad_phi')
 INERT_PLANE = np.array([1., 0., 0., 2.])
+
+# Fixed nominal scales, applied to the raw fields so no channel dominates the first
+# convolution.  Unnormalised, grad_phi carried 97 % of the input variance (it is O(2 pi)
+# and identical for every cell, since phi does not depend on tau) while tau -- the only
+# channel that distinguishes one geometry from another -- carried 0.0024 %.  These are
+# constants, not per-case statistics: the network still sees absolute thickness, which is
+# physical.  The three components of a vector channel share one scale, so scaling commutes
+# with the cube group exactly.
+SCALAR_SCALE = np.array([.2, 1.5, 1.5, .2, 2 * np.pi])      # tau, phi, margin, |grad tau|, |grad phi|
+VECTOR_SCALE = np.array([.2, 2 * np.pi])                    # grad tau, grad phi
 
 
 def trilinear(points, corners):
@@ -65,11 +75,15 @@ def compile_from_points(u_int, corners, n, known):
     pos = u_int / top
     faces = np.concatenate((u_int == 0, u_int == top), axis=1).astype(np.float64)
     node_scalar, node_vector = field_values(pos, corners)
+    node_scalar = node_scalar / SCALAR_SCALE
+    node_vector = node_vector / VECTOR_SCALE[:, None]
     grid = np.stack(np.meshgrid(*[(np.arange(n) + .5) / n] * 3, indexing='ij'), axis=-1)
     vs, vv = field_values(grid, corners)
-    vol_scalar = np.concatenate((vs[..., :3], (vs[..., 2:3] >= 0).astype(np.float64)), axis=-1)
-    vol_scalar = np.ascontiguousarray(vol_scalar.transpose(3, 0, 1, 2))          # (4, n, n, n)
-    vol_vector = np.ascontiguousarray(vv.transpose(3, 4, 0, 1, 2))               # (2, 3, n, n, n)
+    # No hard solid indicator: 1[margin >= 0] is a step function of tau, so it is
+    # discontinuous exactly where the design derivative is needed, and it carries nothing
+    # that `margin` does not.  The frozen adapter had no such channel either.
+    vol_scalar = np.ascontiguousarray((vs[..., :3] / SCALAR_SCALE[:3]).transpose(3, 0, 1, 2))   # (3, n, n, n)
+    vol_vector = np.ascontiguousarray((vv / VECTOR_SCALE[:, None]).transpose(3, 4, 0, 1, 2))    # (2, 3, n, n, n)
     context = dict(n=int(n), count=int(len(u_int)), pos_int=u_int, pos=pos, faces=faces,
                    node_scalar=node_scalar, node_vector=node_vector,
                    vol_scalar=vol_scalar, vol_vector=vol_vector,
@@ -170,11 +184,15 @@ def selftest(seed=20260918, n=8):
         for key in ('pos_int', 'faces', 'node_vector', 'vol_scalar', 'vol_vector', 'corners'):
             assert _close(back[key], ctx[key], 1e-12), key
     report['rotation_recompute_worst'] = float(worst)
-    # the field values at the nodes are the volume field's values: same function
+    # the field values at the nodes are the volume field's values, same function, same scaling
     vs, vv = field_values(ctx['pos'], corners)
-    assert _close(vs, ctx['node_scalar'], 0) and _close(vv, ctx['node_vector'], 0)
-    # solid indicator agrees with the margin channel
-    assert np.array_equal(ctx['vol_scalar'][3], (ctx['vol_scalar'][2] >= 0).astype(float))
+    assert _close(vs / SCALAR_SCALE, ctx['node_scalar'], 0) and _close(vv / VECTOR_SCALE[:, None], ctx['node_vector'], 0)
+    report['volume_channels'] = int(len(ctx['vol_scalar']) + ctx['vol_vector'].size // ctx['vol_scalar'][0].size)
+    # channel balance: no channel may carry more than 60 % of the total input variance
+    allc = np.concatenate((ctx['vol_scalar'], ctx['vol_vector'].reshape(-1, *ctx['vol_scalar'].shape[1:])))
+    var = allc.reshape(len(allc), -1).var(axis=1)
+    report['max_channel_variance_share'] = float(var.max() / var.sum())
+    assert report['max_channel_variance_share'] < .6, report['max_channel_variance_share']
     # index shuffle is a pure relabelling
     pi = rng.permutation(len(u))
     shuffled = permute_nodes(ctx, pi)

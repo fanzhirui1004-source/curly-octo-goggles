@@ -78,6 +78,12 @@ def build(reference, seat, device, threads, source, trace_cache=None, patch_size
     r_sha = sha256(ref / 'R_UPPER.npy')
     if r_sha != receipt['factor_sha256']:
         raise ValueError('FROZEN_REFERENCE_BINDING')
+    trace_sha = sha256(cache_path)
+    if trace_sha != receipt['trace_sha256']:
+        # The trace cache supplies the quotient. Every self-test below passes with the WRONG
+        # cache (it is self-consistent in whatever basis it is handed), so this is the only
+        # thing standing between a mismatched --trace-cache and a silently wrong label.
+        raise ValueError('FROZEN_TRACE_BINDING')
     report = dict(seat=int(seat), d=d, q=q, count=count, reference=str(ref), trace_cache=str(cache_path),
                   device=device, threads=threads,
                   scope='M_q = B^T A^{-1/2} B, the canonical q-space label; symmetric PSD with the rigid nullspace')
@@ -115,11 +121,12 @@ def build(reference, seat, device, threads, source, trace_cache=None, patch_size
     Mq = Qt.lift(half.T.contiguous())                     # B^T M B          (q, q)
     del half
     gc.collect()
+    report['sym_residual_before_average'] = float((Mq - Mq.T).norm() / Mq.norm())
     Mq = (Mq + Mq.T) * .5
     report['lift_seconds'] = time.perf_counter() - t0
 
     # --- self-tests -------------------------------------------------------
-    report['sym_residual_before_average'] = None       # symmetrised above; exact symmetry is checked after packing
+    # recorded BEFORE the symmetrising average, so it can actually fail
     report['rigid_nullspace'] = float((Mq @ rigid).norm() / (Mq.norm() * rigid.norm()))
     back = Qt(Qt(Mq).T.contiguous())                      # B M_q B^T  (d, d)
     report['round_trip_to_M'] = float((back - M).norm() / M.norm())
@@ -145,6 +152,26 @@ def build(reference, seat, device, threads, source, trace_cache=None, patch_size
     # the true quotient spectrum is what the network will be scored against; record it for the record
     report['eig_seconds_total'] = report['eigh_seconds']
 
+    # span(rigid) must be the rigid-body space of the node positions, or M_q is not the
+    # basis-free object the label is claimed to be (and augmentation's identity fails).
+    from stage_cutfem_m4.response import rigid_fields
+    Nr = rigid_fields(np.asarray(cache['support_centroid'], dtype=np.float64), (.5, .5, .5))
+    rg = np.asarray(cache['rigid'], dtype=np.float64)
+    resid = rg - Nr @ np.linalg.lstsq(Nr, rg, rcond=None)[0]
+    report['rigid_span_residual'] = float(np.linalg.norm(resid) / np.linalg.norm(rg))
+
+    # --- gate on the self-tests, rather than only recording them ------------
+    gates = dict(label_g=(abs(report['label_g'] - 1.0), 1e-8), round_trip_to_M=(report['round_trip_to_M'], 1e-12),
+                 MMG_residual=(report['MMG_residual'], 1e-12),
+                 back_squared_times_A_minus_I=(report['back_squared_times_A_minus_I'], 1e-9),
+                 rigid_nullspace=(report['rigid_nullspace'], 1e-12),
+                 rigid_span_residual=(report['rigid_span_residual'], 1e-10))
+    report['gates'] = {k: dict(value=v, tolerance=t, pass_=bool(v <= t)) for k, (v, t) in gates.items()}
+    failed = [k for k, (v, t) in gates.items() if not v <= t]
+    if failed:
+        (ref / 'MQ_FAILURE.json').write_text(json.dumps(report, indent=1))
+        raise ValueError('MQ_SELFTEST_GATE_FAILED ' + ','.join(failed))
+
     Mh = Mq.cpu().numpy()
     del Mq, R, rigid, Qt
     gc.collect()
@@ -167,12 +194,13 @@ def build(reference, seat, device, threads, source, trace_cache=None, patch_size
     report['blocks_checked'] = int(len(r))
     if report['read_blocks_roundtrip'] != 0.0:
         raise ValueError('PACKED_ROUNDTRIP_NOT_EXACT')
-    report['packed_symmetry_exact'] = bool(np.array_equal(Mh, Mh.T))
+    # (the packed round trip above is the real check; Mh is symmetric by construction of the
+    #  averaging step, so asserting it here would be a tautology)
     del Mh
     gc.collect()
     report['m_sha256'] = sha256(out_path)
     report['r_sha256'] = r_sha
-    report['trace_sha256'] = sha256(cache_path)
+    report['trace_sha256'] = trace_sha
     report['bytes'] = out_path.stat().st_size
     report['total_seconds'] = time.perf_counter() - t0 + report['unpack_seconds'] + report['eigh_seconds']
     (ref / 'MQ_RESULT.json').write_text(json.dumps(report, indent=1))

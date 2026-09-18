@@ -15,10 +15,18 @@ checked against that file's reference response.
 """
 from __future__ import annotations
 
-import argparse, gc, json, sys
+import argparse, gc, hashlib, json, sys
 from pathlib import Path
 import numpy as np
 import torch
+
+
+def sha256(path, chunk=1 << 22):
+    h = hashlib.sha256()
+    with open(path, 'rb') as fh:
+        for b in iter(lambda: fh.read(chunk), b''):
+            h.update(b)
+    return h.hexdigest()
 
 
 def unpack(path, d, device):
@@ -29,6 +37,13 @@ def unpack(path, d, device):
     for row in range(d):
         out[row, row:] = p[off:off + d - row]; off += d - row
     return torch.from_numpy(out).to(device)
+
+
+def require_box_only(cache):
+    """run.py:six_response refuses the fixture unless these three hold; so must this."""
+    if not (np.all(np.diff(cache['indptr']) == 1) and np.all(cache['coefficients'] == 1)
+            and np.all(np.asarray(cache['kind']) == 0)):
+        raise ValueError('GENERAL_SIGNED_TRACE_FIXTURE_NOT_SUPPORTED')
 
 
 def operator_from_mq(Mq_packed, cache, q, device):
@@ -80,14 +95,18 @@ def main():
     sys.path.insert(0, str(a.source))
     torch.set_num_threads(8)
     cache = dict(np.load(a.trace_cache, allow_pickle=False))
+    require_box_only(cache)
     A, Qt = operator_from_mq(a.mq, cache, a.q, a.device)
     out = platen_response(A, Qt, cache, a.device)
+    out['provenance'] = dict(mq=str(a.mq), trace_cache=str(a.trace_cache), q=int(a.q),
+                             mq_sha256=sha256(a.mq), trace_sha256=sha256(a.trace_cache),
+                             tau_corners=np.asarray(cache['tau_corners'], dtype=float).tolist())
     if a.compare:
         ref = json.loads(a.compare.read_text())['reference']
         want = np.asarray(ref['compliance']); got = np.asarray(out['compliance'])
         out['compare'] = dict(file=str(a.compare), max_relative_compliance_difference=float(np.abs(got / want - 1).max()),
                               reference_trace_H_inverse=float(np.trace(np.asarray(ref['load_basis_compliance']))))
-    print(json.dumps({k: v for k, v in out.items() if k != 'H'}, indent=1))
+    print(json.dumps({k: v for k, v in out.items() if k not in ('H', 'registry')}, indent=1))
     if a.output:
         a.output.write_text(json.dumps(out, indent=1))
 

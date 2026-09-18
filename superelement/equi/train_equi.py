@@ -115,11 +115,27 @@ def prepare(row, args, device):
         raise ValueError('EMPTY_NEAR_BUCKET')
     r = pairs.max(axis=1); c = pairs.min(axis=1)
     near_codes = np.sort(r.astype(np.int64) * ctx['count'] + c)
+    if ctx['count'] * (ctx['count'] - 1) // 2 - len(near_codes) <= 0:
+        raise ValueError('EMPTY_FAR_BUCKET')
+    # The augmentation label identity M_q(g . cell) = G M_q G^T holds because span(rigid) is
+    # the genuine rigid-body 6-space of the node positions -- the unique 6-space closed under
+    # G = blockdiag(Q_g).  Nothing else in the pipeline checks that the frozen array and the
+    # positions we feed the network describe the same cell, so check it here: both are in hand.
+    from stage_cutfem_m4.response import rigid_fields
+    N = rigid_fields(ctx['pos'], (.5, .5, .5))
+    if N.shape != (q, 6):
+        raise ValueError('RIGID_FIELD_SHAPE')
+    rigid = np.asarray(cache['rigid'], dtype=np.float64)
+    resid = rigid - N @ np.linalg.lstsq(N, rigid, rcond=None)[0]
+    rigid_span_residual = float(np.linalg.norm(resid) / np.linalg.norm(rigid))
+    if rigid_span_residual > 1e-10:
+        raise ValueError(f'RIGID_SPAN_IS_NOT_THE_NODE_POSITIONS_RIGID_SPACE {rigid_span_residual:.3e}')
     g_canon, _, ties = CG.canonical(ctx['corners'])
     record = dict(seat=int(row['seat']), split=row['split'], q=q, d=d, count=ctx['count'], n=ctx['n'],
                   near_radius=radius, near_pairs=int(len(near_codes)),
                   all_lower_pairs=int(ctx['count'] * (ctx['count'] - 1) // 2), canonical_frame=int(g_canon),
-                  canonical_ties=int(ties), bindings=bindings, label=str(label), whitener=str(factor),
+                  canonical_ties=int(ties), rigid_span_residual=rigid_span_residual,
+                  bindings=bindings, label=str(label), whitener=str(factor),
                   trace_cache=str(cache_path), corners=ctx['corners'].tolist())
     return dict(seat=int(row['seat']), split=row['split'], q=q, d=d, count=ctx['count'], ctx=ctx,
                 ctx_t=to_torch(ctx, device), near_codes=near_codes, radius=radius, canonical_g=int(g_canon),
@@ -132,8 +148,11 @@ def sample_pairs_geometric(sample, per_bucket, rng):
     count = sample['count']; codes = sample['near_codes']
     diag = np.arange(count, dtype=np.int64)
     near = codes[rng.integers(0, len(codes), size=per_bucket)]
-    far = []; needed = per_bucket
+    far = []; needed = per_bucket; rounds = 0
     while needed:
+        rounds += 1
+        if rounds > 64:
+            raise ValueError('FAR_BUCKET_REJECTION_DID_NOT_CONVERGE')
         a = rng.integers(0, count, size=2 * needed + 32); b = rng.integers(0, count, size=2 * needed + 32)
         r = np.maximum(a, b); c = np.minimum(a, b); code = r * count + c
         pos = np.searchsorted(codes, code)
@@ -273,6 +292,12 @@ def evaluate(model, sample, tables, conditioning, out, args, RigidQuotient):
     rng = np.random.default_rng(args.seed + 1)
     chosen = [int(g) for g in rng.choice(np.arange(1, CG.ORDER), size=min(args.probe_rotations, CG.ORDER - 1), replace=False)]
     rotation = []
+    if args.canonical:
+        probes['rotation_consistency'] = []
+        probes['rotation_consistency_note'] = ('vacuous under --canonical: with a trivial corner stabiliser '
+                                               'view_frame is constant in g, so the probe would re-run a '
+                                               'bit-identical inference and report 0 whatever the model does')
+        chosen = []
     for g in chosen:
         Mg = predict_full_q(model, sample, tables, conditioning, view_frame(sample, g, args.canonical), args.inference_chunk, dev)
         rotation.append(dict(g=g, proper=bool(CG.DET[g] > 0), view_frame=view_frame(sample, g, args.canonical),
@@ -327,6 +352,8 @@ def main():
     ap.add_argument('--output', type=Path, required=True); args = ap.parse_args()
     if args.augment and args.canonical:
         raise ValueError('AUGMENT_AND_CANONICAL_ARE_ALTERNATIVES')
+    if args.proper_only and not args.augment:
+        raise ValueError('PROPER_ONLY_REQUIRES_AUGMENT')
     sys.path.insert(0, str(args.source))
     from stage_cutfem_m4.factors import read_blocks, bucket_loss, Conditioning
     from stage_cutfem_m4.quotient import RigidQuotient
@@ -341,6 +368,7 @@ def main():
                                index_free=True, transposition_symmetric=True),
                     augment=args.augment, proper_only=args.proper_only, canonical=args.canonical, group_order=CG.ORDER,
                     buckets='diagonal / near (<= near_cells background cells) / far', near_cells=args.near_cells,
+                    field_scales='fixed nominal per-channel scales in equi.context; no per-case statistics',
                     diagonal_loss=args.diagonal_loss, log_pivot_window=[-20., 20.],
                     optimizer='AdamW', peak_lr=args.lr, min_lr=args.min_lr, weight_decay=args.weight_decay, clip_grad_norm=args.clip,
                     steps=args.steps, warmup=args.warmup, schedule='cosine', pairs_per_bucket=args.pairs_per_bucket,
@@ -368,6 +396,10 @@ def main():
             train = [s for s in samples if s['seat'] in wanted]
         if not train:
             raise ValueError('EMPTY_TRAINING_SET')
+        if args.canonical:
+            tied = [s['seat'] for s in samples if s['record']['canonical_ties'] > 1]
+            if tied:
+                raise ValueError(f'CANONICAL_FRAME_NOT_UNIQUE_FOR_SEATS {tied}')
         presented = sorted(s['seat'] for s in train)
         write(args.output / 'SPLIT.json', dict(prepared=[s['seat'] for s in samples], presented=presented,
                                                never_presented=[s['seat'] for s in samples if s['seat'] not in presented]))
@@ -376,13 +408,18 @@ def main():
         n = samples[0]['ctx']['n']
         if any(s['ctx']['n'] != n for s in samples):
             raise ValueError('MIXED_GRID_SIZES')
-        tables = GroupTables(n, device)
-        model = EquiModel(n=n, volume_channels=args.volume_channels, state_dim=args.state_dim, width=args.width,
-                          depth=args.depth, segment_samples=args.segment_samples).to(device)
-        model.near_radius = float(samples[0]['radius'])
+        tables = GroupTables(n, device, len(samples[0]['ctx']['vol_scalar']))
+        model = EquiModel(n=n, volume_in=int(samples[0]['ctx_t']['volume'].shape[0]),
+                          volume_channels=args.volume_channels, state_dim=args.state_dim, width=args.width,
+                          depth=args.depth, segment_samples=args.segment_samples,
+                          near_radius=float(samples[0]['radius'])).to(device)
         opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         parameter_count = sum(p.numel() for p in model.parameters())
-        rng = np.random.default_rng(args.seed); losses = []; training_start = sync(device)
+        rng = np.random.default_rng(args.seed)
+        # a separate stream for the group element, so the pair sequence is identical across
+        # arms and the orientation variable is the only difference between them
+        g_rng = np.random.default_rng(args.seed ^ 0x9E3779B9)
+        losses = []; training_start = sync(device)
         elements = CG.PROPER if args.proper_only else np.arange(CG.ORDER)
         print(json.dumps(dict(phase='training_start', parameters=parameter_count, seats=args.seats,
                               augment=args.augment, canonical=args.canonical)), flush=True)
@@ -392,7 +429,7 @@ def main():
                 args.min_lr + (args.lr - args.min_lr) * .5 * (1 + math.cos(math.pi * (step - args.warmup) / max(1, args.steps - args.warmup)))
             for group in opt.param_groups:
                 group['lr'] = lr
-            g = int(rng.choice(elements)) if args.augment else (sample['canonical_g'] if args.canonical else 0)
+            g = int(g_rng.choice(elements)) if args.augment else (sample['canonical_g'] if args.canonical else 0)
             model.train(); opt.zero_grad(set_to_none=True)
             r, c, b = sample_pairs_geometric(sample, args.pairs_per_bucket, rng)
             target = torch.as_tensor(read_blocks(sample['packed'], r, c, sample['q']), dtype=torch.float32, device=device)
@@ -415,7 +452,8 @@ def main():
             if step % args.checkpoint_every == 0 or step == args.steps:
                 tmp = args.output / 'CHECKPOINT.tmp'
                 torch.save(dict(model=model.state_dict(), optimizer=opt.state_dict(), step=step, conditioning=asdict(conditioning),
-                                protocol=protocol, near_radius=model.near_radius, numpy_rng=rng.bit_generator.state,
+                                protocol=protocol, near_radius=model.near_radius,
+                                numpy_rng=rng.bit_generator.state, group_rng=g_rng.bit_generator.state,
                                 torch_rng=torch.get_rng_state()), tmp)
                 tmp.replace(args.output / f'CHECKPOINT_{step:06d}.pt')
         training_seconds = sync(device) - training_start

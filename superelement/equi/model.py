@@ -29,6 +29,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from . import cubic_group as CG
+from .context import VOLUME_SCALAR_NAMES, VOLUME_VECTOR_NAMES
 
 TWO_PI = 2.0 * math.pi
 
@@ -56,8 +57,9 @@ def to_torch(context, device):
 class GroupTables:
     """Per-device tensors of the cube group action for augmentation on the fly."""
 
-    def __init__(self, n, device):
+    def __init__(self, n, device, n_scalar_channels=len(VOLUME_SCALAR_NAMES)):
         self.n = n
+        self.n_scalar = int(n_scalar_channels)
         self.Q = torch.as_tensor(CG.Q_ALL, dtype=torch.float32, device=device)            # (48, 3, 3)
         self.cell_src = torch.as_tensor(np.stack([CG.cell_source_index(n, g) for g in range(CG.ORDER)]),
                                         dtype=torch.long, device=device)               # (48, n^3)
@@ -65,7 +67,7 @@ class GroupTables:
         self.face_perm = torch.as_tensor(CG.FACE_PERM, dtype=torch.long, device=device)
         self.inverse = CG.INVERSE
 
-    def rotate_context(self, ctx, g, n_scalar_channels=4):
+    def rotate_context(self, ctx, g):
         if g == 0:
             return ctx
         Q = self.Q[g]
@@ -75,8 +77,8 @@ class GroupTables:
         out['node_vector'] = ctx['node_vector'] @ Q.T
         vol = ctx['volume']
         flat = vol.reshape(vol.shape[0], -1)[:, self.cell_src[g]]
-        scal = flat[:n_scalar_channels]
-        vec = flat[n_scalar_channels:].reshape(-1, 3, flat.shape[1])
+        scal = flat[:self.n_scalar]
+        vec = flat[self.n_scalar:].reshape(-1, 3, flat.shape[1])
         vec = torch.einsum('ab,cbk->cak', Q, vec).reshape(-1, flat.shape[1])
         out['volume'] = torch.cat((scal, vec)).reshape(vol.shape)
         corners = torch.empty_like(ctx['corners']); corners[self.corner_perm[g]] = ctx['corners']; out['corners'] = corners
@@ -183,8 +185,10 @@ class ResidualTrunk(nn.Module):
 
 # ----------------------------------------------------------------------------- model
 class EquiModel(nn.Module):
-    def __init__(self, *, n, volume_in=10, n_node_scalar=5, n_node_vector=2, n_corners=8, n_known=4,
-                 volume_channels=32, state_dim=192, width=768, depth=4, segment_samples=8):
+    def __init__(self, *, n, volume_in=len(VOLUME_SCALAR_NAMES) + 3 * len(VOLUME_VECTOR_NAMES),
+                 n_node_scalar=5, n_node_vector=2, n_corners=8, n_known=4,
+                 volume_channels=32, state_dim=192, width=768, depth=4, segment_samples=8,
+                 near_radius=.0625):
         super().__init__()
         self.n = n
         self.C = volume_channels
@@ -203,13 +207,24 @@ class EquiModel(nn.Module):
         self.log_pivot_upper = 20.0
         # the segment sample parameters, symmetric under t -> 1 - t
         self.register_buffer('segment_t', (torch.arange(segment_samples, dtype=torch.float32) + .5) / segment_samples)
+        # a buffer, not a bare attribute: it decides both which head runs and which
+        # normaliser scales the output, so a checkpoint reloaded without it would
+        # silently reroute pairs.  It travels in the state_dict.
+        self.register_buffer('near_radius_t', torch.tensor(float(near_radius)))
+
+    @property
+    def near_radius(self):
+        return float(self.near_radius_t)
+
+    @near_radius.setter
+    def near_radius(self, value):
+        self.near_radius_t.fill_(float(value))
 
     def node_input(self, ctx, vol_feat):
-        nv = ctx['node_vector'].clone()
-        nv[:, 1] = nv[:, 1] / TWO_PI                       # grad phi is O(2 pi); keep inputs O(1)
+        # context.py already divides every field by its fixed nominal scale.
         at_node = sample_volume(vol_feat, ctx['pos'])
         return torch.cat((ctx['pos'], ctx['faces'], ctx['faces'].sum(1, keepdim=True), ctx['node_scalar'],
-                          nv.reshape(len(nv), -1), at_node), dim=1)
+                          ctx['node_vector'].reshape(len(ctx['node_vector']), -1), at_node), dim=1)
 
     def encode(self, ctx):
         vol_feat = self.volume_encoder(ctx['volume'][None])[0]
@@ -261,12 +276,10 @@ class EquiModel(nn.Module):
     def forward(self, ctx, rows, cols, conditioning):
         return self.decode(self.encode(ctx), ctx, rows, cols, conditioning)
 
-    near_radius = 0.0625   # set by the trainer to the near-pair radius; only routes the head choice
-
 
 # ----------------------------------------------------------------------------- tests
 def selftest(device='cpu', seed=20260918, n=8):
-    from .context import compile_from_points, rotate_context, permute_nodes
+    from .context import compile_from_points, rotate_context, permute_nodes, VOLUME_SCALAR_NAMES
     from .cubic_group import ORDER
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -321,12 +334,15 @@ def selftest(device='cpu', seed=20260918, n=8):
         diagonal_block_rms: float = 1.
         same_patch_rms: float = 1.
         cross_patch_rms: float = 1.
-    model = EquiModel(n=n, volume_channels=8, state_dim=16, width=32, depth=2, segment_samples=4).to(device)
-    model.near_radius = 3. / n
+    model = EquiModel(n=n, volume_in=ctx_t['volume'].shape[0], volume_channels=8, state_dim=16, width=32,
+                      depth=2, segment_samples=4, near_radius=3. / n).to(device)
+    assert 'near_radius_t' in model.state_dict(), 'near_radius must travel in the state_dict'
     model.eval()
     count = ctx['count']
     r = torch.as_tensor(rng.integers(0, count, 60)); c = torch.as_tensor(rng.integers(0, count, 60))
     rows, cols = torch.maximum(r, c), torch.minimum(r, c)
+    rows = torch.cat((torch.arange(8), rows)); cols = torch.cat((torch.arange(8), cols))   # force diagonal coverage
+    assert int((rows == cols).sum()) >= 8
     with torch.no_grad():
         out = model(ctx_t, rows, cols, Cond())
         swapped = model(ctx_t, cols, rows, Cond())          # the model is told (j, i): must give B^T
@@ -341,6 +357,23 @@ def selftest(device='cpu', seed=20260918, n=8):
         out_p = model(ctx_p, torch.as_tensor(inv[rows.numpy()]), torch.as_tensor(inv[cols.numpy()]), Cond())
     report['index_shuffle'] = float((out_p - out).abs().max())
     assert report['index_shuffle'] < 1e-5
+    # the resampling claim: pooling and nearest upsampling must commute with all 48 elements
+    x = torch.rand(2, n, n, n)
+    worst_pool = worst_up = 0.
+    for g in range(ORDER):
+        src = torch.as_tensor(CG.cell_source_index(n, g), dtype=torch.long)
+        rot = lambda t, s: t.reshape(t.shape[0], -1)[:, s].reshape(t.shape)
+        p1 = F.avg_pool3d(rot(x, src)[None], 2)[0]
+        p2 = rot(F.avg_pool3d(x[None], 2)[0], torch.as_tensor(CG.cell_source_index(n // 2, g), dtype=torch.long))
+        worst_pool = max(worst_pool, float((p1 - p2).abs().max()))
+        y = F.avg_pool3d(x[None], 2)[0]
+        srch = torch.as_tensor(CG.cell_source_index(n // 2, g), dtype=torch.long)
+        u1 = F.interpolate(rot(y, srch)[None], scale_factor=2, mode='nearest')[0]
+        u2 = rot(F.interpolate(y[None], scale_factor=2, mode='nearest')[0], src)
+        worst_up = max(worst_up, float((u1 - u2).abs().max()))
+    report['avg_pool_commutes'] = worst_pool
+    report['nearest_upsample_commutes'] = worst_up
+    assert worst_pool < 1e-6 and worst_up == 0.0, (worst_pool, worst_up)
     report['parameters'] = sum(p.numel() for p in model.parameters())
     return report
 
