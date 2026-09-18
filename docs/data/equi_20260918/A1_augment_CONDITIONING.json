@@ -1,0 +1,23 @@
+{
+  "source": "training-label aggregate only; buckets are diagonal / near / far",
+  "samples": [
+    {
+      "seat": 253,
+      "split": "train",
+      "label": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0253/MQ_UPPER.npy"
+    }
+  ],
+  "per_sample_draws_per_bucket": 32768,
+  "seed": 20260917,
+  "log_pivot_min": 2.053798262265275,
+  "log_pivot_max": 7.009307010519279,
+  "values": {
+    "pivot_log_mean": 3.460291951175705,
+    "pivot_log_std": 1.3941652510425222,
+    "diagonal_lower_rms": 3.979901126441994,
+    "diagonal_block_rms": 123.36638203113617,
+    "same_patch_rms": 10.564143642663362,
+    "cross_patch_rms": 0.12220203773326231
+  },
+  "field_map": "same_patch_rms = near bucket, cross_patch_rms = far bucket"
+}

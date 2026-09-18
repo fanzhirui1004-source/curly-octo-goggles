@@ -1,0 +1,33 @@
+[
+  {
+    "seat": 253,
+    "split": "train",
+    "q": 12828,
+    "d": 12822,
+    "count": 4276,
+    "n": 32,
+    "near_radius": 0.0625,
+    "near_pairs": 78184,
+    "all_lower_pairs": 9139950,
+    "canonical_frame": 25,
+    "canonical_ties": 1,
+    "bindings": {
+      "factor_sha256": "7ee508ff9c1019e8a59bae8bc159ff9cdc76c635850f912d15f51a506f96a453",
+      "trace_sha256": "76dfce8fce2d2cea5a4934c3e394d9eb9f19e87a892005a19ce27ccfd875dc66",
+      "mq_label_sha256": "cc1a4aad108f013d682ca7e2a947727989c46033cfd7472ff0daeb224f80c22d"
+    },
+    "label": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0253/MQ_UPPER.npy",
+    "whitener": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0253/R_UPPER.npy",
+    "trace_cache": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0253/input/TRACE_CACHE.npz",
+    "corners": [
+      0.20533573583101428,
+      0.18589031340413506,
+      0.1874146959455871,
+      0.20187193668927958,
+      0.21123008138527433,
+      0.19359118458907965,
+      0.19188220791715016,
+      0.17984371223847984
+    ]
+  }
+]

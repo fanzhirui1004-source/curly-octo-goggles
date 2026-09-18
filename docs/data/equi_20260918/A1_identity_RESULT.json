@@ -1,0 +1,30 @@
+{
+  "status": "EQUI_PILOT_COMPLETE",
+  "parameters": 9684603,
+  "steps": 20000,
+  "training_seconds": 3781.801190186292,
+  "seconds": 4043.735068682581,
+  "peak_gpu_allocated_bytes": 2640873472,
+  "first_loss": 1.493756651878357,
+  "last_loss": 0.000667021085973829,
+  "median_step_seconds": 0.18895424902439117,
+  "evaluations": {
+    "253": {
+      "g": 2.031129585799301,
+      "mu_min": 0.49233687845006435,
+      "mu_max": 1.8130737719452965,
+      "e_A": 0.25185538495048326,
+      "factor_relative": 0.3455958515067533,
+      "rotation": [
+        0.17315316074287396,
+        0.16360274719903162,
+        0.04671458948642066,
+        0.11977172269284117,
+        0.11977222210017899,
+        0.11724517435285305
+      ],
+      "index_shuffle": 2.6981331689246273e-07
+    }
+  },
+  "interpretation": "run completion does not imply accuracy, generalisation or physical validation"
+}
