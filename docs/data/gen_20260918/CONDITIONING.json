@@ -1,0 +1,292 @@
+{
+  "source": "training-label aggregate only; never a per-case feature",
+  "samples": [
+    {
+      "seat": 114,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00114/R_UPPER.npy"
+    },
+    {
+      "seat": 181,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0181/R_UPPER.npy"
+    },
+    {
+      "seat": 185,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00185/R_UPPER.npy"
+    },
+    {
+      "seat": 198,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00198/R_UPPER.npy"
+    },
+    {
+      "seat": 220,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0220/R_UPPER.npy"
+    },
+    {
+      "seat": 230,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00230/R_UPPER.npy"
+    },
+    {
+      "seat": 240,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00240/R_UPPER.npy"
+    },
+    {
+      "seat": 245,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00245/R_UPPER.npy"
+    },
+    {
+      "seat": 366,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0366/R_UPPER.npy"
+    },
+    {
+      "seat": 399,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0399/R_UPPER.npy"
+    },
+    {
+      "seat": 415,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0415/R_UPPER.npy"
+    },
+    {
+      "seat": 483,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0483/R_UPPER.npy"
+    },
+    {
+      "seat": 636,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0636/R_UPPER.npy"
+    },
+    {
+      "seat": 725,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0725/R_UPPER.npy"
+    },
+    {
+      "seat": 849,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0849/R_UPPER.npy"
+    },
+    {
+      "seat": 866,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0866/R_UPPER.npy"
+    },
+    {
+      "seat": 885,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0885/R_UPPER.npy"
+    },
+    {
+      "seat": 895,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0895/R_UPPER.npy"
+    },
+    {
+      "seat": 995,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0995/R_UPPER.npy"
+    },
+    {
+      "seat": 100000,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100000/R_UPPER.npy"
+    },
+    {
+      "seat": 100001,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100001/R_UPPER.npy"
+    },
+    {
+      "seat": 100002,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100002/R_UPPER.npy"
+    },
+    {
+      "seat": 100005,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100005/R_UPPER.npy"
+    },
+    {
+      "seat": 100006,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100006/R_UPPER.npy"
+    },
+    {
+      "seat": 100007,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100007/R_UPPER.npy"
+    },
+    {
+      "seat": 100008,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100008/R_UPPER.npy"
+    },
+    {
+      "seat": 100009,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100009/R_UPPER.npy"
+    },
+    {
+      "seat": 100010,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100010/R_UPPER.npy"
+    },
+    {
+      "seat": 100012,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100012/R_UPPER.npy"
+    },
+    {
+      "seat": 100013,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100013/R_UPPER.npy"
+    },
+    {
+      "seat": 100014,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100014/R_UPPER.npy"
+    },
+    {
+      "seat": 100016,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100016/R_UPPER.npy"
+    },
+    {
+      "seat": 100017,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100017/R_UPPER.npy"
+    },
+    {
+      "seat": 100019,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100019/R_UPPER.npy"
+    },
+    {
+      "seat": 100020,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100020/R_UPPER.npy"
+    },
+    {
+      "seat": 100021,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100021/R_UPPER.npy"
+    },
+    {
+      "seat": 100022,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100022/R_UPPER.npy"
+    },
+    {
+      "seat": 100024,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100024/R_UPPER.npy"
+    },
+    {
+      "seat": 100025,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100025/R_UPPER.npy"
+    },
+    {
+      "seat": 100028,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100028/R_UPPER.npy"
+    },
+    {
+      "seat": 100029,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100029/R_UPPER.npy"
+    },
+    {
+      "seat": 100032,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/R_UPPER.npy"
+    },
+    {
+      "seat": 100033,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100033/R_UPPER.npy"
+    },
+    {
+      "seat": 100034,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100034/R_UPPER.npy"
+    },
+    {
+      "seat": 100226,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100226/R_UPPER.npy"
+    },
+    {
+      "seat": 100227,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100227/R_UPPER.npy"
+    },
+    {
+      "seat": 100228,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100228/R_UPPER.npy"
+    },
+    {
+      "seat": 100229,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100229/R_UPPER.npy"
+    },
+    {
+      "seat": 100230,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100230/R_UPPER.npy"
+    },
+    {
+      "seat": 100231,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100231/R_UPPER.npy"
+    },
+    {
+      "seat": 100232,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100232/R_UPPER.npy"
+    },
+    {
+      "seat": 100233,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100233/R_UPPER.npy"
+    },
+    {
+      "seat": 100235,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100235/R_UPPER.npy"
+    },
+    {
+      "seat": 100236,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100236/R_UPPER.npy"
+    },
+    {
+      "seat": 100238,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100238/R_UPPER.npy"
+    }
+  ],
+  "per_sample_offdiagonal_draws_per_bucket": 4096,
+  "seed": 20260917,
+  "log_pivot_min": -8.872260595429596,
+  "log_pivot_max": -1.0207856259094148,
+  "values": {
+    "pivot_log_mean": -3.154613074356999,
+    "pivot_log_std": 1.332511732613311,
+    "diagonal_lower_rms": 0.005900343075960514,
+    "diagonal_block_rms": 0.05203193327327013,
+    "same_patch_rms": 0.005794976145712657,
+    "cross_patch_rms": 0.0005303757754060141
+  }
+}
