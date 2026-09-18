@@ -1,0 +1,525 @@
+{
+  "loss_selftest": {
+    "absolute": {
+      "loss_difference": 0.0,
+      "parts_difference": 0.0
+    },
+    "log": {
+      "loss_difference": 0.0,
+      "parts_difference": 0.0
+    },
+    "unit_weight_difference": 0.0,
+    "asymmetry_raises_loss": 0.00035721994936466217,
+    "tail_raises_loss": 0.2094392031431198
+  },
+  "scale_importance": 0.5,
+  "pivot_asymmetry": 0.0,
+  "tail_beta": 2.0,
+  "scales": [
+    {
+      "seat": 100051,
+      "count": 4176,
+      "pivot_scale_min": 8.49498991481556,
+      "pivot_scale_max": 1108.331061047936,
+      "pivot_scale_median": 15.608467716556726,
+      "pivot_scale_p999": 1107.2768204473634,
+      "tilted": true
+    },
+    {
+      "seat": 100052,
+      "count": 4176,
+      "pivot_scale_min": 8.488589038766833,
+      "pivot_scale_max": 1103.806286667568,
+      "pivot_scale_median": 15.543646145584013,
+      "pivot_scale_p999": 1103.218913093446,
+      "tilted": true
+    },
+    {
+      "seat": 253,
+      "count": 4276,
+      "pivot_scale_min": 8.259671225998543,
+      "pivot_scale_max": 1079.1630327896485,
+      "pivot_scale_median": 14.878957837461344,
+      "pivot_scale_p999": 1065.8931629991262,
+      "tilted": true
+    },
+    {
+      "seat": 100054,
+      "count": 4286,
+      "pivot_scale_min": 8.252520620611163,
+      "pivot_scale_max": 1108.2748915631735,
+      "pivot_scale_median": 15.08126178105887,
+      "pivot_scale_p999": 1088.195451158403,
+      "tilted": true
+    },
+    {
+      "seat": 100055,
+      "count": 4316,
+      "pivot_scale_min": 8.171542442485892,
+      "pivot_scale_max": 1157.6731075625312,
+      "pivot_scale_median": 15.05575871389003,
+      "pivot_scale_p999": 1124.6747238773416,
+      "tilted": true
+    },
+    {
+      "seat": 100057,
+      "count": 4346,
+      "pivot_scale_min": 8.311838924549901,
+      "pivot_scale_max": 1034.3590319619518,
+      "pivot_scale_median": 14.755609657308264,
+      "pivot_scale_p999": 1026.4874544750344,
+      "tilted": true
+    },
+    {
+      "seat": 100060,
+      "count": 4386,
+      "pivot_scale_min": 8.14812586117986,
+      "pivot_scale_max": 1044.388509491944,
+      "pivot_scale_median": 14.45764093013807,
+      "pivot_scale_p999": 1022.7981753311724,
+      "tilted": true
+    },
+    {
+      "seat": 100064,
+      "count": 4416,
+      "pivot_scale_min": 8.235896231620364,
+      "pivot_scale_max": 987.2814752988098,
+      "pivot_scale_median": 14.324339482150565,
+      "pivot_scale_p999": 979.7189263954634,
+      "tilted": true
+    },
+    {
+      "seat": 100065,
+      "count": 4416,
+      "pivot_scale_min": 8.210972706115152,
+      "pivot_scale_max": 958.388256946038,
+      "pivot_scale_median": 14.143962588538873,
+      "pivot_scale_p999": 957.0746427480391,
+      "tilted": true
+    },
+    {
+      "seat": 100067,
+      "count": 4504,
+      "pivot_scale_min": 8.138446458537524,
+      "pivot_scale_max": 1985.5436631621917,
+      "pivot_scale_median": 13.718178610843621,
+      "pivot_scale_p999": 1984.9637989599908,
+      "tilted": true
+    },
+    {
+      "seat": 100077,
+      "count": 4640,
+      "pivot_scale_min": 8.010601640474158,
+      "pivot_scale_max": 1983.2318928187424,
+      "pivot_scale_median": 14.166348806279167,
+      "pivot_scale_p999": 1979.8423355942314,
+      "tilted": true
+    },
+    {
+      "seat": 100078,
+      "count": 4644,
+      "pivot_scale_min": 7.986947688968814,
+      "pivot_scale_max": 1985.4993714526872,
+      "pivot_scale_median": 13.877322972183315,
+      "pivot_scale_p999": 1973.8401501263781,
+      "tilted": true
+    },
+    {
+      "seat": 100081,
+      "count": 4692,
+      "pivot_scale_min": 7.9564694875883655,
+      "pivot_scale_max": 1986.2271509598984,
+      "pivot_scale_median": 13.92479984615453,
+      "pivot_scale_p999": 1973.912314399261,
+      "tilted": true
+    },
+    {
+      "seat": 100083,
+      "count": 4720,
+      "pivot_scale_min": 7.886989355388546,
+      "pivot_scale_max": 1976.8580824864541,
+      "pivot_scale_median": 13.545279620711014,
+      "pivot_scale_p999": 1958.2656614265773,
+      "tilted": true
+    },
+    {
+      "seat": 100084,
+      "count": 4724,
+      "pivot_scale_min": 8.007513548083763,
+      "pivot_scale_max": 1984.9482339754231,
+      "pivot_scale_median": 13.82265489235509,
+      "pivot_scale_p999": 1980.8774467890184,
+      "tilted": true
+    },
+    {
+      "seat": 100086,
+      "count": 4756,
+      "pivot_scale_min": 7.890285380408241,
+      "pivot_scale_max": 1982.483981520281,
+      "pivot_scale_median": 13.617831038548285,
+      "pivot_scale_p999": 1969.6379426701496,
+      "tilted": true
+    },
+    {
+      "seat": 113,
+      "count": 4800,
+      "pivot_scale_min": 8.029930096593324,
+      "pivot_scale_max": 1949.7895317887205,
+      "pivot_scale_median": 13.724538246765484,
+      "pivot_scale_p999": 1947.247373589433,
+      "tilted": true
+    },
+    {
+      "seat": 403,
+      "count": 4856,
+      "pivot_scale_min": 7.913324260440959,
+      "pivot_scale_max": 1973.042925601065,
+      "pivot_scale_median": 13.198317271919148,
+      "pivot_scale_p999": 1960.0628839038736,
+      "tilted": true
+    },
+    {
+      "seat": 100093,
+      "count": 4860,
+      "pivot_scale_min": 7.896529540430851,
+      "pivot_scale_max": 1935.3777117590773,
+      "pivot_scale_median": 13.185865589219464,
+      "pivot_scale_p999": 1904.9760432014402,
+      "tilted": true
+    },
+    {
+      "seat": 100102,
+      "count": 5068,
+      "pivot_scale_min": 7.6794571156875575,
+      "pivot_scale_max": 1985.2142615411929,
+      "pivot_scale_median": 13.138250826818364,
+      "pivot_scale_p999": 1961.637027104197,
+      "tilted": true
+    },
+    {
+      "seat": 100105,
+      "count": 5092,
+      "pivot_scale_min": 7.755971561651404,
+      "pivot_scale_max": 1935.9874813765582,
+      "pivot_scale_median": 12.879507356480856,
+      "pivot_scale_p999": 1926.5704601331388,
+      "tilted": true
+    },
+    {
+      "seat": 100108,
+      "count": 5124,
+      "pivot_scale_min": 7.746760781091521,
+      "pivot_scale_max": 1938.888830319697,
+      "pivot_scale_median": 12.966795780473523,
+      "pivot_scale_p999": 1927.2738603986036,
+      "tilted": true
+    },
+    {
+      "seat": 100110,
+      "count": 5168,
+      "pivot_scale_min": 7.645196760150671,
+      "pivot_scale_max": 2031.6561111840208,
+      "pivot_scale_median": 12.762112178087119,
+      "pivot_scale_p999": 1960.7092993675753,
+      "tilted": true
+    },
+    {
+      "seat": 100117,
+      "count": 5228,
+      "pivot_scale_min": 7.678161271975149,
+      "pivot_scale_max": 1946.7379479408385,
+      "pivot_scale_median": 12.699245169579271,
+      "pivot_scale_p999": 1925.4283779863356,
+      "tilted": true
+    },
+    {
+      "seat": 347,
+      "count": 5236,
+      "pivot_scale_min": 7.7074372393881,
+      "pivot_scale_max": 1944.035030616961,
+      "pivot_scale_median": 12.610282316317761,
+      "pivot_scale_p999": 1933.999927983054,
+      "tilted": true
+    },
+    {
+      "seat": 100118,
+      "count": 5240,
+      "pivot_scale_min": 7.688110318015364,
+      "pivot_scale_max": 1946.2580361726175,
+      "pivot_scale_median": 12.599744265756353,
+      "pivot_scale_p999": 1935.1800510629469,
+      "tilted": true
+    },
+    {
+      "seat": 100121,
+      "count": 5268,
+      "pivot_scale_min": 7.80808992607216,
+      "pivot_scale_max": 1945.7684752452176,
+      "pivot_scale_median": 12.657733080949404,
+      "pivot_scale_p999": 1939.4853454835693,
+      "tilted": true
+    },
+    {
+      "seat": 974,
+      "count": 5352,
+      "pivot_scale_min": 7.7134312620434216,
+      "pivot_scale_max": 1938.7000818215936,
+      "pivot_scale_median": 12.613617747051137,
+      "pivot_scale_p999": 1933.919555735945,
+      "tilted": true
+    },
+    {
+      "seat": 882,
+      "count": 5388,
+      "pivot_scale_min": 7.612713335655016,
+      "pivot_scale_max": 2031.9118486370269,
+      "pivot_scale_median": 12.398709670163997,
+      "pivot_scale_p999": 1987.5556962908831,
+      "tilted": true
+    },
+    {
+      "seat": 100131,
+      "count": 5400,
+      "pivot_scale_min": 7.560487091452619,
+      "pivot_scale_max": 2027.65560470934,
+      "pivot_scale_median": 12.409340452907486,
+      "pivot_scale_p999": 1952.7726499013202,
+      "tilted": true
+    },
+    {
+      "seat": 100135,
+      "count": 5472,
+      "pivot_scale_min": 7.733374466154358,
+      "pivot_scale_max": 1909.5149573158733,
+      "pivot_scale_median": 12.67665891234875,
+      "pivot_scale_p999": 1889.4002077795433,
+      "tilted": true
+    },
+    {
+      "seat": 941,
+      "count": 5516,
+      "pivot_scale_min": 7.48580651172517,
+      "pivot_scale_max": 2020.1246435155924,
+      "pivot_scale_median": 12.119117618926174,
+      "pivot_scale_p999": 1940.9477037453662,
+      "tilted": true
+    },
+    {
+      "seat": 100142,
+      "count": 5544,
+      "pivot_scale_min": 7.541815341673501,
+      "pivot_scale_max": 2007.1944389884948,
+      "pivot_scale_median": 12.161422648153096,
+      "pivot_scale_p999": 1925.251005653374,
+      "tilted": true
+    },
+    {
+      "seat": 100143,
+      "count": 5552,
+      "pivot_scale_min": 7.63295177088212,
+      "pivot_scale_max": 2033.1348248241113,
+      "pivot_scale_median": 12.275622956099289,
+      "pivot_scale_p999": 1914.5836182578514,
+      "tilted": true
+    },
+    {
+      "seat": 153,
+      "count": 5588,
+      "pivot_scale_min": 7.493281948230602,
+      "pivot_scale_max": 2036.1727641229363,
+      "pivot_scale_median": 12.118688748459233,
+      "pivot_scale_p999": 1958.8833310514406,
+      "tilted": true
+    },
+    {
+      "seat": 100149,
+      "count": 5608,
+      "pivot_scale_min": 7.44523725869821,
+      "pivot_scale_max": 2072.1789516848717,
+      "pivot_scale_median": 11.95923918064226,
+      "pivot_scale_p999": 1928.4698586035765,
+      "tilted": true
+    },
+    {
+      "seat": 100150,
+      "count": 5616,
+      "pivot_scale_min": 7.595845214857821,
+      "pivot_scale_max": 2030.6918681483794,
+      "pivot_scale_median": 12.157311286042319,
+      "pivot_scale_p999": 2008.3184868679364,
+      "tilted": true
+    },
+    {
+      "seat": 120,
+      "count": 5640,
+      "pivot_scale_min": 7.452665687275278,
+      "pivot_scale_max": 2028.8462924476023,
+      "pivot_scale_median": 11.947795782371792,
+      "pivot_scale_p999": 1931.0080713579057,
+      "tilted": true
+    },
+    {
+      "seat": 100151,
+      "count": 5658,
+      "pivot_scale_min": 7.454291550081035,
+      "pivot_scale_max": 2088.3541180546163,
+      "pivot_scale_median": 11.91887114116929,
+      "pivot_scale_p999": 1907.7175875056985,
+      "tilted": true
+    },
+    {
+      "seat": 100153,
+      "count": 5668,
+      "pivot_scale_min": 7.56456499141655,
+      "pivot_scale_max": 2025.3240659228006,
+      "pivot_scale_median": 12.080939267511122,
+      "pivot_scale_p999": 1935.8743501850001,
+      "tilted": true
+    },
+    {
+      "seat": 100155,
+      "count": 5696,
+      "pivot_scale_min": 7.617586650334684,
+      "pivot_scale_max": 2031.5809519745587,
+      "pivot_scale_median": 12.114449672133944,
+      "pivot_scale_p999": 2026.5994706831364,
+      "tilted": true
+    },
+    {
+      "seat": 920,
+      "count": 5704,
+      "pivot_scale_min": 7.583850030414738,
+      "pivot_scale_max": 2028.2544985058287,
+      "pivot_scale_median": 12.102283996789271,
+      "pivot_scale_p999": 2013.9011784348927,
+      "tilted": true
+    },
+    {
+      "seat": 191,
+      "count": 5728,
+      "pivot_scale_min": 7.4913140424910205,
+      "pivot_scale_max": 2033.9921593947936,
+      "pivot_scale_median": 11.914249483702203,
+      "pivot_scale_p999": 1929.047351167754,
+      "tilted": true
+    },
+    {
+      "seat": 119,
+      "count": 5780,
+      "pivot_scale_min": 7.473299521684692,
+      "pivot_scale_max": 2029.9951110193933,
+      "pivot_scale_median": 11.826894668423378,
+      "pivot_scale_p999": 1887.281824143165,
+      "tilted": true
+    },
+    {
+      "seat": 171,
+      "count": 5816,
+      "pivot_scale_min": 7.496698685717372,
+      "pivot_scale_max": 2037.631492227634,
+      "pivot_scale_median": 11.842472620580214,
+      "pivot_scale_p999": 1943.3799526367484,
+      "tilted": true
+    },
+    {
+      "seat": 100167,
+      "count": 5856,
+      "pivot_scale_min": 7.473193170294863,
+      "pivot_scale_max": 1231.373694849404,
+      "pivot_scale_median": 11.648404525385391,
+      "pivot_scale_p999": 1199.4161339376299,
+      "tilted": true
+    },
+    {
+      "seat": 100168,
+      "count": 5856,
+      "pivot_scale_min": 7.517430297444341,
+      "pivot_scale_max": 2002.465460460422,
+      "pivot_scale_median": 11.815122555662361,
+      "pivot_scale_p999": 1969.6668360712927,
+      "tilted": true
+    },
+    {
+      "seat": 100169,
+      "count": 5856,
+      "pivot_scale_min": 7.539373596283312,
+      "pivot_scale_max": 1850.5928973656967,
+      "pivot_scale_median": 11.843859952248504,
+      "pivot_scale_p999": 1783.8648740429335,
+      "tilted": true
+    },
+    {
+      "seat": 100170,
+      "count": 5856,
+      "pivot_scale_min": 7.476219886005633,
+      "pivot_scale_max": 1047.1338188981656,
+      "pivot_scale_median": 11.616389700535265,
+      "pivot_scale_p999": 1038.5324164504862,
+      "tilted": true
+    },
+    {
+      "seat": 100171,
+      "count": 5856,
+      "pivot_scale_min": 7.540140494324523,
+      "pivot_scale_max": 1979.8449052890865,
+      "pivot_scale_median": 11.864140411471702,
+      "pivot_scale_p999": 1935.4541093499056,
+      "tilted": true
+    },
+    {
+      "seat": 100172,
+      "count": 5856,
+      "pivot_scale_min": 7.572141751245716,
+      "pivot_scale_max": 1982.0673300943383,
+      "pivot_scale_median": 11.917207218803277,
+      "pivot_scale_p999": 1956.7498146797395,
+      "tilted": true
+    },
+    {
+      "seat": 100173,
+      "count": 5856,
+      "pivot_scale_min": 7.540781377933709,
+      "pivot_scale_max": 1271.7520748869122,
+      "pivot_scale_median": 11.825101547771922,
+      "pivot_scale_p999": 1255.5641535762868,
+      "tilted": true
+    },
+    {
+      "seat": 244,
+      "count": 5860,
+      "pivot_scale_min": 7.4491853318711385,
+      "pivot_scale_max": 1199.7976576713002,
+      "pivot_scale_median": 11.620217446940426,
+      "pivot_scale_p999": 1180.1116020470606,
+      "tilted": true
+    },
+    {
+      "seat": 100183,
+      "count": 6002,
+      "pivot_scale_min": 7.406277423678084,
+      "pivot_scale_max": 2028.342486239472,
+      "pivot_scale_median": 11.619683981134251,
+      "pivot_scale_p999": 1962.4187073393184,
+      "tilted": true
+    },
+    {
+      "seat": 131,
+      "count": 6016,
+      "pivot_scale_min": 7.365482289666527,
+      "pivot_scale_max": 2089.1239400500613,
+      "pivot_scale_median": 11.628745451558332,
+      "pivot_scale_p999": 1931.6764400683028,
+      "tilted": true
+    },
+    {
+      "seat": 100186,
+      "count": 6016,
+      "pivot_scale_min": 7.432199874137619,
+      "pivot_scale_max": 2088.443677928468,
+      "pivot_scale_median": 11.531516350953423,
+      "pivot_scale_p999": 1186.4103821784354,
+      "tilted": true
+    }
+  ],
+  "note": "equi_loss equals the frozen bucket_loss bit for bit at neutral knobs; the tilt changes which pairs are drawn, not the conditioning constants"
+}
