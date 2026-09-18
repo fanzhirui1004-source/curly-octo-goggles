@@ -751,16 +751,25 @@ def main():
                                      pivot_scale_p999=float(np.percentile(scales, 99.9)),
                                      tilted=bool(s_['tilt'] is not None)))
         bank_dir = args.response_bank_dir or (args.output.parent / 'RESPONSE_BANK')
+        chosen_for_bank = samples if args.eval_seats is None else [s_ for s_ in samples if s_['seat'] in set(args.eval_seats)]
         response_report = dict(selftest=response_selftest(device), weight=args.response_weight,
                                rows=args.response_rows, per_face=args.response_per_face, seed=args.response_seed,
                                column_weight=args.column_weight, column_count=args.column_count,
                                column_rows=args.column_rows, column_tilt=args.column_tilt)
         tick_b = time.perf_counter()
+        # A bank costs one dense q x q pass over the label (about 30 s at q = 18000), so it is
+        # built only where it is used: for every evaluated seat, because the response gate reads
+        # it, and for the training seats only when a term that needs it is switched on.
+        needs_bank = {s_['seat'] for s_ in chosen_for_bank}
+        if args.response_weight > 0 or args.column_weight > 0:
+            needs_bank |= {s_['seat'] for s_ in train}
         for s_ in samples:
-            s_['bank'] = response_bank(s_, args.response_per_face, args.response_seed, bank_dir)
+            s_['bank'] = response_bank(s_, args.response_per_face, args.response_seed, bank_dir) \
+                if s_['seat'] in needs_bank else None
         response_report.update(bank_seconds=time.perf_counter() - tick_b,
-                               train_loads=[len(s_['bank']['train']) for s_ in samples],
-                               held_loads=[len(s_['bank']['held']) for s_ in samples])
+                               banks_built=sorted(needs_bank),
+                               train_loads=[len(s_['bank']['train']) for s_ in samples if s_['bank']],
+                               held_loads=[len(s_['bank']['held']) for s_ in samples if s_['bank']])
         write(args.output / 'LOSS_SETUP.json', dict(
             response=response_report,
             loss_selftest=selftest, scale_importance=args.scale_importance,

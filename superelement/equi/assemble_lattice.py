@@ -12,7 +12,8 @@ Dense float64 on the host (2 x 2 x 2 of a 6016-coordinate cell is ~108k dofs, 93
 the box has 754 GB).  With --grid 2 1 1 along ASSEMBLE_TWO's glue axis it must reproduce
 assemble_two.py's numbers, which is the validation gate (--check-two).
 
-    python -m superelement.equi.assemble_lattice --seat 347 --a-factor A_PRED_UPPER.npy --grid 2 2 2 --output DIR
+    python -m superelement.equi.assemble_lattice --seat 347 --a-factor A_PRED.npy --grid 2 2 2 --output DIR
+    python -m superelement.equi.assemble_lattice --seat 100034 347 --a-factor CUT.npy FULL.npy --grid 2 1 1 --output DIR
 """
 from __future__ import annotations
 
@@ -52,8 +53,10 @@ class UnionFind:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--manifest', type=Path, default=Path('/root/autodl-tmp/CLAUDE_LABELS_20260917/V2_LABELS.json'))
-    ap.add_argument('--seat', type=int, required=True)
-    ap.add_argument('--a-factor', type=Path, required=True, help='A_PRED_UPPER.npy (d x d upper Cholesky of A_hat)')
+    ap.add_argument('--seat', type=int, nargs='+', required=True,
+                    help='one seat, or one per copy in x-major order: neighbours may be different cells')
+    ap.add_argument('--a-factor', type=Path, nargs='+', required=True,
+                    help='A_PRED_UPPER.npy per distinct seat, in the order the seats first appear')
     ap.add_argument('--grid', type=int, nargs=3, default=[2, 2, 2])
     ap.add_argument('--check-two', type=Path, default=None, help='ASSEMBLE_TWO.json to reproduce with --grid 2 1 1 along its axis')
     ap.add_argument('--solver', choices=['dense', 'pcg'], default='pcg')
@@ -70,53 +73,99 @@ def main():
     torch.set_num_threads(a.threads)
     dev = torch.device('cpu'); t0 = time.time()
 
-    row = [r for r in json.loads(a.manifest.read_text()) if int(r['seat']) == a.seat][0]
-    ref = Path(row['reference']); receipt = json.loads((ref / 'RESULT.json').read_text())
-    d = int(receipt['dimension']); q = d + 6
-    cache = dict(np.load(row['trace_cache'], allow_pickle=False))
-    meta = json.loads((Path(row['trace_cache']).parent / 'INPUT.json').read_text())['metadata']; n = int(meta['n'])
-    ctx = compile_equi_inputs(cache, meta)
-    if not ctx['box_only']:
-        raise ValueError('FULL_CELLS_ONLY: a cut cell has no face pairs on the cut side')
-    if rigid_span_residual(cache, n) > 1e-12:
-        raise ValueError('RIGID_IS_NOT_THE_TRACE_PULLBACK')
-    kind = np.asarray(cache['kind']).astype(np.int64); pos = ctx['pos']; count = int(ctx['count'])
-    if 3 * count != q:
-        raise ValueError('DIMENSION_BINDING')
+    manifest = json.loads(a.manifest.read_text())
     grid = [int(v) for v in a.grid]
     copies = [(i, j, k) for i in range(grid[0]) for j in range(grid[1]) for k in range(grid[2])]
     cidx = {c: m for m, c in enumerate(copies)}
-    pairs = {axis: face_pairs(kind, pos, axis) for axis in range(3)}
-    report = dict(seat=a.seat, q=q, n=n, coordinates=count, grid=grid, modules=len(copies),
-                  face_pairs={axis: dict(shared=len(p[0]), low=p[1], high=p[2]) for axis, p in pairs.items()},
-                  a_factor=str(a.a_factor))
+    seats = [int(v) for v in a.seat]
+    if len(seats) == 1:
+        seats = seats * len(copies)
+    if len(seats) != len(copies):
+        raise ValueError(f'GIVE_ONE_SEAT_OR_ONE_PER_COPY {len(seats)} vs {len(copies)}')
+    order = list(dict.fromkeys(seats))                     # distinct seats, first appearance
+    if len(a.a_factor) != len(order):
+        raise ValueError(f'GIVE_ONE_A_FACTOR_PER_DISTINCT_SEAT {len(a.a_factor)} vs {len(order)}')
+    factor_of = dict(zip(order, a.a_factor))
+    cell = {}
+    n = None
+    for seat in order:
+        row = [r for r in manifest if int(r['seat']) == seat][0]
+        ref = Path(row['reference']); receipt = json.loads((ref / 'RESULT.json').read_text())
+        d = int(receipt['dimension']); q = d + 6
+        cache = dict(np.load(row['trace_cache'], allow_pickle=False))
+        meta = json.loads((Path(row['trace_cache']).parent / 'INPUT.json').read_text())['metadata']
+        if n is None:
+            n = int(meta['n'])
+        elif int(meta['n']) != n:
+            raise ValueError('MIXED_BACKGROUND_GRIDS')
+        ctx = compile_equi_inputs(cache, meta)
+        if rigid_span_residual(cache, n) > 1e-12:
+            raise ValueError(f'RIGID_IS_NOT_THE_TRACE_PULLBACK seat {seat}')
+        kind = np.asarray(cache['kind']).astype(np.int64)
+        if 3 * int(ctx['count']) != q:
+            raise ValueError('DIMENSION_BINDING')
+        cell[seat] = dict(ref=ref, d=d, q=q, cache=cache, ctx=ctx, kind=kind, pos=ctx['pos'],
+                          count=int(ctx['count']), box_only=bool(ctx['box_only']),
+                          nodes=np.asarray(cache['background_nodes'], dtype=np.int64))
+    report = dict(seats=seats, distinct=order, grid=grid, modules=len(copies), n=n,
+                  per_seat={str(k): dict(q=v['q'], coordinates=v['count'], box_only=v['box_only'],
+                                         cut_functionals=int((v['kind'] == 1).sum())) for k, v in cell.items()},
+                  a_factor={str(k): str(v) for k, v in factor_of.items()},
+                  graded=bool(len(order) > 1))
 
-    # global node ids by union-find over (copy, local node): copy c's HIGH face node glues to
-    # copy c+e_axis's LOW face node at the same transverse position
-    uf = UnionFind(len(copies) * count)
-    for (i, j, k), m in cidx.items():
+    # Global ids by union-find over (copy, local coordinate).  Two neighbouring modules glue on a
+    # coordinate that is ONE background node (kind 0) lying on their shared face, matched by its
+    # exact position in the lattice.  That works when the neighbours are different cells too: the
+    # glue set is then the INTERSECTION of the two faces' surviving nodes, and a node only one side
+    # kept is free surface, which is the physical situation at a graded interface.  Cut-surface
+    # functionals (kind 1) are never shared.
+    offsets = np.cumsum([0] + [cell[s]['count'] for s in seats])
+    total_local = int(offsets[-1])
+    uf = UnionFind(total_local)
+    key = []
+    for m, (c, seat) in enumerate(zip(copies, seats)):
+        v = cell[seat]
+        pos_world = v['pos'] + np.asarray(c, dtype=np.float64)
+        key.append({(round(float(x), 9), round(float(y), 9), round(float(z), 9)): int(offsets[m]) + i
+                    for i, (x, y, z) in enumerate(pos_world) if v['kind'][i] == 0})
+    shared_count = 0
+    for m, (c, seat) in enumerate(zip(copies, seats)):
         for axis in range(3):
-            nb = [i, j, k]; nb[axis] += 1; nb = tuple(nb)
+            nb = list(c); nb[axis] += 1; nb = tuple(nb)
             if nb not in cidx:
                 continue
             m2 = cidx[nb]
-            for lo, hi in pairs[axis][0].items():
-                uf.union(m * count + hi, m2 * count + lo)
-    roots = np.array([uf.find(i) for i in range(len(copies) * count)])
-    _, gid = np.unique(roots, return_inverse=True)
-    gid = gid.reshape(len(copies), count)
-    N_nodes = int(gid.max()) + 1; N = 3 * N_nodes
-    report.update(assembled_coordinates=N_nodes, assembled_dofs=N)
-    print(json.dumps({k: report[k] for k in ('seat', 'grid', 'modules', 'assembled_coordinates', 'assembled_dofs', 'face_pairs')}), flush=True)
+            for k3, idx in key[m].items():
+                if abs(k3[axis] - (c[axis] + 1)) > 1e-9:
+                    continue
+                other = key[m2].get(k3)
+                if other is not None:
+                    uf.union(idx, other); shared_count += 1
+    roots = np.array([uf.find(i) for i in range(total_local)])
+    _, gid_flat = np.unique(roots, return_inverse=True)
+    gid = [gid_flat[offsets[m]:offsets[m + 1]] for m in range(len(copies))]
+    N_nodes = int(gid_flat.max()) + 1; N = 3 * N_nodes
+    report.update(assembled_coordinates=N_nodes, assembled_dofs=N, glued_coordinate_pairs=shared_count)
+    # Surviving kind-0 coordinates per face, per seat: a cut plane can remove a whole face, and then
+    # the modules along that axis are not connected at all.  In the graded set every cut seat has an
+    # empty high-x face, so a cut cell glues along y or z, not x.
+    report['face_population'] = {str(seat): {'xyz'[ax]: [int(((cell[seat]['kind'] == 0) & (np.abs(cell[seat]['pos'][:, ax] - side) < 1e-9)).sum())
+                                                         for side in (0., 1.)] for ax in range(3)} for seat in order}
+    if shared_count == 0 and len(copies) > 1:
+        raise ValueError(f"MODULES_ARE_NOT_CONNECTED: no shared face coordinate. face_population "
+                         f"{json.dumps(report['face_population'])}; pick an axis whose faces survive the cut")
+    print(json.dumps({k: report[k] for k in ('distinct', 'grid', 'modules', 'graded', 'assembled_coordinates',
+                                             'assembled_dofs', 'glued_coordinate_pairs', 'per_seat',
+                                             'face_population')}), flush=True)
     dofs = [torch.as_tensor((gid[m][:, None] * 3 + np.arange(3)).ravel()) for m in range(len(copies))]
     P = np.zeros((N_nodes, 3)); kindN = np.zeros(N_nodes, dtype=np.int64)
-    for m, c in enumerate(copies):
-        P[gid[m]] = pos + np.asarray(c, dtype=np.float64); kindN[gid[m]] = kind
+    for m, (c, seat) in enumerate(zip(copies, seats)):
+        P[gid[m]] = cell[seat]['pos'] + np.asarray(c, dtype=np.float64); kindN[gid[m]] = cell[seat]['kind']
 
     # rigid modes: each module's exact CSR pullback of the global rigid field; consistent on glue
     Nrb = np.zeros((N, 6)); worst = 0.
-    for m, c in enumerate(copies):
-        rb = rigid_trace(cache, n, np.asarray(c, dtype=np.float64))
+    for m, (c, seat) in enumerate(zip(copies, seats)):
+        rb = rigid_trace(cell[seat]['cache'], n, np.asarray(c, dtype=np.float64))
         rows_ = dofs[m].numpy()
         filled = np.abs(Nrb[rows_]).sum(axis=1) > 0
         if filled.any():
@@ -145,75 +194,102 @@ def main():
     report.update(load_axis=axis, load_left=int(len(endL)), load_right=int(len(endR)))
     names = list(loads); Fm = torch.stack([loads[k] for k in names], dim=1)
 
-    quotient = RigidQuotient(torch.from_numpy(np.asarray(cache['rigid'], dtype=np.float64)),
-                             torch.from_numpy(np.asarray(cache['order'])))
-
-    rb_basis = None
+    for seat in order:
+        cache_s = cell[seat]['cache']
+        cell[seat]['quotient'] = RigidQuotient(torch.from_numpy(np.asarray(cache_s['rigid'], dtype=np.float64)),
+                                               torch.from_numpy(np.asarray(cache_s['order'])))
+        rb, _ = torch.linalg.qr(torch.from_numpy(np.asarray(cache_s['rigid'], dtype=np.float64)))
+        cell[seat]['rb_basis'] = rb
 
     def solve_pcg(S):
-        """K is never formed.  K u = sum_m scatter_m(S gather_m(u)) + scale Nrb (Nrb^T u), and the
-        preconditioner is additive Schwarz with one exact local solve, reused by every module.
+        """K is never formed, and every module and load goes through S and the factor together.
 
-        A dense K costs N^2 doubles, and torch's CPU indexing caps a tensor at 2^31 elements, so
-        the dense path stops at N = 46340 -- two cells of a 4176-coordinate seat, not a lattice.
-        The local solve is shared because the cell's rigid trace spans the SAME six-dimensional
-        space at every integer offset (shifting the origin mixes the rotations into translations,
-        which are in the space already), so S + sigma Pi_rigid is one factorisation for all
-        modules.
+        K u = sum_m scatter_m(S gather_m(u)) + scale Nrb (Nrb^T u), preconditioned by additive
+        Schwarz with ONE exact local solve shared by all modules: the cell's rigid trace spans the
+        same six-dimensional space at every integer offset (shifting the origin mixes rotations
+        into translations, which are in the space already), so S + sigma Pi_rigid factorises once.
+
+        A dense K costs N^2 doubles and torch's CPU indexing caps a tensor at 2^31 elements, so the
+        dense path stops at N = 46340 -- two cells of a 4176-coordinate seat, not a lattice.  The
+        loop that matters is not flops but bandwidth: S and its factor are 1.25 GB at q = 12528, so
+        a naive per-module loop re-reads them n_modules times per iteration.  Gathering every module
+        and every load into one (q, modules x loads) block makes each iteration read them ONCE, so
+        the cost is nearly independent of the lattice size.  Validated against the dense solver on
+        2 x 1 x 1 to 2.1e-14 on both the exact compliances and the relative errors.
         """
-        nonlocal rb_basis
+        L = len(names)
+        groups = {seat: [m for m in range(len(copies)) if seats[m] == seat] for seat in order}
+        stack = {seat: torch.stack([dofs[m] for m in groups[seat]]) for seat in order}
+        flat = {seat: stack[seat].reshape(-1) for seat in order}
         diag = torch.zeros(N, dtype=F64)
-        sd = S.diagonal()
-        for m in range(len(copies)):
-            diag.index_add_(0, dofs[m], sd)
+        for m, seat in enumerate(seats):
+            diag.index_add_(0, dofs[m], S[seat].diagonal())
         scale = float(diag.abs().mean())
-        if rb_basis is None:
-            rb, _ = torch.linalg.qr(torch.from_numpy(np.asarray(cache['rigid'], dtype=np.float64)))
-            rb_basis = rb
-        sigma = float(S.diagonal().abs().mean())
-        local = S + sigma * (rb_basis @ rb_basis.T)
-        root = torch.linalg.cholesky(.5 * (local + local.T)); del local; gc.collect()
+        root = {}
+        tick = time.time()
+        for seat in order:
+            sd = S[seat].diagonal()
+            rb = cell[seat]['rb_basis']
+            local = S[seat] + float(sd.abs().mean()) * (rb @ rb.T)
+            root[seat] = torch.linalg.cholesky(.5 * (local + local.T)); del local
+            gc.collect()
+        chol_seconds = time.time() - tick
 
-        def apply(u):
-            out = torch.zeros_like(u)
-            for m in range(len(copies)):
-                out.index_add_(0, dofs[m], S @ u[dofs[m]])
-            return out + scale * (Nrb @ (Nrb.T @ u))
+        def block(V, seat):                                            # (N, L) -> (q, |group| * L)
+            g = len(groups[seat])
+            return V[stack[seat]].permute(1, 0, 2).reshape(cell[seat]['q'], g * L)
 
-        def precondition(r):
-            out = torch.zeros_like(r)
-            for m in range(len(copies)):
-                out.index_add_(0, dofs[m], torch.cholesky_solve(r[dofs[m]].unsqueeze(1), root).squeeze(1))
+        def unblock(B, seat, into):
+            g = len(groups[seat]); q_ = cell[seat]['q']
+            into.index_add_(0, flat[seat], B.reshape(q_, g, L).permute(1, 0, 2).reshape(g * q_, L))
+
+        def apply(V):
+            out = torch.zeros_like(V)
+            for seat in order:
+                unblock(S[seat] @ block(V, seat), seat, out)
+            return out + scale * (Nrb @ (Nrb.T @ V))
+
+        def precondition(V):
+            out = torch.zeros_like(V)
+            for seat in order:
+                unblock(torch.cholesky_solve(block(V, seat), root[seat]), seat, out)
             return out
 
-        out = {}; tick = time.time(); iterations = {}
-        for j, name in enumerate(names):
-            f = Fm[:, j]
-            u = torch.zeros(N, dtype=F64); r = f.clone(); z = precondition(r); p = z.clone()
-            rz = float(r @ z); fn = float(f.norm()); it = 0
-            for it in range(1, a.max_iterations + 1):
-                Kp = apply(p); alpha = rz / float(p @ Kp)
-                u += alpha * p; r -= alpha * Kp
-                if float(r.norm()) / fn <= a.rtol:
-                    break
-                z = precondition(r); rz_new = float(r @ z)
-                p = z + (rz_new / rz) * p; rz = rz_new
-            resid = float((apply(u) - f).norm() / fn)
-            c = float(f @ u)
-            sens = [float(-(u[dofs[m]] @ (S @ u[dofs[m]]))) for m in range(len(copies))]
-            iterations[name] = it
-            out[name] = dict(compliance=c, sens=sens, solve_residual=resid, iterations=it,
-                             adjoint_identity_relative=float((sum(sens) + c) / c),
-                             cholesky_seconds=time.time() - tick)
-            if resid > 100 * a.rtol:
-                raise ValueError(f'PCG_DID_NOT_CONVERGE {name} residual {resid:.3e} in {it} iterations')
+        F0 = Fm.clone()
+        fn = F0.norm(dim=0)
+        U = torch.zeros((N, L), dtype=F64); R = F0.clone()
+        Z = precondition(R); P = Z.clone(); rz = (R * Z).sum(dim=0)
+        live = torch.ones(L, dtype=torch.bool); iterations = 0
+        for iterations in range(1, a.max_iterations + 1):
+            KP = apply(P)
+            alpha = rz / (P * KP).sum(dim=0).clamp_min(1e-300)
+            U = U + alpha * P; R = R - alpha * KP
+            live = (R.norm(dim=0) / fn) > a.rtol
+            if not bool(live.any()):
+                break
+            Z = precondition(R); rz_new = (R * Z).sum(dim=0)
+            P = Z + (rz_new / rz.clamp_min(1e-300)) * P; rz = rz_new
+        resid = (apply(U) - F0).norm(dim=0) / fn
+        if float(resid.max()) > 100 * a.rtol:
+            raise ValueError(f'PCG_DID_NOT_CONVERGE residual {float(resid.max()):.3e} in {iterations} iterations')
+        energy = torch.zeros((len(copies), L), dtype=F64)              # per module, for the adjoint
+        for seat in order:
+            B = block(U, seat); E = (B * (S[seat] @ B)).sum(dim=0).reshape(len(groups[seat]), L)
+            for i, m in enumerate(groups[seat]):
+                energy[m] = E[i]
         del root; gc.collect()
+        out = {}
+        for j, name in enumerate(names):
+            c = float(F0[:, j] @ U[:, j])
+            sens = [float(-energy[m, j]) for m in range(len(copies))]
+            out[name] = dict(compliance=c, sens=sens, solve_residual=float(resid[j]), iterations=iterations,
+                             adjoint_identity_relative=float((sum(sens) + c) / c), cholesky_seconds=chol_seconds)
         return out
 
     def solve_dense(S):
         K = torch.zeros((N, N), dtype=F64)
-        for m in range(len(copies)):
-            K.index_put_((dofs[m][:, None], dofs[m][None, :]), S, accumulate=True)
+        for m, seat in enumerate(seats):
+            K.index_put_((dofs[m][:, None], dofs[m][None, :]), S[seat], accumulate=True)
         scale = float(K.diagonal().abs().mean()); K.addmm_(Nrb, Nrb.T, alpha=scale)
         asym = float((K - K.T).abs().max())
         if asym != 0.0:
@@ -225,7 +301,7 @@ def main():
         out = {}
         for j, name in enumerate(names):
             u = U[:, j]; c = float(Fm[:, j] @ u)
-            sens = [float(-(u[dofs[m]] @ (S @ u[dofs[m]]))) for m in range(len(copies))]
+            sens = [float(-(u[dofs[m]] @ (S[seats[m]] @ u[dofs[m]]))) for m in range(len(copies))]
             out[name] = dict(compliance=c, sens=sens, solve_residual=resid,
                              adjoint_identity_relative=float((sum(sens) + c) / c), cholesky_seconds=time.time() - tick)
         return out
@@ -235,14 +311,23 @@ def main():
     solve = solve_dense if a.solver == 'dense' else solve_pcg
     report['solver'] = a.solver
 
-    Rstar = unpack(ref / 'R_UPPER.npy', d, dev); Astar = Rstar.T @ Rstar; Astar = .5 * (Astar + Astar.T)
-    Sstar = dense_S(Astar, quotient); del Astar; gc.collect()
-    report['exact'] = solve(Sstar); del Sstar; gc.collect()
+    def operators(which):
+        out = {}
+        for seat in order:
+            v = cell[seat]
+            if which == 'exact':
+                R = unpack(v['ref'] / 'R_UPPER.npy', v['d'], dev); A = R.T @ R; del R
+            else:
+                R = unpack(Path(factor_of[seat]), v['d'], dev); A = R.T @ R; del R
+            A = .5 * (A + A.T)
+            out[seat] = dense_S(A, v['quotient']); del A
+            gc.collect()
+        return out
+
+    Se = operators('exact'); report['exact'] = solve(Se); del Se; gc.collect()
     print(json.dumps(dict(phase='exact', seconds=round(time.time() - t0, 1),
                           chol=round(report['exact'][names[0]]['cholesky_seconds'], 1))), flush=True)
-    Rh = unpack(a.a_factor, d, dev); Ahat = Rh.T @ Rh; del Rh; Ahat = .5 * (Ahat + Ahat.T)
-    Shat = dense_S(Ahat, quotient); del Ahat; gc.collect()
-    report['predicted'] = solve(Shat); del Shat; gc.collect()
+    Sp = operators('predicted'); report['predicted'] = solve(Sp); del Sp; gc.collect()
 
     rel = {}
     for name in names:
