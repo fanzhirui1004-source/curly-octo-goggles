@@ -33,7 +33,7 @@ import numpy as np
 import torch
 
 from . import cubic_group as CG
-from .context import compile_equi_inputs, permute_nodes
+from .context import compile_equi_inputs, permute_nodes, rigid_span_residual as rigid_span_residual_of
 from .model import EquiModel, GroupTables, to_torch
 
 
@@ -118,18 +118,14 @@ def prepare(row, args, device):
     if ctx['count'] * (ctx['count'] - 1) // 2 - len(near_codes) <= 0:
         raise ValueError('EMPTY_FAR_BUCKET')
     # The augmentation label identity M_q(g . cell) = G M_q G^T holds because span(rigid) is
-    # the genuine rigid-body 6-space of the node positions -- the unique 6-space closed under
-    # G = blockdiag(Q_g).  Nothing else in the pipeline checks that the frozen array and the
-    # positions we feed the network describe the same cell, so check it here: both are in hand.
-    from stage_cutfem_m4.response import rigid_fields
-    N = rigid_fields(ctx['pos'], (.5, .5, .5))
-    if N.shape != (q, 6):
-        raise ValueError('RIGID_FIELD_SHAPE')
-    rigid = np.asarray(cache['rigid'], dtype=np.float64)
-    resid = rigid - N @ np.linalg.lstsq(N, rigid, rcond=None)[0]
-    rigid_span_residual = float(np.linalg.norm(resid) / np.linalg.norm(rigid))
-    if rigid_span_residual > 1e-10:
-        raise ValueError(f'RIGID_SPAN_IS_NOT_THE_NODE_POSITIONS_RIGID_SPACE {rigid_span_residual:.3e}')
+    # the rigid-body 6-space of the cell -- the unique 6-space closed under G = blockdiag(Q_g).
+    # For a general signed trace that space is the pullback of the background rigid modes
+    # through the trace operator, and the identity rigid == (L (x) I3) rigid_body is EXACT
+    # (0.0, measured on full and cut cells alike), so this also verifies that the CSR and the
+    # frozen rigid array describe the same cell.  Nothing else in the pipeline checks it.
+    rigid_span_residual = rigid_span_residual_of(cache, ctx['n'])
+    if rigid_span_residual > 1e-12:
+        raise ValueError(f'RIGID_IS_NOT_THE_TRACE_PULLBACK_OF_THE_RIGID_MODES {rigid_span_residual:.3e}')
     g_canon, _, ties = CG.canonical(ctx['corners'])
     record = dict(seat=int(row['seat']), split=row['split'], q=q, d=d, count=ctx['count'], n=ctx['n'],
                   near_radius=radius, near_pairs=int(len(near_codes)),

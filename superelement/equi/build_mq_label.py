@@ -152,20 +152,21 @@ def build(reference, seat, device, threads, source, trace_cache=None, patch_size
     # the true quotient spectrum is what the network will be scored against; record it for the record
     report['eig_seconds_total'] = report['eigh_seconds']
 
-    # span(rigid) must be the rigid-body space of the node positions, or M_q is not the
-    # basis-free object the label is claimed to be (and augmentation's identity fails).
-    from stage_cutfem_m4.response import rigid_fields
-    Nr = rigid_fields(np.asarray(cache['support_centroid'], dtype=np.float64), (.5, .5, .5))
-    rg = np.asarray(cache['rigid'], dtype=np.float64)
-    resid = rg - Nr @ np.linalg.lstsq(Nr, rg, rcond=None)[0]
-    report['rigid_span_residual'] = float(np.linalg.norm(resid) / np.linalg.norm(rg))
+    # span(rigid) must be the cell's rigid-body space, or M_q is not the basis-free object the
+    # label is claimed to be (and augmentation's identity fails).  For a general signed trace
+    # that is the pullback of the background rigid modes through the trace operator, and the
+    # identity is exact, so this doubles as a check that the CSR and the rigid array agree.
+    from superelement.equi.context import rigid_span_residual
+    meta = json.loads((cache_path.parent / 'INPUT.json').read_text())['metadata']
+    report['n'] = int(meta['n'])
+    report['rigid_span_residual'] = rigid_span_residual(cache, report['n'])
 
     # --- gate on the self-tests, rather than only recording them ------------
     gates = dict(label_g=(abs(report['label_g'] - 1.0), 1e-8), round_trip_to_M=(report['round_trip_to_M'], 1e-12),
                  MMG_residual=(report['MMG_residual'], 1e-12),
                  back_squared_times_A_minus_I=(report['back_squared_times_A_minus_I'], 1e-9),
                  rigid_nullspace=(report['rigid_nullspace'], 1e-12),
-                 rigid_span_residual=(report['rigid_span_residual'], 1e-10))
+                 rigid_span_residual=(report['rigid_span_residual'], 1e-12))
     report['gates'] = {k: dict(value=v, tolerance=t, pass_=bool(v <= t)) for k, (v, t) in gates.items()}
     failed = [k for k, (v, t) in gates.items() if not v <= t]
     if failed:

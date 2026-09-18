@@ -29,7 +29,8 @@ from torch import nn
 import torch.nn.functional as F
 
 from . import cubic_group as CG
-from .context import VOLUME_SCALAR_NAMES, VOLUME_VECTOR_NAMES
+from .context import (VOLUME_SCALAR_NAMES, VOLUME_VECTOR_NAMES, NODE_SCALAR_NAMES,
+                      NODE_VECTOR_NAMES, NODE_TENSOR_NAMES, rotate_plane)
 
 TWO_PI = 2.0 * math.pi
 
@@ -43,15 +44,14 @@ def smooth_interval_bound(value, lower, upper):
 def to_torch(context, device):
     """The typed numpy context as float32 tensors; volume channels stacked (scalars, then vectors)."""
     vol = np.concatenate((context['vol_scalar'], context['vol_vector'].reshape(-1, *context['vol_scalar'].shape[1:])))
-    out = dict(n=int(context['n']), count=int(context['count']),
-               pos=torch.as_tensor(context['pos'], dtype=torch.float32, device=device),
-               faces=torch.as_tensor(context['faces'], dtype=torch.float32, device=device),
-               node_scalar=torch.as_tensor(context['node_scalar'], dtype=torch.float32, device=device),
-               node_vector=torch.as_tensor(context['node_vector'], dtype=torch.float32, device=device),
-               volume=torch.as_tensor(vol, dtype=torch.float32, device=device),
-               corners=torch.as_tensor(context['corners'], dtype=torch.float32, device=device),
-               known=torch.as_tensor(context['known'], dtype=torch.float32, device=device))
-    return out
+    f32 = lambda k: torch.as_tensor(context[k], dtype=torch.float32, device=device)
+    return dict(n=int(context['n']), count=int(context['count']),
+                pos=f32('pos'), faces=f32('faces'), node_scalar=f32('node_scalar'),
+                node_vector=f32('node_vector'), node_tensor=f32('node_tensor'),
+                volume=torch.as_tensor(vol, dtype=torch.float32, device=device),
+                corners=f32('corners'), plane=f32('plane'), known=f32('known'),
+                support_pos=f32('support_pos'), support_coefficients=f32('support_coefficients'),
+                support_rows=torch.as_tensor(context['support_rows'], dtype=torch.long, device=device))
 
 
 class GroupTables:
@@ -75,6 +75,10 @@ class GroupTables:
         out['pos'] = (ctx['pos'] - .5) @ Q.T + .5
         faces = torch.empty_like(ctx['faces']); faces[:, self.face_perm[g]] = ctx['faces']; out['faces'] = faces
         out['node_vector'] = ctx['node_vector'] @ Q.T
+        out['node_tensor'] = torch.einsum('ab,pkbc,dc->pkad', Q, ctx['node_tensor'], Q)
+        out['support_pos'] = (ctx['support_pos'] - .5) @ Q.T + .5
+        a = Q @ ctx['plane'][:3]
+        out['plane'] = torch.cat((a, (ctx['plane'][3:] + .5 * (a - ctx['plane'][:3]).sum())))
         vol = ctx['volume']
         flat = vol.reshape(vol.shape[0], -1)[:, self.cell_src[g]]
         scal = flat[:self.n_scalar]
@@ -103,8 +107,10 @@ class GroupTables:
 
 def permute_nodes_torch(ctx, pi):
     out = dict(ctx)
-    for key in ('pos', 'faces', 'node_scalar', 'node_vector'):
+    for key in ('pos', 'faces', 'node_scalar', 'node_vector', 'node_tensor'):
         out[key] = ctx[key][pi]
+    inverse = torch.empty_like(pi); inverse[pi] = torch.arange(len(pi), device=pi.device)
+    out['support_rows'] = inverse[ctx['support_rows']]
     return out
 
 
@@ -186,7 +192,8 @@ class ResidualTrunk(nn.Module):
 # ----------------------------------------------------------------------------- model
 class EquiModel(nn.Module):
     def __init__(self, *, n, volume_in=len(VOLUME_SCALAR_NAMES) + 3 * len(VOLUME_VECTOR_NAMES),
-                 n_node_scalar=5, n_node_vector=2, n_corners=8, n_known=4,
+                 n_node_scalar=len(NODE_SCALAR_NAMES), n_node_vector=len(NODE_VECTOR_NAMES),
+                 n_node_tensor=len(NODE_TENSOR_NAMES), n_corners=8, n_known=4, n_plane=4,
                  volume_channels=32, state_dim=192, width=768, depth=4, segment_samples=8,
                  near_radius=.0625):
         super().__init__()
@@ -195,9 +202,9 @@ class EquiModel(nn.Module):
         self.K = segment_samples
         self.state_dim = state_dim
         self.volume_encoder = VolumeUNet(volume_in, volume_channels)
-        node_in = 3 + 6 + 1 + n_node_scalar + 3 * n_node_vector + volume_channels
+        node_in = 3 + 6 + 1 + n_node_scalar + 3 * n_node_vector + 6 * n_node_tensor + volume_channels
         self.node_encoder = mlp(node_in, width // 2, state_dim, 2)
-        self.global_encoder = mlp(n_corners + n_known + 2 * volume_channels, width // 2, state_dim, 2)
+        self.global_encoder = mlp(n_corners + n_known + n_plane + 2 * volume_channels, width // 2, state_dim, 2)
         pair_in = 3 * state_dim + 3 + 1 + 3 + 6 + 6 + 1 + segment_samples * volume_channels + state_dim
         self.trunk = ResidualTrunk(pair_in, width, depth)
         self.diagonal_head = nn.Linear(width, 9)
@@ -220,16 +227,31 @@ class EquiModel(nn.Module):
     def near_radius(self, value):
         self.near_radius_t.fill_(float(value))
 
+    def pull_volume(self, vol_feat, ctx):
+        """The learned field sampled at each functional's support, weighted by its coefficients.
+
+        For a box-only functional (one node, coefficient 1, abs_sum 1) this is exactly the field
+        at that node; for a cut-surface functional it is the coefficient-weighted average over
+        its up-to-20 background nodes.  Sampling at positions, not at owning cells, is what
+        makes it commute with the cube group (a node on a cell boundary has no covariant owner).
+        """
+        values = sample_volume(vol_feat, ctx['support_pos']) * ctx['support_coefficients'][:, None]
+        out = values.new_zeros((int(ctx['count']), values.shape[1]))
+        return out.index_add_(0, ctx['support_rows'], values)
+
     def node_input(self, ctx, vol_feat):
         # context.py already divides every field by its fixed nominal scale.
-        at_node = sample_volume(vol_feat, ctx['pos'])
+        tri = torch.triu_indices(3, 3, device=ctx['node_tensor'].device)
+        tensor = ctx['node_tensor'][:, :, tri[0], tri[1]].reshape(len(ctx['pos']), -1)   # 6 per tensor
         return torch.cat((ctx['pos'], ctx['faces'], ctx['faces'].sum(1, keepdim=True), ctx['node_scalar'],
-                          ctx['node_vector'].reshape(len(ctx['node_vector']), -1), at_node), dim=1)
+                          ctx['node_vector'].reshape(len(ctx['pos']), -1), tensor,
+                          self.pull_volume(vol_feat, ctx)), dim=1)
 
     def encode(self, ctx):
         vol_feat = self.volume_encoder(ctx['volume'][None])[0]
         node_state = self.node_encoder(self.node_input(ctx, vol_feat))
-        pooled = torch.cat((ctx['corners'], ctx['known'], vol_feat.mean(dim=(1, 2, 3)), vol_feat.amax(dim=(1, 2, 3))))
+        pooled = torch.cat((ctx['corners'], ctx['known'], ctx['plane'], vol_feat.mean(dim=(1, 2, 3)),
+                           vol_feat.amax(dim=(1, 2, 3))))
         global_state = self.global_encoder(pooled[None])[0]
         return dict(vol_feat=vol_feat, node_state=node_state, global_state=global_state)
 
@@ -279,7 +301,8 @@ class EquiModel(nn.Module):
 
 # ----------------------------------------------------------------------------- tests
 def selftest(device='cpu', seed=20260918, n=8):
-    from .context import compile_from_points, rotate_context, permute_nodes, VOLUME_SCALAR_NAMES
+    from .context import (compile_from_points, compile_from_trace, rotate_context, permute_nodes,
+                          rotate_plane, _random_trace, VOLUME_SCALAR_NAMES)
     from .cubic_group import ORDER
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -296,16 +319,18 @@ def selftest(device='cpu', seed=20260918, n=8):
     top = 2 * n
     grid = np.array(list(np.ndindex(top + 1, top + 1, top + 1)))
     boundary = grid[((grid == 0) | (grid == top)).any(axis=1)]
-    u = boundary[rng.random(len(boundary)) < .6]
     corners = rng.random(8) * .1 + .15
-    ctx = compile_from_points(u, corners, n, [1., .3, 1e-4, 1. / n])
+    # a cut cell: box-face nodes with nnz 1 plus cut-surface functionals with nnz 2..20
+    indptr, support, coef, kind = _random_trace(rng, n, 120, 40)
+    ctx = compile_from_trace(indptr, support, coef, kind, corners, (1., .52, 0., .27), n, [1., .3, 1e-4, 1. / n])
     ctx_t = to_torch(ctx, device)
+    report['cut_cell_functionals'] = int(ctx['count']); report['cut_cell_nnz'] = int(len(ctx['support_rows']))
     tables = GroupTables(n, device)
     worst = 0.
     for g in range(ORDER):
         a = tables.rotate_context(ctx_t, g)
         b = to_torch(rotate_context(ctx, g), device)
-        for key in ('pos', 'faces', 'node_vector', 'volume', 'corners'):
+        for key in ('pos', 'faces', 'node_vector', 'node_tensor', 'volume', 'corners', 'plane', 'support_pos'):
             worst = max(worst, float((a[key] - b[key]).abs().max()))
     report['torch_rotation_vs_numpy'] = worst
     assert worst < 1e-6
@@ -353,6 +378,7 @@ def selftest(device='cpu', seed=20260918, n=8):
     assert int(torch.count_nonzero(torch.triu(diag, 1))) == 0 and bool((torch.diagonal(diag, dim1=-2, dim2=-1) > 0).all())
     pi = rng.permutation(count); inv = np.argsort(pi)
     ctx_p = to_torch(permute_nodes(ctx, pi), device)
+    assert bool((ctx_p['support_rows'] == permute_nodes_torch(ctx_t, torch.as_tensor(pi))['support_rows']).all())
     with torch.no_grad():
         out_p = model(ctx_p, torch.as_tensor(inv[rows.numpy()]), torch.as_tensor(inv[cols.numpy()]), Cond())
     report['index_shuffle'] = float((out_p - out).abs().max())
