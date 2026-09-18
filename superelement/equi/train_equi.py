@@ -136,20 +136,57 @@ def prepare(row, args, device):
     return dict(seat=int(row['seat']), split=row['split'], q=q, d=d, count=ctx['count'], ctx=ctx,
                 ctx_t=to_torch(ctx, device), near_codes=near_codes, radius=radius, canonical_g=int(g_canon),
                 packed=np.load(label, mmap_mode='r', allow_pickle=False), label=label, whitener=factor,
-                reference=reference, cache=cache, record=record)
+                reference=reference, cache=cache, record=record, tilt=None, weight=None)
 
 
-def sample_pairs_geometric(sample, per_bucket, rng):
-    """Complete diagonal; uniform draws from the near pairs and from the far pairs."""
+def node_scales(sample, read_blocks):
+    """The label's own scale per coordinate: the mean of the three pivots of M_q's diagonal block.
+
+    M_q = B^T A^{-1/2} B, so this is large exactly where the cell is soft.  That is also where
+    the assembled solution's energy sits: the exact law for the assembled compliance is
+    chat/c = sum_i w_i / mu_i with w the true solution's energy share per pencil mode, and the
+    energy concentrates in the soft directions.  So tilting the sampler and the diagonal weight
+    by this scale points the loss at the entries the physics reads.
+    """
+    count = int(sample['count'])
+    diag = np.arange(count, dtype=np.int64)
+    blocks = read_blocks(sample['packed'], diag, diag, sample['q'])
+    pivots = np.diagonal(blocks, axis1=1, axis2=2)
+    if not np.all(pivots > 0):
+        raise ValueError('NONPOSITIVE_REFERENCE_PIVOT_IN_SCALES')
+    return pivots.mean(axis=1)
+
+
+def scale_tilt(scales, near_codes, count, alpha):
+    """Categorical draws proportional to s^alpha per coordinate and to (s_r s_c)^alpha per pair."""
+    if alpha == 0.0:
+        return None
+    s = np.asarray(scales, dtype=np.float64) ** float(alpha)
+    node = s / s.sum()
+    pair = s[near_codes // count] * s[near_codes % count]
+    return dict(alpha=float(alpha), node_cdf=np.cumsum(node),
+                near_cdf=np.cumsum(pair / pair.sum()),
+                weight=(s / s.mean()))          # mean 1, so the loss keeps its scale
+
+
+def sample_pairs_geometric(sample, per_bucket, rng, tilt=None):
+    """Complete diagonal; near and far pairs drawn uniformly, or tilted by the label scale."""
     count = sample['count']; codes = sample['near_codes']
     diag = np.arange(count, dtype=np.int64)
-    near = codes[rng.integers(0, len(codes), size=per_bucket)]
+    if tilt is None:
+        near = codes[rng.integers(0, len(codes), size=per_bucket)]
+        draw = lambda size: (rng.integers(0, count, size=size), rng.integers(0, count, size=size))
+    else:
+        near = codes[np.searchsorted(tilt['near_cdf'], rng.random(per_bucket))]
+        cdf = tilt['node_cdf']
+        draw = lambda size: (np.searchsorted(cdf, rng.random(size)).clip(0, count - 1),
+                             np.searchsorted(cdf, rng.random(size)).clip(0, count - 1))
     far = []; needed = per_bucket; rounds = 0
     while needed:
         rounds += 1
         if rounds > 64:
             raise ValueError('FAR_BUCKET_REJECTION_DID_NOT_CONVERGE')
-        a = rng.integers(0, count, size=2 * needed + 32); b = rng.integers(0, count, size=2 * needed + 32)
+        a, b = draw(2 * needed + 32)
         r = np.maximum(a, b); c = np.minimum(a, b); code = r * count + c
         pos = np.searchsorted(codes, code)
         is_near = (pos < len(codes)) & (codes[np.minimum(pos, len(codes) - 1)] == code)
@@ -159,6 +196,92 @@ def sample_pairs_geometric(sample, per_bucket, rng):
     r = np.concatenate((diag, near // count, far // count)); c = np.concatenate((diag, near % count, far % count))
     bucket = np.repeat(np.arange(3), (count, per_bucket, per_bucket))
     return r, c, bucket
+
+
+def equi_loss(prediction, target, buckets, conditioning, weight=None, asymmetry=0.0, tail_beta=0.0,
+              diagonal_loss='log'):
+    """The frozen three-bucket loss plus three knobs; at neutral knobs it reproduces it exactly.
+
+    * `weight` is the frozen `importance` hook: a per-pair multiplier, mean 1 within a bucket.
+    * `asymmetry` puts extra weight on pivots predicted SOFTER than the truth.  The assembled
+      compliance obeys chat/c = sum_i w_i / mu_i, so an over-soft direction (mu < 1) contributes
+      w_i / mu_i and can blow up, while an over-stiff one contributes at most -w_i.  The label
+      is M_q = B^T A^{-1/2} B, so a pivot predicted too LARGE is the over-soft direction.
+    * `tail_beta` adds a smooth maximum over the per-coordinate diagonal error to its mean,
+      because g is a max: on the outlier seats about 8 coordinates out of 6016 set it, which is
+      0.13 % of a mean and invisible to it.
+
+    Equivalence with `stage_cutfem_m4.factors.bucket_loss` at weight=None, asymmetry=0,
+    tail_beta=0 is asserted bit for bit by `loss_selftest`.
+    """
+    if diagonal_loss not in ('absolute', 'log'):
+        raise ValueError('UNKNOWN_DIAGONAL_LOSS')
+    scales = (conditioning.diagonal_block_rms, conditioning.same_patch_rms, conditioning.cross_patch_rms)
+    errors = [((prediction[buckets == j] - target[buckets == j]) / scales[j]).square() for j in range(3)]
+    if weight is not None:
+        errors = [v * weight[buckets == j, None, None] for j, v in enumerate(errors)]
+    tail = None
+    if diagonal_loss == 'log':
+        pd = prediction[buckets == 0]; td = target[buckets == 0]
+        if not bool((td.diagonal(dim1=-2, dim2=-1) > 0).all()):
+            raise ValueError('NONPOSITIVE_REFERENCE_PIVOT')
+        if not bool((pd.diagonal(dim1=-2, dim2=-1) > 0).all()):
+            raise ValueError('NONPOSITIVE_PREDICTED_PIVOT')
+        ratio = pd.diagonal(dim1=-2, dim2=-1).log() - td.diagonal(dim1=-2, dim2=-1).log()
+        pivot = (ratio / conditioning.pivot_log_std).square()
+        if asymmetry:
+            pivot = pivot * (1.0 + asymmetry * (ratio > 0).to(pivot.dtype))
+        lower = ((torch.tril(pd, -1) - torch.tril(td, -1)) / conditioning.diagonal_lower_rms).square()
+        index = torch.tril_indices(3, 3, -1, device=lower.device)
+        lower = lower[:, index[0], index[1]]
+        if weight is not None:
+            w = weight[buckets == 0, None]; pivot = pivot * w; lower = lower * w
+        errors[0] = torch.cat((pivot, lower), dim=1)
+        if tail_beta:
+            per = errors[0].mean(dim=1)
+            tail = torch.logsumexp(per * tail_beta, dim=0) / tail_beta
+    pieces = [v.mean() for v in errors]
+    loss = torch.stack(pieces).mean()
+    if tail is not None:
+        loss = loss + tail / 3.0                 # one bucket's worth of weight, not more
+        pieces = pieces + [tail]
+    return loss, torch.stack(pieces).detach()
+
+
+def loss_selftest(bucket_loss, Conditioning, device, seed=20260919):
+    """equi_loss at neutral knobs must equal the frozen bucket_loss bit for bit, in both modes."""
+    torch.manual_seed(seed)
+    conditioning = Conditioning(0.3, 1.7, 0.9, 1.3, 0.7, 0.5)
+    n = (12, 9, 9)
+    buckets = torch.as_tensor(np.repeat(np.arange(3), n), device=device)
+    target = torch.randn(sum(n), 3, 3, device=device)
+    prediction = target + 0.1 * torch.randn_like(target)
+    for t in (target, prediction):
+        for k in range(3):
+            t[:n[0], k, k] = t[:n[0], k, k].abs() + 0.5
+    out = {}
+    for mode in ('absolute', 'log'):
+        a, pa = bucket_loss(prediction, target, buckets, conditioning, None, mode)
+        b, pb = equi_loss(prediction, target, buckets, conditioning, None, 0.0, 0.0, mode)
+        out[mode] = dict(loss_difference=float((a - b).abs()), parts_difference=float((pa - pb).abs().max()))
+        if out[mode]['loss_difference'] != 0.0 or out[mode]['parts_difference'] != 0.0:
+            raise ValueError(f'EQUI_LOSS_IS_NOT_THE_FROZEN_LOSS {mode} {out[mode]}')
+    # a weight of all ones is also the identity
+    ones = torch.ones(sum(n), device=device)
+    a, _ = bucket_loss(prediction, target, buckets, conditioning, None, 'log')
+    b, _ = equi_loss(prediction, target, buckets, conditioning, ones, 0.0, 0.0, 'log')
+    out['unit_weight_difference'] = float((a - b).abs())
+    if out['unit_weight_difference'] != 0.0:
+        raise ValueError(f'UNIT_WEIGHT_IS_NOT_THE_IDENTITY {out["unit_weight_difference"]}')
+    # the knobs must actually change the objective, and only in the intended direction
+    base, _ = equi_loss(prediction, target, buckets, conditioning, None, 0.0, 0.0, 'log')
+    asym, _ = equi_loss(prediction, target, buckets, conditioning, None, 1.0, 0.0, 'log')
+    tail, _ = equi_loss(prediction, target, buckets, conditioning, None, 0.0, 4.0, 'log')
+    out['asymmetry_raises_loss'] = float(asym - base)
+    out['tail_raises_loss'] = float(tail - base)
+    if not (out['asymmetry_raises_loss'] > 0 and out['tail_raises_loss'] > 0):
+        raise ValueError(f'KNOBS_ARE_INERT {out}')
+    return out
 
 
 def calibrate_geometric(samples, per_bucket, read_blocks, Conditioning, log_pivot_window=(-20., 20.), seed=20260917):
@@ -335,6 +458,15 @@ def main():
     ap.add_argument('--proper-only', action='store_true', help='augment with the 24 rotations only')
     ap.add_argument('--canonical', action='store_true', help='always present the cell in its canonical frame')
     ap.add_argument('--diagonal-loss', choices=['absolute', 'log'], default='log')
+    ap.add_argument('--scale-importance', type=float, default=0.0,
+                    help='tilt the near/far draws by (s_r s_c)^alpha and weight the diagonal by '
+                         's^alpha, s = the mean pivot of the label diagonal block (0 = uniform)')
+    ap.add_argument('--pivot-asymmetry', type=float, default=0.0,
+                    help='extra weight on pivots predicted softer than the truth; over-softness is '
+                         'the direction the assembled compliance sum_i w_i/mu_i can blow up on')
+    ap.add_argument('--tail-beta', type=float, default=0.0,
+                    help='smooth-max sharpness over the per-coordinate diagonal error, added to its '
+                         'mean; g is a max and a handful of coordinates set it')
     ap.add_argument('--state-dim', type=int, default=192); ap.add_argument('--width', type=int, default=768)
     ap.add_argument('--depth', type=int, default=4); ap.add_argument('--volume-channels', type=int, default=32)
     ap.add_argument('--segment-samples', type=int, default=8)
@@ -401,6 +533,25 @@ def main():
                                                never_presented=[s['seat'] for s in samples if s['seat'] not in presented]))
         conditioning, stats = calibrate_geometric(train, args.calibrate_pairs, read_blocks, Conditioning)
         write(args.output / 'CONDITIONING.json', stats)
+        # The conditioning constants are calibrated on UNIFORM draws whatever the sampler does, so
+        # the loss scale stays comparable across arms.
+        selftest = loss_selftest(bucket_loss, Conditioning, device)
+        scale_report = []
+        for s_ in samples:
+            scales = node_scales(s_, read_blocks)
+            s_['tilt'] = scale_tilt(scales, s_['near_codes'], s_['count'], args.scale_importance)
+            s_['weight'] = None if s_['tilt'] is None else \
+                torch.as_tensor(s_['tilt']['weight'], dtype=torch.float32, device=device)
+            scale_report.append(dict(seat=s_['seat'], count=int(s_['count']),
+                                     pivot_scale_min=float(scales.min()), pivot_scale_max=float(scales.max()),
+                                     pivot_scale_median=float(np.median(scales)),
+                                     pivot_scale_p999=float(np.percentile(scales, 99.9)),
+                                     tilted=bool(s_['tilt'] is not None)))
+        write(args.output / 'LOSS_SETUP.json', dict(
+            loss_selftest=selftest, scale_importance=args.scale_importance,
+            pivot_asymmetry=args.pivot_asymmetry, tail_beta=args.tail_beta, scales=scale_report,
+            note='equi_loss equals the frozen bucket_loss bit for bit at neutral knobs; the tilt '
+                 'changes which pairs are drawn, not the conditioning constants'))
         n = samples[0]['ctx']['n']
         if any(s['ctx']['n'] != n for s in samples):
             raise ValueError('MIXED_GRID_SIZES')
@@ -427,13 +578,18 @@ def main():
                 group['lr'] = lr
             g = int(g_rng.choice(elements)) if args.augment else (sample['canonical_g'] if args.canonical else 0)
             model.train(); opt.zero_grad(set_to_none=True)
-            r, c, b = sample_pairs_geometric(sample, args.pairs_per_bucket, rng)
+            r, c, b = sample_pairs_geometric(sample, args.pairs_per_bucket, rng, sample['tilt'])
             target = torch.as_tensor(read_blocks(sample['packed'], r, c, sample['q']), dtype=torch.float32, device=device)
             bucket = torch.as_tensor(b, device=device)
             target = tables.rotate_target_blocks(target, bucket, g)
             ctx = tables.rotate_context(sample['ctx_t'], g)
             pred = model(ctx, torch.as_tensor(r, device=device), torch.as_tensor(c, device=device), conditioning)
-            loss, parts = bucket_loss(pred, target, bucket, conditioning, None, args.diagonal_loss)
+            weight = None
+            if sample['weight'] is not None:
+                weight = torch.cat((sample['weight'],
+                                    torch.ones(2 * args.pairs_per_bucket, device=device)))
+            loss, parts = equi_loss(pred, target, bucket, conditioning, weight, args.pivot_asymmetry,
+                                    args.tail_beta, args.diagonal_loss)
             if not torch.isfinite(loss):
                 raise ValueError('NONFINITE_LOSS_NO_REPAIR')
             loss.backward()
