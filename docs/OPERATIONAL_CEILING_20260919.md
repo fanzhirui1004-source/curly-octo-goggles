@@ -21,7 +21,7 @@ arm sat in state `D` — uninterruptible I/O wait:
 | lanes competing, 45.8 GB of other anon memory | 1.67 s |
 | after `renice` of the other lanes | 1.28 s |
 | after pinning each lane to disjoint cores | 0.68 s, then back to 1.9 s |
-| after a sequential `dd` warm of all 75.7 GiB of labels | 1.67 s (worse: the warm競 for I/O) |
+| after a sequential `dd` warm of all 75.7 GiB of labels | 1.67 s (worse: the warm competed for I/O) |
 | **after KILLING the other lanes (anon 53 GB -> 17 GB, cache 39 GB -> 64 GB)** | **0.068 s** |
 
 `renice`, `taskset` and cache warming all failed because the constraint was neither CPU nor

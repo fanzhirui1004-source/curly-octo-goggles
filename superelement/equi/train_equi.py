@@ -24,6 +24,7 @@ import gc
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import sys
 import time
@@ -135,8 +136,30 @@ def prepare(row, args, device):
                   trace_cache=str(cache_path), corners=ctx['corners'].tolist())
     return dict(seat=int(row['seat']), split=row['split'], q=q, d=d, count=ctx['count'], ctx=ctx,
                 ctx_t=to_torch(ctx, device), near_codes=near_codes, radius=radius, canonical_g=int(g_canon),
-                packed=np.load(label, mmap_mode='r', allow_pickle=False), label=label, whitener=factor,
+                packed=open_label(label, getattr(args, "ram_labels", False)), label=label, whitener=factor,
                 reference=reference, cache=cache, record=record, tilt=None, weight=None)
+
+
+def open_label(path, ram):
+    """The packed label, either mmapped or resident.
+
+    One step makes about 73 728 scattered reads over a 660 MB label, which lands on as many 4 KB
+    pages, and the kernel fetches 128 KB of readahead per fault.  Inside a 90 GiB container (see
+    docs/OPERATIONAL_CEILING_20260919.md) the page cache cannot hold many seats' labels, and an arm
+    whose labels are not resident sits in uninterruptible I/O wait at 1.67 s per step against
+    0.068 s resident.  `ram=True` reads each label once, sequentially, into the process: 0.66 GB
+    per seat, so it is affordable up to about sixty seats and removes the failure mode entirely.
+    Otherwise POSIX_FADV_RANDOM at least stops the readahead from amplifying every fault.
+    """
+    if ram:
+        return np.load(path, allow_pickle=False)
+    array = np.load(path, mmap_mode='r', allow_pickle=False)
+    try:
+        with open(path, 'rb') as handle:
+            os.posix_fadvise(handle.fileno(), 0, 0, os.POSIX_FADV_RANDOM)
+    except (AttributeError, OSError):
+        pass
+    return array
 
 
 def node_scales(sample, read_blocks):
@@ -427,7 +450,15 @@ def equi_loss(prediction, target, buckets, conditioning, weight=None, asymmetry=
         errors[0] = torch.cat((pivot, lower), dim=1)
         if tail_beta:
             per = errors[0].mean(dim=1)
-            tail = torch.logsumexp(per * tail_beta, dim=0) / tail_beta
+            # logsumexp(beta e)/beta = max(e) + log(sum exp(beta(e - max)))/beta, which for a flat e
+            # is mean(e) + log(n)/beta.  Subtracting log(n)/beta makes the term zero on a flat error
+            # and equal to max(e) - log(n)/beta when one node dominates, so it measures the TAIL and
+            # not a constant: measured on the 60k arm, the unsubtracted form converged to
+            # log(6016)/2 = 4.35 and was 97 % of the reported loss while its gradient was almost
+            # uniform over the 6016 nodes, which is the opposite of what it is for.
+            n_nodes = per.shape[0]
+            tail = torch.logsumexp(per * tail_beta, dim=0) / tail_beta \
+                - math.log(max(n_nodes, 1)) / tail_beta
     pieces = [v.mean() for v in errors]
     loss = torch.stack(pieces).mean()
     if tail is not None:
@@ -464,7 +495,7 @@ def loss_selftest(bucket_loss, Conditioning, device, seed=20260919):
     # the knobs must actually change the objective, and only in the intended direction
     base, _ = equi_loss(prediction, target, buckets, conditioning, None, 0.0, 0.0, 'log')
     asym, _ = equi_loss(prediction, target, buckets, conditioning, None, 1.0, 0.0, 'log')
-    tail, _ = equi_loss(prediction, target, buckets, conditioning, None, 0.0, 4.0, 'log')
+    tail, _ = equi_loss(prediction, target, buckets, conditioning, None, 0.0, 64.0, 'log')
     out['asymmetry_raises_loss'] = float(asym - base)
     out['tail_raises_loss'] = float(tail - base)
     if not (out['asymmetry_raises_loss'] > 0 and out['tail_raises_loss'] > 0):
@@ -648,6 +679,9 @@ def main():
     ap.add_argument('--proper-only', action='store_true', help='augment with the 24 rotations only')
     ap.add_argument('--canonical', action='store_true', help='always present the cell in its canonical frame')
     ap.add_argument('--diagonal-loss', choices=['absolute', 'log'], default='log')
+    ap.add_argument('--ram-labels', action='store_true',
+                    help='read each packed label into process memory once instead of mmapping it '
+                         '(0.66 GB per seat; removes the random-fault stall, see docs/OPERATIONAL_CEILING)')
     ap.add_argument('--bf16', action='store_true', help='bf16 autocast for the training forward pass (losses in fp32; evaluation stays fp32)')
     ap.add_argument('--scale-importance', type=float, default=0.0,
                     help='tilt the near/far draws by (s_r s_c)^alpha and weight the diagonal by '
