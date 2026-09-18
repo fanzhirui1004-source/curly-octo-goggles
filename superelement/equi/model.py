@@ -280,8 +280,9 @@ class EquiModel(nn.Module):
         near = dist <= self.near_radius
         m = len(r_off)
         raw = torch.empty((m, 9), dtype=state.dtype, device=state.device)
-        raw[near] = .5 * (self.near_head(state[:m][near]) + self.near_head(state[m:][near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))
-        raw[~near] = .5 * (self.far_head(state[:m][~near]) + self.far_head(state[m:][~near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))
+        # .to(raw.dtype): under autocast the heads emit bf16 while the LayerNorm-ed state stays fp32
+        raw[near] = (.5 * (self.near_head(state[:m][near]) + self.near_head(state[m:][near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))).to(raw.dtype)
+        raw[~near] = (.5 * (self.far_head(state[:m][~near]) + self.far_head(state[m:][~near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))).to(raw.dtype)
         out = torch.zeros((len(rows), 3, 3), dtype=torch.float32, device=state.device)
         scale = torch.where(near, float(conditioning.same_patch_rms), float(conditioning.cross_patch_rms)).to(raw.dtype)
         out[off] = (raw * scale[:, None]).reshape(-1, 3, 3).float()

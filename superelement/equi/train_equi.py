@@ -267,14 +267,17 @@ def response_bank(sample, per_face, seed, cache_dir, n_global=32):
     rng = np.random.default_rng((seed * 1000003 + int(sample['seat'])) % (2 ** 32))
     train_loads = smooth_face_loads(ctx, per_face, rng)
     held = smooth_face_loads(ctx, per_face, rng) + smooth_global_loads(ctx, n_global, rng)
-    if path.exists():
+    if path.exists() and 'colnorm2' in np.load(path):
         z = np.load(path)
-        bank = dict(Y=z['Y'], ynorm2=z['ynorm2'], Yh=z['Yh'], yhnorm2=z['yhnorm2'])
+        bank = dict(Y=z['Y'], ynorm2=z['ynorm2'], Yh=z['Yh'], yhnorm2=z['yhnorm2'], colnorm2=z['colnorm2'])
     else:
         M = dense_label(sample['label'], q)
         F = load_vectors(train_loads, q); Fh = load_vectors(held, q)
-        Y = F @ M; Yh = Fh @ M; del M
-        bank = dict(Y=Y, ynorm2=(Y * Y).sum(axis=1), Yh=Yh, yhnorm2=(Yh * Yh).sum(axis=1))
+        Y = F @ M; Yh = Fh @ M
+        # ||M_q e_k||^2 per coordinate dof, summed over the node's three dofs: the compliance of a
+        # unit point load at that coordinate, and the normaliser of the column (point-load) term
+        colnorm2 = (M * M).sum(axis=0).reshape(-1, 3).sum(axis=1); del M
+        bank = dict(Y=Y, ynorm2=(Y * Y).sum(axis=1), Yh=Yh, yhnorm2=(Yh * Yh).sum(axis=1), colnorm2=colnorm2)
         np.savez(path, **bank)
     bank.update(train=train_loads, held=held, path=str(path))
     return bank
@@ -306,6 +309,33 @@ def response_term(model, enc, ctx, conditioning, bank, load_index, rows, g, Q, d
     y = torch.as_tensor(bank['Y'][load_index].reshape(count, 3)[rows], dtype=torch.float32, device=device) @ Q.T
     num = (count / R) * (resp - y).square().sum()
     return num / float(bank['ynorm2'][load_index])
+
+
+def column_term(model, enc, ctx, conditioning, sample, read_blocks, bank, columns, rows, g, tables, device):
+    """Point loads: the mean over sampled coordinates c of ||(M_hat - M)[:, c]||^2 / ||M[:, c]||^2.
+
+    The absolute bucket loss normalises every entry by one global rms, so a column whose norm is
+    15 (an ordinary face node) is fit to ~15 % while a column of norm 2000 (a void pocket) is fit
+    to 2-4 % -- measured on 12 seats.  Point loads read exactly one column, so this term asks for
+    RELATIVE accuracy per column, equally for stiff and soft coordinates.  Rows are subsampled
+    uniformly (unbiased, count/R), the label blocks are read on the fly, and the frame is handled
+    like the bucket loss: the label blocks are rotated by g.
+    """
+    count = int(sample['count']); R = len(rows); K = len(columns)
+    r = np.repeat(rows[None, :], K, axis=0).ravel(); c = np.repeat(columns, R)
+    lo = np.minimum(r, c); hi = np.maximum(r, c); swapped = r < c
+    target = torch.as_tensor(read_blocks(sample['packed'], hi, lo, sample['q']), dtype=torch.float32, device=device)
+    diag_np = hi == lo
+    bucket = torch.as_tensor(np.where(diag_np, 0, 2), device=device)
+    target = tables.rotate_target_blocks(target, bucket, g)
+    hi_t = torch.as_tensor(hi, device=device); lo_t = torch.as_tensor(lo, device=device)
+    pred = model.decode(enc, ctx, hi_t, lo_t, conditioning)
+    diag = hi_t == lo_t
+    if bool(diag.any()):                                   # lower-masked diagonal blocks, both sides
+        pred = pred.clone(); pred[diag] = torch.tril(pred[diag])
+    err = (pred - target).square().sum(dim=(1, 2)).reshape(K, R)          # transposition does not change the norm
+    norm2 = torch.as_tensor(bank['colnorm2'][columns], dtype=torch.float32, device=device)
+    return ((count / R) * err.sum(dim=1) / norm2).mean()
 
 
 def response_gate(M, bank, q):
@@ -627,6 +657,12 @@ def main():
     ap.add_argument('--response-weight', type=float, default=0.0,
                     help='weight of the smooth-face-load response term ||(M_hat-M)f||^2/||Mf||^2 (0 = off)')
     ap.add_argument('--response-rows', type=int, default=8, help='rows sampled per step for the response term')
+    ap.add_argument('--column-weight', type=float, default=0.0,
+                    help='weight of the point-load (per-column relative) term (0 = off)')
+    ap.add_argument('--column-count', type=int, default=32, help='columns sampled per step for the column term')
+    ap.add_argument('--column-rows', type=int, default=256, help='rows sampled per column')
+    ap.add_argument('--column-tilt', type=float, default=0.0,
+                    help='sample columns with probability proportional to colnorm^-tilt (0 = uniform over coordinates)')
     ap.add_argument('--response-per-face', type=int, default=16, help='training loads per face in the bank')
     ap.add_argument('--response-seed', type=int, default=20260919)
     ap.add_argument('--response-bank-dir', type=Path, default=None, help='cache of exact bank responses (default OUTPUT/../RESPONSE_BANK)')
@@ -715,7 +751,9 @@ def main():
                                      tilted=bool(s_['tilt'] is not None)))
         bank_dir = args.response_bank_dir or (args.output.parent / 'RESPONSE_BANK')
         response_report = dict(selftest=response_selftest(device), weight=args.response_weight,
-                               rows=args.response_rows, per_face=args.response_per_face, seed=args.response_seed)
+                               rows=args.response_rows, per_face=args.response_per_face, seed=args.response_seed,
+                               column_weight=args.column_weight, column_count=args.column_count,
+                               column_rows=args.column_rows, column_tilt=args.column_tilt)
         tick_b = time.perf_counter()
         for s_ in samples:
             s_['bank'] = response_bank(s_, args.response_per_face, args.response_seed, bank_dir)
@@ -775,6 +813,17 @@ def main():
                 resp = response_term(model, enc, ctx, conditioning, bank, li, rows_r, g, Qg, device)
                 loss = loss + args.response_weight * resp
                 parts = torch.cat((parts, resp.detach()[None]))
+            if args.column_weight > 0:
+                bank = sample['bank']
+                if args.column_tilt:
+                    pc = bank['colnorm2'] ** (-.5 * args.column_tilt); pc = pc / pc.sum()
+                    cols_c = rng.choice(sample['count'], size=args.column_count, replace=True, p=pc)
+                else:
+                    cols_c = rng.integers(0, sample['count'], size=args.column_count)
+                rows_c = rng.integers(0, sample['count'], size=args.column_rows)
+                colt = column_term(model, enc, ctx, conditioning, sample, read_blocks, bank, cols_c, rows_c, g, tables, device)
+                loss = loss + args.column_weight * colt
+                parts = torch.cat((parts, colt.detach()[None]))
             if not torch.isfinite(loss):
                 raise ValueError('NONFINITE_LOSS_NO_REPAIR')
             loss.backward()
