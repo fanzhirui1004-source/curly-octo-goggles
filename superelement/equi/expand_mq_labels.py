@@ -12,7 +12,7 @@ remaining seats still build.
 """
 from __future__ import annotations
 
-import argparse, json, subprocess, sys, time
+import argparse, json, os, subprocess, sys, time
 from pathlib import Path
 
 
@@ -67,7 +67,10 @@ def main():
                '--seat', str(d['seat']), '--trace-cache', d['trace_cache'], '--device', d['device'],
                '--threads', str(a.threads), '--source', str(a.source)]
         t0 = time.perf_counter()
-        p = subprocess.run(cmd, capture_output=True, text=True)
+        # CUDA's caching allocator fragmented to 22.7 GB on a q = 18006 seat whose live buffers
+        # were 16.9 GB, and three seats died of it; expandable segments give that back.
+        env = dict(os.environ, PYTORCH_CUDA_ALLOC_CONF='expandable_segments:True')
+        p = subprocess.run(cmd, capture_output=True, text=True, env=env)
         row = dict(index=i, of=len(plan), seat=d['seat'], q=d['q'], device=d['device'],
                    peak_gib=d['peak_gib'], seconds=round(time.perf_counter() - t0, 1))
         if p.returncode != 0:
