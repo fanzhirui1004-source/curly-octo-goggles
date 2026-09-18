@@ -27,6 +27,7 @@ def main():
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--inference-chunk', type=int, default=8192)
     ap.add_argument('--threads', type=int, default=8)
+    ap.add_argument('--symmetric', action='store_true', help='the prediction is a symmetric M with A_hat^-1 = M M (head invsqrt)')
     a = ap.parse_args()
     a.output.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
@@ -37,8 +38,10 @@ def main():
     from stage_cutfem_m4.adapter import model_for
 
     protocol = json.loads((a.run / 'PROTOCOL.json').read_text())
-    if protocol['head'] != 'inverse':
+    if protocol['head'] not in ('inverse', 'invsqrt'):
         raise ValueError('NOT_AN_INVERSE_RUN')
+    if (protocol['head'] == 'invsqrt') != a.symmetric:
+        raise ValueError('SYMMETRIC_FLAG_MUST_MATCH_HEAD')
     checkpoint = a.checkpoint or sorted(a.run.glob('CHECKPOINT_*.pt'))[-1]
     saved = torch.load(checkpoint, map_location='cuda:0', weights_only=False)
     conditioning = Conditioning(**saved['conditioning'])
@@ -51,7 +54,7 @@ def main():
     args = SimpleNamespace(
         manifest=Path('/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/V1_LABELS.json'),
         seats=protocol['seats'], known_328=protocol['known_328_diagnostic'],
-        patch_size=32, head='inverse', steps=protocol['steps'],
+        patch_size=32, head=protocol['head'], steps=protocol['steps'],
         inference_chunk=a.inference_chunk, pair_sampling=protocol['pair_sampling'],
         pairs_per_bucket=protocol['same_patch_pairs'], seed=protocol['seed'])
     rows = selected_rows(args.manifest, args.seats, args.known_328)
@@ -65,7 +68,7 @@ def main():
         d = s['d']
         seat = int(s['seat'])
         # the head is upper triangular with a positive diagonal, exactly like chol
-        L, inference = predict_full(model, s, conditioning, a.inference_chunk, 'chol')
+        L, inference = predict_full(model, s, conditioning, a.inference_chunk, 'sqrt' if a.symmetric else 'chol')
         packed = np.lib.format.open_memmap(a.output / f'L_PRED_UPPER_{seat:04d}.npy',
                                            mode='w+', dtype=np.float64, shape=(d * (d + 1) // 2,))
         host = L.cpu().numpy(); off = 0
@@ -102,7 +105,7 @@ def main():
 
         # A_hat = L^-1 L^-T, formed here only for e_A and the assembled test
         eye = torch.eye(d, dtype=torch.float64, device=L.device)
-        Linv = torch.linalg.solve_triangular(L, eye, upper=True)
+        Linv = torch.linalg.inv(L) if a.symmetric else torch.linalg.solve_triangular(L, eye, upper=True)
         del eye, L
         gc.collect(); torch.cuda.empty_cache()
         Ahat = Linv @ Linv.T
@@ -127,7 +130,7 @@ def main():
         del chol_of_Ahat, Ahat
         gc.collect(); torch.cuda.empty_cache()
 
-        row = dict(seat=seat, d=int(d), head='inverse', step=int(saved['step']),
+        row = dict(seat=seat, d=int(d), head=protocol['head'], step=int(saved['step']),
                    diagonal_loss=protocol.get('diagonal_loss'),
                    checkpoint=str(checkpoint), inference=inference,
                    mu_min=mu_min, mu_max=mu_max,
