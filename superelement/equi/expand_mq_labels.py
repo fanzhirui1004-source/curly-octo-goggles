@@ -1,8 +1,11 @@
 """Build MQ_UPPER.npy for a list of seats, one subprocess per seat, resumable.
 
 Peak memory is about seven simultaneous q x q float64 buffers, so the device is chosen per
-seat: the 32 GB card takes everything that fits with headroom, and the rest goes to CPU
-(754 GB of RAM, and the eigendecomposition is the only expensive step).  A seat whose
+seat: the 32 GB card takes everything that fits with headroom, and the rest goes to CPU.
+`free` on this box reports the HOST's 754 GB, but the container's cgroup ceiling is 90 GiB
+(/sys/fs/cgroup/memory.max), and that is the binding constraint: a q = 18000 seat needs
+23 GiB of it, and a training arm's mmapped labels need 0.66 GiB per seat of page cache, so at
+most one builder may run beside one arm.  A seat whose
 MQ_RESULT.json already exists is skipped, so the driver can be re-run after an interruption;
 a seat that fails its self-test gates leaves MQ_FAILURE.json and is reported, and the
 remaining seats still build.

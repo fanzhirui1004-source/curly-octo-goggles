@@ -8,8 +8,10 @@ cancellation of per-mode errors (robust for smooth loads) and the sensitivity er
 half-domain fluctuation ~ rms / sqrt(n_eff / 2).  A lattice spreads the energy over more modules
 and more modes, so both predictions are testable here at the scale that matters.
 
-Dense float64 on the host (2 x 2 x 2 of a 6016-coordinate cell is ~108k dofs, 93 GB per operator;
-the box has 754 GB).  With --grid 2 1 1 along ASSEMBLE_TWO's glue axis it must reproduce
+Float64 on the host.  The default solver is matrix-free, because a dense operator is impossible
+here twice over: torch's CPU indexing caps a tensor at 2^31 elements (N = 46340, two cells of a
+4176-coordinate seat), and the container's cgroup ceiling is 90 GiB, not the 754 GB that `free`
+reports for the host.  With --grid 2 1 1 along ASSEMBLE_TWO's glue axis it must reproduce
 assemble_two.py's numbers, which is the validation gate (--check-two).
 
     python -m superelement.equi.assemble_lattice --seat 347 --a-factor A_PRED.npy --grid 2 2 2 --output DIR
