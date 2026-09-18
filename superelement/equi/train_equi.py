@@ -219,6 +219,7 @@ def evaluate(model, sample, tables, conditioning, out, args, RigidQuotient):
     pack(M, out / 'MQ_PRED_UPPER.npy')
     q, d = sample['q'], sample['d']
     label = unpack(sample['label'], q, dev)
+    label = label + torch.triu(label, 1).T      # unpack fills the upper triangle only; M is full symmetric
     e_factor = float((M - label).norm() / label.norm())
     diag_rel = float(((M.diagonal() - label.diagonal()) / label.diagonal()).abs().max())
     del label; gc.collect()
