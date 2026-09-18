@@ -34,8 +34,15 @@ def main():
     # evaluation costs a full dense inference plus a d x d eigendecomposition, so
     # only small seats are evaluated, and the same rule picks from both sides.
     def pick(pool, count):
+        # Spread across the eligible q range instead of taking the smallest, so the
+        # score is not a score on tiny cells only.  The cap is a cost cap: the
+        # evaluation is a dense inference plus a d x d eigendecomposition.
         small = sorted((s for s in pool if q[s] <= args.eval_max_q), key=lambda s: q[s])
-        return sorted(small[:count])
+        if not small:
+            raise ValueError('NO_ELIGIBLE_EVALUATION_SEAT')
+        count = min(count, len(small))
+        index = np.linspace(0, len(small) - 1, count).round().astype(int)
+        return sorted({small[i] for i in index})
 
     eval_presented = pick(presented, args.eval_presented)
     eval_unseen = pick(unseen, args.eval_unseen)
@@ -47,6 +54,7 @@ def main():
                 eval_max_q=args.eval_max_q,
                 q_presented_median=int(np.median([q[s] for s in presented])),
                 q_unseen_median=int(np.median([q[s] for s in unseen])),
+                q_of_eval_seats={str(s): q[s] for s in sorted(eval_presented + eval_unseen)},
                 frozen_holdout_untouched=True,
                 scope='unseen seats are train-split labels withheld from this run; '
                       'they are not the frozen 6-seat holdout and are not a test score')
