@@ -82,6 +82,31 @@ The label's condition number confirms the two families differ in kind but not ca
 Seat 100079 (73 % cut) cannot be self-glued at all - the cut removes every opposite face pair -
 so it can only be accepted inside a cut-to-full stack.
 
+### Correction, same evening: the realistic stack is three times harder than the self-glue
+
+The two-cell figure above glues seat 100032 to a copy of itself, so the two modules carry the
+*same* prediction error and part of it cancels. The physically realistic configuration is a cut
+cell between full cells. Run as a three-module z-stack, 100051 - 100032 - 100051, 734 glued
+coordinates, 33 666 dofs, with the baseline box model for the two full cells:
+
+| cut-cell model | worst compliance | worst sensitivity | worst energy split |
+|---|---|---|---|
+| exact labels (control) | **0.000 %** | **0.000 %** | **0.000 %** |
+| NOAUG_100032, the best single-seat fit (0.278 % face median) | **3.91 %** | **8.62 %** | 5.93 % |
+| CUTMIX_FULLAUG, 28 cut + 32 box seats | 36.0 % | 65.7 % | 73.1 % |
+
+The control is exactly zero with an adjoint identity of 1.27e-12, so the machinery is right and
+these are prediction errors. So the ceiling claim has to be stated more carefully: single-seat fit
+quality is enough for a cut cell glued to its own copy (1.26 % / 1.47 %) and **not** enough in the
+realistic stack (3.91 % / 8.62 %). The gap is the energy split: on the axial load the exact split
+is [0.154, 0.692, 0.154] across the three modules and the multi-seat arm predicts
+[0.267, 0.482, 0.251] - it makes the cut cell too stiff and the load moves into its neighbours.
+The single-seat arm gets [0.163, 0.675, 0.162], much better but still 6 % off.
+
+What the cut cell needs is therefore about a factor of three better than the best fit we have -
+roughly 0.1 % face median - or the same ensembling that bought the box cells a factor of two, or a
+representation that resolves the near-mechanism direction directly.
+
 ## 4. A queue bug that would have failed the whole lattice programme
 
 `/root/_after_arms.sh` invoked `superelement.equi.assemble_lattice_multi`, which does not exist:
