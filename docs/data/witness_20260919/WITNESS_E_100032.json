@@ -1,0 +1,533 @@
+{
+ "seat": 100032,
+ "scope": "1.6e: WHY the raw point-value basis is ill-conditioned (cond 1.1e7 against the teacher's 5) and",
+ "kind1": 1436,
+ "teacher_basis_cond": 5.014891493692808,
+ "teacher_selected_points_raw": {
+  "count": 1436,
+  "cond": 4928045075287602.0,
+  "smin": 5.529451718888557e-16,
+  "smax": 2.7249387312309317,
+  "span": {
+   "raw_onto_teacher": 2.976489398234375e-15,
+   "teacher_onto_raw": 0.8938640277389226
+  }
+ },
+ "variants": {
+  "fan6": {
+   "label": "fan6",
+   "candidates": 11794,
+   "picked": 1436,
+   "left": 3.680580240723526e-16,
+   "span": {
+    "ours_onto_teacher": 3.788841063870435e-15,
+    "teacher_onto_ours": 3.904168754560336e-10
+   },
+   "raw_cond": 11436844.597245622,
+   "pivot_last_over_first": 3.4370825862368977e-07,
+   "margin_min": 0.0,
+   "margins_below_1e6": 1228,
+   "margins_below_1e3": 1333,
+   "unit_pivot_residual_cond": 2.7708679559899596,
+   "unit_pivot_residual_nnz": {
+    "mean": 4.104456824512535,
+    "max": 18
+   },
+   "smallest_pivots": [
+    {
+     "pivot": 3.4370825862368977e-07,
+     "step": 1435,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 3.437082586239449e-07,
+     "step": 1434,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 3.437082620027845e-07,
+     "step": 1433,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 3.4370826200381593e-07,
+     "step": 1432,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 3.437082620038186e-07,
+     "step": 1431,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 3.437082620039418e-07,
+     "step": 1430,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 3.437083784013741e-07,
+     "step": 1429,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 3.4370837840260153e-07,
+     "step": 1428,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 3.437083784040109e-07,
+     "step": 1427,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 3.4370837840409294e-07,
+     "step": 1426,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 1.7085316714210898e-05,
+     "step": 1425,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    },
+    {
+     "pivot": 1.7085316714210898e-05,
+     "step": 1424,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 15
+    }
+   ],
+   "cells_with_picks": 157,
+   "area_over_h2_quantiles": [
+    0.138,
+    0.3667,
+    1.0031,
+    1.0031,
+    1.0031,
+    1.0031
+   ],
+   "seconds": 388.4
+  },
+  "fan4": {
+   "label": "fan4",
+   "candidates": 5352,
+   "picked": 1436,
+   "left": 3.3859300581297673e-16,
+   "span": {
+    "ours_onto_teacher": 3.788841063870435e-15,
+    "teacher_onto_ours": 2.25853486279974e-10
+   },
+   "raw_cond": 16544201.821329774,
+   "pivot_last_over_first": 2.576791885010023e-07,
+   "margin_min": 0.0,
+   "margins_below_1e6": 1132,
+   "margins_below_1e3": 1286,
+   "unit_pivot_residual_cond": 3.337248936590817,
+   "unit_pivot_residual_nnz": {
+    "mean": 4.6664345403899725,
+    "max": 18
+   },
+   "smallest_pivots": [
+    {
+     "pivot": 2.576791885010023e-07,
+     "step": 1435,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 2.5767918850112246e-07,
+     "step": 1434,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 2.5767927821769503e-07,
+     "step": 1433,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 2.5767927821810684e-07,
+     "step": 1432,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 2.587283276224317e-07,
+     "step": 1431,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 2.587283276226023e-07,
+     "step": 1430,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 2.7286656397260654e-07,
+     "step": 1429,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 2.728665639735814e-07,
+     "step": 1428,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 2.7287932452975937e-07,
+     "step": 1427,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 2.7287932453042445e-07,
+     "step": 1426,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 8.863039008812847e-06,
+     "step": 1425,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 15
+    },
+    {
+     "pivot": 8.863039008812847e-06,
+     "step": 1424,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    }
+   ],
+   "cells_with_picks": 157,
+   "area_over_h2_quantiles": [
+    0.138,
+    0.3667,
+    1.0031,
+    1.0031,
+    1.0031,
+    1.0031
+   ],
+   "seconds": 176.9
+  },
+  "fan3": {
+   "label": "fan3",
+   "candidates": 3073,
+   "picked": 1436,
+   "left": 2.8301366890775627e-16,
+   "span": {
+    "ours_onto_teacher": 3.66331990601536e-15,
+    "teacher_onto_ours": 1.3283448362357798e-09
+   },
+   "raw_cond": 51756647.7534434,
+   "pivot_last_over_first": 6.638060197523403e-08,
+   "margin_min": 0.0,
+   "margins_below_1e6": 1166,
+   "margins_below_1e3": 1293,
+   "unit_pivot_residual_cond": 3.011994029844406,
+   "unit_pivot_residual_nnz": {
+    "mean": 4.774373259052925,
+    "max": 16
+   },
+   "smallest_pivots": [
+    {
+     "pivot": 6.638060197523403e-08,
+     "step": 1435,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 7
+    },
+    {
+     "pivot": 6.638060197529433e-08,
+     "step": 1434,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 7.322797593095482e-08,
+     "step": 1433,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 7
+    },
+    {
+     "pivot": 7.32279759309972e-08,
+     "step": 1432,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 7.328222330738031e-08,
+     "step": 1431,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 7.328222330749809e-08,
+     "step": 1430,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 8
+    },
+    {
+     "pivot": 3.4613650758981555e-07,
+     "step": 1429,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 3.461365075899239e-07,
+     "step": 1428,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 7
+    },
+    {
+     "pivot": 3.4613662465993955e-07,
+     "step": 1427,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 8
+    },
+    {
+     "pivot": 3.4613662465993955e-07,
+     "step": 1426,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 3.321506415476191e-06,
+     "step": 1425,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 11
+    },
+    {
+     "pivot": 3.321506415476279e-06,
+     "step": 1424,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 11
+    }
+   ],
+   "cells_with_picks": 157,
+   "area_over_h2_quantiles": [
+    0.138,
+    0.3667,
+    1.0031,
+    1.0031,
+    1.0031,
+    1.0031
+   ],
+   "seconds": 114.0
+  },
+  "fan2": {
+   "label": "fan2",
+   "candidates": 1422,
+   "picked": 1372,
+   "left": 0.0,
+   "span": {
+    "ours_onto_teacher": 3.788841063870435e-15,
+    "teacher_onto_ours": 0.5469918431637774
+   },
+   "raw_cond": 35012251.87561535,
+   "pivot_last_over_first": 1.4357947860534129e-07,
+   "margin_min": 0.0,
+   "margins_below_1e6": 884,
+   "margins_below_1e3": 1051,
+   "smallest_pivots": [
+    {
+     "pivot": 1.4357947860534129e-07,
+     "step": 1371,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 1.4357947860546215e-07,
+     "step": 1370,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 7
+    },
+    {
+     "pivot": 1.6696703410875808e-07,
+     "step": 1369,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 1.669670341088074e-07,
+     "step": 1368,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 7
+    },
+    {
+     "pivot": 2.2141918216244263e-07,
+     "step": 1367,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 2.21419182162512e-07,
+     "step": 1366,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 7
+    },
+    {
+     "pivot": 2.2147159491176283e-07,
+     "step": 1365,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 6
+    },
+    {
+     "pivot": 2.2147159491196813e-07,
+     "step": 1364,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 7
+    },
+    {
+     "pivot": 5.493372748708207e-06,
+     "step": 1363,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    },
+    {
+     "pivot": 5.493372755501633e-06,
+     "step": 1362,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    },
+    {
+     "pivot": 7.128060941600084e-06,
+     "step": 1361,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    },
+    {
+     "pivot": 7.128060952823385e-06,
+     "step": 1360,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    }
+   ],
+   "cells_with_picks": 157,
+   "area_over_h2_quantiles": [
+    0.138,
+    0.3667,
+    1.0031,
+    1.0031,
+    1.0031,
+    1.0031
+   ],
+   "seconds": 26.0
+  },
+  "maxtri6": {
+   "label": "maxtri6",
+   "candidates": 4282,
+   "picked": 1436,
+   "left": 3.856188869270757e-16,
+   "span": {
+    "ours_onto_teacher": 3.390183055676987e-15,
+    "teacher_onto_ours": 1.3435204084885815e-08
+   },
+   "raw_cond": 1347936225.1604972,
+   "pivot_last_over_first": 5.1632164333326035e-09,
+   "margin_min": 0.0,
+   "margins_below_1e6": 489,
+   "margins_below_1e3": 742,
+   "unit_pivot_residual_cond": 12.414475040379905,
+   "unit_pivot_residual_nnz": {
+    "mean": 12.089136490250697,
+    "max": 102
+   },
+   "smallest_pivots": [
+    {
+     "pivot": 5.1632164333326035e-09,
+     "step": 1435,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 11
+    },
+    {
+     "pivot": 5.515570772472734e-09,
+     "step": 1434,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 1.57732757840703e-08,
+     "step": 1433,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 11
+    },
+    {
+     "pivot": 1.6849692524400907e-08,
+     "step": 1432,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 11
+    },
+    {
+     "pivot": 1.7902271974219402e-08,
+     "step": 1431,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 1.944451960328863e-08,
+     "step": 1430,
+     "cell_area_over_h2": 1.0031,
+     "picks_in_cell": 12
+    },
+    {
+     "pivot": 3.572867964487423e-08,
+     "step": 1429,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 5.912683592002958e-08,
+     "step": 1428,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 9
+    },
+    {
+     "pivot": 6.873894026898544e-08,
+     "step": 1427,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 11
+    },
+    {
+     "pivot": 6.873908802905522e-08,
+     "step": 1426,
+     "cell_area_over_h2": 0.138,
+     "picks_in_cell": 11
+    },
+    {
+     "pivot": 4.13358713107982e-07,
+     "step": 1425,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    },
+    {
+     "pivot": 5.84510895088902e-07,
+     "step": 1424,
+     "cell_area_over_h2": 0.3667,
+     "picks_in_cell": 10
+    }
+   ],
+   "cells_with_picks": 157,
+   "area_over_h2_quantiles": [
+    0.138,
+    0.3667,
+    1.0031,
+    1.0031,
+    1.0031,
+    1.0031
+   ],
+   "seconds": 140.5
+  }
+ }
+}
