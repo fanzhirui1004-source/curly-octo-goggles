@@ -677,6 +677,15 @@ def main():
     ap.add_argument('--near-cells', type=float, default=2.0, help='near-bucket radius in background cells')
     ap.add_argument('--augment', action='store_true', help='random cube symmetry per step (48 elements)')
     ap.add_argument('--proper-only', action='store_true', help='augment with the 24 rotations only')
+    ap.add_argument('--augment-full-only', action='store_true',
+                    help='augment box-only cells and present cut cells in the identity frame.  The '
+                         'augmentation identity M_q(g . cell) = G M_q G^T is EXACT for a full cell '
+                         '(the trace is the box-face nodes and they permute) but false for a cut '
+                         'cell, whose residual functionals are chosen by pivoting '
+                         '(max_pivot_geometric_residuals_v2), which is not rotation covariant.  '
+                         'Measured on one seat at 20000 steps, forcing it costs a factor of four: '
+                         'seat 100032 goes 0.283 -> 1.191 % median smooth-face error and seat '
+                         '100079 3.130 -> 12.726 % when augmentation is switched on.')
     ap.add_argument('--canonical', action='store_true', help='always present the cell in its canonical frame')
     ap.add_argument('--diagonal-loss', choices=['absolute', 'log'], default='log')
     ap.add_argument('--ram-labels', action='store_true',
@@ -827,14 +836,19 @@ def main():
         losses = []; training_start = sync(device)
         elements = CG.PROPER if args.proper_only else np.arange(CG.ORDER)
         print(json.dumps(dict(phase='training_start', parameters=parameter_count, seats=args.seats,
-                              augment=args.augment, canonical=args.canonical)), flush=True)
+                              augment=args.augment, canonical=args.canonical,
+                              augment_full_only=args.augment_full_only,
+                              augmented_seats=[s_['seat'] for s_ in train
+                                               if args.augment and not (args.augment_full_only and not s_['ctx']['box_only'])])),
+              flush=True)
         for step in range(1, args.steps + 1):
             tick = sync(device); sample = train[(step - 1) % len(train)]
             lr = args.lr * step / args.warmup if step <= args.warmup else \
                 args.min_lr + (args.lr - args.min_lr) * .5 * (1 + math.cos(math.pi * (step - args.warmup) / max(1, args.steps - args.warmup)))
             for group in opt.param_groups:
                 group['lr'] = lr
-            g = int(g_rng.choice(elements)) if args.augment else (sample['canonical_g'] if args.canonical else 0)
+            augmentable = args.augment and not (args.augment_full_only and not sample['ctx']['box_only'])
+            g = int(g_rng.choice(elements)) if augmentable else (sample['canonical_g'] if args.canonical else 0)
             model.train(); opt.zero_grad(set_to_none=True)
             r, c, b = sample_pairs_geometric(sample, args.pairs_per_bucket, rng, sample['tilt'])
             target = torch.as_tensor(read_blocks(sample['packed'], r, c, sample['q']), dtype=torch.float32, device=device)
