@@ -136,7 +136,8 @@ def prepare(row, args, device):
                   trace_cache=str(cache_path), corners=ctx['corners'].tolist())
     return dict(seat=int(row['seat']), split=row['split'], q=q, d=d, count=ctx['count'], ctx=ctx,
                 ctx_t=to_torch(ctx, device), near_codes=near_codes, radius=radius, canonical_g=int(g_canon),
-                packed=open_label(label, getattr(args, "ram_labels", False)), label=label, whitener=factor,
+                packed=(None if getattr(args, 'label_pool_gib', 0.) > 0
+                        else open_label(label, getattr(args, "ram_labels", False))), label=label, whitener=factor,
                 reference=reference, cache=cache, record=record, tilt=None, weight=None)
 
 
@@ -162,6 +163,100 @@ def open_label(path, ram):
     return array
 
 
+def label_of(sample):
+    """The packed label, loading it if the seat's shard is not resident.
+
+    Only the setup passes (`calibrate_geometric`, `node_scales`) touch a seat outside the active
+    shard, once each, so mmapping is right there: resident would read 0.5 GB per seat to answer a
+    few thousand scattered queries.
+    """
+    if sample['packed'] is not None:
+        return sample['packed']
+    return open_label(sample['label'], False)
+
+
+class LabelShards:
+    """Resident labels in shards, for an arm whose whole training set does not fit the ceiling.
+
+    One step makes about 73 728 scattered reads over one seat's label, so a label that is not
+    resident costs 1.67 s per step against 0.068 s (docs/OPERATIONAL_CEILING_20260919.md), and the
+    container ceiling is 90 GiB.  The training loop visits seats round-robin, so a least-recently-
+    used pool would evict and reload on every single step.  Instead the presented seats are
+    partitioned into shards that each fit the byte budget, and one shard stays resident for
+    `rotate_every` steps.  A rotation reads one shard once, sequentially: 60 seats of 0.5 GB is
+    30 GB, about a minute against a two-hour arm, and every seat still gets `steps / n_seats`
+    visits exactly as plain round-robin does.
+
+    Shards are filled greedily over a shuffled order, so a shard is a random mix of sizes rather
+    than all-small or all-large, and no seat appears in two shards.
+    """
+
+    def __init__(self, samples, budget_bytes, rng):
+        self.samples = list(samples)
+        self.budget = int(budget_bytes)
+        self.shards = []
+        current, used = [], 0
+        for i in rng.permutation(len(self.samples)):
+            need = int(Path(self.samples[i]['label']).stat().st_size)
+            if need > self.budget:
+                raise ValueError(f"LABEL_LARGER_THAN_POOL seat {self.samples[i]['seat']} "
+                                 f"{need / 2 ** 30:.2f} GiB > {self.budget / 2 ** 30:.2f} GiB")
+            if used + need > self.budget and current:
+                self.shards.append(current); current, used = [], 0
+            current.append(int(i)); used += need
+        if current:
+            self.shards.append(current)
+        self.active = None
+
+    def schedule(self, passes):
+        """One cycle: each shard in turn, its members round-robin `passes` times each.
+
+        A fixed step window would be unfair whenever the shards hold different numbers of seats -
+        a shard holding one big label would get the whole window for that one seat.  Paying the
+        window in passes instead makes every seat get exactly `passes` visits per cycle, so the
+        visit counts are identical to plain round-robin over all presented seats and the only
+        difference from a non-sharded arm is the order.
+        """
+        order = []
+        for index, members in enumerate(self.shards):
+            for _ in range(int(passes)):
+                for i in members:
+                    order.append((index, i))
+        self.order = order
+        return order
+
+    def plan(self, passes):
+        self.schedule(passes)
+        return dict(shards=len(self.shards), budget_gib=round(self.budget / 2 ** 30, 2),
+                    passes_per_rotation=int(passes), cycle_steps=len(self.order),
+                    members=[[self.samples[i]['seat'] for i in sh] for sh in self.shards],
+                    seats=[len(sh) for sh in self.shards],
+                    gib=[round(sum(Path(self.samples[i]['label']).stat().st_size for i in sh) / 2 ** 30, 2)
+                         for sh in self.shards])
+
+    def activate(self, index):
+        if self.active == index:
+            return None
+        if self.active is not None:
+            for i in self.shards[self.active]:
+                self.samples[i]['packed'] = None
+            gc.collect()
+        tick = time.perf_counter()
+        for i in self.shards[index]:
+            self.samples[i]['packed'] = np.load(self.samples[i]['label'], allow_pickle=False)
+        self.active = index
+        return dict(phase='label_shard', shard=index, of=len(self.shards),
+                    seats=[self.samples[i]['seat'] for i in self.shards[index]],
+                    resident_gib=round(sum(self.samples[i]['packed'].nbytes
+                                           for i in self.shards[index]) / 2 ** 30, 2),
+                    seconds=round(time.perf_counter() - tick, 1))
+
+    def pick(self, step):
+        """The seat for this step, and a record if the shard changed."""
+        shard, index = self.order[(step - 1) % len(self.order)]
+        return self.samples[index], self.activate(shard)
+
+
 def node_scales(sample, read_blocks):
     """The label's own scale per coordinate: the mean of the three pivots of M_q's diagonal block.
 
@@ -173,7 +268,7 @@ def node_scales(sample, read_blocks):
     """
     count = int(sample['count'])
     diag = np.arange(count, dtype=np.int64)
-    blocks = read_blocks(sample['packed'], diag, diag, sample['q'])
+    blocks = read_blocks(label_of(sample), diag, diag, sample['q'])
     pivots = np.diagonal(blocks, axis1=1, axis2=2)
     if not np.all(pivots > 0):
         raise ValueError('NONPOSITIVE_REFERENCE_PIVOT_IN_SCALES')
@@ -507,7 +602,7 @@ def calibrate_geometric(samples, per_bucket, read_blocks, Conditioning, log_pivo
     rng = np.random.default_rng(seed); squares = np.zeros(4); counts = np.zeros(4); logs = []; bindings = []
     for s in samples:
         r, c, bucket = sample_pairs_geometric(s, per_bucket, rng)
-        target = read_blocks(s['packed'], r, c, s['q'])
+        target = read_blocks(label_of(s), r, c, s['q'])
         for j in range(3):
             v = target[bucket == j]; squares[j] += np.sum(v * v); counts[j] += v.size
         diagonal = target[bucket == 0]; pivots = np.diagonal(diagonal, axis1=1, axis2=2)
@@ -691,6 +786,16 @@ def main():
     ap.add_argument('--ram-labels', action='store_true',
                     help='read each packed label into process memory once instead of mmapping it '
                          '(0.66 GB per seat; removes the random-fault stall, see docs/OPERATIONAL_CEILING)')
+    ap.add_argument('--label-pool-gib', type=float, default=0.,
+                    help='present the training labels in resident shards of at most this many GiB '
+                         'instead of holding them all at once, rotating every --rotate-every steps. '
+                         'This is what lets an arm train on more seats than the 90 GiB ceiling '
+                         'holds: the pool is the constraint, not the number of geometries.')
+    ap.add_argument('--rotate-passes', type=int, default=64,
+                    help='how many times each seat of a shard is visited before the shard is '
+                         'rotated out (ignored unless --label-pool-gib).  A shard therefore stays '
+                         'resident for passes x its own seat count, which keeps every seat on the '
+                         'same number of visits however unevenly the shards are filled.')
     ap.add_argument('--bf16', action='store_true', help='bf16 autocast for the training forward pass (losses in fp32; evaluation stays fp32)')
     ap.add_argument('--scale-importance', type=float, default=0.0,
                     help='tilt the near/far draws by (s_r s_c)^alpha and weight the diagonal by '
@@ -835,6 +940,21 @@ def main():
         g_rng = np.random.default_rng(args.seed ^ 0x9E3779B9)
         losses = []; training_start = sync(device)
         elements = CG.PROPER if args.proper_only else np.arange(CG.ORDER)
+        shards = None
+        if args.label_pool_gib > 0:
+            shards = LabelShards(train, args.label_pool_gib * 2 ** 30,
+                                 np.random.default_rng(args.seed ^ 0x5BF03635))
+            plan = shards.plan(args.rotate_passes)
+            write(args.output / 'LABEL_SHARDS.json', dict(
+                plan=plan, presented=len(train), steps_per_seat=args.steps // max(1, len(train)),
+                rotations=args.steps // max(1, plan['cycle_steps']) * plan['shards'],
+                note='one shard resident at a time; every seat gets steps / presented visits, as '
+                     'a non-sharded arm does, because a shard is held for passes x its seat count'))
+            print(json.dumps(dict(phase='label_shard_plan',
+                                  **{k: plan[k] for k in ('shards', 'budget_gib', 'seats', 'gib',
+                                                          'passes_per_rotation', 'cycle_steps')},
+                                  presented=len(train),
+                                  rotations=args.steps // max(1, plan['cycle_steps']) * plan['shards'])), flush=True)
         print(json.dumps(dict(phase='training_start', parameters=parameter_count, seats=args.seats,
                               augment=args.augment, canonical=args.canonical,
                               augment_full_only=args.augment_full_only,
@@ -842,7 +962,13 @@ def main():
                                                if args.augment and not (args.augment_full_only and not s_['ctx']['box_only'])])),
               flush=True)
         for step in range(1, args.steps + 1):
-            tick = sync(device); sample = train[(step - 1) % len(train)]
+            tick = sync(device)
+            if shards is None:
+                sample = train[(step - 1) % len(train)]
+            else:
+                sample, note = shards.pick(step)
+                if note is not None:
+                    print(json.dumps(note), flush=True)
             lr = args.lr * step / args.warmup if step <= args.warmup else \
                 args.min_lr + (args.lr - args.min_lr) * .5 * (1 + math.cos(math.pi * (step - args.warmup) / max(1, args.steps - args.warmup)))
             for group in opt.param_groups:
