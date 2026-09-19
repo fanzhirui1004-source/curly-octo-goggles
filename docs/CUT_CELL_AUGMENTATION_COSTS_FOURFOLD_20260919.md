@@ -1,4 +1,29 @@
-# The cut cell's augmentation identity is false, and it costs a factor of four
+# Augmentation costs a factor of four on a cut cell; the cause is not yet established
+
+**Correction, same day.** This note first claimed the measurement proved the augmentation identity
+false. It does not, and the title has been changed. What is measured is the **cost**. The cause is
+open, and the leading candidate is now capacity rather than an invalid label:
+
+* the input side of the rotation is verified faithful -- `context.py`'s self-test has
+  `cut_cell_rotation_recompute_worst` = 3.31e-14, i.e. rotating the compiled context equals
+  recompiling from the rotated trace -- and the model is index-free to 3e-7;
+* the trace operator is `L (x) I_3` (`rigid_trace` applies one scalar CSR to each of the three
+  components), so a functional is a scalar functional tensored with the identity and the block form
+  `G M_q G^T` is the right one;
+* therefore, **on a single seat**, augmentation is a self-consistent equivariance regulariser:
+  `f(g . x) = G f(x) G^T` together with `f(x) = M_q(x)` is satisfiable by any equivariant `f`. It
+  cannot be contradictory for one geometry.
+
+So the fourfold cost is most likely the price of forcing approximate equivariance through an
+encoder that is not equivariant by construction: the volume U-Net is built from `Conv3d(3,3,3)`,
+and a 3x3x3 convolution is not rotation equivariant (only the resampling is -- `avg_pool3d`
+commutes to 1.19e-07 and nearest upsampling exactly). Equivariance has to be memorised over 48
+orientations, and a cut cell needs the feature volume to carry the cut surface, which makes those
+48 copies far more expensive than a full cell's smooth field.
+
+The teacher's pivot-based choice of cut-surface functionals remains a real and separate concern,
+but it bears on whether the model generalises to genuinely rotated geometries at test time, not on
+whether single-seat augmentation is self-consistent. Whether it fails is being tested directly.
 
 2026-09-19. Every arm in this project has trained with `--augment`: a random cube symmetry per
 step, the label blocks rotated to match, resting on
@@ -10,8 +35,8 @@ nodes, they permute exactly under the group, `tau_phi_field_consistency` is 4.27
 phase-2 arms found augmentation nearly free (non-equivariance 12.3 % -> 1.5 % while `g` moved
 0.8 %).
 
-For a **cut** cell it is false, and this is the measurement. One seat, 20 000 steps, plain loss,
-everything identical but `--augment`:
+For a **cut** cell, forcing it is expensive. One seat, 20 000 steps, plain loss, everything
+identical but `--augment`:
 
 | seat | cut fraction | augment | final loss | `factor_rel` | `g` | rotation probe | median face error | inside 3 % | point-load |
 |---|---|---|---|---|---|---|---|---|---|
@@ -27,18 +52,24 @@ magnitude. The rotation probe moves the other way (0.056 -> 2.29 and 0.079 -> 14
 proof that the augmented model really was learning the constraint — it was just learning a
 constraint that is not true, and paying for it with accuracy everywhere else.
 
-## Why
+## The open question, and how it is being settled
 
 A full cell's trace is one background node per coordinate, so the group maps coordinates to
 coordinates. A cut cell's trace has, in addition, residual functionals on the macro cut surface,
-and those are selected by the compiler's coordinate convention
-`max_pivot_geometric_residuals_v2` — **by pivoting**. Pivot-based selection is not rotation
-covariant: the rotated geometry's compiler picks a different set of functionals, so the rotated
-label is not the conjugated label, and no model can satisfy both.
+selected by the compiler's coordinate convention `max_pivot_geometric_residuals_v2` — **by
+pivoting**. Pivot-based selection need not be rotation covariant, which was flagged as "the
+concrete suspect" in the 1.6a witness docstring in phase 1 and never tested.
 
-This was flagged as "the concrete suspect" in the 1.6a witness docstring back in phase 1 and never
-tested. It is now answered from the student side, which is cheaper than the teacher-side witness
-and just as decisive.
+The decisive form of the test is not whether the compiler picks the *same functionals*, because
+those are only a basis for the cut surface's residual subspace and any basis gives a congruent
+operator. It is whether it picks the *same subspace*. `witness_c.py` runs the teacher's
+`compile_trace` on a cut geometry and on its rotation and measures the principal-angle residual
+between the two row spaces, mapped into a common node basis:
+
+* subspaces agree, bases differ -> the label is right up to a congruence, and re-expressing the
+  cut-surface block in a covariant basis on our side fixes it without touching the frozen teacher;
+* subspaces differ -> the teacher selects a genuinely different residual space and no basis change
+  can repair it.
 
 ## What it explains
 
