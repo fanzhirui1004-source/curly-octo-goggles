@@ -188,7 +188,14 @@ match what the next run prints.
 normal is rejected by the frozen teacher itself.** The user's scoping decision is baked into the
 contract.
 
-### 2.5 Capping at ρ = 0.40 is right, and the argument is waste, not storage
+### 2.5 Capping at ρ = 0.40 — the argument I gave has since been withdrawn
+
+**Read 2.11 before acting on this section.** The user intends to rent a 96 GB card, which lifts the
+label ceiling from q = 22433 to ≈39285 and takes the wasted fraction of the ρ > 0.40 band from
+92.4 % to 14.3 %. The cap may still be taken as a design choice; it is no longer forced. What
+follows is the measurement as it stood on the 32 GB card.
+
+
 
 Of the 237 packets (26 % of 920) above ρ = 0.40, only **18** are under the label ceiling — **92.4 % of
 that band is teacher time that cannot be used**, and for uncut cells it is **0 of 77**. The band is
@@ -311,6 +318,55 @@ See `docs/data/prior_art_20260920/` plus tonight's follow-up sweep.
   element stiffness is three years old, unexecuted, and that group's four 2026 papers all went to the
   conforming shape-function route.
 
+### 2.11 A 96 GB card moves the label ceiling, and moves the binding constraint
+
+Filed at `docs/data/cut_labels_20260921/CEILING_ON_A_96GB_CARD.json`.
+
+`q_max` goes 22433 → **39285**, and labelable packets 418/920 → **879/920** (cut 281 → 566, box
+137 → **all 313**). Two consequences and one warning.
+
+**The ρ ≤ 0.40 cap loses its resource argument.** 18 of the 238 packets above ρ = 0.40 are labelable
+on the 5090; **204** are on a 96 GB card. 92.4 % wasted becomes 14.3 %. I recommended the cap on that
+basis and I withdraw the basis. The cap survives only as a design choice — a reasonable engineering
+density range that halves the worst-case deployment cost — and that is the user's call, not a
+constraint.
+
+**Storage becomes binding, and the obvious plan does not fit.** Labels for the 879 already-labelable
+packets are 1993 GB as `M_q` alone and **3985 GB with `R_UPPER`**; 300 new cells at a 36000 budget add
+305 GB of `S_UPPER` and 1220 GB of labels. Against **3482 GB free**, the full plan with `R_UPPER` is
+**5510 GB — it does not fit**. Dropping `R_UPPER` brings it to **2908 GB, which fits**. `R_UPPER` is
+exactly half the label bytes, it is the Cholesky factor of A, and A comes from `S_UPPER` which we
+keep, so it is regenerable — but `train_equi.py:725` loads it as the whitener, so dropping it is a
+code change, not a delete.
+
+**Do not design to 39285.** The memory law was fitted over q 18012–19956, a 10 % span, and 39285
+projects it 2× out. What is being extrapolated is a *buffer count*, and cuSOLVER's `syevd` workspace
+need not scale as q². At 9 buffers instead of 8, q = 36000 already needs 86.9 of 92 GiB; at 10 it
+needs 96.6 and fails. **Re-measure the constant on the real card at q ≈ 30000 before trusting any
+budget above 30000.** The two designs below use 36000, which survives the 9-buffer case.
+
+| q-budget 36000 | ρ ≤ 0.40 | ρ ≤ 0.50 |
+| --- | --- | --- |
+| affordable fraction of the box | **94.3 %** | 84.0 % |
+| over-budget rejections | 20 | **63** |
+| predicted q, median / max | 23363 / 35858 | 25066 / 35983 |
+| ungraded (UNIFORM_ANCHOR) cells | 22 | 17 |
+| output | `CLAUDE_FILL_20260921/PRO_0.40` | `CLAUDE_FILL_20260921/PRO_0.50` |
+
+Their reported holes (0.1436 and 0.1500) are **not comparable** — the density axis is normalised to
+its own range in each run. Compare the affordable fraction and the rejection counts.
+
+**The training ceiling and the deployment budget pull in opposite directions.** Decode is O(q²) and
+the full chain O(q³), from the measured 5.372 s and 9.363 s at q = 10812. Projected: at q = 23363 a
+cell costs 25 s to decode and 95 s for the full chain; at q = 36000, 60 s and 346 s — **30× and 173×
+over the 2 s target**. q drives cost on both sides and is set by the geometry, not chosen. A bigger
+card lifts the ceiling on what can be **labelled** and does nothing for what can be **deployed**; if
+anything it hurts, by making it possible to train on cells that miss the target by two orders of
+magnitude. The old q ≤ 23000 limit was accidentally keeping the deployment problem small. **This is
+the one place the resource limit was doing real work**, and lifting it makes the deployment question
+urgent rather than solved. (Projections from one measured point by algorithmic order, not
+measurements at the larger q.)
+
 ---
 
 ## 3. What died tonight — do not re-propose these
@@ -333,7 +389,9 @@ Five, four of them mine.
    wedge of volume 0.0005; at b = 0 it is a slab of volume 0.033. A maximin fill in `(θ, s)` spent
    **274 of 574 attempts** on a band holding no material at all, every failure at `s ≤ 0.122`.
    **Retained volume is the coverage coordinate.** Older docs in this repo still say `(b, s)`.
-5. **"The 44 rebuilt labels are dataset-designated test/validation packets never presented to
+5. **"ρ ≤ 0.40 should be adopted because 92.4 % of that band cannot be labelled."** True on a
+   32 GB card, and the card is changing. See 2.11. The cap is a design choice now.
+6. **"The 44 rebuilt labels are dataset-designated test/validation packets never presented to
    anything."** They are 44 of the 76 V2_LABELS rows lacking `MQ_UPPER`, and that pool is 69 train /
    6 holdout / 1 validation.
 
