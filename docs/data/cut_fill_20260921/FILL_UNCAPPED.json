@@ -1,0 +1,35 @@
+{
+ "batch": "F300",
+ "seed": 20260921,
+ "requested": 300,
+ "generated": 300,
+ "unreachable": 8,
+ "existing_points": 185,
+ "q_budget": 19500.0,
+ "q_floor": 2000.0,
+ "volume_range": [
+  0.02,
+  0.98
+ ],
+ "unreachable_reasons": {
+  "RETAINS_ALMOST_NO_MATERIAL": 8
+ },
+ "predicted_q": {
+  "min": 2148.0,
+  "median": 19485.0,
+  "max": 19500.0
+ },
+ "largest_hole_existing": 0.17320839967634066,
+ "largest_hole_combined": 0.04105487496717621,
+ "candidates_left": 30956,
+ "splits": {
+  "train": 237,
+  "holdout": 63
+ },
+ "thickness_class": {
+  "AFFINE": 158,
+  "MIXED": 142,
+  "UNIFORM_ANCHOR": 0
+ },
+ "seconds": 212.7856423854828
+}
