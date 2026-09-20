@@ -1,0 +1,22 @@
+{
+  "seat": 100000, "count": 237, "n": 32,
+  "grid_sample_agreement": 4.440892098500626e-16,
+  "reading": "the hypothesis is REFUTED: the model's view of a cut coordinate is not degenerate",
+  "cut": {
+    "closest_pullback_relative": 0.21563216630615933,
+    "median_pullback_relative": 1.414213562373095,
+    "closest_pair": {"i": 235, "j": 219, "pullback_relative": 0.2156321663061593,
+                     "aggregate_relative": 0.3378543896341298, "operator_row_relative": 2.92793638641445,
+                     "nnz": [4, 14], "centroid_distance_over_h": 0.5831117714913665},
+    "next_pairs_pullback_relative": [0.2156321663061612, 0.5167107943028381, 0.5167107943028381,
+                                     0.5254292408045885, 0.5254292408045887, 0.5761887287437861]
+  },
+  "box": {
+    "closest_pullback_relative": 0.7071067811865476,
+    "median_pullback_relative": 1.414213562373095,
+    "closest_pair": {"i": 34, "j": 17, "pullback_relative": 0.7071067811865476,
+                     "aggregate_relative": 0.025743593589968496, "operator_row_relative": 1.0862885502609536,
+                     "nnz": [1, 1], "centroid_distance_over_h": 0.5}
+  },
+  "note": "box coordinates sit at relative pullback distance 0.707 (nearly orthogonal weight vectors) and their operator rows already differ by 1.0-1.2 relative, so 'similar descriptor, different row' is the normal state of a cell that DOES generalise; the cut coordinates' 0.216 is smaller but nowhere near degenerate, and their aggregate descriptors differ by 0.34."
+}

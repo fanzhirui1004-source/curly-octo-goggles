@@ -114,3 +114,33 @@ rather than of one cell. The wrapper takes `--elements`, so that is a launch, no
 `22c3d40e...`, trace cache `e6b1e0a7...`, `S_UPPER.npy` `ca9366a2...`, teacher commit
 `6624dc86706bbd8e3cc16b4b3adbfb043eff08ec`, wrapper `04611f66...`.
 Remote outputs: `/root/autodl-tmp/CLAUDE_CUT_ROT_20260920/`.
+
+## 6. A hypothesis this raised and then killed: the coordinates are NOT under-resolved
+
+Section 5 says the augmentation target has to be gauge-invariant. That prompted a sharper
+hypothesis, which would have been the whole answer if true: that a cut coordinate is not resolvable
+from what the model is handed, so the training target is not a function of the training input, and
+no amount of data or capacity could fix the cut family.
+
+The model sees a coordinate through two channels: explicit aggregates (centroid, kind, signed sum,
+`|c|` sum, `||c||`, log nnz, support radius, face membership, field values, first and second
+moments) and the pullback of a learned volume field, `sum_a c_ia f(x_a)`, with `f` trilinearly
+sampled from a 32^3 grid. The second channel is linear in the grid values, so it is exactly a weight
+vector `w_i` over the 32^3 cells, and two coordinates with equal `w` and equal aggregates are
+indistinguishable *whatever the network learns*.
+
+Computed exactly (`docs/data/cut_rotation_20260920/injectivity.py`; the analytic trilinear map
+reproduces `torch.grid_sample` to 4.4e-16), on seat 100000:
+
+| | closest relative `w` distance | that pair's aggregate distance | that pair's operator-row distance |
+| --- | --- | --- | --- |
+| cut coordinates | 0.216 | 0.338 | 2.93 |
+| box coordinates (control) | 0.707 | 0.026 | 1.09 |
+
+**Refuted.** The closest pair of cut coordinates is 22 % apart in the field-pullback channel and 34 %
+apart in the explicit aggregates - far from degenerate. And the control cuts the other way: box
+coordinates, which do generalise, sit at aggregate distance 0.026 with operator rows already 1.09
+apart, so "near-identical descriptor, different row" is the normal state of a cell that works. The
+cut family's failure is not an input-resolution defect, and section 5's claim is narrowed
+accordingly: the pullback buys a gauge-free target and one uniform coordinate type, not a repair of
+an ill-posed map.
