@@ -89,22 +89,67 @@ values to 0.1-1 % on every aggregate observable (`trace(S^+)` -15.955 / -15.883,
 `trace(T^+)` -17.315 / -17.175, softest +13.851 / +13.839). So the derivative is stable across the
 whole admitted bracket, not just at one step size.
 
+## Across a cell death: the box trace survives, and the response jumps
+
+An earlier version of this section claimed the two sides of a cell death are not on a common basis,
+because the box rigid trace differed by 4.09e-2. **That was wrong**, and the user's reasoning found
+it: the thickness field is one global field, so two neighbouring cells share an identical interface,
+and the box-face trace does not depend on interior CutFEM cells. Measured:
+
+| | box coords | cut coords | box nodes | box coefficients | rigid basis | rigid **subspace** |
+| --- | --- | --- | --- | --- | --- | --- |
+| 19 cells (base) | 95 | 142 | - | - | 0 | 2.36e-15 |
+| 18 cells, eps = -5e-4 | **95** | 134 | identical | identical | 4.087e-2 | **2.445e-15** |
+| 18 cells, eps = -1e-3 | **95** | 134 | identical | identical | 4.087e-2 | **2.445e-15** |
+
+`rigid` is built from `points - points.mean(axis=0)` over the **active** node set, so a dying cell
+shifts the centroid and the rotation rows are expressed about a different origin - which differs by a
+translation already inside the six-dimensional span. Pure gauge. The admission rule now tests the
+**subspace**, which is the invariant the quotient and therefore `T` depend on, and the basis
+difference is recorded beside it. `T` is 285 x 285 on the identical box coordinates at every epsilon,
+so it straddles the event directly, with the same load vectors and no interpolation.
+
+With that, the ladder `eps in {-1e-3, -5e-4, -2.5e-4, -1e-4, 0, +1e-4, +1e-3}` all admits, and the
+cell dies between -2.5e-4 and -5e-4:
+
+| eps | q | active cells | `trace(T^+)` | `box_load_0` |
+| --- | --- | --- | --- | --- |
+| -1e-3 | 687 | 18 | 1.15017e8 | 1.17253e8 |
+| -5e-4 | 687 | 18 | 1.13863e8 | 1.15954e8 |
+| **-2.5e-4** | **711** | **19** | **1.05019e8** | **9.58431e7** |
+| -1e-4 | 711 | 19 | 1.04748e8 | 9.5618e7 |
+| 0 | 711 | 19 | 1.04566e8 | 9.54723e7 |
+| +1e-4 | 711 | 19 | 1.04387e8 | 9.5319e7 |
+| +1e-3 | 711 | 19 | 1.02785e8 | 9.39896e7 |
+
+Inside the 19-cell regime the slopes agree (`trace(T^+)`: left -17.3875 at h = 1e-4, -17.3145 at
+2.5e-4, right -17.1009). Straddling the death the apparent slope explodes to **-170.4 at h = 5e-4
+and -95.3 at h = 1e-3** - and the h = 1e-3 value is about **half** the h = 5e-4 value for every one
+of the ten observables (ratios 1.5-1.9), which is the signature of a **finite jump divided by h**,
+not of a steeper derivative. Jump sizes: `trace(T^+)` **+8.4 %**, `box_load_0` **+21 %**,
+`box_load_3` about **+58 %**. `condensed_softest_nonrigid` does **not** jump (12.45 -> 16.16 in
+apparent slope), so this is not a near-mechanism appearing - it is a broad stiffness loss from
+discarding a cell that was still carrying load.
+
+**And this is almost certainly a small-seat artefact.** Seat 100000 has **19 active cells in total**,
+so losing one removes 5.3 % of the material. Seat 100032 has **3651** active cells, and its four
+perturbations at eps = -1e-3 … +1e-3 all admit with active cells 3651 and q 10812 at every one:
+**no cell dies anywhere in the whole +-0.1 % range.** If the jump scales with the fraction of
+material removed, one cell out of 3651 is 0.027 % and the jump would be 0.04-0.3 %, far under the
+3 % contract - and a far larger `tau` step is needed to trigger one at all.
+
+So the honest statement of gate 2 is: **differentiable inside a regime (worst one-sided ratio 1.148);
+a finite jump at a regime boundary, of size on the order of one active cell's share of the material;
+and on a realistically sized cell no boundary is crossed within +-0.1 % of tau.** The scaling claim
+is the thing still to confirm, and seat 100032 is running.
+
 ## What this does NOT establish
 
-* **One seat, and the cheapest one.** 19 active cells and only one intact box face
+* **One seat so far, and the cheapest one.** 19 active cells and only one intact box face
   (`face_0_0` alone), so it cannot be glued on opposite faces and has no assembled observable at
-  all. A mid-size cut seat with a glueable face pair is running.
-* **Nothing about continuity ACROSS a cell birth or death, which is the thing an optimiser
-  crosses.** The bracket is 0.025 % in `tau`; a topology optimiser steps far further, so the
-  operator's dimension changes repeatedly along a design path. Between those events the response is
-  differentiable, as measured. Across one, the two sides are not on a common basis: when the cell
-  died the cut coordinates went 142 -> 134 **and the box trace changed too** (box count stayed 95
-  but the rigid trace differs by 4.09e-2, because the active node set shrank). So condensation alone
-  does not make the comparison possible either - the box coordinate set moves as well.
-  The measurement that would settle it is a **common geometric frame**: evaluate both sides'
-  condensed operators against the same physical face traction, interpolated onto each side's own
-  node set, so the comparison survives a change of coordinate set. That is the open question this
-  document leaves, and it is the one the sensitivity leg of the contract actually rides on.
+  all. Seat 100032 (q = 10812, 3651 cells, glueable) is running at 207-282 s per operator.
+* **Nothing about the network.** This is the teacher's own response. Whether a trained operator
+  tracks this derivative is a separate measurement, and it comes after the condensed-target arm.
 
 ## Provenance
 

@@ -31,6 +31,15 @@ from pathlib import Path
 import numpy as np
 
 
+def packed_dimension(path):
+    """q from the packed upper triangle's length, since q changes when a CutFEM cell dies."""
+    n = int(np.load(path, mmap_mode='r').shape[0])
+    q = int(round((np.sqrt(8 * n + 1) - 1) / 2))
+    if q * (q + 1) // 2 != n:
+        raise ValueError(f'PACKED_UPPER_LENGTH_NOT_TRIANGULAR {path} {n}')
+    return q
+
+
 def unpack_upper(path, q):
     v = np.load(path, mmap_mode='r')
     if v.shape != (q * (q + 1) // 2,):
@@ -107,60 +116,81 @@ def main():
     nb = q - 3 * int(sample['additional_scalar_cut_coordinates'])
     selected = json.loads((a.geometry / 'SELECTED.json').read_text())['selected']
 
-    cases = [(0.0, Path(row['packet']) / 'S_UPPER.npy', 'frozen packet')]
+    cases = [(0.0, Path(row['packet']) / 'S_UPPER.npy', 'frozen packet', None)]
     for entry in selected:
         label = Path(entry['directory']).name
         path = a.numeric_root / f'{a.numeric_prefix}_{a.seat}_{label}' / 'operator' / 'full_operator' / 'S_UPPER.npy'
         if not path.exists():
             raise ValueError(f'MISSING_OPERATOR {path}')
-        cases.append((float(Fraction(entry['epsilon'])), path, label))
+        cases.append((float(Fraction(entry['epsilon'])), path, label, Path(entry['directory'])))
     cases.sort(key=lambda c: c[0])
 
+    # The box block has the SAME dimension and the SAME coordinates at every epsilon -- one global
+    # thickness field means neighbouring cells share an identical interface, and the box-face trace
+    # does not depend on interior CutFEM cells.  The FULL trace does change when a cell dies, so the
+    # full-trace observables are only comparable across the epsilons that keep q.
     rng = np.random.default_rng(a.seed)
-    box_loads = [np.concatenate([rng.standard_normal(nb), np.zeros(q - nb)]) for _ in range(a.loads)]
+    box_loads = [rng.standard_normal(nb) for _ in range(a.loads)]
     full_loads = [rng.standard_normal(q) for _ in range(a.loads)]
 
     series = {}
     per_case = []
-    for eps, path, label in cases:
-        S = unpack_upper(path, q)
-        # project the loads onto the complement of this operator's own rigid nullspace
-        w, V = np.linalg.eigh(S)
-        rigid = V[:, :6]
-        bl = [f - rigid @ (rigid.T @ f) for f in box_loads]
-        fl = [f - rigid @ (rigid.T @ f) for f in full_loads]
-        tr_full, c_full, soft, rigid_leak, stiff = pinv_quadratic(S, fl)
+    for eps, path, label, geo in cases:
+        q_here = packed_dimension(path)
+        nb_here = nb
+        if geo is not None:
+            with np.load(geo / 'TRACE_CACHE.npz', allow_pickle=False) as z:
+                nb_here = 3 * int((np.asarray(z['kind']) == 0).sum())
+        if nb_here != nb:
+            raise ValueError(f'BOX_BLOCK_CHANGED at eps={eps}: {nb_here} against {nb}')
+        S = unpack_upper(path, q_here)
+        record = dict(epsilon=eps, label=label, source=str(path), q=q_here,
+                      cut_dofs=q_here - nb, same_full_dimension=bool(q_here == q))
         T = condense(S, nb)
         wT, VT = np.linalg.eigh(T)
         rigidT = VT[:, :6]
-        blT = [f[:nb] - rigidT @ (rigidT.T @ f[:nb]) for f in bl]
+        blT = [f - rigidT @ (rigidT.T @ f) for f in box_loads]
         tr_cond, c_box, softT, rigid_leakT, stiffT = pinv_quadratic(T, blT)
-        record = dict(epsilon=eps, label=label, source=str(path),
-                      full_trace_inverse=tr_full, condensed_inverse=tr_cond,
-                      softest_nonrigid=soft, largest=stiff, rigid_residual=rigid_leak,
-                      condensed_softest_nonrigid=softT, condensed_rigid_residual=rigid_leakT,
-                      condensed_kappa=stiffT / softT, full_kappa=stiff / soft)
+        record.update(condensed_inverse=tr_cond, condensed_softest_nonrigid=softT,
+                      condensed_rigid_residual=rigid_leakT, condensed_kappa=stiffT / softT)
         for i, v in enumerate(c_box):
             record[f'box_load_{i}'] = v
-        for i, v in enumerate(c_full):
-            record[f'full_load_{i}'] = v
+        if q_here == q:
+            w, V = np.linalg.eigh(S)
+            rigid = V[:, :6]
+            fl = [f - rigid @ (rigid.T @ f) for f in full_loads]
+            tr_full, c_full, soft, rigid_leak, stiff = pinv_quadratic(S, fl)
+            record.update(full_trace_inverse=tr_full, softest_nonrigid=soft, largest=stiff,
+                          rigid_residual=rigid_leak, full_kappa=stiff / soft)
+            for i, v in enumerate(c_full):
+                record[f'full_load_{i}'] = v
         per_case.append(record)
         del S, T
-        print(json.dumps({k: record[k] for k in
-                          ('epsilon', 'label', 'full_trace_inverse', 'condensed_inverse',
-                           'softest_nonrigid', 'condensed_softest_nonrigid')}), flush=True)
+        print(json.dumps({k: record[k] for k in ('epsilon', 'label', 'q', 'cut_dofs',
+                                                 'condensed_inverse', 'condensed_softest_nonrigid')}),
+              flush=True)
 
-    epsilons = [r['epsilon'] for r in per_case]
-    names = ['full_trace_inverse', 'condensed_inverse', 'softest_nonrigid',
-             'condensed_softest_nonrigid'] + \
-            [f'box_load_{i}' for i in range(a.loads)] + [f'full_load_{i}' for i in range(a.loads)]
-    for name in names:
-        series[name] = slopes([r[name] for r in per_case], epsilons)
+    condensed_names = ['condensed_inverse', 'condensed_softest_nonrigid'] + \
+                      [f'box_load_{i}' for i in range(a.loads)]
+    full_names = ['full_trace_inverse', 'softest_nonrigid'] + \
+                 [f'full_load_{i}' for i in range(a.loads)]
+    for name in condensed_names:                               # every epsilon
+        rows = [r for r in per_case if name in r]
+        series[name] = slopes([r[name] for r in rows], [r['epsilon'] for r in rows])
+    for name in full_names:                                    # only the constant-q epsilons
+        rows = [r for r in per_case if name in r]
+        series[name] = slopes([r[name] for r in rows], [r['epsilon'] for r in rows])
+    series['_scope'] = dict(
+        condensed_epsilons=[r['epsilon'] for r in per_case],
+        full_trace_epsilons=[r['epsilon'] for r in per_case if r['same_full_dimension']],
+        note='the condensed operator is 285 x 285 on the identical box coordinates at every epsilon, '
+             'so it straddles a CutFEM cell birth or death; the full trace changes dimension there '
+             'and its observables are only comparable where q is unchanged')
 
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.output.write_text(json.dumps(dict(
         seat=a.seat, q=q, box_coordinates=nb, cut_coordinates=q - nb,
-        epsilons=epsilons, cases=per_case, slopes=series,
+        epsilons=[r['epsilon'] for r in per_case], cases=per_case, slopes=series,
         scope='gate 2 teacher side: one-sided tau slopes of a cut cell, no network anywhere',
         reference='0328 box cell, free: one-sided -6.09 vs -21.36 at h=1e-4; clamped platen '
                   'Richardson 0.999997',
