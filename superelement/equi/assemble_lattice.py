@@ -63,6 +63,14 @@ def main():
     ap.add_argument('--check-two', type=Path, default=None, help='ASSEMBLE_TWO.json to reproduce with --grid 2 1 1 along its axis')
     ap.add_argument('--solver', choices=['dense', 'pcg'], default='pcg')
     ap.add_argument('--rtol', type=float, default=1e-12); ap.add_argument('--max-iterations', type=int, default=4000)
+    ap.add_argument('--replace-every', type=int, default=200,
+                    help='recompute the TRUE residual F - K U every this many iterations and restart the '
+                         'search direction from it.  The recursive residual R <- R - alpha K P drifts away '
+                         'from the true one on an ill-conditioned predicted operator: the mixed three-cell '
+                         'run of 2026-09-20 stopped with a recursive residual under 1e-9 and a true residual '
+                         'of 1.863e-7, and CONTROL passed the same item only at 5.343e-8 against a 1e-7 line. '
+                         'Termination now requires a freshly computed TRUE residual under --rtol, so this '
+                         'tightens the gate; 0 disables replacement and restores the old recursive-only test.')
     ap.add_argument('--source', type=Path, default=Path('/root/autodl-tmp/CLAUDE_SQRTHEAD_20260917/src_v5'))
     ap.add_argument('--threads', type=int, default=8)
     ap.add_argument('--output', type=Path, required=True)
@@ -261,19 +269,34 @@ def main():
         fn = F0.norm(dim=0)
         U = torch.zeros((N, L), dtype=F64); R = F0.clone()
         Z = precondition(R); P = Z.clone(); rz = (R * Z).sum(dim=0)
-        live = torch.ones(L, dtype=torch.bool); iterations = 0
+        iterations = 0; replacements = 0; recursive = float('nan')
+
+        def true_residual():
+            return (apply(U) - F0).norm(dim=0) / fn
+
         for iterations in range(1, a.max_iterations + 1):
             KP = apply(P)
             alpha = rz / (P * KP).sum(dim=0).clamp_min(1e-300)
             U = U + alpha * P; R = R - alpha * KP
-            live = (R.norm(dim=0) / fn) > a.rtol
-            if not bool(live.any()):
-                break
+            recursive = float((R.norm(dim=0) / fn).max())
+            due = a.replace_every > 0 and iterations % a.replace_every == 0
+            if recursive <= a.rtol or due:
+                # The recursive residual is an estimate; only a freshly computed F - K U can stop the
+                # loop.  Replacing R breaks conjugacy with the old P, so the direction restarts.
+                if a.replace_every > 0:
+                    R = F0 - apply(U); replacements += 1
+                    if float((R.norm(dim=0) / fn).max()) <= a.rtol:
+                        break
+                    Z = precondition(R); rz = (R * Z).sum(dim=0); P = Z.clone()
+                    continue
+                if recursive <= a.rtol:
+                    break
             Z = precondition(R); rz_new = (R * Z).sum(dim=0)
             P = Z + (rz_new / rz.clamp_min(1e-300)) * P; rz = rz_new
-        resid = (apply(U) - F0).norm(dim=0) / fn
+        resid = true_residual()
         if float(resid.max()) > 100 * a.rtol:
-            raise ValueError(f'PCG_DID_NOT_CONVERGE residual {float(resid.max()):.3e} in {iterations} iterations')
+            raise ValueError(f'PCG_DID_NOT_CONVERGE residual {float(resid.max()):.3e} in {iterations} iterations '
+                             f'(recursive {recursive:.3e}, {replacements} true-residual replacements)')
         energy = torch.zeros((len(copies), L), dtype=F64)              # per module, for the adjoint
         for seat in order:
             B = block(U, seat); E = (B * (S[seat] @ B)).sum(dim=0).reshape(len(groups[seat]), L)
@@ -285,6 +308,7 @@ def main():
             c = float(F0[:, j] @ U[:, j])
             sens = [float(-energy[m, j]) for m in range(len(copies))]
             out[name] = dict(compliance=c, sens=sens, solve_residual=float(resid[j]), iterations=iterations,
+                             recursive_residual=recursive, true_residual_replacements=replacements,
                              adjoint_identity_relative=float((sum(sens) + c) / c), cholesky_seconds=chol_seconds)
         return out
 
