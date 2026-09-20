@@ -302,18 +302,25 @@ def pullback(cache, S):
     return M.T @ S @ M, nodes[used]
 
 
-def apply_group(St, support, g, base_support):
-    """G S_tilde G^T with G = P_g (x) Q_g, returned in the BASE support's node order."""
+def carry_back(St, support, g, base_support):
+    """G^T S_tilde(g . cell) G in the BASE support's node order, with G = P_g (x) Q_g.
+
+    The rotated cell's support is the image of the base one, so node `s` of the rotated support is
+    the base node `g^-1(s)` and its three components carry `Q_{g^-1} = Q_g^T`.  Mapping the rotated
+    pullback back this way turns the claim `S_tilde(g . cell) = G S_tilde G^T` into a direct
+    comparison against the base pullback.
+    """
     top = 2 * N
+    gi = int(INVERSE[g])
     positions = np.column_stack(np.unravel_index(support, (top + 1,) * 3))
-    image = np.ravel_multi_index(map_int_positions(positions, g, top).T, (top + 1,) * 3)
+    image = np.ravel_multi_index(map_int_positions(positions, gi, top).T, (top + 1,) * 3)
     order = np.argsort(base_support)
     where = np.searchsorted(base_support[order], image)
     hit = (where < len(order)) & (base_support[order][np.minimum(where, len(order) - 1)] == image)
     if not (hit.all() and len(image) == len(base_support)):
         return None, int((~hit).sum())
     target = order[where]                                    # row i of `support` -> row target[i]
-    Q = Q_ALL[g].astype(np.float64)
+    Q = Q_ALL[gi].astype(np.float64)
     n = len(support)
     P = np.zeros((3 * n, 3 * n), dtype=np.float64)
     for i in range(n):
@@ -359,7 +366,7 @@ def compare(args):
         if St.shape != base_St.shape:
             row['status'] = 'SUPPORT_DIMENSION_DIFFERS'
             rows.append(row); print(json.dumps(row), flush=True); continue
-        rotated, missing = apply_group(St, support, g, base_support)
+        rotated, missing = carry_back(St, support, g, base_support)
         if rotated is None:
             row['status'] = 'SUPPORT_IS_NOT_THE_IMAGE_OF_THE_BASE_SUPPORT'
             row['support_nodes_not_in_base_image'] = missing
