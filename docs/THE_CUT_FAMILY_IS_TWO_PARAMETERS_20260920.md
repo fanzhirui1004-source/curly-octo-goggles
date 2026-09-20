@@ -38,7 +38,43 @@ O(N^2) - but the dataset contains no such plane, so we have no data for that cas
 `tau` still varies from cell to cell regardless, so the per-part family is
 `{1 to ~N fixed cut planes} x {the 8-dimensional tau family}`.
 
-## 3. Why that reframes the failure
+## 2a. Retraction: this does NOT license a per-part specialist, and tau is why
+
+An earlier version of this document read section 2 as "so the requirement is easier than we thought,
+and a per-part specialist is the route". That reading is wrong, and three measurements kill it.
+
+**The n = 1 result is memorisation, not generalisation.** Each seat carries exactly one `tau` field,
+so n = 1 is one `(b, d, tau)` point. The 0.30 % was never a test of interpolation in `tau`, and
+`tau` is the design variable: an optimiser moves it, and moves it toward the lower bound, which is
+thin walls and near-mechanisms - the worst-conditioned end of the family. A specialist trained on 15
+seats at one slope has seen 15 points of an eight-dimensional `tau` space.
+
+**The `tau` sampling density is already the same for cut and box, and box generalised at it.** Full
+eight-vectors from the frozen trace caches, over the seats that carry a trainable label:
+
+| | box | cut, design domain |
+| --- | --- | --- |
+| trainable seats | 57 | 109 |
+| `tau_mean` span | 0.185-0.490 | 0.179-0.447 |
+| within-cell grading \|max-min\|, median | 0.0662 | 0.0635 |
+| nearest neighbour in the 8-vector, relative, median | 0.081 | **0.067** |
+
+The cut family is sampled *more* densely in `tau`, with twice as many seats, and box cells
+generalised at that density to 0.3-3.3 % on twelve seats. So `tau` sparsity is not what is wrong
+with cut cells, and concentrating the training set at one slope buys nothing on the axis that
+actually binds.
+
+**The specialist hypothesis is not even testable with the data we have.** Of the in-domain cut
+seats, 27 pairs sit within `|d(b,d)| <= 0.03` of each other - but their relative `tau` distance has
+median **0.511** and maximum **1.168**. The dataset was sampled independently in `(b, d, tau)`, so
+there is no cluster anywhere with a nearly-fixed cut and densely-sampled `tau`. Testing the
+specialist idea would need new teacher runs, and using it would need per-part teacher labels, which
+is the cost the network exists to avoid.
+
+What survives from section 2 is the geometry itself: a facet's boundary cells share `b`. What does
+not survive is any suggestion that this makes the problem go away.
+
+## 3. Why the failure is still the cut, not the family's size
 
 Every cut arm so far has been trained to generalise over `(b, d, tau)` jointly. The application
 asks it to generalise over `(d, tau)` at **fixed** `b`. Those are different requirements, and the
@@ -51,9 +87,18 @@ n >= 28 at this budget, and is learned at n = 1* - because then the next questio
 how many distinct cut geometries does one part have? Section 2 answers it: 1 for a lattice-aligned
 facet, 2-4 for a simple rational slope, about N for a generic one.
 
-## 4. The experiment that tests the requirement rather than the method
+Box cells: 8 parameters, 57 trainable seats, contract met. Cut cells: 10 parameters, 109 trainable
+seats, 9-42 %. More samples and only two more parameters, and it still fails - so the difficulty is
+not the dimension of the family. What is left is the cut itself, and specifically the part of the
+target the cut adds: a block carrying 60-93 % of the Frobenius mass, expressed in a basis that is
+not rotation covariant, with its own condition number near 1e8, which the assembled answer never
+reads. That is what section 4 of `CONDENSE_THE_FREE_CUT_SURFACE_20260920.md` proposes to remove.
+
+## 4. The slope experiment, parked
 
 Defined in `SLOPE_EXPERIMENT.json`, splits in `split_slope_S.txt` / `split_slope_W.txt`.
+**Parked, and not a route-selection test** - see 2a. At most it measures how much of the difficulty
+the `(b, d)` spread contributes, and the box/cut comparison above already answers that more cheaply.
 
 * **Arm S** - 15 training seats, all with `b < 0.10`: one facet slope, many offsets.
 * **Arm W** - the same 15-seat budget spread over `b` 0.003-0.987 by quantiles of the pool, which
@@ -64,10 +109,19 @@ Defined in `SLOPE_EXPERIMENT.json`, splits in `split_slope_S.txt` / `split_slope
   `d` 0.092-0.604, `tau_mean` 0.303-0.427.
 * Matched: n = 15, steps, capacity, `g = 0`, no sharding, same evaluation set and metric.
 
-Reading: S >> W means the requirement the application has is much easier than the family we have
-been training for, and the route is a per-part specialist at n <= 4 for aligned or simple-rational
-facets and n ~ N for generic ones. S ~ W means concentration does not help and the difficulty is
-intrinsic to the cut at any slope.
+## 4a. What any cut arm has to pass, decided before the arm runs
+
+`tau` is the design variable, so the acceptance protocol is written around it, and the second gate
+has **never been run on a cut cell**:
+
+1. held-out seats, unseen in both `tau` and `(b, d)` - the 64-load assembly-free response gate and
+   the box-node displacement, not the worst of four compliances;
+2. **the `tau` derivative of a cut cell against the teacher.** Teacher side first: a free cut surface
+   is exactly the configuration where `TAU_DERIVATIVE_PASSES_20260919.md` found the truth itself
+   one-sided-inconsistent (log-slopes -6.09 against -21.36 at h = 1e-4). If the truth has no
+   derivative there, no learned operator can supply one, and that kills every route - so this runs
+   *before* condensed labels are built, not after;
+3. the assembled cut-to-full stack.
 
 ## 5. Inventory, with two corrections to earlier statements
 
