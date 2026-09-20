@@ -163,14 +163,28 @@ def compare(base, candidate):
     out['same_complete_trace_original_rule'] = bool(
         all(np.array_equal(a, b) for a, b in zip(semantics(base), semantics(candidate))))
     out['same_order'] = bool(np.array_equal(np.asarray(base['order']), np.asarray(candidate['order'])))
+    # The rigid trace is built from `centered = points - points.mean(axis=0)` over the ACTIVE node
+    # set, so when a CutFEM cell dies the centroid moves and the rotation rows are expressed about a
+    # different origin.  That differs from the original by a translation, which is already inside the
+    # six-dimensional span, so the BASIS moves while the SUBSPACE does not.  The subspace is what the
+    # quotient, and therefore the condensed operator, actually depends on, so that is what is
+    # required here.  Measured on seat 100000 across a cell death: basis difference 4.087e-2,
+    # subspace residual 2.445e-15.
     box_rigid = np.asarray(base['rigid'])[:3 * nb_base], np.asarray(candidate['rigid'])[:3 * nb_cand]
     out['box_rigid_absolute_frobenius_difference'] = (
         float(np.linalg.norm(box_rigid[0] - box_rigid[1])) if same_box else None)
-    out['admitted'] = bool(same_box and out['box_rigid_absolute_frobenius_difference'] is not None
-                           and out['box_rigid_absolute_frobenius_difference'] <= 1e-12)
-    out['admission_rule'] = ('kind-0 rows identical and the box rigid trace unchanged; kind-1 rows '
-                             'may change because the cut surface moves with tau, and the condensed '
-                             'operator does not depend on their basis')
+    if same_box:
+        Q0, _ = np.linalg.qr(box_rigid[0]); Q1, _ = np.linalg.qr(box_rigid[1])
+        out['box_rigid_subspace_residual'] = float(np.linalg.norm(Q0 - Q1 @ (Q1.T @ Q0)))
+    else:
+        out['box_rigid_subspace_residual'] = None
+    out['admitted'] = bool(same_box and out['box_rigid_subspace_residual'] is not None
+                           and out['box_rigid_subspace_residual'] <= 1e-12)
+    out['admission_rule'] = ('kind-0 rows identical (same nodes, same coefficients) and the box '
+                             'rigid SUBSPACE unchanged; the rigid basis may move because it is '
+                             'referenced to the active-node centroid, and kind-1 rows may change '
+                             'because the cut surface moves with tau.  Neither affects the condensed '
+                             'operator T = S_BB - S_BC S_CC^-1 S_CB, which is what a lattice reads.')
     return out
 
 
@@ -230,10 +244,11 @@ def geometry(args):
     with np.load(row['trace_cache'], allow_pickle=False) as z:
         frozen = {k: z[k] for k in z.files}
     selected, attempts = [], []
+    epsilons = args.epsilons or EPSILONS
     cases = [('BASE_REPLAY', base_case, 0.0)] + [
-        (f'PATH_{i + 1}', None, Fraction(e)) for i, e in enumerate(EPSILONS)]
+        (f'PATH_{i + 1}', None, Fraction(e)) for i, e in enumerate(epsilons)]
     for label, row_case, initial in cases:
-        for halving in range(1 if row_case is not None else 9):
+        for halving in range(1 if row_case is not None else 1 + args.halvings):
             out = args.output / f'{label}_H{halving}'
             out.mkdir(exist_ok=False)
             tick = time.perf_counter()
@@ -282,7 +297,7 @@ def geometry(args):
                 selected.append(result)
                 break
     write(args.output / 'SELECTED.json', dict(seat=int(args.seat), selected=selected, attempts=attempts,
-                                              maximum_new_labels=len(EPSILONS), numerical_labels_generated=0,
+                                              maximum_new_labels=len(epsilons), numerical_labels_generated=0,
                                               status='GEOMETRY_SCREEN_COMPLETE_NUMERICAL_LABELS_PENDING'))
 
 
@@ -363,6 +378,13 @@ def main():
         p.add_argument('--' + key, type=Path)
     p.add_argument('--source-sha', required=True)
     p.add_argument('--workers', type=int, default=16)
+    p.add_argument('--epsilons', nargs='+', default=None,
+                   help='explicit exact-rational perturbations, e.g. -0.001 -0.0005 -0.00025 -0.0001 '
+                        '0.0001 0.001.  Needed to straddle a CutFEM cell birth or death with a fine '
+                        'ladder: with the corrected admission rule the coarsest step admits at once, '
+                        'so the halving search would never produce the intermediate points.')
+    p.add_argument('--halvings', type=int, default=8,
+                   help='0 tries each epsilon exactly once')
     args = p.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     pins = {}
@@ -373,8 +395,8 @@ def main():
                     s_upper_sha256=sha(Path(row['packet']) / 'S_UPPER.npy'))
     protocol = dict(schema='CUT_TAU_LOCAL_GEOMETRY_V1', mode=args.mode,
                     purpose='gate 2 teacher side: is a CUT cell response differentiable in tau',
-                    initial_epsilons=EPSILONS, maximum_halvings=8,
-                    maximum_new_numeric_labels=len(EPSILONS),
+                    initial_epsilons=list(args.epsilons or EPSILONS), maximum_halvings=args.halvings,
+                    maximum_new_numeric_labels=len(args.epsilons or EPSILONS),
                     n=32, body_space='Q2', E=1., nu=.3, gamma=1e-4, GP_orders=[1, 2],
                     internal_mechanics_dtype='float64', label_encoding='float64 packed-upper',
                     coordinate_convention='max_pivot_geometric_residuals_v2',

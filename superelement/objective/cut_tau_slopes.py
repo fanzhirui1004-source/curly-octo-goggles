@@ -93,7 +93,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--seat', type=int, required=True)
     ap.add_argument('--geometry', type=Path, required=True, help='the GEO_<seat> directory')
-    ap.add_argument('--numeric-root', type=Path, required=True, help='directory holding NUM_<seat>_<label> dirs')
+    ap.add_argument('--numeric-root', type=Path, required=True, help='directory holding <prefix>_<seat>_<label> dirs')
+    ap.add_argument('--numeric-prefix', default='NUM')
     ap.add_argument('--manifest', type=Path, default=Path('/root/autodl-tmp/CLAUDE_LABELS_20260917/V2_LABELS.json'))
     ap.add_argument('--loads', type=int, default=8)
     ap.add_argument('--seed', type=int, default=20260920)
@@ -109,7 +110,7 @@ def main():
     cases = [(0.0, Path(row['packet']) / 'S_UPPER.npy', 'frozen packet')]
     for entry in selected:
         label = Path(entry['directory']).name
-        path = a.numeric_root / f'NUM_{a.seat}_{label}' / 'operator' / 'full_operator' / 'S_UPPER.npy'
+        path = a.numeric_root / f'{a.numeric_prefix}_{a.seat}_{label}' / 'operator' / 'full_operator' / 'S_UPPER.npy'
         if not path.exists():
             raise ValueError(f'MISSING_OPERATOR {path}')
         cases.append((float(Fraction(entry['epsilon'])), path, label))
