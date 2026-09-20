@@ -115,6 +115,25 @@ rather than of one cell. The wrapper takes `--elements`, so that is a launch, no
 `6624dc86706bbd8e3cc16b4b3adbfb043eff08ec`, wrapper `04611f66...`.
 Remote outputs: `/root/autodl-tmp/CLAUDE_CUT_ROT_20260920/`.
 
+## 1a. Confirmed on a large seat, and on an improper rotation that is not a mirror
+
+Seat 100032: 3651 active cells, `body_dimension` 115 476, q = 10 812, 1436 cut coordinates, nodal
+pullback 13 200 dofs on 4400 support nodes (growth 1.2209). Five elements, 203-207 s of teacher time
+each:
+
+| element | operation | relative covariance residual |
+| --- | --- | --- |
+| 1 | mirror z | 1.85e-14 |
+| 10 | 90 deg about x (plane tilts into z) | 2.20e-14 |
+| 19 | S4 improper rotoreflection, order 4 | 1.73e-14 |
+| 20 | 90 deg about z | 1.86e-14 |
+| 32 | 3-fold about the body diagonal | 1.37e-14 |
+
+All five keep 1436 cut coordinates and the exact image support, and the Frobenius ratio is 1 to 13
+digits. So the result is a property of the family, not of one small cell: it holds at 3651 cells as
+it does at 19, for proper and improper elements alike, including an improper element that is not a
+reflection.
+
 ## 6. A hypothesis this raised and then killed: the coordinates are NOT under-resolved
 
 Section 5 says the augmentation target has to be gauge-invariant. That prompted a sharper
@@ -141,6 +160,43 @@ reproduces `torch.grid_sample` to 4.4e-16), on seat 100000:
 apart in the explicit aggregates - far from degenerate. And the control cuts the other way: box
 coordinates, which do generalise, sit at aggregate distance 0.026 with operator rows already 1.09
 apart, so "near-identical descriptor, different row" is the normal state of a cell that works. The
-cut family's failure is not an input-resolution defect, and section 5's claim is narrowed
-accordingly: the pullback buys a gauge-free target and one uniform coordinate type, not a repair of
-an ill-posed map.
+cut family's failure is not an input-resolution defect in this strongest form.
+
+### 6a. Two corrections to that reading, and the cross-seat form left undecided
+
+**The ratio comparison above was cherry-picked and is withdrawn.** The two channels order cut against
+box in opposite directions, and the table quoted only the one that favoured the conclusion:
+
+| | pullback channel | aggregate channel | target difference | target / pullback | target / aggregate |
+| --- | --- | --- | --- | --- | --- |
+| cut | 0.216 | 0.338 | 2.93 | **13.6** | 8.7 |
+| box | 0.707 | 0.026 | 1.09 | **1.5** | 42 |
+
+By the aggregate channel box demands a 42-fold steeper map than cut and box works, which is what was
+quoted; by the pullback channel cut demands a 9-fold steeper map than box, which was not. The
+relative weight of the two channels is learned, so there is no basis for reading only one. "Input
+resolution is not the binding constraint" is therefore **not** established.
+
+**The cross-seat form is the one that matters, and it is still open.** The 28x presented-to-held-out
+gap is about a coordinate of an unseen cell, not two coordinates of one cell. Measured
+(`cross.py`, 6 cut and 6 box seats, target = each coordinate's own diagonal 3x3 block, which is
+comparable across seats of different q): **no ambiguous pair exists in either family** - nothing is
+close in the input and far in the target. But the metric is too weak to conclude anything from that,
+and one intermediate reading has to be retracted outright:
+
+* the apparent 85-fold coverage gap - box coordinates of a new seat landing 0.0016 away with the
+  target agreeing to 3e-4, against 0.135 for cut - is **confounded**. The box arm of that pool was
+  box-*only* seats carrying 5388-7004 coordinates that tile the whole cube surface; the cut arm was
+  cut seats carrying 142-1834 cut coordinates;
+* controlling for it (`coverage.py`, the *same* six cut seats, all three bases, same descriptor code
+  and metric) the gap disappears: cross-seat nearest-neighbour relative distance is **0.210** for the
+  teacher's cut rows, **0.246** for those seats' own box rows, **0.248** under the nodal pullback. All
+  three agree, because on this metric the distance is dominated by the two seats simply having a
+  different tau field and a different plane - true by construction and identical for box and cut;
+* so the prediction that the pullback would collapse the cut coordinates onto a shared node
+  vocabulary is **false as measured** on this pool, and this line of probing has produced no positive
+  finding.
+
+What survives: the strongest form of the hypothesis is dead, the useful form is undecided, and
+section 5's claim for the pullback is narrowed to what section 1 and 1a actually license - a
+gauge-free target and one uniform coordinate type - with no claim that it repairs the input side.
