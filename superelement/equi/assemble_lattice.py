@@ -293,10 +293,18 @@ def main():
                     break
             Z = precondition(R); rz_new = (R * Z).sum(dim=0)
             P = Z + (rz_new / rz.clamp_min(1e-300)) * P; rz = rz_new
-        resid = true_residual()
+        KU = apply(U)
+        resid = (KU - F0).norm(dim=0) / fn
+        # Normwise backward error, with ||K u|| in place of ||K|| ||u||.  ||K u|| <= ||K|| ||u||, so
+        # the denominator is smaller and eta is an upper bound.  ||r|| / ||f|| cannot go below about
+        # kappa(K) * eps, so on a predicted cut operator (kappa ~ 1e6..1e10) a fixed relative-residual
+        # line is partly a conditioning readout; eta says whether the solve itself is at its floor.
+        eta = (KU - F0).norm(dim=0) / (KU.norm(dim=0) + fn).clamp_min(1e-300)
+        floor = 10. * (N ** .5) * float(torch.finfo(F64).eps)
         if float(resid.max()) > 100 * a.rtol:
             raise ValueError(f'PCG_DID_NOT_CONVERGE residual {float(resid.max()):.3e} in {iterations} iterations '
-                             f'(recursive {recursive:.3e}, {replacements} true-residual replacements)')
+                             f'(recursive {recursive:.3e}, {replacements} true-residual replacements, '
+                             f'backward error {float(eta.max()):.3e} against a floor of {floor:.3e})')
         energy = torch.zeros((len(copies), L), dtype=F64)              # per module, for the adjoint
         for seat in order:
             B = block(U, seat); E = (B * (S[seat] @ B)).sum(dim=0).reshape(len(groups[seat]), L)

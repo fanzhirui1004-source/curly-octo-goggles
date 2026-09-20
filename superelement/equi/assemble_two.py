@@ -227,13 +227,22 @@ def main():
             raise ValueError(f'ASSEMBLED_OPERATOR_NOT_SYMMETRIC {asym:.3e}')
         root = torch.linalg.cholesky(K)
         out = {}
+        eps = float(torch.finfo(F64).eps)
         for name, f in loads.items():
             u = torch.cholesky_solve(f[:, None], root)[:, 0]
             res = float((K @ u - f).norm() / f.norm())
+            # This is a DIRECT solve, so `res` is its backward error, about kappa(K) * eps -- a
+            # conditioning readout, not a convergence failure, and no stopping rule applies to it.
+            # One step of iterative refinement with the factor already in hand recovers what the
+            # conditioning allows; both residuals are reported so neither is mistaken for the other.
+            u = u + torch.cholesky_solve((f - K @ u)[:, None], root)[:, 0]
+            refined = float((K @ u - f).norm() / f.norm())
             c = float(f @ u)
             uA = u[dof_A]; uB = u[dof_B]
             sens = dict(A=float(-(uA @ (S @ uA))), B=float(-(uB @ (S @ uB))))
-            out[name] = dict(compliance=c, sens=sens, solve_residual=res,
+            out[name] = dict(compliance=c, sens=sens, solve_residual=refined,
+                             direct_backward_error=res, condition_estimate=res / eps,
+                             solve='dense Cholesky plus one step of iterative refinement',
                              adjoint_identity_relative=float((sens['A'] + sens['B'] + c) / c))
         del K, root
         gc.collect()

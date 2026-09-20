@@ -215,13 +215,21 @@ The robust column here is the Frobenius one.
 
 ## 7. Solver qualification, fixed here
 
-`assemble_lattice.py` stopped on the **recursive** residual `R <- R - alpha K P` and only checked
-the true residual once at the end. On predicted cut operators the two diverge: Codex's mixed
-three-cell stopped with a recursive residual under 1e-9 and a true residual of 1.863e-7 against a
-1e-7 line, and its CONTROL passed the same item only at 5.343e-8. The problem is not confined to
-that one run - across 34 assembly rows the predicted-side residual is 7.19e-13 to 8.32e-13 for box
-cells and 1.61e-9 to 2.80e-6 for cut cells, and all six rows over the 1e-7 line are cut cells; one
-of ROT_CUT's own two-cell numbers (seat 100032, 43.18 %) rides on 2.80e-6.
+Two different numerics were being reported under one name, and an earlier draft of this document
+conflated them.
+
+**`assemble_lattice` is iterative** and stopped on the **recursive** residual
+`R <- R - alpha K P`, checking the true residual only once at the end. On predicted cut operators
+the two diverge: Codex's mixed three-cell stopped with a recursive residual under 1e-9 and a true
+residual of 1.863e-7 against a 1e-7 line, and its CONTROL passed the same item only at 5.343e-8.
+
+**`assemble_two` is direct** - dense `torch.linalg.cholesky` plus `cholesky_solve` - so its
+`solve_residual` is that solve's backward error, about `kappa(K) * eps`. It is a conditioning
+readout, not a convergence failure, and no stopping rule applies to it. So the spread across 34
+assembly rows (7.19e-13 to 8.32e-13 for box cells, 1.61e-9 to 2.80e-6 for cut cells, with all six
+rows over 1e-7 being cut cells) is a statement about how badly conditioned the assembled
+*predicted* cut operator is - seat 100032's 2.80e-6 puts kappa(K) near 1.3e10 - and not about the
+solver. It is still a red flag, and it is not one residual replacement can address.
 
 `--replace-every` (default 200) now recomputes `F - K U` periodically, restarts the search
 direction from it (replacement breaks conjugacy with the old direction), and **requires a freshly
@@ -233,6 +241,23 @@ replaced (`/root/autodl-tmp/CLAUDE_SOLVER_20260920`): the 2x1x1 machinery check 
 `assemble_two` at `check_two = 3.175237850427948e-14`, the same value as before the change, with
 `worst_compliance_rel = 0.014122046780423392` and adjoint identity 6.04e-15. A converged answer is
 unchanged; only the stopping rule is.
+
+`assemble_lattice` additionally reports the normwise backward error
+`eta = ||r|| / (||K u|| + ||f||)` next to its fp64 floor `10 sqrt(N) eps`. `||K u|| <= ||K|| ||u||`,
+so the denominator is smaller than the textbook one and `eta` is an upper bound. This matters
+because `||r||/||f||` cannot go below roughly `kappa(K) * eps`: at the kappa the predicted cut
+operators actually have, a fixed relative-residual line is partly reading conditioning rather than
+convergence. Reported only - **no acceptance threshold was changed.**
+
+`assemble_two` now reports `direct_backward_error` and `condition_estimate = residual / eps`
+separately, and takes one step of iterative refinement with the factor already in hand, which costs
+one extra triangular solve pair and recovers what the conditioning allows. `solve_residual` is the
+post-refinement value.
+
+Scope correction while on the subject: this is instrumentation, not a gate on anything. The
+solve-induced error in the reported functionals sits five to six orders below both the 3 % contract
+and the 20-47 % effects under discussion. What it buys is an honest stopping rule and the ability
+to finish the one mixed-cell evaluation that aborted.
 
 ## 8. Order of work, and the discipline that goes with it
 
