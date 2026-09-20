@@ -1,0 +1,134 @@
+{
+ "schema": "AUGMENTATION_DOSE_V1",
+ "declared": "2026-09-20",
+ "question": "at a fixed pool, capacity, schedule and step budget, does rotating CUT cells help or hurt?",
+ "why_open": "every multi-seat cut arm ran --augment --augment-full-only, which leaves cut cells in the identity frame: augmented_seats was 0 of 32 (cutonly_noaug), 0 of 73 (wide_cut), 0 for ncut_02/04/08/16/59, and 28 of 64 for cutmix_fullaug where the 28 are its box seats.  The only contrary evidence is the n=1 pair solo_100079 / noaug_100079.",
+ "train_pool": [
+  129,
+  139,
+  185,
+  224,
+  100006,
+  100010,
+  100013,
+  100015,
+  100017,
+  100019,
+  100024,
+  100028,
+  100032,
+  100035,
+  100041,
+  100046,
+  100050,
+  100056,
+  100068
+ ],
+ "train_pool_size": 19,
+ "train_pool_source": "the in-domain subset of CUTONLY_NOAUG's 28 cut seats, so DOSE_00 is that configuration restricted to tau_mean <= 0.45",
+ "dropped_from_that_pool": [
+  198,
+  100002,
+  100008,
+  100030,
+  100039,
+  100048,
+  100059,
+  100070,
+  100072
+ ],
+ "dropped_reason": "tau_mean > 0.45, outside the design domain the optimiser works",
+ "held_out": [
+  100001,
+  100003,
+  100009,
+  245,
+  100014,
+  100016,
+  100020,
+  100022,
+  100023,
+  100025,
+  230,
+  100029
+ ],
+ "held_out_source": "HELDOUT_H2.json, pre-registered 2026-09-20",
+ "presented_control": 100032,
+ "arms": [
+  {
+   "name": "DOSE_00",
+   "flags": [
+    "--augment",
+    "--augment-full-only"
+   ],
+   "group_elements": 1,
+   "seed": 20260920,
+   "note": "identical code path to every historical cut arm: cut cells stay in the identity frame"
+  },
+  {
+   "name": "DOSE_00B",
+   "flags": [
+    "--augment",
+    "--augment-full-only"
+   ],
+   "group_elements": 1,
+   "seed": 20260921,
+   "note": "SEED CONTROL.  Its distance from DOSE_00 is the resolution of this experiment; any dose difference smaller than that is not a finding"
+  },
+  {
+   "name": "DOSE_24",
+   "flags": [
+    "--augment",
+    "--proper-only"
+   ],
+   "group_elements": 24,
+   "seed": 20260920,
+   "note": "the 24 proper rotations reach the cut cells"
+  },
+  {
+   "name": "DOSE_48",
+   "flags": [
+    "--augment"
+   ],
+   "group_elements": 48,
+   "seed": 20260920,
+   "note": "all 48, so improper elements and the z-tilted planes the dataset does not contain"
+  }
+ ],
+ "matched": [
+  "pool",
+  "steps",
+  "capacity",
+  "warmup",
+  "schedule",
+  "pairs per bucket",
+  "near_cells",
+  "label residency",
+  "bf16",
+  "evaluation set",
+  "metric"
+ ],
+ "steps": 60000,
+ "metric": {
+  "primary": "median over the 12 held-out seats of each seat median absolute face-load response error, assembly-free, on the final checkpoint, via sweep_checkpoints",
+  "secondary": [
+   "frac_within_3pct per seat",
+   "the presented seat 100032 for the presented-to-held-out gap",
+   "factor relative error"
+  ]
+ },
+ "decision_rule": "let R = |DOSE_00 - DOSE_00B| on the primary metric.  A dose is called better or worse only if it differs from DOSE_00 by more than R.  If DOSE_24 and DOSE_48 are both worse by more than R, rotating cut cells costs more than it buys at this budget and the historical --augment-full-only choice was right for the wrong reason.  If the ordering is monotone the other way, every cut arm so far has been leaving the one measured generalisation lever unused.  A result inside R is reported as unresolved at this budget, not as a null.",
+ "forbidden": [
+  "widening the acceptance gate",
+  "jitter",
+  "pseudo-inverse",
+  "spectral clipping",
+  "deleting directions",
+  "reading the held-out set before the arms finish",
+  "changing the pool or the metric after seeing any arm"
+ ],
+ "decode": {
+  "inference_chunk": 8192,
+  "why": "the only chunk measured to reproduce the reference element for element; 32768 differs by 6.2e-7 relative on the factor"
+ }
+}
