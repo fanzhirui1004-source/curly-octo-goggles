@@ -1,0 +1,32 @@
+{
+  "purpose": "the real per-cell cost of emitting one condensed operator, measured, because '2 s per cell' had never been",
+  "what_was_quoted": "2 s per cell, a budget set early and never measured against the full-factor decode",
+  "measured_2026_09_20": {
+    "device": "RTX 5090, otherwise idle, chunk 8192 (the only verified chunk), min of 3 repeats",
+    "rows": [
+      {"seat": 100000, "q": 711, "coordinates": 237, "independent_entries": 253116,
+       "seconds": 0.0264, "nanoseconds_per_entry": 104.2, "times_the_2s_budget": 0.0132,
+       "peak_gpu_gib": 0.385},
+      {"seat": 100032, "q": 10812, "coordinates": 3604, "independent_entries": 58455078,
+       "seconds": 5.372, "nanoseconds_per_entry": 91.9, "times_the_2s_budget": 2.686,
+       "peak_gpu_gib": 2.248}
+    ],
+    "cpu_for_contrast": {"seat": 100032, "q": 10812, "seconds": 272.87, "threads": 6,
+                         "note": "measured while four training arms shared the box; 50.8x the GPU"}
+  },
+  "the_two_corrections": [
+    "AGAINST US: the 2 s budget is MISSED by 2.69x at q = 10812, on an idle GPU, with nothing else running. It is met only at small q. Stop quoting 2 s/cell as achieved; it is achieved at q = 711 (0.026 s) and not at q = 10812.",
+    "FOR US: the 273 s CPU figure measured earlier tonight is not the deployment cost either - the GPU is 50.8x faster. Neither number should be quoted alone."
+  ],
+  "comparison_per_delivered_operator_entry": {
+    "why_per_entry": "their operator is 171 or 14196 independent entries and ours is q(q+1)/2 = 5.85e7, so a wall-clock comparison of 2 s against 19 ms compares objects that differ by 4100x to 342000x in size",
+    "huang_eml63_3d": {"entries": 171, "milliseconds": 5.5, "nanoseconds_per_entry": 32164,
+                       "source": "EML 63:102041 section 4.3, 1.024e6 substructures, 5677.8 s per optimisation iteration; the 5.5 ms includes assembly, solve and OC, of which OC alone is about 26 %",
+                       "we_are_faster_by": 350},
+    "chen_li_cad193_p3": {"entries": 14196, "milliseconds": [19, 23], "nanoseconds_per_entry": [1338, 1620],
+                          "source": "CAD 193 Table 2, 15.6 s / 675 elements and 31.1 s / 1600 elements, 3D elasticity, p = 3, 10^3 local fine mesh, C++/Eigen/TBB on an i7-11700",
+                          "we_are_faster_by": [14.6, 17.6]},
+    "reading": "per delivered entry we are 15-350x faster than the measured classical cost, while delivering 4100-342000x more entries. 'The classical route is too slow' remains indefensible; 'the classical route does not deliver this object at all' is the defensible form."
+  },
+  "open": "the 5.37 s materialises the full dense q x q factor. Whether deployment needs it materialised, or only its action, has not been examined - a matrix-free lattice solve would change this number and has never been costed."
+}
