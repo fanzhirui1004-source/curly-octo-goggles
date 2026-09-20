@@ -199,9 +199,32 @@ def main():
     f[torch.as_tensor(endL * 3 + axis)] = torch.as_tensor(-wl / max(np.abs(wl).sum(), 1e-300))
     f[torch.as_tensor(endR * 3 + axis)] = torch.as_tensor(wr / max(np.abs(wr).sum(), 1e-300))
     loads[f'bending_{"xyz"[axis]}{"xyz"[tv[0]]}'] = f
+    # Project inside the kind-0 block, not over the whole vector: Nrb is non-zero on the kind-1
+    # coordinates, so the whole-vector projection puts generalised force on the cut surface and the
+    # stack stops being the free-cut-surface configuration.  f vanishing off the box makes
+    # Nrb^T f = Nrb[box]^T f[box], so this is still exactly rigid-orthogonal.
+    box_dofs = torch.as_tensor(np.flatnonzero(np.repeat(kindN == 0, 3)))
+    Qb, _ = torch.linalg.qr(Nrb[box_dofs])
+    if int(torch.linalg.matrix_rank(Qb)) != 6:
+        raise ValueError('BOX_RESTRICTION_OF_THE_RIGID_TRACE_IS_RANK_DEFICIENT')
+    cut_mask = torch.ones(N, dtype=torch.bool); cut_mask[box_dofs] = False
+    old_leak = new_leak = orthogonality = 0.
     for k in loads:
-        loads[k] = loads[k] - Nrb @ (Nrb.T @ loads[k]); loads[k] = loads[k] / loads[k].norm()
-    report.update(load_axis=axis, load_left=int(len(endL)), load_right=int(len(endR)))
+        f = loads[k]
+        if bool(cut_mask.any()) and float(f[cut_mask].abs().max()) != 0.:
+            raise ValueError('LOAD_WAS_NOT_BUILT_ON_KIND_0_COORDINATES')
+        was = f - Nrb @ (Nrb.T @ f)
+        fb = f[box_dofs]; fb = fb - Qb @ (Qb.T @ fb)
+        g = torch.zeros_like(f); g[box_dofs] = fb
+        loads[k] = g / g.norm()
+        if bool(cut_mask.any()):
+            new_leak = max(new_leak, float(loads[k][cut_mask].abs().max()))
+            old_leak = max(old_leak, float(was[cut_mask].norm() / was.norm()))
+        orthogonality = max(orthogonality, float((Nrb.T @ loads[k]).abs().max()))
+    report.update(load_axis=axis, load_left=int(len(endL)), load_right=int(len(endR)),
+                  load_cut_component_old_projection=old_leak, load_cut_component=new_leak,
+                  load_rigid_orthogonality=orthogonality,
+                  load_scope='built on kind-0 coordinates and rigid-projected INSIDE the kind-0 block')
     names = list(loads); Fm = torch.stack([loads[k] for k in names], dim=1)
 
     for seat in order:

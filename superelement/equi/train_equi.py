@@ -334,7 +334,11 @@ def smooth_face_loads(ctx, per_face, rng, degree=2):
         members = np.flatnonzero(faces[:, f_id])
         if len(members) < 8:
             continue
-        axis = f_id // 2; u = [k for k in range(3) if k != axis]
+        # face_membership stacks (u == 0) then (u == top), so the column order is
+        # x0, y0, z0, x1, y1, z1 and the axis is f_id % 3, not f_id // 2.  With // 2 four of
+        # the six faces took a constant coordinate as one of their two in-face coordinates,
+        # which collapsed the degree-2 load space from 6 dimensions to 3 on those faces.
+        axis = f_id % 3; u = [k for k in range(3) if k != axis]
         st = pos[members][:, u] - .5
         cols = [np.ones(len(members))]
         for dg in range(1, degree + 1):

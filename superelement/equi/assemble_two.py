@@ -203,9 +203,33 @@ def main():
     f[torch.as_tensor(endL * 3 + axis, device=dev)] = -wl / wl.abs().sum().clamp_min(1e-300)
     f[torch.as_tensor(endR * 3 + axis, device=dev)] = wr / wr.abs().sum().clamp_min(1e-300)
     loads[f'bending_{"xyz"[axis]}{"xyz"[tv[0]]}'] = f
+    # The load has to be orthogonal to the six rigid modes or the singular system has no solution,
+    # but projecting the WHOLE vector puts generalised force on the kind-1 coordinates, because Nrb
+    # is non-zero there -- so the test stops being the free-cut-surface configuration it claims to
+    # be.  Projecting inside the kind-0 block instead keeps the cut components exactly zero and is
+    # still exactly rigid-orthogonal, since Nrb^T f = Nrb[box]^T f[box] when f vanishes off the box.
+    box_dofs = torch.as_tensor(np.flatnonzero(np.repeat(kindN == 0, 3)), device=dev)
+    Qb, _ = torch.linalg.qr(Nrb[box_dofs])
+    if int(torch.linalg.matrix_rank(Qb)) != 6:
+        raise ValueError('BOX_RESTRICTION_OF_THE_RIGID_TRACE_IS_RANK_DEFICIENT')
+    cut_mask = torch.ones(N, dtype=torch.bool, device=dev); cut_mask[box_dofs] = False
+    old_leak = new_leak = orthogonality = 0.
     for k in loads:
-        loads[k] = loads[k] - Nrb @ (Nrb.T @ loads[k])
-        loads[k] = loads[k] / loads[k].norm()
+        f = loads[k]
+        if bool(cut_mask.any()) and float(f[cut_mask].abs().max()) != 0.:
+            raise ValueError('LOAD_WAS_NOT_BUILT_ON_KIND_0_COORDINATES')
+        was = f - Nrb @ (Nrb.T @ f)                              # what the old code produced
+        fb = f[box_dofs]; fb = fb - Qb @ (Qb.T @ fb)
+        g = torch.zeros_like(f); g[box_dofs] = fb
+        loads[k] = g / g.norm()
+        if bool(cut_mask.any()):
+            new_leak = max(new_leak, float(loads[k][cut_mask].abs().max()))
+            old_leak = max(old_leak, float(was[cut_mask].norm() / was.norm()))
+        orthogonality = max(orthogonality, float((Nrb.T @ loads[k]).abs().max()))
+    report.update(load_cut_component_old_projection=old_leak, load_cut_component=new_leak,
+                  load_rigid_orthogonality=orthogonality,
+                  load_scope='built on kind-0 coordinates and rigid-projected INSIDE the kind-0 '
+                             'block, so the cut surface carries exactly zero generalised force')
 
     quotient = RigidQuotient(torch.from_numpy(np.asarray(cache['rigid'], dtype=np.float64)).to(dev),
                              torch.from_numpy(np.asarray(cache['order'])).to(dev))
