@@ -1,0 +1,51 @@
+{
+  "question": "we have about a thousand teacher packets; why has every arm only ever drawn from 139 in-domain cut geometries?",
+  "answer": "920 packets exist, 273 are in V2_LABELS.json, and 100 in-domain CUT packets have never been used by anything",
+  "inventory": {
+    "batch_dirs_with_S_UPPER": 920,
+    "all": {"cut": 603, "box": 317, "cut_in_domain_tau_le_0.45": 239},
+    "in_V2_LABELS": {"total": 273, "cut": 184, "box": 89, "cut_in_domain": 139,
+                     "cut_q": {"min": 711, "median": 15522, "max": 19956}},
+    "not_in_V2_LABELS": {"total": 647, "cut": 419, "box": 228, "cut_in_domain": 100,
+                         "cut_q": {"min": 552, "median": 27270, "max": 47760}},
+    "the_100_unused_in_domain_cut": {
+      "q": {"min": 552, "median": 22113, "max": 30288},
+      "S_UPPER_on_disk_gb": 83.3,
+      "tau_mean": {"min": 0.188, "median": 0.358, "max": 0.449},
+      "plane_b": {"min": 0.0040, "median": 0.4124, "max": 0.9736},
+      "split": {"train": 56, "test": 22, "validation": 22},
+      "source_scientific_status": "COMPLETE_LOCAL_OPERATOR_PRODUCTION_CHECKS_PASS - the same string the 273 in use carry"
+    }
+  },
+  "why_were_they_excluded": {
+    "not_the_authorisation_flag": "neural_training_authorized is False on ALL 920, in and out of the manifest, so it is a teacher-side formality and not the filter",
+    "not_quality": "their status string is identical to the packets in use",
+    "most_likely": "they were never ingested: the manifest was built from what had been processed by 2026-09-17, and their q is markedly larger (median 27270 against 15522), which makes the label build more expensive. This is inference, not established.",
+    "what_would_settle_it": "the ingest pipeline's own log or selection rule, which is not on this box"
+  },
+  "the_value": {
+    "training_pool": "139 -> 239 in-domain cut geometries, +72 %. Measured flatness in n (8 = 28 = 59 give the same held-out median) says this ALONE is unlikely to move the 14x gap.",
+    "a_real_reserved_held_out_set": "44 of the 100 are dataset-designated test (22) and validation (22) and have been presented to NOTHING. Today's standing problem is that only 2 of 184 cut seats were never presented anywhere, both out of domain, so every 'held-out' set in this project is held out BY OMISSION. These 44 are not.",
+    "scale": "q up to 47760 across the unused set, against 25932 in the manifest"
+  },
+  "can_we_build_the_labels": {
+    "the_reference_stage_is_basis_dependent_and_its_producer_is_missing": {
+      "rebuilt_seat_220_R_UPPER": "sha 953d8cd0... against the recorded d1b645a0...; matrix_frobenius identical to every printed digit (2.0859046806597115), minimum_diagonal identical to 14 digits, operator relative difference 0.374 - the signature of the same operator in a different basis of the rigid complement",
+      "so_what": "B is not unique, and our Householder quotient is not theirs"
+    },
+    "but_the_LABEL_is_basis_free_and_this_was_verified": {
+      "identity": "A' = U A U^T with B' = U B gives B'^T A'^(-1/2) B' = B^T A^(-1/2) B, so M_q = ((Pi S Pi)^+)^(1/2) with Pi = B^T B depends on S and the node set alone",
+      "seat": 100064, "q": 13248,
+      "relative_frobenius_difference": 8.788307235194157e-13,
+      "max_absolute_difference": 2.3160282580647618e-09,
+      "diagonal_relative_max": 2.3975163114465067e-12,
+      "verdict": "SAME_LABEL_SPACE - labels we build ourselves can be mixed with the existing 139"
+    },
+    "route": "packet S_UPPER -> our own quotient -> A -> eigh -> M_q, skipping the reference stage entirely: 11.3 s at q = 13248",
+    "still_needed_per_packet": "a TRACE_CACHE, which the trace stage produces in about 25 s and which we reproduced byte for byte tonight in the rotation witness BASE_REPLAY",
+    "estimated_total_for_100": "about 2-3 h of GPU, roughly 200 GB if only MQ_UPPER and the cache are kept, roughly 340 GB if a self-consistent R_UPPER is kept too (evaluation reads it as the whitener)"
+  },
+  "disk": {
+    "note": "the XFS project quota on /root/autodl-tmp moved twice today with used steady at 2.5T: 4.1T, then 2.6T (121 GB free, 96 %), then 5.7T (3.3T free, 43 %). The RAID is healthy at [3/3] [UUU]. Provider-side, not ours."
+  }
+}
