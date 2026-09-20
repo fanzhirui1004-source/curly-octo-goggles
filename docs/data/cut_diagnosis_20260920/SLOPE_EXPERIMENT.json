@@ -1,0 +1,55 @@
+{
+ "scope": "arm S (all training seats at one facet slope) against arm W (the same number spread over the whole cut-plane family, still covering that slope)",
+ "declared": "2026-09-20",
+ "matched": [
+  "n=15",
+  "steps",
+  "capacity",
+  "g=0",
+  "no sharding",
+  "identical held-out seats"
+ ],
+ "family": "every cut plane in the dataset has normal (1, b, 0); b in 0.003-0.987, offset d in 0.034-1.658",
+ "per_part_geometry": "one flat facet gives all its boundary cells the SAME b and different d; the number of distinct local offsets is 1 for a lattice-aligned facet, 2 for slope 1/2, 4 for slope 1/4, and ~N for a generic slope (38 at N=32)",
+ "held_out": [
+  100028,
+  100111,
+  100091,
+  100123
+ ],
+ "arm_S": [
+  100019,
+  100015,
+  100038,
+  100120,
+  100061,
+  175,
+  100137,
+  100094,
+  237,
+  100136,
+  100047,
+  100032,
+  100103,
+  238,
+  100157
+ ],
+ "arm_W": [
+  237,
+  100038,
+  100056,
+  100041,
+  100031,
+  115,
+  100040,
+  149,
+  100001,
+  230,
+  100023,
+  100075,
+  243,
+  100035,
+  100109
+ ],
+ "reading": "S >> W on the same held-out seats means the requirement the application actually has is much easier than the family we have been training for, and a per-part specialist at n<=4 (aligned or simple-rational facets) or n~N (generic facets) is the route"
+}

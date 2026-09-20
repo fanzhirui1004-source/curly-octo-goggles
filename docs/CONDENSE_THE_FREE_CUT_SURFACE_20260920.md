@@ -104,10 +104,14 @@ says the condensed operator is **exactly** cubic-covariant for a cut cell, so th
 augmentation becomes available to the cut family. Two things are still unmeasured and must be
 before any retraining:
 
-* **Fragment check.** If a cut detaches a fragment entirely, `S_CC` acquires a six-dimensional
-  nullspace per detached fragment and `T` is undefined. `cho_factor` succeeded on all eight seats
-  measured here, so none of them has one, but kappa(S_CC) and a near-null mode count have to be
-  swept over all 184 cut seats before the labels are rebuilt.
+* **Fragment check - done, and it passes.** If a cut detaches a fragment entirely, `S_CC` acquires a
+  six-dimensional nullspace per detached fragment and `T` is undefined. Swept over the cut seats
+  (`h3_scc_sweep.py`, 150 of 184 at the time of writing): **zero non-SPD blocks and zero near-null
+  Cholesky pivots**, so no seat has a detached fragment and `T` exists for the whole family.
+  `S_CC` is itself badly conditioned - kappa estimate median 6.55e7, p25 3.22e7, p75 1.14e8,
+  max 7.38e8 (seat 100079), Cholesky pivot ratio median 743 - which is part of why the *unreduced*
+  target was pathological, but it does not obstruct the condensation: fp64 loses about half its
+  digits and the measured exactness is 4.7e-10 to 7.6e-6.
 * **tau differentiability of the condensed cell.** A free cut surface is exactly the configuration
   where `TAU_DERIVATIVE_PASSES_20260919.md` found the truth itself non-differentiable: for a free
   cell the one-sided log-slopes of `c(f)` are -6.09 and -21.36 at h = 1e-4, a factor of 3.5,
