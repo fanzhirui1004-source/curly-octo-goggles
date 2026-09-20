@@ -1,0 +1,146 @@
+<!-- PROVENANCE AND HEALTH WARNING - read before using any row of this file.
+
+Produced 2026-09-20 by a 13-agent search-and-refute workflow (6 targets x find-then-adversarially-
+refute, then synthesis), not by a human reading the papers.  Every publisher site that matters
+(ScienceDirect, Springer, SSRN) returned 403 or a captcha to the agents, so:
+
+  * MOST ROWS ARE ABSTRACT-ONLY.  Section 5 lists exactly which, and why each gap matters.
+  * THREE CENTRAL PAPERS (EML 63:102041, JMPS 193:105893, Acta Mech. Sin. 42:425942) were read
+    through a THIRD-PARTY CHINESE TRANSLATION REPOSITORY.  The substance is probably right; the
+    English wording is NOT the authors' and must not be quoted.
+  * Nothing here has been checked against a publisher PDF.
+
+Treat this as a prioritised reading list and a list of claims we must stop making, not as
+established fact.  The three reads that would settle the most are named in section 6.
+-->
+
+# Is this already done? A blunt overlap audit
+
+**Bottom line up front.** The central idea — *a neural network whose output is a subdomain's statically condensed boundary (Schur / Steklov–Poincaré) operator, trained offline, reused per cell, assembled into a global system, with algebraic structure (symmetry, PSD, rigid-body kernel) enforced on the prediction* — is **not novel**. It has been published at least four times, twice in the last eight weeks, and once by the exact group whose work you are positioning against. What is still yours is the **hard case**: the operator on an *unfitted, cut* cell at a *full un-parameterised* boundary trace, with a *derivative gate*. Those are contributions to value, not to novelty, and one of them (cube-group covariance) has probably already been taken.
+
+Two of the closest papers are dated **3 August 2026** and **4 September 2026**. This is not prior art you overlooked for years; the field converged on your framing this quarter. That affects strategy more than it affects the audit.
+
+---
+
+## 1. The table
+
+Columns are only the axes that actually separate rows. Dropped as non-discriminating: "is it a surrogate", "is it offline-trained/reusable" (everyone), "conditioning" (nobody reports it but us), "solver used downstream" (uniform).
+
+| Work | Learned object | Interface / trace dimension | Cell geometry | Structure enforced on the prediction | Point-group equivariance | Design sensitivities | Assembly of predicted ops | Graded lattice / TPMS |
+|---|---|---|---|---|---|---|---|---|
+| **Huang, Cui, Liu, Du, Zhang, He, Guo — EML 63:102041 (2023)** | **The condensed operator K̃ itself** (§3.1: two nets, one for N, one for K̃ = K_bb − K_ib^T K_ii^{-1} K_ib) + cross-consistency loss between the two | Full boundary trace is the default; corner-node/linear L-reduction is an *option* (Eq. 16). 2D m=5 trained without L; 3D outputs ~4.6e3–3.9e4 | Conforming voxel/density | **Symmetry (upper triangle only) + hard rigid-body kernel K̃φ=0, φ∈R^{3n_b×6}; output count exactly (3n_b−5)(3n_b−6)/2 = symmetric forms on the 6-D quotient** | No | Classical SIMP on recovered field; no derivative of the learned map | Yes | No |
+| **Jiang, Zhan, Zhang, Wang — CNEE, arXiv:2608.02036 (3 Aug 2026)** | **Geometry-parameterised condensed (Schur) energy/stiffness**, hypernetwork-generated PSD quadratic form. §2.1 "exact element energies by static condensation" | 128 trace DOF / 64 nodes (2D elasticity); 386 interface nodes (3D **scalar** heat) | Conforming; teacher is remesh-and-condense (38/188 ms) | **PSD by architecture; physics-nullspace-compatible regulariser; 3 rigid modes verified to 1e-14 per geometry; quantified gauge/kernel-choice bias (0% / 0.85% / 6.7%)** | No | **No** — no design variable, no TO | **Yes, and the strongest: 0.07% exact-condensation control, 0.20±0.10% over 50 held-out assemblies, 2×2…8×8 + L-shape count scaling, mixed element types, 3D 2×2×2** | No |
+| **Jiang, Liu, Guo, Du, Zhang, Guo — Compos. Struct. 397:120865 (4 Sep 2026)** | Substructure numerical shape functions | Cubic substructure, corner-type | Conforming cubic | **Rigid-body constraint by projection–correction (replaces completion, avoids error amplification)** | **Yes — "minimal generator for cubic substructures … equivariance under rotations and mirror reflections"** | No | Yes | No |
+| **Xu, Liu, Guo, Huang, Guo — Compos. Struct. 369:119330 (2025)** | PIML basis (inherited) | Corner-node | **Ersatz/equivalent-material density on a conforming brick mesh; MMC boundaries smeared, not cut** | Inherited | No | Has a dedicated §5.2 sensitivity analysis | Yes | **Yes — 3D graded lattice, strut thickness + cell shape + orientation as design variables, MBB / torsion box / femur infill** |
+| **Chen & Li — Computer-Aided Design (2026) 104038** | **Nothing learned** — analytic high-order numerical shape functions | Boundary interpolator × boundary–interior map | **Unfitted, cut coarse elements; explicit cut-element conditioning analysis** | Conditioning of the interpolator analysed | No | No | Yes (numerical) | No |
+| **Guo et al. — PIML-OFEM, arXiv:2607.22019 (Jul 2026)** | Oversampled local basis; **plus an operator-level loss L_K = ‖Φ_ML^T K Φ_ML − Φ^T K Φ‖_F / ‖·‖** | Corner nodes (8 in 2D) but **no prescribed boundary interpolation** | Conforming | Rigid-body-mode consistency by completion + corner normalisation | No | **Elemental strain-energy error η_SE < 8e-3, explicitly as the compliance-sensitivity proxy**; stable SIMP at r=√3 | Yes, 3061×1531 fine mesh | No |
+| **Parish, Lindsay, Shelton, Mersch — Comput. Mech. 74(6) (2024)** | **Condensed interface stiffness** ("performs static condensation of the inner domain DOFs") | 3348 interface nodes **but POD-reduced to 10–20 modes before learning** | Conforming, 3D, contact | **SPSD enforced + proof that the assembled coarse problem is SPD and CG-solvable** | No (rigid modes = future work) | No | Single substructure, embedded in Sierra | No |
+| **Shao, Shi, Xia, Liu — CMES (2025) 068078** | **Condensed stiffness matrix + volume of substructures**, RBF surrogate | Substructure-level | M-VCUT level set, conforming analysis | Not stated | No | **Differentiates the condensed-stiffness surrogate w.r.t. lattice design variables inside TO** | Yes | **Yes, lattice TO** |
+| **Guo et al. — CMAME 456:118955 (2026)** | DeepONet: Bézier boundary trace → interior field | **Cubic-Bézier control points — kills the "they only do linear corner traces" line**; still O(10) params | Conforming | Inherited | No | Inside a TO loop | Yes, >1e7 DOF | No |
+| **Zhang, Huang, Liu, Du, Cui, Guo — EML 72:102237 (2024)** | Shape functions from **element shape** + density | Corner-node | **Isoparametric / body-fitted distortion — the group's conforming answer to hard geometry** | **"The rank of the condensed stiffness matrices … can be ensured by … physical constraints"** | §2.3 translational + **rotational** invariance (unread) | TO on complex domains | Yes | No |
+| **Huang, Liu, Guo, Zhang, Du, Guo — JMPS 193:105893 (2024)** *(one of your targets)* | Multiscale shape function, **data-free energy loss = ½u_v^T K_s u_v, i.e. the condensed operator's own quadratic form** | 24 DOF, 18 of 24 columns predicted + 6 reconstructed | Conforming | Hard rigid-body constraints Ñφ_i = b_i, M=6, Appendix B for 3D | Only 1/8-domain problem symmetry | **Sensitivities taken "in the manner of full-scale analysis" — dÑ/dρ silently dropped, no consistency check.** 4.7–6.3% compliance error | Yes | No |
+| **Li, Martín, Badia — arXiv:2501.17438** | **The field**, not the operator | n/a | **Cut Cartesian background mesh, Nitsche, explicit cut-cell stabilisation, small-cut robustness, 2D/3D level-set + STL** | n/a | No | No | No | No |
+| **Secchi, Balint, Maurizi — NEST, arXiv:2605.12343** | Local solution operator on **3×3×3 voxel patches**, Schwarz-composed | Patch overlap | Diverse local voxel geometry, 3D, nonlinear solids | No | No | No | Yes, large 3D | No |
+| **White et al. CMAME 346 (2019); Gupta et al. arXiv:2608.28513; Qian & Ye arXiv:2009.06245** | Homogenised stiffness | n/a | Conforming | **Cholesky-constrained admissibility (Gupta)** | No | **Sobolev-norm training *so that design derivatives are accurate*; dual nets trained on sensitivity data** | Homogenised, not condensed | Gupta: graded lattice | 
+| **Wu, Liu, Guo, Guo — DFENN, JMPS 215:106703 (2026)** | Neither — interface operator is **computed exactly** by FE condensation to couple FEM↔NN | Unstated | Conforming mesh interface | n/a (exact) | No | No design variable; contract is **<1% displacement** on one forward solve | n/a | No |
+| **Zhang, Liu, Guo, Jiang, Guo — IJMS (2026) 112007 (PITL)** | Unknown | Unknown | **"Complex-domain 3D" — unread; the one place a cut/trimmed substructure could hide** | Unknown | Unknown | Unknown | Unknown | Unknown |
+| **OURS** | Condensed trace operator, **directly regressed as M_q = B^T A^{-1/2}B in a fixed Householder 6-D rigid quotient** | **Full nodal boundary trace, q ≈ 2e4, no interpolation/POD/parameterisation** | **32³ CutFEM voxel grid, ghost penalty, exact rational geometry, optional arbitrary macro cut plane** | Kernel removed **by construction** via the quotient; A^{-1/2} normalisation | **48-element cube group, covariance measured to 1e-14, including cut cells, in a pivot-basis-invariant nodal pullback** | **Gate: predicted dM/dτ vs teacher's dM/dτ; contract = 3% on assembled compliance AND TO sensitivities, 2 s/cell** | Yes, lattice | **Yes — TPMS Schwarz-P sheet, trilinear τ from 8 corner values** |
+
+---
+
+## 2. Overlap risk, closest first
+
+**1. Huang, Cui, Liu, Du, Zhang, He, Guo — EML 63:102041 (2023). Risk: NOVELTY, severe. This is the one that hurts.**
+It predicts the condensed operator directly (§3.1, §3.4 route 1: no fine-scale stiffness touched online). It learns only the upper triangle because the operator is symmetric. It imposes K̃φ = 0 with φ ∈ R^{3n_b×6} as a hard constraint and arrives at an output count of exactly (3n_b−5)(3n_b−6)/2 — the dimension of symmetric forms on the 6-dimensional rigid-body quotient. That is your quotient, arrived at by constraint instead of by a Householder factor. And then §5 of the same paper proposes, in writing, *learning cut-element stiffness matrices for cut patterns on a fixed structured grid, naming CutFEM and the finite cell method*. Your entire conceptual pitch, including the cut cell, is in one 2023 paper by the group you are comparing against. You execute what they proposed; you did not conceive it.
+
+**2. CNEE, arXiv:2608.02036 (3 Aug 2026). Risk: NOVELTY of the framing, and VALUE of your structure-and-assembly story.**
+"Making the energy the learned object … turns neural operators from single-use surrogates into reusable, geometry-parameterized elements." PSD by architecture, physics-nullspace-compatible regularisation, per-geometry verification of the exact kernel **to 1e-14** — the same number you quote as your measurement — a 0.07% exact-condensation control that isolates learning error, 0.20% over 50 held-out-geometry assemblies, element-count scaling with proved bounds, mixed element types in one assembly. Everything you would say about operator structure and assembly, they said better and measured first. They do **not** do sensitivities, cut cells, point groups, or scale (128 trace DOF in 2D; their only 3D element is scalar heat; their Limitations section concedes "at this scale a direct sparse solve needs no surrogate"). Note also: the sentence your earlier pass used to argue your novelty — DFENN is "a per-instance coupling mechanism rather than an offline-trained, repeatedly instantiated element" — is CNEE §6.3 distinguishing DFENN from **CNEE's own** contribution. Citing it to establish your uniqueness cites the strongest existing claim to it.
+
+**3. Jiang, Liu, Guo, Du, Zhang, Guo — Compos. Struct. 397:120865 (online 4 Sep 2026). Risk: NOVELTY of your symmetry asset specifically.**
+"Leverages the geometric symmetry of substructure numerical shape functions to identify the minimal generator for cubic substructures … ensuring equivariance under rotations and mirror reflections", plus "a projection-correction strategy … to enforce the rigid-body constraint without the conventional completion operation." Cube point group + rigid-body kernel on a learned substructure map, same group, two weeks old. Your covariance claim must now be stated as *measured covariance of a condensed operator for a cell whose cut plane breaks the cell's own symmetry, in a pullback invariant to the teacher's pivot basis* — not as "we exploit symmetry."
+
+**4. Xu, Liu, Guo, Huang, Guo — Compos. Struct. 369:119330 (2025). Risk: VALUE of the application claim, not novelty of method.**
+PIML-accelerated 3D **graded lattice** TO via MMC with B-spline partitioned coordinate mapping: strut thickness, cell shape and orientation as design variables, compliance minimisation, sensitivity-analysis section, femur shell-lattice infill. Your application domain is occupied. Their geometry is smeared into an ersatz density field on a conforming mesh, which is exactly the weakness your CutFEM cell fixes — so this row is survivable, but only if the geometry axis carries the whole paper. Related: Cao et al. ICCES 2025 (Springer MMS 201:841–852) is the same group designing with **TPMS**, and Liu et al. CMAME 451:118680 (2026) advertises "closed-form, adjoint-consistent derivatives" for graded surface lattices.
+
+**5. Chen & Li — Computer-Aided Design (2026) 104038. Risk: NOVELTY of the cut-cell condensation idea; your VALUE survives.**
+"Conditioned Numerical Shape Functions on Unfitted Reduced Coarse Elements": EMsFEM-style boundary-interpolator × boundary-to-interior map on **cut** coarse elements, with the cut-element conditioning pathology analysed head-on. It cites EML 2022. No network, no sensitivities — so "a *learned* operator on a cut cell" is still unclaimed. But combine this with item 1's roadmap paragraph and the next paper in this space writes itself for someone else.
+
+**6. PIML-OFEM, arXiv:2607.22019. Risk: NOVELTY of "we verify sensitivities".**
+An operator-fidelity Frobenius loss L_K, and η_SE (elemental strain-energy relative error) defined explicitly because "in compliance minimization problems the sensitivity is directly related to the elemental strain energy", reported below 8e-3, plus a stability argument at filter radius √3. That is substantive sensitivity-field verification, just not a derivative-of-the-operator gate.
+
+**7. Parish et al., Comput. Mech. 74(6) (2024). Risk: NOVELTY of structure guarantees.** SPSD-constrained learned condensed stiffness with a proof that the assembled coarse problem is SPD and CG-solvable, deployed in production (Sierra). 3348 interface nodes — but POD-reduced to 10–20 modes, so they never learn at scale.
+
+**8. Shao et al., CMES (2025). Risk: NOVELTY of a design-differentiable predicted condensed operator.** Surrogate whose outputs *are* the condensed stiffness matrix, differentiated w.r.t. lattice design variables inside TO. The closest existing analogue to your τ-derivative story, minus any verification of that derivative.
+
+**9. CMAME 456:118955 (Bézier + DeepONet). Risk: moderate, to the trace-dimension argument.** It removes the linear-boundary assumption by name ("This assumption clearly overestimates the overall stiffness of a substructure — an effect that is even more pronounced in 3D") and learns a boundary-trace-to-interior operator. Your "they assume linear interpolation" line is dead; your "their trace is O(10) parameters, ours is O(10^4) nodal DOF" line is alive.
+
+**10–13. EML 72:102237, JMPS 193:105893, EML 56:101887, unfitted FEINN (arXiv:2501.17438), NEST, NOEM.** Background. They individually kill one broad claim each (rank guarantees; reusability; unfitted+NN; voxel-patch operator reuse) but none is close to the whole.
+
+**14. DFENN, JMPS 215:106703. Risk: low.** Its condensation is exact FE linear algebra and its contract is <1% displacement on one solve. "They condense to couple; we predict the condensate" is true of DFENN and false of DFENN's neighbourhood — do not build the paper on it. Also: the group's own 2026 review (Sci. China Technol. Sci., 10.1007/s11431-026-3336-9), co-authored by DFENN's first author, presents DFENN and PIML as **one** programme, so treating DFENN in isolation is a mistake a reviewer from that group will catch immediately.
+
+---
+
+## 3. What is genuinely ours, as far as anyone can tell
+
+1. **A learned condensed operator on an unfitted / immersed cell.** CutFEM voxel grid, ghost penalty, exact rational geometry, and a cell sliced by an arbitrary macro plane. Nobody has learned an operator on a cut cell. Every route to hard geometry in the competing line is conforming (isoparametric mapping) or diffuse (ersatz density). Caveat: it was *proposed* in EML 63:102041 §5 and the numerics were *solved without learning* by Chen & Li. This is execution of a stated open problem, which is a real contribution — just not an original idea.
+2. **Operator regression at a full, un-parameterised nodal trace, q ≈ 2e4.** Everyone else parameterises (corner nodes: 8/24; Bézier control points: O(10); oversampled bases) or POD-compresses to 10–20 modes before learning. PIML-OFEM explicitly argues that raising boundary control DOFs "expands the output dimension of the machine learning model, thus undermining the original efficiency advantage" — i.e. this is a known hard axis the line *chose to avoid*. Directly-learned condensed operators in the literature live at trace dimension ≤ 40 (2D) / 24 (3D) / 128 (CNEE 2D) / 386 (CNEE 3D scalar).
+3. **The specific encoding: M_q = B^T A^{-1/2} B with a fixed Householder quotient, at that dimension.** The kernel is gone by construction rather than restored by post-hoc completion (PIML-OFEM), projection-correction (Compos. Struct. 397), or hard constraints (EML 2023). No SPD-by-construction or conditioning statement exists anywhere in the PIML line; A^{-1/2} normalisation appears nowhere. This is a narrow, defensible, unglamorous contribution.
+4. **A pass/fail gate on d(operator)/d(design field) against the teacher's derivative, and a joint contract (3% on assembled compliance *and* TO sensitivities, 2 s/cell).** No paper states a tolerance on an operator derivative. Be honest with yourself: a tolerance is a claim about your evidence, not a mechanism. Reviewers will credit it as rigour, not as novelty. It does protect the *value* of the work, because JMPS 193:105893 drops dÑ/dρ from its own gradient and reports no consistency check at all — their gradient is inconsistent with their own reduced analysis, and nobody checked.
+5. **Cube-group covariance to 1e-14 *for cut cells*, in a pivot-basis-invariant nodal pullback** — *probably*, and only in this narrow form. A cut plane breaks the cell's symmetry, so covariance there is a non-trivial statement that the two published symmetry constructions (cubic substructures; material-symmetry-equivariant elasticity GNNs) do not make. This survives on unread paywalled text; see §4.
+
+That is the honest list: one hard case, one scale, one factorisation, one gate, one contested measurement.
+
+---
+
+## 4. What we thought was ours and is not
+
+- **"The condensed operator is the learned object; everyone else computes it."** Refuted four times: EML 63:102041 §3.1; CNEE; Parish et al.; Shao et al.
+- **"Error control at the operator level is ours."** PIML-OFEM's L_K Frobenius operator loss; EML 2023's cross-consistency loss between the N-net and the K̃-net; JMPS 193's data-free loss *is* the condensed operator's quadratic form ½u_v^T K_s u_v.
+- **"Structural guarantees on a learned operator — symmetry, PSD, the 6-D rigid kernel, a quotient."** EML 2023 (symmetry as upper-triangle-only, K̃φ=0, output count = quotient dimension); CNEE (PSD by architecture, "the regularizer nullspace must contain the physics nullspace", gauge-choice bias quantified); Parish (SPSD + assembly SPD proof); EML 72 (rank preservation); Compos. Struct. 397 (projection-correction). Gupta et al. add Cholesky-constrained admissibility.
+- **"Verifying exact algebraic structure of the prediction to 1e-14."** CNEE already reports PSD with exactly three zero modes "verified to 1e-14 per geometry."
+- **"Nobody exploits the cell's symmetry group."** Compos. Struct. 397:120865 (cubic point group, minimal generator, mirror + rotation equivariance); EML 72 §2.3 (translational and rotational invariance); and in the neighbouring literature MatTen (Digital Discovery 3:869) and arXiv:2401.16914 make material-symmetry equivariance of predicted elasticity operators routine practice.
+- **"Offline-trained, reusable, repeatedly instantiated per-cell operators are ours."** The entire PIML programme is built on this claim ("truly problem-independent … can be used to solve any kind of topology optimization problems without any modification once the easy-to-implement off-line training is completed"), plus CNEE's "library of reusable, geometry-parameterized element types", NOEM's pre-trained libraries, NEST's tiled local operator.
+- **"Assembly of predicted operators, composition error, cell-count scaling."** CNEE measures and bounds exactly this. PIML assembles predicted condensed operators at ~1e9 design variables / 3e9 DOF.
+- **"Nobody verifies sensitivities of a learned map for TO."** PIML-OFEM's η_SE; White et al. CMAME 346 (Sobolev-norm training precisely so design derivatives are accurate); Qian & Ye (trained on forward *and* sensitivity data, sensitivity accuracy reported separately); Shao et al. (differentiated condensed-stiffness surrogate). Also: PIML's own ancestry is *sensitivity learning* — Chi et al. CMAME 375:112739 and Senhora et al. CMAME 398:115116 learn the fine-scale sensitivity field directly, at 38M design variables.
+- **"No topology-optimisation loop in this line."** The line *is* topology optimisation: EML 56 (200M design variables), EML 63, JMPS 193, EML 72, Acta Mech. Sin. 42:425942, CMAME 456:118955, PIML-OFEM at 3061×1531.
+- **"Graded lattices with a thickness-type design variable, and TPMS, are our application."** Compos. Struct. 369:119330 (graded lattice, strut thickness, sensitivity section); Cao et al. ICCES 2025 (TPMS shell-graded infill, same group); Liu et al. CMAME 451:118680.
+- **"Nobody puts a condensed / EMsFEM coarse element on a cut cell."** Chen & Li, CAD 2026:104038 — and EML 63:102041's own §5 roadmap.
+- **"A basis-invariant way to compare operators/bases is ours."** Liu, Fu, Zhou, Ye, Chung, arXiv:2410.06832 learns a multiscale prolongation operator with a *subspace-distance* loss because "linear transformations on multiscale basis have no impact on the performance of the preconditioner", and notes that "leveraging the inherent symmetry in the local spectral problem" accelerates training. Same two moves as your pivot-basis-invariant pullback and your symmetry use.
+- **"Third-party corroboration supports our distinction from DFENN."** The CNEE §6.3 quote is CNEE positioning CNEE. Its neighbouring sentence — "Parish et al. … prove that SPSD structure makes the coupled coarse problem well posed — independent confirmation … that definiteness of the learned operator is the admissibility currency" — is the survey telling you your structural argument is settled prior art.
+
+---
+
+## 5. What could not be verified (soft rows — treat with suspicion)
+
+Every item here was read as abstract, snippet, section-title list, or third-party translation only. Egress restrictions (ScienceDirect/Springer/SSRN 403 or captcha) and paywalls with `is_oa=false` are the cause.
+
+| Item | What was actually read | What is unresolved, and why it matters |
+|---|---|---|
+| **Compos. Struct. 397:120865 (equivariant substructures)** | Abstract + intro/conclusion fragments | Which group (planar D4 vs the 48-element octahedral group)? Covariance of the **operator** or invariance of the **input field**? Exact by construction or data augmentation? Is an equivariance residual measured? Are irregular/cut cells in scope? Its reference list contains no equivariant-ML literature, suggesting a hand-derived decomposition. **This single paper decides whether asset (5) survives.** |
+| **EML 72:102237 §2.3, §3.2** | Abstract + section titles from a translation stub | Does rotational invariance constrain the network **output** or merely canonicalise the **input** orientation? If the former, the symmetry claim weakens further. |
+| **IJMS (2026) 112007 (PITL, complex-domain 3D)** | Nothing. No text, no abstract in Crossref/OpenAlex/S2, no preprint; ScienceDirect captcha on repeated attempts | Its treatment of substructures intersected by a domain boundary. **The one remaining place a cut-cell counterexample can hide.** |
+| **EML 63:102041, JMPS 193:105893, Acta Mech. Sin. 42:425942** | Full text, but via a **third-party Chinese translation repo** (github.com/brighthe/dut-postdoc, literature/topopt/piml/translations/) | All quoted English wording is a translation, not the authors'. Re-verify against publisher PDFs before quoting anything in writing. The substance (two nets, K̃φ=0, output count, CutFEM roadmap) is unlikely to be a translation artefact, but the wording is not quotable. |
+| **Chen & Li, CAD 2026:104038** | Abstract only | Is any surrogate/network involved? 3D? Sensitivities? Is there a future-work sentence proposing to learn these unfitted coarse elements? |
+| **Compos. Struct. 369:119330 (PIML + MMC graded lattice)** | Abstract + section titles | Does §5.2's sensitivity chain rule pass **through** the network (design variables are geometric, so it must touch the ersatz density that feeds it), or is the surrogate treated as design-independent? |
+| **CMAME 456:118955 (Bézier/DeepONet)** | Abstract only | Actual retained boundary DOF count; whether an operator is ever formed. |
+| **Shao et al., CMES 2025** | Abstract only | Whether the condensed-stiffness surrogate's derivative is verified against anything. |
+| **DFENN full text (JMPS 215:106703)** | Abstract + SSRN metadata | Whether any fracture-example interface is non-conforming to the mesh. |
+| **Sci. China Technol. Sci. review (10.1007/s11431-026-3336-9)** | Title + author list | The group's own statement of its territory and self-described gaps. Cheapest high-value read available. |
+| **CNEE, arXiv:2608.02036** | Extensive verbatim quotes with section titles and numbers, but not a front-to-back read by me | The 3D elasticity story (is the 2×2×2 case elasticity or scalar?), and whether any derivative/design content exists. |
+| **Wang et al., IJP (2026) 104623 (elastoplastic super element for metamaterials)** | Abstract only, unscreened | Another group building learned condensed substructure operators for cellular geometry. Screen before claiming novelty of "a learned per-cell operator for a lattice." |
+
+---
+
+## 6. If they already solved the cut cell, read this first
+
+**Wei Chen & Ming Li, "Conditioned Numerical Shape Functions on Unfitted Reduced Coarse Elements for Robust Analysis of Complex Solid Structures," Computer-Aided Design (2026) 104038, doi 10.1016/j.cad.2026.104038.**
+
+Read this before anything else, for three reasons.
+
+1. It is the only paper that actually *does the thing* on the geometry you claim: boundary-to-interior condensed shape functions on **unfitted, cut** coarse elements. Your remaining defence on the geometry axis is that nobody condenses on a cut cell. This paper condenses on a cut cell.
+2. It attacks the specific numerical pathology you are implicitly claiming credit for surviving — "cut elements … deteriorate the condition number of the stiffness matrix" — with a conditioning analysis of the boundary interpolator. If that analysis is good, your ghost-penalty-and-exact-geometry story becomes a supporting method section rather than a contribution, and your conditioning claim needs a number to beat.
+3. It cites PIML/EML 2022. It sits in the citation neighbourhood of the group that already (a) learns the condensed operator directly with the right kernel bookkeeping (EML 63:102041), (b) proposed learning **cut-element** stiffness with CutFEM/FCM in that same paper's conclusions, and (c) shipped cube-group equivariance for substructures six weeks ago. Chen & Li supply the missing numerics; the Dalian group supplies the missing network and has stated the intent. The gap you occupy is one collaboration wide.
+
+Read it with one question: **does it, or its conclusions, propose learning those unfitted reduced coarse elements?** If yes, your novelty claim on the cut cell is gone and the paper has to be sold entirely on scale (q ≈ 2e4 with no trace parameterisation) and on the derivative gate. If no, you have the combination — and you should write it fast, cite EML 63:102041 §5 as the open problem you are answering, cite CNEE and Parish as the structural precedent rather than pretending they do not exist, and drop every claim in §4 above before a reviewer from Dalian drops it for you.
+
+Second and third reads, in order: **IJMS 2026:112007** (the only unknown that could contain a straight counterexample) and **Compos. Struct. 397:120865** (decides whether your symmetry asset is yours).
