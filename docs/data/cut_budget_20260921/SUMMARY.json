@@ -1,0 +1,25 @@
+{
+ "packets": 920,
+ "sub": 4,
+ "calibration": {
+  "box": 0.9789077391570264,
+  "cut": 8.443926144628383,
+  "fitted": true,
+  "packets": 920,
+  "sub": 4
+ },
+ "seconds_per_packet": 0.08204197883605957,
+ "median_relative": -0.0026351552970032555,
+ "mean_relative": -0.004732369692215483,
+ "p05": -0.04587812813217866,
+ "p95": 0.026114132784657313,
+ "max_abs_relative": 0.15850703269481725,
+ "within_2pct": 672,
+ "within_5pct": 871,
+ "cut_packets": 607,
+ "box_packets": 313,
+ "cut_median_abs": 0.01490973915185001,
+ "cut_p95_abs": 0.06225429524246177,
+ "box_median_abs": 0.005443646895525456,
+ "box_p95_abs": 0.021092260842973665
+}
