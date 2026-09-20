@@ -1,0 +1,21 @@
+{
+ "what": "what the teacher's stage-1 topology costs, and one way to make it fail that looks like something else",
+ "measured_2026_09_21": {
+  "workers": 4,
+  "seconds": [29.94, 31.5, 25.0, 22.1],
+  "cases": ["B1024_..._0257 (uncut, q=19038)", "B1024_..._0258 (uncut, q=27744)", "B1024_..._0260 (cut, q=31278)", "B1024_..._0264 (cut, q=21750)"],
+  "conditions": "on the 16-core GPU box while a GPU label build held ~21 GiB, so this is a busy-box figure, not a clean benchmark",
+  "what_it_yields": "active_parent_cells, and patches tagged BOX_XMIN..BOX_ZMAX plus MACRO_CUT_FACE on a genuine cut cell"
+ },
+ "previously_filed_and_not_in_conflict": {
+  "seconds": 15.53, "workers": 8,
+  "file": "docs/data/pipeline_20260917/TRACE_REPLAY_0253.json",
+  "note": "twice the workers and an idle box; the two figures are consistent with each other"
+ },
+ "failure_mode_worth_knowing": {
+  "symptom": "concurrent.futures.process.BrokenProcessPool, which reads exactly like an out-of-memory kill",
+  "cause": "compile_topology uses a process pool, so any script that calls it needs an if __name__ == '__main__': guard; without one the child re-imports the module, re-runs the body, and the pool dies",
+  "how_it_was_diagnosed": "the pool's stderr carried the standard 'freeze_support() ... Safe importing of main module' text, which was only visible once the worker count was lowered enough for the message to survive",
+  "wasted": "two runs, first blamed on the cgroup ceiling"
+ }
+}

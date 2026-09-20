@@ -61,7 +61,13 @@ def _q2_face_nodes(cell, axis, side, n):
 
 
 def trace_nodes_from_topology(topology, n):
-    """Exact trace node count from a compiled topology.  No assembly, no approximation."""
+    """Exact trace node count from a compiled topology.  UNCUT CELLS ONLY.
+
+    The refusal below is the guard, not a formality: a genuine cut cell's topology carries
+    MACRO_CUT_FACE patches, whose coordinates are a rank and not a node count (see the module
+    docstring), so this function must never return a number for one.  It cannot, because
+    MACRO_CUT_FACE is not in BOX_FACE and the loop collects it into `other`.
+    """
     nodes = set()
     other = set()
     for patch in topology['patches']:
@@ -71,6 +77,12 @@ def trace_nodes_from_topology(topology, n):
             continue
         nodes.update(_q2_face_nodes(patch['parent'], face[0], face[1], n))
     if other:
+        if 'MACRO_CUT_FACE' in other:
+            raise ValueError(
+                'TRACE_IDENTITY_DOES_NOT_APPLY_TO_A_CUT_CELL: this topology carries '
+                f'{sum(1 for p in topology["patches"] if p["tag"] == "MACRO_CUT_FACE")} '
+                'MACRO_CUT_FACE patches, whose coordinates are the rank of the sextic functionals '
+                'on the cut polygons, not a node count. Use estimate_trace_dimension instead.')
         raise ValueError(f'UNEXPECTED_TRACE_FACE_TAGS {sorted(other)}')
     return len(nodes)
 
@@ -161,8 +173,17 @@ CALIBRATION = dict(box=0.9789077391570264, cut=8.443926144628383, fitted=True,
 
 def estimate_trace_dimension(tau_corners, normal, offset, n=32, sub=4, source=None,
                              calibration=None):
-    box_nodes, cut_cells = face_and_cut_counts(tau_corners, normal, offset, n=n, sub=sub, source=source)
+    """Both slopes were fitted at one sampling density, so a caller who changes it gets refused.
+
+    Raising `sub` can only add cells, monotonically, so a finer grid does not merely add noise --
+    it shifts both counts upward and the fitted slopes stop meaning what they were fitted to mean.
+    Silently returning a number would be worse than refusing.
+    """
     c = calibration or CALIBRATION
+    if c.get('fitted') and int(sub) != int(c['sub']):
+        raise ValueError(f'CALIBRATION_FITTED_AT_SUB_{c["sub"]}_NOT_{sub}: refit, or pass '
+                         'calibration= explicitly to acknowledge the change')
+    box_nodes, cut_cells = face_and_cut_counts(tau_corners, normal, offset, n=n, sub=sub, source=source)
     return 3.0 * (c['box'] * box_nodes + c['cut'] * cut_cells)
 
 

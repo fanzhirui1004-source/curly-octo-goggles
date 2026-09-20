@@ -1,0 +1,35 @@
+{
+ "what": "files deleted on 2026-09-21, separate from and additional to the 230.9 GB deleted on 2026-09-20 (itemised at docs/HANDOVER_20260920_2330.md:178-183)",
+ "kind": "regenerable_prediction_dumps",
+ "reason": "network predictions re-derivable from CHECKPOINT_*.pt in one decode per seat; all summary numbers already filed in the repo under docs/data",
+ "deleted_at": "2026-09-21T02:05:32",
+ "files": 370,
+ "total_bytes": 235172759768,
+ "total_gb": 219.0,
+ "by_file_name": {
+  "MQ_PRED_UPPER.npy": 109.6,
+  "A_PRED_UPPER.npy": 109.5
+ },
+ "by_directory_gb": {
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/MULTI_AUGMENT": 22.3,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/S4_60K": 22.3,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/WIDE_BOX": 22.3,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/CUTMIX_60K": 14.8,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/CUTMIX_FULLAUG": 14.8,
+  "/root/autodl-tmp/CUTFEM_CUT_INPUT_ABLATION_20260920/A0_BASELINE": 14.6,
+  "/root/autodl-tmp/CUTFEM_CUT_INPUT_ABLATION_20260920/A1_SUPPORT": 14.6,
+  "/root/autodl-tmp/CUTFEM_CUT_INPUT_ABLATION_20260920/A2_SUPPORT_TRACE": 14.6,
+  "/root/autodl-tmp/CUTFEM_ENERGY_PAIR_20260920/CONTROL": 14.6,
+  "/root/autodl-tmp/CUTFEM_ENERGY_PAIR_20260920/ENERGY": 14.6,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/WIDE_CUT": 12.6,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/NCUT_59": 12.6,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/ROT_CUT": 12.1,
+  "/root/autodl-tmp/CLAUDE_EQUI_20260918/CUTONLY_NOAUG": 6.5
+ },
+ "full_manifest_on_the_box": "/root/autodl-tmp/CLAUDE_STORAGE_20260921/DELETED_PREDICTION_DUMPS.json",
+ "recovery": "one decode per (arm, seat) from any CHECKPOINT_*.pt; every summary number these files backed is already in docs/data/",
+ "not_deleted": {
+  "R_UPPER_gb": 213.5,
+  "why": "loaded as the whitener at superelement/equi/train_equi.py:725"
+ }
+}

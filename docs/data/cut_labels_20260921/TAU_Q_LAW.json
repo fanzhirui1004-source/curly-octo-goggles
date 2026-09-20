@@ -1,0 +1,74 @@
+{
+ "what": "how the trace dimension depends on thickness and on cut depth, over all 920 packets",
+ "q_source": "full_trace_dimension, recovered from the S_UPPER.npy byte count",
+ "power_law_in_tau_mean": {
+  "cut": {
+   "n": 607,
+   "exponent": 0.6671,
+   "r_squared": 0.301,
+   "q_median": 23349
+  },
+  "box": {
+   "n": 313,
+   "exponent": 0.7042,
+   "r_squared": 0.9917,
+   "q_median": 23880
+  },
+  "caveat": "the cut R^2 is low because depth, not thickness, dominates the cut scatter; the law is descriptive only and is NOT the predictor - the calibrated screen in cut_budget.py is"
+ },
+ "deep_versus_shallow_at_fixed_tau": {
+  "bands": [
+   {
+    "tau_mean_range": [
+     0.179,
+     0.315
+    ],
+    "n": 121,
+    "shallow_third_q_median": 10785.0,
+    "deep_third_q_median": 19005,
+    "ratio": 1.762
+   },
+   {
+    "tau_mean_range": [
+     0.315,
+     0.452
+    ],
+    "n": 121,
+    "shallow_third_q_median": 14229.0,
+    "deep_third_q_median": 24858,
+    "ratio": 1.747
+   },
+   {
+    "tau_mean_range": [
+     0.453,
+     0.602
+    ],
+    "n": 121,
+    "shallow_third_q_median": 19279.5,
+    "deep_third_q_median": 32343,
+    "ratio": 1.678
+   },
+   {
+    "tau_mean_range": [
+     0.604,
+     0.729
+    ],
+    "n": 121,
+    "shallow_third_q_median": 21327.0,
+    "deep_third_q_median": 37599,
+    "ratio": 1.763
+   },
+   {
+    "tau_mean_range": [
+     0.732,
+     0.876
+    ],
+    "n": 123,
+    "shallow_third_q_median": 25356,
+    "deep_third_q_median": 40791,
+    "ratio": 1.609
+   }
+  ],
+  "reading": "at fixed thickness a deep cut carries 1.61x-1.76x the dofs of a shallow one"
+ }
+}

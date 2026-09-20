@@ -9,13 +9,22 @@ more cut coordinates.  The q ceiling that decides what we can label is therefore
 depth and angle, and the surviving subset leans shallow and shallow-angled: in-domain the
 volume deciles run 52 at the bottom to 17 at the top.
 
-So the fix is not to sample harder in the same way and hope.  It is to invert the order:
-choose the coverage first, then spend the thickness budget on whatever is left.  For each
-target (angle, depth) this bisects the thickness mean until the predicted trace dimension lands
-in the requested band, using the calibrated screen in `cut_budget` (82 ms a shot, median error
-1.5 % on cut cells).  A target that no admissible thickness can reach is reported as
-unreachable rather than quietly dropped, because a silently shrinking design is how the current
-coverage happened in the first place.
+So the fix is not to sample harder in the same way and hope.  It is to choose the coverage
+directly, in all three directions that matter: the plane's ANGLE, the RETAINED VOLUME it leaves,
+and the cell's VOLUME FRACTION.  Density has to be its own axis rather than a consequence of the
+other two.  An earlier version made it a consequence -- it bisected the thickness mean until the
+predicted trace landed in a band, then took the thickest field that fit -- and that collapsed the
+axis: of 300 designed cells, over half came out pinned at the density ceiling and the whole design
+spanned rho in [0.214, 0.397] with nothing thin at all.  Since tau is the design variable the
+deployed network has to differentiate, a fill that holds tau almost constant is close to worthless
+however well it covers angle and depth.  **There is no search over thickness left in here**: the
+mean follows from the requested volume fraction, and only the shape of the grading is drawn.
+
+The trace-dimension budget is then a constraint on that three-dimensional box rather than a knob
+inside it.  Each target is screened in 82 ms (`cut_budget`, median error 1.5 % on cut cells), and a
+target the budget cannot afford is reported as unreachable and REPLACED rather than quietly
+dropped, because a silently shrinking design is how the current coverage happened in the first
+place.  What comes back is a map of which (angle, depth, density) combinations this card can label.
 
 Nothing here re-derives the thickness contract.  The eight corner values are built by the
 frozen teacher's own construction -- one centred polynomial in x, y, z, xy, xz, yz, xyz scaled
@@ -69,10 +78,10 @@ def _seeded(*parts):
 def draw_shape(eta, rng, frozen):
     """The centred polynomial, drawn once and independent of the thickness mean.
 
-    Keeping the shape fixed while the mean moves is what makes the budget search a bisection:
-    the trace dimension is then monotone in the mean.  Drawing a fresh shape at every step
-    instead -- which is what an earlier version of this did -- destroys that monotonicity and
-    the search wanders.
+    The shape is drawn once and the mean is imposed separately, so a cell's grading and its
+    density are independent.  An earlier version drew a fresh shape at every step of a bisection
+    over the mean, which destroyed the monotonicity that bisection depended on; there is no
+    bisection left, but the separation is still what makes a requested density mean anything.
     """
     shape_values, shape_gradient_squared, direction = frozen
     linear = [x * math.sqrt(3 * float(1 - eta)) for x in direction(rng, 3)]
@@ -89,11 +98,12 @@ def draw_shape(eta, rng, frozen):
 def corners_at_mean(mean, amplitude_fraction, drawn, upper=UPPER):
     """Eight corner values at this mean, scaled to the frozen contract's own headroom.
 
-    At the very bottom of the density axis the headroom term (mean - LOWER) collapses and no
-    nonzero scale survives the frozen contract, so the cell can only be UNGRADED.  Returning
-    nothing there would make the density floor unreachable -- measured, 107 targets out of 522
-    failed for exactly this reason -- and a uniform field is a class the frozen dataset already
-    recognises (`field_class` calls it UNIFORM_ANCHOR), so that is what is emitted instead.
+    At EITHER end of the density axis one headroom term collapses -- (mean - LOWER) at the bottom,
+    (upper - mean) at the top -- and no nonzero scale survives the frozen contract, so the cell can
+    only be UNGRADED there.  Returning nothing made both ends unreachable, and the affordability map
+    read 0 of 99 at rho = 0.10 and again at rho = 0.40 for that reason alone, not for want of
+    budget; 107 of 522 targets failed the same way.  A uniform field is a class the frozen dataset
+    already recognises (`field_class` calls it UNIFORM_ANCHOR), so that is what is emitted instead.
     """
     shape, gradient = drawn['shape'], drawn['gradient']
     span_max, gradient_max = Fraction('0.47'), Fraction('0.47')
@@ -104,11 +114,6 @@ def corners_at_mean(mean, amplitude_fraction, drawn, upper=UPPER):
     if scale <= 0:
         return (mean,) * 8
     return tuple(mean + scale * value for value in shape)
-
-
-def offset_for_depth(b, s):
-    """The plane x + b y = d at depth fraction s = d/(1+b)."""
-    return Fraction(s) * (1 + Fraction(b))
 
 
 def volume_fraction_curve(source, resolution=256):
@@ -202,8 +207,16 @@ def affordable_map(resolution, volume_low, volume_high, density_low, density_hig
     because depth and density both push the trace up.  Measuring coverage over the whole box
     therefore reports a hole that no amount of sampling can close, exactly as measuring the
     two-dimensional coverage over the degenerate edges did.  So the region is mapped first, on a
-    coarse grid with a nearly ungraded field -- affordability is a property of the density, not of
-    the shape of the grading -- and both the fill and the coverage metric are then confined to it.
+    coarse grid with a nearly ungraded field, and both the fill and the coverage metric are then
+    confined to it.
+
+    The map is an UPPER BOUND on affordability, not a guarantee.  It probes with a nearly uniform
+    field while the fill builds with a grading amplitude drawn up to two thirds of the frozen
+    headroom, and grading raises the trace on net -- thickening a corner adds cells faster than
+    thinning the opposite one removes them.  So a target inside the mapped region can still bust the
+    budget, and 49 of them did on the 300-cell run.  That is handled, because such a target is
+    replaced like any other; it is recorded here so nobody reads the mapped fraction as a success
+    rate.
 
     The budget carries deliberate headroom over the hard ceiling: the screen's p95 error is 6.2 %
     on cut cells, so a target screened at 19500 lands under 20700 in the worst case, against a
@@ -231,7 +244,7 @@ def affordable_map(resolution, volume_low, volume_high, density_low, density_hig
 
 
 class MaximinFill:
-    """Farthest-point insertion in the (angle, depth) square, with replacement.
+    """Farthest-point insertion in the (angle, retained volume, density) box, with replacement.
 
     Greedy maximin is what a coverage repair wants -- each new point goes where the current set
     is emptiest, so the largest hole shrinks monotonically rather than on average -- but it makes
@@ -445,9 +458,13 @@ def main():
                              span=float(max(thickness.corners) - min(thickness.corners)),
                              uniform=bool(thickness.uniform),
                              maximum_gradient_norm=math.sqrt(float(thickness.maximum_gradient_squared)),
-                             amplitude_fraction=str(best['amplitude']),
-                             mixed_variance_fraction=str(best['eta']),
-                             centered_shape_coefficients=[str(c) for c in best['coefficients']])
+                             amplitude_fraction=(None if thickness.uniform else str(best['amplitude'])),
+                             mixed_variance_fraction=(None if thickness.uniform else str(best['eta'])),
+                             # A uniform cell reached its density with scale 0, so the drawn shape
+                             # was discarded; recording it would suggest it shaped the field.
+                             centered_shape_coefficients=(
+                                 None if thickness.uniform
+                                 else [str(c) for c in best['coefficients']]))
         rows.append(row)
         if len(rows) % 25 == 0:
             print(json.dumps(dict(done=len(rows), of=a.count, unreachable=len(unreachable),
