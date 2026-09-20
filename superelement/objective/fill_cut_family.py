@@ -28,7 +28,7 @@ Splits are assigned to mother fields before any geometry is generated, so the he
 fixed before it can be chosen to flatter a result.
 
     python -m superelement.objective.fill_cut_family --count 300 --output DIR \
-        --q-budget 19500 --holdout-fraction 0.2
+        --q-budget 19500 --volume-fraction-min 0.10 --volume-fraction-max 0.40
 """
 from __future__ import annotations
 
@@ -87,7 +87,14 @@ def draw_shape(eta, rng, frozen):
 
 
 def corners_at_mean(mean, amplitude_fraction, drawn, upper=UPPER):
-    """Eight corner values at this mean, scaled to the frozen contract's own headroom."""
+    """Eight corner values at this mean, scaled to the frozen contract's own headroom.
+
+    At the very bottom of the density axis the headroom term (mean - LOWER) collapses and no
+    nonzero scale survives the frozen contract, so the cell can only be UNGRADED.  Returning
+    nothing there would make the density floor unreachable -- measured, 107 targets out of 522
+    failed for exactly this reason -- and a uniform field is a class the frozen dataset already
+    recognises (`field_class` calls it UNIFORM_ANCHOR), so that is what is emitted instead.
+    """
     shape, gradient = drawn['shape'], drawn['gradient']
     span_max, gradient_max = Fraction('0.47'), Fraction('0.47')
     headroom = min((upper - mean) / max(shape), (mean - LOWER) / (-min(shape)),
@@ -95,7 +102,7 @@ def corners_at_mean(mean, amplitude_fraction, drawn, upper=UPPER):
                    Fraction(str(float(gradient_max) / gradient)))
     scale = Fraction(math.floor(headroom * amplitude_fraction * 10 ** 9), 10 ** 9)
     if scale <= 0:
-        return None
+        return (mean,) * 8
     return tuple(mean + scale * value for value in shape)
 
 
@@ -105,37 +112,42 @@ def offset_for_depth(b, s):
 
 
 def volume_fraction_curve(source, resolution=256):
-    """rho(tau) for the Schwarz-P sheet, and a self-check against the frozen bounds.
+    """rho(tau) for the Schwarz-P sheet and its inverse, both from one sorted sample.
 
-    The self-check is the point: it asserts that the bounds really are the volume-fraction range
-    they are being treated as, so a cap expressed in rho cannot silently mean something else.
+    Sorting |phi| once turns both directions into a lookup: rho(tau) is a searchsorted and
+    tau(rho) is an order statistic.  The obvious alternative -- bisecting rho(tau) per call --
+    costs a full pass over the sample every step and is why an earlier version spent minutes
+    inverting the same curve three hundred times.
+
+    The self-check is the point of returning them together: it asserts that the frozen corner
+    bounds really are the volume-fraction range they are being treated as, so a bound expressed
+    in rho cannot silently come to mean something else.
     """
     if str(source) not in sys.path:
         sys.path.insert(0, str(source))
     from cctpms.geometry.implicit import phi_p
     axis = (np.arange(resolution) + .5) / resolution
     grid = np.stack(np.meshgrid(axis, axis, axis, indexing='ij'), axis=-1).reshape(-1, 3)
-    magnitude = np.abs(np.asarray(phi_p(grid, 1.0), dtype=float))
+    magnitude = np.sort(np.abs(np.asarray(phi_p(grid, 1.0), dtype=float)))
+    count = len(magnitude)
 
     def rho(tau):
-        return float((magnitude <= float(tau)).mean())
+        return float(np.searchsorted(magnitude, float(tau), side='right')) / count
+
+    def inverse(target):
+        index = min(count - 1, max(0, int(round(float(target) * count)) - 1))
+        return Fraction(f'{magnitude[index]:.6f}')
 
     for bound, expected in MEASURED_VOLUME_FRACTION.items():
         if abs(rho(bound) - expected) > 2e-3:
             raise ValueError(f'VOLUME_FRACTION_CURVE_DISAGREES_AT_{bound} '
                              f'{rho(bound):.4f} vs {expected:.4f}')
+    rho.inverse = inverse
     return rho
 
 
-def tau_at_volume_fraction(rho, target, steps=60):
-    low, high = 0.0, 3.0
-    for _ in range(steps):
-        middle = (low + high) / 2
-        if rho(middle) < target:
-            low = middle
-        else:
-            high = middle
-    return Fraction(f'{(low + high) / 2:.6f}')
+def tau_at_volume_fraction(rho, target):
+    return rho.inverse(target)
 
 
 def offset_for_volume(b, volume):   # replaced at run time by the frozen sampler's own inverse
@@ -157,8 +169,8 @@ def retained_volume(b, d):
     return 1 - (1 + b - d) ** 2 / (2 * b)
 
 
-def existing_coverage(manifest, dataset, q_ceiling):
-    """The (angle, retained volume) points already labelable, in the coordinates coverage uses."""
+def existing_coverage(manifest, dataset, q_ceiling, rho, rho_low, rho_high):
+    """The (angle, retained volume, density) points already labelable, in coverage coordinates."""
     rows = json.loads(Path(manifest).read_text())
     rows = rows['rows'] if isinstance(rows, dict) and 'rows' in rows else rows
     points = []
@@ -173,9 +185,49 @@ def existing_coverage(manifest, dataset, q_ceiling):
         if int(sample['full_trace_dimension']) > q_ceiling:
             continue
         b = float(Fraction(str(plane[1])))
+        corners = [float(Fraction(str(c))) for c in sample['geometry']['tau_corners']]
+        density = rho(sum(corners) / len(corners))
         points.append((math.degrees(math.atan(b)) / MAX_ANGLE_DEGREES,
-                       float(retained_volume(Fraction(str(plane[1])), Fraction(str(plane[3]))))))
+                       float(retained_volume(Fraction(str(plane[1])), Fraction(str(plane[3])))),
+                       (density - rho_low) / (rho_high - rho_low)))
     return points
+
+
+def affordable_map(resolution, volume_low, volume_high, density_low, density_high,
+                   rho, lower_tau, upper, q_floor, q_budget, estimate, frozen, seed):
+    """Which (angle, depth, density) combinations this budget can label at all.
+
+    The three-dimensional box is not uniformly affordable and the emptiness is not a sampling
+    accident: a deep cut at high density busts the trace budget however the grading is chosen,
+    because depth and density both push the trace up.  Measuring coverage over the whole box
+    therefore reports a hole that no amount of sampling can close, exactly as measuring the
+    two-dimensional coverage over the degenerate edges did.  So the region is mapped first, on a
+    coarse grid with a nearly ungraded field -- affordability is a property of the density, not of
+    the shape of the grading -- and both the fill and the coverage metric are then confined to it.
+
+    The budget carries deliberate headroom over the hard ceiling: the screen's p95 error is 6.2 %
+    on cut cells, so a target screened at 19500 lands under 20700 in the worst case, against a
+    measured card limit of q = 22433.
+    """
+    axis = np.linspace(0.0, 1.0, resolution)
+    grid = np.stack(np.meshgrid(axis, axis, axis, indexing='ij'), axis=-1).reshape(-1, 3)
+    keep = (grid[:, 1] >= volume_low) & (grid[:, 1] <= volume_high)
+    grid = grid[keep]
+    flat = Fraction(1, 1000000)          # amplitude so small the field is effectively uniform
+    rows = []
+    for u, volume, density_unit in grid:
+        theta = float(u) * MAX_ANGLE_DEGREES
+        b = _decimal(math.tan(math.radians(theta)))
+        d = offset_for_volume(b, _decimal(float(volume)))
+        density = density_low + float(density_unit) * (density_high - density_low)
+        mean = max(lower_tau, min(upper, tau_at_volume_fraction(rho, density)))
+        built = build_at_target(b, d, mean, q_budget, _seeded(seed, 'map', len(rows)),
+                               frozen, estimate, upper, amplitude=flat)
+        q = None if built is None else built['q']
+        rows.append(dict(angle_unit=float(u), volume=float(volume), density_unit=float(density_unit),
+                         density=density, q=q,
+                         affordable=bool(q is not None and q_floor <= q <= q_budget)))
+    return grid, np.array([r['affordable'] for r in rows], dtype=bool), rows
 
 
 class MaximinFill:
@@ -199,18 +251,29 @@ class MaximinFill:
     therefore spends itself on a band of the square that holds no material at all -- measured,
     274 rejections out of 574 attempts, every one of them at s <= 0.122, with the screen
     returning q = 0 or a few hundred.  Retained volume is the comparable measure, it is what the
-    frozen sampler stratifies on, and it is monotone in cost, so covering it uniformly spreads
-    the trace-dimension budget uniformly too.  Both tails are still excluded: volume 0 is an
-    empty cell and volume 1 an uncut one.
+    frozen sampler stratifies on, and it is monotone in cost.  Both tails are still excluded:
+    volume 0 is an empty cell and volume 1 an uncut one.
+
+    The third coordinate is the cell's VOLUME FRACTION, on its own axis.  rho is very nearly
+    affine in tau over the frozen window -- measured, 0.1755, 0.3502, 0.5250, 0.6994 map to
+    0.1001, 0.200, 0.300, 0.400 -- so a uniform grid in rho is a uniform grid in the thickness
+    the network differentiates, and stating the bound in rho is what makes it mean a density.
     """
 
-    def __init__(self, existing, volume_low, volume_high, resolution=181, seed=20260921):
+    def __init__(self, existing, volume_low, volume_high, resolution=41, seed=20260921,
+                 affordable_grid=None, affordable_mask=None):
         grid = np.linspace(0.0, 1.0, resolution)
-        points = np.stack(np.meshgrid(grid, grid, indexing='ij'), axis=-1).reshape(-1, 2)
-        self.candidates = points[(points[:, 1] >= volume_low) & (points[:, 1] <= volume_high)]
+        points = np.stack(np.meshgrid(grid, grid, grid, indexing='ij'), axis=-1).reshape(-1, 3)
+        points = points[(points[:, 1] >= volume_low) & (points[:, 1] <= volume_high)]
+        if affordable_grid is not None:
+            nearest = np.argmin(((points[:, None, :] - affordable_grid[None, :, :]) ** 2).sum(axis=2), axis=1)
+            points = points[affordable_mask[nearest]]
+        if not len(points):
+            raise ValueError('NO_AFFORDABLE_CANDIDATE_REMAINS')
+        self.candidates = points
         self.spacing = 1.0 / (resolution - 1)
         self.live = np.ones(len(self.candidates), dtype=bool)
-        chosen = np.array(existing, dtype=float).reshape(-1, 2)
+        chosen = np.array(existing, dtype=float).reshape(-1, 3)
         if len(chosen):
             self.best = np.min(((self.candidates[:, None, :] - chosen[None, :, :]) ** 2).sum(axis=2), axis=1)
         else:
@@ -223,7 +286,7 @@ class MaximinFill:
         masked = np.where(self.live, self.best, -1.0)
         top = np.flatnonzero(masked >= masked.max() - 1e-15)
         index = int(top[self.rng.integers(len(top))])
-        return index, (float(self.candidates[index, 0]), float(self.candidates[index, 1]))
+        return index, tuple(float(v) for v in self.candidates[index])
 
     def accept(self, index):
         point = self.candidates[index]
@@ -237,66 +300,30 @@ class MaximinFill:
         self.live[near] = False
 
 
-def fit_thickness_to_budget(b, d, ceiling, rng, frozen, estimate, upper, attempts=12):
-    """The thickest admissible field whose predicted trace dimension still fits the ceiling.
+def build_at_target(b, d, mean, ceiling, rng, frozen, estimate, upper, attempts=6, amplitude=None):
+    """The field at a REQUESTED thickness mean, and what the screen says its trace will be.
 
-    The budget is a ceiling, not a target.  Treating it as a target is what an earlier version
-    did, and it is wrong twice over: it forces a shallow cut to carry a thick wall it does not
-    need, and it declares the deep, steep corner unreachable when in fact a thin wall reaches it
-    perfectly well.  Taking the thickest field that fits instead puts as much material as the
-    budget allows into every cell, and it produces the thickness-versus-depth trade-off by
-    itself -- thin walls where the cut is deep, thick walls where it is shallow -- which is the
-    curve the in-domain packets already trace out (tau_mean reaches 0.868 only at shallow cuts).
-
-    Monotonicity in the mean is what makes this a bisection, so the shape is drawn once, before
-    the search, and only the mean moves.
+    There is no search over thickness any more, because thickness is a coverage axis rather than
+    a free parameter: the mean comes from the requested volume fraction.  The only freedom left is
+    the shape of the grading, and the loop exists solely because a drawn shape can leave no
+    admissible scale at this mean (the frozen headroom collapses), in which case another shape is
+    drawn.  The budget then either affords this (angle, depth, density) or it does not, and saying
+    which is the useful output.
     """
-    amplitude = Fraction(1 + int(rng.random() * 999999), 1000000) * Fraction(2, 3)
-    eta = Fraction(0) if rng.random() < 0.5 else Fraction(1 + int(rng.random() * 999999), 3000000)
-    drawn = draw_shape(eta, rng, frozen)
-    if drawn is None:
-        return None, []
-    normal = ('1', str(b), '0')
-    lo, hi = LOWER + Fraction(1, 200), upper - Fraction(1, 200)
-    trace, best = [], None
-
-    def probe(mean):
-        corners = corners_at_mean(mean, amplitude, drawn, upper)
-        if corners is None:
-            return None, None
-        return corners, estimate(corners, normal, str(d))
-
-    corners, q = probe(lo)
-    if corners is None or q is None:
-        return None, trace
-    trace.append(dict(step=-1, mean=float(lo), q=round(q, 1)))
-    if q > ceiling:
-        # even the thinnest admissible wall busts the budget: a genuine exclusion, not a miss
-        return dict(corners=corners, coefficients=drawn['coefficients'], mean=lo, q=q,
-                    amplitude=amplitude, eta=eta, fits=False), trace
-    best = dict(corners=corners, coefficients=drawn['coefficients'], mean=lo, q=q,
-                amplitude=amplitude, eta=eta, fits=True)
-    corners, q = probe(hi)
-    if corners is not None and q is not None:
-        trace.append(dict(step=-2, mean=float(hi), q=round(q, 1)))
-        if q <= ceiling:
-            return dict(corners=corners, coefficients=drawn['coefficients'], mean=hi, q=q,
-                        amplitude=amplitude, eta=eta, fits=True), trace
-    for step in range(attempts):
-        mid = (lo + hi) / 2
-        corners, q = probe(mid)
-        if corners is None or q is None:
-            hi = mid
+    for attempt in range(attempts):
+        drawn_amplitude = (amplitude if amplitude is not None
+                           else Fraction(1 + int(rng.random() * 999999), 1000000) * Fraction(2, 3))
+        eta = Fraction(0) if rng.random() < 0.5 else Fraction(1 + int(rng.random() * 999999), 3000000)
+        drawn = draw_shape(eta, rng, frozen)
+        if drawn is None:
             continue
-        trace.append(dict(step=step, mean=float(mid), q=round(q, 1)))
-        if q <= ceiling:
-            lo = mid
-            if q > best['q']:
-                best = dict(corners=corners, coefficients=drawn['coefficients'], mean=mid, q=q,
-                            amplitude=amplitude, eta=eta, fits=True)
-        else:
-            hi = mid
-    return best, trace
+        corners = corners_at_mean(mean, drawn_amplitude, drawn, upper)
+        if corners is None:
+            continue
+        q = estimate(corners, ('1', str(b), '0'), str(d))
+        return dict(corners=corners, coefficients=drawn['coefficients'], mean=mean, q=q,
+                    amplitude=drawn_amplitude, eta=eta, fits=q <= ceiling, attempts=attempt + 1)
+    return None
 
 
 def main():
@@ -309,8 +336,12 @@ def main():
     ap.add_argument('--volume-low', type=float, default=.02)
     ap.add_argument('--volume-high', type=float, default=.98)
     ap.add_argument('--volume-fraction-max', type=float, default=.40,
-                    help='cap on the cell volume fraction; the frozen bound 0.8775 is rho = 0.5026, '
-                         'and 92.4 %% of the packets above rho = 0.40 are past the label ceiling anyway')
+                    help='top of the density axis; the frozen bound 0.8775 is rho = 0.5026, and '
+                         '92.4 %% of the packets above rho = 0.40 are past the label ceiling anyway')
+    ap.add_argument('--volume-fraction-min', type=float, default=.10,
+                    help='bottom of the density axis; the frozen bound 0.1755 is rho = 0.1001')
+    ap.add_argument('--map-resolution', type=int, default=11,
+                    help='coarse grid on which the affordable region is mapped before filling')
     ap.add_argument('--q-ceiling', type=int, default=23000,
                     help='what counts as already labelable, for the existing-coverage baseline')
     ap.add_argument('--holdout-fraction', type=float, default=.2)
@@ -347,11 +378,21 @@ def main():
     t0 = time.time()
     rho = volume_fraction_curve(a.source / 'src')
     upper = min(UPPER, tau_at_volume_fraction(rho, a.volume_fraction_max))
-    print(json.dumps(dict(phase='thickness_bound', volume_fraction_max=a.volume_fraction_max,
-                          tau_upper=str(upper), frozen_tau_upper=str(UPPER),
+    lower_tau = max(LOWER, tau_at_volume_fraction(rho, a.volume_fraction_min))
+    print(json.dumps(dict(phase='density_axis', volume_fraction=[a.volume_fraction_min, a.volume_fraction_max],
+                          tau_range=[str(lower_tau), str(upper)], frozen_tau=[str(LOWER), str(UPPER)],
                           frozen_volume_fraction=MEASURED_VOLUME_FRACTION)), flush=True)
-    existing = existing_coverage(a.manifest, a.dataset, a.q_ceiling)
-    fill = MaximinFill(existing, a.volume_low, a.volume_high, seed=a.seed)
+    map_grid, map_mask, map_rows = affordable_map(
+        a.map_resolution, a.volume_low, a.volume_high, a.volume_fraction_min, a.volume_fraction_max,
+        rho, lower_tau, upper, a.q_floor, a.q_budget, estimate, frozen, a.seed)
+    print(json.dumps(dict(phase='affordable_map', probed=len(map_grid),
+                          affordable=int(map_mask.sum()),
+                          affordable_fraction=round(float(map_mask.mean()), 4),
+                          seconds=round(time.time() - t0, 1))), flush=True)
+    existing = existing_coverage(a.manifest, a.dataset, a.q_ceiling, rho,
+                                 a.volume_fraction_min, a.volume_fraction_max)
+    fill = MaximinFill(existing, a.volume_low, a.volume_high, seed=a.seed,
+                       affordable_grid=map_grid, affordable_mask=map_mask)
     print(json.dumps(dict(phase='plan', existing=len(existing), requested=a.count,
                           candidates=int(fill.live.sum()),
                           largest_hole_before=float(math.sqrt(fill.best.max())))), flush=True)
@@ -364,20 +405,26 @@ def main():
         if slot is None:
             break
         index += 1
-        u, volume = target
+        u, volume, density_unit = target
         theta = u * MAX_ANGLE_DEGREES
         b = _decimal(math.tan(math.radians(theta)))
         d = offset_for_volume(b, _decimal(volume))
         s = float(d) / (1 + float(b))
+        density = a.volume_fraction_min + density_unit * (a.volume_fraction_max - a.volume_fraction_min)
+        mean = max(lower_tau, min(upper, tau_at_volume_fraction(rho, density)))
         rng = _seeded(a.seed, a.batch, index, 'thickness')
-        best, trace = fit_thickness_to_budget(b, d, a.q_budget, rng, frozen, estimate, upper)
-        traces.append(dict(index=index, angle_degrees=theta, volume=volume, depth=s, steps=trace))
+        best = build_at_target(b, d, mean, a.q_budget, rng, frozen, estimate, upper)
+        traces.append(dict(index=index, angle_degrees=theta, volume=volume, density=density,
+                           thickness_mean=float(mean),
+                           q=None if best is None else best['q'],
+                           fits=None if best is None else best['fits']))
         if best is None or not best['fits'] or best['q'] < a.q_floor:
             reason = ('NO_ADMISSIBLE_THICKNESS_FIELD' if best is None else
-                      'THINNEST_ADMISSIBLE_WALL_EXCEEDS_BUDGET' if not best['fits'] else
+                      'TRACE_EXCEEDS_BUDGET_AT_THIS_DENSITY' if not best['fits'] else
                       'RETAINS_ALMOST_NO_MATERIAL')
             unreachable.append(dict(index=index, angle_degrees=theta, volume=volume, depth=s,
-                                    best_q=None if best is None else best['q'], reason=reason))
+                                    density=density, best_q=None if best is None else best['q'],
+                                    reason=reason))
             fill.reject(slot)
             continue
         fill.accept(slot)
@@ -391,10 +438,12 @@ def main():
         validate_case(row)
         row['design'] = dict(angle_degrees=theta, target_angle_unit=u, depth_fraction=s,
                              target_volume=volume, retained_volume=float(retained_volume(b, d)),
+                             target_volume_fraction=density,
                              predicted_trace_dimension=best['q'],
                              thickness_mean=float(best['mean']),
                              volume_fraction_at_mean=rho(best['mean']),
                              span=float(max(thickness.corners) - min(thickness.corners)),
+                             uniform=bool(thickness.uniform),
                              maximum_gradient_norm=math.sqrt(float(thickness.maximum_gradient_squared)),
                              amplitude_fraction=str(best['amplitude']),
                              mixed_variance_fraction=str(best['eta']),
@@ -404,24 +453,33 @@ def main():
             print(json.dumps(dict(done=len(rows), of=a.count, unreachable=len(unreachable),
                                   elapsed=round(time.time() - t0, 1))), flush=True)
 
+    span = a.volume_fraction_max - a.volume_fraction_min
     got = [(math.degrees(math.atan(float(Fraction(r['normal'][1])))) / MAX_ANGLE_DEGREES,
-            r['design']['retained_volume']) for r in rows]
+            r['design']['retained_volume'],
+            (r['design']['volume_fraction_at_mean'] - a.volume_fraction_min) / span) for r in rows]
     combined = np.array(existing + got, dtype=float)
-    grid = np.linspace(0, 1, 181)
-    probe = np.stack(np.meshgrid(grid, grid, indexing='ij'), axis=-1).reshape(-1, 2)
-    # Measure the hole over the region the fill is allowed to reach.  Probing the whole square
-    # instead makes the number meaningless: the excluded degenerate edges dominate it and it
-    # cannot improve however well the interior is covered.
-    probe = probe[(probe[:, 1] >= a.volume_low) & (probe[:, 1] <= a.volume_high)]
+    # Measure the hole over the region the fill is allowed to reach, which is the affordable
+    # region and not the whole box.  Probing everything makes the number meaningless: the
+    # unaffordable deep-and-dense corner dominates it and no amount of sampling closes it.
+    probe = fill.candidates
     def largest_hole(points):
         if not len(points):
             return None
         return float(np.sqrt(np.min(((probe[:, None, :] - points[None, :, :]) ** 2).sum(axis=2), axis=1)).max())
     qs = np.array([r['design']['predicted_trace_dimension'] for r in rows])
+    densities = np.array([r['design']['volume_fraction_at_mean'] for r in rows])
     summary = dict(batch=a.batch, seed=a.seed, requested=a.count, generated=len(rows),
                    unreachable=len(unreachable), existing_points=len(existing),
                    q_budget=a.q_budget, q_floor=a.q_floor,
-                   volume_fraction_max=a.volume_fraction_max, tau_upper=str(upper),
+                   volume_fraction=[a.volume_fraction_min, a.volume_fraction_max],
+                   tau_range=[str(lower_tau), str(upper)],
+                   achieved_volume_fraction=dict(
+                       min=float(densities.min()), median=float(np.median(densities)),
+                       max=float(densities.max())) if len(densities) else None,
+                   coverage_space='(angle/45deg, retained volume, volume fraction), 3-D maximin',
+                   affordable_map=dict(resolution=a.map_resolution, probed=len(map_grid),
+                                       affordable=int(map_mask.sum()),
+                                       fraction=float(map_mask.mean())),
                    volume_range=[a.volume_low, a.volume_high],
                    unreachable_reasons={r: sum(1 for x in unreachable if x['reason'] == r)
                                         for r in sorted({x['reason'] for x in unreachable})},
@@ -437,6 +495,7 @@ def main():
     (a.output / 'CASES.json').write_text(json.dumps(rows, indent=1))
     (a.output / 'UNREACHABLE.json').write_text(json.dumps(unreachable, indent=1))
     (a.output / 'SEARCH_TRACES.json').write_text(json.dumps(traces, indent=1))
+    (a.output / 'AFFORDABLE_MAP.json').write_text(json.dumps(map_rows, indent=1))
     (a.output / 'SUMMARY.json').write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary, indent=1), flush=True)
 
