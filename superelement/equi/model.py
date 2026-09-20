@@ -272,20 +272,24 @@ class EquiModel(nn.Module):
         """(P, 3, 3) blocks for lower pairs rows >= cols, transposition-symmetric off the diagonal."""
         diag = rows == cols
         off = ~diag
-        r_off, c_off = rows[off], cols[off]
-        # off-diagonal: both orderings through one trunk pass
-        both = self._ordered_pairs(enc, ctx, torch.cat((r_off, c_off)), torch.cat((c_off, r_off)))
-        state = self.trunk(both)
-        dist = (ctx['pos'][r_off] - ctx['pos'][c_off]).norm(dim=1)
-        near = dist <= self.near_radius
-        m = len(r_off)
-        raw = torch.empty((m, 9), dtype=state.dtype, device=state.device)
-        # .to(raw.dtype): under autocast the heads emit bf16 while the LayerNorm-ed state stays fp32
-        raw[near] = (.5 * (self.near_head(state[:m][near]) + self.near_head(state[m:][near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))).to(raw.dtype)
-        raw[~near] = (.5 * (self.far_head(state[:m][~near]) + self.far_head(state[m:][~near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))).to(raw.dtype)
-        out = torch.zeros((len(rows), 3, 3), dtype=torch.float32, device=state.device)
-        scale = torch.where(near, float(conditioning.same_patch_rms), float(conditioning.cross_patch_rms)).to(raw.dtype)
-        out[off] = (raw * scale[:, None]).reshape(-1, 3, 3).float()
+        # A chunk can be all-diagonal -- the last chunk of a small cell, or any chunk once the
+        # triangular index map lands on the diagonal band -- and then the trunk would be asked to
+        # run on empty tensors.
+        out = torch.zeros((len(rows), 3, 3), dtype=torch.float32, device=ctx['pos'].device)
+        if bool(off.any()):
+            r_off, c_off = rows[off], cols[off]
+            # off-diagonal: both orderings through one trunk pass
+            both = self._ordered_pairs(enc, ctx, torch.cat((r_off, c_off)), torch.cat((c_off, r_off)))
+            state = self.trunk(both)
+            dist = (ctx['pos'][r_off] - ctx['pos'][c_off]).norm(dim=1)
+            near = dist <= self.near_radius
+            m = len(r_off)
+            raw = torch.empty((m, 9), dtype=state.dtype, device=state.device)
+            # .to(raw.dtype): under autocast the heads emit bf16 while the LayerNorm-ed state stays fp32
+            raw[near] = (.5 * (self.near_head(state[:m][near]) + self.near_head(state[m:][near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))).to(raw.dtype)
+            raw[~near] = (.5 * (self.far_head(state[:m][~near]) + self.far_head(state[m:][~near]).reshape(-1, 3, 3).transpose(1, 2).reshape(-1, 9))).to(raw.dtype)
+            scale = torch.where(near, float(conditioning.same_patch_rms), float(conditioning.cross_patch_rms)).to(raw.dtype)
+            out[off] = (raw * scale[:, None]).reshape(-1, 3, 3).float()
         # diagonal
         if bool(diag.any()):
             d_state = self.trunk(self._ordered_pairs(enc, ctx, rows[diag], cols[diag]))

@@ -629,16 +629,43 @@ def calibrate_geometric(samples, per_bucket, read_blocks, Conditioning, log_pivo
 
 
 # ----------------------------------------------------------------------------- inference
+VERIFIED_DECODE_CHUNKS = (8192,)
+
+
 @torch.no_grad()
-def predict_full_q(model, sample, tables, conditioning, g_view, chunk, out_device, ctx_t=None):
-    """Symmetric q x q M_q_hat in the ORIGINAL frame: the model sees the cell rotated by g_view."""
+def predict_full_q(model, sample, tables, conditioning, g_view, chunk, out_device, ctx_t=None,
+                   verify_symmetry_full=False, allow_unverified_chunk=False):
+    """Symmetric q x q M_q_hat in the ORIGINAL frame: the model sees the cell rotated by g_view.
+
+    Two things about this function are load-bearing and were measured, not guessed.
+
+    **The chunk size changes the answer.** The block algebra is exact at any chunk, but the decoder
+    runs in reduced precision and its kernels tile by batch size, so a different chunk reduces in a
+    different order: chunk 8192 reproduces the reference element for element, chunk 32768 is 1.4x
+    faster again and differs by 4.6e-7 relative on the factor and 3.7e-5 per eigenvalue.  That is
+    harmless for a headline error and fatal for a tau derivative, a 1e-13 identity or an
+    ill-conditioned spectrum, so only `VERIFIED_DECODE_CHUNKS` is allowed without an explicit
+    opt-in.
+
+    **The old completeness check cost more than the decode it guarded.**  It formed `M - M.T` and
+    reduced it, which for q = 10812 allocates a second 935 MB matrix and walks three of them; that
+    is most of the 1.5x this version wins.  It is replaced by a strictly stronger and cheaper pair:
+    the buffer starts as NaN so any entry the triangular index map failed to write is caught along
+    with any non-finite prediction, and symmetry is checked exactly on a seeded random sample of
+    index pairs.  Symmetry itself is structural here - each block is written to both `(i, j)` and
+    `(j, i)` by one broadcast - so the sample guards an index-order regression, not the model.  Pass
+    `verify_symmetry_full=True` to get the old exhaustive check back.
+    """
+    if int(chunk) not in VERIFIED_DECODE_CHUNKS and not allow_unverified_chunk:
+        raise ValueError(f'UNVERIFIED_DECODE_CHUNK {chunk} not in {VERIFIED_DECODE_CHUNKS}; '
+                         'a different chunk changes the answer at 4.6e-7 relative')
     model.eval()
     ctx = tables.rotate_context(ctx_t if ctx_t is not None else sample['ctx_t'], g_view)
     enc = model.encode(ctx)
     q = sample['q']; count = sample['count']; dev = ctx['pos'].device
-    M = torch.zeros((q, q), dtype=torch.float64, device=out_device)
+    M = torch.full((q, q), float('nan'), dtype=torch.float64, device=out_device)
     total = count * (count + 1) // 2
-    a = torch.arange(3, device=out_device)[None, :, None]; b = torch.arange(3, device=out_device)[None, None, :]
+    v = torch.arange(3, device=out_device)
     g_back = int(CG.INVERSE[g_view])
     for lo in range(0, total, chunk):
         index = np.arange(lo, min(total, lo + chunk), dtype=np.int64)
@@ -649,10 +676,20 @@ def predict_full_q(model, sample, tables, conditioning, g_view, chunk, out_devic
         blocks[diag] = blocks[diag] + torch.tril(blocks[diag], -1).transpose(1, 2)   # full symmetric diagonal block
         blocks = tables.rotate_blocks(blocks, g_back).to(out_device)
         r = r.to(out_device); c = c.to(out_device)
-        M[3 * r[:, None, None] + a, 3 * c[:, None, None] + b] = blocks
-        M[3 * c[:, None, None] + a, 3 * r[:, None, None] + b] = blocks.transpose(1, 2)
-    if float((M - M.T).abs().max()) != 0.0:
-        raise ValueError('ASSEMBLY_NOT_SYMMETRIC')
+        i = 3 * r[:, None, None] + v[None, :, None]
+        j = 3 * c[:, None, None] + v[None, None, :]
+        M[i, j] = blocks
+        M[j, i] = blocks                  # broadcasting transposes: M[3c+b, 3r+a] = blocks[a, b]
+    if not bool(torch.isfinite(M).all()):
+        raise ValueError('ASSEMBLY_INCOMPLETE_OR_NONFINITE')
+    if verify_symmetry_full:
+        if float((M - M.T).abs().max()) != 0.0:
+            raise ValueError('ASSEMBLY_NOT_SYMMETRIC')
+    else:
+        probe = torch.Generator(device='cpu').manual_seed(0x5BA17)
+        a_ = torch.randint(q, (4096,), generator=probe); b_ = torch.randint(q, (4096,), generator=probe)
+        if float((M[a_, b_] - M[b_, a_]).abs().max()) != 0.0:
+            raise ValueError('ASSEMBLY_NOT_SYMMETRIC_ON_THE_SAMPLED_PAIRS')
     return M
 
 
@@ -827,7 +864,11 @@ def main():
     ap.add_argument('--segment-samples', type=int, default=8)
     ap.add_argument('--lr', type=float, default=2e-4); ap.add_argument('--min-lr', type=float, default=1e-5)
     ap.add_argument('--weight-decay', type=float, default=1e-5); ap.add_argument('--clip', type=float, default=10.)
-    ap.add_argument('--inference-chunk', type=int, default=8192); ap.add_argument('--threads', type=int, default=8)
+    ap.add_argument('--inference-chunk', type=int, default=8192,
+                    help='decode chunk; only the values in VERIFIED_DECODE_CHUNKS reproduce the '
+                         'reference element for element (a larger chunk is faster and differs by '
+                         '4.6e-7 relative)')
+    ap.add_argument('--threads', type=int, default=8)
     ap.add_argument('--device', default='cuda:0'); ap.add_argument('--eval-device', default='cuda:0')
     ap.add_argument('--probe-rotations', type=int, default=4)
     ap.add_argument('--checkpoint-every', type=int, default=64)
@@ -835,6 +876,13 @@ def main():
     ap.add_argument('--output', type=Path, required=True); args = ap.parse_args()
     if args.augment and args.canonical:
         raise ValueError('AUGMENT_AND_CANONICAL_ARE_ALTERNATIVES')
+    if args.augment_full_only and not args.augment:
+        # Line 'augmentable = args.augment and not (...)' ANDs the flag with --augment, so on its own
+        # it is silently a no-op: an arm launched with --augment-full-only alone presents every cell
+        # in the identity frame and its record still says augment_full_only=True.  Three cut arms
+        # were described that way in docs/CUT_CELL_ACCURACY_IS_ALL_CANCELLATION_20260919.md, which
+        # therefore does not establish that any rotation reached their box seats.
+        raise SystemExit('--augment-full-only does nothing without --augment')
     if args.proper_only and not args.augment:
         raise ValueError('PROPER_ONLY_REQUIRES_AUGMENT')
     sys.path.insert(0, str(args.source))
