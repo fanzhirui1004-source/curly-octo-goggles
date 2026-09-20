@@ -1,0 +1,289 @@
+{
+  "seat": 100032,
+  "selected": [
+    {
+      "label": "PATH_1",
+      "halving": 0,
+      "epsilon": "-1/1000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_1_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 25.057953167706728,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "4e0efb1c539100f6d98e31ff278bb1b7a266b0847df6c9ee27e298beb7e9fc69",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    },
+    {
+      "label": "PATH_2",
+      "halving": 0,
+      "epsilon": "-1/10000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_2_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 25.330740798264742,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "786ce6281e206dc96db0a6e77f0a1dee77f33f26d9a9012ff1a0d471775f4baf",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    },
+    {
+      "label": "PATH_3",
+      "halving": 0,
+      "epsilon": "1/10000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_3_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 25.040350191295147,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "c39fd280aa66634e56ababd831a1b1123c0922e5d34122c4b13bc8dad0178677",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    },
+    {
+      "label": "PATH_4",
+      "halving": 0,
+      "epsilon": "1/1000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_4_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 24.764683909714222,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "d1d5907b25571ce9858fbc616ae44358b97ab873d551ba6de52833e954b6010a",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    }
+  ],
+  "attempts": [
+    {
+      "label": "BASE_REPLAY",
+      "halving": 0,
+      "epsilon": "None",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/BASE_REPLAY_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 25.307896859943867,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    },
+    {
+      "label": "PATH_1",
+      "halving": 0,
+      "epsilon": "-1/1000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_1_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 25.057953167706728,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "4e0efb1c539100f6d98e31ff278bb1b7a266b0847df6c9ee27e298beb7e9fc69",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    },
+    {
+      "label": "PATH_2",
+      "halving": 0,
+      "epsilon": "-1/10000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_2_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 25.330740798264742,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "786ce6281e206dc96db0a6e77f0a1dee77f33f26d9a9012ff1a0d471775f4baf",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    },
+    {
+      "label": "PATH_3",
+      "halving": 0,
+      "epsilon": "1/10000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_3_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 25.040350191295147,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "c39fd280aa66634e56ababd831a1b1123c0922e5d34122c4b13bc8dad0178677",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    },
+    {
+      "label": "PATH_4",
+      "halving": 0,
+      "epsilon": "1/1000",
+      "directory": "/root/autodl-tmp/CLAUDE_CUT_TAU_20260920/GEO_100032/PATH_4_H0",
+      "status": "ADMITTED_SAME_BOX_TRACE",
+      "admitted": true,
+      "q": 10812,
+      "body_dofs": 115476,
+      "active_cells": 3651,
+      "seconds": 24.764683909714222,
+      "trace_comparison": {
+        "box_coordinates": {
+          "base": 2168,
+          "candidate": 2168
+        },
+        "cut_coordinates": {
+          "base": 1436,
+          "candidate": 1436
+        },
+        "same_box_trace": true,
+        "same_complete_trace_original_rule": true,
+        "same_order": true,
+        "box_rigid_absolute_frobenius_difference": 0.0,
+        "admitted": true,
+        "admission_rule": "kind-0 rows identical and the box rigid trace unchanged; kind-1 rows may change because the cut surface moves with tau, and the condensed operator does not depend on their basis",
+        "candidate_sha256": "d1d5907b25571ce9858fbc616ae44358b97ab873d551ba6de52833e954b6010a",
+        "frozen_cache": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/input/TRACE_CACHE.npz",
+        "frozen_cache_sha256": "73689246201817ca547b9ddba61810baabe3ba927d05e39cb8077414145b8739"
+      }
+    }
+  ],
+  "maximum_new_labels": 4,
+  "numerical_labels_generated": 0,
+  "status": "GEOMETRY_SCREEN_COMPLETE_NUMERICAL_LABELS_PENDING"
+}

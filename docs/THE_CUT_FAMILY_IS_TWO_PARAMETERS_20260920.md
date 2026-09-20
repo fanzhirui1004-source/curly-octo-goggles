@@ -123,6 +123,40 @@ has **never been run on a cut cell**:
    *before* condensed labels are built, not after;
 3. the assembled cut-to-full stack.
 
+## 4b. H2, on the pre-registered held-out set: there is no cross-geometry generalisation at all
+
+Two arms, both 60 000 steps, both 9 692 283 parameters, both `g = 0` on every step, neither sharded,
+scored by `sweep_checkpoints` on the 12 seats of `HELDOUT_H2.json` that **neither** arm presented,
+plus seat 100032 which **both** presented. Metric: the assembly-free face-load response gate,
+16 loads per seat, on each arm's final checkpoint.
+
+| | n = 8 (7500 visits/geometry) | n = 28 (2143 visits/geometry) |
+| --- | --- | --- |
+| held-out face median, over 12 seats | 15.6 % … 554 %, **median 96.2 %** | 26.7 % … 1260 %, **median 87.9 %** |
+| held-out `frac_within_3pct` | 0-6 % on every seat | 0-3 % on every seat |
+| held-out factor error, median | 1.009 | 0.892 |
+| presented seat 100032 | **3.14 %** median, 49 % of loads inside 3 % | **3.40 %** median, 46 % inside 3 % |
+
+Read it twice, because the two readings point different ways.
+
+**n makes almost no difference.** 96.2 % against 87.9 % median, with 3.5x the per-geometry exposure
+on the n = 8 side. Whatever the cut family's problem is, it does not live between n = 8 and n = 28.
+H2 is answered, negatively.
+
+**The presented-to-held-out gap is a factor of 28** - 3.1-3.4 % on a geometry the arm has seen,
+87-96 % on one it has not, with 0-6 % of loads inside 3 % there. Both arms are *memorising* the cut
+geometries they are shown and carrying essentially nothing across to a new cut. That is the
+concern stated plainly in 2a, now measured on a set that was declared before the arms ran and that
+neither arm touched.
+
+It also puts the earlier numbers in their place. The 9-42 % figures quoted for "internal unseen" cut
+seats came from seats held out *by omission* from an arm that had presented 28-85 cut geometries, and
+often sat near one it had. On a genuinely unseen cut the error is an order of magnitude worse.
+
+This is what makes the condensed target the experiment worth running rather than one option among
+several: the only lever anywhere in this project that has been measured to convert a fit into
+generalisation is the 48-fold cube symmetry, and the cut family is the one family that cannot use it.
+
 ## 5. Inventory, with two corrections to earlier statements
 
 Measured on disk per seat, not from the manifest's presence:

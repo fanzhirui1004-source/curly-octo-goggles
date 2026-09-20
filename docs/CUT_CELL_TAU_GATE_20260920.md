@@ -143,13 +143,39 @@ a finite jump at a regime boundary, of size on the order of one active cell's sh
 and on a realistically sized cell no boundary is crossed within +-0.1 % of tau.** The scaling claim
 is the thing still to confirm, and seat 100032 is running.
 
+## Seat 100032, a realistically sized cut cell: clean, and the scaling confirmed
+
+q = 10812, 6504 box dofs, 4308 cut dofs, **3651 active cells**. All four perturbations from
+eps = -1e-3 to +1e-3 admit with q = 10812 and 4308 cut dofs at every one - **no cell dies anywhere in
+the +-0.1 % range**, which is the prediction the 19-cell seat's jump implied.
+
+| observable | left h=1e-4 | right h=1e-4 | ratio | Richardson |
+| --- | --- | --- | --- | --- |
+| `trace(T^+)`, condensed | -6.8318 | -6.9247 | 1.0136 | 1.006784 |
+| `trace(S^+)`, full trace | -5.2127 | -5.2791 | 1.0127 | 1.006326 |
+| softest non-rigid of T | +23.0203 | +24.2358 | 1.0528 | 1.000324 |
+| softest non-rigid of S | +20.4921 | +21.5395 | 1.0511 | 1.003553 |
+| 8 box loads through T | -5.76 … -11.62 | -5.80 … -11.90 | 1.006-1.024 | 1.0014-1.0185 |
+| 8 full loads through S | -3.75 … -6.14 | -3.76 … -6.26 | 1.003-1.018 | 1.0012-1.0085 |
+
+**Every one of the twenty observables has a one-sided ratio between 1.0028 and 1.0528, and every
+Richardson central ratio is between 1.0001 and 1.018** - the central difference converges as h
+falls, which is what a genuine derivative looks like. Against the 0328 free box cell's factor of
+3.5, this is not marginal. `kappa(S) = 2.53e6` and `kappa(T) = 3.46e5` again reproduce the
+independent condensation sweep for this seat (2.535e6 -> 3.46e5) - a third cross-check.
+
+So gate 2 passes, and the 19-cell seat's 8-58 % jumps are confirmed as what they looked like: one
+cell out of nineteen is 5.3 % of the material, and no realistically sized cell crosses a regime
+boundary within +-0.1 % of tau.
+
 ## What this does NOT establish
 
-* **One seat so far, and the cheapest one.** 19 active cells and only one intact box face
-  (`face_0_0` alone), so it cannot be glued on opposite faces and has no assembled observable at
-  all. Seat 100032 (q = 10812, 3651 cells, glueable) is running at 207-282 s per operator.
-* **Nothing about the network.** This is the teacher's own response. Whether a trained operator
-  tracks this derivative is a separate measurement, and it comes after the condensed-target arm.
+* **Nothing about the network.** This is the teacher's own response throughout. Whether a trained
+  operator tracks this derivative is a separate measurement, and it comes after the condensed-target
+  arm.
+* **Nothing about steps much larger than 1e-3.** A real optimiser moves tau by percent, not
+  hundredths of a percent, so it will cross regime boundaries; what this shows is that each crossing
+  costs about one active cell's share of the material, which on 3651 cells is 0.027 %.
 
 ## Provenance
 
