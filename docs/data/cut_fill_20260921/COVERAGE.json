@@ -1,0 +1,44 @@
+{
+  "question": "is the cut dataset too small, or too narrow, or just unevenly covered?",
+  "coordinates": {
+    "b": "the plane's second normal component; every plane in the dataset is (1, b, 0)",
+    "s": "d / (1 + b), the depth fraction, in which every point is physically reachable - the plane meets the unit cell only for d in (0, 1 + b), so a first pass in (b, d) measured a 0.39 'hole' that is the forbidden region d > 1 + b, not a sampling gap"
+  },
+  "the_direction_family_is_one_dimensional": {
+    "cut_packets_on_disk": 603,
+    "a_component": "1.0 exactly, all 603",
+    "c_component": "0.0 exactly, all 603",
+    "planes_with_all_three_components_non_zero": 0,
+    "note": "this is a deliberate scoping choice by the project owner - only planes perpendicular to one face - not an oversight. Recorded because the 48-element group cannot widen it: a signed permutation of (1, b, 0) always leaves exactly one zero component, so group augmentation reaches (0,b,a) and (a,0,b) but never a generic normal.",
+    "bearing_on_the_scoping_choice": "the stated reason was that a wider family would be too hard to learn. Against that: the cut family is 10 parameters against the box family's 8, with twice the trainable seats, and box meets the contract while cut misses it by 14x - so the dimension of the family is measured not to be what fails."
+  },
+  "coverage_of_b_and_s": {
+    "in_use_139": {"nearest_neighbour_median": 0.0326, "uniform_would_give": 0.0848,
+                   "largest_hole": 0.2041, "uniform_would_give_hole": 0.1456,
+                   "ks_from_uniform": {"b": 0.220, "s": 0.200}},
+    "all_239_in_domain": {"nearest_neighbour_median": 0.0254, "uniform_would_give": 0.0647,
+                          "largest_hole": 0.2041, "uniform_would_give_hole": 0.1291,
+                          "ks_from_uniform": {"b": 0.143, "s": 0.110}},
+    "all_603_on_disk": {"nearest_neighbour_median": 0.0174, "largest_hole": 0.1786},
+    "reading": "the points are BOTH tighter than uniform (nearest neighbour 38 % of the uniform value, i.e. clumped) AND leave a bigger gap than uniform (largest hole 1.4x) - the signature of independent random draws at small n. Adding the 100 unused packets leaves the largest hole at 0.2041, unchanged, because they share the distribution. So more of the same does not fix coverage.",
+    "where_the_gap_is": "the b top quartile holds 15 of the 139 against 50 in the bottom quartile, so steep planes are undersampled about 3x; the worst-covered points are the corners b -> 1 with s -> 0 and s -> 1"
+  },
+  "the_fill": {
+    "method": "farthest-point (maximin) insertion on a 200x200 grid, seeded from the points that already exist so none is wasted; it minimises exactly the quantity that is bad",
+    "seeded_from_239_in_domain": [
+      {"added": 0, "total": 239, "largest_hole": 0.1972, "uniform_of_that_size": 0.1238, "ratio": 1.59},
+      {"added": 50, "total": 289, "largest_hole": 0.0665, "uniform_of_that_size": 0.1025, "ratio": 0.65},
+      {"added": 100, "total": 339, "largest_hole": 0.0532, "uniform_of_that_size": 0.1071, "ratio": 0.50},
+      {"added": 200, "total": 439, "largest_hole": 0.0426, "uniform_of_that_size": 0.0840, "ratio": 0.51},
+      {"added": 300, "total": 539, "largest_hole": 0.0378, "uniform_of_that_size": 0.0953, "ratio": 0.40},
+      {"added": 400, "total": 639, "largest_hole": 0.0334, "uniform_of_that_size": 0.0714, "ratio": 0.47},
+      {"added": 800, "total": 1039, "largest_hole": 0.0249, "uniform_of_that_size": 0.0615, "ratio": 0.40}
+    ],
+    "reading": "steeply front-loaded: the first 50 points cut the hole by 3x and already beat a random sample of the same size. +300 is 5.2x better than today and 2.5x better than random of that size; past +400 the return flattens.",
+    "cost": {"teacher_seconds_per_cut_cell": [200, 280],
+             "concurrency": "3 x 32 cores at --workers 8 gives 4 runs per machine, 12 concurrent",
+             "plus_300": {"teacher_hours": 2.0, "storage_gb": 930},
+             "plus_400": {"teacher_hours": 2.3, "storage_gb": 1240},
+             "binding_constraint": "storage, not time: 3.3 TB free and about 3.1 GB per new geometry (S_UPPER plus MQ_UPPER). Not storing R_UPPER for new seats, and rebuilding it from S in about 2 s when evaluation needs the whitener, halves the label half of that."}
+  }
+}
