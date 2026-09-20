@@ -22,8 +22,22 @@ reason is not budget:
 
 Same code (`UPSTREAM.json` records it pulled `CLAUDE_EQUI_20260918/src`), same `assemble_two.py`
 sha, same four loads, same exact reference (the exact compliances agree to ~3e-13), same or larger
-parameter count and step count, and 6.4x **more** exposure per geometry. The one switch that
-differs is augmentation, and it is worth 6x on a presented seat and **49-55x on a held-out one**.
+parameter count and step count, and 6.4x **more** exposure per geometry.
+
+**The 6-55x cannot be attributed to augmentation alone, and an earlier draft of this document did.**
+The two arms differ in augmentation *and* in training-pool composition: 8 seats of which 6 are cut,
+against 48 box seats. This repo contains the control that points the other way - CUTMIX_FULLAUG
+mixes 28 cut and 32 box seats **with** augmentation and still degrades box seat 100051 to
+E(mu>2) = 43.9 %, bias +0.62, halfvar 0.77, net -8.15 % (`TWO_ERROR_REGIMES_20260919.md`). Mixing
+cut seats into the pool damages box seats even when augmentation is on. So what the table above
+establishes is that **something in {augmentation, pool composition} is worth 6-55x**, and the
+clean separation has never been run. It is one arm: MULTI_AUGMENT's 48 box seats, same steps,
+augmentation off, about 1.5 h. Nothing should be sized on the 6-55x until it has.
+
+Note the CUTMIX_FULLAUG datum cuts *for* the argument of sections 2-3 rather than against it: if a
+cut cell's target is expressed in a basis that is not rotation covariant, then augmenting a mixed
+pool trains one network against a true constraint and a false one at once, which is exactly the
+damage observed. Condensation removes the false constraint.
 
 Seat 100054, the worst two-cell number anywhere in Codex's package, is `box_only = true`,
 `kind1 = 0`. The cut plane is not its cause. So the honest statement of where we are is:
@@ -75,15 +89,39 @@ operator against compliance through `T`: relative difference **4.7e-10 to 7.6e-6
 values are the seats where the pseudo-solve itself is ill-conditioned, e.g. seat 185 at
 kappa = 1.6e7).
 
-And the algebraic step, which needs no measurement: condensation is invariant under **any** change
-of basis in the eliminated block. For invertible V,
+And the algebraic step: condensation is invariant under **any** change of basis in the eliminated
+block. For invertible V,
 
     (S_BC V) (V^T S_CC V)^-1 (V^T S_CB) = S_BC S_CC^-1 S_CB.
 
+Verified in float64 in the real code path at realistic conditioning (`basis_invariance.py`, random
+V with cond(V) ~ 25, against the teacher's own basis conditioning of ~5): relative change in T of
+6.22e-14 (seat 100000), 1.42e-14 (185), 1.23e-15 (115), 3.71e-16 (100032). An independent check
+made the same measurement at 5.11e-14.
+
 Combined with the witness of section 2 - the subspace is covariant, only the basis is not - this
-says the condensed operator is **exactly** cubic-covariant for a cut cell. The 48-fold
-augmentation that carries the box arms becomes available to the cut family. This is a prediction
-with a cheap direct witness attached (section 5, step 1); it has not yet been measured end to end.
+says the condensed operator is **exactly** cubic-covariant for a cut cell, so the 48-fold
+augmentation becomes available to the cut family. Two things are still unmeasured and must be
+before any retraining:
+
+* **Fragment check.** If a cut detaches a fragment entirely, `S_CC` acquires a six-dimensional
+  nullspace per detached fragment and `T` is undefined. `cho_factor` succeeded on all eight seats
+  measured here, so none of them has one, but kappa(S_CC) and a near-null mode count have to be
+  swept over all 184 cut seats before the labels are rebuilt.
+* **tau differentiability of the condensed cell.** A free cut surface is exactly the configuration
+  where `TAU_DERIVATIVE_PASSES_20260919.md` found the truth itself non-differentiable: for a free
+  cell the one-sided log-slopes of `c(f)` are -6.09 and -21.36 at h = 1e-4, a factor of 3.5,
+  because one CutFEM cell being born moves the softest direction by 60 %. The clamped-platen
+  observable is smooth. So `dT/dtau` under box-supported loads must be checked one-sided before
+  the contract's sensitivity leg can be claimed for condensed cut cells. This is teacher-side and
+  needs no training.
+
+**Deployment restriction.** `T` is exact because external loads and supports enter only on kind-0
+coordinates - `assemble_lattice.py` builds its load ends from `(kind == 0)` and never shares kind-1,
+and `assemble_two` records kind-1 as free surface. A real part's outer boundary is where tractions
+and fixtures usually live, and a load with support on kind-1 needs `S_CC^-1 f_C`, which `T`
+discards. The current gate cannot detect that violation, so the restriction has to be declared
+rather than assumed: either loads enter on box faces, or the loaded faces stay uncondensed.
 
 ## 4. What condensation does to the target, measured
 
@@ -125,6 +163,7 @@ the trace with the same frozen quotient, condense both, and compare.
 | WIDE_CUT | 100024 | 166.3 | **0.471** | [1.62e-3, 1.44e5] | [8.13e-2, 5.15e1] |
 | WIDE_CUT | 100036 | 1079.4 | **0.476** | [2.07e-3, 1.61e6] | [7.53e-2, 8.20e1] |
 | WIDE_BOX | 100051 (control, no cut block) | 0.3085 | 0.3085 | [4.17e-1, 2.27e0] | identical |
+| WIDE_BOX | 100102 (control, no cut block) | 0.3144 | 0.3144 | [4.00e-1, 2.53e0] | identical |
 
 The full-trace error spans four orders of magnitude across eight cut seats and two arms; the
 condensed error is 0.41-0.48 on every one of them. The count of out-of-gate directions barely moves
@@ -194,6 +233,46 @@ replaced (`/root/autodl-tmp/CLAUDE_SOLVER_20260920`): the 2x1x1 machinery check 
 `assemble_two` at `check_two = 3.175237850427948e-14`, the same value as before the change, with
 `worst_compliance_rel = 0.014122046780423392` and adjoint identity 6.04e-15. A converged answer is
 unchanged; only the stopping rule is.
+
+## 8. Order of work, and the discipline that goes with it
+
+Teacher-side first, nothing trained until it is done.
+
+1. **Fragment and conditioning sweep** over all 184 cut seats: kappa(S_CC) and the near-null mode
+   count. A seat with a detached fragment has no condensed operator and must be excluded before
+   the labels are built, not after.
+2. **tau differentiability of the condensed cell**, one-sided, on box-supported loads. This is the
+   contract's sensitivity leg and the free-surface configuration is the one where the truth itself
+   has already been seen to lose a derivative.
+3. **The augmentation control**: 48 box seats, same steps, augmentation off. This is what separates
+   augmentation from pool composition, and no sizing argument is legitimate before it.
+4. Only then: rebuild the condensed labels (deterministic post-processing of the frozen
+   `S_UPPER.npy`, no CutFEM re-run), and train one arm on the 273 geometries as a single family.
+
+Three standing rules for the numbers:
+
+* **Screen on load energy, not on direction counts.** `(below_0_9 + above_1_1)/d` is ~0.72-0.77 for
+  box arms that pass the contract and 0.87-0.93 for cut arms that fail, so it does not discriminate
+  and should not appear in a table. `E(mu>2)` does: 0.04-0.76 % for box seats against 9.47 % for
+  seat 100186, the one box seat that fails the sensitivity leg.
+* **A family restriction must be a teacher-side geometric precondition** that the geometry
+  generator can enforce - cut fraction, minimum fragment volume - and must be declared before the
+  run. Excluding seats by a statistic of the *prediction*, `E(mu>2)` included, is selection on the
+  test metric and is a gate relaxation however it is phrased.
+* **The box claim is 11 of 12, not 12 of 12.** Seat 100186 sits at 7.3-7.8 % on the sensitivity leg
+  in every model including the ensemble, and the reason is its own spectrum, not the model.
+
+Two corrections to scope that follow from cost, both measured:
+
+* The end-to-end demonstration's domain size has to be set from a measured solve-time fit, not
+  assumed. The only multi-module timing on disk is 1102.99 s for 3 modules at 33 666 dofs, against
+  17.3-26.0 s for two-cell box assemblies at 23 000-27 000 dofs. Measure 2x2x2 and 3x3x3 before
+  committing to anything larger.
+* The "run the teacher on boundary cells" fallback is not an in-the-loop option: the measured
+  teacher cost is 38.91 s per cell at q = 12 798 and ~95 s at q = 19 038, and tau moves every
+  optimisation iteration. It survives only as a one-shot verification of a converged design
+  (~488 boundary cells at N = 10, about 13 h), or as a per-part specialist trained once because a
+  part's cut planes are fixed by its outer shape and only tau moves.
 
 ## Provenance
 
