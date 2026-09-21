@@ -1,0 +1,34 @@
+{
+  "captured_at": "2026-09-22T01:27:00+08:00",
+  "source_root": "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921",
+  "network": {"name": "EquiModel legacy config", "parameters": 9692283, "steps": 60000, "train_families": 16, "dev_families": 8, "seed": 92103},
+  "arms": {
+    "LEGACY_FULL_N16_60K_s92103_01": {
+      "loss": "three-bucket log-diagonal (legacy)",
+      "training_seconds": 5145.35,
+      "dev_bucket_log_loss_median": {"9000": 0.0440, "18000": 0.0646, "30000": 0.0104, "45000": 0.0055, "60000": 0.0043},
+      "spectra": {
+        "9000": {"dev0000": {"mu_min": 0.0341, "mu_max": 3675070.3, "e_A": 9238.52}, "dev0002": {"mu_min": 0.0172, "mu_max": 68290477.0, "e_A": 140847.44}},
+        "60000": {"dev0000": {"mu_min": 0.1315, "mu_max": 4.6484, "e_A": 0.3408}, "dev0002": {"mu_min": 0.1108, "mu_max": 9.464, "e_A": 0.3458}}
+      },
+      "responses_60000": {"n": 8, "affine6_max_absolute_compliance": {"median": 0.0721, "max": 0.0846}, "affine6_max_displacement": {"median": 1.2794, "max": 3.6936}}
+    },
+    "LEGACY_FULL_ENERGY_N16_60K_s92103_01": {
+      "loss": "0.5 L_log + 0.5 L_action/c_case (32 rows x 8 of 64 probes per step)",
+      "training_seconds": 8573.02,
+      "dev_bucket_log_loss_median": {"9000": 0.3767, "18000": 0.1126, "30000": 0.1066, "45000": 0.0767, "60000": 0.0789},
+      "spectra": {
+        "9000": {"dev0000": {"mu_min": 0.047, "mu_max": 294818.3, "e_A": 0.6728}, "dev0002": {"mu_min": 0.0359, "mu_max": 1780911.6, "e_A": 2.1579}},
+        "60000": {"dev0000": {"mu_min": 0.0996, "mu_max": 211619845.5, "e_A": 1770.53}, "dev0002": {"mu_min": 0.1938, "mu_max": 9904277.0, "e_A": 133.86}}
+      },
+      "responses_9000": {"n": 8, "affine6_max_absolute_compliance": {"median": 4.9975, "max": 8.3422}, "affine6_max_displacement": {"median": 19.6081, "max": 30.0135}},
+      "responses_60000": {"n": 8, "affine6_max_absolute_compliance": {"median": 0.5994, "max": 0.8170}, "affine6_max_displacement": {"median": 3.3870, "max": 8.5739}},
+      "status": "spectra for 6 of 8 dev cells at 60000 not yet computed; ASSESS_LEGACY_ENERGY_01_060000 still running"
+    },
+    "SCALE_EXPANSION_01_N16_s92103": {
+      "network": "Fresh GP small net, 516506 parameters, entry proxy loss",
+      "responses_18000": {"n": 24, "affine6_max_absolute_compliance": {"median": 2.2242, "max": 14.0868}, "affine6_max_displacement": {"median": 23.1872, "max": 179.6784}}
+    }
+  },
+  "reading": "Legacy loss on the legacy network recovers the historical e_A 0.34 on the new data at 60k; the energy-action supervision arm loses on every measured physical quantity at 60k and its spectral error worsens between 9k and 60k."
+}
