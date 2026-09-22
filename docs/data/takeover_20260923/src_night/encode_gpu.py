@@ -24,6 +24,7 @@ ROOT = Path('/root/autodl-tmp/CUTFEM_FRESH_GP_20260921')
 MN = ROOT / 'diagnostics' / 'MECHANICS_NETWORK_20260922_01'
 HS = ROOT / 'diagnostics' / 'HIERARCHY_STRAIN_20260922_01'
 dev = torch.device('cuda:0')
+CPU_TRACE = False
 dt = torch.float64
 
 
@@ -51,7 +52,7 @@ def spmm(a, b):
     return torch.sparse.mm(a, b)
 
 
-def elements_polyref(case, s, order, T):
+def elements_polyref(case, s, order, T, levels=0):
     import element_moments as EM, polyref_torch as PT
     ctx = json.loads((ROOT / 'packets' / case / 'FRESH_CONTEXT.json').read_text())
     n = int(ctx['n']); E = float(ctx['material']['E']); nu = float(ctx['material']['nu'])
@@ -66,7 +67,7 @@ def elements_polyref(case, s, order, T):
         raise ValueError('ONE_NODE_ORDERING_EXPECTED')
     Tm = torch.tensor(EM.pattern_operators(keys[0].reshape(27, 3), lam, mu_, n)[1], dtype=dt, device=dev)  # 125x81x81
     with T('E1a_moments'):
-        M = torch.tensor(PT.cell_moments(arr['CELL_INDICES.npy'], n, taus, normal, offset, s, rule_order=order), dtype=dt, device=dev)
+        M = torch.tensor(PT.cell_moments(arr['CELL_INDICES.npy'], n, taus, normal, offset, s, rule_order=order, levels=levels), dtype=dt, device=dev)
     nb = 3 * len(arr['NODES.npy'])
     dofs = torch.as_tensor(arr['dofs.npy'], dtype=torch.long, device=dev)
     iu = torch.triu_indices(81, 81, device=dev)
@@ -108,18 +109,26 @@ def ghost(case, nb):
     return coo(torch.as_tensor(rr, device=dev), torch.as_tensor(cc, device=dev), torch.as_tensor(vv, dtype=dt, device=dev), (nb, nb))
 
 
-def blocks_from_polyref(case, s, order, T):
-    Kb, nb, ctx = elements_polyref(case, s, order, T)
+def blocks_from_polyref(case, s, order, T, levels=0):
+    Kb, nb, ctx = elements_polyref(case, s, order, T, levels)
     G = ghost(case, nb)
     gamma = float(json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['gp']['gamma'])
     P = sparse.load_npz(ROOT / 'packets' / case / 'ORIGINAL_FROM_TRACE_FREE.npz').tocsr()
     m = json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['full_trace_dimension']
     with T('E1d_trace_compile_PtKP'):
         K = (Kb + gamma * G).coalesce()
-        Pq = P.tocoo()
-        Pc = coo(torch.as_tensor(Pq.row.astype(np.int64), device=dev), torch.as_tensor(Pq.col.astype(np.int64), device=dev),
-                 torch.as_tensor(Pq.data, dtype=dt, device=dev), P.shape)
-        Kc = spmm(Pc.t().coalesce(), spmm(K, Pc)).coalesce()
+        del Kb, G
+        if CPU_TRACE:  # large cells: P^T K P with scipy (K assembled on the GPU), result back to the GPU
+            ki, kv = K.indices().cpu().numpy(), K.values().cpu().numpy(); del K
+            Ks = sparse.csr_matrix((kv, (ki[0], ki[1])), shape=(nb, nb))
+            Kcs = (P.T @ Ks @ P).tocoo(); del Ks
+            Kc = coo(torch.as_tensor(Kcs.row.astype(np.int64), device=dev), torch.as_tensor(Kcs.col.astype(np.int64), device=dev),
+                     torch.as_tensor(Kcs.data, dtype=dt, device=dev), Kcs.shape)
+        else:
+            Pq = P.tocoo()
+            Pc = coo(torch.as_tensor(Pq.row.astype(np.int64), device=dev), torch.as_tensor(Pq.col.astype(np.int64), device=dev),
+                     torch.as_tensor(Pq.data, dtype=dt, device=dev), P.shape)
+            Kc = spmm(Pc.t().coalesce(), spmm(K, Pc)).coalesce()
         # original compiler: upper triangle, then symmetric replay
         i, v = Kc.indices(), Kc.values()
         up = i[0] <= i[1]
@@ -203,7 +212,7 @@ def prolongation(points, owner, n_nodes):
     return P, bidx, rank, dict(Unode=Unode, patch=patch_node, colstart=colstart, rank=rank)
 
 
-def galerkin(A, info, chunk=1 << 20):
+def galerkin(A, info, chunk=1 << 18):
     """P^T A P for a patch-block-diagonal P, accumulated as 12x12 blocks per coupled patch pair."""
     Unode, patch, colstart, rank = info['Unode'], info['patch'], info['colstart'], info['rank']
     npatch = len(rank)
@@ -269,11 +278,13 @@ def pair_fine_blocks(A, theta, max_nodes=4):
 
 
 def main(a):
+    global CPU_TRACE
+    CPU_TRACE = a.cpu_trace
     T = Timer()
     out = Path(a.output); out.mkdir(parents=True, exist_ok=False)
     torch.cuda.synchronize(); t_all = time.perf_counter()
     if a.elements == 'polyref':
-        A, C, D = blocks_from_polyref(a.case, a.s, a.rule_order, T)
+        A, C, D = blocks_from_polyref(a.case, a.s, a.rule_order, T, a.levels)
     else:
         with T('E1_teacher_blocks_load'):
             A, C, D = blocks_teacher(a.case, a.asset_root)
@@ -345,7 +356,7 @@ def main(a):
     algebra = evalcheb.complete_algebra(model, probe_t, evaluator)
     witness, white = evaluator.spectral_witness(model, R, quotient.lift, quotient.reduce, seed=X.SEED, maxiter=X.ITERS, return_vector=True)
     replay, _ = evalcheb.replay_witness(model, R, quotient, white)
-    res = dict(case=a.case, elements=a.elements, s=a.s, rule_order=a.rule_order, pair_theta=a.pair_theta,
+    res = dict(case=a.case, elements=a.elements, s=a.s, levels=a.levels, rule_order=a.rule_order, pair_theta=a.pair_theta,
                dimensions=[A.shape[0], P1.shape[1], P2.shape[1]], pair_record=prec,
                ritz_min=float(rv.min()), design_a=a_design, depth=depth, tolerance=a.tolerance,
                stage_seconds=T.rows, encode_seconds=encode_seconds, query_seconds=query,
@@ -365,6 +376,8 @@ if __name__ == '__main__':
     ap.add_argument('--asset-root', default=None); ap.add_argument('--reference', default=None)
     ap.add_argument('--elements', choices=['teacher', 'polyref'], default='teacher')
     ap.add_argument('--s', type=int, default=4); ap.add_argument('--rule-order', type=int, default=4)
+    ap.add_argument('--levels', type=int, default=0)
+    ap.add_argument('--cpu-trace', action='store_true')
     ap.add_argument('--pair-theta', type=float, default=0.9)
     ap.add_argument('--lanczos', type=int, default=80); ap.add_argument('--safety', type=float, default=0.5)
     ap.add_argument('--tolerance', type=float, default=1e-6)
