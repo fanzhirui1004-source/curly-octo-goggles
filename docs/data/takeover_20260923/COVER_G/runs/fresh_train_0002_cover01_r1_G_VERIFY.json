@@ -1,0 +1,10 @@
+{
+  "case": "fresh_train_0002_cover01_r1",
+  "cells_equal": true,
+  "nodes_equal": true,
+  "elements": 14789,
+  "moments_bitwise_equal": true,
+  "moment_relative_max": 0.0,
+  "moment_relative_median": 0.0,
+  "status": "MATCH"
+}

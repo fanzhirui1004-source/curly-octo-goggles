@@ -1,0 +1,27 @@
+{
+  "status": "FULL_SPECTRUM_FINISHED",
+  "case": "fresh_train_0013_d0_v1",
+  "depth": 64,
+  "physical_dimension": 20286,
+  "mu_min": 0.9999999999998399,
+  "mu_max": 1.0013294311825294,
+  "outside_work_gate": 0,
+  "outside_target_gate": 0,
+  "work_gate": true,
+  "target_gate_spectrum": true,
+  "D_over_d": 2.138336033921842e-10,
+  "D_gate": 0.0001,
+  "asymmetry": 1.6563383858081912e-13,
+  "extreme_direct_action_relative_residual": [
+    2.0998409658173536e-14,
+    2.3043268594069846e-14
+  ],
+  "action_seconds": 4776.0908402353525,
+  "eig_seconds": 184.82805762812495,
+  "seconds": 5003.676157582551,
+  "peak_rss_bytes": 18730496000,
+  "cuda_peak_bytes": 10460294144,
+  "scientific_pass": false,
+  "scope": "Complete boundary spectrum with exact FE local matrices; not a learned-coefficient result",
+  "target_gate": true
+}

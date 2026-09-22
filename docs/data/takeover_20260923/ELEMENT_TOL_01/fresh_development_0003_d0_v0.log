@@ -1,0 +1,23 @@
+{"event": "LOADED", "rebuild": 2.1087789100147948e-17, "elements": 358, "q": 11574, "seconds": 0.7431189492344856}
+{"event": "EXACT", "mu_min": 0.9999999999911866, "mu_max": 1.0000000000189775, "seconds": 54.96636798232794}
+{"event": "VARIANT", "family": "spectral", "eps": 0.01, "mu_min": 0.9932908873382217, "mu_max": 1.0063580485131698, "nonpositive": 0, "outside_work": 0, "outside_target": 0, "D_over_d": 3.4516987374737463e-06, "within_theory_band": true, "seconds": 57.97218303382397}
+{"event": "VARIANT", "family": "spectral", "eps": 0.03, "mu_min": 0.9806466369280321, "mu_max": 1.0198059841733076, "nonpositive": 0, "outside_work": 0, "outside_target": 0, "D_over_d": 3.141195169028529e-05, "within_theory_band": true, "seconds": 56.592585146427155}
+{"event": "VARIANT", "family": "spectral", "eps": 0.1, "mu_min": 0.9346276475678055, "mu_max": 1.0656487376525365, "nonpositive": 0, "outside_work": 0, "outside_target": 3441, "D_over_d": 0.0003479585695576933, "within_theory_band": true, "seconds": 56.04818032681942}
+{"event": "VARIANT", "family": "entry", "eps": 0.01, "mu_min": -1517.5891132248917, "mu_max": 1021.7079456209372, "nonpositive": 76, "outside_work": 1136, "outside_target": 3415, "D_over_d": null, "within_theory_band": false, "seconds": 54.96563306078315}
+{"event": "VARIANT", "family": "entry", "eps": 0.03, "mu_min": -6180.173068682247, "mu_max": 8579.177343957846, "nonpositive": 208, "outside_work": 3148, "outside_target": 6783, "D_over_d": null, "within_theory_band": false, "seconds": 53.976429138332605}
+/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_08/element_tolerance.py:133: RuntimeWarning: invalid value encountered in sqrt
+  s = 1 / np.sqrt(A.diagonal()); As = (sparse.diags(s) @ A @ sparse.diags(s)).tocsc()
+Traceback (most recent call last):
+  File "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_08/element_tolerance.py", line 175, in <module>
+    main(a)  # thread count set by OMP/MKL/OPENBLAS_NUM_THREADS in the launcher
+    ^^^^^^^
+  File "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_08/element_tolerance.py", line 153, in main
+    mu = spectrum(assemble(Kp, dofs, nb))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_08/element_tolerance.py", line 134, in spectrum
+    f = splu(As, permc_spec='MMD_AT_PLUS_A', diag_pivot_thresh=0., options={'SymmetricMode': True})
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/lib/python3.12/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py", line 444, in splu
+    return _superlu.gstrf(N, A.nnz, A.data, indices, indptr,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Factor is exactly singular

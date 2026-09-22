@@ -1,0 +1,20 @@
+{
+  "case": "fresh_train_0013_d0_v1",
+  "depth": 64,
+  "physical_dimension": 20286,
+  "batch": 256,
+  "definition": "G[:,j] = R^-T B S_hat B^T R^-1 e_j via original complete boundary action",
+  "pair_theta": 0.9,
+  "finite_nomination": "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/CROSS_CASE_04_PAIR0p9/fresh_train_0013_d0_v1/RESULT.json",
+  "finite_nomination_sha256": "4913f6febec17828624225c1ad08c730095f86cd8c87ae38f39ca2bd95489d05",
+  "port_source_sha256": {
+    "cross_case_chebyshev.py": "0f1170dbe0d624ed14f0102b1ff4fc397778435a5e06af996fc344d009782e60",
+    "cross_case_full_spectrum.py": "ca9c8f07ac62506f7f2225a944cec227d7ff2809b45429fde426a286ac75d823",
+    "hierarchy_strain_network_xcase.py": "b84184d5f6cc02c1651d3846676c17c687e8cead669160992c5c7230e98a9de5"
+  },
+  "modes_removed": 0,
+  "jitter": false,
+  "clipping": false,
+  "pseudoinverse": false,
+  "training": false
+}

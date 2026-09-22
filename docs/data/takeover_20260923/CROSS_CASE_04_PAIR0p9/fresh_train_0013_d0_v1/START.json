@@ -1,0 +1,47 @@
+{
+  "case": "fresh_train_0013_d0_v1",
+  "pid": 217883,
+  "host": "autodl-container-70174f9982-eae5cdfb",
+  "device": "NVIDIA GeForce RTX 5090",
+  "torch": "2.8.0+cu128",
+  "frozen_source_sha256": {
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/HIERARCHICAL_MECHANICS_20260922_01/source_assets_01/prepare_hierarchy.py": "fb0e4e1c38072c4db621dad3bafa09b8ce88d3554d57773bfd09e97a236f1495",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/HIERARCHY_STRAIN_20260922_01/source_assets_01/build_strain_hierarchy.py": "3223e0ad8deccc662c3be5a313dc76b267811bd1d466ee782782a53402491187",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/HIERARCHY_STRAIN_20260922_01/source_chebyshev_full_01/chebyshev_strain_network.py": "397b93168f137b7219b22edaec07fa18353cfa02b72563b8bb9360fbffc97907",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/HIERARCHY_STRAIN_20260922_01/source_chebyshev_01/evaluate_chebyshev_strain.py": "89a2f537ac0ec8fd6576c4538da67fff8b0057133413b829e7a6874df175e3e6",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/source_v1/mechanics_network.py": "13d1fd69dda50135ac4530be757035e00d775eb8e3c1699a673f3d252eb04b9e",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/source_v1/run_mechanics.py": "6513135e480b79c79d98b1baed1c44b866164d28c8599c890a5a8564065ab808",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/source_eval_03/evaluate_mechanics.py": "fe60a6f57812c056fef34e509dafa300a79dae6269d6cd2c0a04fe4cbee2fe41"
+  },
+  "port_source_sha256": {
+    "cross_case_chebyshev.py": "0f1170dbe0d624ed14f0102b1ff4fc397778435a5e06af996fc344d009782e60",
+    "hierarchy_strain_network_xcase.py": "b84184d5f6cc02c1651d3846676c17c687e8cead669160992c5c7230e98a9de5"
+  },
+  "input_sha256": {
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/assets/fresh_train_0013_d0_v1/compiled/A.npz": "5d378857e25c4bc57d08cbfca0cd29cadd5a39eb49b2a0c88d7f454efbb1721c",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/assets/fresh_train_0013_d0_v1/compiled/C.npz": "5c779b6b75310111b750e68e6d41370e1205b86fe58eb6279c0e9cce62d3eed9",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/assets/fresh_train_0013_d0_v1/compiled/D.npz": "9daf15aa36afd65fdd1456850a66e324c46337772b55fdc7748d80aa36da2dcd",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/assets/fresh_train_0013_d0_v1/compiled/Q_RIGID.npy": "b1cb6f0de123ad39cddd343f990d4c98b97696d686e3bc035389d745365e6c23",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/assets/fresh_train_0013_d0_v1/compiled/INTERIOR_RIGID.npy": "719ecf2bc05d07162df9fb927f7e2dd96c3e1a28f1b7c1dede17ee5376e0d9a7",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/assets/fresh_train_0013_d0_v1/compiled/INTERIOR_POINTS.npy": "e4acad8f885a733bef18879cc5114034df961c899529c016a1b82e28ee0f19ec",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/assets/fresh_train_0013_d0_v1/compiled/QUALIFICATION_PROBES.npz": "2179f4637f361b377466bb4e3cb378130bbd4f8dea59d92a532698e30e717359",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/targets/fresh_train_0013_d0_v1_v1/REFERENCE_RQ.npy": "514d35f1b105b2f66af81cf8d0161b3efb3a2c25afb0032c181f52e5d89ea525",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/targets/fresh_train_0013_d0_v1_v1/RIGID_Q.npy": "4809464170c4731cf73b0f44b41ff099e5fbf2289ccf4faa2d20d7ab59cd8453",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/MODERATE_FREE_01/REFERENCE_STRUCTURE.npz": "b6e2eb665b699d7d7763f893a0c6a587c31e99cc9452428d99678645d05e66d7",
+    "/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/diagnostics/MECHANICS_NETWORK_20260922_01/MODERATE_FREE_01/VALIDATION_Z.npy": "012a6c8032e89e72c26dc17055d0aa801de6dccc12006f77a967c35af927b171"
+  },
+  "deviation": "coarsest dense-factor size guard 800 -> 8192; optional strong-pair fine smoother blocks (--pair-theta)",
+  "pair_theta": 0.9,
+  "depths": [
+    16,
+    32,
+    64
+  ],
+  "witness_seed": 92219,
+  "witness_iterations": 20,
+  "threads": 8,
+  "wall": 7200,
+  "rss_gib": 48,
+  "gpu_gib": 28,
+  "training": false
+}
