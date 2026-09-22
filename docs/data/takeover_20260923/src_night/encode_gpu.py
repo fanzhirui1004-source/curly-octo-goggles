@@ -25,6 +25,7 @@ MN = ROOT / 'diagnostics' / 'MECHANICS_NETWORK_20260922_01'
 HS = ROOT / 'diagnostics' / 'HIERARCHY_STRAIN_20260922_01'
 dev = torch.device('cuda:0')
 CPU_TRACE = False
+COVER_INPUTS = None  # teacher-free inputs (P, ghost, interior bookkeeping) built by gp/cover_blocks.py
 dt = torch.float64
 
 
@@ -93,6 +94,10 @@ def elements_polyref(case, s, order, T, levels=0):
 
 
 def ghost(case, nb):
+    if COVER_INPUTS is not None:
+        G = sparse.load_npz(COVER_INPUTS / 'GHOST.npz').tocoo()
+        return coo(torch.as_tensor(G.row.astype(np.int64), device=dev), torch.as_tensor(G.col.astype(np.int64), device=dev),
+                   torch.as_tensor(G.data, dtype=dt, device=dev), (nb, nb))
     src = ROOT / 'source_archives' / case
     inv = json.loads((src / 'INVENTORY.json').read_text())
     o = next(s for s in inv['stages'] if s.endswith('_O'))
@@ -113,8 +118,11 @@ def blocks_from_polyref(case, s, order, T, levels=0):
     Kb, nb, ctx = elements_polyref(case, s, order, T, levels)
     G = ghost(case, nb)
     gamma = float(json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['gp']['gamma'])
-    P = sparse.load_npz(ROOT / 'packets' / case / 'ORIGINAL_FROM_TRACE_FREE.npz').tocsr()
-    m = json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['full_trace_dimension']
+    if COVER_INPUTS is not None:
+        P = sparse.load_npz(COVER_INPUTS / 'P.npz').tocsr(); m = json.loads((COVER_INPUTS / 'RESULT.json').read_text())['m']
+    else:
+        P = sparse.load_npz(ROOT / 'packets' / case / 'ORIGINAL_FROM_TRACE_FREE.npz').tocsr()
+        m = json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['full_trace_dimension']
     with T('E1d_trace_compile_PtKP'):
         K = (Kb + gamma * G).coalesce()
         del Kb, G
@@ -278,8 +286,9 @@ def pair_fine_blocks(A, theta, max_nodes=4):
 
 
 def main(a):
-    global CPU_TRACE
+    global CPU_TRACE, COVER_INPUTS
     CPU_TRACE = a.cpu_trace
+    COVER_INPUTS = Path(a.cover_inputs) if a.cover_inputs else None
     T = Timer()
     out = Path(a.output); out.mkdir(parents=True, exist_ok=False)
     torch.cuda.synchronize(); t_all = time.perf_counter()
@@ -288,7 +297,7 @@ def main(a):
     else:
         with T('E1_teacher_blocks_load'):
             A, C, D = blocks_teacher(a.case, a.asset_root)
-    comp = (MN / 'assets' / a.case if a.asset_root is None else Path(a.asset_root) / a.case) / 'compiled'
+    comp = COVER_INPUTS if COVER_INPUTS is not None else (MN / 'assets' / a.case if a.asset_root is None else Path(a.asset_root) / a.case) / 'compiled'
     points = torch.tensor(np.load(comp / 'INTERIOR_POINTS.npy'), dtype=dt, device=dev)
     nn_ = len(points)
     with T('E2a_patches_basis'):
@@ -378,6 +387,7 @@ if __name__ == '__main__':
     ap.add_argument('--s', type=int, default=4); ap.add_argument('--rule-order', type=int, default=4)
     ap.add_argument('--levels', type=int, default=0)
     ap.add_argument('--cpu-trace', action='store_true')
+    ap.add_argument('--cover-inputs', default=None)
     ap.add_argument('--pair-theta', type=float, default=0.9)
     ap.add_argument('--lanczos', type=int, default=80); ap.add_argument('--safety', type=float, default=0.5)
     ap.add_argument('--tolerance', type=float, default=1e-6)
