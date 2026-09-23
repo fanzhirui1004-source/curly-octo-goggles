@@ -30,7 +30,10 @@ def main(workers, out, case):
     eps = os.environ.get('TAU_EPS', '0')                # design perturbation: every thickness corner scaled by 1 + eps
     if eps != '0':
         ctx['case']['tau_corners'] = [str(Fraction(v) * (1 + Fraction(eps))) for v in ctx['case']['tau_corners']]
-    row = dict(case=case, workers=workers, tau_eps=eps)
+    uni = os.environ.get('TAU_UNIFORM')                 # uniform thickness (all corners), e.g. for tiled lattices
+    if uni:
+        ctx['case']['tau_corners'] = [str(Fraction(uni))] * 8
+    row = dict(case=case, workers=workers, tau_eps=eps, tau_uniform=uni)
     t0 = time.perf_counter()
     c = from_case(ctx['case'], n)
     topo, stats = fast_topology.compile_support_fast(c, workers, global_proof=False)
@@ -83,7 +86,10 @@ def main(workers, out, case):
     if not np.isin(box_nodes, nodes).all():
         raise ValueError('BOX_NODE_NOT_IN_BODY')
     row['total_seconds'] = time.perf_counter() - t0
-    d = Path(out) / (case if eps == '0' else f'{case}_eps{eps.replace("/", "_")}'); d.mkdir(parents=True, exist_ok=True)
+    sub = case if eps == '0' else f'{case}_eps{eps.replace("/", "_")}'
+    if uni:
+        sub += f'_uni{uni.replace("/", "_")}'
+    d = Path(out) / sub; d.mkdir(parents=True, exist_ok=True)
     np.save(d / 'NODES.npy', nodes); np.save(d / 'CELL_INDICES.npy', cells); np.save(d / 'dofs.npy', dofs)
     np.save(d / 'GP_FACES.npy', faces); np.save(d / 'BOX_NODES.npy', box_nodes)
     tpl = Path(out) / f'GP_TEMPLATES_n{n}.npz'
