@@ -25,6 +25,7 @@ MN = ROOT / 'diagnostics' / 'MECHANICS_NETWORK_20260922_01'
 HS = ROOT / 'diagnostics' / 'HIERARCHY_STRAIN_20260922_01'
 dev = torch.device('cuda:0')
 CPU_TRACE = False
+GPU_EXPAND = False
 COVER_INPUTS = None  # teacher-free inputs (P, ghost, interior bookkeeping) built by gp/cover_blocks.py
 dt = torch.float64
 
@@ -126,7 +127,9 @@ def blocks_from_polyref(case, s, order, T, levels=0):
     with T('E1d_trace_compile_PtKP'):
         K = (Kb + gamma * G).coalesce()
         del Kb, G
-        if CPU_TRACE:  # large cells: P^T K P with scipy (K assembled on the GPU), result back to the GPU
+        if GPU_EXPAND:
+            Kc = ptkp_upper_gpu(K, P); del K
+        elif CPU_TRACE:  # large cells: P^T K P with scipy (K assembled on the GPU), result back to the GPU
             ki, kv = K.indices().cpu().numpy(), K.values().cpu().numpy(); del K
             Ks = sparse.csr_matrix((kv, (ki[0], ki[1])), shape=(nb, nb))
             Kcs = (P.T @ Ks @ P).tocoo(); del Ks
@@ -152,6 +155,28 @@ def blocks_from_polyref(case, s, order, T, levels=0):
         C = block(i[0] >= m, i[1] < m, m, 0, (n0, m))
         D = block(i[0] < m, i[1] < m, 0, 0, (m, m))
     return A, C, D
+
+
+def ptkp_upper_gpu(K, P, chunk=1 << 24):
+    """Upper triangle of P^T K P by direct triplet expansion on the GPU: every K entry (i, j, v) contributes
+    v * P[i, a] * P[j, b] at (a, b) for the nonzeros of rows i and j of P (P is a permutation on full cells and has one
+    nonzero in most rows otherwise). Only a <= b is kept, which is all the symmetric replay below reads."""
+    ip = torch.as_tensor(P.indptr.astype(np.int64), device=dev); ix = torch.as_tensor(P.indices.astype(np.int64), device=dev)
+    pv = torch.as_tensor(P.data, dtype=dt, device=dev); cnt = ip[1:] - ip[:-1]
+    ki, kv = K.indices(), K.values(); parts = []
+    for s0 in range(0, kv.numel(), chunk):
+        i, j, v = ki[0, s0:s0 + chunk], ki[1, s0:s0 + chunk], kv[s0:s0 + chunk]
+        ri, rj = cnt[i], cnt[j]; m = ri * rj
+        e = torch.repeat_interleave(torch.arange(len(m), device=dev), m)
+        t = torch.arange(len(e), device=dev) - (torch.cumsum(m, 0) - m)[e]
+        pa = ip[i[e]] + t // rj[e]; pb = ip[j[e]] + t % rj[e]
+        ca, cb = ix[pa], ix[pb]; keep = ca <= cb
+        parts.append(coo(ca[keep], cb[keep], (v[e] * pv[pa] * pv[pb])[keep], (P.shape[1], P.shape[1])))
+        del e, t, pa, pb, ca, cb, keep
+    if len(parts) == 1:
+        return parts[0]
+    return coo(torch.cat([q.indices()[0] for q in parts]), torch.cat([q.indices()[1] for q in parts]),
+               torch.cat([q.values() for q in parts]), (P.shape[1], P.shape[1]))
 
 
 def blocks_teacher(case, asset_root):
@@ -423,8 +448,9 @@ class _Solve(torch.autograd.Function):
 
 
 def main(a):
-    global CPU_TRACE, COVER_INPUTS
+    global CPU_TRACE, COVER_INPUTS, GPU_EXPAND
     CPU_TRACE = a.cpu_trace
+    GPU_EXPAND = a.gpu_trace
     COVER_INPUTS = Path(a.cover_inputs) if a.cover_inputs else None
     T = Timer()
     out = Path(a.output); out.mkdir(parents=True, exist_ok=False)
@@ -544,6 +570,7 @@ if __name__ == '__main__':
     ap.add_argument('--s', type=int, default=4); ap.add_argument('--rule-order', type=int, default=4)
     ap.add_argument('--levels', type=int, default=0)
     ap.add_argument('--cpu-trace', action='store_true')
+    ap.add_argument('--gpu-trace', action='store_true')
     ap.add_argument('--cover-inputs', default=None)
     ap.add_argument('--gpu-pairs', action='store_true')
     ap.add_argument('--small-query', action='store_true')
