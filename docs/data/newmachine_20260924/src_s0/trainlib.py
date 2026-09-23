@@ -16,6 +16,7 @@ import ops as OP
 
 dev, dt = TE.dev, TE.dt
 CLASSES = ('force', 'macro', 'grf')
+ALL_CLASSES = ('force', 'macro', 'grf', 'support')
 
 
 class _Energy(torch.autograd.Function):
@@ -70,11 +71,12 @@ class _Sens(torch.autograd.Function):
 class Geo:
     """Everything one geometry contributes to training: exact K, ports, rigid split, banks, network input data."""
 
-    def __init__(self, case, body_dir, data_root, neumann=True, log=print):
+    def __init__(self, case, body_dir, data_root, neumann=True, log=print, cell=None, load_banks=True):
         t0 = time.perf_counter()
         self.case = case
-        C = TE.Cell(case, body_dir, log=lambda s_: None)
-        C.assemble()
+        C = cell if cell is not None else TE.Cell(case, body_dir, log=lambda s_: None)
+        if cell is None:
+            C.assemble()
         if neumann:
             C.factor(neumann=True)
             C.sol_I.free(); C.sol_I = None                              # only the Neumann factor is needed
@@ -84,8 +86,9 @@ class Geo:
         ports = json.loads((d / 'PORTS.json').read_text())
         if not np.array_equal(np.asarray(ports['port_node_ids']), C.port_node_ids):
             raise ValueError('PORT_ORDER')
-        self.banks = {s: {c: torch.as_tensor(np.load(d / f'{s}_{c}.npy'), device=dev).T.contiguous() for c in CLASSES}
-                      for s in ('train', 'val', 'test')}
+        self.classes = [c for c in ALL_CLASSES if (d / f'train_{c}.npy').exists()]
+        self.banks = {s: {c: torch.as_tensor(np.load(d / f'{s}_{c}.npy'), device=dev).T.contiguous() for c in self.classes}
+                      for s in ('train', 'val', 'test')} if load_banks else None
         g = np.stack(np.unravel_index(C.port_node_ids, (2 * C.n + 1,) * 3), 1) / (2 * C.n)
         ctr = g.mean(0)
         self.RP = OP.rigid_raw(C.port_node_ids, C.n, ctr); self.RA = OP.rigid_raw(C.nodes, C.n, ctr)
@@ -94,8 +97,9 @@ class Geo:
         self.np_, self.nb = C.np_, C.nb
         self.adv = None
         self.sens = None
-        if (d / 'train_force_sens.npy').exists():
-            self.sens = {s_: {c: torch.as_tensor(np.load(d / f'{s_}_{c}_sens.npy'), device=dev).T.contiguous() for c in CLASSES}
+        if load_banks and (d / 'train_force_sens.npy').exists():
+            self.sens = {s_: {c: torch.as_tensor(np.load(d / f'{s_}_{c}_sens.npy'), device=dev).T.contiguous() for c in self.classes
+                              if (d / f'{s_}_{c}_sens.npy').exists()}
                          for s_ in ('train', 'val', 'test')}
             C.dmoments()
             self.dM32 = C.dM.to(torch.float32); self.Tm32 = C.Tm.to(torch.float32)
@@ -117,7 +121,7 @@ class Geo:
 
     def sample_with_sens(self, B, gen, mix):
         """Like sample(), plus exact sensitivities (8, B) where available (NaN columns for adversarial directions)."""
-        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or self.adv is not None)]
+        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or self.adv is not None) and (k == 'adv' or k in self.classes)]
         w = np.asarray([mix[k] for k in names], float)
         counts = gen.multinomial(B, w / w.sum())
         cols, sc = [], []
@@ -128,7 +132,7 @@ class Geo:
             bank = self.adv if k == 'adv' else self.banks['train'][k]
             j = torch.as_tensor(gen.integers(0, bank.shape[1], m), device=dev)
             cols.append(bank[:, j].to(torch.float32))
-            if k == 'adv' or self.sens is None:
+            if k == 'adv' or self.sens is None or k not in self.sens['train']:
                 sc.append(torch.full((8, m), float('nan'), dtype=dt, device=dev))
             else:
                 sc.append(self.sens['train'][k][:, j])
@@ -138,7 +142,7 @@ class Geo:
 
     def sample(self, B, gen, mix):
         """Batch of B training directions: class mix (dict class -> weight, incl. 'adv'); gen: numpy Generator."""
-        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or self.adv is not None)]
+        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or self.adv is not None) and (k == 'adv' or k in self.classes)]
         w = np.asarray([mix[k] for k in names], float)
         counts = gen.multinomial(B, w / w.sum())
         cols = []
@@ -165,12 +169,12 @@ class Geo:
     @torch.no_grad()
     def evaluate(self, model, split='val', chunk=32):
         out = {}
-        for c in CLASSES:
+        for c in self.classes:
             Q = self.banks[split][c]
             errs = torch.cat([energy(self.field(model, Q[:, j:j + chunk]), self.C.K) - 1 for j in range(0, Q.shape[1], chunk)])
             e = errs.cpu().numpy()
             out[c] = dict(mean=float(e.mean()), p90=float(np.quantile(e, .9)), max=float(e.max()), min=float(e.min()))
-            if self.sens is not None:
+            if self.sens is not None and c in self.sens[split]:
                 S = self.sens[split][c]
                 se = []
                 for j in range(0, Q.shape[1], chunk):

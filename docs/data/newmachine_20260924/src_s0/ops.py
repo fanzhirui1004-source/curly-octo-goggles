@@ -37,7 +37,7 @@ class ExactOp:
 
     def field(self, q):
         if self.cell.sol_I is None:
-            self.cell.factor(neumann=False)
+            self.cell.factor(neumann=False, fp32=True)                       # + fp64 refinement in extend
         return self.cell.extend(q)
 
 

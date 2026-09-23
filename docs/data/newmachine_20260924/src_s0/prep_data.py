@@ -112,8 +112,9 @@ def make_banks(C, out, gen, log):
 def netdata(C, out):
     N = len(C.nodes)
     diag3 = torch.zeros((N, 3, 3), dtype=dt, device=dev)
-    same = (C.ru // 3) == (C.cu // 3)
-    r, c, v = C.ru[same], C.cu[same], C.vals[same]
+    ru, cu = C.ru.long(), C.cu.long()
+    same = (ru // 3) == (cu // 3)
+    r, c, v = ru[same], cu[same], C.vals[same]
     diag3.index_put_((r // 3, r % 3, c % 3), v, accumulate=True)
     off = r != c
     diag3.index_put_((c[off] // 3, c[off] % 3, r[off] % 3), v[off], accumulate=True)

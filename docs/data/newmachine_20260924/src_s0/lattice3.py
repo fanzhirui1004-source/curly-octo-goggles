@@ -177,6 +177,10 @@ class Lattice:
         for i, (cd, op) in enumerate(zip(self.cells, ops)):
             q = self.gather(U, i)
             out['energy'].append((q * op.apply(q)).sum(0).cpu().numpy())
+            import os
+            if i > 0 and os.environ.get('LAT_SKIP_NBR_SENS'):                  # neighbour sensitivities skipped
+                out['sens'].append(np.full((8, q.shape[1]), np.nan))
+                continue
             u = op.field(q)
             out['sens'].append(cd['cell'].sens(u).cpu().numpy())                 # 8 x loads
             if hasattr(cd['cell'], 'sol_I') and cd['cell'].sol_I is not None and not getattr(op, 'keep_factor', False):
@@ -217,15 +221,19 @@ class Lattice:
         comp = np.zeros_like(vec)
         for ci in range(s0.shape[0]):
             for j in range(s0.shape[2]):
-                a = np.abs(s0[ci, :, j]); m = a >= 0.05 * a.max()
+                a = np.abs(s0[ci, :, j])
+                if np.isnan(a).any():
+                    comp[ci, j] = np.nan; continue
+                m = a >= 0.05 * a.max()
                 comp[ci, j] = np.max(np.abs(s1[ci, m, j] / s0[ci, m, j] - 1))
         out['sens_vec_rel_err'] = vec.tolist(); out['sens_comp_rel_err'] = comp.tolist()
         g = self.gate
         out['gate_compliance_max'] = float(ce[g].max())
-        out['gate_sens_max'] = float(vec[:, g].max())
-        out['gate_pass'] = bool(ce[g].max() <= 0.03 and vec[:, g].max() <= 0.03)
+        out['gate_sens_max'] = float(np.nanmax(vec[:, g]))
+        out['sens_cells_measured'] = int((~np.isnan(vec[:, 0])).sum())
+        out['gate_pass'] = bool(ce[g].max() <= 0.03 and np.nanmax(vec[:, g]) <= 0.03)
         if (~g).any():
-            out['cut_compliance_max'] = float(ce[~g].max()); out['cut_sens_max'] = float(vec[:, ~g].max())
+            out['cut_compliance_max'] = float(ce[~g].max()); out['cut_sens_max'] = float(np.nanmax(vec[:, ~g]))
         out['energy_share_test_cell'] = (ref['energy'][0] / ref['compliance']).tolist()
         return out
 

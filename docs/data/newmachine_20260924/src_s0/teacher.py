@@ -51,16 +51,18 @@ def _set_current():
 
 
 class SPDSolver:
-    """nvmath DirectSolver on an SPD upper CSR (already Jacobi scaled), fp64, panels of width w."""
+    """nvmath DirectSolver on an SPD upper CSR (already Jacobi scaled), fp64 (or fp32), panels of width w."""
 
-    def __init__(self, crow, col, vals, n, w=16, threads=16):
+    def __init__(self, crow, col, vals, n, w=16, threads=16, fdt=None):
+        self.fdt = vals.dtype if fdt is None else fdt
+        vals = vals.to(self.fdt)
         from nvmath.sparse.advanced import DirectSolver, DirectSolverOptions, DirectSolverMatrixType, DirectSolverMatrixViewType
         lib = os.environ.get('CUDSS_MT')
         opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD, sparse_system_view=DirectSolverMatrixViewType.UPPER,
                                    **(dict(multithreading_lib=lib) if lib else {}))
         self.n, self.w = n, w
         self.U = torch.sparse_csr_tensor(crow, col, vals, size=(n, n))
-        b = torch.zeros((w, n), dtype=dt, device=dev).T
+        b = torch.zeros((w, n), dtype=self.fdt, device=dev).T
         self.solver = DirectSolver(self.U, b, options=opts)
         if lib:
             self.solver.plan_config.host_nthreads = threads
@@ -72,10 +74,10 @@ class SPDSolver:
         out = torch.empty_like(r)
         for c0 in range(0, r.shape[1], self.w):
             k = min(self.w, r.shape[1] - c0)
-            b = torch.zeros((self.w, self.n), dtype=dt, device=dev).T
-            b[:, :k] = r[:, c0:c0 + k]
+            b = torch.zeros((self.w, self.n), dtype=self.fdt, device=dev).T
+            b[:, :k] = r[:, c0:c0 + k].to(self.fdt)
             self.solver.reset_operands(b=b)
-            out[:, c0:c0 + k] = self.solver.solve()[:, :k]
+            out[:, c0:c0 + k] = self.solver.solve()[:, :k].to(r.dtype)
         return out
 
     def free(self):
@@ -115,20 +117,35 @@ class Cell:
         self.dofs = torch.as_tensor(dofs, dtype=torch.long, device=dev)
         r, c = self.dofs[:, iu[0]], self.dofs[:, iu[1]]
         key_e = torch.minimum(r, c) * nb + torch.maximum(r, c)
-        G = BX.ghost_faces_gpu(body_dir, case, self.n, nb)
-        gi, gv = G.indices(), G.values()
-        up = gi[0] <= gi[1]
-        key_g, val_g = gi[0][up] * nb + gi[1][up], gv[up]
-        del G, gi, gv
+        gcache = d / 'GP_UPPER.npz'                                          # unit ghost matrix, upper, cached
+        if gcache.exists():
+            z = np.load(gcache)
+            key_g, val_g = torch.as_tensor(z['keys'], device=dev), torch.as_tensor(z['vals'], device=dev)
+        else:
+            G = BX.ghost_faces_gpu(body_dir, case, self.n, nb)
+            gi, gv = G.indices(), G.values()
+            up = gi[0] <= gi[1]
+            key_g, val_g = gi[0][up] * nb + gi[1][up], gv[up]
+            del G, gi, gv
+            gc.collect(); torch.cuda.empty_cache()
+            np.savez(gcache, keys=key_g.cpu().numpy(), vals=val_g.cpu().numpy())
         U = torch.unique(torch.cat([key_e.reshape(-1), key_g]))
-        self.pos_e = torch.searchsorted(U, key_e.reshape(-1))
+        self.pos_e = torch.searchsorted(U, key_e.reshape(-1)).int()
+        del key_e
         self.base = torch.zeros(len(U), dtype=dt, device=dev)
         self.base.index_add_(0, torch.searchsorted(U, key_g), self.gamma * val_g)
-        del key_e, key_g, val_g
-        self.ru, self.cu = U // nb, U % nb
+        del key_g, val_g
+        # memory-lean upper pattern (int32 indices; nb < 2^31, nnz < 2^31)
+        self.ru, self.cu = (U // nb).int(), (U % nb).int()
         del U
+        gc.collect(); torch.cuda.empty_cache()
         self.crow = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(self.ru, minlength=nb), 0)])
         self.diag = torch.nonzero(self.ru == self.cu).squeeze(1)
+        # transposed pattern (CSR of U^T): permutation of the upper entries sorted by (col, row)
+        self.tperm = torch.argsort(self.cu.long() * nb + self.ru.long()).int()
+        self.crow_t = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(self.cu, minlength=nb), 0)]).int()
+        self.col_t = self.ru[self.tperm.long()]
+        gc.collect(); torch.cuda.empty_cache()
         if len(self.diag) != nb:
             raise ValueError('DIAGONAL_INCOMPLETE')
         box = np.load(d / 'BOX_NODES.npy'); cut = np.load(d / 'CUT_NODES.npy') if 'cut' in ports else np.zeros(0, np.int64)
@@ -154,23 +171,26 @@ class Cell:
     def assemble(self, taus=None):
         taus = self.taus0 if taus is None else taus
         self.taus = list(taus)
-        self._free(); self.K = None; gc.collect(); torch.cuda.empty_cache()
+        self._free(); self.U = self.Ut = None; gc.collect(); torch.cuda.empty_cache()
         self.M = self.moments(taus)
         vals = self.base.clone()
         for lo in range(0, len(self.M), 4096):
             ke = self.M[lo:lo + 4096] @ self.Tm_up
-            vals.index_add_(0, self.pos_e[lo * 3321:(lo + len(ke)) * 3321], ke.reshape(-1))
+            vals.index_add_(0, self.pos_e[lo * 3321:(lo + len(ke)) * 3321].long(), ke.reshape(-1))
         self.vals = vals
-        off = self.ru != self.cu
-        K = torch.sparse_coo_tensor(torch.stack([torch.cat([self.ru, self.cu[off]]), torch.cat([self.cu, self.ru[off]])]),
-                                    torch.cat([vals, vals[off]]), (self.nb, self.nb)).coalesce()
-        del off
-        self.K = K.to_sparse_csr(); del K
+        self.U = torch.sparse_csr_tensor(self.crow.int(), self.cu, vals, size=(self.nb, self.nb))
+        self.Ut = torch.sparse_csr_tensor(self.crow_t, self.col_t, vals[self.tperm.long()], size=(self.nb, self.nb))
+        self.dK = vals[self.diag]
+        self.K = self                                                          # K @ x -> symmetric product
         gc.collect(); torch.cuda.empty_cache()
         return self
 
     def Kx(self, x):
-        return self.K @ x
+        """Symmetric product K x = U x + U^T x - diag(K) x from the upper CSR (and its transpose)."""
+        return self.U @ x + self.Ut @ x - self.dK[:, None] * x
+
+    def __matmul__(self, x):                                                   # so that cell.K @ x keeps working
+        return self.Kx(x)
 
     def _free(self):
         for s in (self.sol_I, self.sol_N):
@@ -180,30 +200,34 @@ class Cell:
         gc.collect(); torch.cuda.empty_cache()
 
     # ---------------------------------------------------------------- factorizations
-    def factor(self, neumann=True):
+    def factor(self, neumann=True, fp32=False):
         self._free()
+        self.fp32 = fp32
         st = {}
         sync(); t = time.perf_counter()
         # interior block K_II (ports held)
         pm = torch.zeros(self.nb, dtype=torch.bool, device=dev); pm[self.P] = True
         new = torch.full((self.nb,), -1, dtype=torch.long, device=dev); new[self.I] = torch.arange(self.ni, device=dev)
-        sel = torch.nonzero(~pm[self.ru] & ~pm[self.cu]).squeeze(1)
-        rA, cA, vA = new[self.ru[sel]], new[self.cu[sel]], self.vals[sel]
+        ru, cu = self.ru.long(), self.cu.long()
+        sel = torch.nonzero(~pm[ru] & ~pm[cu]).squeeze(1)
+        rA, cA, vA = new[ru[sel]], new[cu[sel]], self.vals[sel]
         dA = vA[rA == cA]
         sA = torch.zeros(self.ni, dtype=dt, device=dev); sA[rA[rA == cA]] = 1 / torch.sqrt(dA)
         crow = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(rA, minlength=self.ni), 0)])
         self.sA = sA
-        self.sol_I = SPDSolver(crow.int(), cA.int(), (vA * sA[rA] * sA[cA]).contiguous(), self.ni)
+        self.sol_I = SPDSolver(crow.int(), cA.int(), (vA * sA[rA] * sA[cA]).contiguous(), self.ni,
+                               fdt=torch.float32 if fp32 else None)
         sync(); st['factor_interior'] = time.perf_counter() - t; t = time.perf_counter()
         if neumann:
             self.pin = self._pick_pins()
             pin = torch.zeros(self.nb, dtype=torch.bool, device=dev); pin[self.pin] = True
             v = self.vals.clone()
-            v[pin[self.ru] | pin[self.cu]] = 0
+            v[pin[ru] | pin[cu]] = 0
             v[self.diag[self.pin]] = 1.0
             sN = 1 / torch.sqrt(v[self.diag])
             self.sN = sN
-            self.sol_N = SPDSolver(self.crow.int(), self.cu.int(), (v * sN[self.ru] * sN[self.cu]).contiguous(), self.nb)
+            del ru, cu
+            self.sol_N = SPDSolver(self.crow.int(), self.cu, (v * sN[self.ru.long()] * sN[self.cu.long()]).contiguous(), self.nb)
             sync(); st['factor_neumann'] = time.perf_counter() - t
         return st
 
@@ -238,6 +262,9 @@ class Cell:
         x[self.P] = q
         r = -(self.K @ x)[self.I]
         x[self.I] = self.sA[:, None] * self.sol_I.solve(self.sA[:, None] * r)
+        for _ in range(3 if getattr(self, 'fp32', False) else 0):             # fp64 iterative refinement
+            res = -(self.K @ x)[self.I]                                         # interior residual (ports fixed)
+            x[self.I] += self.sA[:, None] * self.sol_I.solve(self.sA[:, None] * res)
         return x
 
     def apply(self, q):

@@ -34,7 +34,8 @@ def main(ckpt, out, cases):
     cases = cases or cfg['cases']
     rec = dict(ckpt=str(ckpt), step=ck['step'], results=[])
     for case in cases:
-        geo = TL.Geo(case, cfg['body'], cfg['data'], neumann=False, log=lambda s_: None)
+        C, _ = LT.prepared(case, cfg['body'])                          # one teacher cell shared with the lattice
+        geo = TL.Geo(case, cfg['body'], cfg['data'], neumann=False, log=lambda s_: None, cell=C, load_banks=False)
         model = MD.build(cfg['model'], [geo], **cfg.get('model_args', {})).cuda()
         missing = model.load_state_dict(ck['model'], strict=False)
         model.eval()

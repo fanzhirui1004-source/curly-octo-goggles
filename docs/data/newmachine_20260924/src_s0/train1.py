@@ -80,7 +80,7 @@ def main(cfg):
                 _, ritz = g_.adversarial(model, k=8, iters=10, gen=torch.Generator(device=dev).manual_seed(7))
                 worst[g_.case] = float(ritz[0])
             model.train()
-            score = max(v[c]['mean'] for v in ev.values() for c in TL.CLASSES)
+            score = max(v[c]['mean'] for v in ev.values() for c in v)
             log(dict(event='EVAL', step=step, val=ev, worst_ratio=worst, score=score, s=time.perf_counter() - t0))
             torch.save(dict(model=model.state_dict(), cfg=cfg, step=step), out / 'last.pt')
             if best is None or score < best:
