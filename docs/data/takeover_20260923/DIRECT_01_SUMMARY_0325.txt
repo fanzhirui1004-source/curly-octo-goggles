@@ -1,0 +1,37 @@
+2026-09-23T02:25:11Z BATCH_DONE
+== DIRECT_01
+fresh_development_0000_d0_v0_polyref enc 3.01 {'E1a': 0.84, 'E1d': 0.12, 'E4b': 0.46, 'E4c': 0.23} q1 5.3ms q64 44ms wit 1.0056 o7max 1.00015
+fresh_development_0001_cover01_r1_polyref enc 2.24 {'E1a': 0.56, 'E1d': 0.68, 'E4b': 0.25, 'E4c': 0.03} q1 2.1ms q64 15ms wit 1.0060 o7max 1.00069
+fresh_development_0004_cover01_r1_polyref enc 10.06 {'E1a': 1.35, 'E1d': 3.97, 'E4b': 1.94, 'E4c': 0.7} q1 10.6ms q64 85ms wit 1.0048 o7max 1.00017
+fresh_train_0000_cover01_r1_polyref enc 23.95 {'E1a': 2.27, 'E1d': 9.36, 'E4b': 4.5, 'E4c': 2.78} q1 27.2ms q64 221ms wit 1.0042 o7max 1.00046
+fresh_train_0001_cover01_r1_polyref enc 4.12 {'E1a': 0.7, 'E1d': 1.47, 'E4b': 0.78, 'E4c': 0.15} q1 4.5ms q64 35ms wit 1.0041 o7max 1.00022
+fresh_train_0002_cover01_r1_polyref FAIL nvmath.bindings.cudss.cuDSSError: ALLOC_FAILED (2)
+fresh_train_0003_cover01_r1_polyref enc 24.91 {'E1a': 2.4, 'E1d': 10.18, 'E4b': 4.59, 'E4c': 2.82} q1 27.6ms q64 221ms wit 1.0034 o7max 1.00014
+fresh_train_0003_d0_v0_polyref enc 1.73 {'E1a': 0.6, 'E1d': 0.06, 'E4b': 0.15, 'E4c': 0.04} q1 2.3ms q64 18ms wit 1.0024 o7max 1.00011
+fresh_train_0003_full_polyref enc 25.39 {'E1a': 2.38, 'E1d': 10.28, 'E4b': 4.77, 'E4c': 3.14} q1 28.9ms q64 232ms wit 1.0034 o7max 1.00062
+fresh_train_0003_full_teacher enc 10.19 {'E4b': 4.86, 'E4c': 3.06} q1 28.1ms q64 226ms wit 1.0000 o7max 1.00000
+fresh_train_0005_cover01_r1_polyref enc 18.91 {'E1a': 1.66, 'E1d': 7.68, 'E4b': 3.65, 'E4c': 2.38} q1 22.4ms q64 183ms wit 1.0093 o7max 1.00141
+fresh_train_0006_cover01_r1_polyref enc 28.80 {'E1a': 2.43, 'E1d': 10.97, 'E4b': 5.75, 'E4c': 4.21} q1 35.6ms q64 289ms wit 1.0044 o7max 1.00124
+fresh_train_0006_d1_v1_polyref enc 5.80 {'E1a': 1.31, 'E1d': 0.24, 'E4b': 1.03, 'E4c': 0.9} q1 13.1ms q64 110ms wit 1.0042 o7max 1.00010
+fresh_train_0006_full_polyref enc 30.12 {'E1a': 2.42, 'E1d': 11.58, 'E4b': 5.94, 'E4c': 4.77} q1 38.8ms q64 313ms wit 1.0044 o7max 1.00112
+fresh_train_0007_cover01_r1_polyref enc 12.33 {'E1a': 1.32, 'E1d': 5.04, 'E4b': 2.37, 'E4c': 1.1} q1 13.3ms q64 108ms wit 1.0061 o7max 1.00035
+fresh_train_0008_cover01_r1_polyref enc 2.89 {'E1a': 0.61, 'E1d': 1.0, 'E4b': 0.39, 'E4c': 0.04} q1 2.4ms q64 18ms wit 1.0059 o7max 1.00033
+fresh_train_0009_cover01_r1_polyref enc 26.35 {'E1a': 2.43, 'E1d': 10.2, 'E4b': 5.13, 'E4c': 3.81} q1 33.7ms q64 273ms wit 1.0047 o7max 1.00084
+fresh_train_0010_cover01_r1_polyref enc 1.85 {'E1a': 0.53, 'E1d': 0.45, 'E4b': 0.15, 'E4c': 0.02} q1 1.6ms q64 11ms wit 1.0070 o7max 1.00057
+fresh_train_0011_cover01_r1_polyref enc 0.96 {'E1a': 0.42, 'E1d': 0.03, 'E4b': 0.02, 'E4c': 0.01} q1 0.5ms q64 1ms wit 1.0021 o7max 1.00014
+fresh_train_0013_cover01_r1_polyref enc 5.99 {'E1a': 0.9, 'E1d': 2.33, 'E4b': 1.1, 'E4c': 0.29} q1 6.5ms q64 53ms wit 1.0065 o7max 1.00086
+fresh_train_0013_d0_v1_polyref enc 7.42 {'E1a': 1.51, 'E1d': 0.29, 'E4b': 1.34, 'E4c': 1.46} q1 15.0ms q64 124ms wit 1.0064 o7max 1.00097
+fresh_train_0013_d0_v1_teacher enc 6.10 {'E4b': 2.98, 'E4c': 1.54} q1 16.4ms q64 133ms wit 1.0000 o7max 1.00000
+fresh_train_0014_cover01_r1_polyref enc 10.56 {'E1a': 1.31, 'E1d': 4.21, 'E4b': 2.05, 'E4c': 0.73} q1 9.9ms q64 79ms wit 1.0016 o7max 1.00064
+fresh_train_0015_cover01_r1_polyref FAIL nvmath.bindings.cudss.cuDSSError: ALLOC_FAILED (2)
+fresh_train_0016_cover01_r1_polyref FAIL nvmath.bindings.cudss.cuDSSError: ALLOC_FAILED (2)
+fresh_train_0017_cover01_r1_polyref enc 19.29 {'E1a': 1.72, 'E1d': 7.69, 'E4b': 4.06, 'E4c': 2.5} q1 23.4ms q64 193ms wit 1.0147 o7max 1.00233
+fresh_train_0018_cover01_r1_polyref enc 26.29 {'E1a': 2.32, 'E1d': 10.14, 'E4b': 5.16, 'E4c': 3.91} q1 34.5ms q64 280ms wit 1.0042 o7max 1.00094
+fresh_train_0019_cover01_r1_polyref enc 3.01 {'E1a': 0.62, 'E1d': 1.03, 'E4b': 0.43, 'E4c': 0.07} q1 3.1ms q64 24ms wit 1.0052 o7max 1.00039
+fresh_train_0020_cover01_r1_polyref enc 6.03 {'E1a': 0.86, 'E1d': 2.31, 'E4b': 1.17, 'E4c': 0.26} q1 5.4ms q64 43ms wit 1.0158 o7max 1.00008
+fresh_train_0021_cover01_r1_polyref enc 18.11 {'E1a': 1.98, 'E1d': 7.79, 'E4b': 3.13, 'E4c': 1.51} q1 16.6ms q64 136ms wit 1.0036 o7max 1.00041
+fresh_train_0022_cover01_r1_polyref enc 6.85 {'E1a': 1.12, 'E1d': 2.64, 'E4b': 1.2, 'E4c': 0.27} q1 5.9ms q64 46ms wit 1.0021 o7max 1.00026
+fresh_train_0023_cover01_r1_polyref enc 26.59 {'E1a': 2.23, 'E1d': 10.34, 'E4b': 5.38, 'E4c': 3.73} q1 31.7ms q64 260ms wit 1.0066 o7max 1.00083
+fresh_train_0024_cover01_r1_polyref enc 18.16 {'E1a': 1.78, 'E1d': 7.25, 'E4b': 3.58, 'E4c': 2.01} q1 21.4ms q64 174ms wit 1.0104 o7max 1.00036
+fresh_train_0026_cover01_r1_polyref enc 6.96 {'E1a': 1.1, 'E1d': 2.67, 'E4b': 1.29, 'E4c': 0.29} q1 5.8ms q64 45ms wit 1.0028 o7max 1.00014
+== DIRECT_02
