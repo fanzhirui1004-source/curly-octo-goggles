@@ -1,0 +1,69 @@
+{
+  "case": "fresh_train_0003_d0_v0",
+  "elements": "teacher",
+  "s": 4,
+  "levels": 0,
+  "rule_order": 4,
+  "pair_theta": 0.9,
+  "dimensions": [
+    19548,
+    2868,
+    621
+  ],
+  "pair_record": {
+    "theta": 0.9,
+    "blocks": 6469,
+    "nodes": 6516,
+    "size_histogram": [
+      0,
+      6422,
+      47
+    ],
+    "merged_nodes": 94,
+    "row_sum_bound": 10.133845716953319,
+    "omega0": 0.09867922089311659,
+    "backend": "gpu"
+  },
+  "ritz_min": 0.0030241282197982396,
+  "design_a": 0.0015120641098991198,
+  "depth": 187,
+  "tolerance": 1e-06,
+  "stage_seconds": {
+    "E1_teacher_blocks_load": 0.18876834958791733,
+    "E2a_patches_basis": 0.34406883269548416,
+    "E2b_galerkin": 0.1297256164252758,
+    "E2c_level1_blocks": 0.020591408014297485,
+    "E2d_coarsest": 0.014657769352197647,
+    "E2e_fine_pairs": 0.03565318509936333,
+    "E2f_model_assembly": 0.019509311765432358,
+    "E3_lanczos_design": 0.15595494210720062
+  },
+  "encode_seconds": 0.9403811581432819,
+  "query_seconds": {
+    "1": 0.4207722768187523,
+    "7": 0.8033947981894016,
+    "64": 3.4531293101608753
+  },
+  "original7_energy_ratio": [
+    1.0000000000139557,
+    1.0000000000114684,
+    1.000000000010335,
+    1.000000000010765,
+    1.0000000000095384,
+    1.0000000000007194,
+    1.0000000000002895
+  ],
+  "numerical_checks": {
+    "linearity": true,
+    "symmetry": true,
+    "power": true,
+    "energy_gradient": true,
+    "rigid_relative": true,
+    "two_history_extension_adjoint": true,
+    "full_variational": true
+  },
+  "witness": [
+    1.0000000038285002
+  ],
+  "scope": "finite witness only; teacher R whitening; elements=teacher"
+}
