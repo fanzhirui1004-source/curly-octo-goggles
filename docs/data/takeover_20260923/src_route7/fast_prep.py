@@ -22,8 +22,8 @@ from stage_cutfem_q2.space import node_ids
 import fast_trace, fast_gp
 
 T = Path('/root/autodl-tmp/CLAUDE_TAKEOVER_20260923'); R = Path('/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/packets')
-out = T / 'R7_04'; out.mkdir(exist_ok=True)
-workers = int(sys.argv[1])
+out = T / 'R7_04'
+workers = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 
 
 def same(a, b):
@@ -32,7 +32,7 @@ def same(a, b):
                 and np.array_equal(a.indices, b.indices) and np.array_equal(a.data, b.data))
 
 
-for case in sys.argv[2:]:
+def main(case):
     run = T / 'COVER_G' / 'runs' / (case + '_G')
     result = json.loads((run / 'RESULT.json').read_text())
     frozen = load_body(run)
@@ -66,3 +66,9 @@ for case in sys.argv[2:]:
     row['total_seconds'] = time.perf_counter() - t0
     (out / (case + '.json')).write_text(json.dumps(row, indent=2))
     print(json.dumps(row), flush=True)
+
+
+if __name__ == '__main__':   # compile_topology uses a spawn pool, which re-imports this file in every worker
+    out.mkdir(exist_ok=True)
+    for case in sys.argv[2:]:
+        main(case)

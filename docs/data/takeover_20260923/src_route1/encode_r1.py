@@ -27,6 +27,7 @@ dev = torch.device('cuda:0')
 CPU_TRACE = False
 GPU_EXPAND = False
 TAU_EPS = '0'
+ELEMENTS = 'polyref'
 COVER_INPUTS = None  # teacher-free inputs (P, ghost, interior bookkeeping) built by gp/cover_blocks.py
 dt = torch.float64
 
@@ -96,6 +97,20 @@ def elements_polyref(case, s, order, T, levels=0):
     return Kb, nb, ctx
 
 
+def elements_body(case, T):
+    """Teacher bulk elements: the frozen G stage's assembled body stiffness (upper CSR, algoim quadrature), so the
+    skeleton acts on the teacher operator and every witness above 1 is solver error."""
+    d = Path('/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/COVER_G/runs') / (case + '_G') / 'body'
+    with T('E1_teacher_body_elements'):
+        nb = 3 * len(np.load(d / 'NODES.npy'))
+        U = sparse.csr_matrix(tuple(np.load(d / (n_ + '.npy')) for n_ in ['K_data', 'K_indices', 'K_indptr']), shape=(nb, nb)).tocoo()
+        r, c, v = U.row.astype(np.int64), U.col.astype(np.int64), U.data
+        off = r != c
+        Kb = coo(torch.as_tensor(np.r_[r, c[off]], device=dev), torch.as_tensor(np.r_[c, r[off]], device=dev),
+                 torch.as_tensor(np.r_[v, v[off]], dtype=dt, device=dev), (nb, nb))
+    return Kb, nb, json.loads((ROOT / 'packets' / case / 'FRESH_CONTEXT.json').read_text())
+
+
 def ghost(case, nb):
     if COVER_INPUTS is not None:
         G = sparse.load_npz(COVER_INPUTS / 'GHOST.npz').tocoo()
@@ -118,7 +133,7 @@ def ghost(case, nb):
 
 
 def blocks_from_polyref(case, s, order, T, levels=0):
-    Kb, nb, ctx = elements_polyref(case, s, order, T, levels)
+    Kb, nb, ctx = elements_body(case, T) if ELEMENTS == 'body' else elements_polyref(case, s, order, T, levels)
     G = ghost(case, nb)
     gamma = float(json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['gp']['gamma'])
     if COVER_INPUTS is not None:
@@ -382,6 +397,60 @@ def rowsum_bound(Acoo, bidx, F):
     return float(torch.zeros(Acoo.shape[0], dtype=dt, device=dev).index_add_(0, S.indices()[0], S.values().abs()).max())
 
 
+def blockdiag_factor(bidx, F, n):
+    """The global block-diagonal factor F_g (F_g F_g^T is the block-Jacobi inverse) as a sparse matrix."""
+    nblk, w = bidx.shape
+    valid = bidx >= 0
+    r = bidx[:, :, None].expand(-1, -1, w); c = bidx[:, None, :].expand(-1, w, -1)
+    m = valid[:, :, None] & valid[:, None, :]
+    return coo(r[m], c[m], F[m], (n, n))
+
+
+def lanczos_max(apply, n, steps=40, seed=11):
+    """Largest Ritz value of a symmetric operator (Lanczos, full reorthogonalization). A lower estimate of lambda_max."""
+    g = torch.Generator(device=dev).manual_seed(seed)
+    q = torch.randn((n, 1), dtype=dt, device=dev, generator=g); q = q / q.norm()
+    Q, alpha, beta = [q], [], []
+    qprev, b = torch.zeros_like(q), 0.0
+    for _ in range(steps):
+        w = apply(Q[-1])
+        al = float((Q[-1] * w).sum()); alpha.append(al)
+        w = w - al * Q[-1] - b * qprev
+        Qm = torch.cat(Q, dim=1); w = w - Qm @ (Qm.T @ w)
+        b = float(w.norm())
+        if b < 1e-14 * abs(al):
+            break
+        beta.append(b); qprev = Q[-1]; Q.append(w / b)
+    k = len(alpha)
+    Tm = torch.diag(torch.tensor(alpha, dtype=dt)) + torch.diag(torch.tensor(beta[:k - 1], dtype=dt), 1) + torch.diag(torch.tensor(beta[:k - 1], dtype=dt), -1)
+    return float(torch.linalg.eigvalsh(Tm).max())
+
+
+def smooth_prolongation(A, P, Fg, omega):
+    """Smoothed aggregation: P_s = (I - omega F_g F_g^T A) P. The coarse fields stay block-built, but their jumps
+    across block faces are relaxed by one damped block-Jacobi step, so smooth low-energy fields get low coarse energy."""
+    AP = spmm(A, P).coalesce()
+    W = spmm(Fg, spmm(Fg.t().coalesce(), AP)).coalesce()
+    return (P - omega * W).coalesce()
+
+
+def galerkin_sparse(A, P, chunk=512):
+    """P^T A P for a general sparse P, column panel by column panel through dense products (cuSPARSE SpGEMM runs out
+    of resources on the smoothed prolongator). Structurally zero entries come out as exact zeros and are dropped."""
+    n1 = P.shape[1]
+    Pt = P.t().coalesce()
+    rows, cols, vals = [], [], []
+    for lo in range(0, n1, chunk):
+        hi = min(n1, lo + chunk)
+        E = torch.zeros((n1, hi - lo), dtype=dt, device=dev)
+        E[torch.arange(lo, hi, device=dev), torch.arange(hi - lo, device=dev)] = 1
+        Y = spmm(Pt, spmm(A, spmm(P, E)))
+        nz = Y.nonzero(as_tuple=True)
+        rows.append(nz[0]); cols.append(nz[1] + lo); vals.append(Y[nz])
+        del E, Y
+    return coo(torch.cat(rows), torch.cat(cols), torch.cat(vals), (n1, n1))
+
+
 def pair_fine_blocks_gpu(A, theta, max_nodes=4):
     """GPU version of cross_case_chebyshev.pair_blocks: node-block strength, strong-edge clusters (label propagation),
     exact inverse-Cholesky factors of each cluster block, row-sum bound of F^T A F."""
@@ -540,7 +609,8 @@ class _Solve(torch.autograd.Function):
 
 
 def main(a):
-    global CPU_TRACE, COVER_INPUTS, GPU_EXPAND, TAU_EPS
+    global CPU_TRACE, COVER_INPUTS, GPU_EXPAND, TAU_EPS, ELEMENTS
+    ELEMENTS = a.elements
     TAU_EPS = a.tau_eps
     CPU_TRACE = a.cpu_trace
     GPU_EXPAND = a.gpu_trace
@@ -548,7 +618,7 @@ def main(a):
     T = Timer()
     out = Path(a.output); out.mkdir(parents=True, exist_ok=False)
     torch.cuda.synchronize(); t_all = time.perf_counter()
-    if a.elements == 'polyref':
+    if a.elements in ('polyref', 'body'):
         A, C, D = blocks_from_polyref(a.case, a.s, a.rule_order, T, a.levels)
     else:
         with T('E1_teacher_blocks_load'):
@@ -595,25 +665,83 @@ def main(a):
             K = int(b.max()) + 1
             return torch.unique(b[:, 0] * K * K + b[:, 1] * K + b[:, 2], return_inverse=True)[1]
         o4, o8 = owner_of(4), owner_of(8)
+        if a.split_theta > 0:
+            # route 1: split every block into the connected components of its strong-connection graph, so pieces of
+            # material that share a block but are not (strongly) connected get their own coarse fields
+            from scipy.sparse.csgraph import connected_components
+            from scipy import sparse as sp_
+            Ai = A.coalesce(); ii, vv = Ai.indices().cpu().numpy(), Ai.values().cpu().numpy()
+            ni, nj = ii[0] // 3, ii[1] // 3
+            blk = sp_.coo_matrix((vv ** 2, (ni, nj)), shape=(nn_, nn_)).tocsr()   # squared Frobenius norms of 3x3 blocks
+            dg = np.sqrt(np.asarray(blk.diagonal()))
+            bc = blk.tocoo(); strength = np.sqrt(bc.data) / np.sqrt(dg[bc.row] * dg[bc.col])   # |A_ij| / sqrt(|A_ii| |A_jj|)
+            def split(owner):
+                ow = owner.cpu().numpy()
+                keep = (strength >= a.split_theta) & (ow[bc.row] == ow[bc.col])
+                g = sp_.coo_matrix((np.ones(int(keep.sum())), (bc.row[keep], bc.col[keep])), shape=(nn_, nn_))
+                _, lab = connected_components(g, directed=False)
+                key = ow.astype(np.int64) * (nn_ + 1) + lab
+                return torch.as_tensor(np.unique(key, return_inverse=True)[1], device=dev), int(len(np.unique(ow))), int(len(np.unique(key)))
+            o4, nb4, nc4 = split(o4)
+            o8, nb8, nc8 = split(o8)
+            split_record = dict(theta=a.split_theta, level1_blocks=nb4, level1_components=nc4, level2_blocks=nb8, level2_components=nc8)
+        else:
+            split_record = None
         P1, bidx1, rank1, info1 = prolongation(points, o4, nn_, degree=a.degree1)
         P2, _, rank2, _ = prolongation(points, o8, nn_, degree=a.degree2)
+    tuned = a.omega_mode == 'lanczos' or a.smooth_p1 > 0 or a.smooth_p12 > 0
+    if tuned and a.slow_m > 0:
+        raise ValueError('smoothing / Lanczos omegas are not combined with the slow-mode oracle')
+    lam0 = lam1 = None
+    if tuned:
+        # route 1 (smoother strength and smoothed aggregation): the fine smoother is needed before the Galerkin product
+        with T('E2e_fine_pairs'):
+            fidx, fF, bound0, prec = (pair_fine_blocks_gpu if a.gpu_pairs else pair_fine_blocks)(A, a.pair_theta)
+            Fg0 = blockdiag_factor(fidx, fF, A.shape[0]); Fg0t = Fg0.t().coalesce()
+            lam0 = lanczos_max(lambda v: spmm(Fg0t, spmm(A, spmm(Fg0, v))), A.shape[0], a.omega_steps)
     with T('E2b_galerkin'):
         P1t = P1.t().coalesce()
-        P12 = spmm(P1t, P2).coalesce()
-        A1 = galerkin(A, info1)
+        P12 = spmm(P1t, P2).coalesce()                 # nesting coefficients of the unsmoothed block spaces
+        if a.smooth_p1 > 0:
+            P1 = smooth_prolongation(A, P1, Fg0, a.smooth_p1 / lam0)
+            A1 = galerkin_sparse(A, P1)
+        else:
+            A1 = galerkin(A, info1)
         A1 = ((A1 + A1.t()) * 0.5).coalesce()
-        A2d = (P12.t() @ (A1 @ P12.to_dense()))
-        A2d = (A2d + A2d.T) / 2
     with T('E2c_level1_blocks'):
         B1, valid1 = gather_blocks(A1, bidx1)
         F1 = block_factors(B1)
         F1 = torch.where((valid1[:, :, None] & valid1[:, None, :]), F1, torch.zeros_like(F1))
-        bound1 = rowsum_bound(A1, bidx1, F1)
+        # the row-sum bound's triple product does not fit on the GPU for smoothed quadratic spaces; Lanczos mode skips it
+        bound1 = rowsum_bound(A1, bidx1, F1) if a.omega_mode == 'rowsum' else float('nan')
+        if tuned:
+            Fg1 = blockdiag_factor(bidx1, F1, A1.shape[0]); Fg1t = Fg1.t().coalesce()
+            lam1 = lanczos_max(lambda v: spmm(Fg1t, spmm(A1, spmm(Fg1, v))), A1.shape[0], a.omega_steps)
+        if a.smooth_p12 > 0:   # kept dense (13k x 2.7k): one damped level-1 block-Jacobi step on the level-2 fields
+            P12d = P12.to_dense()
+            P12 = P12d - (a.smooth_p12 / lam1) * spmm(Fg1, spmm(Fg1t, spmm(A1, P12d)))
+            del P12d
     with T('E2d_coarsest'):
+        P12d = P12 if P12.layout == torch.strided else P12.to_dense()
+        A2d = (P12d.t() @ (A1 @ P12d))
+        del P12d
+        A2d = (A2d + A2d.T) / 2
         L2 = torch.linalg.cholesky(A2d)
         F2 = torch.linalg.solve_triangular(L2.T, torch.eye(len(A2d), dtype=dt, device=dev), upper=True)
-    with T('E2e_fine_pairs'):
-        fidx, fF, bound0, prec = (pair_fine_blocks_gpu if a.gpu_pairs else pair_fine_blocks)(A, a.pair_theta)
+    if not tuned:
+        with T('E2e_fine_pairs'):
+            fidx, fF, bound0, prec = (pair_fine_blocks_gpu if a.gpu_pairs else pair_fine_blocks)(A, a.pair_theta)
+    # smoother scale: omega = 1 / (certified row-sum bound), or 1 / (safety * Lanczos lambda_max). Any omega with
+    # omega * lambda_max < 2 keeps 0 < B A <= 1 for the symmetric V-cycle; the energy readout is an upper bound anyway.
+    if a.omega_mode == 'lanczos':
+        bound0_used, bound1_used = a.omega_safety * lam0, a.omega_safety * lam1
+    else:
+        bound0_used, bound1_used = bound0, bound1
+    tuning = dict(omega_mode=a.omega_mode, omega_safety=a.omega_safety, rowsum_bound0=bound0, rowsum_bound1=bound1,
+                  lanczos_lambda_max0=lam0, lanczos_lambda_max1=lam1, omega0=1 / bound0_used, omega1=1 / bound1_used,
+                  smooth_p1=a.smooth_p1, smooth_p12=a.smooth_p12, nnz_A=int(A._nnz()), nnz_P1=int(P1._nnz()),
+                  nnz_A1=int(A1._nnz()), nnz_P12=int(P12._nnz()) if P12.layout != torch.strided else int((P12 != 0).sum()))
+    print(json.dumps(dict(event='TUNING', **tuning)), flush=True)
     # model: Codex's frozen core + my hierarchy correction + frozen Chebyshev recurrence
     import cross_case_chebyshev as X
     sys.path.insert(0, str(HS / 'source_chebyshev_full_01')); sys.path.insert(0, str(MN / 'source_v1'))
@@ -626,7 +754,7 @@ def main(a):
         tt = lambda x: torch.as_tensor(x, dtype=dt, device=dev)
         ub, ui = runner.orthonormalize_rigid_pair(tt(np.load(comp / 'Q_RIGID.npy')), tt(np.load(comp / 'INTERIOR_RIGID.npy')))
         core = hier.load_frozen_core(X.FROZEN['mechanics_network'], X.sha(X.FROZEN['mechanics_network']))
-        corr = hier.HierarchyCorrection(A, P1, A1, P12, A2d, fidx, fF, bidx1, F1, F2, 1 / bound0, 1 / bound1, mode='vcycle')
+        corr = hier.HierarchyCorrection(A, P1, A1, P12, A2d, fidx, fF, bidx1, F1, F2, 1 / bound0_used, 1 / bound1_used, mode='vcycle')
         # the frozen core only needs a local 3x3 factor argument for its unused fine path
         local = torch.eye(3, dtype=dt, device=dev).expand(nn_, 3, 3).contiguous()
         base = core.MechanicsNetwork(A, C, D, ub, ui, local, (), layers=1, step_scale=1.0, learnable=False, share_layers=True)
@@ -668,8 +796,39 @@ def main(a):
     extra = dict(solver='chebyshev', s=a.s, levels=a.levels, rule_order=a.rule_order, pair_theta=a.pair_theta,
                  degree1=a.degree1, degree2=a.degree2,
                  dimensions=[A.shape[0], P1.shape[1], P2.shape[1]], level1_rank=dict(min=int(rank1.min()), max=int(rank1.max())),
-                 pair_record=prec, ritz_min=float(rv.min()), design_a=a_design, slow_mode_oracle=slow)
+                 pair_record=prec, ritz_min=float(rv.min()), design_a=a_design, slow_mode_oracle=slow, block_split=split_record, tuning=tuning)
+    if a.fields:
+        return skeleton_fields(a, out, base, cheb, X, a_design, extra)
     return evaluate_depths(a, out, T, comp, base, cheb, X, a_design, A, D, encode_seconds, runner, evaluator, evalcheb, extra)
+
+
+def skeleton_fields(a, out, base, cheb, X, a_design, extra):
+    """Route 2 D2: the skeleton's primal fields for given exact solutions u* (background DOFs, from dual_d2.py prep):
+    q* = (P^-1 u*)[:m], w_k = P [q*; X_k(q*)] for each depth k. Also the skeleton's own energy q*^T S_hat_k q* and the
+    interior error relative to the exact interior coordinates."""
+    d = np.load(a.fields, allow_pickle=False)
+    P = sparse.load_npz(COVER_INPUTS / 'P.npz').tocsr(); Pinv = sparse.load_npz(COVER_INPUTS / 'Pinv.npz').tocsr()
+    m = json.loads((COVER_INPUTS / 'RESULT.json').read_text())['m']
+    coords = Pinv @ d['Ustar']
+    back = float(np.abs(P @ coords - d['Ustar']).max() / np.abs(d['Ustar']).max())
+    q = torch.as_tensor(coords[:m], dtype=dt, device=dev)
+    zstar = coords[m:]
+    L = coords.shape[1]
+    fields, loads, labels, rows = [], [], [], []
+    for depth in [int(x) for x in a.field_depths.split(',')]:
+        model = cheb.ChebyshevStrainNetwork(base, cycles=depth)
+        ca, cb = X.chebyshev_coefficients_interval(depth, a_design)
+        model.chebyshev_alpha.copy_(torch.tensor(ca, dtype=dt)); model.chebyshev_beta.copy_(torch.tensor(cb, dtype=dt))
+        with torch.no_grad():
+            z = model.extension(q).cpu().numpy()
+            energy = (2 * model.energy(q)).cpu().numpy()
+        fields.append(P @ np.vstack([coords[:m], z])); loads += list(range(L)); labels += [f'd{depth}'] * L
+        rows.append(dict(depth=depth, skeleton_energy=energy.tolist(),
+                         interior_relative_difference=(np.linalg.norm(z - zstar, axis=0) / np.linalg.norm(zstar, axis=0)).tolist()))
+        print(json.dumps(dict(event='FIELDS', depth=depth, interior_rel_max=max(rows[-1]['interior_relative_difference']))), flush=True)
+    np.savez(out / 'FIELDS.npz', W=np.hstack(fields), load_index=np.array(loads), label=np.array(labels))
+    (out / 'FIELDS.json').write_text(json.dumps(dict(case=a.case, elements=a.elements, m=m, P_roundtrip=back, rows=rows, **extra), indent=2, default=float))
+    print(json.dumps(dict(event='FIELDS_DONE', P_roundtrip=back)), flush=True)
 
 
 def evaluate_depths(a, out, T, comp, base, cheb, X, a_design, A, D, encode_seconds, runner, evaluator, evalcheb, extra):
@@ -841,7 +1000,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--case', required=True); ap.add_argument('--output', required=True)
     ap.add_argument('--asset-root', default=None); ap.add_argument('--reference', default=None)
-    ap.add_argument('--elements', choices=['teacher', 'polyref'], default='teacher')
+    ap.add_argument('--elements', choices=['teacher', 'polyref', 'body'], default='teacher')
     ap.add_argument('--s', type=int, default=4); ap.add_argument('--rule-order', type=int, default=4)
     ap.add_argument('--levels', type=int, default=0)
     ap.add_argument('--cpu-trace', action='store_true')
@@ -864,4 +1023,9 @@ if __name__ == '__main__':
     ap.add_argument('--slow-m', type=int, default=0); ap.add_argument('--slow-k', type=int, default=12)
     ap.add_argument('--slow-rounds', type=int, default=4); ap.add_argument('--slow-degree', type=int, default=20)
     ap.add_argument('--slow-cut', type=float, default=0.05)
+    ap.add_argument('--split-theta', type=float, default=0.0)
+    ap.add_argument('--omega-mode', choices=['rowsum', 'lanczos'], default='rowsum')
+    ap.add_argument('--fields', default=None); ap.add_argument('--field-depths', default='8,16,32,64')
+    ap.add_argument('--omega-safety', type=float, default=1.05); ap.add_argument('--omega-steps', type=int, default=40)
+    ap.add_argument('--smooth-p1', type=float, default=0.0); ap.add_argument('--smooth-p12', type=float, default=0.0)
     main(ap.parse_args())
