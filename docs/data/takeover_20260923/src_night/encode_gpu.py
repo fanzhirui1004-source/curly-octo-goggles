@@ -189,8 +189,14 @@ def affine_basis(points, owner, tol=1e-10):
         for e in range(3):                                  # full displacement gradients e_d x_e (9)
             H[:, :, d, 3 + 3 * d + e] = u[:, :, e]
     H = H.reshape(npatch, 3 * width, 12)
-    U, S, _ = torch.linalg.svd(H, full_matrices=False)
-    keep = S > tol * S[:, :1]
+    # Same span as an SVD of H: eigen-decomposition of the 12x12 Gram, then one re-orthonormalization.
+    lam, V = torch.linalg.eigh(H.transpose(1, 2) @ H)
+    lam, V = lam.flip(-1), V.flip(-1)                      # descending, leading columns kept
+    keep = lam > 1e-12 * lam[:, :1]  # eigenvalues of the Gram are only accurate to ~1e-16 lam_max
+    U = H @ (V / torch.sqrt(lam.clamp_min(1e-300))[:, None, :]) * keep[:, None, :]
+    G = U.transpose(1, 2) @ U + torch.diag_embed((~keep).to(dt))
+    L = torch.linalg.cholesky(G)
+    U = torch.linalg.solve_triangular(L, U.transpose(1, 2), upper=False).transpose(1, 2) * keep[:, None, :]
     rank = keep.sum(1)
     return U, keep, node_of, rank
 
@@ -278,6 +284,54 @@ def rowsum_bound(Acoo, bidx, F):
     return float(torch.zeros(Acoo.shape[0], dtype=dt, device=dev).index_add_(0, S.indices()[0], S.values().abs()).max())
 
 
+def pair_fine_blocks_gpu(A, theta, max_nodes=4):
+    """GPU version of cross_case_chebyshev.pair_blocks: node-block strength, strong-edge clusters (label propagation),
+    exact inverse-Cholesky factors of each cluster block, row-sum bound of F^T A F."""
+    i, v = A.indices(), A.values()
+    nn = A.shape[0] // 3
+    ni, nj = i[0] // 3, i[1] // 3
+    key = ni * nn + nj
+    uk, inv = torch.unique(key, return_inverse=True)
+    norm2 = torch.zeros(len(uk), dtype=dt, device=dev).index_add_(0, inv, v * v)
+    bi, bj = uk // nn, uk % nn
+    diag = torch.zeros(nn, dtype=dt, device=dev)
+    on = bi == bj
+    diag[bi[on]] = torch.sqrt(norm2[on])
+    strength = torch.sqrt(norm2) / torch.sqrt(diag[bi] * diag[bj])
+    strong = (bi != bj) & (strength >= theta)
+    ei, ej = bi[strong], bj[strong]
+    label = torch.arange(nn, device=dev)
+    for _ in range(64):
+        new = label.clone()
+        new.scatter_reduce_(0, ei, label[ej], reduce='amin'); new.scatter_reduce_(0, ej, label[ei], reduce='amin')
+        if torch.equal(new, label):
+            break
+        label = new
+    _, cl = torch.unique(label, return_inverse=True)
+    sizes = torch.bincount(cl)
+    if int(sizes.max()) > max_nodes:
+        raise ValueError(f'STRONG_CLUSTER_TOO_LARGE:{int(sizes.max())}')
+    order = torch.argsort(cl, stable=True)
+    start = torch.cumsum(sizes, 0) - sizes
+    pos = torch.arange(nn, device=dev) - torch.repeat_interleave(start, sizes)
+    nb_, w = len(sizes), 3 * int(sizes.max())
+    bidx = torch.full((nb_, w), -1, dtype=torch.long, device=dev)
+    nodes_sorted = order
+    for d in range(3):
+        bidx[cl[nodes_sorted], 3 * pos + d] = 3 * nodes_sorted + d
+    # sort each row's real dofs ascending, keep right padding
+    big = torch.where(bidx < 0, torch.full_like(bidx, 1 << 62), bidx)
+    bidx = torch.sort(big, dim=1).values
+    bidx = torch.where(bidx == (1 << 62), torch.full_like(bidx, -1), bidx)
+    B, valid = gather_blocks(A, bidx)
+    F = block_factors(B)
+    F = torch.where(valid[:, :, None] & valid[:, None, :], F, torch.zeros_like(F))
+    bound = rowsum_bound(A, bidx, F)
+    rec = dict(theta=theta, blocks=int(nb_), nodes=int(nn), size_histogram=torch.bincount(sizes).tolist(),
+               merged_nodes=int((sizes[cl] > 1).sum()), row_sum_bound=bound, omega0=1 / bound, backend='gpu')
+    return bidx, F, bound, rec
+
+
 def pair_fine_blocks(A, theta, max_nodes=4):
     import cross_case_chebyshev as X
     Ac = sparse.csr_matrix((A.values().cpu().numpy(), (A.indices()[0].cpu().numpy(), A.indices()[1].cpu().numpy())), shape=A.shape)
@@ -301,10 +355,14 @@ def main(a):
     points = torch.tensor(np.load(comp / 'INTERIOR_POINTS.npy'), dtype=dt, device=dev)
     nn_ = len(points)
     with T('E2a_patches_basis'):
-        spacing = [torch.diff(torch.unique(points[:, i])) for i in range(3)]
-        h = min(float(sd[sd > 1e-12].min()) for sd in spacing)
-        o4 = torch.unique(torch.floor((points + 1e-10) / (4 * h)).long(), dim=0, return_inverse=True)[1]
-        o8 = torch.unique(torch.floor((points + 1e-10) / (8 * h)).long(), dim=0, return_inverse=True)[1]
+        # node spacing of the Q2 background grid is 1/(2n) (computing it from the interior points fails when a
+        # tiny retained region has no two distinct interior coordinates along some axis)
+        h = 1.0 / (2 * int(json.loads((ROOT / 'packets' / a.case / 'FRESH_CONTEXT.json').read_text())['n']))
+        def owner_of(span):
+            b = torch.floor((points + 1e-10) / (span * h)).long(); b = b - b.min(0).values
+            K = int(b.max()) + 1
+            return torch.unique(b[:, 0] * K * K + b[:, 1] * K + b[:, 2], return_inverse=True)[1]
+        o4, o8 = owner_of(4), owner_of(8)
         P1, bidx1, rank1, info1 = prolongation(points, o4, nn_)
         P2, _, rank2, _ = prolongation(points, o8, nn_)
     with T('E2b_galerkin'):
@@ -323,7 +381,7 @@ def main(a):
         L2 = torch.linalg.cholesky(A2d)
         F2 = torch.linalg.solve_triangular(L2.T, torch.eye(len(A2d), dtype=dt, device=dev), upper=True)
     with T('E2e_fine_pairs'):
-        fidx, fF, bound0, prec = pair_fine_blocks(A, a.pair_theta)
+        fidx, fF, bound0, prec = (pair_fine_blocks_gpu if a.gpu_pairs else pair_fine_blocks)(A, a.pair_theta)
     # model: Codex's frozen core + my hierarchy correction + frozen Chebyshev recurrence
     import cross_case_chebyshev as X
     sys.path.insert(0, str(HS / 'source_chebyshev_full_01')); sys.path.insert(0, str(MN / 'source_v1'))
@@ -354,7 +412,7 @@ def main(a):
     quotient = runner.Quotient(np.load(ROOT / 'targets' / (a.case + '_v1') / 'RIGID_Q.npy'), dev)
     query = {}
     with torch.no_grad():
-        for cols in (1, 7, 64):
+        for cols in ((1, 7) if A.shape[0] > 300000 or a.small_query else (1, 7, 64)):
             q = torch.randn((D.shape[0], cols), dtype=dt, device=dev)
             model(q); torch.cuda.synchronize(); t = time.perf_counter(); model(q); torch.cuda.synchronize()
             query[cols] = time.perf_counter() - t
@@ -388,6 +446,8 @@ if __name__ == '__main__':
     ap.add_argument('--levels', type=int, default=0)
     ap.add_argument('--cpu-trace', action='store_true')
     ap.add_argument('--cover-inputs', default=None)
+    ap.add_argument('--gpu-pairs', action='store_true')
+    ap.add_argument('--small-query', action='store_true')
     ap.add_argument('--pair-theta', type=float, default=0.9)
     ap.add_argument('--lanczos', type=int, default=80); ap.add_argument('--safety', type=float, default=0.5)
     ap.add_argument('--tolerance', type=float, default=1e-6)
