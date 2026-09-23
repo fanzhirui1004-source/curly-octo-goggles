@@ -127,9 +127,16 @@ def blocks_from_polyref(case, s, order, T, levels=0):
     with T('E1d_trace_compile_PtKP'):
         K = (Kb + gamma * G).coalesce()
         del Kb, G
+        Kc = None
         if GPU_EXPAND:
-            Kc = ptkp_upper_gpu(K, P); del K
-        elif CPU_TRACE:  # large cells: P^T K P with scipy (K assembled on the GPU), result back to the GPU
+            try:
+                Kc = ptkp_upper_gpu(K, P)
+            except torch.OutOfMemoryError:  # very large cells: fall back to the CPU product below
+                Kc = None; torch.cuda.empty_cache()
+                T.rows['E1d_gpu_trace_fallback_cpu'] = 1.0
+        if Kc is not None:
+            del K
+        elif CPU_TRACE or GPU_EXPAND:  # large cells: P^T K P with scipy (K assembled on the GPU), result back to the GPU
             ki, kv = K.indices().cpu().numpy(), K.values().cpu().numpy(); del K
             Ks = sparse.csr_matrix((kv, (ki[0], ki[1])), shape=(nb, nb))
             Kcs = (P.T @ Ks @ P).tocoo(); del Ks
@@ -157,26 +164,35 @@ def blocks_from_polyref(case, s, order, T, levels=0):
     return A, C, D
 
 
-def ptkp_upper_gpu(K, P, chunk=1 << 24):
-    """Upper triangle of P^T K P by direct triplet expansion on the GPU: every K entry (i, j, v) contributes
-    v * P[i, a] * P[j, b] at (a, b) for the nonzeros of rows i and j of P (P is a permutation on full cells and has one
-    nonzero in most rows otherwise). Only a <= b is kept, which is all the symmetric replay below reads."""
+def ptkp_upper_gpu(K, P, chunk=1 << 22):
+    """Upper triangle of P^T K P by direct triplet expansion on the GPU, reading only the upper triangle of the
+    symmetric K. An entry (i, j, v), i <= j, and the nonzeros P[i, a], P[j, b] give w = v P[i, a] P[j, b]:
+    for i < j the pair (i, j), (j, i) of the full K adds w at (min(a, b), max(a, b)), doubled on the diagonal a == b;
+    for i == j only a <= b is kept. (P is a permutation on full cells and has one nonzero in most rows otherwise.)
+    Chunks are merged as they accumulate so the peak stays near one coalesced upper triangle."""
     ip = torch.as_tensor(P.indptr.astype(np.int64), device=dev); ix = torch.as_tensor(P.indices.astype(np.int64), device=dev)
     pv = torch.as_tensor(P.data, dtype=dt, device=dev); cnt = ip[1:] - ip[:-1]
-    ki, kv = K.indices(), K.values(); parts = []
-    for s0 in range(0, kv.numel(), chunk):
-        i, j, v = ki[0, s0:s0 + chunk], ki[1, s0:s0 + chunk], kv[s0:s0 + chunk]
+    ki, kv = K.indices(), K.values()
+    upper = torch.nonzero(ki[0] <= ki[1]).squeeze(1)
+    shape = (P.shape[1], P.shape[1]); acc = None
+    for s0 in range(0, upper.numel(), chunk):
+        sel = upper[s0:s0 + chunk]
+        i, j, v = ki[0, sel], ki[1, sel], kv[sel]
         ri, rj = cnt[i], cnt[j]; m = ri * rj
         e = torch.repeat_interleave(torch.arange(len(m), device=dev), m)
         t = torch.arange(len(e), device=dev) - (torch.cumsum(m, 0) - m)[e]
         pa = ip[i[e]] + t // rj[e]; pb = ip[j[e]] + t % rj[e]
-        ca, cb = ix[pa], ix[pb]; keep = ca <= cb
-        parts.append(coo(ca[keep], cb[keep], (v[e] * pv[pa] * pv[pb])[keep], (P.shape[1], P.shape[1])))
-        del e, t, pa, pb, ca, cb, keep
-    if len(parts) == 1:
-        return parts[0]
-    return coo(torch.cat([q.indices()[0] for q in parts]), torch.cat([q.indices()[1] for q in parts]),
-               torch.cat([q.values() for q in parts]), (P.shape[1], P.shape[1]))
+        ca, cb = ix[pa], ix[pb]; w = v[e] * pv[pa] * pv[pb]
+        off = i[e] != j[e]
+        keep = off | (ca <= cb)
+        w = torch.where(off & (ca == cb), 2 * w, w)
+        lo, hi = torch.minimum(ca, cb), torch.maximum(ca, cb)
+        part = coo(lo[keep], hi[keep], w[keep], shape)
+        del e, t, pa, pb, ca, cb, w, off, keep, lo, hi
+        acc = part if acc is None else coo(torch.cat([acc.indices()[0], part.indices()[0]]), torch.cat([acc.indices()[1], part.indices()[1]]),
+                                           torch.cat([acc.values(), part.values()]), shape)
+        del part
+    return acc
 
 
 def blocks_teacher(case, asset_root):
@@ -419,21 +435,37 @@ class DirectModel(torch.nn.Module):
             return f(self, x)
         return g
 
+    def mm(self, name, x):
+        """Sparse product whose backward uses the stored transpose (A, D symmetric; C^T kept explicitly), so the
+        energy-gradient audit never has torch build a transposed copy of a large sparse block."""
+        M, Mt = {'A': (self.A, self.A), 'D': (self.D, self.D), 'C': (self.C, self.Ct), 'Ct': (self.Ct, self.C)}[name]
+        return _SpMM.apply(x, M, Mt)
+
     def extension(self, q):
-        return DirectModel.panel(lambda m, x: -m.solve(torch.sparse.mm(m.C, x)))(self, q)
+        return DirectModel.panel(lambda m, x: -m.solve(m.mm('C', x)))(self, q)
 
     def extension_adjoint(self, w):
-        return DirectModel.panel(lambda m, x: -torch.sparse.mm(m.Ct, m.solve(x)))(self, w)
+        return DirectModel.panel(lambda m, x: -m.mm('Ct', m.solve(x)))(self, w)
 
     def forward(self, q):
-        return DirectModel.panel(lambda m, x: torch.sparse.mm(m.D, x) + torch.sparse.mm(m.Ct, m.extension(x)))(self, q)
+        return DirectModel.panel(lambda m, x: m.mm('D', x) + m.mm('Ct', m.extension(x)))(self, q)
 
     def energy(self, q):
         def e(m, x):
             z = m.extension(x)
-            return (0.5 * ((x * torch.sparse.mm(m.D, x)).sum(0) + 2 * (z * torch.sparse.mm(m.C, x)).sum(0)
-                           + (z * torch.sparse.mm(m.A, z)).sum(0)))[None]
+            return (0.5 * ((x * m.mm('D', x)).sum(0) + 2 * (z * m.mm('C', x)).sum(0) + (z * m.mm('A', z)).sum(0)))[None]
         return DirectModel.panel(e)(self, q)[..., 0] if q.ndim == 1 else e(self, q)[0]
+
+
+class _SpMM(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, M, Mt):
+        ctx.Mt = Mt
+        return torch.sparse.mm(M, x.detach())
+
+    @staticmethod
+    def backward(ctx, g):
+        return torch.sparse.mm(ctx.Mt, g.contiguous()), None, None
 
 
 class _Solve(torch.autograd.Function):
