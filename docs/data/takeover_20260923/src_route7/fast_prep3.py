@@ -23,9 +23,14 @@ def main(workers, out, case):
     import fast_topology
     from stage_cutfem_graded.contract import from_case
     from stage_cutfem_q2.space import OFFSETS
+    import os
+    from fractions import Fraction
     ctx = json.loads((R / case / 'FRESH_CONTEXT.json').read_text())
     n = int(ctx['n'])
-    row = dict(case=case, workers=workers)
+    eps = os.environ.get('TAU_EPS', '0')                # design perturbation: every thickness corner scaled by 1 + eps
+    if eps != '0':
+        ctx['case']['tau_corners'] = [str(Fraction(v) * (1 + Fraction(eps))) for v in ctx['case']['tau_corners']]
+    row = dict(case=case, workers=workers, tau_eps=eps)
     t0 = time.perf_counter()
     c = from_case(ctx['case'], n)
     topo, stats = fast_topology.compile_support_fast(c, workers, global_proof=False)
@@ -78,7 +83,7 @@ def main(workers, out, case):
     if not np.isin(box_nodes, nodes).all():
         raise ValueError('BOX_NODE_NOT_IN_BODY')
     row['total_seconds'] = time.perf_counter() - t0
-    d = Path(out) / case; d.mkdir(parents=True, exist_ok=True)
+    d = Path(out) / (case if eps == '0' else f'{case}_eps{eps.replace("/", "_")}'); d.mkdir(parents=True, exist_ok=True)
     np.save(d / 'NODES.npy', nodes); np.save(d / 'CELL_INDICES.npy', cells); np.save(d / 'dofs.npy', dofs)
     np.save(d / 'GP_FACES.npy', faces); np.save(d / 'BOX_NODES.npy', box_nodes)
     tpl = Path(out) / f'GP_TEMPLATES_n{n}.npz'

@@ -26,7 +26,7 @@ def sync():
 
 
 class CellEncoder:
-    def __init__(self, case, body_dir, precision='fp32', threads=16, s=4, levels=1, log=print):
+    def __init__(self, case, body_dir, precision='fp32', threads=16, s=4, levels=1, log=print, sub=None):
         import element_moments as EM
         import polyref_torch_fast as PT        # closed-form full sub-cubes, per-tetrahedron reduction
         from fractions import Fraction
@@ -41,7 +41,7 @@ class CellEncoder:
         self.normal = None if ctx['case'].get('normal') is None else [float(v) for v in ctx['case']['normal']]
         self.offset = None if self.normal is None else float(ctx['case']['offset'])
         self.gamma = float(json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['gp']['gamma'])
-        d = Path(body_dir) / case
+        d = Path(body_dir) / (sub or case)
         nodes = np.load(d / 'NODES.npy'); cells = np.load(d / 'CELL_INDICES.npy'); dofs = np.load(d / 'dofs.npy')
         faces = np.load(d / 'GP_FACES.npy')
         self.cells = cells
@@ -59,7 +59,7 @@ class CellEncoder:
         key_e = torch.minimum(r, c) * nb + torch.maximum(r, c)                         # E x 3321
         # ghost upper entries (unit penalty), coalesced in groups
         import box_encode as BX
-        G = BX.ghost_faces_gpu(body_dir, case, self.n, nb)                              # full symmetric COO
+        G = BX.ghost_faces_gpu(body_dir, sub or case, self.n, nb)                       # full symmetric COO
         gi, gv = G.indices(), G.values()
         up = gi[0] <= gi[1]
         key_g, val_g = gi[0][up] * nb + gi[1][up], gv[up]
