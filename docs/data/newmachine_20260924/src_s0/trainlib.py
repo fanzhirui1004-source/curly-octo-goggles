@@ -37,6 +37,36 @@ def energy(u, K):
     return _Energy.apply(u, K)
 
 
+class _Sens(torch.autograd.Function):
+    """s[c, b] = -u_b^T (dK/dtau_c) u_b from element moments derivatives (chunked, float32 products, float64 sums)."""
+
+    @staticmethod
+    def forward(ctx, u, dofs, Tm, dM, chunk):
+        B = u.shape[1]
+        s = torch.zeros((dM.shape[0], B), dtype=dt, device=dev)
+        for lo in range(0, dofs.shape[0], chunk):
+            ue = u[dofs[lo:lo + chunk]]                                              # c x 81 x B
+            z = torch.einsum('mij,ejb->emib', Tm, ue)
+            g = torch.einsum('emib,eib->emb', z, ue)
+            s -= torch.einsum('cem,emb->cb', dM[:, lo:lo + chunk], g).to(dt)
+        ctx.save_for_backward(u); ctx.dofs, ctx.Tm, ctx.dM, ctx.chunk = dofs, Tm, dM, chunk
+        return s
+
+    @staticmethod
+    def backward(ctx, gs):
+        (u,) = ctx.saved_tensors
+        grad = torch.zeros_like(u)
+        gs = gs.to(u.dtype)
+        for lo in range(0, ctx.dofs.shape[0], ctx.chunk):
+            dd = ctx.dofs[lo:lo + ctx.chunk]
+            ue = u[dd]
+            W = torch.einsum('cb,cem->emb', gs, ctx.dM[:, lo:lo + ctx.chunk])
+            z = torch.einsum('mij,ejb->emib', ctx.Tm, ue)
+            v = torch.einsum('emb,emib->eib', W, z)
+            grad.index_add_(0, dd.reshape(-1), (-2 * v).reshape(-1, u.shape[1]))
+        return grad, None, None, None, None
+
+
 class Geo:
     """Everything one geometry contributes to training: exact K, ports, rigid split, banks, network input data."""
 
@@ -63,6 +93,12 @@ class Geo:
         self.P, self.I = C.P, C.I
         self.np_, self.nb = C.np_, C.nb
         self.adv = None
+        self.sens = None
+        if (d / 'train_force_sens.npy').exists():
+            self.sens = {s_: {c: torch.as_tensor(np.load(d / f'{s_}_{c}_sens.npy'), device=dev).T.contiguous() for c in CLASSES}
+                         for s_ in ('train', 'val', 'test')}
+            C.dmoments()
+            self.dM32 = C.dM.to(torch.float32); self.Tm32 = C.Tm.to(torch.float32)
         self.setup_seconds = time.perf_counter() - t0
         log(json.dumps(dict(event='GEO', case=case, ports=self.np_, dofs=self.nb, seconds=self.setup_seconds)))
 
@@ -75,6 +111,30 @@ class Geo:
         u = u + self.RA.to(torch.float32) @ c
         u = u.index_copy(0, self.P, q32)                                  # exact port values
         return u
+
+    def sens_hat(self, u, chunk=256):
+        return _Sens.apply(u, self.C.dofs, self.Tm32, self.dM32, chunk)
+
+    def sample_with_sens(self, B, gen, mix):
+        """Like sample(), plus exact sensitivities (8, B) where available (NaN columns for adversarial directions)."""
+        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or self.adv is not None)]
+        w = np.asarray([mix[k] for k in names], float)
+        counts = gen.multinomial(B, w / w.sum())
+        cols, sc = [], []
+        for i, k in enumerate(names):
+            m = int(counts[i])
+            if m == 0:
+                continue
+            bank = self.adv if k == 'adv' else self.banks['train'][k]
+            j = torch.as_tensor(gen.integers(0, bank.shape[1], m), device=dev)
+            cols.append(bank[:, j].to(torch.float32))
+            if k == 'adv' or self.sens is None:
+                sc.append(torch.full((8, m), float('nan'), dtype=dt, device=dev))
+            else:
+                sc.append(self.sens['train'][k][:, j])
+        q = torch.cat(cols, 1); s = torch.cat(sc, 1)
+        sg = torch.as_tensor(gen.choice([-1.0, 1.0], q.shape[1]), dtype=torch.float32, device=dev)
+        return q * sg[None, :], s                                               # sensitivities are even in q
 
     def sample(self, B, gen, mix):
         """Batch of B training directions: class mix (dict class -> weight, incl. 'adv'); gen: numpy Generator."""
@@ -110,6 +170,15 @@ class Geo:
             errs = torch.cat([energy(self.field(model, Q[:, j:j + chunk]), self.C.K) - 1 for j in range(0, Q.shape[1], chunk)])
             e = errs.cpu().numpy()
             out[c] = dict(mean=float(e.mean()), p90=float(np.quantile(e, .9)), max=float(e.max()), min=float(e.min()))
+            if self.sens is not None:
+                S = self.sens[split][c]
+                se = []
+                for j in range(0, Q.shape[1], chunk):
+                    sh = self.sens_hat(self.field(model, Q[:, j:j + chunk]))
+                    s0 = S[:, j:j + chunk]
+                    se.append((sh - s0).norm(dim=0) / s0.norm(dim=0))
+                se = torch.cat(se).cpu().numpy()
+                out[c].update(sens_mean=float(se.mean()), sens_p90=float(np.quantile(se, .9)), sens_max=float(se.max()))
         return out
 
     def adversarial(self, model, k=16, iters=8, gen=None, start=None):

@@ -134,30 +134,35 @@ class Lattice:
     def reference(self):
         t0 = time.perf_counter()
         nf = len(self.free)
-        K = torch.zeros((nf, nf), dtype=dt, device=dev)
+        import os
+        self.ldev = torch.device('cpu') if os.environ.get('LAT_CPU') else dev      # dense lattice factor on the host
+        K = torch.zeros((nf, nf), dtype=dt, device=self.ldev)
         for i, cd in enumerate(self.cells):
             f = self.gather_idx[i]; keep = torch.nonzero(f >= 0).squeeze(1); fc = f[keep]
             T = cd['T']
             for r0 in range(0, len(keep), 2048):
                 rows = keep[r0:r0 + 2048]
-                blk = T[rows.to(T.device)].to(dev, dt)[:, keep]
-                K.index_put_((f[rows][:, None], fc[None, :]), blk, accumulate=True)
+                blk = T[rows.to(T.device)].to(self.ldev, dt)[:, keep.to(self.ldev)]
+                K.index_put_((f[rows][:, None].to(self.ldev), fc[None, :].to(self.ldev)), blk, accumulate=True)
                 del blk
         gc.collect(); torch.cuda.empty_cache()
-        info = torch.empty((), dtype=torch.int32, device=dev)
+        info = torch.empty((), dtype=torch.int32, device=self.ldev)
         torch.linalg.cholesky_ex(K, out=(K, info))                        # in place: one dense copy only
         if int(info) != 0:
             raise ValueError(f'LATTICE_CHOLESKY_INFO:{int(info)}')
         self.L = K.tril_(); del K                                          # zero the stale upper triangle in place
         gc.collect(); torch.cuda.empty_cache()
-        U = torch.cholesky_solve(self.F, self.L)
+        U = self._psolve(self.F)
         self.ref = self._measure([OP.ExactOp(cd['cell'], cd['T']) for cd in self.cells], U)
         self.ref['seconds'] = time.perf_counter() - t0
         return self.ref
 
+    def _psolve(self, R):
+        return torch.cholesky_solve(R.to(self.L.device), self.L).to(dev)
+
     def _measure(self, ops, U):
         Lh = None
-        if getattr(self, 'L', None) is not None:                              # room for the field factorizations
+        if getattr(self, 'L', None) is not None and self.L.device.type == 'cuda':                              # room for the field factorizations
             Lh = self.L.cpu(); self.L = None
             gc.collect(); torch.cuda.empty_cache()
         try:
@@ -184,7 +189,7 @@ class Lattice:
     def evaluate(self, ops, tol=1e-10, maxit=300):
         t0 = time.perf_counter()
         X = torch.zeros_like(self.F); R = self.F.clone()
-        Z = torch.cholesky_solve(R, self.L); P = Z.clone()
+        Z = self._psolve(R); P = Z.clone()
         rz = (R * Z).sum(0); r0 = R.norm(dim=0)
         it = 0
         for it in range(1, maxit + 1):
@@ -193,7 +198,7 @@ class Lattice:
             X += alpha * P; R -= alpha * AP
             if (R.norm(dim=0) / r0).max() < tol:
                 break
-            Z = torch.cholesky_solve(R, self.L)
+            Z = self._psolve(R)
             rz_new = (R * Z).sum(0)
             P = Z + (rz_new / rz) * P; rz = rz_new
         res = self._measure(ops, X)
@@ -230,6 +235,9 @@ def dense_T(cell, body_dir, host):
     import os
     case = cell.case
     pd = Path(body_dir) / (case + '_portview'); pd.mkdir(exist_ok=True)
+    cache = pd / 'T64.npy'
+    if cache.exists() and np.array_equal(np.load(pd / 'BOX_NODES.npy'), cell.port_node_ids):
+        return torch.from_numpy(np.load(cache))                                    # host fp64, symmetric
     for fn in ('NODES.npy', 'CELL_INDICES.npy', 'dofs.npy', 'GP_FACES.npy'):
         if not (pd / fn).exists():
             os.symlink(Path(body_dir) / case / fn, pd / fn)
@@ -241,6 +249,7 @@ def dense_T(cell, body_dir, host):
         T = T.cpu()
     enc.free(); enc.Tbuf = None; del enc
     gc.collect(); torch.cuda.empty_cache()
+    np.save(cache, T.cpu().numpy())
     return T
 
 

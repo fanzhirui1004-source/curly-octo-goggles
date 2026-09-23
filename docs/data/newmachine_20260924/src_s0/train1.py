@@ -29,6 +29,8 @@ def main(cfg):
     gen = np.random.default_rng(cfg.get('seed', 0))
     tgen = torch.Generator(device=dev).manual_seed(cfg.get('seed', 0))
     geos = [TL.Geo(c, cfg['body'], cfg['data'], log=lambda s_: print(s_, flush=True)) for c in cfg['cases']]
+    if cfg.get('sens_w', 0) > 0 and any(g_.sens is None for g_ in geos):
+        raise ValueError('SENS_LABELS_MISSING')                               # never fall back silently
     model = MD.build(cfg['model'], geos, **cfg.get('model_args', {})).to(dev)
     nparam = sum(p.numel() for p in model.parameters())
     log(dict(event='MODEL', name=cfg['model'], params=nparam, args=cfg.get('model_args', {})))
@@ -41,16 +43,27 @@ def main(cfg):
     for step in range(1, steps + 1):
         gi = step % len(geos)
         geo = geos[gi]
-        q = geo.sample(B, gen, mix)
+        sw = cfg.get('sens_w', 0.0)
+        if sw > 0 and geo.sens is not None:
+            q, s0 = geo.sample_with_sens(B, gen, mix)
+        else:
+            q, s0 = geo.sample(B, gen, mix), None
         u = geo.field(model, q)
         e = TL.energy(u, geo.C.K)
         loss = torch.log(e.clamp_min(1e-12)).mean()
+        ls = None
+        if s0 is not None:
+            ok = ~torch.isnan(s0[0])
+            if ok.any():
+                sh = geo.sens_hat(u[:, ok])
+                ls = (((sh - s0[:, ok]) ** 2).sum(0) / (s0[:, ok] ** 2).sum(0)).mean()
+                loss = loss + sw * ls
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gn = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.get('clip', 1.0))
         opt.step(); sched.step()
         if step % 50 == 0:
-            log(dict(event='STEP', step=step, geo=geo.case, loss=float(loss), e_mean=float((e - 1).mean()),
+            log(dict(event='STEP', step=step, geo=geo.case, loss=float(loss), sens_loss=None if ls is None else float(ls), e_mean=float((e - 1).mean()),
                      e_max=float((e - 1).max()), grad_norm=float(gn), lr=sched.get_last_lr()[0], s=time.perf_counter() - t0))
         if cfg.get('adv_start') and step >= cfg['adv_start'] and step % cfg['adv_every'] == 0:
             for g_ in geos:
