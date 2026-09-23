@@ -42,6 +42,14 @@ def rigid_basis(node_ids, n):
     return torch.as_tensor(Q, dtype=dt, device=dev)
 
 
+def _set_current():
+    try:
+        from cuda.core.experimental import Device
+    except ImportError:
+        from cuda.core import Device
+    Device(torch.cuda.current_device()).set_current()
+
+
 class SPDSolver:
     """nvmath DirectSolver on an SPD upper CSR (already Jacobi scaled), fp64, panels of width w."""
 
@@ -60,6 +68,7 @@ class SPDSolver:
         self.solver.factorize()
 
     def solve(self, r):
+        _set_current()                                                     # autograd may call from its own thread
         out = torch.empty_like(r)
         for c0 in range(0, r.shape[1], self.w):
             k = min(self.w, r.shape[1] - c0)
