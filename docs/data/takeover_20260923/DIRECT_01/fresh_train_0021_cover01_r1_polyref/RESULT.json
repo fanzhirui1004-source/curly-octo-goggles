@@ -1,0 +1,46 @@
+{
+  "case": "fresh_train_0021_cover01_r1",
+  "elements": "polyref",
+  "solver": "cudss",
+  "width": 8,
+  "reorder": "DEFAULT",
+  "dimensions": [
+    188451
+  ],
+  "stage_seconds": {
+    "E1a_moments": 1.9829146414995193,
+    "E1bc_element_matrices_and_assembly": 0.09723328426480293,
+    "E1d_trace_compile_PtKP": 7.791920755058527,
+    "E4a_direct_scaled_upper": 0.0386943444609642,
+    "E4b_direct_plan": 3.13406852632761,
+    "E4c_direct_factor": 1.5142762027680874
+  },
+  "encode_seconds": 18.10952876508236,
+  "query_seconds": {
+    "1": 0.016631197184324265,
+    "7": 0.017079804092645645,
+    "64": 0.13565517589449883
+  },
+  "original7_energy_ratio": [
+    1.0000626303370375,
+    1.0000615665381791,
+    1.0000656648801842,
+    1.000060392395316,
+    1.0001504513683717,
+    1.0004055825775102,
+    1.0002360394582834
+  ],
+  "numerical_checks": {
+    "linearity": true,
+    "symmetry": true,
+    "power": true,
+    "energy_gradient": true,
+    "rigid_relative": true,
+    "two_history_extension_adjoint": true,
+    "full_variational": false
+  },
+  "witness": [
+    1.003550267133943
+  ],
+  "scope": "finite witness only; teacher R whitening; elements=polyref"
+}
