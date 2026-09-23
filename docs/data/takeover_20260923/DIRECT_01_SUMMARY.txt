@@ -1,4 +1,32 @@
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/./jrun3.py", line 52, in <module>
+    rc, o, e = run(" ".join(sys.argv[1:]) or "hostname")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/./jrun3.py", line 26, in run
+    ws = websocket.create_connection(f"wss://{HOST}/jupyter/api/kernels/{kid}/channels", header=[f"Authorization: token {TOK}"],
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/websocket/_core.py", line 734, in create_connection
+    websock.connect(url, **options)
+  File "/usr/local/lib/python3.11/dist-packages/websocket/_core.py", line 284, in connect
+    self.handshake_response = handshake(self.sock, url, *addrs, **options)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/websocket/_handshake.py", line 73, in handshake
+    status, resp = _get_resp_headers(sock)
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/websocket/_handshake.py", line 152, in _get_resp_headers
+    status, resp_headers, status_message = read_headers(sock)
+                                           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/websocket/_http.py", line 408, in read_headers
+    line = recv_line(sock)
+           ^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/websocket/_socket.py", line 151, in recv_line
+    c = recv(sock, 1)
+        ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/websocket/_socket.py", line 143, in recv
+    raise WebSocketConnectionClosedException("Connection to remote host was lost.")
+websocket._exceptions.WebSocketConnectionClosedException: Connection to remote host was lost.
 2026-09-23T02:25:11Z BATCH_DONE
+2026-09-23T03:36:43Z BATCH2_DONE
 == DIRECT_01
 fresh_development_0000_d0_v0_polyref enc 3.01 {'E1a': 0.84, 'E1d': 0.12, 'E4b': 0.46, 'E4c': 0.23} q1 5.3ms q64 44ms wit 1.0056 o7max 1.00015
 fresh_development_0001_cover01_r1_polyref enc 2.24 {'E1a': 0.56, 'E1d': 0.68, 'E4b': 0.25, 'E4c': 0.03} q1 2.1ms q64 15ms wit 1.0060 o7max 1.00069
@@ -33,5 +61,13 @@ fresh_train_0021_cover01_r1_polyref enc 18.11 {'E1a': 1.98, 'E1d': 7.79, 'E4b': 
 fresh_train_0022_cover01_r1_polyref enc 6.85 {'E1a': 1.12, 'E1d': 2.64, 'E4b': 1.2, 'E4c': 0.27} q1 5.9ms q64 46ms wit 1.0021 o7max 1.00026
 fresh_train_0023_cover01_r1_polyref enc 26.59 {'E1a': 2.23, 'E1d': 10.34, 'E4b': 5.38, 'E4c': 3.73} q1 31.7ms q64 260ms wit 1.0066 o7max 1.00083
 fresh_train_0024_cover01_r1_polyref enc 18.16 {'E1a': 1.78, 'E1d': 7.25, 'E4b': 3.58, 'E4c': 2.01} q1 21.4ms q64 174ms wit 1.0104 o7max 1.00036
+fresh_train_0025_cover01_r1_polyref enc 29.50 {'E1a': 2.33, 'E1d': 11.68, 'E4b': 5.8, 'E4c': 4.46} q1 35.2ms q64 288ms wit 1.0050 o7max 1.00117
 fresh_train_0026_cover01_r1_polyref enc 6.96 {'E1a': 1.1, 'E1d': 2.67, 'E4b': 1.29, 'E4c': 0.29} q1 5.8ms q64 45ms wit 1.0028 o7max 1.00014
+fresh_train_0028_cover01_r1_polyref enc 11.14 {'E1a': 1.24, 'E1d': 4.73, 'E4b': 2.02, 'E4c': 0.84} q1 11.6ms q64 96ms wit 1.0061 o7max 1.00008
+fresh_train_0029_cover01_r1_polyref enc 21.55 {'E1a': 2.29, 'E1d': 8.68, 'E4b': 4.0, 'E4c': 2.46} q1 24.7ms q64 201ms wit 1.0034 o7max 1.00111
+fresh_train_0030_cover01_r1_polyref enc 20.21 {'E1a': 1.94, 'E1d': 8.07, 'E4b': 4.03, 'E4c': 2.37} q1 23.5ms q64 192ms wit 1.0144 o7max 1.00043
+fresh_train_0031_cover01_r1_polyref enc 11.64 {'E1a': 1.38, 'E1d': 4.6, 'E4b': 2.29, 'E4c': 0.97} q1 15.2ms q64 122ms wit 1.0036 o7max 1.00055
 == DIRECT_02
+fresh_train_0015_cover01_r1_polyref FAIL 
+
+[exited with code 0]
