@@ -92,6 +92,44 @@ class BlockJacobi(nn.Module):
         return result.index_copy(0, self.indices[self.valid], values[self.valid])
 
 
+class MultiBlockJacobi(nn.Module):
+    """ROUTE 1 (Claude, 2026-09-23): block Jacobi over several disjoint block sets of different widths (small pair
+    blocks for the bulk, larger exact blocks on aggregates of weakly supported nodes). Together the sets cover every
+    coordinate exactly once, so this is one symmetric block-diagonal smoother; padding is -1 / zero as in BlockJacobi."""
+    def __init__(self, dimension: int, parts, omega: float, width_limit: int = 384):
+        super().__init__()
+        covered = []
+        for k, (indices, factors) in enumerate(parts):
+            if indices.ndim != 2 or indices.dtype != torch.long or indices.shape[1] > width_limit:
+                raise ValueError("block indices must be int64 [blocks,r], -1 padded")
+            if factors.shape != (*indices.shape, indices.shape[1]) or factors.dtype != torch.float64 or not torch.isfinite(factors).all():
+                raise ValueError("padded block factors must be finite FP64 [blocks,r,r]")
+            valid = indices >= 0
+            if torch.any(torch.tril(factors, diagonal=-1) != 0) or torch.any(factors.diagonal(dim1=-2, dim2=-1)[valid] <= 0):
+                raise ValueError("reference factors must be upper inverse-Cholesky factors")
+            self.register_buffer(f"indices{k}", indices.detach().clone())
+            self.register_buffer(f"valid{k}", valid)
+            self.register_buffer(f"factors{k}", factors.detach().clone())
+            covered.append(indices[valid])
+        real = torch.cat(covered)
+        if not torch.equal(torch.sort(real).values, torch.arange(dimension, device=real.device)):
+            raise ValueError("block sets must be disjoint and complete")
+        if not 0 < float(omega) < float("inf"):
+            raise ValueError("positive finite smoother omega required")
+        self.parts = len(parts)
+        self.dimension = dimension
+        self.register_buffer("omega", real.new_tensor(float(omega), dtype=torch.float64))
+
+    def forward(self, rhs: Tensor) -> Tensor:
+        result = rhs.new_zeros(rhs.shape)
+        for k in range(self.parts):
+            idx, valid, F = getattr(self, f"indices{k}"), getattr(self, f"valid{k}"), getattr(self, f"factors{k}")
+            panel = rhs[idx.clamp_min(0)] * valid[:, :, None]
+            values = F @ (F.transpose(-1, -2) @ panel)
+            result.index_copy_(0, idx[valid], values[valid])
+        return self.omega * result
+
+
 class HierarchyCorrection(nn.Module):
     """Symmetric multiplicative V-cycle or additive 1/1/1 component control.
 
@@ -105,7 +143,8 @@ class HierarchyCorrection(nn.Module):
     def __init__(self, A: Tensor, P1: Tensor, A1: Tensor, P12: Tensor, A2: Tensor,
                  fine_indices: Tensor, fine_factors: Tensor,
                  level1_indices: Tensor, level1_factors: Tensor,
-                 coarse_factor: Tensor, omega0: float, omega1: float, *, mode: str):
+                 coarse_factor: Tensor, omega0: float, omega1: float, *, mode: str,
+                 fine_smoother: nn.Module | None = None):
         super().__init__()
         if mode not in ("vcycle", "additive"):
             raise ValueError("mode must be vcycle or additive")
@@ -116,10 +155,10 @@ class HierarchyCorrection(nn.Module):
             raise ValueError("nested prolongation dimensions do not match")
         if not 0 < n2 <= COARSEST_LIMIT or coarse_factor.shape != (n2, n2):
             raise ValueError("only explicit <=COARSEST_LIMIT-DOF complete coarsest reference allowed")
-        tensors = [A, P1, A1, P12, A2, fine_factors, level1_factors, coarse_factor]
+        tensors = [A, P1, A1, P12, A2, level1_factors, coarse_factor] + ([] if fine_smoother is not None else [fine_factors])
         if any(x.dtype != torch.float64 or x.device != A.device for x in tensors):
             raise ValueError("all hierarchy tensors must share one FP64 device")
-        if fine_indices.device != A.device or level1_indices.device != A.device:
+        if (fine_smoother is None and fine_indices.device != A.device) or level1_indices.device != A.device:
             raise ValueError("block indices must share the energy device")
         if not torch.isfinite(coarse_factor).all() or torch.any(torch.tril(coarse_factor, diagonal=-1) != 0) or torch.any(coarse_factor.diag() <= 0):
             raise ValueError("coarsest factor must be unrepaired upper inverse-Cholesky")
@@ -130,7 +169,7 @@ class HierarchyCorrection(nn.Module):
         self.register_buffer("P1t", _matrix(P1.T))
         self.register_buffer("P12t", _matrix(P12.T))
         self.register_buffer("coarse_factor", coarse_factor.detach().clone())
-        self.fine = BlockJacobi(n0, fine_indices, fine_factors, omega0)
+        self.fine = fine_smoother if fine_smoother is not None else BlockJacobi(n0, fine_indices, fine_factors, omega0)
         self.level1 = BlockJacobi(n1, level1_indices, level1_factors, omega1)
 
     def coarsest(self, residual: Tensor) -> Tensor:

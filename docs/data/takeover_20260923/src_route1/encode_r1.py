@@ -499,6 +499,176 @@ def pair_fine_blocks_gpu(A, theta, max_nodes=4):
     return bidx, F, bound, rec
 
 
+def gather_blocks_partial(Acoo, bidx):
+    """gather_blocks for a block set that covers only part of the coordinates (entries outside the set are skipped)."""
+    nblk, w = bidx.shape
+    valid = bidx >= 0
+    n = Acoo.shape[0]
+    blk_of = torch.full((n,), -1, dtype=torch.long, device=dev); loc_of = torch.full((n,), -1, dtype=torch.long, device=dev)
+    blk_of[bidx[valid]] = torch.arange(nblk, device=dev)[:, None].expand(-1, w)[valid]
+    loc_of[bidx[valid]] = torch.arange(w, device=dev)[None].expand(nblk, -1)[valid]
+    i, v = Acoo.indices(), Acoo.values()
+    same = (blk_of[i[0]] == blk_of[i[1]]) & (blk_of[i[0]] >= 0)
+    B = torch.zeros((nblk, w, w), dtype=dt, device=dev)
+    B[blk_of[i[0][same]], loc_of[i[0][same]], loc_of[i[1][same]]] = v[same]
+    return B + torch.diag_embed((~valid).to(dt)), valid
+
+
+def padded_blocks(nodes, cluster):
+    """-1 padded, row-sorted DOF index lists of node clusters (cluster ids 0..k-1 for the given nodes)."""
+    sizes = torch.bincount(cluster)
+    order = torch.argsort(cluster, stable=True)
+    start = torch.cumsum(sizes, 0) - sizes
+    pos = torch.arange(len(nodes), device=dev) - torch.repeat_interleave(start, sizes)
+    bidx = torch.full((len(sizes), 3 * int(sizes.max())), -1, dtype=torch.long, device=dev)
+    sn, sc = nodes[order], cluster[order]
+    for d in range(3):
+        bidx[sc, 3 * pos + d] = 3 * sn + d
+    big = torch.where(bidx < 0, torch.full_like(bidx, 1 << 62), bidx)
+    bidx = torch.sort(big, dim=1).values
+    return torch.where(bidx == (1 << 62), torch.full_like(bidx, -1), bidx), sizes
+
+
+def fine_blocks_weak(A, theta, weak_rel, weak_theta, cap, max_nodes=4):
+    """Route 1: fine smoother blocks that also solve exactly on weakly supported regions. The slowest modes of the
+    pair-smoothed V-cycle sit almost entirely on nodes whose 3x3 diagonal block is < 1% of the median (sliver cut
+    cells held by the tiny body stiffness and gamma = 1e-4 ghost terms) and spread over ~10-30 such nodes. So:
+    bulk nodes keep the strong-pair clusters (<= max_nodes); weak nodes (diag/median < weak_rel) are grouped into
+    connected components of their strength >= weak_theta graph, cut into breadth-first chunks of <= cap nodes, and
+    each chunk is one exact block. Returns the two block sets with inverse-Cholesky factors."""
+    from scipy.sparse.csgraph import connected_components, breadth_first_order
+    i, v = A.indices(), A.values()
+    nn = A.shape[0] // 3
+    ni, nj = i[0] // 3, i[1] // 3
+    uk, inv = torch.unique(ni * nn + nj, return_inverse=True)
+    norm2 = torch.zeros(len(uk), dtype=dt, device=dev).index_add_(0, inv, v * v)
+    bi, bj = uk // nn, uk % nn
+    diag = torch.zeros(nn, dtype=dt, device=dev); on = bi == bj
+    diag[bi[on]] = torch.sqrt(norm2[on])
+    strength = torch.sqrt(norm2) / torch.sqrt(diag[bi] * diag[bj])
+    weak = diag / diag.median() < weak_rel
+    strong = (bi != bj) & (strength >= theta) & ~weak[bi] & ~weak[bj]
+    ei, ej = bi[strong], bj[strong]
+    label = torch.arange(nn, device=dev)
+    for _ in range(64):
+        new = label.clone()
+        new.scatter_reduce_(0, ei, label[ej], reduce='amin'); new.scatter_reduce_(0, ej, label[ei], reduce='amin')
+        if torch.equal(new, label):
+            break
+        label = new
+    bulk = torch.nonzero(~weak).squeeze(1)
+    _, bcl = torch.unique(label[bulk], return_inverse=True)
+    bidx_b, bsz = padded_blocks(bulk, bcl)
+    if int(bsz.max()) > max_nodes:
+        raise ValueError(f'STRONG_CLUSTER_TOO_LARGE:{int(bsz.max())}')
+    wn = torch.nonzero(weak).squeeze(1).cpu().numpy()
+    pos = np.full(nn, -1); pos[wn] = np.arange(len(wn))
+    wm = ((bi != bj) & weak[bi] & weak[bj] & (strength >= weak_theta)).cpu().numpy()
+    wi, wj = pos[bi.cpu().numpy()[wm]], pos[bj.cpu().numpy()[wm]]
+    G = sparse.coo_matrix((np.ones(len(wi)), (wi, wj)), shape=(len(wn), len(wn))).tocsr()
+    G = ((G + G.T) > 0).astype(np.float64).tocsr()
+    ncomp, lab = connected_components(G, directed=False)
+    agg = np.full(len(wn), -1); nxt = 0
+    order_c = np.argsort(lab, kind='stable'); bounds = np.r_[0, np.cumsum(np.bincount(lab, minlength=ncomp))]
+    for c in range(ncomp):
+        mem = order_c[bounds[c]:bounds[c + 1]]
+        if len(mem) <= cap:
+            agg[mem] = nxt; nxt += 1
+            continue
+        bfs = breadth_first_order(G, mem[0], directed=False, return_predecessors=False)
+        for k in range(0, len(bfs), cap):
+            agg[bfs[k:k + cap]] = nxt; nxt += 1
+    bidx_w, wsz = padded_blocks(torch.as_tensor(wn, device=dev), torch.as_tensor(agg, device=dev))
+    parts = []
+    for bidx in (bidx_b, bidx_w):
+        B, valid = gather_blocks_partial(A, bidx)
+        F = block_factors(B)
+        parts.append((bidx, torch.where(valid[:, :, None] & valid[:, None, :], F, torch.zeros_like(F))))
+    rec = dict(theta=theta, weak_rel=weak_rel, weak_theta=weak_theta, cap=cap, nodes=int(nn), weak_nodes=int(len(wn)),
+               weak_components=int(ncomp), weak_blocks=int(nxt), weak_block_size_histogram=torch.bincount(wsz).tolist(),
+               bulk_blocks=int(len(bsz)), bulk_size_histogram=torch.bincount(bsz).tolist(), backend='gpu+scipy')
+    return parts, rec
+
+
+def fine_blocks_weak_merge(A, theta, weak_rel, weak_theta, cap, max_nodes=4):
+    """Route 1, second design: keep the original strong-pair clusters over ALL nodes (a weak node stays with the strong
+    node it hangs on), then merge the pair clusters that contain a weak node into aggregates: two such clusters are
+    joined when a weak node of one couples to any node of the other with strength >= weak_theta; components are cut
+    into breadth-first chunks of <= cap nodes. Clusters without weak nodes keep their pair blocks."""
+    from scipy.sparse.csgraph import connected_components, breadth_first_order
+    i, v = A.indices(), A.values()
+    nn = A.shape[0] // 3
+    ni, nj = i[0] // 3, i[1] // 3
+    uk, inv = torch.unique(ni * nn + nj, return_inverse=True)
+    norm2 = torch.zeros(len(uk), dtype=dt, device=dev).index_add_(0, inv, v * v)
+    bi, bj = uk // nn, uk % nn
+    diag = torch.zeros(nn, dtype=dt, device=dev); on = bi == bj
+    diag[bi[on]] = torch.sqrt(norm2[on])
+    strength = torch.sqrt(norm2) / torch.sqrt(diag[bi] * diag[bj])
+    weak = diag / diag.median() < weak_rel
+    strong = (bi != bj) & (strength >= theta)
+    ei, ej = bi[strong], bj[strong]
+    label = torch.arange(nn, device=dev)
+    for _ in range(64):
+        new = label.clone()
+        new.scatter_reduce_(0, ei, label[ej], reduce='amin'); new.scatter_reduce_(0, ej, label[ei], reduce='amin')
+        if torch.equal(new, label):
+            break
+        label = new
+    _, cl = torch.unique(label, return_inverse=True)
+    sizes = torch.bincount(cl)
+    if int(sizes.max()) > max_nodes:
+        raise ValueError(f'STRONG_CLUSTER_TOO_LARGE:{int(sizes.max())}')
+    ncl = len(sizes)
+    wcl = torch.zeros(ncl, dtype=torch.bool, device=dev); wcl[cl[weak]] = True
+    # cluster graph among weak clusters
+    e = (bi != bj) & (weak[bi] | weak[bj]) & (strength >= weak_theta) & wcl[cl[bi]] & wcl[cl[bj]] & (cl[bi] != cl[bj])
+    ci, cj = cl[bi[e]].cpu().numpy(), cl[bj[e]].cpu().numpy()
+    wlist = torch.nonzero(wcl).squeeze(1).cpu().numpy()
+    pos = np.full(ncl, -1); pos[wlist] = np.arange(len(wlist))
+    G = sparse.coo_matrix((np.ones(len(ci)), (pos[ci], pos[cj])), shape=(len(wlist), len(wlist))).tocsr()
+    G = ((G + G.T) > 0).astype(np.float64).tocsr()
+    ncomp, lab = connected_components(G, directed=False)
+    csize = sizes.cpu().numpy()[wlist]
+    agg = np.full(len(wlist), -1); nxt = 0
+    order_c = np.argsort(lab, kind='stable'); bounds = np.r_[0, np.cumsum(np.bincount(lab, minlength=ncomp))]
+    for c in range(ncomp):
+        mem = order_c[bounds[c]:bounds[c + 1]]
+        if csize[mem].sum() <= cap:
+            agg[mem] = nxt; nxt += 1
+            continue
+        bfs = breadth_first_order(G, mem[0], directed=False, return_predecessors=False)
+        run_nodes = 0
+        for k in bfs:
+            if run_nodes + csize[k] > cap:
+                nxt += 1; run_nodes = 0
+            agg[k] = nxt; run_nodes += csize[k]
+        nxt += 1
+    # final node -> block assignment: weak clusters -> their aggregate, other clusters keep their own block
+    cl_np = cl.cpu().numpy()
+    block_of_cluster = np.full(ncl, -1)
+    block_of_cluster[wlist] = agg
+    rest = np.flatnonzero(block_of_cluster < 0)
+    block_of_cluster[rest] = nxt + np.arange(len(rest))
+    node_block = block_of_cluster[cl_np]
+    is_w = np.zeros(ncl, dtype=bool); is_w[wlist] = True
+    wnode = is_w[cl_np]
+    parts, hist = [], []
+    for sel in (~wnode, wnode):
+        nodes_t = torch.as_tensor(np.flatnonzero(sel), device=dev)
+        _, blk = np.unique(node_block[sel], return_inverse=True)
+        bidx, bsz = padded_blocks(nodes_t, torch.as_tensor(blk, device=dev))
+        B, valid = gather_blocks_partial(A, bidx)
+        F = block_factors(B)
+        parts.append((bidx, torch.where(valid[:, :, None] & valid[:, None, :], F, torch.zeros_like(F))))
+        hist.append(torch.bincount(bsz).tolist())
+    rec = dict(theta=theta, weak_rel=weak_rel, weak_theta=weak_theta, cap=cap, design='merge_pair_clusters', nodes=int(nn),
+               weak_nodes=int(weak.sum()), weak_clusters=int(len(wlist)), weak_nodes_in_aggregates=int(wnode.sum()),
+               weak_components=int(ncomp), weak_blocks=int(nxt), weak_block_size_histogram=hist[1],
+               bulk_blocks=int(len(rest)), bulk_size_histogram=hist[0], backend='gpu+scipy')
+    return parts, rec
+
+
 def pair_fine_blocks(A, theta, max_nodes=4):
     import cross_case_chebyshev as X
     Ac = sparse.csr_matrix((A.values().cpu().numpy(), (A.indices()[0].cpu().numpy(), A.indices()[1].cpu().numpy())), shape=A.shape)
@@ -689,15 +859,26 @@ def main(a):
             split_record = None
         P1, bidx1, rank1, info1 = prolongation(points, o4, nn_, degree=a.degree1)
         P2, _, rank2, _ = prolongation(points, o8, nn_, degree=a.degree2)
-    tuned = a.omega_mode == 'lanczos' or a.smooth_p1 > 0 or a.smooth_p12 > 0
+    tuned = a.omega_mode == 'lanczos' or a.smooth_p1 > 0 or a.smooth_p12 > 0 or a.weak_rel > 0
     if tuned and a.slow_m > 0:
         raise ValueError('smoothing / Lanczos omegas are not combined with the slow-mode oracle')
+    if a.weak_rel > 0 and a.omega_mode != 'lanczos':
+        raise ValueError('weak-region blocks need Lanczos smoother steps')
     lam0 = lam1 = None
+    fine_parts = None
     if tuned:
         # route 1 (smoother strength and smoothed aggregation): the fine smoother is needed before the Galerkin product
         with T('E2e_fine_pairs'):
-            fidx, fF, bound0, prec = (pair_fine_blocks_gpu if a.gpu_pairs else pair_fine_blocks)(A, a.pair_theta)
-            Fg0 = blockdiag_factor(fidx, fF, A.shape[0]); Fg0t = Fg0.t().coalesce()
+            if a.weak_rel > 0:
+                fine_parts, prec = (fine_blocks_weak_merge if a.weak_merge else fine_blocks_weak)(A, a.pair_theta, a.weak_rel, a.weak_theta, a.weak_cap)
+                fidx = fF = None; bound0 = float('nan')
+                Fg0 = (blockdiag_factor(*fine_parts[0], A.shape[0]) + blockdiag_factor(*fine_parts[1], A.shape[0])).coalesce()
+                print(json.dumps(dict(event='WEAK_BLOCKS', **{k: v for k, v in prec.items() if 'histogram' not in k},
+                                      weak_max=len(prec['weak_block_size_histogram']) - 1)), flush=True)
+            else:
+                fidx, fF, bound0, prec = (pair_fine_blocks_gpu if a.gpu_pairs else pair_fine_blocks)(A, a.pair_theta)
+                Fg0 = blockdiag_factor(fidx, fF, A.shape[0])
+            Fg0t = Fg0.t().coalesce()
             lam0 = lanczos_max(lambda v: spmm(Fg0t, spmm(A, spmm(Fg0, v))), A.shape[0], a.omega_steps)
     with T('E2b_galerkin'):
         P1t = P1.t().coalesce()
@@ -754,7 +935,9 @@ def main(a):
         tt = lambda x: torch.as_tensor(x, dtype=dt, device=dev)
         ub, ui = runner.orthonormalize_rigid_pair(tt(np.load(comp / 'Q_RIGID.npy')), tt(np.load(comp / 'INTERIOR_RIGID.npy')))
         core = hier.load_frozen_core(X.FROZEN['mechanics_network'], X.sha(X.FROZEN['mechanics_network']))
-        corr = hier.HierarchyCorrection(A, P1, A1, P12, A2d, fidx, fF, bidx1, F1, F2, 1 / bound0_used, 1 / bound1_used, mode='vcycle')
+        fine = None if fine_parts is None else hier.MultiBlockJacobi(A.shape[0], fine_parts, 1 / bound0_used)
+        corr = hier.HierarchyCorrection(A, P1, A1, P12, A2d, fidx, fF, bidx1, F1, F2, 1 / bound0_used, 1 / bound1_used, mode='vcycle',
+                                        fine_smoother=fine)
         # the frozen core only needs a local 3x3 factor argument for its unused fine path
         local = torch.eye(3, dtype=dt, device=dev).expand(nn_, 3, 3).contiguous()
         base = core.MechanicsNetwork(A, C, D, ub, ui, local, (), layers=1, step_scale=1.0, learnable=False, share_layers=True)
@@ -799,7 +982,183 @@ def main(a):
                  pair_record=prec, ritz_min=float(rv.min()), design_a=a_design, slow_mode_oracle=slow, block_split=split_record, tuning=tuning)
     if a.fields:
         return skeleton_fields(a, out, base, cheb, X, a_design, extra)
+    if a.slow_diag > 0:
+        return slow_diagnostic(a, out, T, A, base, extra)
+    if a.learn_depth > 0:
+        return learn_recurrence(a, out, T, A, C, D, base, cheb, X, a_design, runner, evaluator, evalcheb, comp, extra)
+    if a.lattice:
+        return lattice_eval(a, out, base, cheb, X, a_design, extra)
     return evaluate_depths(a, out, T, comp, base, cheb, X, a_design, A, D, encode_seconds, runner, evaluator, evalcheb, extra)
+
+
+def lattice_eval(a, out, base, cheb, X, a_design, extra):
+    """Lattice acceptance gate (lattice_v2.py): the cut cell's exact operator replaced by the skeleton at several
+    depths (Chebyshev coefficients 'cD', or learned ones 'lD:<LEARN.json>'), every other cell exact."""
+    import lattice_v2 as LV
+    variants = []
+    for spec in a.lattice_variants.split(','):
+        if spec.startswith('l'):
+            d, path = spec[1:].split(':', 1); depth = int(d)
+            lr = json.loads(Path(path).read_text())
+            if int(lr['depth']) != depth:
+                raise ValueError('LEARN_DEPTH_MISMATCH')
+            ca, cb = lr['alpha'], lr['beta']; label = f'learned_{depth}'
+        else:
+            depth = int(spec[1:]); ca, cb = X.chebyshev_coefficients_interval(depth, a_design); label = f'chebyshev_{depth}'
+        model = cheb.ChebyshevStrainNetwork(base, cycles=depth)
+        model.chebyshev_alpha.copy_(torch.as_tensor(ca, dtype=dt)); model.chebyshev_beta.copy_(torch.as_tensor(cb, dtype=dt))
+        def apply(qt, model=model):
+            with torch.no_grad():
+                return model.boundary_action(qt.contiguous())
+        variants.append((label, apply))
+    res = {}
+    for config in a.lattice.split(','):
+        res[config] = LV.run(a.case, variants, out, config=config, log=lambda s_: print(s_, flush=True))
+    (out / 'LATTICE_EXTRA.json').write_text(json.dumps(dict(elements=a.elements, **extra), indent=2, default=float))
+
+
+def smooth_trace_fields(case, k, rng):
+    """Random smooth displacement fields on the background nodes (vector polynomials up to degree 3 with decaying
+    weights, plus two random low Fourier modes), mapped to the cell's trace coordinates q = (P^-1 u)[:m]."""
+    import element_moments as EM
+    n = int(json.loads((ROOT / 'packets' / case / 'FRESH_CONTEXT.json').read_text())['n'])
+    nodes = EM.members(case, ['NODES.npy'])['NODES.npy']
+    pts = np.stack(np.unravel_index(nodes, (2 * n + 1,) * 3), axis=1) / (2 * n)
+    x = pts - 0.5
+    mon = [np.ones(len(x))] + [x[:, i] for i in range(3)] + [x[:, i] * x[:, j] for i in range(3) for j in range(i, 3)] \
+        + [x[:, i] * x[:, j] * x[:, l] for i in range(3) for j in range(i, 3) for l in range(j, 3)]
+    Mon = np.stack(mon, 1)
+    deg = np.array([0] + [1] * 3 + [2] * 6 + [3] * 10)
+    U = np.zeros((3 * len(x), k))
+    for c in range(k):
+        f = Mon @ (rng.standard_normal((len(deg), 3)) / (1.0 + deg)[:, None])
+        for _ in range(2):
+            kv = rng.integers(-2, 3, size=3); ph = rng.uniform(0, 2 * np.pi)
+            f += 0.3 * np.cos(2 * np.pi * (pts @ kv) + ph)[:, None] * rng.standard_normal(3)[None]
+        U[:, c] = f.reshape(-1)
+    Pinv = sparse.load_npz(COVER_INPUTS / 'Pinv.npz').tocsr()
+    m = json.loads((COVER_INPUTS / 'RESULT.json').read_text())['m']
+    return (Pinv @ U)[:m]
+
+
+def learn_recurrence(a, out, T, A, C, D, base, cheb, X, a_design, runner, evaluator, evalcheb, comp, extra):
+    """Route 1 E1b (first stage): the per-layer recurrence coefficients of the fixed-depth skeleton, learned for one
+    geometry WITHOUT the teacher. For any coefficients the energy readout is an upper bound, q^T S_theta q >= q^T S q,
+    so minimizing mean_q q^T S_theta q / q^T S_ref q (S_ref: the same hierarchy at a deep Chebyshev depth, also
+    teacher-free) minimizes the mean relative energy error on the training fields. The learned coefficients are then
+    copied into the frozen recurrence and evaluated with the frozen protocol against the teacher (witness, probes),
+    next to the Chebyshev coefficients of the same depth."""
+    depth = a.learn_depth
+    rng = np.random.default_rng(a.learn_seed)
+    B = base.corrections[0]
+    Ub, Ui = base.Ub, base.Ui
+    def energy2(q, alpha, beta):
+        rigid = Ui @ (Ub.T @ q)
+        drive = torch.sparse.mm(C, q - Ub @ (Ub.T @ q))
+        state = torch.zeros_like(drive); prev = torch.zeros_like(drive)
+        for k in range(depth):
+            r = torch.sparse.mm(A, state) + drive
+            state, prev = state + beta[k] * (state - prev) - alpha[k] * B(r), state
+        z = state + rigid
+        return (q * torch.sparse.mm(D, q)).sum(0) + 2 * (z * torch.sparse.mm(C, q)).sum(0) + (z * torch.sparse.mm(A, z)).sum(0)
+    def cheb_model(d, ca=None, cb=None):
+        model = cheb.ChebyshevStrainNetwork(base, cycles=d)
+        if ca is None:
+            ca, cb = X.chebyshev_coefficients_interval(d, a_design)
+        model.chebyshev_alpha.copy_(torch.as_tensor(ca, dtype=dt)); model.chebyshev_beta.copy_(torch.as_tensor(cb, dtype=dt))
+        return model
+    with T('L0_fields_and_reference'):
+        qtr = torch.as_tensor(smooth_trace_fields(a.case, a.learn_train, rng), dtype=dt, device=dev)
+        qva = torch.as_tensor(smooth_trace_fields(a.case, a.learn_val, rng), dtype=dt, device=dev)
+        ref = cheb_model(a.learn_ref_depth)
+        with torch.no_grad():
+            Etr = torch.cat([2 * ref.energy(qtr[:, i:i + 16]) for i in range(0, qtr.shape[1], 16)])
+            Eva = torch.cat([2 * ref.energy(qva[:, i:i + 16]) for i in range(0, qva.shape[1], 16)])
+    ca, cb = X.chebyshev_coefficients_interval(depth, a_design)
+    a0 = torch.as_tensor(ca, dtype=dt, device=dev); b0 = torch.as_tensor(cb, dtype=dt, device=dev)
+    rho = torch.zeros(depth, dtype=dt, device=dev, requires_grad=True)     # alpha = alpha0 * exp(rho)
+    dlt = torch.zeros(depth, dtype=dt, device=dev, requires_grad=True)     # beta = beta0 + delta
+    opt = torch.optim.Adam([rho, dlt], lr=a.learn_lr)
+    def val(alpha, beta):
+        with torch.no_grad():
+            r = torch.cat([energy2(qva[:, i:i + 16], alpha, beta) for i in range(0, qva.shape[1], 16)]) / Eva - 1
+        return float(r.mean()), float(r.max())
+    hist = [dict(step=0, val_mean=val(a0, b0)[0], val_max=val(a0, b0)[1])]
+    print(json.dumps(dict(event='LEARN', **hist[0])), flush=True)
+    t0 = time.perf_counter()
+    for step in range(1, a.learn_steps + 1):
+        idx = torch.as_tensor(rng.choice(qtr.shape[1], a.learn_batch, replace=False), device=dev)
+        loss = (energy2(qtr[:, idx], a0 * torch.exp(rho), b0 + dlt) / Etr[idx] - 1).mean()
+        opt.zero_grad(); loss.backward(); opt.step()
+        if step % a.learn_every == 0 or step == a.learn_steps:
+            vm, vx = val(a0 * torch.exp(rho), b0 + dlt)
+            hist.append(dict(step=step, train=float(loss), val_mean=vm, val_max=vx, seconds=time.perf_counter() - t0))
+            print(json.dumps(dict(event='LEARN', **hist[-1])), flush=True)
+    alpha = (a0 * torch.exp(rho)).detach(); beta = (b0 + dlt).detach()
+    # frozen protocol against the teacher, learned vs Chebyshev at the same depth
+    R = torch.as_tensor(np.load(ROOT / 'targets' / (a.case + '_v1') / 'REFERENCE_RQ.npy'), dtype=dt, device=dev)
+    quotient = runner.Quotient(np.load(ROOT / 'targets' / (a.case + '_v1') / 'RIGID_Q.npy'), dev)
+    probes = np.load(comp / 'QUALIFICATION_PROBES.npz')
+    probe_t = {k: torch.as_tensor(probes[key], dtype=dt, device=dev) for k, key in [('q', 'q'), ('zref', 'z'), ('reference_force', 'reference_force')]}
+    rows = []
+    for name, model in (('chebyshev', cheb_model(depth)), ('learned', cheb_model(depth, alpha, beta))):
+        algebra = evalcheb.complete_algebra(model, probe_t, evaluator)
+        witness, white = evaluator.spectral_witness(model, R, quotient.lift, quotient.reduce, seed=92219, maxiter=20, return_vector=True)
+        replay, _ = evalcheb.replay_witness(model, R, quotient, white)
+        vm, vx = val(model.chebyshev_alpha, model.chebyshev_beta)
+        rows.append(dict(coefficients=name, depth=depth, witness=replay['actual_rayleigh'],
+                         original7_energy_ratio=(np.asarray(algebra['predicted_energy']) / np.asarray(algebra['reference_energy'])).tolist(),
+                         val_mean=vm, val_max=vx))
+        print(json.dumps(dict(event='LEARN_EVAL', coefficients=name, witness=rows[-1]['witness'][0], orig7_max=max(rows[-1]['original7_energy_ratio']), val_mean=vm, val_max=vx)), flush=True)
+    res = dict(case=a.case, depth=depth, ref_depth=a.learn_ref_depth, train=a.learn_train, val=a.learn_val, steps=a.learn_steps,
+               batch=a.learn_batch, lr=a.learn_lr, history=hist, rows=rows, alpha=alpha.tolist(), beta=beta.tolist(),
+               alpha0=ca, beta0=cb, stage_seconds=T.rows, **extra)
+    (out / 'LEARN.json').write_text(json.dumps(res, indent=2, default=float))
+
+
+def slow_diagnostic(a, out, T, A, base, extra):
+    """Where do the slowest modes of B A live? For each of the M slowest approximate eigenvectors (A-orthonormal):
+    theta, the effective number of nodes carrying it (participation ratio), and the share of its A-energy and of its
+    squared amplitude on weakly supported nodes (node 3x3 diagonal block norm below 1e-3/1e-2/1e-1 of the median)."""
+    with T('D_slow_modes'):
+        theta, V = slow_modes(lambda v: torch.sparse.mm(A, v), base.corrections[0], A.shape[0], a.slow_diag,
+                              rounds=a.slow_rounds, degree=a.slow_degree, a_cut=a.slow_cut)
+    i, v = A.indices(), A.values()
+    nn = A.shape[0] // 3
+    on = (i[0] // 3) == (i[1] // 3)
+    dg = torch.sqrt(torch.zeros(nn, dtype=dt, device=dev).index_add_(0, i[0][on] // 3, v[on] ** 2))
+    rel = dg / dg.median()
+    AV = torch.sparse.mm(A, V)
+    amp = (V ** 2).reshape(nn, 3, -1).sum(1)                       # node x mode squared amplitude
+    en = (V * AV).reshape(nn, 3, -1).sum(1)                        # node x mode energy density (sums to 1 per mode)
+    neff = amp.sum(0) ** 2 / (amp ** 2).sum(0)
+    rows = []
+    for k in range(V.shape[1]):
+        row = dict(theta=float(theta[k]), effective_nodes=float(neff[k]))
+        for t in (1e-3, 1e-2, 1e-1):
+            w = rel < t
+            row[f'amp_share_below_{t:g}'] = float(amp[w, k].sum() / amp[:, k].sum())
+            row[f'energy_share_below_{t:g}'] = float(en[w, k].sum() / en[:, k].sum())
+        rows.append(row)
+    # interface: nodes above 1e-2 of the median that couple to a node below it
+    weak = rel < 1e-2
+    ni, nj = i[0] // 3, i[1] // 3
+    iface = torch.zeros(nn, dtype=torch.bool, device=dev)
+    iface[ni[weak[nj] & ~weak[ni]]] = True
+    for k, row in enumerate(rows):
+        row['amp_share_interface'] = float(amp[iface, k].sum() / amp[:, k].sum())
+        row['energy_share_interface'] = float(en[iface, k].sum() / en[:, k].sum())
+    ref = {f'node_share_below_{t:g}': float((rel < t).double().mean()) for t in (1e-3, 1e-2, 1e-1)}
+    ref['node_share_interface'] = float(iface.double().mean())
+    top = torch.topk(amp.sum(1), 200).indices
+    res = dict(case=a.case, M=a.slow_diag, reference=ref, rows=rows, rel_diag_quantiles=torch.quantile(rel, torch.tensor([0, .01, .05, .1, .5], dtype=dt, device=dev)).tolist(),
+               top200_nodes_rel_diag=rel[top].tolist(), **extra)
+    (out / 'SLOWDIAG.json').write_text(json.dumps(res, indent=2, default=float))
+    np.save(out / 'SLOW_NODE_AMP.npy', amp.cpu().numpy()); np.save(out / 'NODE_REL_DIAG.npy', rel.cpu().numpy())
+    print(json.dumps(dict(event='SLOWDIAG', reference=ref, first=rows[:3], median_neff=float(neff.median()),
+                          mean_amp_share_below_0p01=float(np.mean([r['amp_share_below_0.01'] for r in rows])),
+                          mean_amp_share_interface=float(np.mean([r['amp_share_interface'] for r in rows])),
+                          theta_min=float(theta[0]), theta_16=float(theta[min(15, len(theta) - 1)]))), flush=True)
 
 
 def skeleton_fields(a, out, base, cheb, X, a_design, extra):
@@ -1026,6 +1385,16 @@ if __name__ == '__main__':
     ap.add_argument('--split-theta', type=float, default=0.0)
     ap.add_argument('--omega-mode', choices=['rowsum', 'lanczos'], default='rowsum')
     ap.add_argument('--fields', default=None); ap.add_argument('--field-depths', default='8,16,32,64')
+    ap.add_argument('--slow-diag', type=int, default=0)
+    ap.add_argument('--weak-rel', type=float, default=0.0); ap.add_argument('--weak-theta', type=float, default=0.1)
+    ap.add_argument('--weak-cap', type=int, default=32)
+    ap.add_argument('--weak-merge', action='store_true')
+    ap.add_argument('--learn-depth', type=int, default=0); ap.add_argument('--learn-ref-depth', type=int, default=96)
+    ap.add_argument('--learn-train', type=int, default=256); ap.add_argument('--learn-val', type=int, default=64)
+    ap.add_argument('--learn-steps', type=int, default=300); ap.add_argument('--learn-batch', type=int, default=16)
+    ap.add_argument('--learn-lr', type=float, default=0.01); ap.add_argument('--learn-every', type=int, default=25)
+    ap.add_argument('--learn-seed', type=int, default=20260923)
+    ap.add_argument('--lattice', default=''); ap.add_argument('--lattice-variants', default='c8,c16,c24,c32,c64')
     ap.add_argument('--omega-safety', type=float, default=1.05); ap.add_argument('--omega-steps', type=int, default=40)
     ap.add_argument('--smooth-p1', type=float, default=0.0); ap.add_argument('--smooth-p12', type=float, default=0.0)
     main(ap.parse_args())
