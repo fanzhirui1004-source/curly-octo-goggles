@@ -1,0 +1,39 @@
+fresh_train_0008_cover01_r1 max slope err 1e-4: 0.0032913090283452832
+  log_det        teacher +62961.9896 geometry +62967.8379 rel +0.0001
+  trace_inverse  teacher   -10.7213 geometry   -10.7368 rel -0.0014
+  softest        teacher    +2.2075 geometry    +2.2079 rel +0.0002
+  stiffest       teacher    +0.0192 geometry    +0.0192 rel -0.0000
+  compliance_0   teacher   -11.8542 geometry   -11.8638 rel -0.0008
+  compliance_1   teacher   -10.2170 geometry   -10.2256 rel -0.0008
+  compliance_2   teacher    -8.9547 geometry    -8.9617 rel -0.0008
+  compliance_3   teacher   -10.5823 geometry   -10.5877 rel -0.0005
+  compliance_4   teacher   -10.6856 geometry   -10.6968 rel -0.0010
+  compliance_5   teacher   -14.7432 geometry   -14.7795 rel -0.0025
+  compliance_6   teacher    -9.5697 geometry    -9.5716 rel -0.0002
+  compliance_7   teacher   -12.7234 geometry   -12.7653 rel -0.0033
+fresh_train_0020_cover01_r1 max slope err 1e-4: 0.0009339432466387269
+  log_det        teacher +55649.0203 geometry +55656.8810 rel +0.0001
+  trace_inverse  teacher    -8.8457 geometry    -8.8469 rel -0.0001
+  softest        teacher    +9.0207 geometry    +9.0291 rel +0.0009
+  stiffest       teacher    +0.9016 geometry    +0.9013 rel -0.0003
+  compliance_0   teacher    -7.8152 geometry    -7.8147 rel +0.0001
+  compliance_1   teacher    -9.4857 geometry    -9.4841 rel +0.0002
+  compliance_2   teacher    -8.5551 geometry    -8.5536 rel +0.0002
+  compliance_3   teacher    -9.0958 geometry    -9.0984 rel -0.0003
+  compliance_4   teacher    -9.6102 geometry    -9.6126 rel -0.0002
+  compliance_5   teacher    -8.6464 geometry    -8.6490 rel -0.0003
+  compliance_6   teacher    -9.0997 geometry    -9.0991 rel +0.0001
+  compliance_7   teacher    -8.5552 geometry    -8.5588 rel -0.0004
+fresh_train_0013_cover01_r1 max slope err 1e-4: 0.0011436863103281845
+  log_det        teacher +70641.9439 geometry +70638.6387 rel -0.0000
+  trace_inverse  teacher    -9.3178 geometry    -9.3135 rel +0.0005
+  softest        teacher    +8.4433 geometry    +8.4386 rel -0.0006
+  stiffest       teacher    +0.0172 geometry    +0.0172 rel -0.0004
+  compliance_0   teacher    -8.3797 geometry    -8.3703 rel +0.0011
+  compliance_1   teacher    -7.7111 geometry    -7.7023 rel +0.0011
+  compliance_2   teacher    -9.9230 geometry    -9.9261 rel -0.0003
+  compliance_3   teacher    -9.7185 geometry    -9.7165 rel +0.0002
+  compliance_4   teacher    -9.0823 geometry    -9.0786 rel +0.0004
+  compliance_5   teacher   -10.8797 geometry   -10.8783 rel +0.0001
+  compliance_6   teacher    -9.3479 geometry    -9.3488 rel -0.0001
+  compliance_7   teacher    -8.4765 geometry    -8.4746 rel +0.0002
