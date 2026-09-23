@@ -62,10 +62,25 @@ def main(workers, out, case):
                 faces.append((owner, nbr, axis))
     faces = np.asarray(faces, dtype=np.int32)
     row['faces_seconds'] = time.perf_counter() - t; row['faces_stats'] = fstats
+    # box trace nodes: the 3 x 3 Q2 face nodes of every certified positive box-face patch (a node on the box plane
+    # whose adjacent faces carry no positive-measure material is a free unknown, as in the frozen trace compiler)
+    box_ids = []
+    for patch in topo['patches']:
+        if not patch['tag'].startswith('BOX_'):
+            continue
+        axis = 'XYZ'.index(patch['tag'][4]); side = patch['tag'].endswith('MAX')
+        ijk = np.asarray(patch['parent'])
+        g = [np.arange(2 * ijk[d], 2 * ijk[d] + 3) for d in range(3)]
+        g[axis] = np.asarray([2 * ijk[axis] + (2 if side else 0)])
+        pts = np.stack(np.meshgrid(*g, indexing='ij'), -1).reshape(-1, 3)
+        box_ids.append(np.ravel_multi_index(pts.T, (2 * n + 1,) * 3))
+    box_nodes = np.unique(np.concatenate(box_ids)) if box_ids else np.zeros(0, dtype=np.int64)
+    if not np.isin(box_nodes, nodes).all():
+        raise ValueError('BOX_NODE_NOT_IN_BODY')
     row['total_seconds'] = time.perf_counter() - t0
     d = Path(out) / case; d.mkdir(parents=True, exist_ok=True)
     np.save(d / 'NODES.npy', nodes); np.save(d / 'CELL_INDICES.npy', cells); np.save(d / 'dofs.npy', dofs)
-    np.save(d / 'GP_FACES.npy', faces)
+    np.save(d / 'GP_FACES.npy', faces); np.save(d / 'BOX_NODES.npy', box_nodes)
     tpl = Path(out) / f'GP_TEMPLATES_n{n}.npz'
     if not tpl.exists():
         from stage_cutfem_gp.kernel import stencil, face_factor
@@ -87,7 +102,12 @@ def main(workers, out, case):
     ref_nodes = R / case / 'CONTEXT' / 'ACTIVE_NODE_IDS.npy'
     if ref_nodes.exists():
         row['same_nodes_packet'] = bool(np.array_equal(np.load(ref_nodes), nodes))
-    row.update(cells=int(len(cells)), nodes=int(len(nodes)), faces=int(len(faces)))
+    trace = R / case / 'TRACE.npz'
+    if trace.exists():
+        z = np.load(trace)
+        ref_box = np.unique(z['background_nodes'][z['box_boundary_original'] // 3])
+        row['same_box_nodes_packet'] = bool(np.array_equal(ref_box, box_nodes))
+    row.update(cells=int(len(cells)), nodes=int(len(nodes)), faces=int(len(faces)), box_nodes=int(len(box_nodes)))
     (d / 'PREP.json').write_text(json.dumps(row, indent=2))
     print(json.dumps(row), flush=True)
 

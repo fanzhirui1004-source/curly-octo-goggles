@@ -1,10 +1,5 @@
 """Batched (GPU) version of element_polyref.element_moments: all cells, all sub-cubes, all tetrahedra at once.
 
-Route 7 speed-ups (same integrals, different summation order): sub-cubes entirely inside the material get their
-moments in closed form (product of the 1-D integrals (hi^(k+1) - lo^(k+1))/(k+1)), which the tensor Gauss rule
-reproduces exactly; clipped tetrahedra are reduced over their quadrature points first (tensor-product form, one
-batched matmul) and added once per tetrahedron instead of once per point and monomial.
-
 Same geometry and same arithmetic as element_polyref.py (piecewise-linear psi on Kuhn tetrahedra of an s^3
 sub-grid, clipped by psi1 = tau - f, psi2 = tau + f, psi3 = offset - n.x; tensor Gauss on fully-inside sub-cubes,
 collapsed Gauss-Jacobi on clipped pieces). Returns the 125 tensor moments per cell in local xi coordinates with
@@ -14,6 +9,9 @@ import time
 from itertools import product
 import numpy as np
 import torch
+PROF = {}
+def _tick(name, t0):
+    torch.cuda.synchronize(); t1 = time.perf_counter(); PROF[name] = PROF.get(name, 0.0) + t1 - t0; return t1
 
 from element_polyref import KUHN, CUBE, tet_rule, cube_rule
 
@@ -78,8 +76,6 @@ def cell_moments(cells, n, taus, normal, offset, s, device='cuda', batch=2048, r
     idx = torch.tensor(list(product(range(s), repeat=3)), dtype=dt, device=device)
     out = torch.zeros((len(cells), 125), dtype=dt, device=device)
     cells_t = torch.as_tensor(np.asarray(cells), dtype=dt, device=device)
-    kp1 = torch.arange(1, 6, dtype=dt, device=device)
-    kpow = torch.arange(5, dtype=dt, device=device)
 
     def psi_at(cell_xyz, xi):  # xi local in [-1,1]; cell_xyz integer cell index per row
         phys = (cell_xyz + (xi + 1) / 2) / n
@@ -95,16 +91,19 @@ def cell_moments(cells, n, taus, normal, offset, s, device='cuda', batch=2048, r
         h = 2 / s
         owner = torch.arange(nb, device=device).repeat_interleave(len(idx))
         lo = (-1 + h * idx).repeat(nb, 1)
+        torch.cuda.synchronize(); tp = time.perf_counter()
         for level in range(levels + 1):
             cx = lo[:, None, :] + h * cube[None]                     # C x 8 x 3
             cp = psi_at(cb[owner][:, None, :], cx)                   # C x 8 x 3
+            tp = _tick(f'classify_L{level}', tp)
             full = (cp >= 0).all(-1).all(-1); empty = (cp < 0).all(1).any(-1)
             part = ~full & ~empty
             if full.any():
-                lf = lo[full]; hf = lf + h
-                m1 = (hf[:, :, None] ** kp1 - lf[:, :, None] ** kp1) / kp1          # F x 3 x 5 exact 1-D moments
-                mono = (m1[:, 0, :, None, None] * m1[:, 1, None, :, None] * m1[:, 2, None, None, :]).reshape(-1, 125)
-                M.index_add_(0, owner[full], mono)
+                P = (lo[full][:, None, :] + h * cref[None]).reshape(-1, 3)
+                W = (cw * h ** 3).repeat(int(full.sum()))
+                _accumulate(M, P, W, owner[full].repeat_interleave(len(cw)))
+            tp = _tick(f'full_subcubes_L{level}', tp)
+            PROF[f'n_full_L{level}'] = PROF.get(f'n_full_L{level}', 0) + int(full.sum()); PROF[f'n_part_L{level}'] = PROF.get(f'n_part_L{level}', 0) + int(part.sum())
             if not part.any():
                 break
             if level < levels:  # refine partial cubes
@@ -115,22 +114,21 @@ def cell_moments(cells, n, taus, normal, offset, s, device='cuda', batch=2048, r
             tets = cx[part][:, kuhn].reshape(-1, 4, 3)
             attr = cp[part][:, kuhn].reshape(-1, 4, 3)
             town = owner[part].repeat_interleave(6)
+            tp = _tick('refine_and_kuhn', tp)
             for k in range(3):
                 tets, attr, town = _clip(tets, attr, town, k)
+            tp = _tick('clip', tp)
+            PROF['n_tets'] = PROF.get('n_tets', 0) + int(len(tets))
             if len(tets):
                 E = torch.stack([tets[:, 1] - tets[:, 0], tets[:, 2] - tets[:, 0], tets[:, 3] - tets[:, 0]], 1)
                 J = torch.linalg.det(E).abs()
                 keep = J > 0
                 tets, E, J, town = tets[keep], E[keep], J[keep], town[keep]
-                # per-tetrahedron moments first (tensor-product form as one batched matmul), then one add per tet:
-                # the same sum as the per-point accumulation, in a different order
-                for lo_t in range(0, len(tets), 65536):
-                    P = tets[lo_t:lo_t + 65536, None, 0, :] + torch.einsum('qk,tkd->tqd', tref, E[lo_t:lo_t + 65536])   # T x q x 3
-                    P2 = P * P
-                    pw = torch.stack([torch.ones_like(P), P, P2, P2 * P, P2 * P2], -1)         # T x q x 3 x 5
-                    X = pw[:, :, 0, :] * (J[lo_t:lo_t + 65536, None] * tw[None])[..., None]      # T x q x 5 (weights folded)
-                    YZ = (pw[:, :, 1, :, None] * pw[:, :, 2, None, :]).reshape(len(P), -1, 25)  # T x q x 25
-                    M.index_add_(0, town[lo_t:lo_t + 65536], torch.bmm(X.transpose(1, 2), YZ).reshape(len(P), 125))
+                for lo_t in range(0, len(tets), 8192):
+                    P = (tets[lo_t:lo_t + 8192, None, 0, :] + torch.einsum('qk,tkd->tqd', tref, E[lo_t:lo_t + 8192])).reshape(-1, 3)
+                    W = (J[lo_t:lo_t + 8192, None] * tw[None]).reshape(-1)
+                    _accumulate(M, P, W, town[lo_t:lo_t + 8192].repeat_interleave(len(tw)))
+            tp = _tick('tet_quadrature', tp)
         out[b0:b0 + nb] = M
     return (out * (1 / (2 * n)) ** 3).cpu().numpy()
 

@@ -117,7 +117,11 @@ def main(a):
     n = int(ctx['n'])
     nodes = EM.members(a.case, ['NODES.npy'])['NODES.npy']
     grid = np.stack(np.unravel_index(nodes, (2 * n + 1,) * 3), axis=1)
-    onbox = np.any((grid == 0) | (grid == 2 * n), axis=1)
+    bn_file = Path(a.body_dir) / a.case / 'BOX_NODES.npy' if a.body_dir else None
+    if bn_file is not None and bn_file.exists():      # certified positive box-face patches (fast_prep3)
+        onbox = np.isin(nodes, np.load(bn_file))
+    else:
+        onbox = np.any((grid == 0) | (grid == 2 * n), axis=1)
     with T('B2_partition'):
         b_mask = torch.as_tensor(np.repeat(onbox, 3), device=dev)
         A, C, D, bi, ii = split(K, b_mask)
