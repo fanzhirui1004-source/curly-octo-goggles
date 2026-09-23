@@ -200,11 +200,14 @@ class Cell:
         gc.collect(); torch.cuda.empty_cache()
 
     # ---------------------------------------------------------------- factorizations
-    def factor(self, neumann=True, fp32=False):
+    def factor(self, neumann=True, fp32=False, interior=True, fp32_neumann=False):
         self._free()
         self.fp32 = fp32
         st = {}
         sync(); t = time.perf_counter()
+        if not interior:                                                      # Neumann factor only
+            ru, cu = self.ru.long(), self.cu.long()
+            return self._factor_neumann(ru, cu, st, t, fp32_neumann)
         # interior block K_II (ports held)
         pm = torch.zeros(self.nb, dtype=torch.bool, device=dev); pm[self.P] = True
         new = torch.full((self.nb,), -1, dtype=torch.long, device=dev); new[self.I] = torch.arange(self.ni, device=dev)
@@ -219,6 +222,11 @@ class Cell:
                                fdt=torch.float32 if fp32 else None)
         sync(); st['factor_interior'] = time.perf_counter() - t; t = time.perf_counter()
         if neumann:
+            return self._factor_neumann(ru, cu, st, t, fp32_neumann)
+        return st
+
+    def _factor_neumann(self, ru, cu, st, t, fp32_neumann=False):
+        if True:
             self.pin = self._pick_pins()
             pin = torch.zeros(self.nb, dtype=torch.bool, device=dev); pin[self.pin] = True
             v = self.vals.clone()
@@ -227,7 +235,8 @@ class Cell:
             sN = 1 / torch.sqrt(v[self.diag])
             self.sN = sN
             del ru, cu
-            self.sol_N = SPDSolver(self.crow.int(), self.cu, (v * sN[self.ru.long()] * sN[self.cu.long()]).contiguous(), self.nb)
+            self.sol_N = SPDSolver(self.crow.int(), self.cu, (v * sN[self.ru.long()] * sN[self.cu.long()]).contiguous(), self.nb,
+                                   fdt=torch.float32 if fp32_neumann else None)
             sync(); st['factor_neumann'] = time.perf_counter() - t
         return st
 

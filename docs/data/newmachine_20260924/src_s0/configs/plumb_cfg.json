@@ -1,0 +1,4 @@
+{"cases": ["fresh_train_0020_cover01_r1"], "body": "/root/autodl-tmp/OPL/S0", "data": "/root/autodl-tmp/OPL/S0/data",
+ "out": "/root/autodl-tmp/OPL/S1/plumb_diffusion", "model": "diffusion", "model_args": {"T": 32}, "steps": 400, "batch": 16,
+ "lr": 0.01, "mix": {"force": 0.3, "macro": 0.2, "grf": 0.3, "adv": 0.2}, "adv_start": 200, "adv_every": 100, "adv_k": 8,
+ "eval_every": 200, "seed": 0}

@@ -158,9 +158,10 @@ def _mlp(i, h, o, n=2):
 
 
 class MGNO(nn.Module):
-    def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8):
+    def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, ckpt=False):
         super().__init__()
         self.F, self.H, self.L_pre, self.L_post, self.levels, self.cpl = F, H, L_pre, L_post, levels, conv_per_level
+        self.ckpt = ckpt
         self.caches = {g.case: MGCache(g, levels).c for g in geos}
         self.elem_in = _mlp(126, Cg, Cg)
         self.node_in = _mlp(11 + Cg, Cg, Cg)
@@ -243,8 +244,11 @@ class MGNO(nn.Module):
         X0[c.port_nodes] = q3 @ self.W_in
         pm = c.is_port.to(f32)[:, None, None]
         X = X0
+        ck = self.ckpt and torch.is_grad_enabled()
+        fine = (lambda X_, l_: torch.utils.checkpoint.checkpoint(self._fine, X_, X0, pm, c, gp['ab'], l_, use_reentrant=False)) if ck \
+            else (lambda X_, l_: self._fine(X_, X0, pm, c, gp['ab'], l_))
         for l in range(self.L_pre):
-            X = self._fine(X, X0, pm, c, gp['ab'], l)
+            X = fine(X, l)
         # U-Net over the vertex grids
         skips, Xl = [], X
         for l, t in enumerate(c.trans):
@@ -257,7 +261,7 @@ class MGNO(nn.Module):
             Xl = skips[l] + self.skip[l] * self._prolong(Xl, t, gp['rw'][l][1])
         X = Xl * (1 - pm) + X0 * pm
         for l in range(self.L_post):
-            X = self._fine(X, X0, pm, c, gp['ab'], self.L_pre + l)
+            X = fine(X, self.L_pre + l)
         u = X @ self.W_out                                                                # N x B x 3
         return u.permute(0, 2, 1).reshape(-1, B)
 

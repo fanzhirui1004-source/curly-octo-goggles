@@ -78,8 +78,7 @@ class Geo:
         if cell is None:
             C.assemble()
         if neumann:
-            C.factor(neumann=True)
-            C.sol_I.free(); C.sol_I = None                              # only the Neumann factor is needed
+            C.factor(neumann=True, interior=False, fp32_neumann=True)   # only an approximate S^+ (adversarial search)
         self.C = C
         d = Path(data_root) / case
         self.nd = dict(np.load(d / 'NETDATA.npz'))
