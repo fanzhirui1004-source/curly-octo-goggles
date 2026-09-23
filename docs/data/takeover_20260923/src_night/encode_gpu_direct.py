@@ -390,6 +390,9 @@ class DirectModel(torch.nn.Module):
         if lib:
             self.solver.plan_config.host_nthreads = threads
         self.solver.plan_config.reordering_algorithm = getattr(DirectSolverReorderingAlg, reorder)
+        # cuDSS allocates with its own cudaMalloc: hand back the blocks PyTorch's caching allocator still holds from assembly
+        torch.cuda.empty_cache()
+        self.device_free_before_plan_gb = torch.cuda.mem_get_info()[0] / 2**30
         with T('E4b_direct_plan'):
             self.solver.plan()
         with T('E4c_direct_factor'):

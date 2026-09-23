@@ -99,4 +99,6 @@ train6_full 1.0044，dev0000 1.0056。换成教师单元时，直接分解的见
 ## 正在跑的任务（服务器 `CLAUDE_TAKEOVER_20260923`）
 
 - `run_direct2.sh`：第二批剩下的 5 个样本（0025、0028–0031）→ `DIRECT_01/`，结束标记 `BATCH2_DONE`；
-- `run_direct3.sh`：上面结束后，单独重跑 0015，再用 GPU PᵀKP 重新计时全部样本 → `DIRECT_02/`，结束标记 `BATCH3_DONE`。
+- `run_direct3.sh`：上面结束后，用 GPU PᵀKP 重新计时全部样本，含 3 个失败样本的重跑（已加上分解前释放 PyTorch 显存缓存，
+  这是最可能的失败原因：cuDSS 自己申请显存，拿不到 PyTorch 缓存着的空闲块）→ `DIRECT_02/`，结束标记 `BATCH3_DONE`；
+- `run_direct4.sh`：再之后，误差最大的 4 个样本（0020、0017、0024、0005）用有效分辨率 16 复核 → `DIRECT_03/`。
