@@ -1,0 +1,109 @@
+{
+  "id": "CLAUDE_TO_CODEX_HANDOVER_20260923",
+  "written_utc": "2026-09-23T04:10:00Z",
+  "responds_to": "CODEX_HANDOVER_20260923/HANDOVER_TO_CLAUDE_MECHANICS_LEARNING_20260923_CN.md",
+  "server_root": "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923",
+  "branch": "claude/wizardly-euler-3m9cwx",
+  "running_jobs": [],
+  "codex_pid_218807_result": {
+    "case": "fresh_train_0013_d0_v1",
+    "depth": 64,
+    "mu": [
+      1.0,
+      1.00133
+    ],
+    "D_over_d": 2.1e-10,
+    "path": "CROSS_CASE_04_PAIR0p9/FULLSPEC_fresh_train_0013_d0_v1_064"
+  },
+  "main_line": "geometry -> frozen P,GP -> GPU polyhedral 125-moment elements -> GPU P^T K P -> cuDSS sparse Cholesky -> S q = D q + C^T z",
+  "second_batch_teacher_free": {
+    "cases_with_targets": 31,
+    "all_within_target_gate": true,
+    "evidence": "finite witness (frozen protocol)",
+    "resolution8_witness_range": [
+      1.0016,
+      1.0158
+    ],
+    "resolution8_witness_median": 1.005,
+    "resolution16_worst4": {
+      "fresh_train_0020_cover01_r1": 1.0039,
+      "fresh_train_0017_cover01_r1": 1.0023,
+      "fresh_train_0024_cover01_r1": 1.002,
+      "fresh_train_0005_cover01_r1": 1.0026
+    },
+    "result_dirs": [
+      "DIRECT_01",
+      "DIRECT_02",
+      "DIRECT_03",
+      "DIRECT_04"
+    ]
+  },
+  "full_spectrum": {
+    "fresh_train_0013_d0_v1_res8": {
+      "mu": [
+        0.99923,
+        1.0064
+      ],
+      "D_over_d": 1.5e-07
+    },
+    "fresh_train_0013_d0_v1_res16": {
+      "mu": [
+        0.9999984,
+        1.00208
+      ],
+      "D_over_d": 9.6e-09
+    },
+    "fresh_train_0003_d0_v0_s4": {
+      "mu": [
+        0.9959,
+        1.0107
+      ],
+      "D_over_d": 8.9e-07
+    }
+  },
+  "timing_exclusive_gpu": {
+    "encode_seconds_excluding_P_GP": [
+      0.9,
+      18.0
+    ],
+    "query_1col_ms": [
+      0.5,
+      40
+    ],
+    "query_64col_ms": [
+      1,
+      324
+    ],
+    "P_compile_trace_seconds": [
+      1,
+      216
+    ],
+    "GP_seconds": [
+      2,
+      31
+    ]
+  },
+  "latest_encoder": "xcase_src_19/encode_gpu.py (--solver cudss --gpu-trace --elements polyref --s 4 --levels 1)",
+  "not_done": [
+    "design sensitivity (tau corners, cut normal/offset)",
+    "causal pair ablation",
+    "nonnegative energy attribution",
+    "hard direction through old E1/E2",
+    "full spectrum on more second-batch cases",
+    "compile_trace speedup (needs user decision)",
+    "5 failed first-batch census cases",
+    "5 second-batch developer parents without targets"
+  ],
+  "evidence_boundary": [
+    "element-network infeasibility is from random perturbation tests, not a trained network",
+    "second-batch results are finite witnesses; full spectra only on train13 and heavy",
+    "teacher labels are the same discretization, not experiment",
+    "encode timing excludes frozen P/GP Python"
+  ],
+  "pending_user_decisions": [
+    "drop or redirect network route",
+    "compile_trace: compiled exact rewrite vs float convention + migration",
+    "resolution 8 vs 16",
+    "second batch as validation set"
+  ]
+}
