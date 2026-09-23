@@ -137,7 +137,7 @@ class CellEncoder:
             lib = os.environ.get('CUDSS_MT')
             opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD, sparse_system_view=DirectSolverMatrixViewType.UPPER,
                                        **(dict(multithreading_lib=lib) if lib else {}))
-            self.w = 8
+            self.w = getattr(self, "panel", 8)
             self.b = torch.zeros((self.w, self.ni), dtype=fdt, device=dev).T
             self.solver = DirectSolver(self.U, self.b, options=opts)
             if lib:

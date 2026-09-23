@@ -1,0 +1,54 @@
+{
+  "case": "fresh_train_0013_cover01_r1",
+  "panel": 512,
+  "device_gb_start": 0.49432373046875,
+  "device_gb_after_setup": 4.98455810546875,
+  "first_update": {
+    "moments": 0.36137090250849724,
+    "assemble": 0.039202980697155,
+    "plan": 0.5265608765184879,
+    "factorize": 0.1800089254975319
+  },
+  "device_gb_after_factor": 3.07635498046875,
+  "torch_allocated_gb": 1.2705087661743164,
+  "lu_nnz": 116990705,
+  "memory_estimates": {
+    "permanent_device_memory": 877187976,
+    "peak_device_memory": 877187976,
+    "permanent_host_memory": 4836496,
+    "peak_host_memory": 123203344,
+    "hybrid_min_device_memory": 487684392,
+    "hybrid_max_device_memory": 472799328,
+    "reserved": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "interior": 62961,
+  "box": 4794,
+  "design_step": {
+    "moments": 0.25029269978404045,
+    "assemble": 0.009476784616708755,
+    "factorize": 0.07510272040963173
+  },
+  "dense_T": {
+    "seconds_measured": 1.3552022352814674,
+    "columns_measured": 4282,
+    "seconds_all_columns": 1.5172441653291346,
+    "sym_rel": 8.99217359644558e-14,
+    "refine0_rel_to_refine3": 8.888196072854447e-07,
+    "refine1_rel_to_refine3": 2.0029807556912397e-10,
+    "refine2_rel_to_refine3": 6.31685642183031e-14
+  },
+  "dense_T_fp32_gb": 0.08561624586582184,
+  "device_gb_peak_during_T": 6.70526123046875,
+  "torch_peak_gb_during_T": 3.2776145935058594
+}
