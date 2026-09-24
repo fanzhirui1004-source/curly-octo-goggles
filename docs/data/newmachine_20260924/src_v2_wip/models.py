@@ -249,26 +249,39 @@ def _mlp(i, h, o, n=2):
 
 class _SoftClip(torch.autograd.Function):
     """y = A tanh(x / A) where A is finite, y = x where A = inf (A broadcasts against x; mixed=False: A all finite).
-    Saves only y (kept for the q path anyway): dy/dx = 1 - (y / A)^2."""
+    knee k in (0, 1): identity for |x| <= T = k A, beyond it T + (A - T) tanh((|x| - T) / (A - T)) (C1, still bounded by A), so
+    coefficients inside the calibrated range are untouched and only out-of-range ones saturate; k = 0 is the plain tanh.
+    Saves only y (kept for the q path anyway): dy/dx = 1 - t^2, t = clamp((|y| - T) / (A - T), 0, 1)."""
 
     @staticmethod
-    def forward(ctx, x, A, mixed):
+    def forward(ctx, x, A, mixed, knee=0.0):
         if mixed:
             fin = torch.isfinite(A)
             As = torch.where(fin, A, torch.ones_like(A))
-            y = torch.where(fin, (x / As).tanh_().mul_(As), x)
         else:
             fin, As = None, A
-            y = (x / A).tanh_().mul_(A)
+        if knee > 0:
+            T = As * knee
+            ax = x.abs()
+            y = torch.where(ax > T, torch.sign(x) * (T + (As - T) * torch.tanh((ax - T) / (As - T))), x)
+        else:
+            y = (x / As).tanh_().mul_(As)
+        if fin is not None:
+            y = torch.where(fin, y, x)
         ctx.save_for_backward(y, As)
-        ctx.fin = fin
+        ctx.fin, ctx.knee = fin, knee
         return y
 
     @staticmethod
     def backward(ctx, g):
         y, As = ctx.saved_tensors
-        d = torch.ops.aten.tanh_backward(g, (y / As).clamp_(-1, 1))                  # g (1 - (y / A)^2), one fused pass
-        return (d if ctx.fin is None else torch.where(ctx.fin, d, g)), None, None
+        if ctx.knee > 0:
+            T = As * ctx.knee
+            t = ((y.abs() - T) / (As - T)).clamp_(0, 1)
+            d = g * (1 - t * t)
+        else:
+            d = torch.ops.aten.tanh_backward(g, (y / As).clamp_(-1, 1))              # g (1 - (y / A)^2), one fused pass
+        return (d if ctx.fin is None else torch.where(ctx.fin, d, g)), None, None, None
 
 
 def _bounds_hook(module, incompatible):
@@ -304,12 +317,13 @@ def load_compat(model, sd):
 
 class MGNO(nn.Module):
     def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, ckpt=False, sparse=False,
-                 bounded=False, feat_v2=False, bounds=None):
+                 bounded=False, feat_v2=False, bounds=None, bound_knee=0.0):
         super().__init__()
         self.F, self.H, self.L_pre, self.L_post, self.levels, self.cpl = F, H, L_pre, L_post, levels, conv_per_level
         self.ckpt = ckpt and not sparse
         self.sparse = sparse                                                        # training-time sparse hyperedge layers
         self.bounded, self.feat_v2 = bounded, feat_v2
+        self.bound_knee = float(bound_knee)                                        # B1: identity below knee x A (0: plain tanh)
         self.caches = {g.case: MGCache(g, levels, feat_v2).c for g in geos}
         self.elem_in = _mlp(126, Cg, Cg)
         self.node_in = _mlp(11 + Cg + (NF2 if feat_v2 else 0), Cg, Cg)            # input [nfeat, agg (, nfeat2)]
@@ -398,7 +412,7 @@ class MGNO(nn.Module):
                 G, H = x.shape[2] * x.shape[3], x.shape[4]
                 cnt = torch.count_nonzero((x.abs() > A).reshape(-1, G * H), dim=0).reshape(G, H).sum(1)
                 self._sat[name] = (cnt / float(x.numel() // G)).reshape(x.shape[2], x.shape[3])
-        return _SoftClip.apply(x, A, st == 'mixed')
+        return _SoftClip.apply(x, A, st == 'mixed', self.bound_knee)
 
     def _transfer(self, rw_raw, l):
         """Restriction / prolongation weights of level l: softplus(r) + 1e-3, or w_max tanh(softplus(r) / w_max) + 1e-3."""
@@ -414,7 +428,7 @@ class MGNO(nn.Module):
                         if 'rw' not in self._sat:
                             self._sat['rw'] = torch.zeros_like(self.bnd_rw)
                         self._sat['rw'][l, j] = (sp[j] > A).float().mean()
-                out.append(_SoftClip.apply(sp[j], A, False) + 1e-3)
+                out.append(_SoftClip.apply(sp[j], A, False, self.bound_knee) + 1e-3)
             else:
                 out.append(sp[j] + 1e-3)
         return tuple(out)
@@ -543,11 +557,12 @@ class MGNO(nn.Module):
 # ---------------------------------------------------------------------------------------------------------------------
 class MGNO2(MGNO):
     def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, n_fringe=4, sparse=False,
-                 bounded=False, feat_v2=False, fringe_soft=False, bounds=None):
+                 bounded=False, feat_v2=False, fringe_soft=False, bounds=None, bound_knee=0.0):
         if fringe_soft and not feat_v2:
             raise ValueError('fringe_soft needs feat_v2 (the soft weak score s)')
         super().__init__(geos, F=F, H=H, L_pre=L_pre, L_post=L_post, levels=levels, Cg=Cg,
-                         conv_per_level=conv_per_level, slot_dim=slot_dim, sparse=sparse, bounded=bounded, feat_v2=feat_v2)
+                         conv_per_level=conv_per_level, slot_dim=slot_dim, sparse=sparse, bounded=bounded, feat_v2=feat_v2,
+                         bound_knee=bound_knee)
         self.n_fringe = n_fringe
         self.fringe_soft = fringe_soft
         self.face_in = _mlp(2 * Cg + 3, Cg, Cg)

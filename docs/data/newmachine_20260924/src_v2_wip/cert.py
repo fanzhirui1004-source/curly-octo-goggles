@@ -43,6 +43,13 @@ def node_blocks(C, chunk=1 << 24):
     return D
 
 
+def _eigh(X):
+    """Symmetric eigendecomposition of small (batched) matrices on the host: cuSOLVER's batched syev rejects ~1e5 3x3 blocks
+    (CUSOLVER_STATUS_INVALID_VALUE on the large geometries); results go back to X's device."""
+    lam, V = torch.linalg.eigh(X.detach().to('cpu'))
+    return lam.to(X.device), V.to(X.device)
+
+
 class Cert:
     """Residual certificate of one cell. C: K products (C @ x, fp64; teacher.Cell), P / I: port / interior DOFs.
     diag3: optional (N, 3, 3) node blocks in NODES order (NETDATA 'diag3'); default: extracted from C (always the K in use)."""
@@ -55,7 +62,7 @@ class Cert:
         self.inode = I3[:, 0] // 3
         D = torch.as_tensor(diag3, dtype=dt, device=I.device)[self.inode] if diag3 is not None else node_blocks(C)[self.inode]
         D = 0.5 * (D + D.transpose(1, 2)).to(I.device)
-        lam, V = torch.linalg.eigh(D)
+        lam, V = _eigh(D)
         fl = floor * lam[:, -1:].clamp_min(TINY)
         self.floored = int((lam < fl).sum())                             # eigenvalues raised to the floor (numerical safety)
         lam = torch.maximum(lam, fl)
@@ -101,7 +108,7 @@ class Cert:
             alive = alive & (zn > self.tol * z0)                            # near-dependent: the space is invariant, stop
             Y[k + 1] = torch.where(alive, Z / torch.where(alive, zn, 1), 0)
         b = (Y * rt).sum(1).T
-        lam, V = torch.linalg.eigh(0.5 * (G + G.transpose(1, 2)))
+        lam, V = _eigh(0.5 * (G + G.transpose(1, 2)))
         keep = lam > self.gfloor * lam[:, -1:]
         y = torch.where(keep, torch.einsum('bkj,bk->bj', V, b) / torch.where(keep, lam, 1), 0)
         c = torch.einsum('bkj,bj->bk', V, y)                               # G^+ b
@@ -142,7 +149,7 @@ class Cert:
         """Galerkin bound over an arbitrary interior basis W (ni, k), shared by the columns of r (ni, B)."""
         W = W.to(dt)
         G = W.T @ self.kii(W)
-        lam, V = torch.linalg.eigh(0.5 * (G + G.T))
+        lam, V = _eigh(0.5 * (G + G.T))
         keep = lam > self.gfloor * lam[-1]
         Vk = V[:, keep] / torch.sqrt(lam[keep])[None, :]
         x = W @ (Vk @ (Vk.T @ (W.T @ r)))

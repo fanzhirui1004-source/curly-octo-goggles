@@ -93,5 +93,11 @@ class HyperFn(torch.autograd.Function):
         return dX, da, db, dW, None, None, None
 
 
+FUSED = __import__('os').environ.get('FUSED_HYPER', '0') == '1'   # opt-in Triton path (fused_hyper.py); default: cuSPARSE
+
+
 def hyper(X, a, b, W, deg, P, chunk=2048):
+    if FUSED:
+        import fused_hyper
+        return fused_hyper.hyper(X, a, b, W, deg, P)
     return HyperFn.apply(X, a, b, W, deg, P, chunk)

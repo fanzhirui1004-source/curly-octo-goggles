@@ -7,7 +7,10 @@ e_hat - 1 at unit exact energy: Galerkin orthogonality), split into
   - scales: the smooth part of err (restricted to the 17^3 vertex grid by full weighting and prolonged back, masked to the
     interior) vs the rest; energies of both parts and their cross term,
   - relative field error in the energy norm restricted to each group.
-Usage: diag_error.py <checkpoint.pt> <out.json> <case>
+Step-2 checkpoints (cfg without 'cases'): the geometry comes from the slot cache (--slots, default the S2 cache), moments
+from NETDATA, classes = the geometry's own (non-finite bank samples dropped). Shares are also reported per element
+fraction (share / fraction of elements in the group: > 1 means the group carries more than its share).
+Usage: diag_error.py <checkpoint.pt> <out.json> <case> [<slots_dir>]
 """
 import json, sys, time
 from pathlib import Path
@@ -19,14 +22,22 @@ import models as MD
 dev, dt = TL.dev, TL.dt
 
 
-def main(ckpt, out, case):
-    ck = torch.load(ckpt, map_location='cuda:0', weights_only=False)
+def main(ckpt, out, case, slots='/root/autodl-tmp/OPL/S2/slots'):
+    ck = torch.load(ckpt, map_location=dev, weights_only=False)
     cfg = ck['cfg']
-    geo = TL.Geo(case, cfg['body'], cfg['data'], neumann=False, log=lambda s_: None)
+    if case in cfg.get('cases', []):
+        geo = TL.Geo(case, cfg['body'], cfg['data'], neumann=False, log=lambda s_: None)
+    else:                                                                     # step-2 checkpoint: slot cache
+        import train2 as T2
+        geo = torch.load(Path(slots) / f'{case}.pt', map_location='cpu', weights_only=False)
+        T2.move(geo, dev); geo.C.K = geo.C
+        T2.clean_banks(geo, case, lambda d_: None)
     C = geo.C
     C.factor(neumann=False)
-    model = MD.build(cfg['model'], [geo], **cfg.get('model_args', {})).cuda()
-    model.load_state_dict(ck['model'], strict=False); model.eval()
+    Mom = C.M if getattr(C, 'M', None) is not None else torch.as_tensor(geo.nd['moments'], dtype=dt, device=dev)
+    model = MD.build(cfg['model'], [geo], **cfg.get('model_args', {})).to(dev)
+    (MD.load_compat(model, ck['model']) if hasattr(MD, 'load_compat') else model.load_state_dict(ck['model'], strict=False))
+    model.eval()
     nd = geo.nd
     en = C.dofs[:, ::3] // 3
     weak = torch.as_tensor(nd['weak'], device=dev); port = torch.as_tensor(nd['is_port'], device=dev)
@@ -41,11 +52,11 @@ def main(ckpt, out, case):
             ve = v[C.dofs[lo:lo + 96]]
             z = torch.einsum('mij,ejb->emib', Tm, ve)
             g = torch.einsum('emib,eib->emb', z, ve)
-            out_[lo:lo + 96] = torch.einsum("em,emb->eb", C.M[lo:lo + 96], g)
+            out_[lo:lo + 96] = torch.einsum("em,emb->eb", Mom[lo:lo + 96], g)
         return out_
     # smooth projection via the model's grid transfers when available (MGNO), else skip
-    rec = dict(case=case, ckpt=str(ckpt), step=ck['step'], classes={})
-    for cls in TL.CLASSES:
+    rec = dict(case=case, ckpt=str(ckpt), step=ck.get('step'), classes={})
+    for cls in geo.classes:
         Q = geo.banks['val'][cls][:, :64].to(dt)
         with torch.no_grad():
             uh = geo.field(model, Q).to(dt)
@@ -63,6 +74,7 @@ def main(ckpt, out, case):
             r[gname + '_share'] = float((ee[m].sum(0) / body).mean())
             r[gname + '_rel_field_err'] = float(torch.sqrt(ee[m].sum(0) / eu[m].sum(0).clamp_min(1e-300)).mean())
             r[gname + '_elements'] = int(m.sum())
+            r[gname + '_share_per_fraction'] = r[gname + '_share'] / max(float(m.float().mean()), 1e-12)
         # scales: smooth part of the error from the 17^3 grid (two full-weighting restrictions and prolongations)
         if hasattr(model, 'caches'):
             c = model.caches[case]
@@ -90,4 +102,4 @@ def main(ckpt, out, case):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(*sys.argv[1:5])

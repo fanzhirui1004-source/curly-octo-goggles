@@ -583,6 +583,12 @@ def main(cfg):
     want_F = cfg.get('tail_w', 0.0) > 0
     wsets = [('raw', None)] + ([('ema', ema)] if ema is not None else [])
     sel = wsets[-1][0]
+    # evaluation cost (monitoring only: neither changes the trajectory or the selected checkpoint): eval_weights 'sel' scores
+    # only the selected weights at intermediate evals (all weight sets at the last one); cert_every k computes the
+    # certificate on every k-th eval (and the last one). Defaults keep the full evaluation every time.
+    eval_w, cert_every = cfg.get('eval_weights', 'all'), max(1, int(cfg.get('cert_every', 1)))
+    if eval_w not in ('all', 'sel'):
+        raise ValueError(f'eval_weights {eval_w!r}')
 
     def mu_start(hb, k):
         """Fixed start block of the mu iteration: k val samples of the soft classes (seeded by mu_seed, the same every eval)."""
@@ -603,7 +609,10 @@ def main(cfg):
 
         def release(s_):
             s_.to(CPU, model) if s_.case in live else drop(s_)
-        res = {w: dict(val={}, train_geo={}, mu={}) for w, _ in wsets}
+        last = step == steps
+        ws = wsets if (eval_w == 'all' or last) else [w_ for w_ in wsets if w_[0] == sel]
+        use_cert = CE is not None and (last or (step // cfg['eval_every']) % cert_every == 0)
+        res = {w: dict(val={}, train_geo={}, mu={}) for w, _ in ws}
         model.eval()
         todo = [('val', c) for c in val_cases] + [('train_geo', c) for c in probe_cases]
         for i, (kind, case) in enumerate(todo):
@@ -611,8 +620,8 @@ def main(cfg):
             if i + 1 < len(todo) and todo[i + 1][1] not in slots:          # next one loads on the host meanwhile
                 vpre.start(todo[i + 1][1])
             g = s_.geo                                                      # identity view
-            cer = CE.from_geo(g) if CE is not None and kind == 'val' else None
-            for w, e_ in wsets:
+            cer = CE.from_geo(g) if use_cert and kind == 'val' else None
+            for w, e_ in ws:
                 with (e_.applied(model) if e_ is not None else nullcontext()):
                     res[w][kind][case] = eval_geo(g, s_.banks, model, cfg.get('val_chunk', 8), cer, cfg.get('cert_m', 8),
                                                   cfg.get('cert_flag', 0.1))
@@ -622,7 +631,7 @@ def main(cfg):
                 try:
                     g.C.factor(neumann=True, interior=False, fp32_neumann=True)
                     X0 = mu_start(s_.banks, cfg.get('mu_k', 8)) if cfg.get('mu_start', 'bank') == 'bank' else None
-                    for w, e_ in wsets:
+                    for w, e_ in ws:
                         with (e_.applied(model) if e_ is not None else nullcontext()):
                             mu, it, _ = g.worst_ratio(model, k=cfg.get('mu_k', 8), tol=cfg.get('mu_tol', 1e-3),
                                                       max_iters=cfg.get('mu_iters', 30), start=X0,
@@ -720,7 +729,7 @@ def main(cfg):
             rec = dict(model=ema.model_state(model) if ema is not None else model.state_dict(), cfg=cfg, step=step, weights=sel,
                        score=sc)
             if ema is not None:
-                rec.update(model_raw=model.state_dict(), score_raw=res['raw']['score'])
+                rec.update(model_raw=model.state_dict(), score_raw=res['raw']['score'] if 'raw' in res else None)
             torch.save(rec, out / 'last.pt'); torch.save(rec, out / f'snap_{step}.pt')
             if best is None or sc < best:
                 best = sc
