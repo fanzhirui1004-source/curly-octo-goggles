@@ -64,7 +64,7 @@ def support_bank(C, X, g, total, gen):
             alpha = float(10 ** (-2 + 2 * torch.rand((), generator=gen, device=dev)))
             v = C.vals.clone(); v[C.diag[fdofs]] += alpha * dface
             s = 1 / torch.sqrt(v[C.diag])
-            sol = TE.SPDSolver(C.crow.int(), C.cu, (v * s[ru] * s[cu]).contiguous(), C.nb, fdt=torch.float32)
+            sol = spd_safe(C.crow.int(), C.cu, (v * s[ru] * s[cu]).contiguous(), C.nb)
             nw = per - per // 4
             f = torch.cat([PD.plane_waves(X, nw, 0.5, 8.0, gen), PD.patches(X, per - nw, gen)], 2)
             cutload = torch.rand(per, device=dev, generator=gen) < (0.1 if C.is_cut.any() else 0.0)
@@ -166,6 +166,35 @@ def main(body, data, cases):
             _release(Q, tag)
 
 
+def _mem_error(e):
+    r = repr(e)
+    return 'ALLOC_FAILED' in r or 'out of memory' in r or 'OutOfMemory' in r
+
+
+def factor_safe(C, **kw):
+    """fp32 factor; on a numerical failure (e.g. a non-positive fp32 pivot on an ill-conditioned K) retry in fp64.
+    Memory failures propagate (the driver retries them in a second pass with more free memory)."""
+    try:
+        C.factor(**kw)
+        return 'fp32'
+    except Exception as e:
+        if _mem_error(e):
+            raise
+        C._free(); gc.collect(); torch.cuda.empty_cache()
+        C.factor(**dict(kw, fp32=False, fp32_neumann=False))
+        return 'fp64'
+
+
+def spd_safe(crow, col, vals, n):
+    try:
+        return TE.SPDSolver(crow, col, vals, n, fdt=torch.float32)
+    except Exception as e:
+        if _mem_error(e):
+            raise
+        gc.collect(); torch.cuda.empty_cache()
+        return TE.SPDSolver(crow, col, vals, n)
+
+
 def raw_banks3(C, X, isbox, total, gen):
     """force / macro / grf directions before normalization (the generators of prep_data.make_banks)."""
     nw = total - total // 4
@@ -197,7 +226,7 @@ def one(body, data, case):
         X = torch.as_tensor(g / (2 * C.n), dtype=dt, device=dev)
         isbox = torch.as_tensor(C.port_is_box, device=dev)
         t = time.perf_counter()
-        C.factor(neumann=True, interior=False, fp32_neumann=True)
+        tt['neumann_precision'] = factor_safe(C, neumann=True, interior=False, fp32_neumann=True)
         raw, n_cut = raw_banks3(C, X, isbox, total, gen)
         raw['face'] = face_bank(C, X, g, total, gen)
         C._free()
@@ -206,7 +235,7 @@ def one(body, data, case):
         raw['support'] = support_bank(C, X, g, total, gen)
         tt['support_dirs'] = time.perf_counter() - t
         t = time.perf_counter()
-        C.factor(neumann=False, fp32=True)
+        tt['interior_precision'] = factor_safe(C, neumann=False, fp32=True)
         stats = {}
         for cls in ('force', 'macro', 'grf', 'face', 'support'):
             q = normalize(C, raw.pop(cls))
