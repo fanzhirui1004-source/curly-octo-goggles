@@ -19,7 +19,8 @@ body, data = sys.argv[1], Path(sys.argv[2])
 for ci, case in enumerate(sys.argv[3:]):
     t0 = time.perf_counter()
     C = TE.Cell(case, body, log=lambda s_: None)
-    C.assemble(); C.factor(neumann=False)                                       # interior factor: exact energies / fields
+    FP32 = __import__('os').environ.get('TEACHER_FP32') == '1'                   # fp32 factors (interior refined in extend)
+    C.assemble(); C.factor(neumann=False, fp32=FP32)                            # interior factor: exact energies / fields
     C.dmoments()
     gen = torch.Generator(device=dev).manual_seed(5000 + ci)
     X = torch.as_tensor(np.stack(np.unravel_index(C.port_node_ids, (2 * C.n + 1,) * 3), 1) / (2 * C.n), dtype=dt, device=dev)
@@ -42,7 +43,7 @@ for ci, case in enumerate(sys.argv[3:]):
             alpha = float(10 ** (-2 + 2 * torch.rand((), generator=gen, device=dev)))
             v = C.vals.clone(); v[C.diag[fdofs]] += alpha * dface
             s = 1 / torch.sqrt(v[C.diag])
-            sol = TE.SPDSolver(C.crow.int(), C.cu, (v * s[ru] * s[cu]).contiguous(), C.nb)
+            sol = TE.SPDSolver(C.crow.int(), C.cu, (v * s[ru] * s[cu]).contiguous(), C.nb, fdt=torch.float32 if FP32 else None)
             nw = per - per // 4
             f = torch.cat([PD.plane_waves(X, nw, 0.5, 8.0, gen), PD.patches(X, per - nw, gen)], 2)
             cutload = torch.rand(per, device=dev, generator=gen) < (0.1 if C.is_cut.any() else 0.0)

@@ -1,14 +1,12 @@
 """Step 2 data for many geometries: one teacher setup per geometry for all bank classes (prep_data + prep_sens +
 prep_support + prep_face in one pass; same generators, same normalization, same files).
 
-Per geometry: Cell setup, assembly, interior + Neumann factors and dM/dtau once; then
-  force / macro / grf   (prep_data.make_banks)
-  face                  (self-equilibrated loads on one box face, other ports free; prep_face)
-  [Neumann factor freed]
-  exact sensitivities of these four classes
-  support               (one box face on springs, SUPPORT_LEVELS random levels per face, default 1; prep_support
-                         uses 2) + sensitivities
-  NETDATA.npz, PORTS.json, DONE.json (timings).
+Per geometry (one fp32 factorization alive at a time): Cell setup, assembly, dM/dtau; then
+  Neumann factor:  force / macro / grf directions (prep_data generators), face directions (prep_face)
+  spring factors:  support directions (one box face on springs, SUPPORT_LEVELS random levels per face, default 1;
+                   prep_support uses 2), one factorization at a time
+  interior factor: exact normalization (refined to fp64 accuracy) and exact sensitivities of all five classes
+  NETDATA.npz, PORTS.json, DONE.json (timings, peak memory).
 Bank sizes from BANK_SPLITS (e.g. "512,64,64"). Skips geometries whose output is complete (restartable).
 Usage: prep_geo.py <body_dir> <data_dir> <case> [<case> ...]"""
 import sys, json, time, gc
@@ -66,7 +64,7 @@ def support_bank(C, X, g, total, gen):
             alpha = float(10 ** (-2 + 2 * torch.rand((), generator=gen, device=dev)))
             v = C.vals.clone(); v[C.diag[fdofs]] += alpha * dface
             s = 1 / torch.sqrt(v[C.diag])
-            sol = TE.SPDSolver(C.crow.int(), C.cu, (v * s[ru] * s[cu]).contiguous(), C.nb)
+            sol = TE.SPDSolver(C.crow.int(), C.cu, (v * s[ru] * s[cu]).contiguous(), C.nb, fdt=torch.float32)
             nw = per - per // 4
             f = torch.cat([PD.plane_waves(X, nw, 0.5, 8.0, gen), PD.patches(X, per - nw, gen)], 2)
             cutload = torch.rand(per, device=dev, generator=gen) < (0.1 if C.is_cut.any() else 0.0)
@@ -150,61 +148,87 @@ def main(body, data, cases):
         if Q is not None:
             _acquire(Q, tag)
         t_w = time.time()
-        while torch.cuda.mem_get_info()[0] < 9 * 2 ** 30 and time.time() - t_w < 3600:   # room for one teacher setup
-            time.sleep(30)
+        need = float(os.environ.get('PREP_MIN_FREE_GB', '9')) * 2 ** 30
+        while torch.cuda.mem_get_info()[0] < need and time.time() - t_w < float(os.environ.get('PREP_WAIT_MAX', '3600')):
+            time.sleep(30)                                                      # room for one teacher setup
+        err = None
+        torch.cuda.reset_peak_memory_stats()
         try:
             one(body, data, case)
         except Exception as e:
+            err = (repr(e), traceback.format_exc()[-2000:])
+        gc.collect(); torch.cuda.empty_cache()                                  # the traceback is gone: free everything
+        if err is not None:
             d.mkdir(parents=True, exist_ok=True)
-            (d / 'FAILED.json').write_text(json.dumps(dict(case=case, stage='gpu', error=repr(e), trace=traceback.format_exc()[-2000:])))
-            print(json.dumps(dict(case=case, failed=repr(e)[:300])), flush=True)
-            gc.collect(); torch.cuda.empty_cache()
-        finally:
-            if Q is not None:
-                _release(Q, tag)
+            (d / 'FAILED.json').write_text(json.dumps(dict(case=case, stage='gpu', error=err[0], trace=err[1])))
+            print(json.dumps(dict(case=case, failed=err[0][:300])), flush=True)
+        if Q is not None:
+            _release(Q, tag)
+
+
+def raw_banks3(C, X, isbox, total, gen):
+    """force / macro / grf directions before normalization (the generators of prep_data.make_banks)."""
+    nw = total - total // 4
+    f = torch.cat([PD.plane_waves(X, nw, 0.5, 8.0, gen), PD.patches(X, total - nw, gen)], 2)
+    f = f[:, :, torch.randperm(total, device=dev, generator=gen)]
+    cutload = torch.rand(total, device=dev, generator=gen) < (0.1 if C.is_cut.any() else 0.0)
+    f = f * torch.where(cutload[None, None, :], torch.ones_like(isbox, dtype=dt)[:, None, None], isbox.to(dt)[:, None, None])
+    F = PD.to_ports(f, C)
+    out = {'force': torch.cat([C.neumann(F[:, j:j + 64]) for j in range(0, total, 64)], 1)}
+    out['macro'] = PD.to_ports(PD.polys(X, total, gen), C)
+    out['grf'] = PD.to_ports(PD.plane_waves(X, total, 0.5, 24.0, gen), C)
+    return out, int(cutload.sum())
 
 
 def one(body, data, case):
+    """One factorization alive at a time: Neumann (force / face directions) -> springs one by one (support directions)
+    -> interior (exact normalization and sensitivities). fp32 factors; the interior one is refined to fp64 accuracy."""
     total = sum(n for _, n in SPLITS)
     C = None
     try:
         d = data / case; d.mkdir(parents=True, exist_ok=True)
         t0 = time.perf_counter(); tt = {}
         C = TE.Cell(case, body, log=lambda s_: None)
-        C.assemble(); C.factor(neumann=True); C.dmoments()
+        C.assemble(); C.dmoments()
         tt['setup'] = time.perf_counter() - t0
         seed = int.from_bytes(case.encode(), 'little') % (2 ** 31)
         gen = torch.Generator(device=dev).manual_seed(seed)
         g = np.stack(np.unravel_index(C.port_node_ids, (2 * C.n + 1,) * 3), 1)
         X = torch.as_tensor(g / (2 * C.n), dtype=dt, device=dev)
+        isbox = torch.as_tensor(C.port_is_box, device=dev)
         t = time.perf_counter()
-        stats = PD.make_banks(C, d, gen, log=lambda s_: None)                 # force / macro / grf (+ saved)
-        tt['banks3'] = time.perf_counter() - t
+        C.factor(neumann=True, interior=False, fp32_neumann=True)
+        raw, n_cut = raw_banks3(C, X, isbox, total, gen)
+        raw['face'] = face_bank(C, X, g, total, gen)
+        C._free()
+        tt['neumann_dirs'] = time.perf_counter() - t
         t = time.perf_counter()
-        q_face = normalize(C, face_bank(C, X, g, total, gen))                 # needs the Neumann factor
-        C.sol_N.free(); C.sol_N = None; gc.collect(); torch.cuda.empty_cache()   # lower the peak before the springs
-        tt['face'] = time.perf_counter() - t
+        raw['support'] = support_bank(C, X, g, total, gen)
+        tt['support_dirs'] = time.perf_counter() - t
         t = time.perf_counter()
-        for cls in ('force', 'macro', 'grf'):
-            q = torch.cat([torch.as_tensor(np.load(d / f'{s_}_{cls}.npy'), device=dev).T.to(dt) for s_, _ in SPLITS], 1)
+        C.factor(neumann=False, fp32=True)
+        stats = {}
+        for cls in ('force', 'macro', 'grf', 'face', 'support'):
+            q = normalize(C, raw.pop(cls))
+            rq = (q * q).sum(0)
+            stats[cls] = dict(rayleigh_quantiles=np.quantile((1 / rq).cpu().numpy(), [0, .1, .5, .9, 1]).tolist(),
+                              unit_energy_check=float(((q[:, :16] * C.apply(q[:, :16])).sum(0) - 1).abs().max()))
             save(d, cls, q, sens(C, q))
-        save(d, 'face', q_face, sens(C, q_face)); del q_face
-        tt['sens4'] = time.perf_counter() - t
-        t = time.perf_counter()
-        q = normalize(C, support_bank(C, X, g, total, gen)); save(d, 'support', q, sens(C, q))
-        tt['support'] = time.perf_counter() - t
+            del q
+        stats['force']['cut_loaded'] = n_cut
+        tt['normalize_sens'] = time.perf_counter() - t
         nd = PD.netdata(C, d)
         (d / 'PORTS.json').write_text(json.dumps(dict(case=case, port_node_ids=C.port_node_ids.tolist(),
                                                        port_is_box=C.port_is_box.tolist(), port_is_cut=C.port_is_cut.tolist())))
         rec = dict(case=case, ports=C.np_, interior=C.ni, dofs=C.nb, elements=int(len(C.cells)), netdata=nd,
-                   banks={k: v['rayleigh_quantiles'] for k, v in stats.items()}, splits=SPLITS, seconds=tt,
-                   total_seconds=time.perf_counter() - t0)
+                   banks=stats, splits=SPLITS, seconds=tt, total_seconds=time.perf_counter() - t0,
+                   peak_GB=torch.cuda.max_memory_allocated() / 2 ** 30)
         (d / 'DONE.json').write_text(json.dumps(rec))
         print(json.dumps(rec), flush=True)
     finally:
         if C is not None:
             C._free()
-        del C; gc.collect(); torch.cuda.empty_cache()
+        del C
 
 
 if __name__ == '__main__':
