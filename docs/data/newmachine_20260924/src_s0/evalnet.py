@@ -1,5 +1,7 @@
 """Lattice gate for a trained model: the test cell uses the learned extension (variational readout), the neighbour is
 exact. Configurations x and y; gate loads and cut-surface loads (reported).
+Load models (user decision 2026-09-24): 'consistent' (traction-consistent face loads) is the acceptance gate;
+'uniform' (equal nodal forces on the face port nodes, fictitious-fringe nodes included) is reported as a stress test.
 Usage: evalnet.py <checkpoint.pt> <out.json> [<case> ...]   (default: the checkpoint's cases)
 """
 import json, sys, time, gc
@@ -39,8 +41,14 @@ def main(ckpt, out, cases):
         model = MD.build(cfg['model'], [geo], **cfg.get('model_args', {})).cuda()
         missing = model.load_state_dict(ck['model'], strict=False)
         model.eval()
-        for conf in ('x', 'y'):
+        import os
+        load_models = os.environ.get('LAT_LOADS_LIST', 'consistent,uniform').split(',')
+        for lm, conf in [(lm, conf) for lm in load_models for conf in ('x', 'y')]:
             t0 = time.perf_counter()
+            if lm == 'consistent':
+                os.environ['LAT_LOADS'] = 'consistent'
+            else:
+                os.environ.pop('LAT_LOADS', None)
             lat = LT.build(case, FULL, conf, cfg['body'])
             lat.reference()
             exact_nbr = OP.ExactOp(lat.cells[1]['cell'], lat.cells[1]['T'])
@@ -48,9 +56,9 @@ def main(ckpt, out, cases):
             # the lattice cell object must be the same geometry: reuse the lattice's teacher cell for sensitivities
             res = lat.evaluate([op, exact_nbr], maxit=400)
             cmp_ = lat.compare(res)
-            cmp_.update(case=case, config=conf, seconds=time.perf_counter() - t0)
+            cmp_.update(case=case, config=conf, load_model=lm, role='gate' if lm == 'consistent' else 'stress', seconds=time.perf_counter() - t0)
             rec['results'].append(cmp_)
-            print(json.dumps(dict(case=case, config=conf, gate_compliance_max=cmp_['gate_compliance_max'],
+            print(json.dumps(dict(case=case, config=conf, load_model=lm, role=cmp_['role'], gate_compliance_max=cmp_['gate_compliance_max'],
                                   gate_sens_max=cmp_['gate_sens_max'], gate_pass=cmp_['gate_pass'],
                                   cut_compliance_max=cmp_.get('cut_compliance_max'), cut_sens_max=cmp_.get('cut_sens_max'),
                                   pcg=cmp_['pcg_iterations'])), flush=True)

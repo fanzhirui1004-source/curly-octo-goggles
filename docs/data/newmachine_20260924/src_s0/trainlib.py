@@ -16,7 +16,7 @@ import ops as OP
 
 dev, dt = TE.dev, TE.dt
 CLASSES = ('force', 'macro', 'grf')
-ALL_CLASSES = ('force', 'macro', 'grf', 'support')
+ALL_CLASSES = ('force', 'macro', 'grf', 'support', 'face')
 
 
 class _Energy(torch.autograd.Function):

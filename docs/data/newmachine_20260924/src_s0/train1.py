@@ -32,11 +32,15 @@ def main(cfg):
     if cfg.get('sens_w', 0) > 0 and any(g_.sens is None for g_ in geos):
         raise ValueError('SENS_LABELS_MISSING')                               # never fall back silently
     model = MD.build(cfg['model'], geos, **cfg.get('model_args', {})).to(dev)
+    if cfg.get('init'):                                                       # warm start from a checkpoint
+        ck = torch.load(cfg['init'], map_location=dev, weights_only=False)
+        res = model.load_state_dict(ck['model'], strict=False)
+        log(dict(event='INIT', ckpt=cfg['init'], step=ck.get('step'), missing=len(res.missing_keys), unexpected=len(res.unexpected_keys)))
     nparam = sum(p.numel() for p in model.parameters())
     log(dict(event='MODEL', name=cfg['model'], params=nparam, args=cfg.get('model_args', {})))
     opt = torch.optim.Adam(model.parameters(), lr=cfg['lr'])
     steps = cfg['steps']
-    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=cfg['lr'], total_steps=steps, pct_start=0.05,
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=cfg['lr'], total_steps=steps, pct_start=cfg.get('pct_start', 0.05),
                                                 anneal_strategy='cos', final_div_factor=cfg.get('final_div', 100))
     mix = dict(cfg['mix']); B = cfg['batch']
     t0 = time.perf_counter(); best = None
