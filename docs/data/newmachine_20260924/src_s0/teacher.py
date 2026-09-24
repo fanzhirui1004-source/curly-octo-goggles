@@ -315,6 +315,18 @@ class Cell:
         g = self.energy_density(u)
         return -torch.einsum('cem,emk->ck', self.dM, g)
 
+    def sens2(self, u, chunk=1024):
+        """Same as sens, reassociated for many fields: the 8 element derivatives A_ce = sum_m dM_cem Tm_m (81 x 81) are
+        formed per element chunk, then s_ck = -sum_e u_ek^T A_ce u_ek (8 instead of 125 contractions per field)."""
+        s = torch.zeros((8, u.shape[1]), dtype=dt, device=dev)
+        for lo in range(0, len(self.cells), chunk):
+            A = torch.einsum('cem,mij->ceij', self.dM[:, lo:lo + chunk], self.Tm)       # 8 x c x 81 x 81
+            ue = u[self.dofs[lo:lo + chunk]]                                            # c x 81 x k
+            z = torch.einsum('ceij,ejk->ceik', A, ue)
+            s -= (z * ue[None]).sum((1, 2))
+            del A, z
+        return s
+
 
 def selftest(case, body_dir, log):
     rec = dict(case=case)

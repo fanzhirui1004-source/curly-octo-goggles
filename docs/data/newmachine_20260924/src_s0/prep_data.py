@@ -19,7 +19,8 @@ import torch
 import teacher as TE
 
 dev, dt = TE.dev, TE.dt
-SPLITS = (('train', 2048), ('val', 256), ('test', 256))
+_SP = __import__('os').environ.get('BANK_SPLITS')                              # e.g. "512,64,64" for many geometries
+SPLITS = tuple(zip(('train', 'val', 'test'), map(int, _SP.split(',')))) if _SP else (('train', 2048), ('val', 256), ('test', 256))
 
 
 def plane_waves(X, k, kmin, kmax, gen, m=48):

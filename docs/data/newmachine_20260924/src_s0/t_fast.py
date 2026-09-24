@@ -66,20 +66,21 @@ def main(out, ckpts):
         with torch.enable_grad():
             g_ref = torch.autograd.grad(model(geo, qq), qq, grad_outputs=y)[0]
         r['model_T_rel'] = rel(fast.ext_T(y), g_ref)
-        for B in (1, 9, 64):
+        print(json.dumps(dict(accuracy=r)), flush=True)
+        for B in (1, 9, 16, 64):
             Qb = torch.randn((geo.np_, B), dtype=dt, device=dev, generator=gen)
-            torch.cuda.reset_peak_memory_stats(); m0 = torch.cuda.memory_allocated()
-            r[f'B{B}_field_autograd_s'] = timed(lambda: _nograd(geo.field, model, Qb))
-            r[f'B{B}_field_autograd_extra_GB'] = (torch.cuda.max_memory_allocated() - m0) / 2 ** 30
-            torch.cuda.reset_peak_memory_stats(); m0 = torch.cuda.memory_allocated()
-            r[f'B{B}_field_fast_s'] = timed(lambda: fast.field(Qb))
-            r[f'B{B}_field_fast_extra_GB'] = (torch.cuda.max_memory_allocated() - m0) / 2 ** 30
-            torch.cuda.reset_peak_memory_stats(); m0 = torch.cuda.memory_allocated()
-            r[f'B{B}_shat_autograd_s'] = timed(lambda: geo.s_hat_apply(model, Qb))
-            r[f'B{B}_shat_autograd_extra_GB'] = (torch.cuda.max_memory_allocated() - m0) / 2 ** 30
-            torch.cuda.reset_peak_memory_stats(); m0 = torch.cuda.memory_allocated()
-            r[f'B{B}_shat_fast_s'] = timed(lambda: fast.s_hat(Qb))
-            r[f'B{B}_shat_fast_extra_GB'] = (torch.cuda.max_memory_allocated() - m0) / 2 ** 30
+            runs = [('field_fast', lambda: fast.field(Qb)), ('shat_fast', lambda: fast.s_hat(Qb))]
+            if B <= 16:
+                runs += [('field_autograd', lambda: _nograd(geo.field, model, Qb)), ('shat_autograd', lambda: geo.s_hat_apply(model, Qb))]
+            for name, fn in runs:
+                gc.collect(); torch.cuda.empty_cache()
+                torch.cuda.reset_peak_memory_stats(); m0 = torch.cuda.memory_allocated()
+                try:
+                    r[f'B{B}_{name}_s'] = timed(fn)
+                    r[f'B{B}_{name}_extra_GB'] = (torch.cuda.max_memory_allocated() - m0) / 2 ** 30
+                except torch.OutOfMemoryError:
+                    r[f'B{B}_{name}_s'] = 'OOM'
+            print(json.dumps({f'B{B}': {k: v for k, v in r.items() if k.startswith(f'B{B}_')}}), flush=True)
         r['sparse_nnz_total'] = int(sum(h.G._nnz() for h in fast.elem + getattr(fast, 'face', []) + getattr(fast, 'fringe', [])))
         rec[ck_path] = r
         print(json.dumps(r), flush=True)

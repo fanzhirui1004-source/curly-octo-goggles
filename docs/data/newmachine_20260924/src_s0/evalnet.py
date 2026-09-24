@@ -16,6 +16,19 @@ import ops as OP
 FULL = 'fresh_train_0020_full'
 
 
+class FastOp:
+    """Same operator through fastnet (frozen geometry, sparse layers, explicit adjoint)."""
+
+    def __init__(self, fast):
+        self.fast = fast
+
+    def field(self, q):
+        return self.fast.field(q).to(TL.dt)
+
+    def apply(self, q):
+        return self.fast.s_hat(q)
+
+
 class NetOp:
     """Operator interface for a learned extension on the lattice cell (field and variational reaction)."""
 
@@ -52,11 +65,16 @@ def main(ckpt, out, cases):
             lat = LT.build(case, FULL, conf, cfg['body'])
             lat.reference()
             exact_nbr = OP.ExactOp(lat.cells[1]['cell'], lat.cells[1]['T'])
-            op = NetOp(geo, model)
+            if os.environ.get('FASTNET') == '1':
+                import fastnet as FN
+                op = FastOp(FN.FastNet(model, geo))
+            else:
+                op = NetOp(geo, model)
             # the lattice cell object must be the same geometry: reuse the lattice's teacher cell for sensitivities
             res = lat.evaluate([op, exact_nbr], maxit=400)
             cmp_ = lat.compare(res)
-            cmp_.update(case=case, config=conf, load_model=lm, role='gate' if lm == 'consistent' else 'stress', seconds=time.perf_counter() - t0)
+            cmp_.update(case=case, config=conf, load_model=lm, role='gate' if lm == 'consistent' else 'stress', seconds=time.perf_counter() - t0,
+                        fastnet=os.environ.get('FASTNET') == '1')
             rec['results'].append(cmp_)
             print(json.dumps(dict(case=case, config=conf, load_model=lm, role=cmp_['role'], gate_compliance_max=cmp_['gate_compliance_max'],
                                   gate_sens_max=cmp_['gate_sens_max'], gate_pass=cmp_['gate_pass'],
