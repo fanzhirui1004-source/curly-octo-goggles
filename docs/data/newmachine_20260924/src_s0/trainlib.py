@@ -68,6 +68,37 @@ class _Sens(torch.autograd.Function):
         return grad, None, None, None, None
 
 
+class _Sens2(torch.autograd.Function):
+    """Same as _Sens, reassociated: per element chunk A_ce = sum_m dM_cem Tm_m (8 x 81 x 81, float32), then
+    s[c, b] = -sum_e u_eb^T A_ce u_eb (8 instead of 125 contractions per field; A rebuilt per chunk, not stored)."""
+
+    @staticmethod
+    def forward(ctx, u, dofs, Tm, dM, chunk):
+        B = u.shape[1]
+        s = torch.zeros((dM.shape[0], B), dtype=dt, device=dev)
+        for lo in range(0, dofs.shape[0], chunk):
+            A = torch.einsum('cem,mij->ceij', dM[:, lo:lo + chunk], Tm)
+            ue = u[dofs[lo:lo + chunk]]                                              # c x 81 x B
+            z = torch.einsum('ceij,ejb->ceib', A, ue)
+            s -= (z * ue[None]).sum((1, 2)).to(dt)
+        ctx.save_for_backward(u); ctx.dofs, ctx.Tm, ctx.dM, ctx.chunk = dofs, Tm, dM, chunk
+        return s
+
+    @staticmethod
+    def backward(ctx, gs):
+        (u,) = ctx.saved_tensors
+        grad = torch.zeros_like(u)
+        gs = gs.to(u.dtype)
+        for lo in range(0, ctx.dofs.shape[0], ctx.chunk):
+            dd = ctx.dofs[lo:lo + ctx.chunk]
+            A = torch.einsum('cem,mij->ceij', ctx.dM[:, lo:lo + ctx.chunk], ctx.Tm)
+            ue = u[dd]
+            z = torch.einsum('ceij,ejb->ceib', A, ue)                                 # A symmetric
+            v = torch.einsum('cb,ceib->eib', gs, z)
+            grad.index_add_(0, dd.reshape(-1), (-2 * v).reshape(-1, u.shape[1]))
+        return grad, None, None, None, None
+
+
 class Geo:
     """Everything one geometry contributes to training: exact K, ports, rigid split, banks, network input data."""
 
@@ -116,6 +147,9 @@ class Geo:
         return u
 
     def sens_hat(self, u, chunk=256):
+        import os
+        if os.environ.get('SENS_REASSOC') == '1':
+            return _Sens2.apply(u, self.C.dofs, self.Tm32, self.dM32, chunk)
         return _Sens.apply(u, self.C.dofs, self.Tm32, self.dM32, chunk)
 
     def sample_with_sens(self, B, gen, mix):

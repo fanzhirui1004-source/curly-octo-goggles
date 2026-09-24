@@ -158,10 +158,11 @@ def _mlp(i, h, o, n=2):
 
 
 class MGNO(nn.Module):
-    def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, ckpt=False):
+    def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, ckpt=False, sparse=False):
         super().__init__()
         self.F, self.H, self.L_pre, self.L_post, self.levels, self.cpl = F, H, L_pre, L_post, levels, conv_per_level
-        self.ckpt = ckpt
+        self.ckpt = ckpt and not sparse
+        self.sparse = sparse                                                        # training-time sparse hyperedge layers
         self.caches = {g.case: MGCache(g, levels).c for g in geos}
         self.elem_in = _mlp(126, Cg, Cg)
         self.node_in = _mlp(11 + Cg, Cg, Cg)
@@ -179,6 +180,14 @@ class MGNO(nn.Module):
                                        for _ in range(levels)])
         self.skip = nn.Parameter(torch.ones(levels))
         self._geo_cache = {}
+
+    def add_geo(self, geo):
+        """Per-geometry cache for a geometry met after construction (step-2 pool training)."""
+        if geo.case not in self.caches:
+            self.caches[geo.case] = MGCache(geo, self.levels).c
+
+    def drop_geo(self, case):
+        self.caches.pop(case, None)
 
     # ---------------- geometry path
     def geometry(self, case):
@@ -201,11 +210,24 @@ class MGNO(nn.Module):
             wsum = torch.zeros(t['n_dst'], device=dev).index_add_(0, t['v'], t['w'])
             gl = gsum / wsum[:, None]
             gates.append(2 * torch.sigmoid(self.gate_head[l](gl)).reshape(-1, self.cpl * 2, self.F))
-        return dict(ab=ab, rw=rw, gates=gates)
+        return dict(ab=ab, rw=rw, gates=gates, ge=ge, gn=gn)
 
     # ---------------- q path
+    def _pat(self, c, key, hn):
+        """Sparse pattern of a hyperedge set, cached on the geometry cache (moves with it)."""
+        import sparse_layers as SL
+        if not hasattr(c, 'pats'):
+            c.pats = {}
+        if key not in c.pats:
+            c.pats[key] = SL.pattern(hn, self.H, c.N)
+        return c.pats[key]
+
     def _fine(self, X, X0, pm, c, ab, layer):
         a, b = ab[:, :, 0, layer], ab[:, :, 1, layer]                                    # E x 27 x H
+        if self.sparse:
+            import sparse_layers as SL
+            dX = SL.hyper(X, a, b, self.W[layer], c.deg, self._pat(c, 'elem', c.en))
+            return (X + dX) * (1 - pm) + X0 * pm
         Xg = X[c.en]                                                                        # E x 27 x B x F
         Z = torch.einsum('eah,eabf->ehbf', a, Xg)
         Z = torch.einsum('ehbf,hfg->ehbg', Z, self.W[layer])
@@ -275,9 +297,9 @@ class MGNO(nn.Module):
 # Still fully learned and linear in q: no K, no factorization in the forward pass.
 # ---------------------------------------------------------------------------------------------------------------------
 class MGNO2(MGNO):
-    def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, n_fringe=4):
+    def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, n_fringe=4, sparse=False):
         super().__init__(geos, F=F, H=H, L_pre=L_pre, L_post=L_post, levels=levels, Cg=Cg,
-                         conv_per_level=conv_per_level, slot_dim=slot_dim)
+                         conv_per_level=conv_per_level, slot_dim=slot_dim, sparse=sparse)
         self.n_fringe = n_fringe
         self.face_in = _mlp(2 * Cg + 3, Cg, Cg)
         self.fslot = nn.Parameter(0.1 * torch.randn(27, slot_dim))
@@ -288,40 +310,41 @@ class MGNO2(MGNO):
         self.slot_head_x = _mlp(2 * Cg + slot_dim, Cg, 2 * H * max(Le_extra, 1))
         self.Wx = nn.Parameter(torch.randn(max(Le_extra, 1), H, F, F) / np.sqrt(F) * 0.5)
         for g in geos:
-            c = self.caches[g.case]
-            gpf = torch.as_tensor(g.nd['gp_faces'].astype(np.int64), device=dev)
-            c.gp_owner, c.gp_nbr, c.gp_axis = gpf[:, 0], gpf[:, 1], gpf[:, 2]
-            # 27-slot face stencil: the owner's two node layers on the face side (18) + the neighbour's middle layer (9),
-            # ordered by (layer, in-plane coordinates) so that slots mean the same thing on every face
-            o = c.grid[c.en] - 2 * torch.as_tensor(g.nd['elem_cells'].astype(np.int64), device=dev)[:, None, :]   # E x 27 x 3
-            a = c.gp_axis
-            oo, on = o[c.gp_owner], o[c.gp_nbr]                                              # F x 27 x 3
-            def lay(t):
-                return torch.gather(t, 2, a[:, None, None].expand(-1, 27, 1)).squeeze(2)
-            b = (a + 1) % 3; d_ = (a + 2) % 3
-            def key(t):
-                return lay(t) * 9 + torch.gather(t, 2, b[:, None, None].expand(-1, 27, 1)).squeeze(2) * 3 + \
-                    torch.gather(t, 2, d_[:, None, None].expand(-1, 27, 1)).squeeze(2)
-            ko = key(oo) + (lay(oo) == 0) * 1000                                              # push layer 0 to the end
-            kn = key(on) + (lay(on) != 1) * 1000
-            io = torch.argsort(ko, 1)[:, :18]; inb = torch.argsort(kn, 1)[:, :9]
-            c.fn = torch.cat([torch.gather(c.en[c.gp_owner], 1, io), torch.gather(c.en[c.gp_nbr], 1, inb)], 1)   # F x 27
-            c.fdeg = torch.bincount(c.fn.reshape(-1), minlength=c.N).to(f32).clamp_min(1)
-            wk = c.weak
-            c.el_fringe = wk[c.en].any(1)
-            c.gp_fringe = wk[c.fn].any(1)
+            self._face_setup(g)
+
+    def _face_setup(self, g):
+        c = self.caches[g.case]
+        gpf = torch.as_tensor(g.nd['gp_faces'].astype(np.int64), device=dev)
+        c.gp_owner, c.gp_nbr, c.gp_axis = gpf[:, 0], gpf[:, 1], gpf[:, 2]
+        # 27-slot face stencil: the owner's two node layers on the face side (18) + the neighbour's middle layer (9),
+        # ordered by (layer, in-plane coordinates) so that slots mean the same thing on every face
+        o = c.grid[c.en] - 2 * torch.as_tensor(g.nd['elem_cells'].astype(np.int64), device=dev)[:, None, :]   # E x 27 x 3
+        a = c.gp_axis
+        oo, on = o[c.gp_owner], o[c.gp_nbr]                                              # F x 27 x 3
+        def lay(t):
+            return torch.gather(t, 2, a[:, None, None].expand(-1, 27, 1)).squeeze(2)
+        b = (a + 1) % 3; d_ = (a + 2) % 3
+        def key(t):
+            return lay(t) * 9 + torch.gather(t, 2, b[:, None, None].expand(-1, 27, 1)).squeeze(2) * 3 + \
+                torch.gather(t, 2, d_[:, None, None].expand(-1, 27, 1)).squeeze(2)
+        ko = key(oo) + (lay(oo) == 0) * 1000                                              # push layer 0 to the end
+        kn = key(on) + (lay(on) != 1) * 1000
+        io = torch.argsort(ko, 1)[:, :18]; inb = torch.argsort(kn, 1)[:, :9]
+        c.fn = torch.cat([torch.gather(c.en[c.gp_owner], 1, io), torch.gather(c.en[c.gp_nbr], 1, inb)], 1)   # F x 27
+        c.fdeg = torch.bincount(c.fn.reshape(-1), minlength=c.N).to(f32).clamp_min(1)
+        wk = c.weak
+        c.el_fringe = wk[c.en].any(1)
+        c.gp_fringe = wk[c.fn].any(1)
+
+    def add_geo(self, geo):
+        if geo.case not in self.caches:
+            super().add_geo(geo)
+            self._face_setup(geo)
 
     def geometry(self, case):
         out = super().geometry(case)
         c = self.caches[case]
-        # recompute node/element embeddings (cheap) for the face heads
-        ge = self.elem_in(c.efeat)
-        agg = torch.zeros((c.N, ge.shape[1]), device=dev).index_add_(0, c.en.reshape(-1), ge.repeat_interleave(27, 0)) / c.deg[:, None]
-        gn = self.node_in(torch.cat([c.nfeat, agg], 1))
-        for fe, fn in zip(self.mp_e, self.mp_n):
-            ge = ge + fe(torch.cat([ge, gn[c.en].mean(1)], 1))
-            agg = torch.zeros_like(gn).index_add_(0, c.en.reshape(-1), ge.repeat_interleave(27, 0)) / c.deg[:, None]
-            gn = gn + fn(torch.cat([gn, agg], 1))
+        ge, gn = out['ge'], out['gn']                                            # the base class's embeddings (same values)
         nf = len(c.gp_owner)
         ax = torch.nn.functional.one_hot(c.gp_axis, 3).to(f32)
         gf = self.face_in(torch.cat([ge[c.gp_owner], ge[c.gp_nbr], ax], 1))
@@ -334,7 +357,7 @@ class MGNO2(MGNO):
         return out
 
     def _ck(self, fn, *args):
-        if torch.is_grad_enabled():
+        if torch.is_grad_enabled() and not self.sparse:
             return torch.utils.checkpoint.checkpoint(fn, *args, use_reentrant=False)
         return fn(*args)
 
@@ -342,6 +365,12 @@ class MGNO2(MGNO):
         a, b = ab[:, :, 0, layer], ab[:, :, 1, layer]
         if mask is not None:
             hn, a, b = hn[mask], a[mask], b[mask]
+        if self.sparse:
+            import sparse_layers as SL
+            c = self._cur
+            key = (id(deg) == id(c.deg), mask is not None)
+            dX = SL.hyper(X, a, b, W, deg, self._pat(c, key, hn))
+            return (X + dX) * (1 - pm) + X0 * pm
         Xg = X[hn]
         Z = torch.einsum('eah,eabf->ehbf', a, Xg)
         Z = torch.einsum('ehbf,hfg->ehbg', Z, W)
@@ -352,6 +381,7 @@ class MGNO2(MGNO):
 
     def forward(self, geo, qd):
         c = self.caches[geo.case]
+        self._cur = c
         gp = self.geometry(geo.case)
         B = qd.shape[1]
         q3 = qd.reshape(-1, 3, B).permute(0, 2, 1)
