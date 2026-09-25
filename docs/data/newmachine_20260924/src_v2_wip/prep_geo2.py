@@ -109,6 +109,12 @@ OLD = ('force', 'macro', 'grf', 'support', 'face')
 V2_BANKS = NEW + ('support64',)                                               # classes this script owns in an --out tree
 GLUE_OFFSETS = ((1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, -1))                  # never (-1,0,0) / (0,-1,0): the gate's
 VERSION = 'prep_geo2/audit-2026-09-25'
+GLUED_NEIGHBOURS = os.environ.get('GLUED_NEIGHBOURS', 'family')             # 'family' (default: the family FULL parent,
+                                                                              # translated) | 'explicit' (<case>_nb<tag> packets:
+                                                                              # continuous thickness across the glued face)
+NB_TAG = {(1, 0, 0): 'px', (-1, 0, 0): 'mx', (0, 1, 0): 'py', (0, -1, 0): 'my', (0, 0, 1): 'pz', (0, 0, -1): 'mz'}
+GLUED_SAFE = os.environ.get('GLUED_SAFE', '0') == '1'                         # default off: the old glued path, unchanged
+GLUED_HEADROOM = float(os.environ.get('GLUED_HEADROOM_GB', '4')) * 2 ** 30     # free device memory wanted after the factor
 CLASS_OFFSET = dict(force_c=1, face_c=2, support_k=3, glued=4, support=5, support64=5)
 EQ_MAX_COND = 1e10                                                            # cond(G G^T) of the traction equilibration
 REFINE_STEPS, REFINE_TARGET, RESID_TOL = 3, 1e-10, 1e-6                       # glued solves (DATA-3)
@@ -414,7 +420,7 @@ def family_full(case, packets):
     fam, rest = m.groups()
     rot = re.search(r'(_rot[a-z0-9]+)$', rest)
     name = f'{fam}_full' + (rot.group(1) if rot else '')
-    return name if (Path(packets) / name / 'FRESH_CONTEXT.json').exists() else None
+    return name if ((Path(packets) / name / 'FRESH_CONTEXT.json').exists() or (TE.packet_dir(name) / 'FRESH_CONTEXT.json').exists()) else None
 
 
 def _mem(tag, **kw):
@@ -526,8 +532,53 @@ def refine(matvec, solve, b, y, unscale=None, steps=REFINE_STEPS, target=REFINE_
 
 
 # --------------------------------------------------------------------------------------------------------- glued
+def neighbour_name(case, d):
+    return f'{case}_nb{NB_TAG[tuple(int(x) for x in d)]}'
+
+
+def _glued_explicit(Ct, body, total, gen, chunk, log):
+    """GLUED_NEIGHBOURS=explicit: offset d glues the neighbour packet <case>_nb<tag(d)> (a FULL cell whose four corners on the
+    glued face equal the test cell's, far corners drawn independently: gen_new.py), one neighbour per offset, built when
+    its offset starts and freed after it. Everything else as the family path."""
+    n = Ct.n
+    gp = np.stack(np.unravel_index(Ct.port_node_ids, (2 * n + 1,) * 3), 1)
+    offs = [d for d in GLUE_OFFSETS if (Ct.port_is_box & (gp[:, np.flatnonzero(d)[0]] == (2 * n if sum(d) > 0 else 0))).sum() > 8]
+    if not offs:
+        return None, dict(skipped='no glue face with material', skip_final=True)
+    have = [d for d in offs if (TE.packet_dir(neighbour_name(Ct.case, d)) / 'FRESH_CONTEXT.json').exists()]
+    if not have:                                                           # the planned glue face(s) (gen_new) have no material
+        return None, dict(skipped=f'no neighbour packet on a glue face with material {[_axis_name(d) for d in offs]}', skip_final=True)
+    offs = have
+    ft = box_tractions(Ct)
+    cur = {}
+
+    def drop():
+        if cur:
+            cur['Cn']._free(); cur.clear()
+            gc.collect(); torch.cuda.empty_cache()
+
+    def nbr(d):
+        drop()
+        name = neighbour_name(Ct.case, d)
+        Cn = TE.Cell(name, body, log=lambda s_: None); Cn.assemble()
+        gn = np.stack(np.unravel_index(Cn.nodes, (2 * n + 1,) * 3), 1)
+        fn_ = box_tractions(Cn)
+        _offload(Cn)
+        cur['Cn'] = Cn
+        return Cn, gn, fn_, name
+
+    off_t = _offload(Ct)
+    try:
+        return _glued_offsets(Ct, None, n, None, ft, None, 'explicit', offs, total, gen, chunk, log, nbr=nbr)
+    finally:
+        _restore(Ct, off_t)
+        drop()
+
+
 def glued(Ct, body, total, gen, chunk=32, log=print):
     """Two-cell samples (see the module docstring). Returns (q (np_t, total), info) or (None, info)."""
+    if GLUED_NEIGHBOURS == 'explicit':
+        return _glued_explicit(Ct, body, total, gen, chunk, log)
     parent = family_full(Ct.case, TE.ROOT / 'packets')
     if parent is None:
         return None, dict(skipped='no family FULL parent', skip_final=True)
@@ -599,7 +650,72 @@ def _glued_system(buf, nb, far, clamp, alpha):
     return crow, cA, vA.contiguous(), keep, sA, nf
 
 
-def _glued_offsets(Ct, Cn, n, gn, ft, fn_, parent, offs, total, gen, chunk, log):
+def _glued_group_safe(Ct, Cn, dmap, nb, far, clamp, alpha, ks, tf, nf_, ptd, pnd, gen, log, d):
+    """GLUED_SAFE: one (offset, far-face BC) group like the default path, but a device memory failure anywhere in the group
+    (factor, fp64 matvec, solves, refinement; the default path only catches the factor call) does not end the class:
+      attempt 1  the default factor ladder (fp64, fp64_retry, fp32); an fp64 factor that leaves less than GLUED_HEADROOM of
+                 free device memory is replaced at once by an fp32 factor (half the size)
+      attempt 2  fp32 factor, fp64 matrix on the host
+    Both attempts replay the same random loads (generator state restored), every solve is refined against the fp64 matrix
+    and must pass the same residual gate (RESID_TOL). Returns (group info, list of q blocks) or (None, None) when both fail."""
+    state = gen.get_state()
+    for attempt in ('auto', 'fp32'):
+        gen.set_state(state)
+        sol = Kg = None
+        try:
+            crow, cA, vA, keep, sA, nf = _glued_system(_glued_upper(Ct, Cn, dmap, nb), nb, far, clamp, alpha)
+            nnz_ = int(vA.numel())
+            _mem('glued_before_factor', offset=d, clamped=clamp, dofs=nf, nnz=nnz_, attempt=attempt)
+            if attempt == 'auto':
+                sol, prec = _spd_glued(crow, cA, vA, nf)
+                free_ = torch.cuda.mem_get_info()[0]
+                if prec == 'fp64' and free_ < GLUED_HEADROOM:
+                    sol.free(); sol = None; gc.collect(); torch.cuda.empty_cache()
+                    log(json.dumps(dict(event='GLUED_SAFE_FP32', case=Ct.case, offset=d, clamped=clamp, free_GB=free_ / 2 ** 30)))
+                    sol, prec = TE.SPDSolver(crow, cA, vA, nf, fdt=torch.float32), 'fp32_headroom'
+            else:
+                sol, prec = TE.SPDSolver(crow, cA, vA, nf, fdt=torch.float32), 'fp32_retry'
+            _mem('glued_after_factor', offset=d, precision=prec)
+            Kg = UpperSym(crow, cA, vA, host=prec != 'fp64')
+            del crow, cA, vA; gc.collect(); torch.cuda.empty_cache()
+            Qg, rels, rels0, steps = [], [], [], []
+            for k in ks:
+                only_n = (torch.rand(k, device=dev, generator=gen) < 0.25).to(dt)
+                F = torch.zeros((nb, k), dtype=dt, device=dev)
+                if tf:
+                    F.index_add_(0, ptd, sum(T.forces(T.random(k, gen)) for T in tf) * (1 - only_n)[None, :])
+                if nf_:
+                    F.index_add_(0, pnd, sum(T.forces(T.random(k, gen)) for T in nf_))
+                b = sA[:, None] * F[keep]
+                y, rel, it, rel0 = refine(Kg, sol.solve, b, sol.solve(b), unscale=1 / sA)
+                u = torch.zeros((nb, k), dtype=dt, device=dev)
+                u[keep] = sA[:, None] * y
+                Qg.append(_finite(u[ptd], 'GLUED'))
+                rels.append(rel); rels0.append(rel0); steps.append(it)
+                del F, b, y, u
+            sol.free(); sol = None
+            del Kg, keep, sA; gc.collect(); torch.cuda.empty_cache()
+            rel = torch.cat(rels)
+            return dict(clamped=clamp, alpha=alpha, samples=int(sum(ks)), dofs=nf, nnz=nnz_, precision=prec, safe_attempt=attempt,
+                        refine_steps=int(max(steps)), resid_max=float(rel.max()), resid_median=float(rel.median()),
+                        resid_unrefined_max=float(torch.cat(rels0).max())), Qg
+        except Exception as e:
+            if not PG._mem_error(e):
+                raise
+            if sol is not None:
+                try:
+                    sol.free()
+                except Exception:
+                    pass
+            sol = Kg = None
+            crow = cA = vA = keep = sA = F = b = y = u = None
+            gc.collect(); torch.cuda.empty_cache()
+            log(json.dumps(dict(event='GLUED_SAFE_RETRY' if attempt == 'auto' else 'GLUED_OFFSET_SKIPPED', case=Ct.case, offset=d,
+                                clamped=clamp, attempt=attempt, error=repr(e)[:160])))
+    return None, None
+
+
+def _glued_offsets(Ct, Cn, n, gn, ft, fn_, parent, offs, total, gen, chunk, log, nbr=None):
     gt = np.stack(np.unravel_index(Ct.nodes, (2 * n + 1,) * 3), 1)
     made = 0                                                                # samples so far (offsets that do not fit or fail the
                                                                             # residual check are skipped and their quota goes to the
@@ -610,6 +726,8 @@ def _glued_offsets(Ct, Cn, n, gn, ft, fn_, parent, offs, total, gen, chunk, log)
     Qs, labels, info = [], [], dict(parent=parent, offsets=[])
     for oi, d in enumerate(offs):
         per = int(np.ceil((total - made) / (len(offs) - oi)))
+        if nbr is not None:                                                 # explicit neighbours: one cell per offset
+            Cn, gn, fn_, parent = nbr(d)
         a = int(np.flatnonzero(d)[0]); sgn = int(sum(d))
         ga = gn + 2 * n * np.asarray(d)[None]
         kn = ((ga[:, 0] + 2 * n) * W + ga[:, 1] + 2 * n) * W + ga[:, 2] + 2 * n
@@ -636,13 +754,29 @@ def _glued_offsets(Ct, Cn, n, gn, ft, fn_, parent, offs, total, gen, chunk, log)
         nf_ = [T for kk, T in fn_.items() if kk not in (nglue, nfar)]
         ptd = Ct.P                                                          # test port DOFs in the glued numbering
         pnd = dmap[Cn.P]                                                    # neighbour port DOFs in the glued numbering
-        ro = dict(offset=list(d), axis=_axis_name(d), shared_nodes=int(shared.sum()), groups=[])
+        ro = dict(offset=list(d), axis=_axis_name(d), shared_nodes=int(shared.sum()), groups=[], **({'neighbour': parent} if nbr is not None else {}))
         Qo, Lo, ok = [], [], True
         for clamp in (True, False):
             ks = [k for k, c_ in zip(sizes, clampc) if bool(c_) == clamp]
             if not ks:
                 continue
             alpha = None if clamp else float(0.3 * 10 ** torch.rand((), generator=gen, device=dev))
+            if GLUED_SAFE:
+                g, Qg = _glued_group_safe(Ct, Cn, dmap, nb, far, clamp, alpha, ks, tf, nf_, ptd, pnd, gen, log, d)
+                if g is None:
+                    ro.update(skipped='memory (safe mode: fp64 and fp32 attempts)')
+                    ok = False
+                    break
+                Qo += Qg; Lo += [clamp] * sum(ks)
+                ro['groups'].append(g)
+                log(json.dumps(dict(event='GLUED_OFFSET', case=Ct.case, parent=parent, offset=d, shared_nodes=ro['shared_nodes'], **g)))
+                if not g['resid_max'] <= RESID_TOL:
+                    ro['skipped'] = f"residual {g['resid_max']:.3g} > {RESID_TOL:g} ({g['precision']}, {g['refine_steps']} refinement steps)"
+                    log(json.dumps(dict(event='GLUED_OFFSET_REJECTED', case=Ct.case, offset=d, clamped=clamp, resid_max=g['resid_max'],
+                                        precision=g['precision'])))
+                    ok = False
+                    break
+                continue
             crow, cA, vA, keep, sA, nf = _glued_system(_glued_upper(Ct, Cn, dmap, nb), nb, far, clamp, alpha)
             nnz_ = int(vA.numel())
             _mem('glued_before_factor', offset=d, clamped=clamp, dofs=nf, nnz=nnz_)
@@ -886,7 +1020,7 @@ def one(body, data, case, classes, F_old=False, fix_support=False, log=print, ou
     for c in classes:
         if c not in todo:
             log(json.dumps(dict(event='CLASS_VALID2', case=case, cls=c)))
-    if 'glued' in todo and family_full(case, TE.ROOT / 'packets') is None:
+    if 'glued' in todo and GLUED_NEIGHBOURS != 'explicit' and family_full(case, TE.ROOT / 'packets') is None:
         todo.remove('glued')
         settle('glued', dict(skipped='no family FULL parent', skip_final=True), 'CLASS_SKIPPED2')
     fix = False

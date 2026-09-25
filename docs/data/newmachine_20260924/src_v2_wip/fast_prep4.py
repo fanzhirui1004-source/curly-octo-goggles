@@ -32,7 +32,14 @@ def main(workers, out, case):
     from stage_cutfem_q2.space import OFFSETS
     import os
     from fractions import Fraction
-    ctx = json.loads((R / case / 'FRESH_CONTEXT.json').read_text())
+    import os as _os
+    pk = R / case                                       # OPL_PACKETS_EXTRA: expansion packets (unset: R only, as before)
+    if not pk.exists():
+        for r_ in [Path(x) for x in _os.environ.get('OPL_PACKETS_EXTRA', '').split(':') if x]:
+            if (r_ / case).exists():
+                pk = r_ / case
+                break
+    ctx = json.loads((pk / 'FRESH_CONTEXT.json').read_text())
     n = int(ctx['n'])
     eps = os.environ.get('TAU_EPS', '0')                # design perturbation: every thickness corner scaled by 1 + eps
     if eps != '0':

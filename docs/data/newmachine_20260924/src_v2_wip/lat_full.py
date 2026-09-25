@@ -98,6 +98,9 @@ def main(argv=None):
     ap.add_argument('--r2-case', default=DC.R2); ap.add_argument('--r1-case', default=DC.R1); ap.add_argument('--full-case', default=DC.FULL)
     ap.add_argument('--custom', default='', help='tckpt:tcase:nckpt:ncase,...')
     ap.add_argument('--maxit', type=int, default=400)
+    ap.add_argument('--nb-mode', default='family', choices=('family', 'explicit'),
+                    help="explicit: configuration x / y glues the test cell's own continuous-thickness neighbour packet "
+                         "<case>_nbmx / <case>_nbmy (gen_new.py), exact; only the set 'test' (the gate definition)")
     args = ap.parse_args(argv)
     import lattice3 as LT
     import ops as OP
@@ -108,18 +111,28 @@ def main(argv=None):
     pairs = [p for p in args.pairs.split(',') if p]
     for i, c in enumerate(x for x in args.custom.split(',') if x):
         tck, tcase, nck, ncase = c.split(':')
+        if args.nb_mode == 'explicit':
+            ncase = 'EXPLICIT'
         spec[f'custom{i}'] = (tck, tcase, nck, ncase or DC.family_full(tcase)); pairs.append(f'custom{i}')
+    if args.nb_mode == 'explicit' and set(args.sets.split(',')) - {'test'}:
+        raise SystemExit('--nb-mode explicit: only --sets test (the neighbour has no network input data)')
     rec = dict(args=vars(args), results=[], conv=TL.conv_precision())
     log = lambda d: print(json.dumps(d), flush=True)
     for p in pairs:
         tckp, tcase, nckp, ncase = spec[p]
         trun, nrun = Path(tckp).parent.name, Path(nckp).parent.name
         ckt, ckn = DC.load_ckpt(tckp), DC.load_ckpt(nckp)
-        Ct, _ = LT.prepared(tcase, ckt['cfg']['body']); Cn, _ = LT.prepared(ncase, ckn['cfg']['body'])
+        Ct, _ = LT.prepared(tcase, ckt['cfg']['body'])
         opt, mt = fast_op(ckt, tcase, ckt['cfg']['body'], ckt['cfg']['data'], Ct)
-        opn, mn = fast_op(ckn, ncase, ckn['cfg']['body'], ckn['cfg']['data'], Cn)
+        if ncase == 'EXPLICIT':
+            opn, mn = None, None
+        else:
+            Cn, _ = LT.prepared(ncase, ckn['cfg']['body'])
+            opn, mn = fast_op(ckn, ncase, ckn['cfg']['body'], ckn['cfg']['data'], Cn)
+        pair_ncase = ncase
         for conf in args.configs.split(','):
             t = time.perf_counter()
+            ncase = f'{tcase}_nbm{conf}' if pair_ncase == 'EXPLICIT' else pair_ncase
             lat = LT.build(tcase, ncase, conf, ckt['cfg']['body'])
             ex = [OP.ExactOp(cd['cell'], cd['T']) for cd in lat.cells]
             r = run_lattice(lat, [opt, opn], ex, tuple(args.sets.split(',')), args.maxit,

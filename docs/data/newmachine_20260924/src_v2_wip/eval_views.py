@@ -23,17 +23,25 @@ def main(argv):
     ap.add_argument('--views', default='0,5,17,29,38,46'); ap.add_argument('--val-max', type=int, default=20)
     ap.add_argument('--split', default='/root/autodl-tmp/OPL/S2/SPLIT.json'); ap.add_argument('--chunk', type=int, default=16)
     ap.add_argument('--slots', default='/root/autodl-tmp/OPL/S2/slots')
+    ap.add_argument('--cases', default='', help='comma list (overrides --split / --val-max)')
+    ap.add_argument('--body', default=None, help='geometries without a slot file are built from body / data (default: ckpt cfg)')
+    ap.add_argument('--data', default=None)
     a = ap.parse_args(argv)
     ks = [int(k) for k in a.views.split(',')]
     ck = torch.load(a.ckpt, map_location=dev, weights_only=False)
     cfg = ck['cfg']
-    cases = json.loads(Path(a.split).read_text())['val'][:a.val_max]
+    cases = [c for c in a.cases.split(',') if c] or json.loads(Path(a.split).read_text())['val'][:a.val_max]
     model, t0 = None, time.perf_counter()
     rec = dict(ckpt=a.ckpt, views=ks, per_geo={}, ckpt_step=ck.get('step'), ckpt_weights=ck.get('weights'),
                ckpt_score=ck.get('score'), conv=dict(TL.conv_precision(), ckpt_conv_fp32=cfg.get('conv_fp32')))
     for case in cases:
-        g = torch.load(Path(a.slots) / f'{case}.pt', map_location='cpu', weights_only=False)
-        T2.move(g, dev); g.C.K = g.C
+        sf = Path(a.slots) / f'{case}.pt'
+        if sf.exists():
+            g = torch.load(sf, map_location='cpu', weights_only=False)
+            T2.move(g, dev); g.C.K = g.C
+        else:                                                           # new geometry: build from body / data
+            g = T2.build_geo(case, dict(body=a.body or cfg['body'], data=a.data or cfg['data']))
+            T2.move(g, dev)
         T2.clean_banks(g, case, lambda d_: None)
         if model is None:
             model = MD.build(cfg['model'], [g], **cfg.get('model_args', {})).to(dev)

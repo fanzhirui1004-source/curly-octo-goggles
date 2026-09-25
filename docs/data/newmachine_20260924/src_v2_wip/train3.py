@@ -362,7 +362,10 @@ def family_resolver(packets):
     def fam(case):
         if case not in memo:
             try:
-                memo[case] = json.loads((Path(packets) / case / 'FRESH_CONTEXT.json').read_text())['case']['family_id']
+                f_ = Path(packets) / case / 'FRESH_CONTEXT.json'
+                if not f_.exists():
+                    f_ = TL.TE.packet_dir(case) / 'FRESH_CONTEXT.json'              # OPL_PACKETS_EXTRA (unset: the same path)
+                memo[case] = json.loads(f_.read_text())['case']['family_id']
             except (OSError, KeyError, ValueError, TypeError):
                 memo[case] = '_'.join(case.split('_')[:3])
         return memo[case]

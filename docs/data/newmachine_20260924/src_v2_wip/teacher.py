@@ -23,6 +23,19 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 dev, dt = torch.device(os.environ.get('OPL_DEV', 'cuda:0')), torch.float64   # OPL_DEV=cpu: local unit tests (no factorizations)
 ROOT = Path('/root/autodl-tmp/CUTFEM_FRESH_GP_20260921')
+# Extra packet roots (colon separated, e.g. the expansion packets S3/packets): a case missing from ROOT/packets is looked up
+# there. Unset (the default): every lookup is ROOT/packets/<case>, as before.
+PACKETS_EXTRA = [Path(p_) for p_ in os.environ.get('OPL_PACKETS_EXTRA', '').split(':') if p_]
+
+
+def packet_dir(case):
+    d = ROOT / 'packets' / case
+    if d.exists():
+        return d
+    for r in PACKETS_EXTRA:
+        if (r / case).exists():
+            return r / case
+    return d
 
 
 def sync():
@@ -91,7 +104,7 @@ class Cell:
         import box_encode as BX
         self.PT, self.s, self.levels, self.log = PT, s, levels, log
         t0 = time.perf_counter()
-        ctx = json.loads((ROOT / 'packets' / case / 'FRESH_CONTEXT.json').read_text())
+        ctx = json.loads((packet_dir(case) / 'FRESH_CONTEXT.json').read_text())
         self.case, self.n = case, int(ctx['n'])
         Emod = float(ctx['material']['E']); nu = float(ctx['material']['nu'])
         lam = Emod * nu / ((1 + nu) * (1 - 2 * nu)); mu = Emod / (2 * (1 + nu))
@@ -100,7 +113,7 @@ class Cell:
         self.taus0 = [float(Fraction(v)) for v in cs['tau_corners']]
         self.normal = None if cs.get('normal') is None else [float(Fraction(v)) for v in cs['normal']]
         self.offset = None if self.normal is None else float(Fraction(cs['offset']))
-        self.gamma = float(json.loads((ROOT / 'packets' / case / 'SAMPLE.json').read_text())['gp']['gamma'])
+        self.gamma = float(json.loads((packet_dir(case) / 'SAMPLE.json').read_text())['gp']['gamma'])
         d = Path(body_dir) / case
         self.nodes = np.load(d / 'NODES.npy'); self.cells = np.load(d / 'CELL_INDICES.npy')
         dofs = np.load(d / 'dofs.npy')
