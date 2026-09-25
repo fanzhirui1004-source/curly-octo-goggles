@@ -12,6 +12,9 @@ config: {"cases": [...], "body": ..., "data": ..., "out": ..., "model": "<name>"
         strict_mix: stop when a mix class has no bank in some geometry (default: log MIX_MISSING and let sampling drop it)
         score_classes: classes whose val mean enters the selection score (worst class mean -> best.pt); default: every class
         of the val banks (the original rule). Arms compared on a data dir with extra classes select on the same classes.
+        A non-finite class mean makes the score +inf (GATE-6 / TRAINER-12: Python max() with a NaN first froze best.pt); best.pt
+        is only taken from finite scores. The conv precision (cudnn.allow_tf32, INVARIANTS-2) is in MODEL, EVAL and the
+        checkpoints.
 """
 import json, sys, time, gc, math
 from pathlib import Path
@@ -44,7 +47,8 @@ def main(cfg):
         res = model.load_state_dict(ck['model'], strict=False)
         log(dict(event='INIT', ckpt=cfg['init'], step=ck.get('step'), missing=len(res.missing_keys), unexpected=len(res.unexpected_keys)))
     nparam = sum(p.numel() for p in model.parameters())
-    log(dict(event='MODEL', name=cfg['model'], params=nparam, args=cfg.get('model_args', {})))
+    conv = TL.conv_precision()
+    log(dict(event='MODEL', name=cfg['model'], params=nparam, args=cfg.get('model_args', {}), **conv))
     opt = torch.optim.Adam(model.parameters(), lr=cfg['lr'])
     steps = cfg['steps']
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=cfg['lr'], total_steps=steps, pct_start=cfg.get('pct_start', 0.05),
@@ -98,12 +102,17 @@ def main(cfg):
                 worst[g_.case] = float(ritz[0])
             model.train()
             sc = cfg.get('score_classes')
-            score = max(v[c]['mean'] for v in ev.values() for c in v if sc is None or c in sc)
-            log(dict(event='EVAL', step=step, val=ev, worst_ratio=worst, score=score, s=time.perf_counter() - t0))
-            torch.save(dict(model=model.state_dict(), cfg=cfg, step=step), out / 'last.pt')
-            if best is None or score < best:
+            means = [v[c]['mean'] for v in ev.values() for c in v if sc is None or c in sc]
+            score = max(means) if all(math.isfinite(x) for x in means) else float('inf')    # GATE-6: never drop / freeze on NaN
+            if not math.isfinite(score):
+                log(dict(event='VAL_NONFINITE', step=step, entries=[[g_, c] for g_, v in ev.items() for c in v
+                                                                     if (sc is None or c in sc) and not math.isfinite(v[c]['mean'])]))
+            log(dict(event='EVAL', step=step, val=ev, worst_ratio=worst, score=score, s=time.perf_counter() - t0,
+                     conv_tf32=conv['conv_tf32']))
+            torch.save(dict(model=model.state_dict(), cfg=cfg, step=step, score=score, conv=conv), out / 'last.pt')
+            if math.isfinite(score) and (best is None or score < best):
                 best = score
-                torch.save(dict(model=model.state_dict(), cfg=cfg, step=step), out / 'best.pt')
+                torch.save(dict(model=model.state_dict(), cfg=cfg, step=step, score=score, conv=conv), out / 'best.pt')
     log(dict(event='DONE', seconds=time.perf_counter() - t0, best_score=best))
 
 

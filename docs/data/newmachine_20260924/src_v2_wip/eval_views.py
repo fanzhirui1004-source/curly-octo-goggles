@@ -2,13 +2,15 @@
 orientation sensitivity that the identity-only validation of train2 / train3 cannot see. Energies with the original K
 (unit exact energy banks, so e_hat - 1 is the relative energy error); views returned in the original frame.
 Usage: eval_views.py <ckpt> <out.json> [--views 0,5,17,29,38,46] [--val-max 20] [--split SPLIT.json] [--chunk 16]
-       (default views: identity and five fixed non-identity elements of oh.ELEMS)"""
+       (default views: identity and five fixed non-identity elements of oh.ELEMS)
+The output records the checkpoint's step / weights / score (ckpt_step: compare_arms checks it against the EVAL it uses,
+GATE-9) and the convolution precision in force ('conv'; OPL_CONV_FP32=1 -> true fp32, read by models at import)."""
 import sys, json, time, gc, argparse
 from pathlib import Path
 import numpy as np
 import torch
+import models as MD                                                    # first: applies OPL_CONV_FP32
 import trainlib as TL
-import models as MD
 import train2 as T2
 import oh
 
@@ -26,7 +28,9 @@ def main(argv):
     ck = torch.load(a.ckpt, map_location=dev, weights_only=False)
     cfg = ck['cfg']
     cases = json.loads(Path(a.split).read_text())['val'][:a.val_max]
-    model, rec, t0 = None, dict(ckpt=a.ckpt, views=ks, per_geo={}), time.perf_counter()
+    model, t0 = None, time.perf_counter()
+    rec = dict(ckpt=a.ckpt, views=ks, per_geo={}, ckpt_step=ck.get('step'), ckpt_weights=ck.get('weights'),
+               ckpt_score=ck.get('score'), conv=dict(TL.conv_precision(), ckpt_conv_fp32=cfg.get('conv_fp32')))
     for case in cases:
         g = torch.load(Path(a.slots) / f'{case}.pt', map_location='cpu', weights_only=False)
         T2.move(g, dev); g.C.K = g.C

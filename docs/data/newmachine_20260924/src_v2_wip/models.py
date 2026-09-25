@@ -8,7 +8,10 @@ v2 options of MGNO / MGNO2 (model_args; all default off, and off is the v0 / v0.
                   ab, fab, xab with group = layer x {alpha, beta} (buffers bnd_ab (2, L), bnd_fab (2, Lg), bnd_xab (2, Lx));
                   transfer weights w = w_max tanh(softplus(r) / w_max) + 1e-3 (bnd_rw (levels, 2), [level, restrict /
                   prolong]). A = inf is the identity (the clip is skipped). A from calib_b1.py -> set_bounds() or
-                  model_args bounds=<calib file>; sat_stats(): fraction of |a_raw| > A per group in the last geometry().
+                  model_args bounds=<calib file>; sat_stats(): fraction of |a_raw| > A per group in the last geometry(),
+                  and (M7 / INVARIANTS-1) the fraction above the knee T = bound_knee A where the soft clip starts compressing
+                  ('knee', 'knee_max') and max |a_raw| / A ('peak'). bound_knee in [0, 1) is also the buffer bnd_knee (saved
+                  in the state dict; a checkpoint without it keeps the constructor value); A <= 0 / NaN is rejected.
   feat_v2=True    (B2) 5 more node features without any per-geometry normalisation (node_feats_v2), appended as the last
                   input columns of node_in; load_compat() zero-pads them in older checkpoints (same function at load).
   fringe_soft=True  (MGNO2, needs feat_v2) the fringe layers act on the fixed superset {hyperedges with max_i s_i > 0.01}
@@ -414,6 +417,14 @@ def _bounds_hook(module, incompatible):
     module._refresh_bounds()
 
 
+def _check_knee(k):
+    """B1 knee in [0, 1) (INVARIANTS-4: knee >= 1 divides by A - T = 0 in the soft clip, negative knees are meaningless)."""
+    k = float(k)
+    if not (0.0 <= k < 1.0):
+        raise ValueError(f'B1 bound_knee must be in [0, 1), got {k}')
+    return k
+
+
 def load_compat(model, sd):
     """Load a state dict into a (possibly v2) model: input layers widened by feat_v2 (model._pad_cols) get zero columns
     appended, so an older checkpoint gives the same function at load; B1 bound buffers missing from sd keep the model's
@@ -450,7 +461,7 @@ class MGNO(nn.Module):
         self.ckpt = ckpt and not sparse
         self.sparse = sparse                                                        # training-time sparse hyperedge layers
         self.bounded, self.feat_v2, self.b3 = bounded, feat_v2, b3
-        self.bound_knee = float(bound_knee)                                        # B1: identity below knee x A (0: plain tanh)
+        self.bound_knee = _check_knee(bound_knee)                                  # B1: identity below knee x A (0: plain tanh)
         self.caches = {g.case: MGCache(g, levels, feat_v2, b3).c for g in geos}
         self.elem_in = _mlp(126, Cg, Cg)
         self.node_in = _mlp(11 + Cg + (NF2 if feat_v2 else 0), Cg, Cg)            # input [nfeat, agg (, nfeat2)]
@@ -476,6 +487,7 @@ class MGNO(nn.Module):
         if bounded:
             self.register_buffer('bnd_ab', torch.full((2, L), float('inf')))
             self.register_buffer('bnd_rw', torch.full((levels, 2), float('inf')))
+            self.register_buffer('bnd_knee', torch.tensor(self.bound_knee, dtype=torch.float64))   # saved with the weights
             self.register_load_state_dict_post_hook(_bounds_hook)
             self._refresh_bounds()
             if bounds is not None:
@@ -490,13 +502,36 @@ class MGNO(nn.Module):
         self.caches.pop(case, None)
 
     # ---------------- B1 bounds
-    def _refresh_bounds(self):
+    def _load_from_state_dict(self, state_dict, prefix, *args, **kwargs):
+        """A state dict written before bnd_knee existed keeps the constructor knee (any loader, strict or not)."""
+        if getattr(self, 'bnd_knee', None) is not None and prefix + 'bnd_knee' not in state_dict:
+            state_dict[prefix + 'bnd_knee'] = self.bnd_knee.detach().clone()
+        super()._load_from_state_dict(state_dict, prefix, *args, **kwargs)
+
+    def _refresh_bounds(self, strict=False):
         """Python-side state of the bound buffers (no device sync in the forward): per tensor 'off' (all inf), 'all'
-        (all finite) or 'mixed'; per (level, direction) transfer bound finite or not."""
+        (all finite) or 'mixed'; per (level, direction) transfer bound finite or not; the knee from bnd_knee.
+        Bounds A <= 0 or NaN: ValueError when strict (set_bounds), a warning otherwise (a loaded legacy checkpoint stays
+        loadable; such a group outputs 0 and has NaN gradients)."""
+        kb = getattr(self, 'bnd_knee', None)
+        if kb is not None:
+            k = _check_knee(float(kb))
+            if k != self.bound_knee:
+                import warnings
+                warnings.warn(f'B1 knee {k} from the loaded state replaces the constructor value {self.bound_knee}')
+            self.bound_knee = k
         self._bst = {}
         for k in ('ab', 'fab', 'xab', 'rw'):
             b = getattr(self, 'bnd_' + k, None)
             if b is not None:
+                bad = torch.isnan(b) | (b <= 0)
+                if bool(bad.any()):
+                    msg = (f'B1 bound bnd_{k} has {int(bad.sum())} entries <= 0 or NaN (A must be > 0, or inf for the identity): '
+                           f'{b.tolist()}')
+                    if strict:
+                        raise ValueError(msg)
+                    import warnings
+                    warnings.warn(msg)
                 fin = torch.isfinite(b)
                 self._bst[k] = 'off' if not bool(fin.any()) else ('all' if bool(fin.all()) else 'mixed')
                 if k == 'rw':
@@ -507,25 +542,49 @@ class MGNO(nn.Module):
         restrict/prolong]; inf = identity); a calib_b1.py output (path or its dict) works too. Absent names are kept."""
         if isinstance(d, (str, Path)):
             d = torch.load(d, map_location='cpu', weights_only=False)
-        d = d.get('bounds', d)
+        knee = d.get('knee') if isinstance(d, dict) else None                     # a knee stored with the bounds file
+        d = dict(d.get('bounds', d))
+        knee = d.pop('knee', knee)
+        new = {}
         for k, v in d.items():
             b = getattr(self, 'bnd_' + k, None)
             if b is None:
                 raise KeyError(f'set_bounds: no bound buffer for {k!r} (model built with bounded=True?)')
-            with torch.no_grad():
-                b.copy_(torch.as_tensor(v, dtype=b.dtype).reshape(b.shape))
-        self._refresh_bounds()
+            v = torch.as_tensor(v, dtype=b.dtype).reshape(b.shape)
+            if bool((torch.isnan(v) | (v <= 0)).any()):
+                raise ValueError(f'set_bounds: {k!r} has entries <= 0 or NaN (A must be > 0, or inf for the identity): {v.tolist()}')
+            new[k] = v
+        with torch.no_grad():
+            for k, v in new.items():
+                getattr(self, 'bnd_' + k).copy_(v)
+            if knee is not None:
+                self.bnd_knee.fill_(_check_knee(knee))
+        self._refresh_bounds(strict=True)
 
     def sat_stats(self):
         """Fraction of |a_raw| > A per group in the last geometry() call ({name: nested list shaped like its bound, 'max':
         overall max}); groups with A = inf count 0 (also all groups while model.track_sat = False, which skips the count).
-        A cheap out-of-distribution score for logging."""
+        A cheap out-of-distribution score for logging.
+        M7: the soft clip already compresses above the knee T = bound_knee A (|x| = 2T with knee 0.5 comes out 11.9% low
+        while 'max' stays 0), so also 'knee': {name: fraction of |a_raw| > T per group}, 'knee_max' (overall max; with
+        bound_knee = 0 the plain tanh compresses every nonzero value, so this is ~1) and 'peak' = max over the finite groups
+        of max |a_raw| / A (<= bound_knee: the clip acted as the identity; > 1: beyond the bound)."""
         out = {}
         for k in ('ab', 'fab', 'xab', 'rw'):
             b = getattr(self, 'bnd_' + k, None)
             if b is not None:
                 out[k] = self._sat[k].float().cpu().tolist() if k in self._sat else torch.zeros(b.shape).tolist()
         out['max'] = max([float(np.max(v)) for v in out.values()] or [0.0])
+        knee = {}
+        for k in ('ab', 'fab', 'xab', 'rw'):
+            b = getattr(self, 'bnd_' + k, None)
+            if b is not None:
+                knee[k] = self._sat[k + '_knee'].float().cpu().tolist() if k + '_knee' in self._sat else torch.zeros(b.shape).tolist()
+        out['knee'] = knee
+        out['knee_max'] = max([float(np.max(v)) for v in knee.values()] or [0.0])
+        pk = [float(v) for k, v in self._sat.items() if k.endswith('_peak')]
+        out['peak'] = max(pk) if pk else 0.0
+        out['bound_knee'] = self.bound_knee
         return out
 
     def _clip(self, name, x, shape):
@@ -539,8 +598,13 @@ class MGNO(nn.Module):
         if self.track_sat:
             with torch.no_grad():
                 G, H = x.shape[2] * x.shape[3], x.shape[4]
-                cnt = torch.count_nonzero((x.abs() > A).reshape(-1, G * H), dim=0).reshape(G, H).sum(1)
+                ax = x.abs()
+                cnt = torch.count_nonzero((ax > A).reshape(-1, G * H), dim=0).reshape(G, H).sum(1)
                 self._sat[name] = (cnt / float(x.numel() // G)).reshape(x.shape[2], x.shape[3])
+                cnt = torch.count_nonzero((ax > A * self.bound_knee).reshape(-1, G * H), dim=0).reshape(G, H).sum(1)
+                self._sat[name + '_knee'] = (cnt / float(x.numel() // G)).reshape(x.shape[2], x.shape[3])
+                if x.numel():                                                   # per group max |a_raw| / A (0 where inf)
+                    self._sat[name + '_peak'] = (ax.amax(dim=(0, 1, 4)) / A.reshape(x.shape[2], x.shape[3])).max()
         return _SoftClip.apply(x, A, st == 'mixed', self.bound_knee)
 
     def _transfer(self, rw_raw, l):
@@ -556,7 +620,12 @@ class MGNO(nn.Module):
                     with torch.no_grad():
                         if 'rw' not in self._sat:
                             self._sat['rw'] = torch.zeros_like(self.bnd_rw)
+                            self._sat['rw_knee'] = torch.zeros_like(self.bnd_rw)
                         self._sat['rw'][l, j] = (sp[j] > A).float().mean()
+                        self._sat['rw_knee'][l, j] = (sp[j] > A * self.bound_knee).float().mean()
+                        if sp[j].numel():
+                            pk = (sp[j].max() / A).reshape(())
+                            self._sat['rw_peak'] = torch.maximum(self._sat['rw_peak'], pk) if 'rw_peak' in self._sat else pk
                 out.append(_SoftClip.apply(sp[j], A, False, self.bound_knee) + 1e-3)
             else:
                 out.append(sp[j] + 1e-3)

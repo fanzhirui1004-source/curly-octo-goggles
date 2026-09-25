@@ -15,11 +15,14 @@ Usage: lat_full.py <out.json> [--pairs r2,r1] [--configs x,y] [--sets test,nbr,b
        --custom <test ckpt>:<test case>:<nbr ckpt>:<nbr case>[,...] adds pairs (e.g. a step-2 checkpoint on a held-out cut
        cell and its family FULL parent; the neighbour case defaults to the family FULL parent when left empty)
 Recommended env as evalnet runs: LAT_CPU=1 (dense lattice factor on the host).
+Convolution precision (INVARIANTS-2): OPL_CONV_FP32=1 -> true fp32 convolutions (models reads it at import, imported first
+here); the mode in force is recorded in the output JSON ('conv').
 """
 import json, sys, os, time, argparse
 from pathlib import Path
 import numpy as np
 import torch
+import models as MD                                                    # noqa: F401  first: applies OPL_CONV_FP32
 import trainlib as TL
 import diag_cert as DC
 
@@ -106,7 +109,7 @@ def main(argv=None):
     for i, c in enumerate(x for x in args.custom.split(',') if x):
         tck, tcase, nck, ncase = c.split(':')
         spec[f'custom{i}'] = (tck, tcase, nck, ncase or DC.family_full(tcase)); pairs.append(f'custom{i}')
-    rec = dict(args=vars(args), results=[])
+    rec = dict(args=vars(args), results=[], conv=TL.conv_precision())
     log = lambda d: print(json.dumps(d), flush=True)
     for p in pairs:
         tckp, tcase, nckp, ncase = spec[p]
@@ -121,9 +124,10 @@ def main(argv=None):
             ex = [OP.ExactOp(cd['cell'], cd['T']) for cd in lat.cells]
             r = run_lattice(lat, [opt, opn], ex, tuple(args.sets.split(',')), args.maxit,
                             log=lambda d: log(dict(pair=p, config=conf, **d)))
-            r.update(pair=p, config=conf, test_cell=dict(case=tcase, run=trun, ckpt=tckp, missing_keys=mt),
-                     nbr_cell=dict(case=ncase, run=nrun, ckpt=nckp, missing_keys=mn),
-                     seconds=time.perf_counter() - t)
+            r.update(pair=p, config=conf, test_cell=dict(case=tcase, run=trun, ckpt=tckp, missing_keys=mt,
+                                                         ckpt_conv_fp32=ckt['cfg'].get('conv_fp32')),
+                     nbr_cell=dict(case=ncase, run=nrun, ckpt=nckp, missing_keys=mn, ckpt_conv_fp32=ckn['cfg'].get('conv_fp32')),
+                     seconds=time.perf_counter() - t, conv_tf32=TL.conv_precision()['conv_tf32'])
             rec['results'].append(r)
             Path(args.out).write_text(json.dumps(rec, indent=1))
             del lat; DC.free_mem()

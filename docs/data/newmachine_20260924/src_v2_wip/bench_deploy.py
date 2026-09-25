@@ -17,14 +17,16 @@ Lattice (first case + its family FULL parent, config x, traction-consistent gate
   the acceptance gate uses; not deployable), 'none', 'jacobi' = inverse diagonal of the assembled port stiffness K_PP
   (deployable, no factorization); iterations, seconds, seconds per iteration, gate metrics against the exact reference.
 Usage: bench_deploy.py <ckpt> <out.json> <case> [<case> ...]
+Convolution precision (INVARIANTS-2): OPL_CONV_FP32=1 -> true fp32 convolutions (models reads it at import, imported before
+the other modules here); the mode timed is recorded in the output JSON ('conv').
 """
 import sys, json, time, gc, os, shutil
 from pathlib import Path
 import numpy as np
 import torch
+import models as MD                                                    # first: applies OPL_CONV_FP32
 import teacher as TE
 import trainlib as TL
-import models as MD
 import fastnet as FN
 import lattice3 as LT
 import evalnet as EN
@@ -251,7 +253,8 @@ def main(argv):
     TMP.mkdir(parents=True, exist_ok=True)
     holder = ModelHolder(ckpt)
     log = lambda s_: print(s_, flush=True)
-    rec = dict(ckpt=ckpt, gpu=torch.cuda.get_device_name(0), cells=[], lattice=None)
+    rec = dict(ckpt=ckpt, gpu=torch.cuda.get_device_name(0), cells=[], lattice=None, conv=TL.conv_precision())
+    log(json.dumps(dict(event='CONV', **rec['conv'])))
     for c in cases:
         try:
             rec['cells'].append(per_cell(c, holder, log))

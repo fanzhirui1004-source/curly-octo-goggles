@@ -12,15 +12,17 @@ block power iteration with the fp32 Neumann factor (Geo.adversarial, k = adv_k, 
 samples), factor freed. Later visits: the buffer is re-scored with the current network (e_hat of every vector, unit exact
 energy) and, when the geometry has reaction banks F, refreshed WITHOUT any factorization by bank-span Ritz (Geo.bank_ritz on
 adv_ritz_R train samples: top adv_ritz_top generalized eigenvectors of (U^T K U, Q^T F)); the adv_buffer worst by current
-Rayleigh quotient are kept. Adversarial columns carry NaN sensitivities (and no F). The buffer is not in ckpt.pt (a resumed
-run searches again on first visits).
+Rayleigh quotient are kept. Adversarial columns carry NaN sensitivities (and no F). The buffers are in ckpt.pt up to
+ckpt_adv_mb (resume_rng, below); a buffer not stored is searched again on its next first visit.
 O_h augmentation (oh = true, needs oh.py): every entry of a geometry into the pool draws k uniformly from the 48 cube-group
 elements (seeded) and trains on oh.view(model, geo, k), whose field is returned in the ORIGINAL frame (energies and
-sensitivities with the original K and dM); validation, mu and the certificate use the identity.
+sensitivities with the original K and dM); validation, mu and the certificate use the identity (eval_views below adds
+rotated views to the validation and the selection score).
 Loss options: sens_loss 'sq' (mean rho^2, train2) | 'smoothl1' (mean sqrt(rho^2 + sens_delta^2) - sens_delta), rho =
 |s_hat - s| / |s|; tail_w > 0: + tail_w tau logsumexp(log max(lambda, 1) / tau) over the generalized eigenvalues of the batch
 Grams (U^T K U, Q^T F) of the non-adversarial columns, used when every one of them has F (trainlib.tail_loss).
-Batch classes: multinomial counts as train2, or quota = true: floor(mix_c B) + the remainder drawn by the seeded generator.
+Batch classes: multinomial counts as train2, or quota = true: floor(mix_c B) + the remainder drawn by the seeded generator
+(quota_systematic = true: systematic remainder, trainlib.quota_counts).
 EMA (ema = decay, 0 = off): shadow parameters initialised at the starting weights, updated after every optimizer step;
 validation reports raw and EMA weights, checkpoints hold both, selection uses the EMA when enabled.
 Validation (every eval_every, identity view): per geometry and class on the val banks energy excess e_hat - 1 (mean / p90 /
@@ -41,8 +43,32 @@ config (train2): split, train_key, val_max, probe_max, body, data, out, slot_cac
         mu_start ('bank': fixed soft-class val samples | 'random'), cert (true), cert_m (8), cert_flag (0.1),
         score_classes (non-adversarial mix classes), probe_seed (seed), log_every (50: STEP lines),
         packets (FRESH_CONTEXT dirs, family ids), stop_after (end this process after that step without DONE, as if killed)
+       (audit v2, 2026-09-25; every default keeps the earlier behaviour)
+        eval_views ([0]): M3 multi-view selection. Each val and probe geometry is also evaluated under these O_h views (oh.view
+          -> eval_geo -> oh.drop; energies / sensitivities in the original frame, as eval_views.py); per view the family score
+          (score()); the selection score = the mean over the listed views of the view scores (eval_views_agg 'max': the
+          worst view). The identity (view 0) is always evaluated and gives score_identity, mu and the certificate (identity
+          only, for cost); EVAL, best.pt and last.pt carry eval_views, score_views {k: score}, score_identity and
+          score_worst_view. Needs oh.py when a view is not 0 (with or without oh = true for training).
+        score_sens (false): + 0.5 x the sensitivity p90 in each family total (score()); score_classes may list any class of
+          trainlib.ALL_CLASSES (new ones included; unknown names raise; classes absent from every val geometry are logged).
+        ema_debias (false): M4 bias-corrected EMA, shadow started at zero and divided by 1 - d^t (t = EMA updates so far), so
+          the warm-start weights never enter the average (the plain EMA still holds d^t of them: 22% at 5k steps for
+          d = 0.9997). select_min_step (0): evaluations before this step are logged and snapshotted but never become best.pt
+          (the last evaluation always can).
+        strict_mix (false): M5 raise when a training geometry lacks a mix class (default: MIX_MISSING logged once per
+          geometry; HostBanks.sample then renormalises over the classes it has). Always (a guard): a mix class absent from
+          EVERY training geometry raises at startup (slot / data-dir scan; strict_mix scans every geometry).
+        quota_systematic (false): TRAINER-5 systematic remainder of quota (exact shares for rare classes).
+        resume_rng (false; set true for v2): TRAINER-7 ckpt.pt holds the generator states (numpy gen / agen / ogen, torch tgen / global / cuda,
+          python random), the pool members with their O_h view, and the adversarial buffers (up to ckpt_adv_mb, 256 MB); a
+          resume restores them (a stop/resume run then follows the uninterrupted one), and best = min(ckpt best, best.pt
+          score). False, or a checkpoint without them: the earlier reseed-from-step rebuild.
+        Always (guards): non-finite validation metrics count as +inf in the score (GATE-6, VAL_NONFINITE) and best.pt is only
+          taken from finite scores; val_max < len(split val) logs WARN (TRAINER-9); the conv precision (cudnn.allow_tf32)
+          is in MODEL / EVAL / checkpoints (INVARIANTS-2); an 'adv' class dropped after ADV_FAIL is logged.
 """
-import json, sys, time, gc, threading
+import json, sys, time, gc, threading, random
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 import numpy as np
@@ -240,24 +266,38 @@ def batch_loss(geo, model, q, s0, kinds, F, cfg):
 
 
 class EMA:
-    """Exponential moving average of the parameters (decay d, e <- e + (1 - d)(p - e)), initialised at the starting weights."""
+    """Exponential moving average of the parameters (decay d, e <- e + (1 - d)(p - e)), initialised at the starting weights.
+    debias=True (cfg ema_debias): the shadow starts at zero and the weights are e / (1 - d^t) after t updates (Adam's bias
+    correction): a normalised average of the trained iterates only, without the starting (warm-start) weights; before the
+    first update the model's current weights are used."""
 
-    def __init__(self, model, decay):
-        self.decay = decay
+    def __init__(self, model, decay, debias=False):
+        self.decay, self.debias, self.t = decay, bool(debias), 0
         self.names = [n for n, _ in model.named_parameters()]
-        self.p = [p.detach().clone() for p in model.parameters()]
+        self.p = [torch.zeros_like(p.detach()) if self.debias else p.detach().clone() for p in model.parameters()]
 
     @torch.no_grad()
     def update(self, model):
         torch._foreach_lerp_(self.p, [p.detach() for p in model.parameters()], 1.0 - self.decay)
+        self.t += 1
+
+    def weights(self):
+        """The averaged weights (None: debiased and not updated yet = use the current weights)."""
+        if not self.debias:
+            return self.p
+        if self.t == 0:
+            return None
+        c = 1.0 - self.decay ** self.t
+        return [e / c for e in self.p]
 
     @contextmanager
     def applied(self, model):
         """Temporarily run the model with the EMA weights."""
         ps = list(model.parameters())
         keep = [p.detach().clone() for p in ps]
+        ew = self.weights()
         with torch.no_grad():
-            for p, e in zip(ps, self.p):
+            for p, e in zip(ps, ew if ew is not None else keep):
                 p.copy_(e)
         try:
             yield
@@ -268,15 +308,20 @@ class EMA:
 
     def model_state(self, model):
         sd = {k: v.detach().clone() for k, v in model.state_dict().items()}
-        for n, e in zip(self.names, self.p):
+        ew = self.weights()
+        for n, e in zip(self.names, ew if ew is not None else []):
             sd[n] = e.detach().clone()
         return sd
 
     def state_dict(self):
-        return dict(decay=self.decay, p=[e.cpu() for e in self.p])
+        return dict(decay=self.decay, p=[e.cpu() for e in self.p], t=self.t, debias=self.debias)
 
     def load_state_dict(self, d):
+        if bool(d.get('debias', False)) != self.debias:
+            raise ValueError(f"EMA: checkpoint debias={d.get('debias', False)} but cfg ema_debias={self.debias} (resume with the "
+                             f"same EMA mode)")
         self.p = [e.to(p.device) for e, p in zip(d['p'], self.p)]
+        self.t = int(d.get('t', 0))
 
 
 # --------------------------------------------------------------------------------------------------------- validation
@@ -329,9 +374,24 @@ def _nanmean(v):
     return float(np.mean(v)) if v else float('nan')
 
 
+def _geo_mean(v):
+    """families(): mean over geometries; None = absent (skipped); a non-finite value (a diverged geometry) makes the result
+    +inf instead of being dropped (GATE-6); empty -> NaN (absent). Equal to _nanmean when every value is finite."""
+    v = [x for x in v if x is not None]
+    if not v:
+        return float('nan')
+    return float(np.mean(v)) if all(np.isfinite(x) for x in v) else float('inf')
+
+
+def _sel_mean(v):
+    """score(): NaN = absent (families() turns diverged values into +inf) and skipped; +inf propagates."""
+    v = [x for x in v if x is not None and not np.isnan(x)]
+    return float(np.mean(v)) if v else float('nan')
+
+
 def families(per_geo, fam):
     """Per family and class: mean over its geometries of the class mean / p90 excess and sensitivity mean / p90, max of the
-    class max, number of geometries."""
+    class max, number of geometries. A non-finite geometry metric counts as +inf (GATE-6)."""
     out = {}
     for case, r in per_geo.items():
         out.setdefault(fam(case), {}).setdefault('_cases', []).append(case)
@@ -339,29 +399,36 @@ def families(per_geo, fam):
         cases = d.pop('_cases')
         for c in sorted({c for case in cases for c in per_geo[case]}):
             rs = [per_geo[case][c] for case in cases if c in per_geo[case]]
-            d[c] = dict(mean=_nanmean([r['mean'] for r in rs]), p90=_nanmean([r['p90'] for r in rs]), max=max(r['max'] for r in rs),
-                        sens_mean=_nanmean([r.get('sens_mean') for r in rs]), sens_p90=_nanmean([r.get('sens_p90') for r in rs]),
+            mx = [r['max'] for r in rs]
+            d[c] = dict(mean=_geo_mean([r['mean'] for r in rs]), p90=_geo_mean([r['p90'] for r in rs]),
+                        max=max(mx) if all(np.isfinite(x) for x in mx) else float('inf'),
+                        sens_mean=_geo_mean([r.get('sens_mean') for r in rs]), sens_p90=_geo_mean([r.get('sens_p90') for r in rs]),
                         n=len(rs))
         d['n_geo'] = len(cases)
     return out
 
 
-def score(fam_agg, classes, val_families=None):
-    """Selection score (lower is better) = mean over val families f of  E_f + S_f + 0.5 P_f  with
+def score(fam_agg, classes, val_families=None, sens_p90=False):
+    """Selection score (lower is better) = mean over val families f of  E_f + S_f + 0.5 P_f (+ 0.5 S90_f)  with
          E_f = mean over the energy classes c of the family's class-mean excess (mean over its geometries of mean e_hat - 1),
          S_f = mean over those classes with labels of the family's mean relative sensitivity error,
-         P_f = mean over the energy classes of the family's p90 excess.
+         P_f = mean over the energy classes of the family's p90 excess,
+         S90_f (sens_p90 = cfg score_sens) = mean over those classes with labels of the family's sensitivity p90.
     Families weigh equally whatever their size (4 val families: a family-level decision rule); classes absent from a family
-    are skipped. Returns (score, parts {family: dict(energy, sens, p90, total)})."""
+    are skipped. A diverged (non-finite) metric makes its family total and the score +inf (GATE-6).
+    Returns (score, parts {family: dict(energy, sens, p90, total[, sens_p90])})."""
     fs = [f for f in (val_families or sorted(fam_agg)) if f in fam_agg] or sorted(fam_agg)
     parts = {}
     for f in fs:
         d = fam_agg[f]
-        E = _nanmean([d[c]['mean'] for c in classes if c in d])
-        S = _nanmean([d[c]['sens_mean'] for c in classes if c in d])
-        P = _nanmean([d[c]['p90'] for c in classes if c in d])
-        parts[f] = dict(energy=E, sens=S, p90=P, total=E + (0.0 if not np.isfinite(S) else S) + 0.5 * P)
-    return _nanmean([p['total'] for p in parts.values()]), parts
+        E = _sel_mean([d[c]['mean'] for c in classes if c in d])
+        S = _sel_mean([d[c]['sens_mean'] for c in classes if c in d])
+        P = _sel_mean([d[c]['p90'] for c in classes if c in d])
+        parts[f] = dict(energy=E, sens=S, p90=P, total=E + (0.0 if np.isnan(S) else S) + 0.5 * P)
+        if sens_p90:
+            S9 = _sel_mean([d[c]['sens_p90'] for c in classes if c in d])
+            parts[f].update(sens_p90=S9, total=parts[f]['total'] + (0.0 if np.isnan(S9) else 0.5 * S9))
+    return _sel_mean([p['total'] for p in parts.values()]), parts
 
 
 def stratified_probes(cases, n, fam, dofs, seed):
@@ -423,6 +490,62 @@ def main(cfg):
     val_cases = split['val'][:cfg.get('val_max', 8)]
     fam = family_resolver(cfg.get('packets', TL.TE.ROOT / 'packets'))
     log(dict(event='SPLIT', train=len(train_cases), val=len(val_cases)))
+    if len(val_cases) < len(split['val']):                                     # TRAINER-9: val is whole families in order
+        log(dict(event='WARN', msg=f"val_max {cfg.get('val_max', 8)} < {len(split['val'])} val geometries: only the first "
+                                   f"{len(val_cases)} (families {sorted({fam(c) for c in val_cases})}) enter validation"))
+    views = [int(k) for k in cfg.get('eval_views', [0])]                       # M3 multi-view selection
+    if not views or len(set(views)) != len(views):
+        raise ValueError(f'eval_views {views}: a non-empty list of distinct O_h element indices')
+    view_agg = cfg.get('eval_views_agg', 'mean')
+    if view_agg not in ('mean', 'max'):
+        raise ValueError(f'eval_views_agg {view_agg!r}')
+    OHV = OH
+    if any(k != 0 for k in views) and OHV is None:
+        try:
+            import oh as OHV
+        except ImportError as e:
+            raise ImportError('cfg eval_views with a non-identity view needs oh.py (O_h views); not importable') from e
+    if OHV is not None and not all(0 <= k < len(OHV.ELEMS) for k in views):
+        raise ValueError(f'eval_views {views}: indices of oh.ELEMS (0 .. {len(OHV.ELEMS) - 1})')
+    mix = dict(cfg['mix'])
+    want = [c for c, w in mix.items() if w > 0 and c != 'adv']
+    bad = [c for c in want + list(cfg.get('score_classes') or []) if c not in TL.ALL_CLASSES]
+    if bad:
+        raise ValueError(f'unknown class names {bad} in mix / score_classes (trainlib.ALL_CLASSES: {list(TL.ALL_CLASSES)})')
+    if mix.get('adv', 0) > 0 and not cfg.get('adv_on_load'):
+        log(dict(event='MIX_MISSING', missing=['adv'], reason='adv_on_load is off: the adv share is never sampled'))
+
+    def train_classes(case):
+        """Classes a training geometry will have before cleaning: its slot cache banks (memory-mapped load) when present
+        (bank_source 'slot'), else the data dir files (the build path and bank_source 'data')."""
+        if cfg.get('bank_source', 'slot') == 'slot' and cfg.get('slot_cache'):
+            f = Path(cfg['slot_cache']) / f'{case}.pt'
+            if f.exists():
+                try:
+                    g_ = torch.load(f, map_location='cpu', weights_only=False, mmap=True)
+                except RuntimeError:                                           # not a zip-format file: full load
+                    g_ = torch.load(f, map_location='cpu', weights_only=False)
+                return set((g_.banks or {}).get('train', {}))
+        d_ = Path(cfg['data']) / case
+        return {c for c in TL.ALL_CLASSES if (d_ / f'train_{c}.npy').exists()}
+    # M5: a mix class that NO training geometry has would silently never be trained (e.g. new classes with bank_source 'slot')
+    seen, per_case = set(), {}
+    for case in train_cases:
+        if set(want) <= seen and not cfg.get('strict_mix'):
+            break                                                               # every class found: the guard is satisfied
+        per_case[case] = train_classes(case)
+        seen |= per_case[case]
+    absent = [c for c in want if c not in seen]
+    if absent:
+        log(dict(event='MIX_ABSENT', classes=absent, bank_source=cfg.get('bank_source', 'slot'), scanned=len(per_case)))
+        raise ValueError(f"MIX_ABSENT: mix classes {absent} are in no training geometry (bank_source "
+                         f"{cfg.get('bank_source', 'slot')!r}); they would never be trained")
+    if cfg.get('strict_mix'):
+        miss = {c_: [c for c in want if c not in cl] for c_, cl in per_case.items()}
+        miss = {k: v for k, v in miss.items() if v}
+        if miss:
+            log(dict(event='MIX_MISSING', missing=miss, strict=True))
+            raise ValueError(f'MIX_CLASSES_MISSING (strict_mix) {miss}')
     if cfg.get('init') and cfg['lr'] > 3e-4:
         log(dict(event='WARN', msg=f"warm start (init) with lr {cfg['lr']} > 3e-4: re-warming a converged model to 1e-3 wrecked "
                                    f"it in step 1 (force 2.4% -> 10%)"))
@@ -430,6 +553,7 @@ def main(cfg):
     first, _ = load_host(train_cases[0], cfg, lambda d_: None)
     move(first, dev); first.C.K = first.C
     model = MD.build(cfg['model'], [first], **cfg.get('model_args', {})).to(dev)
+    conv = TL.conv_precision()
     del first; model.caches.clear(); _empty()
     if cfg.get('init'):
         ck = torch.load(cfg['init'], map_location=dev, weights_only=False)
@@ -439,23 +563,34 @@ def main(cfg):
         else:
             res = model.load_state_dict(ck['model'], strict=False)
             log(dict(event='INIT', ckpt=cfg['init'], missing=len(res.missing_keys)))
-    log(dict(event='MODEL', params=sum(p.numel() for p in model.parameters())))
+    log(dict(event='MODEL', params=sum(p.numel() for p in model.parameters()), **conv))
     opt = torch.optim.Adam(model.parameters(), lr=cfg['lr'])
     steps = cfg['steps']
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=cfg['lr'], total_steps=steps, pct_start=cfg.get('pct_start', 0.05),
                                                 anneal_strategy='cos', final_div_factor=cfg.get('final_div', 100))
-    ema = EMA(model, cfg['ema']) if cfg.get('ema', 0) > 0 else None
+    ema = EMA(model, cfg['ema'], cfg.get('ema_debias', False)) if cfg.get('ema', 0) > 0 else None
     slots = {}                                                                  # live slots (pool members, validation)
     tpre, vpre = Prefetch(cfg, log, cfg.get('prefetch', True)), Prefetch(cfg, log, cfg.get('prefetch', True))
 
-    def get(case, pre=None, train=False):
+    def get(case, pre=None, train=False, view=None):
         if case in slots:
             s_ = slots[case]; s_.to(dev, model)
         else:
             s_ = slots[case] = Slot(case, cfg, model, log, host=pre.take(case) if pre is not None else None)
         if train and OH is not None and s_.view is None:
-            s_.set_view(OH, model, int(ogen.integers(len(OH.ELEMS))))
+            s_.set_view(OH, model, int(ogen.integers(len(OH.ELEMS))) if view is None else int(view))
         return s_
+
+    mix_logged = set()
+
+    def check_mix(s_):
+        """M5: mix classes this training geometry lacks (after cleaning): logged once per geometry; strict_mix raises."""
+        miss = [c for c in want if c not in s_.banks.classes]
+        if miss and s_.case not in mix_logged:
+            mix_logged.add(s_.case)
+            log(dict(event='MIX_MISSING', case=s_.case, missing=miss, classes=list(s_.banks.classes)))
+            if cfg.get('strict_mix'):
+                raise ValueError(f'MIX_CLASSES_MISSING (strict_mix) {s_.case}: {miss}')
 
     def drop(s_):
         s_.drop(model, OH); slots.pop(s_.case, None)
@@ -524,7 +659,8 @@ def main(cfg):
             rec['seconds'] = time.perf_counter() - t
             log(rec)
         except Exception as e:
-            log(dict(event='ADV_FAIL', case=case, error=repr(e)[:200]))
+            log(dict(event='ADV_FAIL', case=case, error=repr(e)[:200],
+                     adv_dropped=case not in advbuf and mix.get('adv', 0) > 0))   # no buffer: 'adv' leaves this geometry's mix
         finally:
             model.train()
 
@@ -537,16 +673,19 @@ def main(cfg):
         visits[s_.case]['last'] = step
         drop(s_)
 
-    def admit(case, step):
-        """Add a geometry to the pool, first evicting the oldest members while the pool would exceed the DOF cap."""
+    def admit(case, step, view=None, rebuild=False, exact=False):
+        """Add a geometry to the pool, first evicting the oldest members while the pool would exceed the DOF cap.
+        rebuild (resume): a member the run had at the checkpoint, not counted as a new visit; exact (restored state): its
+        view is the stored one (none drawn) and, when its adversarial buffer was restored, the entry search is not repeated."""
         while cap and pool and sum(dofs(p_.case) for p_ in pool) + dofs(case) > cap:
             o = pool.pop(0); leave(o, step); log(dict(event='EVICT', case=o.case, incoming=case))
-        s_ = get(case, pre=tpre, train=True)
+        s_ = get(case, pre=tpre, train=True, view=view)
+        check_mix(s_)
         v = visits.setdefault(case, dict(n=0))
-        v.update(n=v['n'] + 1, enter=step, last=None)
+        v.update(n=v['n'] + (0 if rebuild else 1), enter=v.get('enter', step) if rebuild else step, last=None)
         if s_.view is not None:
             log(dict(event='VIEW', case=case, k=s_.k, step=step))
-        if cfg.get('adv_on_load'):
+        if cfg.get('adv_on_load') and not (exact and case in advbuf):
             ta = time.perf_counter(); adv_entry(s_); tstat['adv'] += time.perf_counter() - ta
         pool.append(s_)
 
@@ -554,21 +693,73 @@ def main(cfg):
     qi, start = 0, 1
     ck_path = out / 'ckpt.pt'
     best = None
+
+    def rng_state():
+        """Every generator the trajectory draws from (TRAINER-7), for ckpt.pt."""
+        d = dict(gen=gen.bit_generator.state, agen=agen.bit_generator.state, ogen=ogen.bit_generator.state,
+                 tgen=tgen.get_state(), torch=torch.get_rng_state(), py=random.getstate())
+        if dev.type == 'cuda':
+            d['cuda'] = torch.cuda.get_rng_state(dev)
+        return d
+
+    def adv_for_ckpt():
+        """Adversarial host buffers for ckpt.pt within ckpt_adv_mb: pool members first, then by the latest visit."""
+        capb = float(cfg.get('ckpt_adv_mb', 256)) * 2 ** 20
+        live = [p_.case for p_ in pool]
+        rest = sorted((c for c in advbuf if c not in live), key=lambda c: -(visits.get(c, {}).get('last') or 0))
+        keep, tot = {}, 0
+        for c in [c for c in live if c in advbuf] + rest:
+            nb_ = advbuf[c].numel() * advbuf[c].element_size()
+            if tot + nb_ <= capb:
+                keep[c] = advbuf[c]; tot += nb_
+        if len(keep) < len(advbuf):
+            log(dict(event='ADV_CKPT', stored=len(keep), dropped=len(advbuf) - len(keep), MB=tot / 2 ** 20))
+        return keep
+    pool_spec = None
     if cfg.get('resume') and ck_path.exists():
         ck = torch.load(ck_path, map_location=dev, weights_only=False)
         model.load_state_dict(ck['model']); opt.load_state_dict(ck['opt']); sched.load_state_dict(ck['sched'])
         start, qi, best = ck['step'] + 1, ck['qi'], ck.get('best')
+        if best is not None and not np.isfinite(best):
+            best = None
+        bp = out / 'best.pt'                                                    # TRAINER-7: best.pt may be newer than ckpt.pt
+        if bp.exists():
+            try:
+                bs = torch.load(bp, map_location='cpu', weights_only=False).get('score')
+                if bs is not None and np.isfinite(bs) and (best is None or bs < best):
+                    log(dict(event='RESUME_BEST', ckpt_best=best, best_pt=bs)); best = float(bs)
+            except Exception as e:
+                log(dict(event='WARN', msg=f'best.pt unreadable on resume: {e!r}'[:200]))
+        ema_reset = False
         if ema is not None and ck.get('ema') is not None:
             ema.load_state_dict(ck['ema'])
+        elif ema is not None:                                                   # EMA turned on at resume: start it here
+            ema = EMA(model, cfg['ema'], cfg.get('ema_debias', False)); ema_reset = True
         visits.update(ck.get('visits', {}))
-        gen = np.random.default_rng([seed, ck['step']])
-        agen = np.random.default_rng([seed, 1, ck['step']]); ogen = np.random.default_rng([seed, 48, ck['step']])
-        log(dict(event='RESUME', step=ck['step'], qi=qi, ema=ema is not None and ck.get('ema') is not None))
-    qi = max(qi - P, 0)                                                         # rebuild the pool the run had at the checkpoint
+        rng = ck.get('rng') if cfg.get('resume_rng', False) else None
+        if rng is not None:                                                     # the exact continuation
+            gen.bit_generator.state = rng['gen']; agen.bit_generator.state = rng['agen']; ogen.bit_generator.state = rng['ogen']
+            tgen.set_state(rng['tgen'].to(tgen.get_state().device) if torch.is_tensor(rng['tgen']) else rng['tgen'])
+            torch.set_rng_state(rng['torch'].cpu()); random.setstate(rng['py'])
+            if dev.type == 'cuda' and rng.get('cuda') is not None:
+                torch.cuda.set_rng_state(rng['cuda'].cpu(), dev)
+            advbuf.update({c: x.cpu() for c, x in (ck.get('advbuf') or {}).items()})
+            pool_spec = ck.get('pool')
+        else:
+            gen = np.random.default_rng([seed, ck['step']])
+            agen = np.random.default_rng([seed, 1, ck['step']]); ogen = np.random.default_rng([seed, 48, ck['step']])
+        log(dict(event='RESUME', step=ck['step'], qi=qi, ema=ema is not None and ck.get('ema') is not None, ema_reset=ema_reset,
+                 rng_restored=rng is not None, adv_restored=len(advbuf), pool=pool_spec, best=best))
     pool = []
     tstat = dict(swap=0.0, step=0.0, adv=0.0, eval=0.0)
-    for _ in range(min(P, len(order))):
-        admit(order[qi % len(order)], start - 1); qi += 1
+    if pool_spec is not None:                                                   # the members (and views) at the checkpoint
+        for case, k in pool_spec:
+            admit(case, start - 1, view=k, rebuild=True, exact=True)
+    else:
+        resumed = start > 1
+        qi = max(qi - P, 0)                                                     # rebuild the pool the run had at the checkpoint
+        for _ in range(min(P, len(order))):
+            admit(order[qi % len(order)], start - 1, rebuild=resumed); qi += 1
     if len(order) > len(pool):
         tpre.start(order[qi % len(order)])
     probe_cases = stratified_probes(train_cases, cfg.get('probe_max', 0), fam, dofs, cfg.get('probe_seed', seed))
@@ -591,10 +782,18 @@ def main(cfg):
     eval_w, cert_every = cfg.get('eval_weights', 'all'), max(1, int(cfg.get('cert_every', 1)))
     if eval_w not in ('all', 'sel'):
         raise ValueError(f'eval_weights {eval_w!r}')
+    score_sens = bool(cfg.get('score_sens', False))
+    min_step = int(cfg.get('select_min_step', 0))
+    if min_step > steps:
+        log(dict(event='WARN', msg=f'select_min_step {min_step} > steps {steps}: only the last evaluation can become best.pt'))
+    log(dict(event='SELECTION', score_classes=score_classes, eval_views=views, eval_views_agg=view_agg, score_sens=score_sens,
+             select_min_step=min_step, weights=sel, ema_debias=bool(cfg.get('ema_debias', False))))
+    rot = [k for k in views if k != 0]
+    score_absent_logged = []
 
     def mu_start(hb, k):
         """Fixed start block of the mu iteration: k val samples of the soft classes (seeded by mu_seed, the same every eval)."""
-        cl = [c for c in ('force', 'support', 'face', 'force_c', 'face_c', 'glued', 'support_k') if c in hb.q.get('val', {})]
+        cl = [c for c in ('force', 'support', 'face', 'force_c', 'face_c', 'glued', 'support_k', 'support64') if c in hb.q.get('val', {})]
         if not cl:
             return None
         r, cols = np.random.default_rng(cfg.get('mu_seed', 7)), []
@@ -614,7 +813,8 @@ def main(cfg):
         last = step == steps
         ws = wsets if (eval_w == 'all' or last) else [w_ for w_ in wsets if w_[0] == sel]
         use_cert = CE is not None and (last or (step // cfg['eval_every']) % cert_every == 0)
-        res = {w: dict(val={}, train_geo={}, mu={}) for w, _ in ws}
+        res = {w: dict(val={}, train_geo={}, mu={}, **({'views': {str(k): dict(val={}, train_geo={}) for k in rot}} if rot else {}))
+               for w, _ in ws}
         model.eval()
         todo = [('val', c) for c in val_cases] + [('train_geo', c) for c in probe_cases]
         for i, (kind, case) in enumerate(todo):
@@ -628,6 +828,18 @@ def main(cfg):
                     res[w][kind][case] = eval_geo(g, s_.banks, model, cfg.get('val_chunk', 8), cer, cfg.get('cert_m', 8),
                                                   cfg.get('cert_flag', 0.1))
             del cer
+            for k in rot:                                                   # M3: rotated views (no certificate / mu: cost)
+                reuse = s_.view is not None and s_.k == k                   # a pool member training on this very view
+                v = s_.view if reuse else OHV.view(model, g, k)
+                try:
+                    for w, e_ in ws:
+                        with (e_.applied(model) if e_ is not None else nullcontext()):
+                            r_ = eval_geo(v, s_.banks, model, cfg.get('val_chunk', 8))
+                        res[w]['views'][str(k)][kind][case] = {c: {m: x[m] for m in ('mean', 'p90', 'max', 'sens_mean', 'sens_p90')
+                                                                   if m in x} for c, x in r_.items()}
+                finally:
+                    if not reuse:
+                        OHV.drop(model, v)
             if kind == 'val' and case in mu_cases:
                 t = time.perf_counter()
                 try:
@@ -658,7 +870,34 @@ def main(cfg):
                                    for c in sorted({c for v in r['train_geo'].values() for c in v})}
             r['val_family'] = families(r['val'], fam)
             r['train_geo_family'] = families(r['train_geo'], fam) if r['train_geo'] else {}
-            r['score'], r['score_parts'] = score(r['val_family'], score_classes, split.get('val_families'))
+            r['score'], r['score_parts'] = score(r['val_family'], score_classes, split.get('val_families'), score_sens)
+            r['score_identity'] = r['score']
+            per_view = {}
+            for k in views:
+                if k == 0:
+                    per_view['0'] = r['score_identity']
+                    continue
+                pv = r['views'][str(k)]
+                pv['val_mean'] = {c: _nanmean([v[c]['mean'] for v in pv['val'].values() if c in v])
+                                  for c in sorted({c for v in pv['val'].values() for c in v})}
+                pv['train_geo_mean'] = {c: _nanmean([v[c]['mean'] for v in pv['train_geo'].values() if c in v])
+                                        for c in sorted({c for v in pv['train_geo'].values() for c in v})}
+                pv['val_family'] = families(pv['val'], fam)
+                pv['score'], pv['score_parts'] = score(pv['val_family'], score_classes, split.get('val_families'), score_sens)
+                per_view[str(k)] = pv['score']
+            r['score_views'] = per_view
+            vs = np.asarray(list(per_view.values()), float)
+            r['score_worst_view'] = float(vs.max())                            # NaN / inf propagate: not selectable
+            if views != [0]:
+                r['score'] = float(vs.mean()) if view_agg == 'mean' else r['score_worst_view']
+            gone = [c for c in score_classes if c not in r['val_mean']]
+            if gone and not score_absent_logged:
+                score_absent_logged.append(True)
+                log(dict(event='SCORE_CLASS_ABSENT', classes=gone, msg='score classes in no val geometry: not in the score'))
+            bad = sorted({(case, c) for case, v in r['val'].items() for c, x in v.items()
+                          if not all(np.isfinite(x[m]) for m in ('mean', 'p90', 'max', 'sens_mean', 'sens_p90') if m in x)})
+            if bad:
+                log(dict(event='VAL_NONFINITE', step=step, weights=w, entries=[list(b_) for b_ in bad][:50]))
             cm = [v[c]['cert_mean'] for v in r['val'].values() for c in v if 'cert_mean' in v[c]]
             if cm:
                 r['cert'] = dict(mean=_nanmean(cm), max=max(v[c]['cert_max'] for v in r['val'].values() for c in v if 'cert_max' in v[c]),
@@ -684,7 +923,8 @@ def main(cfg):
         for pi in picks:
             s = pool[int(pi)]; geo = s.tgeo
             q, s0, kinds, F = s.banks.sample(B, gen, mix, adv=advbuf.get(s.case) if cfg.get('adv_on_load') else None,
-                                             quota=cfg.get('quota', False), want_F=want_F)
+                                             quota=cfg.get('quota', False), want_F=want_F,
+                                             quota_systematic=cfg.get('quota_systematic', False))
             loss, ls, tl, e, lam = batch_loss(geo, model, q, s0, kinds, F, cfg)
             if not bool(torch.isfinite(loss)):                                 # never let one bad batch poison the weights
                 log(dict(event='NONFINITE_LOSS', step=step, geo=s.case)); skipped += 1
@@ -718,27 +958,40 @@ def main(cfg):
             if s.view is not None:
                 rec['view'] = s.k
             if getattr(model, 'bounded', False) and hasattr(model, 'sat_stats'):
-                rec['sat_max'] = model.sat_stats()['max']
+                st_ = model.sat_stats()
+                rec['sat_max'] = st_['max']
+                if 'knee_max' in st_:                                          # M7: compression starts at the knee
+                    rec.update(sat_knee_max=st_['knee_max'], sat_peak=st_['peak'])
             log(rec)
         if step % cfg['eval_every'] == 0 or step == steps:
             te = time.perf_counter()
             res, since = evaluate(step)
             sc = res[sel]['score']
             tstat['eval'] += time.perf_counter() - te
+            eligible = step >= min_step or step == steps                       # M4: early (warm-start dominated) evals
+            if not np.isfinite(sc):
+                log(dict(event='VAL_NONFINITE', step=step, score=sc, msg='non-finite selection score: never best.pt'))
+            vinfo = dict(eval_views=views, score_identity=res[sel]['score_identity'], score_views=res[sel]['score_views'],
+                         score_worst_view=res[sel]['score_worst_view'])
             log(dict(event='EVAL', step=step, select=sel, score=sc, score_parts=res[sel]['score_parts'],
                      val_mean=res[sel]['val_mean'], train_geo_mean=res[sel]['train_geo_mean'], since_visit=since,
-                     weights=res, s=time.perf_counter() - t0, eval_s=tstat['eval']))
+                     weights=res, s=time.perf_counter() - t0, eval_s=tstat['eval'], selectable=eligible, **vinfo,
+                     conv_tf32=conv['conv_tf32']))
             rec = dict(model=ema.model_state(model) if ema is not None else model.state_dict(), cfg=cfg, step=step, weights=sel,
-                       score=sc)
+                       score=sc, **vinfo, conv=conv)
             if ema is not None:
-                rec.update(model_raw=model.state_dict(), score_raw=res['raw']['score'] if 'raw' in res else None)
+                rec.update(model_raw=model.state_dict(), score_raw=res['raw']['score'] if 'raw' in res else None,
+                           ema_t=ema.t, ema_debias=ema.debias)
             torch.save(rec, out / 'last.pt'); torch.save(rec, out / f'snap_{step}.pt')
-            if best is None or sc < best:
+            if eligible and np.isfinite(sc) and (best is None or sc < best):    # GATE-6: only finite scores
                 best = sc
                 torch.save(rec, out / 'best.pt')
         if cfg.get('ckpt_every') and step % cfg['ckpt_every'] == 0:
-            torch.save(dict(model=model.state_dict(), opt=opt.state_dict(), sched=sched.state_dict(), step=step, qi=qi, best=best,
-                            cfg=cfg, ema=ema.state_dict() if ema is not None else None, visits=visits), out / 'ckpt.tmp')
+            ckd = dict(model=model.state_dict(), opt=opt.state_dict(), sched=sched.state_dict(), step=step, qi=qi, best=best,
+                       cfg=cfg, ema=ema.state_dict() if ema is not None else None, visits=visits, conv=conv)
+            if cfg.get('resume_rng', False):                                    # TRAINER-7: the exact continuation state
+                ckd.update(rng=rng_state(), pool=[(p_.case, p_.k) for p_ in pool], advbuf=adv_for_ckpt())
+            torch.save(ckd, out / 'ckpt.tmp')
             (out / 'ckpt.tmp').replace(ck_path)
         if cfg.get('stop_after') and step >= cfg['stop_after'] and step < steps:
             log(dict(event='STOP', step=step)); tpre.cancel(); log_f.close()

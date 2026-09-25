@@ -3,14 +3,16 @@ exact. Configurations x and y; gate loads and cut-surface loads (reported).
 Load models (user decision 2026-09-24): 'consistent' (traction-consistent face loads) is the acceptance gate;
 'uniform' (equal nodal forces on the face port nodes, fictitious-fringe nodes included) is reported as a stress test.
 Usage: evalnet.py <checkpoint.pt> <out.json> [<case> ...]   (default: the checkpoint's cases)
+Convolution precision (INVARIANTS-2): env OPL_CONV_FP32=1 gives true fp32 convolutions (read by models at import, which is
+imported first here); the mode in force is recorded in the output JSON ('conv'), next to the checkpoint's cfg conv_fp32.
 """
 import json, sys, time, gc
 from pathlib import Path
 import numpy as np
 import torch
+import models as MD                                                    # first: applies OPL_CONV_FP32 before any convolution
 import lattice3 as LT
 import trainlib as TL
-import models as MD
 import ops as OP
 
 FULL = 'fresh_train_0020_full'
@@ -47,7 +49,8 @@ def main(ckpt, out, cases):
     ck = torch.load(ckpt, map_location='cuda:0', weights_only=False)
     cfg = ck['cfg']
     cases = cases or cfg['cases']
-    rec = dict(ckpt=str(ckpt), step=ck['step'], results=[])
+    rec = dict(ckpt=str(ckpt), step=ck['step'], results=[], conv=dict(TL.conv_precision(), ckpt_conv_fp32=cfg.get('conv_fp32')))
+    print(json.dumps(dict(event='CONV', **rec['conv'])), flush=True)
     for case in cases:
         C, _ = LT.prepared(case, cfg['body'])                          # one teacher cell shared with the lattice
         geo = TL.Geo(case, cfg['body'], cfg['data'], neumann=False, log=lambda s_: None, cell=C, load_banks=False)

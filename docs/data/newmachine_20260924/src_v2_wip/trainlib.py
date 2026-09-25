@@ -18,6 +18,7 @@ dev, dt = TE.dev, TE.dt
 CLASSES = ('force', 'macro', 'grf')
 ALL_CLASSES = ('force', 'macro', 'grf', 'support', 'face')
 ALL_CLASSES += ('force_c', 'face_c', 'support_k', 'glued')         # C1 lattice-context classes (prep_geo2); absent files stay absent
+ALL_CLASSES += ('support64',)       # prep_geo2 --out: the recomputed (finite) support bank under its own name; 'support' is untouched
 SPLITS = ('train', 'val', 'test')
 
 
@@ -323,16 +324,36 @@ def tail_loss(Gh, G, tau=0.1, floor=1e-3):
     return tau * torch.logsumexp(torch.log(lam.clamp_min(1.0)) / tau, 0), lam.detach()
 
 
-def quota_counts(B, w, gen):
-    """Fixed class quota of a batch: floor(w_c B) per class, the remainder drawn without replacement with probabilities
-    proportional to the fractional parts (w sums to 1)."""
+def quota_counts(B, w, gen, systematic=False):
+    """Fixed class quota of a batch: floor(w_c B) per class, the remainder r = B - sum floor(w_c B) drawn
+    systematic=False (default, the original rule): without replacement with draw probabilities proportional to the fractional
+      parts fr_c; the resulting inclusion probabilities are NOT fr_c (audit TRAINER-5: a 0.05 class in a 9-class mix gets ~12%
+      less than its share w_c B on average);
+    systematic=True: systematic (Madow) sampling, one uniform u = gen.random(): class c gets +1 when a point u + j (j = 0 ..
+      r - 1) falls in its interval [F_{c-1}, F_c) of the cumulative fractional parts; the inclusion probability is exactly
+      fr_c (each fr_c < 1), so every class gets E[n_c] = w_c B.
+    w sums to 1."""
     x = np.asarray(w, float) * B
     n = np.floor(x).astype(np.int64)
     r = B - int(n.sum())
     if r > 0:
         fr = x - n
-        n[gen.choice(len(x), size=r, replace=False, p=fr / fr.sum())] += 1
+        if systematic:
+            cf = np.cumsum(fr) * (r / fr.sum())
+            cf[-1] = r                                                     # exactly r at the end (rounding)
+            pts = gen.random() + np.arange(r)
+            n[np.minimum(np.searchsorted(cf, pts, side='right'), len(x) - 1)] += 1
+        else:
+            n[gen.choice(len(x), size=r, replace=False, p=fr / fr.sum())] += 1
     return n
+
+
+def conv_precision():
+    """Convolution precision in force (INVARIANTS-2), for the output JSON of trainers and evaluation scripts:
+    conv_tf32 = torch.backends.cudnn.allow_tf32 (True: cuDNN may use TF32 kernels, PyTorch's default; False: true fp32, set by
+    env OPL_CONV_FP32=1 at `import models` or the trainers' cfg conv_fp32), and the env value."""
+    import os
+    return dict(conv_tf32=bool(torch.backends.cudnn.allow_tf32), OPL_CONV_FP32=os.environ.get('OPL_CONV_FP32'))
 
 
 class HostBanks:
@@ -451,14 +472,15 @@ class HostBanks:
             memo[case] = ({sp: {c: k for c, k in d_.items() if k is not None} for sp, d_ in self.keep.items()}, list(self.classes), dropped)
         return dropped
 
-    def sample(self, B, gen, mix, adv=None, quota=False, want_F=False, split='train'):
+    def sample(self, B, gen, mix, adv=None, quota=False, want_F=False, split='train', quota_systematic=False):
         """Batch of B directions like Geo.sample_with_sens (the same generator calls: class counts, indices per class,
         random signs), from the host banks and adv (np, k) host buffer: q (np, B) fp32 and s (8, B) fp64 on the device (NaN
         columns: adversarial / no labels), kinds (class per column), F (np, B) fp64 (NaN adversarial columns; None unless
-        want_F and every non-adversarial column has reactions). quota: fixed class counts (quota_counts)."""
+        want_F and every non-adversarial column has reactions). quota: fixed class counts (quota_counts; quota_systematic: its
+        systematic remainder)."""
         names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or adv is not None) and (k == 'adv' or k in self.classes)]
         w = np.asarray([mix[k] for k in names], float)
-        counts = quota_counts(B, w / w.sum(), gen) if quota else gen.multinomial(B, w / w.sum())
+        counts = quota_counts(B, w / w.sum(), gen, quota_systematic) if quota else gen.multinomial(B, w / w.sum())
         cols, sc, fc, kinds = [], [], [], []
         for i, k in enumerate(names):
             m_ = int(counts[i])
