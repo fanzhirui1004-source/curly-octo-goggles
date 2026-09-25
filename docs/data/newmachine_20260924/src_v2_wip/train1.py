@@ -9,6 +9,9 @@ config: {"cases": [...], "body": ..., "data": ..., "out": ..., "model": "<name>"
          "adv_k": 16, "eval_every": N, "seed": s}
         sens_loss: 'sq' (default, relative squared error) | 'smoothl1' (mean sqrt(rho^2 + sens_delta^2) - sens_delta, sens_delta
         default 0.003; trainlib.sens_loss)
+        strict_mix: stop when a mix class has no bank in some geometry (default: log MIX_MISSING and let sampling drop it)
+        score_classes: classes whose val mean enters the selection score (worst class mean -> best.pt); default: every class
+        of the val banks (the original rule). Arms compared on a data dir with extra classes select on the same classes.
 """
 import json, sys, time, gc, math
 from pathlib import Path
@@ -45,6 +48,12 @@ def main(cfg):
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=cfg['lr'], total_steps=steps, pct_start=cfg.get('pct_start', 0.05),
                                                 anneal_strategy='cos', final_div_factor=cfg.get('final_div', 100))
     mix = dict(cfg['mix']); B = cfg['batch']
+    miss = {g_.case: [k for k, w in mix.items() if w > 0 and k != 'adv' and k not in g_.classes] for g_ in geos}
+    miss = {k: v for k, v in miss.items() if v}
+    if miss:                                                                  # sampling would drop them and renormalise
+        log(dict(event='MIX_MISSING', missing=miss))
+        if cfg.get('strict_mix'):
+            raise ValueError(f'MIX_CLASSES_MISSING {miss}')
     t0 = time.perf_counter(); best = None
     for step in range(1, steps + 1):
         gi = step % len(geos)
@@ -86,7 +95,8 @@ def main(cfg):
                 _, ritz = g_.adversarial(model, k=8, iters=10, gen=torch.Generator(device=dev).manual_seed(7))
                 worst[g_.case] = float(ritz[0])
             model.train()
-            score = max(v[c]['mean'] for v in ev.values() for c in v)
+            sc = cfg.get('score_classes')
+            score = max(v[c]['mean'] for v in ev.values() for c in v if sc is None or c in sc)
             log(dict(event='EVAL', step=step, val=ev, worst_ratio=worst, score=score, s=time.perf_counter() - t0))
             torch.save(dict(model=model.state_dict(), cfg=cfg, step=step), out / 'last.pt')
             if best is None or score < best:

@@ -9,12 +9,17 @@
      reversed layer order), so the variational reaction S_hat q = E_hat^T K E_hat q needs no autograd graph.
 Everything stays float32 like the trained model (K products in float64 as in trainlib); results agree with the autograd
 model to float32 rounding (checked in t_fast.py). Training keeps using models.py.
+Opt-in (env FUSED_HYPER=1 at import, or fastnet.FUSED = True before building): the hyperedge layers run through the Triton
+gather / scatter kernels of fused_hyper.py instead of the four CSR matrices (same map to float32 rounding, about a quarter
+of the layer memory: slot weights instead of G, S, G^T, S^T). Default off.
 """
+import os
 import torch
 import torch.nn.functional as Fn
 import models as MD
 
 dev, f32, f64 = MD.dev, MD.f32, torch.float64
+FUSED = os.environ.get('FUSED_HYPER', '0') == '1'
 
 
 def _csr(rows, cols, vals, shape):
@@ -33,6 +38,13 @@ class _Hyper:
     def __init__(self, hn, a, b, W, deg, N):
         Eh, _, H = a.shape
         self.H, self.Eh, self.N = H, Eh, N
+        self.fused = FUSED
+        if self.fused:                                                                  # slot weights for fused_hyper
+            self.hn, self.deg = hn.contiguous(), deg.to(f32).contiguous()
+            self.a, self.b = a.detach().to(f32).contiguous(), b.detach().to(f32).contiguous()
+            self.W = W.detach().to(f32).contiguous()
+            self.Wt = self.W.transpose(1, 2).contiguous()
+            return
         he = (torch.arange(H, device=dev)[:, None, None] * Eh + torch.arange(Eh, device=dev)[None, :, None]).expand(H, Eh, 27)
         nodes = hn[None].expand(H, Eh, 27)
         ga = a.permute(2, 0, 1)                                                         # H x Eh x 27
@@ -47,12 +59,22 @@ class _Hyper:
 
     def fwd(self, X):
         N, B, F = X.shape
+        if self.fused:
+            import fused_hyper as FH
+            Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
+            Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
+            return FH.scatter(Z, self.hn, self.b, self.deg, N, FH.BLK, True).view(N, B, F)
         Z = torch.sparse.mm(self.G, X.reshape(N, B * F))
         Z = torch.bmm(Z.reshape(self.H, self.Eh * B, F), self.W)
         return torch.sparse.mm(self.S, Z.reshape(self.H * self.Eh, B * F)).reshape(N, B, F)
 
     def adj(self, Y):
         N, B, F = Y.shape
+        if self.fused:
+            import fused_hyper as FH
+            Z = FH.gather(Y.reshape(N, B * F).contiguous(), self.hn, self.b, self.deg, self.H, FH.BLK, True)
+            Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.Wt).view(self.H, self.Eh, B * F)
+            return FH.scatter(Z, self.hn, self.a, self.deg, N, FH.BLK, False).view(N, B, F)
         Z = torch.sparse.mm(self.St, Y.reshape(N, B * F))
         Z = torch.bmm(Z.reshape(self.H, self.Eh * B, F), self.Wt)
         return torch.sparse.mm(self.Gt, Z.reshape(self.H * self.Eh, B * F)).reshape(N, B, F)

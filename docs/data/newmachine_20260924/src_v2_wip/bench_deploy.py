@@ -9,7 +9,8 @@ Per cell (the cases on the command line):
            B = 1, 16, 64 directions
   learned  network input data (diag blocks, weak flags) + trainlib.Geo | model cache (MGCache, GP-face setup) | fastnet
            freeze (geometry path, sparse layer matrices) | S_hat q for B = 1, 16, 64 | certificate m = 0 and 8 (B = 16) |
-           energy ratio q^T S_hat q / q^T S q on the benchmark directions
+           energy ratio q^T S_hat q / q^T S q on the benchmark directions | the same with the opt-in fused hyperedge
+           kernels (fastnet.FUSED): freeze time, allocated state, S_hat q times, relative difference to the CSR path
 Lattice (first case + its family FULL parent, config x, traction-consistent gate loads + cut-surface loads, solved together):
   conjugate gradients to a relative residual of 1e-8, operators: learned (both cells learned: the deployment case) and exact
   (per-cell interior factor: exact domain decomposition); preconditioners: 'ideal' = the dense exact lattice factor (what
@@ -126,11 +127,28 @@ def per_cell(case, holder, log):
     geo, rec['geo_s'] = timed(lambda: TL.Geo(case, BODY, TMP, neumann=False, log=lambda s_: None, cell=C, load_banks=False))
     fb = free_gb()
     model, rec['model_cache_s'] = timed(lambda: holder.add(geo))
+    a0 = torch.cuda.memory_allocated()
     fast, rec['freeze_s'] = timed(lambda: FN.FastNet(model, geo))
+    rec['freeze_alloc_GB'] = (torch.cuda.memory_allocated() - a0) / 2 ** 30
     rec['learned_state_GB'] = fb - free_gb()
     for B in (1, 16, 64):
         _, rec[f'learned_Sq_B{B}_s'] = timed(lambda: fast.s_hat(Q[:, :B]), reps=3, warm=1)
     e_hat = (Q * fast.s_hat(Q).to(dt)).sum(0)
+    try:                                                         # the opt-in fused hyperedge path (fastnet.FUSED), same cell
+        import fused_hyper  # noqa: F401
+        FN.FUSED = True
+        a0 = torch.cuda.memory_allocated()
+        fast2, rec['freeze_fused_s'] = timed(lambda: FN.FastNet(model, geo))
+        rec['freeze_fused_alloc_GB'] = (torch.cuda.memory_allocated() - a0) / 2 ** 30
+        for B in (1, 16, 64):
+            _, rec[f'learned_fused_Sq_B{B}_s'] = timed(lambda: fast2.s_hat(Q[:, :B]), reps=3, warm=1)
+        s1, s2 = fast.s_hat(Q), fast2.s_hat(Q)
+        rec['fused_vs_csr_rel'] = float((s2 - s1).norm() / s1.norm())
+        del fast2, s1, s2
+    except Exception as e:
+        rec['fused_error'] = repr(e)[:200]
+    finally:
+        FN.FUSED = False
     ratio = (e_hat / e_ex).cpu().numpy()
     rec['energy_ratio'] = dict(mean=float(ratio.mean()), min=float(ratio.min()), max=float(ratio.max()))
     try:

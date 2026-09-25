@@ -1,6 +1,6 @@
 """Where does the GPU time of one training step go, by kernel family? (torch.profiler over 3 steps after 3 warm-up steps,
 the train1/train3 loss: log-energy + sensitivity, sparse q-path; optionally with the fused hyperedge kernel)
-Families: sparse (cuSPARSE spmm / sddmm), gemm (bmm / gemm / gemv), triton (the fused hyperedge kernels), index (gather /
+Families: sparse (cuSPARSE spmm / sddmm), conv (the U-Net 3D convolutions), gemm (bmm / gemm / gemv), triton (the fused hyperedge kernels), index (gather /
 scatter / index_add / index_select), reduce, elementwise, copy (memcpy / memset / cat), other. Also the kernel launch count.
 Usage: prof_kernels.py <ckpt> <out.json> [batch] [case] [data] [--fused]"""
 import sys, json, os, re, time
@@ -20,12 +20,15 @@ cfg = ck['cfg']
 B = int(argv[2]) if len(argv) > 2 else cfg.get('batch', 16)
 case = argv[3] if len(argv) > 3 else cfg['cases'][0]
 geo = TL.Geo(case, cfg['body'], argv[4] if len(argv) > 4 else cfg['data'], neumann=False, log=lambda s_: None)
+import train2 as T2
+T2.clean_banks(geo, case, lambda d_: print(json.dumps(d_, default=str), flush=True))              # drop non-finite bank samples
 m = MD.build(cfg['model'], [geo], **dict(cfg.get('model_args', {}), sparse=True)).to(dev)
 (MD.load_compat(m, ck['model']) if hasattr(MD, 'load_compat') else m.load_state_dict(ck['model'], strict=False)); m.train()
 SL.FUSED = fused
 os.environ['SENS_REASSOC'] = '1'
 mix = {k: v for k, v in (cfg.get('mix') or {}).items() if k in ('force', 'support', 'face', 'macro', 'grf')} or \
     dict.fromkeys(('force', 'support', 'face', 'macro', 'grf'), .2)
+mix = {k: v for k, v in mix.items() if k in geo.classes}
 q, s0 = geo.sample_with_sens(B, np.random.default_rng(0), mix)
 ok = ~torch.isnan(s0[0])
 
@@ -46,6 +49,7 @@ for _ in range(3):
 torch.cuda.synchronize(); wall = (time.perf_counter() - t) / 3
 
 RULES = [('triton', r'^_(gather|scatter|backward)|triton'), ('sparse', r'csr|spmm|sddmm|cusparse|sparse'),
+         ('conv', r'conv|cudnn|winograd|implicit|fft'),
          ('gemm', r'gemm|gemv|cutlass|sm\d+_xmma|ampere|hopper|blackwell|bmm|matmul'),
          ('index', r'index|gather|scatter|embedding|take'), ('reduce', r'reduce|sum|norm|mean|softmax|max|min'),
          ('copy', r'memcpy|memset|copy|cat|fill'), ('elementwise', r'elementwise|vectorized|unrolled|pointwise|foreach')]

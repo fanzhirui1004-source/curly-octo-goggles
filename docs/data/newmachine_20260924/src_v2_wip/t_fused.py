@@ -86,8 +86,11 @@ def e2e(ckpt, out, batch=None, case=None, data=None):
     cfg = ck['cfg']; B = int(batch) if batch else cfg['batch']
     case = case or cfg['cases'][0]
     geo = TL.Geo(case, cfg['body'], data or cfg['data'], neumann=False, log=lambda s_: None)
+    import train2 as T2
+    T2.clean_banks(geo, case, lambda d_: print(json.dumps(d_, default=str), flush=True))       # drop non-finite bank samples
     margs = dict(cfg.get('model_args', {}))
     mix = {k: v for k, v in (cfg.get('mix') or {}).items() if k in ('force', 'support', 'face', 'macro', 'grf')} or dict.fromkeys(('force', 'support', 'face', 'macro', 'grf'), .2)
+    mix = {k: v for k, v in mix.items() if k in geo.classes}
     q, s0 = geo.sample_with_sens(B, np.random.default_rng(0), mix)
     ok = ~torch.isnan(s0[0])
     os.environ['SENS_REASSOC'] = '1'

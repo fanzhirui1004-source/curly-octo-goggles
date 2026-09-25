@@ -79,6 +79,8 @@ def gather(src, hn, w, deg, H, blk, use_deg):
     Eh, S = hn.shape
     BF = src.shape[1]
     out = torch.empty((H, Eh, BF), dtype=torch.float32, device=src.device)
+    if Eh == 0 or BF == 0:                                                  # empty hyperedge set (e.g. no fringe)
+        return out
     _gather[_grid(Eh, BF, blk)](src, hn, w, deg, out, Eh, BF, H=H, S=S, BLK=blk, DEG=use_deg)
     return out
 
@@ -87,6 +89,8 @@ def scatter(src, hn, w, deg, N, blk, use_deg):
     """src (H, Eh, BF) -> (N, BF)."""
     H, Eh, BF = src.shape
     out = torch.zeros((N, BF), dtype=torch.float32, device=src.device)
+    if Eh == 0 or BF == 0:
+        return out
     _scatter[_grid(Eh, BF, blk)](src, hn, w, deg, out, Eh, BF, H=H, S=hn.shape[1], BLK=blk, DEG=use_deg)
     return out
 
@@ -117,11 +121,12 @@ class FusedHyperFn(torch.autograd.Function):
         dZ = torch.bmm(dZp.view(H, Eh * B, F), W.transpose(1, 2)).view(H, Eh, B * F).contiguous()
         dX = torch.zeros((N, B * F), dtype=torch.float32, device=dY.device)
         dA = torch.zeros_like(a); dB = torch.zeros_like(b)
-        _backward[_grid(Eh, B * F, blk)](Xf, dYf, dZ, Zp, hn, a, deg, dX, dA, dB, Eh, B * F, H=H, S=hn.shape[1], BLK=blk)
+        if Eh and B * F:
+            _backward[_grid(Eh, B * F, blk)](Xf, dYf, dZ, Zp, hn, a, deg, dX, dA, dB, Eh, B * F, H=H, S=hn.shape[1], BLK=blk)
         return dX.view(N, B, F), dA, dB, dW, None, None, None
 
 
-BLK = int(os.environ.get('FUSED_BLK', '128'))                              # columns (of B*F) per program
+BLK = int(os.environ.get('FUSED_BLK', '512'))   # columns (of B*F) per program; 512 measured fastest (t_fused, RTX 5090)
 
 
 def hyper(X, a, b, W, deg, P, blk=None):
