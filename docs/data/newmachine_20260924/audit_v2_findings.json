@@ -1,0 +1,768 @@
+[
+ {
+  "dim": "invariants",
+  "title": "Math/physics invariants and speed paths",
+  "checked_ok": [
+   "_SoftClip backward is the true derivative of its forward: for |x| > T, t = (|y|-T)/(A-T) = tanh(u), so dy/dx = 1 - t^2; for |x| <= T it clamps to 0, giving slope 1. It is C1 at |x| = T (verified numerically at T-1e-9, T, T+1e-9, -T). In the mixed finite/inf case As=1 is a harmless placeholder and torch.where(fin, d, g) restores the identity gradient. gradcheck (fp64, CPU) passes for knee in {0, 0.5} x mixed in {False, True}.",
+   "_clip saturation fraction bookkeeping: the reshape to (2L, H), the sum over H and the division by E*27*H are correct per (alpha/beta, layer) group. B1 clip acts only on the geometry path, so the q-path stays linear.",
+   "load_compat / _node_in (B2): the old checkpoint's node_in.0.weight is zero-padded at the end. _node_in multiplies the first in_features-NF2 columns with [nfeat, agg] and the last NF2 with nfeat2, so zero columns reproduce the old function exactly. bnd_* buffers missing from the sd keep the model values. The post-load hook refreshes _bst/_rw_fin.",
+   "O_h rotate_nd is an exact change of frame and nothing is rotated twice or skipped: grid g' = R(g-n)+n; cells c' = (R(2c+1-n)+n-1)/2 (integer for n=32); slot permutation offs[t] = R(o-1)+1 (derived from g' = 2c'+1+R(o-1)); moments M'[a'] = prod s_i^{a'_i} M[b], with b[p_i] = a'_i from (R xi)_i = s_i xi_{p_i} and |det R|=1; gp_faces axis b = argsort(p)[a] with an owner/nbr swap when s_b<0 (owner stays the lower cell, which the face stencil in _face_setup assumes); diag3 -> s_i s_j D[p_i,p_j] = R D R^T; normal -> R n; offset + (sum n' - sum n)/2 from n'.x' = n.x + (sum n' - sum n)/2; taus corner permutation; node flags unchanged.",
+   "O_h q in/out: rot_dofs(qd, p, s) = (I x R) qd and rot_dofs(., argsort(p), s[argsort(p)]) = (I x R^T). The rigid split and port overwrite are applied in the original frame. The view's MGCache, face stencil, feat_v2 features (rho via the cube-symmetric D_full, s, hop, plane, box) and fringe masks are all built from the rotated nd with a distinct case key.",
+   "Variational upper bound in the forward-energy path: Geo.field (and oh._field) returns an admissible field with u_P = q exactly (fp32-rounded q). The rigid part RA c is in the null space of K (GP gradient jumps vanish for linear fields). So e_hat = u^T K u >= q^T S q under every feature (O_h, B1, B2, fringe_soft fade, fused kernels, TF32). Only the adjoint-based apply is affected (INVARIANTS-2).",
+   "fastnet ext_T is the exact algebraic transpose of ext (up to rounding): port clamp adjoint (X0b += Xb*pm; A = Xb*(1-pm)); hyperedge layers (S,G / St,Gt, and W^T); U-Net skip bookkeeping (gskip per level, Rt and gskip on the way back); gates applied before conv_transpose3d, with the same weight tensor as the conv3d adjoint (padding 1); restriction rv = t_w*w/den and prolongation with the skip scale folded in; W_in/W_out; field_T = yP + (I - RPpinv^T RP^T) ext_T(yI) + RPpinv^T RA^T yI.",
+   "fastnet matches MGNO2.forward layer order, mask and fade handling: face layer index gl, fringe elements with xab/Wx/c.deg, fringe faces masked then b*gp_fade, and el_fade applied to the masked b.",
+   "sparse_layers.HyperFn gradients: dZ' = S^T dY, dW = sum Z^T dZ', dZ = dZ' W^T, dX = G^T dZ, da = <X[n], dZ[h,e]>, db = <dY[n]/deg, Z'[h,e]> via SDDMM on the p1 pattern with the inverse permutation fa[p1] = va. No duplicate nodes within a hyperedge (27 element nodes; face stencil = owner layers 1-2 + neighbour layer 1).",
+   "fused_hyper kernels: gather/scatter/backward formulas match HyperFn (the DEG flag applies 1/deg[n] on the b side only). Offsets n*BF and (h*Eh+e)*BF are computed in int64; (e*S+s)*H fits in int32 at current sizes. Column masking uses other=0. Atomic partial sums for dA/dB over column blocks are correct. Empty hyperedge set (Eh=0) or BF=0 returns zeros or empty tensors in both forward and backward. H must be a power of 2 (H=4), and violating that fails at compile time, not silently. Inputs a/b/Zp/dZ are made contiguous before the kernels.",
+   "cert.py: Delta = u^T K u - q^T S q = r_I^T K_II^-1 r_I (with e_P = 0 and (K u*)_I = 0). The one-vector bound (x^T r)^2/(x^T K_II x) holds for any x (Cauchy-Schwarz), so the final re-evaluation makes the Krylov/CG/Jacobi bounds rigorous whatever the basis rounding or eigenvalue floors. eps >= Delta_lb/(e_hat - Delta_lb) follows from monotonicity. The lattice_lower identity C - C_hat = sum Delta_c + |U* - U_hat|_K^2 is correct for an exact, symmetric K_hat. node_blocks symmetrises the upper CSR correctly. Host eigh is only a device workaround.",
+   "bank_ritz returns true Rayleigh quotients (renormalised with the unfloored G), so ritz <= mu. tail_loss flooring only lowers eigenvalues for near-dependent directions (conservative).",
+   "Anti-drift rule: MGNO/MGNO2 forward, oh._field and fastnet ext/ext_T contain no factorisation, solve or residual iteration. The exact Neumann factor (adversarial first visit, worst_ratio) and cert are used only for data and monitoring outside the forward. fastnet.s_hat uses only a K product (the variational readout).",
+   "fp32 matmuls (bmm, cuBLAS) are not TF32 (matmul.allow_tf32 default False, never set). Only cuDNN convs are affected."
+  ],
+  "items": [
+   {
+    "id": "INVARIANTS-1",
+    "title": "B1 saturation metric does not see the knee band, so 'clip never triggered / identity in-distribution' is not established",
+    "severity": "major",
+    "file": "/tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/s0/src_v2/models.py",
+    "line": 413,
+    "claim": "With bound_knee = k > 0 the soft clip stops being the identity at |x| > T = k*A, but the saturation count (_clip line 413: `(x.abs() > A)`, _transfer line 430: `(sp[j] > A)`) only counts |x| > A. For the c_b1 arm (A = 2 x training max, knee 0.5, so T = the calibration max) the whole band T < |x| <= 2T is compressed without being counted. The logged value sat_max = 0 therefore only shows |x| <= 2T. It does not show that B1 acted as the identity.",
+    "evidence": "g_b1.sh: `b[k] = torch.as_tensor(2.0 * mx)` with the rule 'A = 2 x max over the 40 calibration training geometries; use with bound_knee = 0.5 (identity up to the training max)'. _SoftClip forward: `torch.where(ax > T, sign(x)*(T + (As-T)*tanh((ax-T)/(As-T))), x)`. At |x| = 1.5T it outputs 1.462T (2.5% low), and at |x| = A = 2T it outputs T(1+tanh 1) = 1.762T (11.9% low). The counter stays at 0 across that whole range. Also: T is the max over only 40 training geometries under v1 snap_60000 weights, while c_b1 trained 15k more steps (lr 3e-4) over the full pool. train3 logs sat_max only every log_every=50 steps (train3.py:720-721), for the current training geometry only. V2 doc line 13/19: 'sat_max 全程 0（截断从未触发）' and 'B1 在分布内等价于恒等映射（零代价的分布外保险）'.",
+    "consequence": "The v2 claim that B1 is exactly the identity in-distribution, and so zero-cost insurance, is unsupported. The measured arm neutrality is still valid, but the reason given for it is not proven. The same blind spot makes sat_stats a poor OOD detector in deployment: a geometry can have coefficients compressed by up to ~12% while reporting sat_max = 0.",
+    "fix": "In _clip/_transfer, count |x| > knee*A (the 'knee' fraction) separately from |x| > A, and report both from sat_stats. Before writing 'identity in-distribution' into v2, re-run calib_b1 capture on the c_b1 best/last checkpoint over all train, val and gate geometries, and report max|x|/T per group.",
+    "verification": {
+     "id": "INVARIANTS-1",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "The code matches the claim. In models.py, _clip counts `(x.abs() > A)` and _transfer counts `(sp[j] > A)`, but when bound_knee > 0, _SoftClip starts compressing at |x| > T = knee*A. Nothing counts the band T < |x| <= A. g_b1.sh builds bounds_B1.pt as `2.0 * mx` and sets c_b1.json bound_knee = 0.5, so T equals the calibration max and A = 2T. My hand check of the compression figures agrees: at 1.5T the output is T + T*tanh(0.5) = 1.462T, and at 2T it is T(1 + tanh 1) = 1.762T. sat_stats documents itself as a 'fraction of |a_raw| > A', and train3 logs only sat_max (train3.py:720-721). No other check anywhere compares |x| against T: calib_b1.py and t_models_v2*.py test only sat_max == 0 or <= 0.01. Doc lines 13 and 19 say 'sat_max 全程 0（截断从未触发）' and 'B1 在分布内等价于恒等映射'. Those statements need |x| <= T, which the logged metric cannot show. The measured neutrality of the arm is unaffected. What is unsupported is the stated reason for it, and the counter's value as an OOD score in deployment. I kept it major because v2 adopts B1 on the basis of that invariant and names sat_stats as its OOD monitor. No gate number is wrong."
+    }
+   },
+   {
+    "id": "INVARIANTS-2",
+    "title": "cuDNN TF32 conv: the reaction op.apply = E'^T K E is not the variational readout, and the gate, A7 metrics and deployment still run this way",
+    "severity": "major",
+    "file": "/tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/s0/src_v2/fastnet.py",
+    "line": 148,
+    "claim": "torch.backends.cudnn.allow_tf32 is never set (the only occurrence is diag_tf32.py, which restores the default). So conv3d in the forward E and conv_transpose3d (fastnet.ext_T) or cuDNN backward-data (trainlib.s_hat_apply autograd) in the adjoint E' are different TF32-rounded maps. Every reaction used by the lattice is apply(q) = E'^T K E q. It is not symmetric, and q^T apply(q) = (E'q)^T K (Eq) is not guaranteed >= q^T S q. The variational upper bound holds only for the forward energy u^T K u.",
+    "evidence": "evalnet.NetOp.apply -> geo.s_hat_apply (0.5 * autograd grad of energy: backward conv in TF32). FastOp.apply -> fast.s_hat -> field_T -> _conv(transpose=True) -> Fn.conv_transpose3d. lattice3.evaluate uses op.apply as the PCG matvec, and _measure_ computes energy via op.apply. lat_full.cell_metrics: `eps[i] = (q * op.apply(q)).sum(0) / E[i] - 1` and `bound_holds`. cert.lattice_lower assumes K_hat = sum S_hat_c symmetric with K_hat U_hat = f. bench_deploy: `e_hat = (Q * fast.s_hat(Q)).sum(0)`. Measured asymmetry (V2 doc sec. 4): 1.4e-3 on r1 with TF32 vs 7.6e-6 fp32.",
+    "consequence": "Gate compliance, A7 eps/w/bound_holds/additivity and the deployment energy ratios (1.008 / 1.015) all carry an adjoint-path error of up to ~1e-3 relative, which is not variational. For cells or directions with eps below ~1e-3 (FULL neighbours, near-rigid loads), eps can go negative and bound_holds can fail spuriously. CG theory does not apply to an asymmetric matvec. That matters little with the exact preconditioner (13 iterations) but does matter for the deployable Jacobi-PCG runs (2149-2524 iterations, V2 doc sec. 6). It does not change the <=3% gate verdicts at current margins.",
+    "fix": "Add an explicit precision flag (e.g. env OPL_CONV_FP32=1, or fastnet.FP32_CONV) that sets torch.backends.cudnn.allow_tf32=False around FastNet/NetOp evaluation and in bench_deploy/lat_full. Record the flag in every gate JSON. Decide the v2 default explicitly: fp32 cost is 2-37% on s_hat. For monitoring, report forward-energy eps (u^T K u with u = op.field(q)) next to the apply-based eps in lat_full.",
+    "verification": {
+     "id": "INVARIANTS-2",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "The defect is real by default, but part of the evidence and most of the proposed fix are wrong. Correction: allow_tf32 is set in more places than diag_tf32.py. models.py:36-45 defines set_conv_fp32() and reads env OPL_CONV_FP32=1, and train1.py/train3.py honour a cfg key conv_fp32. That already covers most of the suggested fix. What remains true: (a) the flag is off by default, and no run script in the scratchpad sets OPL_CONV_FP32 or conv_fp32; (b) evalnet.py, lat_full.py, bench_deploy.py and eval_views.py never read cfg['conv_fp32'], so gate, A7 and deployment evaluations use TF32 unless the env var is exported; (c) no gate JSON records the setting. trainlib.Geo.s_hat_apply returns 0.5*autograd grad of u^T K u, so the adjoint goes through cuDNN dgrad. fastnet uses conv_transpose3d. With TF32 both paths give E'^T K E with E' != E, and lattice3._measure_ and lat_full.cell_metrics compute energy and eps from op.apply. On the consequence: lat_full sets eps = 0 for exact cells, and the gate neighbour is exact, so the 'FULL neighbours go negative' case does not apply. Learned cut cells have eps at percent level against an error of about 1e-3. Spurious negative eps or bound_holds failures are therefore unlikely at current margins, and the <=3% verdicts do not change. Downgraded to minor: the flag exists, and what is missing is wiring it into the eval scripts and recording it."
+    }
+   },
+   {
+    "id": "INVARIANTS-3",
+    "title": "Gate pass ignores PCG convergence",
+    "severity": "minor",
+    "file": "/tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/s0/src_v2/lattice3.py",
+    "line": 277,
+    "claim": "lattice3.evaluate returns pcg_residual, but compare() computes gate_pass only from compliance and sensitivity errors of the final iterate X. If PCG stops at maxit (400 in evalnet/lat_full) without reaching tol, the gate is scored on an unconverged lattice solution with no flag.",
+    "evidence": "`out['gate_pass'] = bool(ce[g].max() <= 0.03 and np.nanmax(vec[:, g]) <= 0.03)`. pcg_residual is never read in compare(), evalnet or lat_full.summarize (only pcg_iterations is printed).",
+    "consequence": "With the exact dense preconditioner and a symmetric operator this is harmless (about 13 iterations). With a badly trained cell (large mu), the TF32 asymmetry (INVARIANTS-2), or a future deployable preconditioner, a non-converged run could pass or fail the gate silently.",
+    "fix": "Add pcg_converged = pcg_residual < tol (or < 1e-8) to compare(). Make gate_pass require it, or at least report it next to gate_pass in evalnet/lat_full output.",
+    "verification": {
+     "id": "INVARIANTS-3",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "lattice3.evaluate (tol=1e-10, default maxit=300; 400 from evalnet, lat_full and run_lat) exits the loop at maxit without raising. It then measures compliance and sensitivities on the last iterate X and stores pcg_residual. compare() copies only pcg_iterations, and gate_pass = ce[g].max() <= 0.03 and nanmax(vec[:, g]) <= 0.03 never uses the residual. A grep finds no reader of pcg_residual in evalnet.py, lat_full.py, run_lat.py or compare_arms.py. bench_deploy passes the residual into compare() but compare ignores it. The gate can therefore be scored on an unconverged solve with nothing flagging it. With the exact Cholesky preconditioner it converges in about 13 iterations today, so the risk is latent. Minor."
+    }
+   },
+   {
+    "id": "INVARIANTS-4",
+    "title": "_SoftClip has no guard for A <= 0 or knee >= 1; the B1 bounds file drops calib's inf-for-empty-group rule; the knee is not stored with the bounds",
+    "severity": "minor",
+    "file": "/tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/s0/src_v2/models.py",
+    "line": 280,
+    "claim": "The backward computes t = (|y| - T)/(A - T). If A = 0 this is 0/0, and clamp_ keeps the NaN, so the gradient is NaN. If knee = 1 it divides by zero. calib_b1 sets empty groups to inf (`torch.where(q['count'] > 0, mu * q['p999'], inf)`), but g_b1.sh rebuilt bounds_B1.pt as `2.0 * mx`, which would give A = 0 for a group with no samples. Separately, bound_knee is a model_arg that is not stored in the bounds file or in state_dict. Loading bounds_B1.pt without bound_knee=0.5 silently gives the plain tanh A tanh(x/A), which is 7.6% low at x = train max, instead of the identity the file's 'rule' string promises.",
+    "evidence": "CPU check (<1 s): `_SoftClip.apply(torch.tensor([0.,0.3]), torch.tensor(0.), False, 0.5)` gives forward [0, 0] and grad [nan, nan]. gradcheck passes for knee 0 / 0.5, mixed True / False, and at |x| = T. g_b1.sh line 13 carries the knee only as a comment string. models.py line 326 keeps `self.bound_knee` as a plain attribute.",
+    "consequence": "Not triggered in the current runs: all ab/fab/xab/rw groups are populated, and c_b1's cfg carries knee 0.5. But a v2 config that combines O_h + B1 and copies bounds= without bound_knee trains a different function. A future bounds file with an empty group would produce NaN geometry-path gradients, which the NONFINITE_GRAD guard then skips every step.",
+    "fix": "In set_bounds, reject A <= 0 and 0 < knee < 1 violations. Store the knee inside the bounds file and in a buffer (e.g. bnd_knee), and warn or raise when a bounds file with a knee rule is loaded with bound_knee = 0. In g_b1-style rules, keep the inf for count == 0.",
+    "verification": {
+     "id": "INVARIANTS-4",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "_SoftClip.backward computes t = ((|y| - T)/(As - T)).clamp_(0, 1), and clamp propagates NaN. So A = 0 with knee 0.5 gives 0/0 = NaN, and knee = 1 gives a zero denominator. The knee = 0 path has the same problem: tanh_backward(g, y/A) with A = 0 is NaN. set_bounds does no validation. calib_b1.calibrate maps count == 0 to inf. g_b1.sh bypasses that rule with `2.0 * mx`, and _Hist.mx starts at 0, so an empty group (or one that is all zero) gets A = 0. bound_knee is a plain attribute (models.py:453). It is not a buffer and is not saved in bounds_B1.pt, which carries it only in the 'rule' string. Loading bounds_B1.pt without bound_knee = 0.5 silently gives plain A*tanh(x/A): at x = T = A/2 that is A*tanh(0.5) = 0.924T, i.e. 7.6% low. train3 has a NONFINITE_GRAD skip guard (line 709), so NaN gradients would skip steps silently rather than crash. None of this is triggered in current runs, since the populated groups cannot be checked remotely and c_b1 carries knee 0.5. It is a latent robustness gap. Minor."
+    }
+   }
+  ]
+ },
+ {
+  "dim": "data",
+  "title": "Data v2 generation (prep_geo2)",
+  "checked_ok": [
+   "Traction face quadrature matches lattice3.face_traction_weights: h = 1/(6n) midpoint grid, weight h^2 N_i, material filter |phi| <= trilinear tau, cut half-space normal.x <= offset only for cut cells, points in inactive elements dropped. On box faces the Q2 shape values off the face are exactly 0 at xi in {0,1}, so only face (box) nodes receive force.",
+   "Traction.forces layout: (m,3,k) -> A @ (m,3k) -> (N,3,k) -> node-major xyz port DOFs, consistent with C.P ordering (port_node_ids = nodes[onport], P = nonzero(repeat(onport,3))).",
+   "Cut-surface point x0 = n_hat*offset/|normal| lies on normal.x = offset, consistent with moments_ad psi3 = offset - n.x.",
+   "force_c 10% cut mask per sample; face_c rigid removal on the loaded face nodes makes the resultant and moment zero, so the second projection in C.neumann is a no-op (the consistency issue is DATA-2).",
+   "support_k: alpha = 0.3*10^U in [0.3, 3), log-uniform, one per face; k_i = alpha*K_ii added on all box port DOFs of the face; springs on all 3 components over a material face make the system SPD; fp64 factor (_spd64) with Jacobi scaling including the springs; loads only on the other faces, cut band free; non-finite solutions raise.",
+   "glued absolute node keys: W = 6n+1 over [-2n, 4n]^3 is collision-free and int64; shared nodes found by searchsorted on the sorted test keys; neighbour-own nodes appended; the upper CSR is rebuilt by min/max and unique; the keep renumbering is monotone, so upper stays upper; nnz and index ranges fit int32 CSR.",
+   "glued faces: tface/nglue/nfar are correct for sgn > 0 and sgn < 0; the far face is clamped (DOFs dropped) or on springs k = alpha*diag with alpha in [0.3, 3); test cut band and other box faces free; loads only on free faces of both cells; 25% neighbour-only via (1 - only_n) on the test loads only; q = u[Ct.P] in the test's own numbering.",
+   "Shared DOFs on the glue plane (box nodes, fringe nodes included) match lattice3's port-level gluing by absolute position; cut-only private DOFs cannot coincide with neighbour nodes.",
+   "Offsets exclude -x/-y (the gate's), so no gate configuration is generated.",
+   "family_full: name-prefix family 'fresh_<split>_<dddd>' + '_full' (rotated: the rotated FULL or skip). make_split splits by family, so the FULL parent always sits in the same split as its cut cell. No cross-split leakage through the glued neighbour, and val geometries' glued banks are used only in their own val metrics.",
+   "Unit-energy normalisation: rigid removal with the port rigid basis, energy via the refined interior factor (fp32 + 3 fp64 refinement steps); F = (K E q)_P in fp64, stored fp32; unit_energy_check in DONE2; zero-direction guard before normalisation.",
+   "Sensitivity labels: sens2 on u = C.extend(q) with dM from central differences at taus0, the same as prep_geo; saved in fp64.",
+   "--F-old: F = S q computed from the stored fp32 q (exact for the stored bank); NaN columns kept NaN and filtered by HostBanks.clean; only writes new *_F.npy files.",
+   "--fix-support never deletes: it renames to *.nan_bak.npy (failure-path issue in DATA-4) and recomputes with the same prep_geo definition using fp64 spring factors.",
+   "_spd_glued: fp64, then fp64 retry after freeing the cache, then fp32 only on memory errors; non-memory errors propagate; normalisation, sens and F always use the test cell's own exact factor.",
+   "y load-6 rise in the r2 pilot: no y-specific defect found in prep_geo2 (force_c, face_c and support_k are symmetric across axes). Plausible data-side contributors are the uniform-nodal component of force_c/face_c (DATA-2) and the geometry-dependent glued BC mix (DATA-6); class-mix dilution of 'face' is on the trainer side."
+  ],
+  "items": [
+   {
+    "id": "DATA-1",
+    "title": "Every fresh_* geometry gets the same RNG seed, so all geometries share one set of random load functions",
+    "severity": "major",
+    "file": "prep_geo2.py",
+    "line": 364,
+    "claim": "The per-case seed is `(int.from_bytes(case.encode(), 'little') + 7919) % 2**31`. Bytes are little-endian and the modulus is 2^31, so the seed depends only on the first 4 characters of the case name. Every case starting with 'fresh' gets the same seed, 1936036181. prep_geo.py:225 has the same collision (1936028262), so the old classes have it too.",
+    "evidence": "Local check: 'fresh_train_0020_cover01_r2', 'fresh_train_0020_full', 'fresh_development_0002_full' and 'fresh_train_0031_cover01_r1_rotgeneral' all give 1936036181 with the +7919 form. plane_waves and patches are functions of absolute position X. How many random numbers they draw does not depend on X; torch.randint on the CUDA generator advances by a fixed amount whatever the range. So sample j of force_c, face_c, support_k or glued uses the same wave vectors, phases, amplitudes, patch widths, spring alpha and randperm on every geometry with the same face set and the same --classes list. The streams only drift apart where the number of material faces differs.",
+    "consequence": "Across roughly 150 geometries the training rows of each class are built from about 512 shared load functions, not independent draws. Family members (FULL, r1, r2) get almost identical traction fields on their shared faces. Held-out geometries are all scored on the same 64 'val' functions (rows 512..575), so class means over val geometries are strongly correlated. There is no train/val row overlap, but load diversity is much lower than intended and arm comparisons rest on correlated samples.",
+    "fix": "Seed from a hash of the full name, e.g. int(hashlib.sha256(case.encode()).hexdigest()[:8],16) plus a class-specific offset. Use a separate generator per class so a class's samples do not depend on which other classes run in the same invocation (see DATA-8). Keep the old seed behind a flag if the old banks must be reproducible.",
+    "verification": {
+     "id": "DATA-1",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "prep_geo2.py:409 computes `seed = (int.from_bytes(case.encode(), 'little') + 7919) % 2**31`. With little-endian bytes, the value mod 2^31 depends only on the first ~31 bits, i.e. the first four characters 'fres'. I reproduced it locally: all four example names give 1936036181, and the prep_geo.py:225 form gives 1936028262. All cases match the regex ^fresh_ (family_full), so all of them share one seed. In prep_data.plane_waves the draw sizes (randn/rand of kk x 3 x 48) do not depend on X. The wave vectors, amplitudes and phases (75% of every Traction.random block) are therefore the same functions of absolute position on every geometry with the same face set and cut status. The same holds for the spring alpha, the only_n masks and the randperm. Nuance: in patches the centre index comes from randint(0, X.shape[0]), so centres differ with the quadrature count, but widths and directions are shared. The streams drift apart once face sets differ, which the finding already says. Diversity across geometries is much lower than intended, and the same defect is in the old classes. The effect is common to all arms, so it correlates the samples but does not bias arm-vs-arm comparisons. Major is still fair."
+    }
+   },
+   {
+    "id": "DATA-2",
+    "title": "force_c and face_c are equilibrated by a Euclidean rigid-mode projection, which adds non-consistent nodal loads on all ports (fringe and cut band included)",
+    "severity": "major",
+    "file": "prep_geo2.py",
+    "line": 151,
+    "claim": "force_c passes consistent tractions to C.neumann, which first does f - Q Q^T f (teacher.py:284). Q is the orthonormal rigid basis on ALL port nodes: box nodes, fictitious-fringe nodes and cut-band nodes. The net force and moment of the random tractions is removed by a uniform translation load plus a linear rotation load on every port DOF, not by adjusting the traction. face_c (line 168) does the same on T.nodes, which include fringe face nodes that have tiny consistent weights. So the docstring claim that fictitious-fringe nodes get almost nothing, and that the cut is unloaded in 90% of samples, does not hold for any sample with a nonzero resultant.",
+    "evidence": "teacher.py:284 `f = f - self.Q @ (self.Q.T @ f)` with `self.Q = rigid_basis(self.port_node_ids, ...)`. The translation columns are uniform, 1/sqrt(N_ports) on every port node. prep_geo2.py:168 `F[dofs] = ff - Rf @ (Rf.T @ ff)`. A toy numpy check (<1 s) used the same plane_waves / patches generators on a 6-face node grid with no cut band. The removed part ||QQ^T f||/||f|| had a median of 0.35 for waves and 0.37 for patches. The average per-node correction was 0.36x (waves) and 1.2x (patches) of the average per-node load. On cut cells the correction also spreads onto the cut band and fringe nodes, which have no consistent load.",
+    "consequence": "A large share of every force_c and face_c load is the rejected 'uniform nodal' pattern. That pattern is the stress test, not the gate. The r2-pilot result that consistent tractions help (compliance -15 to 28%) was measured with this mixed class, and part of the effect, including side effects on the gate's y load-6 sensitivity, may come from the uniform component rather than the consistent one. support_k and glued are not affected: they are supported and not projected.",
+    "fix": "Equilibrate inside the traction space. With G = Q^T A (6 x 3m, the resultant and moment of the consistent nodal forces), set t <- t - G^T (G G^T)^-1 G t, or fit and subtract a rigid-like traction a + b x (x - x_c) over the loaded quadrature points. Then f = A t is both consistent and self-equilibrated, and C.neumann's projection becomes a no-op. Log ||QQ^T f||/||f|| as a check.",
+    "verification": {
+     "id": "DATA-2",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "force_c (l.151) passes the raw sum of consistent face (and cut) forces to C.neumann. teacher.py:284 does `f = f - self.Q @ (self.Q.T @ f)`, where Q = rigid_basis(port_node_ids) is an orthonormal basis over ALL port nodes: box, fringe and cut band. The translation columns are uniform per node. The net force and moment are therefore removed by a uniform-nodal translation load plus a linear rotation load on every port DOF, including the fringe nodes and the cut band. face_c (l.168) does the same with Rf on T.nodes, which include fringe nodes that carry only tiny consistent weight. Its result is face-equilibrated, so the global projection in neumann becomes a no-op there. The docstring statements ('fictitious-fringe nodes get almost nothing', cut unloaded in 90%) describe f before the projection, not the load actually applied. The component is large, not a rounding term: plane_waves favour low wavenumbers (kmin 0.5, amp ~ mag^-beta) and Gaussian patches have a nonzero resultant by construction, so the reviewer's ~0.35 relative removed norm is plausible. Uniform forces on weakly stiff fringe nodes can then dominate the unit-energy normalisation. support_k and glued are supported and not projected, as the finding says. Confirmed as stated. Its link to the r2 y load-6 side effect remains a hypothesis."
+    }
+   },
+   {
+    "id": "DATA-3",
+    "title": "The fp32 fallback of the two-cell factor has no refinement or accuracy check; glued directions can be dominated by solver noise",
+    "severity": "major",
+    "file": "prep_geo2.py",
+    "line": 229,
+    "claim": "_spd_glued falls back to an fp32 cuDSS factor of the Jacobi-scaled glued system (about 8e5 DOFs for FULL+FULL, which is the case for every FULL training geometry glued to itself). The solution at line 321 is used as-is: no fp64 iterative refinement, no residual check. After rigid removal and unit-energy normalisation, the test cell's elastic part can be small, especially in the 25% neighbour-only samples. fp32 error of order kappa*6e-8 is then amplified into the 'direction'.",
+    "evidence": "Line 321: `u[keep] = sA[:, None] * sol.solve(sA[:, None] * F[keep])`. SPDSolver.solve casts to fp32 and back (teacher.py:78-80) and does no refinement. The only guard is `_finite` (line 322) plus the ZERO_DIRECTION test (1e-12 relative), neither of which measures accuracy. Precedent in this code base: fp32 spring factors produced the non-finite support banks that --fix-support now repairs with fp64.",
+    "consequence": "Labels (S, F, energy) are exact for whatever q comes out, so nothing is mislabelled. But for FULL-FULL pairs the glued class can contain rough, noise-shaped unit-energy directions instead of lattice-context directions. That biases the class the v2 decision relies on, and it goes unnoticed because the only record is the precision tag.",
+    "fix": "When precision == 'fp32', run 2-3 fp64 refinement steps using the glued upper CSR (r = F - K_glued u, u += solve(r)). This is data generation, not the network forward, so it is allowed. Log the relative residual per offset in DONE2 and reject or regenerate an offset whose residual exceeds, say, 1e-6.",
+    "verification": {
+     "id": "DATA-3",
+     "verdict": "uncertain",
+     "severity": "minor",
+     "reasoning": "The missing accuracy handling is real. _spd_glued falls back to an fp32 SPDSolver (fdt=float32), solve() casts to fp32 and back (teacher.py:78-80), and _glued_offsets l.366 uses the result directly. The only checks are _finite and the ZERO_DIRECTION guard, and there is no residual check. The claimed consequence does not follow from the code, though. A Cholesky solve is backward stable, so u solves a nearby (K + dK) system. The forward error concentrates in the soft modes of the supported two-cell system, which are smooth, so the directions are not 'noise-shaped'. Labels are exact for whatever q comes out. Two things decide whether the neighbour-only (25%) samples are materially degraded: whether the fp32 path is ever taken (only after two fp64 memory failures), and how large the Jacobi-scaled condition number is. Neither can be settled by reading. The GLUED_OFFSET precision tag is the only record. Adding fp64 refinement and a residual log is cheap and advisable, but the damage is unproven."
+    }
+   },
+   {
+    "id": "DATA-4",
+    "title": "--fix-support renames the old support bank before the new one is saved; any later failure leaves the class permanently and silently missing",
+    "severity": "major",
+    "file": "prep_geo2.py",
+    "line": 394,
+    "claim": "The rename to *.nan_bak.npy happens at lines 394-398. The new support files are written much later, in the class loop (line 418), after glued (line 401) and the interior factor. If anything in between raises (glued OOM even at fp32, NONFINITE_GLUED, missing parent body, non-finite sens), the case is logged FAILED2 with no train_support.npy. A rerun with --fix-support then skips the fix because `(d / 'train_support.npy').exists()` is False. The rename covers only '' and '_sens', not '_F', so a stale {split}_support_F.npy from an earlier --F-old stays behind.",
+    "evidence": "Line 385: `if fix_support and (d / 'train_support.npy').exists() and _nonfinite_bank(d, 'support')`. Line 395: `for suf in ('', '_sens')`. trainlib.HostBanks.from_data and Geo pick classes by `train_{c}.npy` existing, so the class simply disappears.",
+    "consequence": "For the 5 NaN geometries the old 'support' class can vanish from training and evaluation without any error. This is realistic because the default --classes includes glued, which is the most failure-prone step. Class quotas and val means then silently change.",
+    "fix": "Write the fixed bank to temporary names immediately after computing it (or save 'support' first). Rename old to .nan_bak only after the new q, _sens and _F are fully written, and include '_F' in the rename. Make the trigger idempotent: also run when *.nan_bak.npy exists and train_support.npy is missing.",
+    "verification": {
+     "id": "DATA-4",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "In the current file the old support files are renamed right after the fp64 recompute (l.439-443). The new bank is only saved in the class loop (l.452-464), which runs after glued (l.446-449) and the interior factor_safe (l.451). Any exception in between (glued parent/OOM/NONFINITE_GLUED, factor, ZERO_DIRECTION, non-finite sens/F) propagates to main(), which logs FAILED2, and nothing is saved. A rerun then fails the guard `(d/'train_support.npy').exists()` (l.430), so the fix is skipped silently. HostBanks.from_data and Geo pick classes by the presence of train_{c}.npy, so 'support' disappears for that case. The '_F' suffix is not renamed. That stale file is harmless when loading (F is only read for classes present in q) and is overwritten by save() on success. Downgraded to minor: the failure path is conditional, FAILED2 is logged, and the data can be recovered from *.nan_bak.npy. The ordering and idempotence defect is still real."
+    }
+   },
+   {
+    "id": "DATA-5",
+    "title": "prep_geo2 changes prep_geo's data tree in place, and the new files change what an unchanged train3 config does",
+    "severity": "major",
+    "file": "prep_geo2.py",
+    "line": 356,
+    "claim": "prep_geo2 writes into the same data/case directories as prep_geo: new class files, *_F.npy for the OLD classes via --F-old, and a replaced support bank via --fix-support. The trainer switches on new behaviour when these files exist: train3 bank-span Ritz runs for every class with F (default adv_ritz_R=64). mu_start and the first-visit adversarial start blocks take force_c/face_c/glued/support_k columns whenever those banks exist (train3.py:595, 494). HostBanks.from_data loads ALL_CLASSES present.",
+    "evidence": "prep_geo2.py:356 `d = data / case`. Lines 430 and 398 write and rename files there. train3.py:472 `R=cfg.get('adv_ritz_R', 64)`, line 513 `if fcl and A['R'] > 0`. Line 595 builds its class list from whatever is in hb.q['val']. trainlib.py:358 `from_data(cls, d, classes=ALL_CLASSES ...)`.",
+    "consequence": "Standing rules: frozen data trees are never modified, and new behaviour sits behind flags whose defaults keep old results. Unless prep_geo2 was run on a copy, re-running any v1/v2 control config with bank_source='data' on the same tree gives a different trajectory: different adversarial starts, mu block, Ritz refresh, and support bank on 5 geometries. Arms run before and after the prep on the same path are not comparable.",
+    "fix": "Have prep_geo2 write into a new data root (copy or hard-link the old files, then add). Keep --fix-support output under a new class name, e.g. 'support64', instead of replacing 'support'. In train3, require an explicit config list of bank classes and an explicit F/ritz switch, not file presence.",
+    "verification": {
+     "id": "DATA-5",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "prep_geo2 writes in place into data/case (l.400). --fix-support renames existing bank files, and DONE2.json is written there. The r2 pilot actually did this on the main tree: g_chain3.sh runs `prep_geo2.py /root/autodl-tmp/OPL/S0 /root/autodl-tmp/OPL/S0/data $R2` with BANK_SPLITS=1024,128,128. The trainer really does switch behaviour on file presence. HostBanks.from_data (trainlib l.358-367) and Geo (l.121) load every ALL_CLASSES bank that exists. adv_entry's start block (train3 l.496) and mu_start (l.597) take force_c/face_c/glued/support_k when present. Bank-span Ritz (l.511-513) runs for any class with *_F, with default adv_ritz_R=64. Narrowed consequence: the v2 control arms (c_ctrl/c_oh/c_b1/c_b2, g_cfg.sh) used bank_source='slot' with pre-built slot caches, so they are unaffected unless a cache is rebuilt. build_geo -> Geo would then pick up the new classes, which also changes the trajectory. Any config with bank_source='data' on that tree changes trajectory after the prep. That is a real flag-hygiene and frozen-tree issue, but its present impact is limited to the r2 directory. Graded minor."
+    }
+   },
+   {
+    "id": "DATA-6",
+    "title": "Glued far-face BC (clamp vs springs) is tied to the offset's list index, so per-axis coverage depends on geometry and is often the opposite of the gate",
+    "severity": "minor",
+    "file": "prep_geo2.py",
+    "line": 283,
+    "claim": "`clamp = oi % 2 == 0`, where oi indexes the filtered offset list. When all four offsets exist, +x and +z are always clamped and +y and -z always use springs. If +x has no material (e.g. a cut with normal ~x), +y moves to index 0 and becomes clamped. The gate (x and y) always clamps the neighbour's far face. So y-axis gluing with a clamped far face is absent for most geometries, while x has a clamped analogue.",
+    "evidence": "GLUE_OFFSETS = ((1,0,0),(0,1,0),(0,0,1),(0,0,-1)). `offs = [d for d in GLUE_OFFSETS if ...material...]`. Line 283 `clamp = oi % 2 == 0`.",
+    "consequence": "The glued class has an uneven BC mix across axes that depends on geometry. This is one candidate contributor to the x/y asymmetry in the r2 pilot (gate x sensitivity improved, y load-6 got worse), but it cannot explain arm A, which had no glued class. For r2 itself +x may be empty, in which case +y is clamped, so this is not proven as the cause.",
+    "fix": "Use both BCs for every offset (split each offset's samples half/half), or draw clamp/spring per chunk from gen. Record the realised per-axis mix in DONE2.",
+    "verification": {
+     "id": "DATA-6",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "l.322 sets `clamp = oi % 2 == 0` over the filtered offs list (l.273). With all four offsets present, +x and +z are clamped and +y and -z use springs. Filtering shifts the assignment by geometry. lattice3 configs x and y both clamp the neighbour's far face (lattice3 docstring, l.116-118), so clamped-far-face gluing along y is missing whenever +x has material. The link to the r2 x/y asymmetry is speculative, as the finding itself says (arm p_A had no glued class and still showed the y load-6 regression). Minor is correct."
+    }
+   },
+   {
+    "id": "DATA-7",
+    "title": "Cut-plane quadrature point differs between prep_geo2 (correct) and lattice3's reported cut loads (off-plane when |normal| != 1)",
+    "severity": "minor",
+    "file": "lattice3.py",
+    "line": 36,
+    "claim": "prep_geo2 places the plane at x0 = n_hat * offset / |normal|, which satisfies normal.x = offset, the convention of moments (psi3 = offset - n.x, non-unit n) and of the _material half-space test. lattice3.plane_traction_weights uses `x0 = nrm * off` with unit nrm, i.e. the plane normal.x = |normal| * offset.",
+    "evidence": "prep_geo2.py:87 `x0 = nrm * C.offset / np.linalg.norm(C.normal)` vs lattice3.py:36 `x0 = nrm * off`. The packet normals are not unit, e.g. seat100032 normal = [1, 1225339/15625000, 0], |n| = 1.00307, offset 0.545. The lattice3 plane is then shifted about 1.7e-3 (about 5% of an element) into the removed half-space. The shift grows with |n| - 1.",
+    "consequence": "The cut-surface 'report' loads (not the gate) are integrated on a slightly different plane from the force_c cut loads used in training. This is a small, geometry-dependent inconsistency in the reported cut compliance and sensitivity numbers.",
+    "fix": "In lattice3.plane_traction_weights use `x0 = nrm * off / np.linalg.norm(cell.normal)`, behind a flag if old report numbers must be reproduced. Better, share one quadrature routine (prep_geo2.Traction) between prep and gate.",
+    "verification": {
+     "id": "DATA-7",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "prep_geo2.Traction (l.87) uses x0 = n_hat * offset / |normal|, the point where normal.x = offset. This is consistent with _material's `P @ normal <= offset` using the non-unit normal. lattice3.plane_traction_weights (l.36) uses x0 = n_hat * off, where n_hat.x = off, i.e. normal.x = |normal| * off. That point lies on the removed side, at distance off*(1 - 1/|n|) from the true plane. lattice3 applies no half-space test on that plane and only checks |phi| <= tau and that the element is active, so the shifted points are integrated. With |n| = 1.00307 and off = 0.545 the shift is about 1.7e-3, roughly 5% of an element of size 1/32. This affects only the cut-surface 'report' loads, not the gate."
+    }
+   },
+   {
+    "id": "DATA-8",
+    "title": "Provenance gaps: dropped traction weights and cut-qp counts are never recorded; stale DONE2 entries; bank contents depend on the --classes set",
+    "severity": "minor",
+    "file": "prep_geo2.py",
+    "line": 374,
+    "claim": "(a) info['force_c_cut_qp'] is stored under a key that is neither a class name nor a dict, so it never reaches DONE2. Traction.dropped (forces lost on non-port nodes, line 102) is never logged, so 'none expected' is never checked. (b) `rec['banks'].setdefault(cls, {}).update(...)` keeps a 'skipped' key from an earlier run, and a later 'skipped' overwrites the stats while the old class files stay on disk and are still loaded. (c) All classes share one generator in a fixed order, so e.g. glued samples produced by `--classes glued` differ from those of a full run.",
+    "evidence": "Line 374 `raw['force_c'], info['force_c_cut_qp'] = ...`. Line 417 only merges `info.get(cls)` when it is a dict. Lines 432-434 overwrite with the skip dict. Line 365 has one generator for all classes.",
+    "consequence": "DONE2 cannot show whether cut loads were lost or whether bank files match the recorded run. Partial re-runs (e.g. re-doing failed glued cases) produce banks that are not reproducible from the full-run recipe.",
+    "fix": "Record cut.m and dropped (and dropped per face) in rec['banks']['force_c']. Reset rec['banks'][cls] per run, and delete or rename stale class files when a class is skipped. Seed a separate generator per class (see DATA-1).",
+    "verification": {
+     "id": "DATA-8",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "(a) l.419 stores the cut quadrature count in info['force_c_cut_qp'], an int under a key that is not a class. The class loop merges only dict info[cls] (l.463), and the skip loop (l.478-480) only takes dicts containing 'skipped', so the count never reaches DONE2. Traction.dropped (l.102) is never read anywhere. (b) `rec['banks'].setdefault(cls, {}).update(...)` keeps a stale 'skipped' key from an earlier run. A later skip replaces the entry (l.480) while the old {split}_{cls}.npy files stay on disk and are loaded by file presence. (c) One generator (l.410) feeds all classes in a fixed order, so a partial `--classes glued` run produces different samples from a full run. All three are real provenance and reproducibility gaps. Minor."
+    }
+   },
+   {
+    "id": "DATA-9",
+    "title": "A failure in any class, typically glued, discards every class already computed for that case",
+    "severity": "minor",
+    "file": "prep_geo2.py",
+    "line": 401,
+    "claim": "force_c, face_c and support_k directions are held in `raw` and only normalised and saved after glued and the interior factor. An exception in glued (missing parent body, fp32 OOM, NONFINITE_GLUED) or in any later class makes one() raise, and nothing is saved for that case.",
+    "evidence": "Lines 367-404 build raw. Saving happens at line 418 inside the loop after line 405. main() catches and prints FAILED2 per case.",
+    "consequence": "In a full re-prep, the fragile glued step can remove the robust new classes from whole geometries, skewing class availability across geometries (and interacting with DATA-4).",
+    "fix": "Normalise and save each class right after it is generated (needs the interior factor first, or a second pass), or catch per-class errors, record them in DONE2 and continue.",
+    "verification": {
+     "id": "DATA-9",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "force_c, face_c and support_k are held in `raw` (l.412-449). They are normalised, sensitised and saved only after glued (l.446-449) and the interior factor_safe (l.451), in the loop at l.452-464. Any exception in glued or in a later class propagates out of one() before any save(). main() only prints FAILED2 and moves to the next case, so the robust classes are lost for that case. This interacts with DATA-4. Minor is correct."
+    }
+   }
+  ]
+ },
+ {
+  "dim": "trainer",
+  "title": "Trainer v2 (train3 + trainlib host banks)",
+  "checked_ok": [
+   "EMA update: torch._foreach_lerp_(shadow, params, 1-decay) = e + (1-d)(p-e) is correct. Parameter order and names match state_dict keys, and model_state keeps buffers (B1 bnd_*) raw. EMA.applied restores the raw weights bitwise. MGNO/MGNO2 recompute the geometry path from the parameters on every forward (no parameter-dependent caches; _pat caches only sparsity patterns), so swapping the EMA weights in is valid.",
+   "Checkpoint contents: best.pt/last.pt/snap 'model' = selected (EMA) weights plus model_raw and score_raw. ckpt.pt holds raw model, opt, sched, ema, qi, best and visits. evalnet/eval_views load ck['model'] = the selected weights.",
+   "Eval switches: eval_weights='sel' changes only which weight sets are evaluated at intermediate evals (score = res[sel]['score'] is unchanged, and the last eval runs all sets). cert_every affects reporting only (cert is not in score()). evaluate() consumes none of gen/agen/ogen/tgen and fixes the mu generator and start by mu_seed, so the switches do not change the trajectory beyond CUDA atomic noise.",
+   "RNG stream separation: gen (order shuffle, pool picks, batches), agen (adv starts, bank-Ritz samples), ogen (views), tgen (random adv start only when there is no seed class). The order shuffle happens before resume, so the order is identical after resume.",
+   "HostBanks keep-index mapping: sample -> get maps j through keep for q, s and F consistently. The random sign sg is applied to q and F (linear), and sensitivities are left unsigned (even in q). Adv columns get NaN s and NaN F and are excluded from the tail Gram via kinds.",
+   "HostBanks.clean: same semantics as train2.clean_banks plus F. Class removal pops q/s/F/keep. The memo path (data source) reproduces keep/classes/removals. from_data checks F and sens shapes against q.",
+   "bank_ritz math: W = V diag(max(ev, floor*evmax))^-1/2, top eigenvectors of W^T G_hat W, rescaled by c^T G c with the unfloored G. The returned ritz values are exact Rayleigh quotients X^T S_hat X / X^T S X (field is linear, G = Q^T S Q), so they are true lower bounds on mu. Near-null directions of G (dependent samples, e.g. low-rank macro) give Qc≈0 and hence G_hat≈0, so the floor keeps them out of the top set. bank_cols draws distinct samples per class while the bank allows.",
+   "tail_loss: eigvalsh backward involves no eigengap division. clamp_min(1) zeroes the gradient for lambda<1. The floored G only lowers lambda in near-null directions.",
+   "quota_counts always returns counts summing to B, with floor/floor+1 per class (the only issue is the inclusion bias, TRAINER-5).",
+   "Prefetch thread: it does host-only work (torch.load to CPU, mmap, finiteness scan). self.res is read only after join. log() is lock-protected. _CLEAN writes are idempotent per case. cancel() joins before reuse. There is no pinned memory (move() uses blocking .to, and HostBanks.get copies pageable memory).",
+   "Pool/DOF cap: admit evicts the oldest members while summed DOFs + incoming > cap. Resume rebuild from qi-P reproduces the same most-recent-that-fit set. Val and probe slots are dropped after evaluation unless they are pool members, and pool members wait on the host during eval.",
+   "O_h view handling in Slot: _shared attribute re-pointing after moves is correct (C is shared by object; the replaced tensors RP/RA/P/dM32 are re-pointed by name). Adversarial buffers are stored in the original frame, so they stay valid across different views on later visits. Val geometries never get a view and are never trained (no view leakage into selection).",
+   "batch_loss with defaults reproduces train2's loss op for op (log e_hat mean + sens_w * mean rho^2). The non-finite loss/grad guards skip the step without an EMA update.",
+   "stratified_probes draws only from train cases and terminates. mu_start is fixed per eval (seeded), so mu is comparable across evals within a run."
+  ],
+  "items": [
+   {
+    "id": "TRAINER-1",
+    "title": "Model selection is identity-view only while oh=true trains on random O_h views",
+    "severity": "critical",
+    "file": "src_v2/train3.py",
+    "line": 624,
+    "claim": "With oh=true every pool entry trains on a random view out of 48, but evaluate() scores, computes mu and picks best.pt on the identity view only. best.pt from any v2 O_h run is therefore chosen by a metric that works against what the augmentation optimises.",
+    "evidence": "train3.py:624 `g = s_.geo  # identity view`; docstring L18-19 'validation, mu and the certificate use the identity'; L726 `sc = res[sel]['score']`; L736-738 `if best is None or sc < best: ... torch.save(rec, out / 'best.pt')`. The views are drawn only in get(..., train=True) (L456-457); val slots never get a view. The V2 doc (section 1) shows the effect: c_oh best (5k) scores 11.8/13.0/6.3% on rotated views against 6.8/7.9/4.2% for last (15k).",
+    "consequence": "best.pt of a v2 O_h run can be about 2x worse on rotated views, and nothing flags it. Any v2 gate run or arm comparison that uses best.pt instead of last carries this bias.",
+    "fix": "Add a cfg key eval_views (list of view indices, e.g. [0,5,17,29,38,46] as in eval_views.py; default [0] keeps the old behaviour). In evaluate(), for each val and probe geometry and each k: v = OH.view(model, s_.geo, k) (k=0 -> s_.geo), res[w][kind][f'{case}@oh{k}'] = eval_geo(v, s_.banks, ...), then OH.drop(model, v). Take the family aggregate per view and make score = mean over views of the family score (optionally + worst view), with the identity score logged separately. Store eval_views and the per-view scores in best.pt / last.pt. Run mu/cert on the identity view, or on one fixed rotated view, to limit cost. Pair it with eval_weights='sel' because the cost scales with |V|.",
+    "verification": {
+     "id": "TRAINER-1",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "train3.py:624 evaluates on `s_.geo`, the identity view. Views are only set in get(..., train=True) at L456-457. Score, mu, cert and probes all use the identity view, and best.pt is chosen at L736-738 on that score. The c_oh arm (g_cfg.sh: oh=True, ema=0.9997, eval_every=5000) did pick its 5k checkpoint, which is about 2x worse on rotated views (V2 doc section 1). Nothing in EVAL shows rotated-view error. I downgraded from critical because the docstring (L17-19) states the behaviour and the V2 doc already lists multi-view selection as a must-fix. The gate cell is also evaluated in its original orientation, so identity selection is not wrong for the gate itself. It only mis-serves the out-of-distribution robustness that O_h aims at. Using last.pt avoids the problem, and no data is corrupted."
+    }
+   },
+   {
+    "id": "TRAINER-2",
+    "title": "EMA starts from the warm-start weights with no bias correction; early EMA checkpoints are largely v1",
+    "severity": "major",
+    "file": "src_v2/train3.py",
+    "line": 447,
+    "claim": "The EMA shadow is initialised to the init checkpoint and updated with a fixed decay and no debiasing. With the planned decay 0.9997 (ARCH_REVIEW C4) the EMA weights still hold 0.9997^n of the v1 snap_60000 weights: 74% at step 1000, 47% at 2500, 22% at 5000 and 1% at 15000. Selection uses the EMA weights (sel='ema') on the identity view, where v1 is strongest.",
+    "evidence": "L447 `ema = EMA(model, cfg['ema'])` runs after the init load (L434-441). EMA.__init__ L248 `self.p = [p.detach().clone() ...]`. update L252 is a plain lerp with no 1/(1-d^t) correction. L587 `sel = wsets[-1][0]` ('ema'). All four arms were continued from v1 snap_60000 with EMA selection (V2 doc section 1). The c_oh best was the 5k checkpoint, where 22% of the EMA weights are still v1.",
+    "consequence": "Early evals score a parameter-space blend of v1 and the new run. For arms that start exactly at v1 (B1 is the identity in distribution; B2's zero-padded columns change nothing), the early EMA checkpoints are nearly identical by construction. This helps make arms look 'neutral' and pushes selection toward early checkpoints. It also mixes into the c_oh 5k-vs-15k comparison.",
+    "fix": "Use a debiased EMA (keep a counter t and use p_ema/(1-d^t) with the shadow initialised at 0), or start or reset the EMA after warmup (ema_start step). For existing arms, report the best step and compare arms on last and on raw weights as well as on best-EMA.",
+    "verification": {
+     "id": "TRAINER-2",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "The EMA is built at L447 after the init load (L434-441). __init__ (L248) clones the current (v1) weights, and update (L252) is a plain lerp with no debiasing. The arm configs (g_cfg.sh) really use ema=0.9997 with init=s2_full/snap_60000 and eval_every=5000. So the EMA still holds v1 weight 0.9997^n: 22% at 5k, 5% at 10k, 1% at 15k (arithmetic checked). The EMA is updated on every successful opt.step, and selection uses sel='ema' (L587). The c_oh 5k best is therefore a blend with 22% of the v1 weights, which never saw rotations and is strongest on the identity view. That pushes identity-view selection toward 5k and adds to TRAINER-1. Whether the ctrl/b1/b2 'neutral' verdicts relied on early checkpoints cannot be read from here (their best steps are not in the doc), so that part of the consequence is plausible rather than shown. score_raw is logged, which lets it be checked afterwards."
+    }
+   },
+   {
+    "id": "TRAINER-3",
+    "title": "No strict_mix / MIX_MISSING check in train3: absent classes are silently dropped and the mix renormalised",
+    "severity": "major",
+    "file": "src_v2/trainlib.py",
+    "line": 459,
+    "claim": "HostBanks.sample keeps only the mix classes that the geometry has and renormalises the rest. train3 never checks the mix against the classes it loads. As a result: (a) new v2 classes in mix with the default bank_source 'slot' (the slot cache has only the 5 old classes) are silently never trained; (b) glued and support_k are skipped per geometry by prep_geo2, so those geometries silently get more of the other classes; (c) 'adv' disappears for a geometry after ADV_FAIL or when adv_on_load is off.",
+    "evidence": "trainlib.py:459 `names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or adv is not None) and (k == 'adv' or k in self.classes)]` followed by `w / w.sum()`. train3.py:95 `cfg.get('bank_source', 'slot')` defaults to the slot cache. prep_geo2.py:269/275 (glued skipped: no family FULL parent / no glue face with material) and :427 (support_k skipped). train1.py:53-58 has MIX_MISSING/strict_mix, but train3 has nothing equivalent (the r2 pilot relied on strict_mix in train1). The BUILD log line (train3 L164) lists the classes but nothing compares them to mix.",
+    "consequence": "A v2 'new data' arm launched without bank_source='data' trains exactly like the control and reports no error. Its default score_classes also contains the absent classes, which score() skips. Per-geometry reweighting changes exposure per class in ways that are not logged per geometry.",
+    "fix": "In load_host/Slot, compute missing = [c for c in mix if mix[c] > 0 and c != 'adv' and c not in hb.classes] and log MIX_MISSING per geometry. Raise if strict_mix is set, or always raise when a mix class is missing from every geometry (for example new classes with bank_source 'slot'). Log 'adv' drops (no buffer) in the STEP counts, which already exist, and in an event.",
+    "verification": {
+     "id": "TRAINER-3",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "HostBanks.sample (trainlib.py:459-461) filters mix names to the classes present (and to adv only when a buffer exists) and renormalises. train3 has no MIX_MISSING/strict_mix check. train1.py lines 51-57 have one, which confirms the gap. The bank_source default is 'slot' (L95), and the docstring says that source holds 5 old classes. prep_geo2 really does skip glued per geometry ('no family FULL parent' L288, 'no glue face with material' L294) and support_k (L446), so even a correct bank_source='data' run renormalises per geometry. HostBanks.clean can also remove classes. The current four arms (5 old classes, slot) are not affected. The full-data v2 run now being prepared is exactly where this bites silently."
+    }
+   },
+   {
+    "id": "TRAINER-4",
+    "title": "The selection criterion depends on each arm's mix and bank source, so cross-arm best.pt choices are not comparable",
+    "severity": "major",
+    "file": "src_v2/train3.py",
+    "line": 584,
+    "claim": "By default score_classes = the non-adv mix classes with w > 0. Arms with different mixes (control vs new-data arms) therefore pick best.pt by different criteria. score/families also average each class only over the geometries that have it, so a class skipped or removed per geometry changes the family mean. The val banks also differ by bank source: the slot cache holds the NaN-cleaned old support banks (58/8/8 samples on 5 geometries), while the data dir after prep_geo2 --fix-support holds recomputed support banks.",
+    "evidence": "train3.py:584 `score_classes = cfg.get('score_classes') or [c for c, w in mix.items() if c != 'adv' and w > 0]`. families() L341 `rs = [per_geo[case][c] for case in cases if c in per_geo[case]]`. score() L360-362 average over `c in d`. prep_geo2 docstring: '--fix-support recompute the old support class ... old files kept as *.nan_bak.npy'. The r2 pilot deliberately selected on the '5 个基础类' (5 base classes).",
+    "consequence": "In v2 full-data arm comparisons, best.pt for a new-data arm can be selected partly on force_c/glued/support_k, while the control is selected on the old classes. The support-class val means also differ in content whenever a fixed geometry is in val. Both bias the v2 data decision.",
+    "fix": "For every comparison arm, set score_classes explicitly to the 5 base classes (report new classes separately). Evaluate every arm on the same val bank source (data dir), or log which bank source and val sample counts entered each class mean. Consider adding a strict per-family completeness check to score().",
+    "verification": {
+     "id": "TRAINER-4",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "L584 sets the default score_classes from the arm's own mix. families() (L341) and score() (L360-362) average only over the geometries and classes present. So arms with different mixes select on different criteria. The default is documented (docstring L42), and it is a config-level fix; the r2 pilot already used explicit 5-base-class selection via train1. The current four arms share mix and bank_source='slot', so their criteria match. The bank-source point also holds. Slot banks are the cleaned NaN-laden old support banks, while --fix-support recomputes them in the data dir, so val content differs between sources. This matters only for future data arms, so I downgraded it to minor."
+    }
+   },
+   {
+    "id": "TRAINER-5",
+    "title": "quota_counts under-samples small-weight classes (without-replacement draw is not inclusion-proportional)",
+    "severity": "minor",
+    "file": "src_v2/trainlib.py",
+    "line": 334,
+    "claim": "The remainder is drawn without replacement with draw probabilities fr/sum(fr). The resulting inclusion probabilities are not fr, so the expected counts differ from w_c*B.",
+    "evidence": "trainlib.py:334 `n[gen.choice(len(x), size=r, replace=False, p=fr / fr.sum())] += 1`. A local 40k-batch simulation (B=16) gave: for mix .3/.2/.3/.2, expected counts 4.753/3.249 vs 4.8/3.2 (-1%/+1.5%). For a 9-class v2-like mix with two 0.05 classes, 0.706/0.711 vs 0.8 (-12%), while 0.15 classes were +2.4%. The unit test's 0.08 tolerance (t_train3 t_quota) hides this.",
+    "consequence": "With the larger v2 mixes, rare classes get about 10% less exposure than configured. This matters for the plan to hold the face-class share.",
+    "fix": "Use systematic (Madow) sampling of the remainder: u ~ U(0,1), give +1 to class i when the cumulative fr crosses u + j for an integer j. Inclusion probabilities are then exactly fr_i and the draw is still seeded.",
+    "verification": {
+     "id": "TRAINER-5",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "I reproduced the simulation locally on CPU with 40k batches, B=16. For .3/.2/.3/.2 the expected counts were 4.753/3.249/4.755/3.242 against 4.8/3.2. For a 9-class mix with two 0.05 classes they were 0.707/0.703 against 0.8 (-12%), while the 0.15 classes were +2%. With the arms' actual mix (quota=True) macro 0.1 came out -2.9%. The docstring describes the draw correctly, but the realised class shares differ from the mix. The effect is small for current mixes and larger for mixes with rare classes."
+    }
+   },
+   {
+    "id": "TRAINER-6",
+    "title": "Adversarial buffer is never refreshed without F; first-visit vectors are only approximately at unit exact energy",
+    "severity": "minor",
+    "file": "src_v2/train3.py",
+    "line": 509,
+    "claim": "On later visits, rescore() runs, but when the geometry has no F banks (bank_source 'slot', or data without --F-old for the classes used) advbuf[case] is left unchanged. The directions stay those from the first visit, possibly found with a very early model. When F exists, first-visit vectors, normalised through the fp32 Neumann factor, are ranked by e_hat against bank-Ritz vectors whose unit exact energy is exact.",
+    "evidence": "L509-525: only the `if fcl and A['R'] > 0:` branch reassigns advbuf[case]; otherwise it only logs buffer_top. Geo.adversarial L233 builds G = X^T Y on the assumption that S X = Y, which holds only as far as the fp32 Neumann solve does, so the exact energy of X is 1 + O(factor error). rescore L489 uses e_hat (= Rayleigh quotient only at unit exact energy).",
+    "consequence": "In slot-source runs longer than about one pass over the training set, the 'adv' mix share trains on stale directions. This differs from train2's fresh search per entry, and the train3 docstring only half says so. Buffer ranking is slightly inconsistent between the two vector origins.",
+    "fix": "Without F, either re-run the fp32 power iteration every N-th visit (warm-started from the buffer) or log ADV_STALE and treat the adv weight as a known difference. Store the exact-energy estimate of the first-visit vectors, or renormalise them, before ranking them against bank-Ritz vectors.",
+    "verification": {
+     "id": "TRAINER-6",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "In adv_entry, advbuf[case] is reassigned on a later visit only inside `if fcl and A['R'] > 0` (L513-523). Otherwise rescore is computed but used only for the buffer_top log. All four arms use bank_source='slot', which has no F, so their buffers are never refreshed. In practice the effect is small there: 15k steps with swap_every 100 gives about 150 entries over 148 training geometries, so there are almost no later visits. It grows in longer runs. The docstring says refresh needs F. First-visit X is S-normalised through G = X^T P Y, which assumes S X = P Y from the fp32 Neumann solve. So its exact energy is 1+O(factor error), and ranking it by e_hat against the exactly normalised bank-Ritz vectors is slightly inconsistent, as the finding says."
+    }
+   },
+   {
+    "id": "TRAINER-7",
+    "title": "Resume does not reproduce the uninterrupted run, and best.pt/EMA can be wrong after resume",
+    "severity": "minor",
+    "file": "src_v2/train3.py",
+    "line": 557,
+    "claim": "Resume reseeds gen/agen/ogen from the step instead of restoring their states, drops adversarial buffers, double-counts visits for the rebuilt pool, and restores `best` from ckpt.pt, which can be older than the latest best.pt. If the checkpoint has no 'ema', the EMA silently keeps the init weights rather than the resumed weights.",
+    "evidence": "L564-565 `gen = np.random.default_rng([seed, ck['step']])` etc. The ckpt dict at L740 holds no generator states and no advbuf. admit L545-546 increments visits n for pool members already counted in the restored visits. best comes from ckpt (L560), but best.pt is written at every eval (L736-738) between checkpoints, so after a resume a later eval with a score between the two values overwrites a better best.pt. The EMA is built at L447 before the resume load and only loaded `if ck.get('ema') is not None` (L561).",
+    "consequence": "A resumed arm differs from an uninterrupted one in data order, views and adversarial state, which confounds small arm differences. best.pt can silently end up worse than a previously saved best, and visit statistics are inflated.",
+    "fix": "Save gen/agen/ogen bit_generator.state and tgen.get_state() in ckpt.pt, plus optionally advbuf (host fp32, a few MB per geometry). On resume, set best = min(ck['best'], score stored in best.pt). If cfg ema > 0 and the checkpoint has no EMA, reset the EMA to the resumed weights and log it. Do not increment visits n during the pool rebuild.",
+    "verification": {
+     "id": "TRAINER-7",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "On resume, generators are reseeded from the step (L564-565) rather than restored, and ckpt (L740) has no RNG state and no advbuf. The pool rebuild (L567-571) calls admit, which increments visits n (L545-546) for members already counted in the restored visits. best comes from ckpt.pt. With the arms' ckpt_every=2000 and eval_every=5000, an eval such as 5000 can write best.pt before the next ckpt. A crash then replays from the older ckpt with its older best, and the replayed eval, now on a different trajectory, can overwrite best.pt. The EMA is loaded only if the ckpt has one (L561); otherwise it keeps the init weights. That needs an ema=0 run resumed with ema>0, which is an edge case. All of these are real but conditional on resumes."
+    }
+   },
+   {
+    "id": "TRAINER-8",
+    "title": "Non-reproducibility is not only cuDSS: CUDA atomics in the forward/backward, and ADV_FAIL shifts the batch RNG stream",
+    "severity": "minor",
+    "file": "src_v2/models.py",
+    "line": 643,
+    "claim": "The V2 doc attributes same-seed run-to-run differences to the cuDSS fp32 factor. The model itself uses float index_add_ on CUDA (scatter atomics), and torch.use_deterministic_algorithms is never enabled in the trainers, so training is not bitwise reproducible even with adv_on_load off. The gen stream also depends on whether each geometry has an adv buffer: an OOM-driven ADV_FAIL removes 'adv' from `names`, which changes how many draws each later batch consumes.",
+    "evidence": "models.py:579/583/597/643/648/654 index_add_. trainlib _Sens.backward L69 grad.index_add_. t_evalcost docstring: 'CUDA atomics are not bitwise reproducible'. trainlib.py:459/461 names and multinomial/quota depend on `adv is not None`. train3 L686 passes advbuf.get(s.case).",
+    "consequence": "Deterministic adversarial search alone would not make reruns reproducible, and a single OOM changes all later batches. Arm differences of 1-4% need several seeds, not only a same-config rerun.",
+    "fix": "State the full set of non-determinism sources in the doc. Keep the batch-sampling RNG independent of adv state (a separate generator for adv column indices, with a fixed number of draws per step). Use ≥2 seeds per arm for decisions.",
+    "verification": {
+     "id": "TRAINER-8",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "With sparse=true, the fine hyperedge layers go through sparse_layers. But geometry() (models.py:579, 583, 597-598), _restrict (648-649) and _prolong (654-655) always use float index_add_ on CUDA, which uses atomics and is non-deterministic. So do the backward passes of the gathers and _Sens.backward. No trainer enables torch.use_deterministic_algorithms. t_evalcost's own docstring says CUDA atomics are not bitwise reproducible, while the V2 doc (section 1, note) names only cuDSS. An ADV_FAIL leaves advbuf without the case, so `names` in sample() drops 'adv'. That changes the multinomial/quota categories and the number of gen draws, shifting every later batch."
+    }
+   },
+   {
+    "id": "TRAINER-9",
+    "title": "Default val_max=8 truncates the family-ordered val list to 1-2 of the 4 val families",
+    "severity": "minor",
+    "file": "src_v2/train3.py",
+    "line": 423,
+    "claim": "make_split writes val as the concatenation of whole families. `split['val'][:val_max]` with the default 8 therefore covers only the first family or two, and score() then averages only over the families present, even though the docstring describes a 4-family decision rule.",
+    "evidence": "train3.py:423 `val_cases = split['val'][:cfg.get('val_max', 8)]`. make_split.py `val=[g for f in val_f for g in sorted(fam[f])]`. score() L356 `fs = [f for f in (val_families or sorted(fam_agg)) if f in fam_agg]`. eval_views used 20 val geometries.",
+    "consequence": "Any run that relies on the default selects on a subset of families, and mu_cases shrinks the same way. The arm configs could not be checked here.",
+    "fix": "Default val_max to all of val. Log or raise when fewer than all split['val_families'] enter the score.",
+    "verification": {
+     "id": "TRAINER-9",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "The default really is val_max=8 (L423), and make_split orders val by whole families, so the default truncates to the first families. score() silently uses only the families present (L356). The finding's consequence is limited to runs that rely on the default, though. All four v2 arms (g_cfg.sh) and s2_full set val_max=20, which matches the 20 val geometries eval_views used, so the arms' selection is not affected. This is a latent footgun in the default only."
+    }
+   },
+   {
+    "id": "TRAINER-10",
+    "title": "The tail term (C3) turns off silently for every batch containing a class without F",
+    "severity": "minor",
+    "file": "src_v2/trainlib.py",
+    "line": 479,
+    "claim": "F is returned only when every non-adv column has reactions. Otherwise batch_loss skips the tail term with no log other than the missing 'tail' key in STEP lines, which are written only every log_every steps.",
+    "evidence": "trainlib.py:479 `if want_F and all(f is not None for f in fc)`. train3.py:222 `if tw > 0 and F is not None`. F for the old classes exists only after prep_geo2 --F-old.",
+    "consequence": "A tail_w>0 arm on a data dir without --F-old reactions is effectively the control for most batches, and the comparison would wrongly conclude that C3 has no effect.",
+    "fix": "When tail_w > 0, raise at load if any mix class lacks F (or log it per geometry), and count tail-active steps in the STEP/EVAL records.",
+    "verification": {
+     "id": "TRAINER-10",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "trainlib.py:479 returns F only if every non-adv column has F, and batch_loss (L222) skips the tail term when F is None. The only signal is a missing 'tail' key in STEP lines every log_every steps, with no per-geometry log or count. The docstring (L22) states the condition. No current arm uses tail_w (default 0), so this is latent: it matters for a future C3 arm on data without --F-old."
+    }
+   },
+   {
+    "id": "TRAINER-11",
+    "title": "With oh=true the unused base-geometry model cache stays on the device; pool_dofs does not account for it",
+    "severity": "minor",
+    "file": "src_v2/train3.py",
+    "line": 205,
+    "claim": "Pool members train only on the view (tgeo), but Slot keeps and moves both the base cache and the view cache to the device. Model cache memory per pool member roughly doubles, and the DOF cap ignores this.",
+    "evidence": "Slot.__init__ L160-161 model.add_geo(g) (base cache). set_view L172-173 adds the view cache. Slot.to L205-210 re-registers and moves both. Training uses `geo = s.tgeo` (L685) and adv_entry uses s_.tgeo. pool_dofs admission (L542) counts only DOFs.",
+    "consequence": "Extra device memory per pool member (size not measured here), which raises OOM/ADV_FAIL risk for large geometries in O_h runs. ADV_FAIL in turn changes the RNG stream (TRAINER-8).",
+    "fix": "While a view is set, keep the base cache on the host (move it to the device only for evaluation), or rebuild it lazily.",
+    "verification": {
+     "id": "TRAINER-11",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "Slot.__init__ registers the base cache (L160-161), set_view adds the view cache (L172-173), and Slot.to/_move move and register both (L178-183, L205-210). Training forwards only s.tgeo (the view). The base cache is used only if a pool member is also a probe during eval, and pool members are moved to the host during eval anyway. So an unused MGCache stays on the device, and admission counts DOFs only. The 'roughly doubles' figure is overstated. Sparse patterns are built lazily in _pat only on forward, so the base cache usually lacks them and is smaller than the view cache. The size is unmeasured."
+    }
+   },
+   {
+    "id": "TRAINER-12",
+    "title": "train1 has no bank cleaning or non-finite guard, and a NaN score freezes best.pt (also possible in train3)",
+    "severity": "minor",
+    "file": "src_v2/train1.py",
+    "line": 101,
+    "claim": "train1 samples from uncleaned Geo banks and calls opt.step without an isfinite check, so a NaN bank column poisons the weights. A NaN first score sets best=NaN, and `score < best` is then always False, so best.pt is never updated again. train3 has the same `best is None or sc < best` pattern (L736) when the first score is NaN.",
+    "evidence": "train1.py:65-81 (no isfinite on loss/gn before opt.step); L101 `score = max(v[c]['mean'] ...)` with NaN means; L104 `if best is None or score < best`. train2.clean_banks exists but train1 never calls it. The old support banks are ~89% NaN on 5 geometries.",
+    "consequence": "A train1 fine-tune on one of those geometries, with support in the mix and data without --fix-support, silently diverges or keeps a stale best.pt.",
+    "fix": "Call a cleaning step (HostBanks.clean semantics) in train1, skip non-finite steps as train3 does, and treat a NaN score as +inf in both trainers.",
+    "verification": {
+     "id": "TRAINER-12",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "train1 builds TL.Geo, which loads the raw data-dir banks and never cleans them. sample_with_sens picks columns uniformly, and the loop calls opt.step after clip_grad_norm_ with no isfinite check. A NaN column gives NaN grads, clip scales them by NaN, and Adam then writes NaN weights. The score is Python max over the class means. It is NaN if the first mean is NaN, and then `score < best` stays False forever, so best.pt is never updated again. The train3 part is much weaker. score() uses _nanmean, which drops non-finite values at every level, so sc is NaN only if every family total is non-finite. train3 also skips non-finite losses and grads. The defect is real mainly for train1 on the NaN-support geometries, run on data without --fix-support."
+    }
+   }
+  ]
+ },
+ {
+  "dim": "gate",
+  "title": "Gate, evaluation and decision integrity",
+  "checked_ok": [
+   "The traction-consistent gate loads are the 6 per config (test and neighbour face on the load plane, x/y/z) with gate=True. The cut-surface traction loads carry gate=False and enter only cut_*_max. evalnet labels 'uniform' rows role='stress'. This matches the standing rule (consistent loads = gate, uniform nodal = stress, both configs x and y, neighbour cell included unless LAT_SKIP_NBR_SENS).",
+   "Q2 face-traction weights: at xi=0 or 1 the Lagrange basis reduces to [1,0,0] / [0,0,1], so only face nodes receive load. port_node_ids = nodes[onport] keeps NODES order, so `wv[np.isin(C.nodes, C.port_node_ids)]` lines up with idx rows. The neighbour's local load plane value is 0 in both configs.",
+   "Lattice assembly and reference: gluing by absolute node position, private cut-band DOFs, clamping of the far face, and a dense fp64 Cholesky of the exact port operators. PCG with the exact lattice factor as preconditioner gives spectrum >= 1 for an upper-bound operator. Compliance = F^T X, relative error vs reference.",
+   "lat_full cell_metrics: eps_c = q^T S_hat q / q^T S q - 1 at the exact lattice port data, w_c = E_c / C, and the bound (C - C_hat)/C <= sum w eps follows from K_hat >= K at V = U. The additivity ratio is computed as described.",
+   "eval_views: identity is g.field and rotated is oh.view with the field returned in the original frame, energies with the original K at unit exact energy. 'mean' is the per-view mean over geometries of class means, and 'mean_over_rotated' averages the non-identity views. Views 5, 17, 29, 38 are proper rotations and 46 is improper. val_max=20 covers all 20 val geometries (4 families).",
+   "compare_arms per-family ratios, the pooled geometric mean over classes and worst_class_mean_ratio are computed as the docstring describes (apart from the issues listed in the findings). The EMA/raw selection key is read correctly from the EVAL record.",
+   "train3 score(): families are weighted equally, classes absent from a family are skipped, and the sensitivity term is added only when finite. Stratified probes are seeded, cover the strata round-robin and terminate. EMA.applied restores the raw weights. best.pt stores the selected (EMA) weights, and those are what evalnet/lat_full load.",
+   "The trainlib Geo.evaluate / eval_geo energy excess e_hat - 1 at unit exact energy, the per-sample relative sensitivity error, and s_hat_apply = 0.5·grad(u^T K u) = E_hat^T K E_hat q.",
+   "diag_error: Galerkin check err^T K err = e_hat - e (the exact field is K-harmonic in the interior). The ghost share is K minus the body moments part, and assemble() confirms K = GP base + moment element terms.",
+   "bench_deploy: the exact and learned per-cell S q timings both use warm=1, reps=3, with synchronisation. The Jacobi preconditioner (diag of the assembled K_PP) is the same for both operators. The exact route includes the fp64 refinement. The lattice neighbour is the family FULL parent (regex)."
+  ],
+  "items": [
+   {
+    "id": "GATE-1",
+    "title": "The arm decision rule ignores sensitivity, the gate's binding metric",
+    "severity": "major",
+    "file": "compare_arms.py",
+    "line": 68,
+    "claim": "compare_arms' 'better' flag depends only on energy-class means: pooled family wins on the family class-mean energy ratio, plus the worst class val_mean energy ratio <= 1.10. Sensitivity ratios (sens_ratio), p90, per-geometry max, mu and cert are computed for the report but never enter the decision.",
+    "evidence": "compare_arms.py:49-51 `ratios = [af[fam][c]['mean'] / bf[fam][c]['mean'] ...]; pooled_wins += int(np.exp(np.mean(np.log(ratios))) < 1)`; line 68 `r['better'] = bool(pooled_wins >= 3 and r['worst_class_mean_ratio'] <= 1.10)`. sens_ratio (line 56) is computed but not used. In every r2 pilot gate row the binding metric is sensitivity, not compliance (p_ctrl 1.24/2.09, p_A y 0.77/2.97, V2 doc section 8). The one arm that failed the gate (p_sl1: sensitivity 2.1% -> 3.8%) failed only on sensitivity. ARCH_REVIEW stage-4 criteria also list per-geometry max/p90, mu and cert flags, and none of them is enforced.",
+    "consequence": "An arm can be declared 'better' while it makes the gate metric worse. The flag is biased exactly along the axis where the new-data arms regressed (gate y load-6 sensitivity 2.06% -> 3.0%).",
+    "fix": "Make 'better' require a sens_ratio no worse than a tolerance (per family, same >= 3/4 rule), plus no regression in geo_max_ratio_median and the mu of the fixed geometries. Better still, add the lattice-gate metrics (lat_full on held-out families) as a hard veto.",
+    "verification": {
+     "id": "GATE-1",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "The code matches the claim. compare_arms.py:68 sets 'better' only from pooled_wins, which comes from class-mean energy ratios (lines 49-51), and from worst_class_mean_ratio. sens_ratio, p90, geo_max_ratio_median, mu and cert are computed but never used in the flag. I downgraded it for three reasons. (1) compare_arms only covers the step-2 'c_' arms (line 34). The r2 pilot arms (p_*) that the evidence cites were judged directly on the evalnet gate (chain3.sh), not by this rule, so the p_sl1 and p_A/p_B examples are not cases of compare_arms mis-deciding. (2) The stage-4 criteria in ARCH_REVIEW (line ~332) are '3 of 4 families' plus 'look at' max/p90/mu/cert, which reads as human review of reported numbers, and they do not list sensitivity. (3) train3's own selection score does include the sensitivity term. Still a real gap: validation sensitivity is measured and then ignored by the flag."
+    }
+   },
+   {
+    "id": "GATE-2",
+    "title": "The '>= 3 of 4 families' rule is a coin-flip test with a 31% false-positive rate, and replicates reuse the same seed",
+    "severity": "major",
+    "file": "compare_arms.py",
+    "line": 51,
+    "claim": "A family 'win' is any ratio below 1 with no margin or noise model. If an arm has no effect and the four family signs are independent and symmetric, P(>= 3 wins of 4) = 5/16 ≈ 31%, and the <= 1.10 class clause almost never binds under noise. The review's safeguard ('胜出者用 2 个种子确认') is not implemented. The replicate runs c_ctrl2 / p_ctrl2 copy the control config with the SAME seed (g_q.sh: c['out'] changed only, 'seeds' printed), so they measure cuDSS nondeterminism only, not seed-to-seed variance.",
+    "evidence": "compare_arms.py:51 `int(... < 1)` (no margin). The V2 doc itself says the same-seed single-step loss varies 2-8% between reruns (t_evalcost) while the arm differences are 1-4%. Every arm (c_*, p_*) is a single seed (seed=0 or seed=1). g_q.sh builds c_ctrl2/p_ctrl2 from c_ctrl.json/p_ctrl.json with only 'out' changed.",
+    "consequence": "A neutral arm has roughly a 1-in-3 chance of being called 'better'. With about 10 arms planned, false winners are expected. The noise floor estimated from same-seed reruns underestimates the true variance, so 1-4% differences (B1/B2 'neutral', the new-data regressions) are not statistically established either way.",
+    "fix": "Run at least 2 seeds per arm and per control (different 'seed' values, not just a rerun). Require each family win to exceed the control's seed-to-seed spread (or use a paired sign test over geometries within families with a stated alpha). Report 'undecided' when the margin is inside the noise.",
+    "verification": {
+     "id": "GATE-2",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "compare_arms.py:51 counts a family win as any geometric-mean ratio below 1, with no margin. Under a null of 4 independent, symmetric signs, P(>=3 of 4) = 5/16. g_q.sh builds c_ctrl2 and p_ctrl2 by changing only 'out', so they reuse seed=0 (g_cfg.sh) and seed=1 (g_chain3.sh). They therefore measure only cuDSS/adversarial nondeterminism, not seed-to-seed variance. Every arm config has exactly one seed. The review's own safeguard ('胜出的臂用 2 个种子确认', ARCH_REVIEW stages 3/4 and the statistics note) is not implemented anywhere. The V2 doc itself says 1-4% arm differences need reruns before any conclusion."
+    }
+   },
+   {
+    "id": "GATE-3",
+    "title": "Gate pass/fail is decided at the threshold edge, inside the run-to-run noise",
+    "severity": "major",
+    "file": "lattice3.py",
+    "line": 282,
+    "claim": "gate_pass is a hard `<= 0.03` comparison with no margin and no replicate. The r2 pilot declares p_A (y sensitivity 2.97%) and p_B (3.00%) as passing the gate. Both are single-seed, and both are within 0.03 percentage points of the threshold.",
+    "evidence": "lattice3.py:282 `out['gate_pass'] = bool(ce[g].max() <= 0.03 and np.nanmax(vec[:, g]) <= 0.03)`. V2 doc section 8: p_A '0.77 / 2.97 ✅', p_B '0.91 / 3.00 ✅'. For this same load the control moves 2.06 -> ~3.0 with a data change, and the trainer is not bitwise reproducible.",
+    "consequence": "The ✅ on p_A/p_B, and any v2 claim built on 'the new data keeps the gate', is not reproducible. A rerun can flip it, so recommending a full data re-prep with classes A and B rests on a coin-flip gate outcome.",
+    "fix": "Report the gate with a margin (e.g. pass only if <= 2.7%, 'marginal' between 2.7% and 3.0%). Rerun marginal arms with 2 seeds and gate each checkpoint. Record the gate verdict as a distribution, not as a boolean.",
+    "verification": {
+     "id": "GATE-3",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "lattice3.py:282 is a hard <= 0.03 test with no margin and no replicate, and the section-8 table marks p_A (2.97%) and p_B (3.00%) as passing. Both come from single-seed, non-bitwise-reproducible runs. I downgraded it because the doc does not rest its recommendation on those checkmarks. It explicitly flags the y load-6 rise 2.06% -> ~3.0% as a same-direction regression and asks to watch it in the gate. The full re-prep recommendation is justified by the compliance and new-class gains. The hard threshold is also the gate as defined. The real defect is reporting a knife-edge single-seed verdict with no uncertainty."
+    }
+   },
+   {
+    "id": "GATE-4",
+    "title": "EMA starts at the warm-start weights, so early 'best' checkpoints are partly v1",
+    "severity": "major",
+    "file": "train3.py",
+    "line": 248,
+    "claim": "The EMA shadow starts at the initial weights (the v1 snap_60000 for the continuation arms) and has decay 0.9997, while evaluations happen every 5000 steps. At step 5000 the selected EMA weights still hold 0.9997^5000 = e^-1.5 ≈ 22% of the untouched v1 weights (≈ 5% at 10k, ≈ 1% at 15k). Selection over {5k, 10k, 15k} is therefore systematically biased toward the warm start, which was trained identity-only.",
+    "evidence": "train3.py:248 `self.p = [p.detach().clone() for p in model.parameters()]` (initialised at init). g_cfg.sh: `ema=0.9997, eval_every=5000, steps=15000, init=.../snap_60000.pt`. train3.py:731/736: best.pt = EMA state at the lowest identity score. Observed: c_oh best.pt = 5k (identity 4.9% vs 5.1% at 15k; rotated 11.8% vs 6.8%), which is what a 22% v1 admixture produces.",
+    "consequence": "best.pt of any continuation arm, which is also the checkpoint used by eval_views, evalnet and lat_full, can be a blend with the pre-arm model. This dilutes the arm effects that the views and the gate then measure. Switching to a multi-view score alone will not remove this bias.",
+    "fix": "Use a bias-corrected EMA (divide by 1 - d^t, as Adam does, or start the EMA at the first post-warmup step), or exclude evaluations with d^t > 1% from best.pt selection. Evaluate more often than every 5k steps so that the selection has more than 3 candidates.",
+    "verification": {
+     "id": "GATE-4",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "The EMA is built at train3.py:447, after the init checkpoint is loaded at lines 434-441, and EMA.__init__ copies the current parameters with no bias correction (line 248). With ema=0.9997 and eval_every=5000 (g_cfg.sh), the step-5k EMA holds 0.9997^5000 = e^-1.5 ≈ 22% of the snap_60000 weights, about 5% at 10k and about 1% at 15k. best.pt is the EMA state with the lowest identity score (lines 731-738), chosen from only 3 candidates. For c_oh this favours the identity-trained warm start, and it matches the observed choice of the 5k checkpoint over 15k. The effect is real and it biases selection toward the pre-arm model."
+    }
+   },
+   {
+    "id": "GATE-5",
+    "title": "The selection score is identity-view, mean-based and, in step 1, energy-only, so it does not match what the gate measures",
+    "severity": "major",
+    "file": "train3.py",
+    "line": 624,
+    "claim": "train3 validates only the identity view (`g = s_.geo  # identity view`) and scores the mean energy excess + mean sensitivity + 0.5·p90, averaged over families. train1 (used for the r2 pilot arms) selects best.pt on the worst-class mean ENERGY only, with no sensitivity term. The gate is a max over 12 traction-consistent loads of compliance AND per-cell 8-corner sensitivity. In the pilot, the classes closest to the gate (force_c, glued) were excluded from selection ('5 个基础类选模').",
+    "evidence": "train3.py:624 (identity only); train3.py:349-364 score(); train1.py:101 `score = max(v[c]['mean'] for v in ev.values() for c in v if sc is None or c in sc)`, train1.py:104 best on it. g_chain3.sh gates `$O/$a/best.pt`. Documented case: c_oh best = 5k, 2x worse on rotations than 15k.",
+    "consequence": "The checkpoint that is gated and deployed can be worse on the gate (sensitivity) and on rotated geometries than other snapshots of the same run. The arm-to-arm gate differences (2.06 vs 2.97/3.00) partly reflect which of 5 snapshots an energy-only criterion picked, not the arm itself.",
+    "fix": "For v2: a multi-view score (identity + fixed O_h views) that includes sensitivity (mean and p90) and the force_c/glued classes. For step-1-style arms, add the sensitivity term to train1's score, or gate every snapshot (snap_*.pt) and report both the gate of best.pt and the best gate over snapshots.",
+    "verification": {
+     "id": "GATE-5",
+     "verdict": "confirmed",
+     "severity": "major",
+     "reasoning": "train3.py:624 validates only the identity view (g = s_.geo). score() (lines 349-364) is mean energy + mean sensitivity + 0.5·p90 over families, with no view and no max. train1.py:101 selects on the max over geometries/classes of the class-mean energy, with no sensitivity term, and the pilot restricted score_classes to the 5 base classes (doc section 8). The gate is a max over loads of compliance and per-cell 8-corner sensitivity. The mismatch is real, the c_oh 5k selection shows it matters, and chain3 gates only best.pt (train1 keeps no snapshots, so other checkpoints could not be gated after the fact anyway)."
+    }
+   },
+   {
+    "id": "GATE-6",
+    "title": "Non-finite validation results are silently dropped from the selection score, which rewards divergence",
+    "severity": "major",
+    "file": "train3.py",
+    "line": 342,
+    "claim": "families() aggregates per-geometry class means with _nanmean, which discards NaN/inf. A geometry on which the network diverges (e_hat inf/NaN) is removed from its family's mean instead of penalising it, so the score can go down. If a whole family becomes non-finite, score() drops that family too (line 364). If the very first score is NaN, `sc < best` is always False and best.pt is never updated again.",
+    "evidence": "train3.py:327-330 `v = [x for x in v if x is not None and np.isfinite(x)]`; train3.py:342 `mean=_nanmean([r['mean'] for r in rs])`; train3.py:364 `return _nanmean([p['total'] for p in parts.values()])`; train3.py:736 `if best is None or sc < best`. eval_geo returns NaN/inf means whenever any sample's field is non-finite (bank samples are cleaned beforehand, so this can only come from the network). The trainer has NONFINITE_LOSS/NONFINITE_GRAD guards, so non-finite outputs are a known path.",
+    "consequence": "A checkpoint that blows up on the hardest validation geometry can become best.pt, and then be gated and deployed. compare_arms' family tables inherit the same silent exclusion.",
+    "fix": "Treat a non-finite per-geometry metric as +inf (or a large penalty) in families()/score(), log a VAL_NONFINITE event, and never select a checkpoint with any non-finite validation entry. Initialise best only from finite scores.",
+    "verification": {
+     "id": "GATE-6",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "_nanmean (train3.py:327-330) drops None/NaN/inf. families() uses it for the per-family class means (line 342), so a geometry whose mean is inf or NaN silently leaves its family mean. score() drops a non-finite family total (line 364). If the first score is NaN, then best=NaN and 'sc < best' is never true, so best.pt freezes at that checkpoint (line 736). eval_geo takes plain e.mean(), so one non-finite sample makes the geometry mean non-finite. I downgraded it to minor because it is a latent path: no validation divergence has been observed, and training-side non-finite guards exist. The logic flaw itself is real."
+    }
+   },
+   {
+    "id": "GATE-7",
+    "title": "evalnet always uses 0020 FULL as the neighbour, whatever the test cell's family",
+    "severity": "major",
+    "file": "evalnet.py",
+    "line": 16,
+    "claim": "The standing gate glues the cut test cell to ITS family FULL parent. evalnet hard-codes `FULL = 'fresh_train_0020_full'` for every case. LT.build glues by absolute node position and raises nothing when interface nodes do not match, so a test cell from another family is silently glued to a geometrically unrelated neighbour. evalnet also loads weights with strict=False and discards `missing`.",
+    "evidence": "evalnet.py:16 `FULL = 'fresh_train_0020_full'`; evalnet.py:65 `lat = LT.build(case, FULL, conf, cfg['body'])`; lattice3.py:193-201 (keys by absolute position; unmatched nodes simply become separate DOFs); evalnet.py:55 `missing = model.load_state_dict(ck['model'], strict=False)`, never checked. By contrast, lat_full --custom and bench_deploy use family_full / the regex.",
+    "consequence": "Any evalnet gate on a non-0020 cell (the v2 plan gates held-out families 'each with its own FULL parent') measures a different lattice, with partially free interfaces, and reports gate_pass with no warning. A checkpoint with renamed keys would be gated with random layers.",
+    "fix": "Use DC.family_full(case) (or require an explicit --nbr) in evalnet. Assert that the fraction of test-cell interface port DOFs matched to neighbour DOFs is about 1. Use MD.load_compat (strict) or fail on non-empty missing_keys.",
+    "verification": {
+     "id": "GATE-7",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "evalnet.py:16 hard-codes FULL='fresh_train_0020_full'. LT.build glues by absolute grid position with no matched-fraction check (lattice3.py:102-113), and load_state_dict(strict=False) discards the missing keys (line 55). However, every evalnet call in the scripts uses the checkpoint's default cases, and those are all step-1 0020-family cells (r1/r2/full), so no existing result is affected. A train3 checkpoint's cfg has no 'cases' key, so evalnet on a step-2 checkpoint fails loudly unless cases are passed explicitly. The held-out-family plan uses lat_full --custom, which falls back to DC.family_full. This is a latent footgun, not a current error, so I downgraded it to minor."
+    }
+   },
+   {
+    "id": "GATE-8",
+    "title": "The deployment benchmark times the learned route with TF32 convolutions, the lossy precision that was rejected",
+    "severity": "major",
+    "file": "bench_deploy.py",
+    "line": 135,
+    "claim": "bench_deploy never disables cuDNN TF32, and neither it nor evalnet, lat_full or eval_views honours the checkpoint's cfg 'conv_fp32'. The chain3 invocation sets no OPL_CONV_FP32. All learned timings, energy ratios and the learned-lattice CG therefore run with TF32 conv3d, which the standing rules rejected as an acceleration. In that mode the written-out adjoint also gives a non-symmetric S_hat (up to 1.4e-3 asymmetry), which CG assumes away.",
+    "evidence": "models.py: set_conv_fp32 only via env OPL_CONV_FP32=1 or trainer cfg (train1/train3 main); bench_deploy.py has no such call. g_fix3d.sh runs `bench_deploy.py $O/c_ctrl/best.pt ...` without the env. The V2 doc's learned Ŝq B=16 on FULL 0007 is 199 ms, which is exactly the TF32 number in the TF32 table (199 -> 213 ms fp32; r1: 38 -> 52 ms, +37%).",
+    "consequence": "Learned-route speed is overstated by about 7% (FULL) to 37% (cut cells) relative to the admissible fp32 path. The learned lattice CG rows (Jacobi 2524 iterations vs exact 2149) mix operator quality with asymmetry effects. Deployment conclusions ('单方向 Ŝq 快 5×') are measured under a rejected precision mode.",
+    "fix": "Have bench_deploy, evalnet, lat_full and eval_views call MD.set_conv_fp32(ck['cfg'].get('conv_fp32', True for deployment)), and record torch.backends.cudnn.allow_tf32 in every output JSON. Re-time the learned route in fp32 before quoting deployment numbers.",
+    "verification": {
+     "id": "GATE-8",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "bench_deploy (and evalnet, lat_full, eval_views) never call MD.set_conv_fp32, and no script sets OPL_CONV_FP32. So all learned timings run with cuDNN TF32 conv3d, and the quoted 199 ms Ŝq B=16 on FULL 0007 is the TF32 number. I downgraded it because: (a) no current config sets conv_fp32, so honouring the cfg would change nothing today; (b) TF32 was the untouched historical default that the models were trained and evaluated under, not an acceleration someone chose; (c) the doc's section 4 already lists the fp32 timings (199 -> 213 ms, 38 -> 52 ms) and the asymmetry. The residual defect is that the deployment table quotes TF32 numbers and the benchmark does not record the precision mode."
+    }
+   },
+   {
+    "id": "GATE-9",
+    "title": "compare_arms mixes checkpoints: the rule uses the last EVAL, the views and the gate use best.pt",
+    "severity": "major",
+    "file": "compare_arms.py",
+    "line": 14,
+    "claim": "last_eval() takes the LAST EVAL of train.log (15k) for the decision, while the rotated-view metrics merged into the same record come from views_<arm>.json, which chain3 computes on best.pt. The steps of the two are never checked against each other, or against the control's step. The checkpoint that is gated and deployed (best.pt) is not the one the rule judged.",
+    "evidence": "compare_arms.py:14-22 `ev[-1]`. g_fix3b.sh: `c_oh:$O/c_oh/best.pt ... run views_$n $PY -u eval_views.py $ck`. compare_arms.py:69-73 merges views_* into r['views'] next to 'better'. For c_oh, best.pt = 5k while last EVAL = 15k (V2 doc table). No assertion that e['step'] == base['step'].",
+    "consequence": "For c_oh, the compare record pairs the 15k identity rule result with 5k rotated metrics, so the conclusions drawn from one record come from two different models. An arm can be 'better' at its last step while its shipped best.pt is a different, earlier snapshot.",
+    "fix": "Take the EVAL whose step equals the best.pt step (or evaluate both explicitly and label them). Store the checkpoint step inside views_*.json and assert that it matches. Assert equal steps between arm and control.",
+    "verification": {
+     "id": "GATE-9",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "compare_arms.last_eval takes ev[-1] (lines 14-22). The views_* files come from eval_views run on best.pt (g_fix3b.sh). Neither file records or checks the step, and there is no assertion that the arm and control steps are equal. For c_oh, the record pairs the 15k identity rule result with 5k rotated metrics. I downgraded it because the V2 doc lists c_oh best (5k) and last (15k) as separate rows, so the reported conclusions did not actually conflate them. It is still a real tooling inconsistency between the checkpoint the rule judged and the one that is shipped."
+    }
+   },
+   {
+    "id": "GATE-10",
+    "title": "O_h is adopted against the coded rule, on a metric the gate never measures",
+    "severity": "major",
+    "file": "compare_arms.py",
+    "line": 68,
+    "claim": "Under the implemented rule, c_oh is 0/4 families with identity class ratios of about 1.25-1.40 (> 1.10), i.e. 'not better'. It is adopted for v2 on the rotated-view metric, which is not part of the rule or the gate. The gate (lattice3/evalnet/lat_full) only evaluates the cell in its own frame, and there on held-out identity-frame geometries the O_h model is about 30% worse.",
+    "evidence": "V2 doc section 1: c_oh identity 4.9-5.1 / 5.8-5.9 / 3.4-3.8 vs control 3.9 / 4.6 / 2.7; '0/4 族'. compare_arms.py:68 threshold 1.10. There is no rotated-frame gate anywhere (LT.build has no view argument).",
+    "consequence": "The v2 decision swaps the pre-registered criterion for a new one after seeing the data, and the new metric has no gate-level validation. If deployment cells are in-distribution orientations, v2 is expected to lose about 30% in identity energy error, which feeds straight into the gate compliance (≈ w·eps).",
+    "fix": "Pre-register the multi-view criterion (weights for identity vs views) before the v2 run. Validate on the gate: lat_full on held-out families in the identity frame AND in rotated frames (rotate the whole two-cell lattice). Adopt O_h only if the identity-frame gate does not regress beyond noise.",
+    "verification": {
+     "id": "GATE-10",
+     "verdict": "refuted",
+     "severity": "minor",
+     "reasoning": "O_h was never meant to be judged by the identity-view family rule. ARCH_REVIEW B6 introduces it because the user's standing scope says other orientations are covered by rotation augmentation ('你定的范围是\"其他朝向靠旋转增广\"'). It asks for the user's consent and pre-registers its own target: rotated error <= 1.2x unrotated, with the note that the identity-view gain is uncertain. So adopting it on the rotated metric is not a post-hoc swap of criteria. The identity cost (+30%) is stated openly, and v2 is marked provisional. The remaining valid point is that no gate-level (lattice) check covers either the identity regression or the rotated frames. Stage 5 plans a held-out-family lattice gate, which will measure the identity-frame effect."
+    }
+   },
+   {
+    "id": "GATE-11",
+    "title": "Per-cell relative sensitivity error is ill-conditioned for cells carrying almost no energy; there is no floor in the code",
+    "severity": "minor",
+    "file": "lattice3.py",
+    "line": 268,
+    "claim": "The per-cell 8-corner relative error divides by that cell's own sensitivity norm. For cells whose energy share w is about 0, the error is driven by the other cell's error transmitted through the interface, not by the cell itself. lat_full's gate_pass for the 'nbr'/'both' sets applies no energy-share floor, and the '≥1% share' number in the doc was computed outside the code.",
+    "evidence": "lattice3.py:268 `vec = np.linalg.norm(s1 - s0, axis=1) / np.linalg.norm(s0, axis=1)`; lat_full.py:47 passes cmp_['gate_pass'] through unchanged. V2 doc section 7: r1+FULL y 'both' 43.8% vs 10.8% with a ≥1% floor; A7 161% at w=0.000. evalnet only records the test-cell share (lattice3.py:285).",
+    "consequence": "The fully-learned (deployment) gate verdict and max can be dominated by a denominator artefact. Numbers with a floor are not reproducible from the tool output.",
+    "fix": "Keep the standing gate as it is, but have lattice3.compare also emit sens errors normalised by max(|s_c|, floor·|s_lattice|), or masked by the energy share w_c ≥ 1%, together with w for every cell and load, so that the proposed floor metric is computed in code.",
+    "verification": {
+     "id": "GATE-11",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "lattice3.py:268 divides each cell's 8-corner error by that cell's own sensitivity norm, with no floor. gate_pass and the max are therefore dominated by near-zero-share cells (the 161% and 43.8% cases). That is the standing gate definition, which the finding proposes to keep. Its claim that floor numbers are not reproducible from tool output is wrong for lat_full: summarize() stores w (cells x loads) and sens_vec_rel_err (cells x loads), so the ≥1% floor metric can be derived from the JSON. For evalnet, the neighbour's share is 1 minus the test cell's share. The only real gap is that the floored metric is not computed in code."
+    }
+   },
+   {
+    "id": "GATE-12",
+    "title": "gate_pass ignores whether CG converged; the learned S_hat is not exactly symmetric",
+    "severity": "minor",
+    "file": "lattice3.py",
+    "line": 258,
+    "claim": "Lattice.evaluate stops at maxit (300 by default, 400 from the callers) without failing, and it tests the recursive residual only. gate_pass never checks pcg_residual. With a non-symmetric learned operator (the autograd or written-out adjoint under TF32) CG has no convergence guarantee. The C_hat ≤ C bound checked in lat_full is also only approximate.",
+    "evidence": "lattice3.py:241-258 (loop, `res['pcg_residual'] = ...` recorded only); lattice3.py:282 gate_pass has no residual term. In practice the ideal preconditioner converged in 13 iterations (bench), so no current result is known to be affected.",
+    "consequence": "A poorly converged solve (a bad checkpoint with large mu, or a stronger asymmetry) would still be scored and could be reported as pass or fail without a flag.",
+    "fix": "Set gate_pass = None (invalid) when pcg_residual > 1e-8 or when it = maxit. Optionally compute the true residual F - A X once at the end, and symmetrise the learned apply (0.5·(S_hat + S_hat^T) via one extra adjoint) inside the evaluator only.",
+    "verification": {
+     "id": "GATE-12",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "Lattice.evaluate (lattice3.py:241-260) exits at maxit without an error and only records pcg_residual, which is the recursively updated residual. compare() (line 282) sets gate_pass without looking at the residual or the iteration count. With the ideal preconditioner, convergence takes about 13 iterations, so no current result is known to be affected. The missing validity flag is real."
+    }
+   },
+   {
+    "id": "GATE-13",
+    "title": "LAT_SKIP_NBR_SENS silently removes the neighbour from gate_pass",
+    "severity": "minor",
+    "file": "lattice3.py",
+    "line": 229,
+    "claim": "With LAT_SKIP_NBR_SENS set, the neighbour's sensitivities become NaN, and np.nanmax in compare() then computes gate_sens_max and gate_pass over the test cell only. The output still says 'gate_pass' with no flag, which contradicts the 'neighbour included' rule. Several historical gate runs used it (qcons.sh, q3r2b.sh, qre2.sh: LATTICE_cons.json / LATTICE_testsens.json).",
+    "evidence": "lattice3.py:229-231; lattice3.py:280-282 `np.nanmax(vec[:, g])`. Only `sens_cells_measured` (line 281) reveals it.",
+    "consequence": "Gate verdicts from those files are not the standing gate. Mixing them with the full gate files (LATTICE_cons_full.json) in comparisons can overstate passes.",
+    "fix": "Set gate_pass = None (or 'partial') when sens_cells_measured < number of cells, and put the env setting into the output record.",
+    "verification": {
+     "id": "GATE-13",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "With LAT_SKIP_NBR_SENS set, _measure_ fills the neighbour's sensitivities with NaN (lattice3.py:229-231). np.nanmax(vec[:, g]) then computes gate_sens_max and gate_pass over the test cell only (lines 280-282). Only sens_cells_measured reveals this, and the env setting is not recorded. The scripts use it for LATTICE_testsens.json and also for LATTICE_cons.json, whose name does not signal the partial gate. The damage is limited because a separate *_cons_full.json exists for those runs."
+    }
+   },
+   {
+    "id": "GATE-14",
+    "title": "bench_deploy: single-shot timings with no warm-up, and learned setup costs missing from the reported table",
+    "severity": "minor",
+    "file": "bench_deploy.py",
+    "line": 116,
+    "claim": "The factorisations (fp64 first, fp32 second) and the fastnet freeze are timed once, without warm-up, so the first cuDSS/Triton call includes library initialisation. The learned route's per-cell setup (netdata_s, geo_s, model_cache_s: MGCache, GP-face setup, geometry path) is recorded, but the V2 table lists only 'freeze 0.15 s' against the 3.4-8.6 s factorisation.",
+    "evidence": "bench_deploy.py:116 `timed(lambda: C.factor(...))` (reps=1, warm=0); bench_deploy.py:126-131 netdata/geo/model_cache/freeze timed separately. V2 doc section 6 '分解 fp64 / fp32 | 8.6 s / 3.4 s | —（冻结 0.15 s）'.",
+    "consequence": "The claimed per-cell saving of the learned route ('省分解 3–9 s') may be overstated: the fp64 factor may carry the first-call overhead, and the learned route's own setup is omitted.",
+    "fix": "Warm up both routes once on a throwaway cell (or repeat per cell), and report the full per-cell cost of each route (learned: netdata + Geo + cache + freeze).",
+    "verification": {
+     "id": "GATE-14",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "This is partly refuted. The factorisations are timed once with warm=0 (bench_deploy.py:116), but the doc's table quotes FULL 0007, the 4th cell on the command line (r2, r1, full, 0007). cuDSS and Triton were already initialised by the earlier cells, so the first-call overhead does not affect the quoted 8.6 s / 3.4 s. The omission is real: the learned route's own per-cell setup (netdata_s, geo_s, model_cache_s) is recorded (lines 126-129), but the doc table shows only 'freeze 0.15 s' against the factorisation cost."
+    }
+   },
+   {
+    "id": "GATE-15",
+    "title": "The default gate cells are step-2 validation geometries, used both for selection and for the gate",
+    "severity": "minor",
+    "file": "lat_full.py",
+    "line": 103,
+    "claim": "lat_full's default pairs (r2/r1 = 0020 cover01 cells) and evalnet's fixed 0020 neighbour both use family 0020. That family is a step-2 validation family (V2 doc section 7: '0020 r1/r2 是 step‑2 的 val 几何'), i.e. one of the 4 families that choose best.pt and decide the arms.",
+    "evidence": "lat_full.py:103-104 spec from DC.R2/DC.R1; evalnet.py:16. V2 doc section 7 note.",
+    "consequence": "The step-2 gate numbers are optimistically biased by selection on the same family. This is harmless now (they fail by a wide margin), but it would matter once v2 approaches the threshold.",
+    "fix": "For step-2/v2, gate only on held-out (test/development) families with --custom and family_full, as the stage-5 plan states, and make the defaults refuse val-family cells for step-2 checkpoints.",
+    "verification": {
+     "id": "GATE-15",
+     "verdict": "confirmed",
+     "severity": "minor",
+     "reasoning": "lat_full's defaults (DC.R2/R1/FULL, all 0020) and evalnet's fixed 0020 neighbour make the default gate cells the 0020 family, and the doc confirms '0020 r1/r2 是 step-2 的 val 几何'. For step-2 checkpoints, the default gate therefore uses a family that took part in selection. The doc already discloses this. The defaults were designed for the step-1 pairs, and the step-2 numbers are far from the threshold, so the bias is harmless for now, as the finding itself says."
+    }
+   }
+  ]
+ }
+]
