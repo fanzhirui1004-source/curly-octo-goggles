@@ -108,6 +108,9 @@ NEW = ('force_c', 'face_c', 'support_k', 'glued')
 OLD = ('force', 'macro', 'grf', 'support', 'face')
 V2_BANKS = NEW + ('support64',)                                               # classes this script owns in an --out tree
 GLUE_OFFSETS = ((1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, -1))                  # never (-1,0,0) / (0,-1,0): the gate's
+if os.environ.get('GLUED_ALL_FACES', '0') == '1':                            # new independent-field cells: the gate is evaluated
+    GLUE_OFFSETS = GLUE_OFFSETS + ((-1, 0, 0), (0, -1, 0))                    # on held-out cells, and a heavy cut's only loaded
+                                                                              # face is its intact -x / -y face
 VERSION = 'prep_geo2/audit-2026-09-25'
 GLUED_NEIGHBOURS = os.environ.get('GLUED_NEIGHBOURS', 'family')             # 'family' (default: the family FULL parent,
                                                                               # translated) | 'explicit' (<case>_nb<tag> packets:
@@ -115,6 +118,7 @@ GLUED_NEIGHBOURS = os.environ.get('GLUED_NEIGHBOURS', 'family')             # 'f
 NB_TAG = {(1, 0, 0): 'px', (-1, 0, 0): 'mx', (0, 1, 0): 'py', (0, -1, 0): 'my', (0, 0, 1): 'pz', (0, 0, -1): 'mz'}
 GLUED_SAFE = os.environ.get('GLUED_SAFE', '0') == '1'                         # default off: the old glued path, unchanged
 GLUED_HEADROOM = float(os.environ.get('GLUED_HEADROOM_GB', '4')) * 2 ** 30     # free device memory wanted after the factor
+GLUED_FP32_STEPS = int(os.environ.get('GLUED_FP32_STEPS', '12'))              # safe mode: refinement steps for an fp32 factor
 CLASS_OFFSET = dict(force_c=1, face_c=2, support_k=3, glued=4, support=5, support64=5)
 EQ_MAX_COND = 1e10                                                            # cond(G G^T) of the traction equilibration
 REFINE_STEPS, REFINE_TARGET, RESID_TOL = 3, 1e-10, 1e-6                       # glued solves (DATA-3)
@@ -687,7 +691,8 @@ def _glued_group_safe(Ct, Cn, dmap, nb, far, clamp, alpha, ks, tf, nf_, ptd, pnd
                 if nf_:
                     F.index_add_(0, pnd, sum(T.forces(T.random(k, gen)) for T in nf_))
                 b = sA[:, None] * F[keep]
-                y, rel, it, rel0 = refine(Kg, sol.solve, b, sol.solve(b), unscale=1 / sA)
+                y, rel, it, rel0 = refine(Kg, sol.solve, b, sol.solve(b), unscale=1 / sA,
+                                          steps=REFINE_STEPS if prec == 'fp64' else max(REFINE_STEPS, GLUED_FP32_STEPS))
                 u = torch.zeros((nb, k), dtype=dt, device=dev)
                 u[keep] = sA[:, None] * y
                 Qg.append(_finite(u[ptd], 'GLUED'))

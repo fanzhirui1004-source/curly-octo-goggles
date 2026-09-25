@@ -69,6 +69,12 @@ def main():
     ap.add_argument('--dry', action='store_true')
     ap.add_argument('--mode', default='family', choices=('family', 'indep'))
     ap.add_argument('--glued-per-cell', type=int, default=1)
+    ap.add_argument('--fix-neighbour', default='', help='rewrite <out>/packets/<name> with far corners = the shared face '
+                    '(zero normal gradient), e.g. after its topology could not be certified; then exit')
+    ap.add_argument('--make-neighbour', default='', help='CASE: choose its glue face from the built body (--body): the '
+                    'planned face if it has > 8 box-port nodes, else a seeded draw among the faces that do (all six), '
+                    'write <out>/packets/<CASE>_nb<tag> if missing, print the tag (NONE if no face qualifies); then exit')
+    ap.add_argument('--body', default='/root/autodl-tmp/OPL/S3/body')
     ap.add_argument('--gate-tags', default='mx,my')
     ap.add_argument('--gate-splits', default='validation')
     a = ap.parse_args()
@@ -77,6 +83,10 @@ def main():
     sys.path.insert(0, str(SRC))
     from fresh_gp import families as F
     src_sha = hashlib.sha256((SRC / 'fresh_gp' / 'families.py').read_bytes()).hexdigest()
+    if a.fix_neighbour:
+        return fix_neighbour(a, F)
+    if a.make_neighbour:
+        return make_neighbour(a, F)
     if a.mode == 'indep':
         return indep(a, F, src_sha)
 
@@ -202,7 +212,53 @@ TAGS = {'px': (0, 1), 'mx': (0, -1), 'py': (1, 1), 'my': (1, -1), 'pz': (2, 1), 
 COMBOS = [(0, 0), (1, 1), (0, 2), (1, 0), (0, 1), (1, 2)]                 # (direction half, depth third) per block position 2..7
 
 
-def neighbour(F, row, tag, seed):
+FACE = {'px': (0, 1), 'mx': (0, 0), 'py': (1, 1), 'my': (1, 0), 'pz': (2, 1), 'mz': (2, 0)}
+
+
+def make_neighbour(a, F, min_nodes=9):
+    """Material-based glue face (the Schwarz-P surface decides which faces carry material: a heavy vertical cut keeps the
+    stub of the strut through x = 0 only). Face counts as in prep_geo2 (box-port nodes on the face > 8)."""
+    c = a.make_neighbour
+    pk = Path(a.out) / 'packets'
+    row = json.loads((pk / c / 'FRESH_CONTEXT.json').read_text())['case']
+    n = 32; M = 2 * n + 1
+    B = np.load(Path(a.body) / c / 'BOX_NODES.npy')
+    g = np.stack(np.unravel_index(B, (M,) * 3), 1)
+    cnt = {t: int((g[:, ax] == (2 * n if side else 0)).sum()) for t, (ax, side) in FACE.items()}
+    ok = sorted(t for t, k in cnt.items() if k >= min_nodes)
+    planned = sorted(d.name.split('_nb')[-1] for d in pk.glob(f'{c}_nb*') if d.name.split('_nb')[-1] in ('px', 'py', 'pz', 'mz'))
+    keep = [t for t in planned if t in ok]
+    if keep:
+        tag, how = keep[0], 'planned'
+    elif ok:
+        h = hashlib.sha256(f"{a.seed}:{c}:glued-auto".encode()).digest()
+        tag, how = ok[int(np.random.default_rng(int.from_bytes(h[:8], 'little')).integers(len(ok)))], 'material'
+    else:
+        print('NONE', flush=True)
+        return
+    d = pk / f'{c}_nb{tag}'
+    if not (d / 'FRESH_CONTEXT.json').exists():
+        nb = neighbour(F, row, tag, a.seed)
+        nb['glue_face_choice'] = dict(how=how, face_port_nodes=cnt)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / 'SAMPLE.json').write_text(json.dumps(dict(schema='OPL_EXPANSION_SAMPLE_V1', gp=dict(gamma=GAMMA))))
+        (d / 'FRESH_CONTEXT.json').write_text(json.dumps(context(nb, a.seed), indent=1))
+    print(tag, flush=True)
+
+
+def fix_neighbour(a, F):
+    d = Path(a.out) / 'packets' / a.fix_neighbour
+    ctx = json.loads((d / 'FRESH_CONTEXT.json').read_text())
+    nb = ctx['case']
+    row = json.loads((Path(a.out) / 'packets' / nb['neighbour_of'] / 'FRESH_CONTEXT.json').read_text())['case']
+    new = neighbour(F, row, nb['neighbour_tag'], a.seed, force_copy=True)
+    new['replaced_draw'] = dict(tau_corners=nb['tau_corners'], reason='topology not certified (fast_prep4)')
+    ctx['case'] = new
+    (d / 'FRESH_CONTEXT.json').write_text(json.dumps(ctx, indent=1))
+    print(json.dumps(dict(event='NEIGHBOUR_FIXED', case=a.fix_neighbour, tau_corners=new['tau_corners'])), flush=True)
+
+
+def neighbour(F, row, tag, seed, force_copy=False):
     """FULL neighbour across face `tag` with continuous thickness (see the module docstring)."""
     axis, sgn = TAGS[tag]
     tau = np.asarray([float(x) for x in row['tau_corners']])
@@ -213,8 +269,8 @@ def neighbour(F, row, tag, seed):
     shared = tau[src @ np.array([4, 2, 1])]                                 # neighbour corner value on the shared face
     h = hashlib.sha256(f"{seed}:{row['case_id']}:{tag}".encode()).digest()
     rng = np.random.default_rng(int.from_bytes(h[:8], 'little'))
-    how = 'fallback'
-    for _ in range(5000):
+    how = 'fallback_copy' if force_copy else 'fallback'
+    for _ in range(0 if force_copy else 5000):
         c = shared.copy(); c[~near] = rng.uniform(F.TAU_LOWER, F.TAU_UPPER, int((~near).sum()))
         c = np.round(c, 12)
         if (c.min() > F.TAU_LOWER and c.max() < F.TAU_UPPER and np.ptp(c) <= F.SPAN_MAX and F.gradient_max(c) <= F.GRADIENT_MAX):

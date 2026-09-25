@@ -141,7 +141,8 @@ class Cell:
             key_g, val_g = gi[0][up] * nb + gi[1][up], gv[up]
             del G, gi, gv
             gc.collect(); torch.cuda.empty_cache()
-            np.savez(gcache, keys=key_g.cpu().numpy(), vals=val_g.cpu().numpy())
+            if os.environ.get('OPL_GP_CACHE', '1') != '0':                 # OPL_GP_CACHE=0: rebuild every time, never
+                np.savez(gcache, keys=key_g.cpu().numpy(), vals=val_g.cpu().numpy())   # write (disk for thousands of cells)
         U = torch.unique(torch.cat([key_e.reshape(-1), key_g]))
         self.pos_e = torch.searchsorted(U, key_e.reshape(-1)).int()
         del key_e

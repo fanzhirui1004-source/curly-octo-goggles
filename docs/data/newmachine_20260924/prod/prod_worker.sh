@@ -7,7 +7,7 @@ Q=/autodl-fs/data/OPL_QUEUE; T=/autodl-fs/data/OPL_TRANSIT; S=/root/autodl-tmp/O
 DEP=/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924
 source /root/autodl-tmp/OPL/S1/env_gpu.sh
 export OPL_PACKETS_EXTRA=$S/packets CUTFEM_EXECUTION_CONFIG=$DEP/EXECUTION_CONFIG_NEW16.json
-export BANK_SPLITS=512,64,64 SENS_REASSOC=1 GLUED_SAFE=1 GLUED_NEIGHBOURS=explicit
+export BANK_SPLITS=512,64,64 SENS_REASSOC=1 GLUED_SAFE=1 GLUED_NEIGHBOURS=explicit GLUED_ALL_FACES=1
 H=$(hostname | sed 's/autodl-container-//')
 L=$S/logs; mkdir -p $L $T/ACK $Q/claims $Q/done
 cd /root/autodl-tmp/OPL/src_v2
@@ -23,8 +23,19 @@ while read c; do
   cleanup_acked
   while [ $(df --output=used -BG /autodl-fs/data | tail -1 | tr -dc 0-9) -gt 170 ]; do sleep 60; done
   t0=$(date +%s); log START $c
+  build(){ (cd $DEP/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/COVER_G/src && OMP_NUM_THREADS=1 timeout 600 $DEP/run_frozen_python.sh /root/autodl-tmp/OPL/src_v2/fast_prep4.py 8 $S/body $1) >> $L/$c.body.log 2>&1; }
+  build $c; fixed=""
+  if [ -f $S/body/$c/PREP.json ]; then           # glue face from the body's material (planned face if it has material)
+    tag=$(cd /tmp && OMP_NUM_THREADS=1 $DEP/run_frozen_python.sh /root/autodl-tmp/OPL/src_v2/gen_new.py $S --seed 2026092602 --make-neighbour $c --body $S/body 2>> $L/$c.body.log | tail -1)
+    echo "{\"glue_tag\": \"$tag\"}" >> $L/$c.body.log
+  fi
   nbs=$(ls $S/packets | grep "^${c}_nb" | tr '\n' ' ')
-  (cd $DEP/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/COVER_G/src && OMP_NUM_THREADS=1 timeout 1200 $DEP/run_frozen_python.sh /root/autodl-tmp/OPL/src_v2/fast_prep4.py 8 $S/body $c $nbs) >> $L/$c.body.log 2>&1
+  for nb in $nbs; do [ -f $S/body/$nb/PREP.json ] || build $nb                   # one body per call: a failing neighbour cannot abort the others
+    if [ ! -f $S/body/$nb/PREP.json ]; then     # e.g. topology not certified: far corners := shared face, rebuild
+      (cd /tmp && OMP_NUM_THREADS=1 $DEP/run_frozen_python.sh /root/autodl-tmp/OPL/src_v2/gen_new.py $S --seed 2026092602 --fix-neighbour $nb) >> $L/$c.body.log 2>&1
+      build $nb; fixed="$fixed packets/$nb"; log NEIGHBOUR_FIXED $nb $([ -f $S/body/$nb/PREP.json ] && echo ok || echo still_failing)
+    fi
+  done
   t1=$(date +%s); t2=$t1; st=OK
   if [ ! -f $S/body/$c/PREP.json ]; then st=BODY_FAIL; else
     timeout 3600 $PY -u prep_geo.py $S/body $S/data $c >> $L/$c.prep_geo.log 2>&1
@@ -62,7 +73,7 @@ if os.path.exists(lp):
 rec['events'] = ev
 print(json.dumps(rec, default=str))
 PY
-  items="body/$c $(cd $S && ls -d body/${c}_nb* 2>/dev/null | tr '\n' ' ') logs/$c.body.log logs/$c.status.json"
+  items="body/$c $(cd $S && ls -d body/${c}_nb* 2>/dev/null | tr '\n' ' ') logs/$c.body.log logs/$c.status.json $(cd $S && ls -d packets/${c}_nb* 2>/dev/null | tr '\n' ' ')"
   [ -d $S/data/$c ] && items="$items data/$c"; [ -d $S/data_v2/$c ] && items="$items data_v2/$c"
   for f in prep_geo prep_geo2; do [ -f $L/$c.$f.log ] && items="$items logs/$c.$f.log"; done
   if (cd $S && tar cf $T/$c.tar.part $items) && m=$(md5sum < $T/$c.tar.part | cut -c1-32) && mv $T/$c.tar.part $T/$c.tar && echo $m > $T/$c.md5; then
