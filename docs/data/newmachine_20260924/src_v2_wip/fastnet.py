@@ -12,6 +12,8 @@ model to float32 rounding (checked in t_fast.py). Training keeps using models.py
 Opt-in (env FUSED_HYPER=1 at import, or fastnet.FUSED = True before building): the hyperedge layers run through the Triton
 gather / scatter kernels of fused_hyper.py instead of the four CSR matrices (same map to float32 rounding, about a quarter
 of the layer memory: slot weights instead of G, S, G^T, S^T). Default off.
+B3 (model b3=True): the stiffness-share mixing is folded into the frozen scatter weights before the layers are built,
+b <- b (1 + lambda (pi deg - 1)) (models.MGNO._b3), so both the CSR and the fused paths (and the adjoints) need nothing new.
 """
 import os
 import torch
@@ -96,7 +98,9 @@ class FastNet:
         self.W_in, self.W_out = m.W_in.detach().to(f32), m.W_out.detach().to(f32)
         ab = gp['ab']
         L = m.L_pre + m.L_post
-        self.elem = [_Hyper(c.en, ab[:, :, 0, l], ab[:, :, 1, l], m.W[l], c.deg, c.N) for l in range(L)]
+        b3 = MD.MGNO._b3                                                                # B3 fold (identity for arg None)
+        arg = (lambda kind, i: m._b3arg(c, kind, i) if getattr(m, 'b3', False) else None)
+        self.elem = [_Hyper(c.en, ab[:, :, 0, l], b3(ab[:, :, 1, l], arg('le', l)), m.W[l], c.deg, c.N) for l in range(L)]
         if self.two:
             fab, xab = gp['fab'], gp['xab']
             Lg = m.L_pre + m.L_post + m.n_fringe
@@ -104,17 +108,18 @@ class FastNet:
             self.face = []
             for g in range(Lg):
                 mask = c.gp_fringe if g >= m.L_pre + m.L_post else None
-                hn, a, b = c.fn, fab[:, :, 0, g], fab[:, :, 1, g]
+                hn, a, b = c.fn, fab[:, :, 0, g], b3(fab[:, :, 1, g], arg('lf', g))           # full-set fold, then mask
                 if mask is not None:
                     hn, a, b = hn[mask], a[mask], b[mask]
                     if ff is not None:
                         b = b * ff[:, None, None]
                 self.face.append(_Hyper(hn, a, b, m.Wf[g], c.fdeg, c.N))
+            xb = [b3(xab[:, :, 1, l], arg('lx', l))[c.el_fringe] for l in range(m.n_fringe)]   # full-set fold, then mask
             if fe is None:
-                self.fringe = [_Hyper(c.en[c.el_fringe], xab[c.el_fringe][:, :, 0, l], xab[c.el_fringe][:, :, 1, l], m.Wx[l], c.deg, c.N)
+                self.fringe = [_Hyper(c.en[c.el_fringe], xab[c.el_fringe][:, :, 0, l], xb[l], m.Wx[l], c.deg, c.N)
                                for l in range(m.n_fringe)]
             else:
-                self.fringe = [_Hyper(c.en[c.el_fringe], xab[c.el_fringe][:, :, 0, l], xab[c.el_fringe][:, :, 1, l] * fe[:, None, None],
+                self.fringe = [_Hyper(c.en[c.el_fringe], xab[c.el_fringe][:, :, 0, l], xb[l] * fe[:, None, None],
                                       m.Wx[l], c.deg, c.N) for l in range(m.n_fringe)]
         # grid transfers
         self.R, self.Rt, self.P, self.Pt = [], [], [], []

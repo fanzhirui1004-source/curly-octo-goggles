@@ -220,6 +220,48 @@ def family_full(case, packets):
     return name if (Path(packets) / name / 'FRESH_CONTEXT.json').exists() else None
 
 
+def _mem(tag, **kw):
+    """PREP_MEMLOG=1: device memory at a stage boundary (torch allocated / reserved, device free)."""
+    if os.environ.get('PREP_MEMLOG'):
+        free, tot = torch.cuda.mem_get_info()
+        print(json.dumps(dict(event='MEM', tag=tag, alloc_GB=round(torch.cuda.memory_allocated() / 2 ** 30, 2),
+                              reserved_GB=round(torch.cuda.memory_reserved() / 2 ** 30, 2), free_GB=round(free / 2 ** 30, 2), **kw)), flush=True)
+
+
+def _nbytes(v):
+    if v.layout == torch.sparse_csr:
+        return v.values().numel() * v.values().element_size() + v.col_indices().numel() * v.col_indices().element_size()
+    return v.numel() * v.element_size()
+
+
+def _offload(obj, min_bytes=64 << 20):
+    """Move the large device tensors held directly by obj (a teacher.Cell) to the host; returns their names (_restore).
+    Only where the data lives changes, never its value."""
+    keys = [k for k, v in vars(obj).items() if torch.is_tensor(v) and v.is_cuda and _nbytes(v) >= min_bytes]
+    for k in keys:
+        setattr(obj, k, getattr(obj, k).to('cpu'))
+    gc.collect(); torch.cuda.empty_cache()
+    return keys
+
+
+def _restore(obj, keys):
+    for k in keys:
+        setattr(obj, k, getattr(obj, k).to(dev))
+
+
+def _spd_glued(crow, col, vals, n):
+    """The two-cell factor: fp64; on a memory failure (two FULL cells: ~8e5 DOFs) free the cache and retry fp64, then fall back
+    to an fp32 factor of the (diagonally scaled) system. Only the DIRECTIONS q come from this solve: their reactions,
+    sensitivities and unit-energy normalisation are computed afterwards with the test cell's own exact factor."""
+    for attempt in ('fp64', 'fp64_retry', 'fp32'):
+        try:
+            return TE.SPDSolver(crow, col, vals, n, **(dict(fdt=torch.float32) if attempt == 'fp32' else {})), attempt
+        except Exception as e:
+            if not PG._mem_error(e) or attempt == 'fp32':
+                raise
+            gc.collect(); torch.cuda.empty_cache()
+
+
 def glued(Ct, body, total, gen, chunk=32, log=print):
     """Two-cell samples (see the module docstring). Returns (q (np_t, total), info) or (None, info)."""
     parent = family_full(Ct.case, TE.ROOT / 'packets')
@@ -234,6 +276,16 @@ def glued(Ct, body, total, gen, chunk=32, log=print):
     Cn = TE.Cell(parent, body, log=lambda s_: None); Cn.assemble()
     gn = np.stack(np.unravel_index(Cn.nodes, (2 * n + 1,) * 3), 1)
     ft, fn_ = box_tractions(Ct), box_tractions(Cn)
+    off_t, off_n = _offload(Ct), _offload(Cn)                                # both K on the host during the two-cell factors
+    try:
+        return _glued_offsets(Ct, Cn, n, gn, ft, fn_, parent, offs, total, gen, chunk, log)
+    finally:
+        _restore(Ct, off_t)
+        Cn._free(); del Cn; gc.collect(); torch.cuda.empty_cache()
+
+
+def _glued_offsets(Ct, Cn, n, gn, ft, fn_, parent, offs, total, gen, chunk, log):
+    gt = np.stack(np.unravel_index(Ct.nodes, (2 * n + 1,) * 3), 1)
     per = int(np.ceil(total / len(offs)))
     W = 6 * n + 1                                                           # absolute key over [-2n, 4n]^3
     kt = ((gt[:, 0] + 2 * n) * W + gt[:, 1] + 2 * n) * W + gt[:, 2] + 2 * n
@@ -253,8 +305,8 @@ def glued(Ct, body, total, gen, chunk=32, log=print):
         Ntot = len(Ct.nodes) + len(own)
         dmap = torch.as_tensor((3 * nnode[:, None] + np.arange(3)[None]).reshape(-1), device=dev)
         # glued upper CSR: test entries as they are, neighbour entries renumbered (upper after renumbering), summed
-        r = torch.cat([Ct.ru.long(), dmap[Cn.ru.long()]]); c = torch.cat([Ct.cu.long(), dmap[Cn.cu.long()]])
-        v = torch.cat([Ct.vals, Cn.vals])
+        r = torch.cat([Ct.ru.to(dev).long(), dmap[Cn.ru.to(dev).long()]]); c = torch.cat([Ct.cu.to(dev).long(), dmap[Cn.cu.to(dev).long()]])
+        v = torch.cat([Ct.vals.to(dev), Cn.vals.to(dev)])
         r, c = torch.minimum(r, c), torch.maximum(r, c)
         nb = 3 * Ntot
         key = r * nb + c
@@ -286,9 +338,15 @@ def glued(Ct, body, total, gen, chunk=32, log=print):
         sA = 1 / torch.sqrt(dvals[keep])
         order = torch.argsort(rA * nf + cA)
         rA, cA, vA = rA[order], cA[order], vA[order]
-        crow = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(rA, minlength=nf), 0)])
-        sol = _spd64(crow.int(), cA.int(), (vA * sA[rA] * sA[cA]).contiguous(), nf)
-        del rA, cA, vA, crow, order
+        del order
+        vA.mul_(sA[rA]).mul_(sA[cA])                                        # diagonal scaling in place
+        crow = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(rA, minlength=nf), 0)]).int()
+        cA = cA.int(); del rA
+        gc.collect(); torch.cuda.empty_cache()
+        _mem('glued_before_factor', offset=d, dofs=nf, nnz=int(vA.numel()))
+        sol, prec = _spd_glued(crow, cA, vA.contiguous(), nf)
+        _mem('glued_after_factor', offset=d, precision=prec)
+        del cA, vA, crow
         # loads: free box faces of both cells (test: not the glued face; neighbour: neither glued nor far face)
         tface = (a, 2 * n if sgn > 0 else 0)
         nglue, nfar = (a, 0 if sgn > 0 else 2 * n), (a, far_local)
@@ -308,10 +366,9 @@ def glued(Ct, body, total, gen, chunk=32, log=print):
             u[keep] = sA[:, None] * sol.solve(sA[:, None] * F[keep])
             Qs.append(_finite(u[ptd], 'GLUED'))
         sol.free(); del sol, F, u, dvals, sA, new, keep; gc.collect(); torch.cuda.empty_cache()
-        info['offsets'].append(dict(offset=d, clamped=clamp, shared_nodes=int(shared.sum()), dofs=nf))
+        info['offsets'].append(dict(offset=d, clamped=clamp, shared_nodes=int(shared.sum()), dofs=nf, precision=prec))
         log(json.dumps(dict(event='GLUED_OFFSET', case=Ct.case, parent=parent, offset=d, clamped=clamp, dofs=nf,
-                            shared_nodes=int(shared.sum()))))
-    Cn._free(); del Cn; gc.collect(); torch.cuda.empty_cache()
+                            shared_nodes=int(shared.sum()), precision=prec)))
     q = torch.cat(Qs, 1)
     return q[:, torch.randperm(q.shape[1], generator=gen, device=dev)[:total]], info
 
@@ -347,7 +404,8 @@ def one(body, data, case, classes, F_old=False, fix_support=False, log=print):
     try:
         if C.ni == 0:
             raise ValueError('NO_INTERIOR')
-        C.assemble(); C.dmoments()
+        _mem('start', case=case)
+        C.assemble(); _mem('assembled'); C.dmoments(); _mem('dmoments')
         seed = (int.from_bytes(case.encode(), 'little') + 7919) % (2 ** 31)
         gen = torch.Generator(device=dev).manual_seed(seed)
         faces = box_tractions(C)
@@ -384,6 +442,7 @@ def one(body, data, case, classes, F_old=False, fix_support=False, log=print):
                     if f.exists():
                         f.rename(d / f'{s_}_support{suf}.nan_bak.npy')
         tt['spring_dirs2'] = time.perf_counter() - t; t = time.perf_counter()
+        _mem('before_glued', case=case)
         if 'glued' in classes:
             q, info['glued'] = glued(C, body, total, gen, log=log)
             if q is not None:
@@ -448,7 +507,8 @@ def main(argv):
         try:
             one(a.body, Path(a.data), case, classes, a.F_old, a.fix_support)
         except Exception as e:
-            print(json.dumps(dict(event='FAILED2', case=case, error=repr(e)[:300], trace=traceback.format_exc()[-1500:])), flush=True)
+            own = [f'{fr.name}:{fr.lineno}' for fr in traceback.extract_tb(e.__traceback__) if fr.filename.endswith(('prep_geo2.py', 'prep_geo.py'))]
+            print(json.dumps(dict(event='FAILED2', case=case, error=repr(e)[:300], where=own, trace=traceback.format_exc()[-1500:])), flush=True)
         gc.collect(); torch.cuda.empty_cache()
         if Q is not None:
             PG._release(Q, tag)

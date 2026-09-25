@@ -389,6 +389,8 @@ def stratified_probes(cases, n, fam, dofs, seed):
 
 # --------------------------------------------------------------------------------------------------------- main
 def main(cfg):
+    if cfg.get('conv_fp32'):                                                   # true fp32 convolutions (no TF32)
+        MD.set_conv_fp32(True)
     out = Path(cfg['out']); out.mkdir(parents=True, exist_ok=True)
     log_f = open(out / 'train.log', 'a')
     lock = threading.Lock()
@@ -432,7 +434,7 @@ def main(cfg):
     if cfg.get('init'):
         ck = torch.load(cfg['init'], map_location=dev, weights_only=False)
         ma = cfg.get('model_args', {})
-        if hasattr(MD, 'load_compat') and any(ma.get(k) for k in ('feat_v2', 'bounded', 'fringe_soft')):
+        if hasattr(MD, 'load_compat') and any(ma.get(k) for k in ('feat_v2', 'bounded', 'fringe_soft', 'b3')):
             log(dict(event='INIT', ckpt=cfg['init'], compat=MD.load_compat(model, ck['model'])))
         else:
             res = model.load_state_dict(ck['model'], strict=False)

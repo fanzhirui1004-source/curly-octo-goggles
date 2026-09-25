@@ -24,6 +24,8 @@ dev, dt = TL.dev, TL.dt
 
 
 def main(cfg):
+    if cfg.get('conv_fp32'):                                                   # true fp32 convolutions (no TF32)
+        MD.set_conv_fp32(True)
     out = Path(cfg['out']); out.mkdir(parents=True, exist_ok=True)
     log_f = open(out / 'train.log', 'a')
 
