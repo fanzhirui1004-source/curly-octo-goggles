@@ -46,15 +46,17 @@ def cpu_factor(C):
         import pypardiso
         ps = pypardiso.PyPardisoSolver(); A = A.tocsr(); ps.factorize(A)
         sol = lambda b: ps.solve(A, np.ascontiguousarray(b))
+        rel = lambda: ps.free_memory(everything=True)                         # MKL keeps the factor until told
     except ImportError:
         lu = sla.splu(A, permc_spec='MMD_AT_PLUS_A', options=dict(SymmetricMode=True)); sol = lu.solve
+        rel = lambda: None
 
     class _S:
         def solve(self, r):
             return torch.as_tensor(sol(r.numpy()), dtype=dt).reshape(r.shape)
 
         def free(self):
-            pass
+            rel()
     C.sA, C.sol_I, C.fp32 = sA, _S(), False
 
 
