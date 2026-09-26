@@ -653,3 +653,40 @@ These entries reproduce the previously saved algebraic check; they are not TPMS 
 
 The surfaces in Figure 1 are sampled on a grid with 97 positions per unit-box axis using the eight corner band parameters and cut-plane data of U1, M1, H1 and H2. The displayed percentages describe the retained macro-domain volume, before intersection with the thin-wall material. This surface sampling is used for visualisation; the mechanical discretisation has 32 background elements per axis and continuous Q2 displacement functions.
 
+## Supplementary Note S6. Historical deployment study with the uncorrected predictor D
+
+This note preserves the deployment study of an earlier, uncorrected predictor D (TF32 convolutions, no interior correction). It documents batch-size and solver effects but does not describe the cost of the corrected predictor, which Section 6.10 of the main text reports against the conventional condensation route.
+
+### S6.1. Workload dependence of computational cost (predictor D)
+
+The computational benefit of a reusable substructure depends on both preparation and the subsequent queries. Exact condensation requires an interior factorisation, which can be reused across retained displacement vectors. A learned action requires geometry-dependent preparation followed by extension, stiffness and transpose-extension operations. We examine this trade-off for the uncorrected predictor D on an NVIDIA GeForce RTX 5090. Across four cells, double-precision interior factorisation takes 0.64–8.6 s (Figure S06).
+
+Batch size changes the relative application cost. D is faster for a single direction in every cell, whereas the exact factor is faster for batches of 64 directions (Table ST17a). The benefit of a cheap individual action also depends on the assembled iteration. With the balanced two-level preconditioner of Supplementary Note S1, the learned two-cell pair has a lower elapsed solve time than its exact counterpart, while both learned repeated-cell arrays require more time (Table ST17b). For the 27-cell array, the times are 222 s and 94.6 s, respectively.
+
+The accuracy attained at those stopping points is part of the cost comparison. In the 27-cell learned solve, the recursive residual reaches \(9.59\times10^{-9}\), but recomputation with the same learned operator gives \(8.99\times10^{-3}\), and the maximum compliance error is 1.86%. Both residuals of the exact solve are near \(10^{-8}\). Moreover, every learned deflated solve reaches the 300 s limit with a large residual (Figure S05 and Table ST09). These results show that action cost, solver convergence and response accuracy must be assessed together. Tables ST08, ST10 and ST14 give the other solver choices, memory definitions and setup components. The additional setup and coarse solves used to correct B in Section 6.5 require separate timing to determine their computational benefit.
+
+![Figure S06](figures/F07_cost.png)
+
+**Figure S06. Preparation and application cost of predictor D.** (a–c) Time per complete batch of one, 16 and 64 vectors on four cells, comparing exact interior solves with learned sparse-matrix (CSR) and fused implementations. The fp32 factor uses three fp64 iterative-refinement steps (IR). (d) Interior factorisation, network caching and preparation of the reusable learned action. (e) Sparse-stiffness storage and free-memory changes associated with the exact factor and learned state; the allocation measures are not additive. Measurements use an NVIDIA GeForce RTX 5090, with three timed repetitions after one warm-up. Memory is expressed in GiB. The supplementary geometry key identifies G1–G4.
+
+**Table ST17. Application cost and accuracy attained in assembled solves**
+
+**5a. Application time across four cells (ms per complete batch)**
+
+| Directions per batch | Exact double precision | Learned predictor D |
+| --- | --- | --- |
+| 1 | 7.9–73 | 6.2–15 |
+| 64 | 35.4–316 | 162–742 |
+
+Ranges give the minimum and maximum over the same four cells. Table ST14 includes the individual timings, batches of 16 and the fused implementation.
+
+**5b. Assembly solves with the balanced two-level preconditioner**
+
+| Assembly | Free DOFs | Exact: iterations / s | Learned: iterations / s | Learned recomputed residual | Max. compliance error (%) |
+| --- | --- | --- | --- | --- | --- |
+| Two-cell pair | 36,264 | 169 / 27.9 | 204 / 21.7 | \(2.07\times10^{-2}\) | 3.41 |
+| \(2\times2\times2\) | 93,696 | 119 / 22.7 | 135 / 59.8 | \(7.89\times10^{-3}\) | 1.88 |
+| \(3\times3\times3\) | 294,516 | 122 / 94.6 | 138 / 222 | \(8.99\times10^{-3}\) | 1.86 |
+
+The learned measurements use D on an NVIDIA GeForce RTX 5090. The arrays repeat one uncut cell; each assembly is subjected to three consistent face loads and three random loads. Residuals are recomputed with the operator used for the solve, and compliance errors use the exact-operator reference. Times correspond to the attained residuals and response errors shown here. Supplementary Note S1 defines the preconditioner, and Tables ST09 and ST14 give the full solver comparison and setup costs.
+

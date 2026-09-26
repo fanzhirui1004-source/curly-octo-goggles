@@ -456,46 +456,30 @@ Sensitivity further depends on the interaction between field recovery and the as
 
 ### 6.8. Effect of restricting the retained representation
 
-A complementary comparison isolates approximation of the retained representation. The H1/x pair is solved with exact cell operators and Bernstein degree \(r\) on every box face, while the non-box cut-band coordinates remain unrestricted. Increasing the boundary degree improves compliance, but the sensitivity error depends strongly on the loaded face (Figure 10).
+A complementary comparison isolates the approximation of the retained representation, the assumption on which boundary-interpolation substructures rest. Pairs in configuration x are solved with exact cell operators while the box-face displacements are restricted to tensor Bernstein polynomials of degree \(r\) over each cell; degree one on the eight corners corresponds to the corner-linear boundary interpolation of the three-dimensional PIML examples. The non-box cut-band coordinates remain unrestricted, which favours the restricted model. Two variants are examined: every box face restricted, as in a lattice built entirely from such substructures, and only the shared interface restricted.
 
-At \(r=8\), the restricted problem has 14,001 reduced coordinates, compared with 32,991 free coordinates in the full retained representation. The maximum compliance error over the six face loads is 0.735%. The maximum target-cell sensitivity error is 1.52% over the three target-face loads and 64% when neighbour-face loads are included. These maxima refer to their respective load sets and need not occur under the same load. The separation between global and local accuracy thus persists when the approximation enters through the retained space. Table ST07 gives the degree sweep and cut-traction responses.
+With every box face restricted, the corner-linear boundary gives compliance errors of 78–85% on U1, M1, M2 and H1 (Figure 10). The error decreases with degree to about 4% at \(r=5\) and 0.49–0.74% at \(r=8\), where the restricted problem retains, on H1, 14,001 of 32,991 free coordinates. The local sensitivity converges more slowly: at \(r=8\) the maximum target-cell sensitivity error is 1.3–4.5% over the target-face loads and 24–64% when neighbour-face loads are included, the latter because the loads applied to the neighbour deform the shared face in patterns that a polynomial of degree eight does not resolve. Restricting only the shared interface removes most of the compliance error (U1: 1.95% at \(r=1\), 0.17% at \(r=3\)), but the sensitivity error under neighbour loads remains 8% at \(r=3\). These maxima refer to their respective load sets and need not occur under the same load. The separation between global and local accuracy thus persists, and is stronger, when the approximation enters through the retained space; the full retained representation used here avoids it by construction. Table ST07 gives the degree sweeps and cut-traction responses.
 
 ![Figure 10](figures/F06_bernstein.png)
 
 **Figure 10. Response errors caused by restricting box-face displacements.** Both cells of H1/x use exact operators and Bernstein degree \(r\) on every box face, with unrestricted non-box cut-band coordinates. (a) Reduced coordinate count; the dashed line denotes the 32,991-coordinate full representation. (b,c) Maximum compliance and target-cell sensitivity errors over the three target-face loads or all six target- and neighbour-face loads. Macro-cut tractions are excluded from both sets. Errors are relative to the full retained-space solution; horizontal reference lines mark 3%.
 
-### 6.9. Workload dependence of computational cost
+### 6.9. Heterogeneous lattices with every cell learned
 
-The computational benefit of a reusable substructure depends on both preparation and the subsequent queries. Exact condensation requires an interior factorisation, which can be reused across retained displacement vectors. A learned action requires geometry-dependent preparation followed by extension, stiffness and transpose-extension operations. We examine this trade-off for the uncorrected predictor D on an NVIDIA GeForce RTX 5090. Across four cells, double-precision interior factorisation takes 0.64–8.6 s (Figure 11).
+The two-cell examples isolate one learned cell. In a design, every cell of the lattice is represented by the learned operator, and the errors of neighbouring cells enter the same assembled solution. Two lattices with a continuous graded thickness field and a planar boundary cut test this situation: a \(2\times2\times2\) block of eight distinct cells, four of them cut with retained volumes of 62% and 25%, and a \(3\times3\times1\) layer of eight cells, three of them cut. Corner parameters range from 0.25 to 0.56 and neighbouring cells share their face corners. The lattices are clamped on one face and loaded by unit consistent tractions on the opposite face; every cell uses the learned operator, and the reference assembles the exact condensation of every cell. [TBD:lattice-results]
 
-Batch size changes the relative application cost. D is faster for a single direction in every cell, whereas the exact factor is faster for batches of 64 directions (Table 5a). The benefit of a cheap individual action also depends on the assembled iteration. With the balanced two-level preconditioner of Supplementary Note S1, the learned two-cell pair has a lower elapsed solve time than its exact counterpart, while both learned repeated-cell arrays require more time (Table 5b). For the 27-cell array, the times are 222 s and 94.6 s, respectively.
+By Eq. (12), the compliance errors of the learned cells add with the same sign, so the lattice compliance error is bounded by the participation-weighted sum of the cells' energy errors at the exact traces. [TBD:lattice-bound]
 
-The accuracy attained at those stopping points is part of the cost comparison. In the 27-cell learned solve, the recursive residual reaches \(9.59\times10^{-9}\), but recomputation with the same learned operator gives \(8.99\times10^{-3}\), and the maximum compliance error is 1.86%. Both residuals of the exact solve are near \(10^{-8}\). Moreover, every learned deflated solve reaches the 300 s limit with a large residual (Figure S05 and Table ST09). These results show that action cost, solver convergence and response accuracy must be assessed together. Tables ST08, ST10 and ST14 give the other solver choices, memory definitions and setup components. The additional setup and coarse solves used to correct B in Section 6.5 require separate timing to determine their computational benefit.
+### 6.10. Computational cost against conventional condensation
 
-![Figure 11](figures/F07_cost.png)
+The practical alternative to a learned substructure is the conventional route: assemble the cut finite element stiffness of each cell and condense its interior with a sparse direct solver, either forming the dense condensed matrix \(S\) or applying it through the interior factorisation. Both routes share the geometric preprocessing, the cut-cell integration and the stiffness assembly, because the learned operator also evaluates \(F^TKF\) with the exact stiffness. They differ in the condensation: an interior factorisation, and for the explicit variant one solve per retained coordinate, against the network's geometry encoding, the smoothing-interval estimate and coarse factorisation of the correction, and the forward and transpose actions per query.
 
-**Figure 11. Preparation and application cost of predictor D.** (a–c) Time per complete batch of one, 16 and 64 vectors on four cells, comparing exact interior solves with learned sparse-matrix (CSR) and fused implementations. The fp32 factor uses three fp64 iterative-refinement steps (IR). (d) Interior factorisation, network caching and preparation of the reusable learned action. (e) Sparse-stiffness storage and free-memory changes associated with the exact factor and learned state; the allocation measures are not additive. Measurements use an NVIDIA GeForce RTX 5090, with three timed repetitions after one warm-up. Memory is expressed in GiB. The supplementary geometry key identifies G1–G4.
+Table 5 compares the two routes on four cells [TBD:cost-table]. The conventional route runs on the 16 host cores with MKL PARDISO, as a practitioner would condense a cell; the learned route runs on one RTX 5090. For reference, the same interior factorisation performed on the GPU is also given, so that the effect of the hardware can be separated from that of the method.
 
-**Table 5. Application cost and accuracy attained in assembled solves**
+[TBD:cost-discussion: preparation per cell, per-query cost for 1/16/64 directions, explicit-S time and memory, number of queries per design iteration at which each route is cheaper, memory per cell.]
 
-**5a. Application time across four cells (ms per complete batch)**
+The historical deployment study of an earlier uncorrected predictor, including assembled iterative solves with several preconditioners, is retained in Supplementary Note S6.
 
-| Directions per batch | Exact double precision | Learned predictor D |
-| --- | --- | --- |
-| 1 | 7.9–73 | 6.2–15 |
-| 64 | 35.4–316 | 162–742 |
-
-Ranges give the minimum and maximum over the same four cells. Table ST14 includes the individual timings, batches of 16 and the fused implementation.
-
-**5b. Assembly solves with the balanced two-level preconditioner**
-
-| Assembly | Free DOFs | Exact: iterations / s | Learned: iterations / s | Learned recomputed residual | Max. compliance error (%) |
-| --- | --- | --- | --- | --- | --- |
-| Two-cell pair | 36,264 | 169 / 27.9 | 204 / 21.7 | \(2.07\times10^{-2}\) | 3.41 |
-| \(2\times2\times2\) | 93,696 | 119 / 22.7 | 135 / 59.8 | \(7.89\times10^{-3}\) | 1.88 |
-| \(3\times3\times3\) | 294,516 | 122 / 94.6 | 138 / 222 | \(8.99\times10^{-3}\) | 1.86 |
-
-The learned measurements use D on an NVIDIA GeForce RTX 5090. The arrays repeat one uncut cell; each assembly is subjected to three consistent face loads and three random loads. Residuals are recomputed with the operator used for the solve, and compliance errors use the exact-operator reference. Times correspond to the attained residuals and response errors shown here. Supplementary Note S1 defines the preconditioner, and Tables ST09 and ST14 give the full solver comparison and setup costs.
 ## 7. Discussion
 
 ### 7.1. Learning and correction in a fixed coupling space
