@@ -147,6 +147,11 @@ class FastNet:
     def _conv(self, Xc, l, k, transpose=False):
         t = self.c.trans[l]
         m_, B, F = t['m'], Xc.shape[1], Xc.shape[2]
+        if 'e_src' in t:                                                   # coarse_split: material-graph convolution
+            import models as MD_
+            if transpose:
+                return Xc + MD_.graph_conv(Xc * self.gates[l][:, k][:, None, :], t, self.convs[l][k], transpose=True)
+            return Xc + MD_.graph_conv(Xc, t, self.convs[l][k]) * self.gates[l][:, k][:, None, :]
         dense = torch.zeros((m_ ** 3, B, F), device=dev)
         if transpose:
             dense.index_copy_(0, t['dense_idx'], Xc * self.gates[l][:, k][:, None, :])

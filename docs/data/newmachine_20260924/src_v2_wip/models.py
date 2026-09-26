@@ -317,8 +317,111 @@ def stiffness_shares(hn, k, N):
     return torch.where(d > 0, k / d.clamp_min(1e-300), 1.0 / cnt[hn])
 
 
+def build_split_trans(c, levels, elem_cells):
+    """Topology-aware coarse levels (coarse_split): the grid transfers of MGCache, but every coarse vertex is split into one
+    coarse node per material-connected component of its trilinear support. Pair nodes (source node i, vertex v) are joined
+    when a source edge (i, j) has v among the targets of both; the components of that pair graph are the coarse nodes (each
+    lies in one vertex). Source edges: fine level = element stars (every node to its element's centre node: the same
+    connectivity as the 27-cliques, since the centre maps to all 8 vertices of its element); coarse levels = the coarse
+    edges of the level below. Coarse edges: coarse nodes sharing a source node, labelled by the vertex offset (27 buckets,
+    the conv3d kernel index): message passing only along material, never across a void between two nearby walls.
+    Where no support splits and every neighbour shares material this is the grid U-Net; the conv weights keep their
+    meaning. Returns a list of transfer dicts like MGCache.trans plus e_src / e_dst / e_k (edges sorted by kernel index)
+    and e_ptr (28 offsets into them)."""
+    import scipy.sparse as sp
+    from scipy.sparse.csgraph import connected_components
+    en = c.en.cpu().numpy()
+    E = en.shape[0]
+    off = c.grid[c.en].cpu().numpy() - 2 * elem_cells[:, None, :]
+    ctr_slot = np.argmax((off == 1).all(2), axis=1)
+    ctr = en[np.arange(E), ctr_slot]
+    src_pos = c.grid.cpu().numpy().astype(np.int64)
+    src_edges = np.stack([en.reshape(-1), np.repeat(ctr, 27)], 1)
+    src_edges = src_edges[src_edges[:, 0] != src_edges[:, 1]]
+    m = 65
+    out = []
+    for level in range(levels):
+        mc = (m + 1) // 2
+        ns = len(src_pos)
+        pi, pv, pw = [], [], []
+        lo = src_pos // 2
+        odd = (src_pos % 2 == 1)
+        for o in np.ndindex(2, 2, 2):
+            ok = np.ones(ns, bool)
+            for a in range(3):
+                ok &= (o[a] == 0) | odd[:, a]
+            tgt = lo + np.asarray(o) * odd
+            w = np.where(odd, 0.5, 1.0).prod(1)
+            idx = np.nonzero(ok)[0]
+            pi.append(idx); pv.append((tgt[idx, 0] * mc + tgt[idx, 1]) * mc + tgt[idx, 2]); pw.append(w[idx])
+        pi, pv, pw = np.concatenate(pi), np.concatenate(pv), np.concatenate(pw)
+        order = np.lexsort((pv, pi)); pi, pv, pw = pi[order], pv[order], pw[order]
+        V = mc ** 3
+        key = pi * V + pv                                                   # sorted
+        ptr = np.searchsorted(pi, np.arange(ns + 1))                        # pairs of source node i: ptr[i]:ptr[i+1]
+        a_, b_ = src_edges[:, 0], src_edges[:, 1]
+        cnt = ptr[a_ + 1] - ptr[a_]
+        pa = np.repeat(ptr[a_], cnt) + (np.arange(cnt.sum()) - np.repeat(np.cumsum(cnt) - cnt, cnt))   # pairs of a
+        bb = np.repeat(b_, cnt)
+        kq = bb * V + pv[pa]
+        q = np.searchsorted(key, kq)
+        hit = (q < len(key)) & (key[np.minimum(q, len(key) - 1)] == kq)
+        pa, q = pa[hit], q[hit]
+        n = len(pi)
+        G = sp.coo_matrix((np.ones(len(pa)), (pa, q)), shape=(n, n)).tocsr()
+        ncomp, lab = connected_components(G, directed=False)
+        vert = np.zeros(ncomp, np.int64); vert[lab] = pv
+        # coarse edges: coarse nodes sharing a source node (all ordered pairs among the <= 8 of each source node)
+        cntp = ptr[1:] - ptr[:-1]
+        eA, eB = [], []
+        for k in range(1, 9):
+            sel = np.nonzero(cntp == k)[0]
+            if len(sel) == 0:
+                continue
+            L = lab[ptr[sel][:, None] + np.arange(k)[None]]                 # s x k
+            for x in range(k):
+                for y in range(k):
+                    if x != y:
+                        eA.append(L[:, x]); eB.append(L[:, y])
+        eA = np.concatenate(eA) if eA else np.zeros(0, np.int64); eB = np.concatenate(eB) if eB else np.zeros(0, np.int64)
+        ek = eA * ncomp + eB
+        ek = np.unique(ek); eA, eB = ek // ncomp, ek % ncomp
+        va = np.stack(np.unravel_index(vert[eA], (mc,) * 3), 1); vb = np.stack(np.unravel_index(vert[eB], (mc,) * 3), 1)
+        d = vb - va                                                         # B at A's vertex + d
+        if len(d) and np.abs(d).max() > 1:
+            raise ValueError('SPLIT_EDGE_OFFSET')
+        kidx = ((d[:, 0] + 1) * 9 + (d[:, 1] + 1) * 3 + (d[:, 2] + 1)) if len(d) else np.zeros(0, np.int64)
+        srt = np.argsort(kidx, kind='stable'); eA, eB, kidx = eA[srt], eB[srt], kidx[srt]
+        e_ptr = np.searchsorted(kidx, np.arange(28))
+        T = lambda x_: torch.as_tensor(x_, device=dev)
+        out.append(dict(i=T(pi), v=T(lab.astype(np.int64)), w=T(pw).to(f32), n_src=ns, n_dst=int(ncomp), m=mc,
+                        dense_idx=T(vert), e_src=T(eB), e_dst=T(eA), e_k=T(kidx), e_ptr=e_ptr.tolist(),
+                        split_extra=int(ncomp - len(np.unique(vert)))))
+        src_pos = np.stack(np.unravel_index(vert, (mc,) * 3), 1).astype(np.int64)
+        src_edges = np.stack([eA, eB], 1)
+        m = mc
+    return out
+
+
+def graph_conv(Xc, t, W5, transpose=False):
+    """Kernel-bucketed message passing on the split coarse graph: Y[A] = sum over edges (A <- B, bucket k) W_k X[B] plus the
+    centre term W_13 X[A] (W_k = conv3d weight[:, :, kx, ky, kz], out x in); transpose: the adjoint (Y[B] += W_k^T X[A])."""
+    Wk = W5.permute(2, 3, 4, 0, 1).reshape(27, W5.shape[0], W5.shape[1])
+    Y = Xc @ (Wk[13] if transpose else Wk[13].T)
+    p = t['e_ptr']
+    for k in range(27):
+        if k == 13 or p[k + 1] == p[k]:
+            continue
+        a, b = t['e_dst'][p[k]:p[k + 1]], t['e_src'][p[k]:p[k + 1]]
+        if transpose:
+            Y.index_add_(0, b, Xc[a] @ Wk[k])
+        else:
+            Y.index_add_(0, a, Xc[b] @ Wk[k].T)
+    return Y
+
+
 class MGCache:
-    def __init__(self, geo, levels, feat_v2=False, b3=False):
+    def __init__(self, geo, levels, feat_v2=False, b3=False, split=False):
         c = GeoCache(geo)
         nd = geo.nd
         M = c.M
@@ -365,6 +468,8 @@ class MGCache:
             src = torch.stack(torch.unravel_index(active, (mc, mc, mc)), 1) if hasattr(torch, 'unravel_index') else \
                 torch.stack([active // (mc * mc), (active // mc) % mc, active % mc], 1)
             m = mc
+        if split:                                                                         # topology-aware coarse levels
+            c.trans = build_split_trans(c, levels, nd['elem_cells'].astype(np.int64))
         self.c = c
 
 
@@ -455,14 +560,15 @@ def load_compat(model, sd):
 
 class MGNO(nn.Module):
     def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, ckpt=False, sparse=False,
-                 bounded=False, feat_v2=False, bounds=None, bound_knee=0.0, b3=False):
+                 bounded=False, feat_v2=False, bounds=None, bound_knee=0.0, b3=False, coarse_split=False):
         super().__init__()
+        self.coarse_split = coarse_split                                            # topology-aware coarse levels (default off)
         self.F, self.H, self.L_pre, self.L_post, self.levels, self.cpl = F, H, L_pre, L_post, levels, conv_per_level
         self.ckpt = ckpt and not sparse
         self.sparse = sparse                                                        # training-time sparse hyperedge layers
         self.bounded, self.feat_v2, self.b3 = bounded, feat_v2, b3
         self.bound_knee = _check_knee(bound_knee)                                  # B1: identity below knee x A (0: plain tanh)
-        self.caches = {g.case: MGCache(g, levels, feat_v2, b3).c for g in geos}
+        self.caches = {g.case: MGCache(g, levels, feat_v2, b3, coarse_split).c for g in geos}
         self.elem_in = _mlp(126, Cg, Cg)
         self.node_in = _mlp(11 + Cg + (NF2 if feat_v2 else 0), Cg, Cg)            # input [nfeat, agg (, nfeat2)]
         self._pad_cols = {'node_in.0.weight': NF2} if feat_v2 else {}
@@ -496,7 +602,7 @@ class MGNO(nn.Module):
     def add_geo(self, geo):
         """Per-geometry cache for a geometry met after construction (step-2 pool training)."""
         if geo.case not in self.caches:
-            self.caches[geo.case] = MGCache(geo, self.levels, self.feat_v2, self.b3).c
+            self.caches[geo.case] = MGCache(geo, self.levels, self.feat_v2, self.b3, self.coarse_split).c
 
     def drop_geo(self, case):
         self.caches.pop(case, None)
@@ -726,6 +832,10 @@ class MGNO(nn.Module):
 
     def _convs(self, Xc, t, gate, k0, level):
         m, B, F = t['m'], Xc.shape[1], Xc.shape[2]
+        if 'e_src' in t:                                                               # coarse_split: material graph
+            for j in range(self.cpl):
+                Xc = Xc + graph_conv(Xc, t, self.convs[level][k0 + j]) * gate[:, k0 + j][:, None, :]
+            return Xc
         for j in range(self.cpl):
             dense = torch.zeros((m ** 3, B, F), device=dev).index_copy(0, t['dense_idx'], Xc)
             v = dense.permute(1, 2, 0).reshape(B, F, m, m, m)
@@ -775,12 +885,12 @@ class MGNO(nn.Module):
 # ---------------------------------------------------------------------------------------------------------------------
 class MGNO2(MGNO):
     def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, n_fringe=4, sparse=False,
-                 bounded=False, feat_v2=False, fringe_soft=False, bounds=None, bound_knee=0.0, b3=False):
+                 bounded=False, feat_v2=False, fringe_soft=False, bounds=None, bound_knee=0.0, b3=False, coarse_split=False):
         if fringe_soft and not feat_v2:
             raise ValueError('fringe_soft needs feat_v2 (the soft weak score s)')
         super().__init__(geos, F=F, H=H, L_pre=L_pre, L_post=L_post, levels=levels, Cg=Cg,
                          conv_per_level=conv_per_level, slot_dim=slot_dim, sparse=sparse, bounded=bounded, feat_v2=feat_v2,
-                         bound_knee=bound_knee, b3=b3)
+                         bound_knee=bound_knee, b3=b3, coarse_split=coarse_split)
         self.n_fringe = n_fringe
         self.fringe_soft = fringe_soft
         self.face_in = _mlp(2 * Cg + 3, Cg, Cg)
