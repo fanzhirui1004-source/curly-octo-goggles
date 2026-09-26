@@ -40,6 +40,7 @@ SRC = Path('/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/root/autodl-tmp/CUTFEM
 PACKETS = Path('/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/packets')
 REGISTERED_SEED = 2026092101
 GAMMA = 0.0001
+TAU_LO = 0.1755   # frozen geometry contract (stage_cutfem_graded.thickness.LOWER) > generator TAU_LOWER 0.1752016
 
 
 def context(row, seed):
@@ -271,9 +272,9 @@ def neighbour(F, row, tag, seed, force_copy=False):
     rng = np.random.default_rng(int.from_bytes(h[:8], 'little'))
     how = 'fallback_copy' if force_copy else 'fallback'
     for _ in range(0 if force_copy else 5000):
-        c = shared.copy(); c[~near] = rng.uniform(F.TAU_LOWER, F.TAU_UPPER, int((~near).sum()))
+        c = shared.copy(); c[~near] = rng.uniform(TAU_LO, F.TAU_UPPER, int((~near).sum()))
         c = np.round(c, 12)
-        if (c.min() > F.TAU_LOWER and c.max() < F.TAU_UPPER and np.ptp(c) <= F.SPAN_MAX and F.gradient_max(c) <= F.GRADIENT_MAX):
+        if (c.min() > TAU_LO and c.max() < F.TAU_UPPER and np.ptp(c) <= F.SPAN_MAX and F.gradient_max(c) <= F.GRADIENT_MAX):
             how = 'random'
             break
     else:

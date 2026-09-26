@@ -119,6 +119,11 @@ NB_TAG = {(1, 0, 0): 'px', (-1, 0, 0): 'mx', (0, 1, 0): 'py', (0, -1, 0): 'my', 
 GLUED_SAFE = os.environ.get('GLUED_SAFE', '0') == '1'                         # default off: the old glued path, unchanged
 GLUED_HEADROOM = float(os.environ.get('GLUED_HEADROOM_GB', '4')) * 2 ** 30     # free device memory wanted after the factor
 GLUED_FP32_STEPS = int(os.environ.get('GLUED_FP32_STEPS', '12'))              # safe mode: refinement steps for an fp32 factor
+GLUED_PCG_ITERS = int(os.environ.get('GLUED_PCG_ITERS', '60'))                # safe mode: PCG iterations for an fp32 factor
+GLUED_FP32_DOFS = int(float(os.environ.get('GLUED_FP32_DOFS', '7e5')))       # safe mode: two-cell systems above this size go
+                                                                              # straight to an fp32 factor (an fp64 factor of two
+                                                                              # FULL cells fills the card and the solver's memory is
+                                                                              # not returned in time for the second BC group)
 CLASS_OFFSET = dict(force_c=1, face_c=2, support_k=3, glued=4, support=5, support64=5)
 EQ_MAX_COND = 1e10                                                            # cond(G G^T) of the traction equilibration
 REFINE_STEPS, REFINE_TARGET, RESID_TOL = 3, 1e-10, 1e-6                       # glued solves (DATA-3)
@@ -535,6 +540,35 @@ def refine(matvec, solve, b, y, unscale=None, steps=REFINE_STEPS, target=REFINE_
     return y, rel, it, rel0
 
 
+def refine_pcg(matvec, solve, b, unscale=None, maxit=None, target=REFINE_TARGET):
+    """Safe mode, fp32 factor: CG on the fp64 system preconditioned by the (fp32) factor, column by column (vectorised
+    scalars; converged columns frozen). Much faster than stationary refinement when the fp32 factor contracts slowly
+    (weakly connected two-cell systems). Same outputs as refine(): y, rel (true residual, recomputed), iterations, rel0."""
+    maxit = GLUED_PCG_ITERS if maxit is None else maxit
+    w = (lambda z: z) if unscale is None else (lambda z: z * unscale[:, None])
+    bn = w(b).norm(dim=0).clamp_min(1e-300)
+    x = solve(b)
+    r = b - matvec(x)
+    rel = rel0 = w(r).norm(dim=0) / bn
+    z = solve(r); p = z.clone(); rz = (r * z).sum(0)
+    it = 0
+    while it < maxit and float(rel.max()) > target:
+        act = (rel > target).to(b.dtype)
+        Ap = matvec(p)
+        alpha = act * rz / (p * Ap).sum(0).clamp_min(1e-300)
+        x = x + alpha[None] * p
+        r = r - alpha[None] * Ap
+        rel = torch.where(act > 0, w(r).norm(dim=0) / bn, rel)
+        z = solve(r)
+        rz_new = (r * z).sum(0)
+        beta = rz_new / rz.clamp_min(1e-300)
+        p = z + beta[None] * p
+        rz = rz_new
+        it += 1
+    r = b - matvec(x)
+    return x, w(r).norm(dim=0) / bn, it, rel0
+
+
 # --------------------------------------------------------------------------------------------------------- glued
 def neighbour_name(case, d):
     return f'{case}_nb{NB_TAG[tuple(int(x) for x in d)]}'
@@ -670,7 +704,9 @@ def _glued_group_safe(Ct, Cn, dmap, nb, far, clamp, alpha, ks, tf, nf_, ptd, pnd
             crow, cA, vA, keep, sA, nf = _glued_system(_glued_upper(Ct, Cn, dmap, nb), nb, far, clamp, alpha)
             nnz_ = int(vA.numel())
             _mem('glued_before_factor', offset=d, clamped=clamp, dofs=nf, nnz=nnz_, attempt=attempt)
-            if attempt == 'auto':
+            if attempt == 'auto' and nf > GLUED_FP32_DOFS:
+                sol, prec = TE.SPDSolver(crow, cA, vA, nf, fdt=torch.float32), 'fp32_large'
+            elif attempt == 'auto':
                 sol, prec = _spd_glued(crow, cA, vA, nf)
                 free_ = torch.cuda.mem_get_info()[0]
                 if prec == 'fp64' and free_ < GLUED_HEADROOM:
@@ -691,8 +727,10 @@ def _glued_group_safe(Ct, Cn, dmap, nb, far, clamp, alpha, ks, tf, nf_, ptd, pnd
                 if nf_:
                     F.index_add_(0, pnd, sum(T.forces(T.random(k, gen)) for T in nf_))
                 b = sA[:, None] * F[keep]
-                y, rel, it, rel0 = refine(Kg, sol.solve, b, sol.solve(b), unscale=1 / sA,
-                                          steps=REFINE_STEPS if prec == 'fp64' else max(REFINE_STEPS, GLUED_FP32_STEPS))
+                if prec == 'fp64':
+                    y, rel, it, rel0 = refine(Kg, sol.solve, b, sol.solve(b), unscale=1 / sA)
+                else:                                                   # fp32 factor: PCG on the fp64 system
+                    y, rel, it, rel0 = refine_pcg(Kg, sol.solve, b, unscale=1 / sA)
                 u = torch.zeros((nb, k), dtype=dt, device=dev)
                 u[keep] = sA[:, None] * y
                 Qg.append(_finite(u[ptd], 'GLUED'))

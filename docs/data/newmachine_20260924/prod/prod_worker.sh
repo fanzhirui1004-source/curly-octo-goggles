@@ -73,7 +73,7 @@ if os.path.exists(lp):
 rec['events'] = ev
 print(json.dumps(rec, default=str))
 PY
-  items="body/$c $(cd $S && ls -d body/${c}_nb* 2>/dev/null | tr '\n' ' ') logs/$c.body.log logs/$c.status.json $(cd $S && ls -d packets/${c}_nb* 2>/dev/null | tr '\n' ' ')"
+  items="$( [ -d $S/body/$c ] && echo body/$c ) $(cd $S && ls -d body/${c}_nb* 2>/dev/null | tr '\n' ' ') logs/$c.body.log logs/$c.status.json $(cd $S && ls -d packets/${c}_nb* 2>/dev/null | tr '\n' ' ')"
   [ -d $S/data/$c ] && items="$items data/$c"; [ -d $S/data_v2/$c ] && items="$items data_v2/$c"
   for f in prep_geo prep_geo2; do [ -f $L/$c.$f.log ] && items="$items logs/$c.$f.log"; done
   if (cd $S && tar cf $T/$c.tar.part $items) && m=$(md5sum < $T/$c.tar.part | cut -c1-32) && mv $T/$c.tar.part $T/$c.tar && echo $m > $T/$c.md5; then
