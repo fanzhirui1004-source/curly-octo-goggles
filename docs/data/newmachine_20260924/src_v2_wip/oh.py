@@ -132,7 +132,8 @@ def _field(self, model, q):
     u = rot_dofs(model(self, rot_dofs(qd, *self.oh_ps)), *self.oh_ps_t)
     u = u + self.RA.to(f32) @ c
     u = u.index_copy(0, self.P, q32)                                  # exact port values
-    return u
+    import trainlib as TL
+    return TL.wrap(self.C, u, model)                                  # physics wrapper on the physical field (as Geo.field)
 
 
 def view(model, geo, k):

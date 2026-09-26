@@ -244,23 +244,19 @@ class FastNet:
         cc = self.RPpinv @ q32
         u = self.ext(q32 - self.RP @ cc) + self.RA @ cc
         u = u.index_copy(0, self.Pidx, q32)
-        k = getattr(self.model, 'smooth_k', 0)
-        if k:                                                                           # fallback-A tail (default off)
-            u = TL.smooth_tail(self.geo.C, u, k, self.model.smooth_alpha)
-        return u
+        import trainlib as TL
+        return TL.wrap(self.geo.C, u, self.model)                                       # physics wrapper (default off)
 
     def _tail_T(self, y):
-        """Adjoint of the (linear) smoothing tail by one reverse pass at x = 0."""
-        x = torch.zeros(y.shape, dtype=f64, device=y.device, requires_grad=True)
-        with torch.enable_grad():
-            out = TL.smooth_tail(self.geo.C, x, self.model.smooth_k, self.model.smooth_alpha)
-            g, = torch.autograd.grad(out, x, grad_outputs=y.to(f64))
-        return g
+        """Adjoint of the (linear) smoothing tail (explicit recurrence, no autograd graph)."""
+        import trainlib as TL
+        return TL.smooth_tail_T(self.geo.C, y, self.model.smooth_k, self.model.smooth_alpha)
 
     @torch.no_grad()
     def field_T(self, y):
-        if getattr(self.model, 'smooth_k', 0):
-            y = self._tail_T(y)
+        if getattr(self.model, 'smooth_k', 0) or getattr(self.model, 'coarse_space', None):
+            import trainlib as TL
+            y = TL.wrap_T(self.geo.C, y, self.model)
         y = y.to(f32)
         yP = y[self.Pidx]
         yI = y.index_fill(0, self.Pidx, 0.0)

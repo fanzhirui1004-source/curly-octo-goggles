@@ -104,3 +104,43 @@
     face 0.27 vs 2.92 | face_c 0.61 vs 3.34 | grf 0.32 vs 2.03 | macro 0.25 vs 0.85 ; selection score 0.058 vs 0.094
   -> 4-10x lower validation energy error with the trained tail (vs ~3x from the untrained tail on v2L1 fields).
   Step time ~0.29 s (unchanged). Per-type new-val and continuous gates follow after step 15000.
+
+- E3 COARSE GALERKIN (e3_coarse.py, v2L1 fields, untrained wrapper; coarse correction from the residual only,
+  deployable; 2003 medium, 165,927 interior DOFs). Energy excess %, force_c (force):
+    net 13.5 (7.2) | net+tail8 4.7 (2.3)
+    Q1_9   (1,275 coarse dofs): net+coarse 7.4 (4.2); net+coarse+tail8 1.00 (0.53)
+    PU_9   (5,100):             4.2 (2.6);           0.17 (0.13)
+    Q1_17  (5,601):             4.7 (2.8);           0.23 (0.16)
+    Q2_17  (7,401):             3.6 (2.2);           0.13 (0.10)
+    PU_17  (22,404):            2.0 (1.3);           0.048 (0.056)
+    Q1_33  (27,207):            2.0 (1.3);           0.052 (0.045)
+    zero-interior start + tail + coarse + tail: 1.6x10^2 .. 4.5x10^3 % -> the network's initial guess is essential.
+  => one two-grid correction (coarse Galerkin from the residual + 8 sweeps) on the WORST medium cell takes
+  13.5% -> 0.13-0.23% with 5-7k coarse dofs (60-100x), untrained. Coarse matrices V^T K_II V are 1-27k sparse.
+- E3 2006 medium (%): force_c net 3.64 | tail 1.04 | Q1_9+tail 0.20 | PU_9+tail 0.04 | Q1_17+tail 0.05 | Q2_17+tail 0.03
+                      force   net 2.17 | tail 0.46 | Q1_9+tail 0.17 | PU_9+tail 0.10 | Q1_17+tail 0.10 | Q2_17+tail 0.09
+  2003 force: Q1_9+tail 0.53 | PU_9+tail 0.13 | Q1_17+tail 0.16 | Q2_17+tail 0.10.
+- A2_tail8 final training eval (step 15000): force 0.66, force_c 1.50, glued 1.15, support 0.78 (%), score 0.0553.
+- E3 2000 FULL (%): force_c net 1.27 | tail 0.42 | Q1_9+tail 0.14 | PU_9+tail 0.02 | Q1_17+tail 0.04 | Q2_17+tail 0.02
+                    force   net 0.74 | tail 0.11 | Q1_9+tail 0.07 | PU_9+tail 0.05 | Q1_17+tail 0.05 | Q2_17+tail 0.05
+- Production: 900+ cells.
+
+- NEW-VAL (80 unseen independent-field cells), energy excess % as mean / median / max, v2L1 -> A0_ctrl -> A2_tail8:
+  FULL   force 0.91/0.73/2.3 -> 0.88 -> 0.11/0.08/0.3;  force_c 0.64 -> 0.60 -> 0.17/0.10/0.4;  glued 0.77 -> 0.71 -> 0.25
+  light  force 3.24/2.47/9.9 -> 3.02 -> 0.67/0.45/2.2;  force_c 9.9/11.2/15.2 -> 8.8 -> 3.22/3.82/4.7;  glued 8.3 -> 7.5 -> 3.0/3.8/4.0
+  medium force 4.72/3.36/20.9 -> 4.51 -> 0.91/0.60/4.4; force_c 5.23 -> 5.24 -> 1.73/1.31/4.3; glued 3.27 -> 3.30 -> 1.14/0.88/2.4
+  heavy  force 11.3/7.1/70.1 -> 10.0 -> 1.00/0.73/3.3;  force_c 12.6 -> 10.2 -> 1.20/0.51/3.2; glued 16.8 -> 18.2 -> 1.52/0.90/2.8
+  => trained tail: 5-11x lower means, worst cells 70% -> 3.3% (heavy), 21% -> 4.4% (medium). Light-cut force_c / glued
+  stay ~3-4% (the least improved group: large cells with a cut face, consistent with the mid/soft band the tail
+  cannot reach; the coarse Galerkin (E3) is the candidate for that remainder).
+
+- CORRECTION (verified): A2_tail8 was NOT trained with the tail. The config has oh = true, so every training geometry
+  runs through an O_h view whose field (oh._field) bypassed Geo.field and therefore the tail. A2's step losses equal A0's
+  to ~5e-6 relative (same seed, float noise). A2's reported improvements (training-eval val_mean on the identity view,
+  new-val with --views 0, continuous gates through FastNet) are therefore "A0 network + UNTRAINED 8-sweep tail at
+  evaluation". Fixed: oh._field now applies the tail; A2b_tail8 (really trained with the tail) is queued.
+- A2 (= A0 + untrained tail8) continuous gates, compliance / sens %: 2000 x 0.14/3.89 fail (test-face loads <=1.31),
+  y 0.14/3.75 fail; 2001 x 0.03/1.11, y 0.04/1.11 pass; 2003 x 1.68/5.83 fail (A0 4.12/11.36), y 1.39/5.56 fail;
+  2005 x 0.18/1.22, y 0.27/0.88 pass; 2006 x 0.19/1.89 pass. Decomposition 2000 x (A2): eps 0.41 0.40 0.28 | 0.74 0.41 1.11,
+  sens field_only 0.56 0.63 0.63 | 1.45 0.82 2.46, sol_only 0.84 0.80 0.60 | 1.02 0.51 1.56 -> the remaining 2000
+  failure (nbr_z, dragged free end) is now FIELD-dominated.

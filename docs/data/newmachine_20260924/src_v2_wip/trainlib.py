@@ -9,6 +9,7 @@ Adversarial directions: block power iteration on the pencil (S_hat, S): q <- S^+
 """
 import json, time, gc, math
 from pathlib import Path
+import time
 import numpy as np
 import torch
 import teacher as TE
@@ -71,6 +72,194 @@ def tail_bounds(C, alpha):
     lmax = 1.05 * lam
     C._tail_bounds = (alpha, lmax / alpha, lmax)
     return lmax / alpha, lmax
+
+
+def _cheb(C, z0, b, k, alpha):
+    """Chebyshev iteration on A z = b, A = D^-1 K_II (interior vectors), from z0; returns p_k(A) z0 + s_k(A) b."""
+    lmin, lmax = tail_bounds(C, alpha)
+    theta, delta = (lmax + lmin) / 2, (lmax - lmin) / 2
+    sigma = theta / delta; rho = 1 / sigma
+    dinv = (1 / C.dK[C.I])[:, None]
+    full = torch.zeros((C.nb, z0.shape[1]), dtype=dt, device=z0.device)
+
+    def A(z):
+        full.zero_(); full[C.I] = z
+        return dinv * (C.K @ full)[C.I]
+    z = z0.clone()
+    d = (b - A(z)) / theta
+    for i in range(k):
+        z = z + d
+        if i == k - 1:
+            break
+        rho_n = 1 / (2 * sigma - rho)
+        d = rho_n * rho * d + (2 * rho_n / delta) * (b - A(z))
+        rho = rho_n
+    return z
+
+
+@torch.no_grad()
+def smooth_tail_T(C, y, k, alpha=30.0):
+    """Explicit adjoint of smooth_tail (no autograd graph): with w = D^-1 y_I,
+    (T^T y)_I = D p_k(A) w,  (T^T y)_P = y_P - K_PI s_k(A) w."""
+    y = y.to(dt)
+    dK = C.dK[C.I][:, None]
+    w = y[C.I] / dK
+    zero = torch.zeros_like(w)
+    out = y.clone()
+    out[C.I] = dK * _cheb(C, w, zero, k, alpha)
+    sw = _cheb(C, zero, w, k, alpha)
+    full = torch.zeros_like(y); full[C.I] = sw
+    out[C.P] = y[C.P] - (C.K @ full)[C.P]
+    return out
+
+
+COARSE_SPACES = {'Q1_9': (1, 8, False), 'Q1_17': (1, 16, False), 'Q2_17': (2, 8, False), 'PU_9': (1, 8, True)}
+
+
+def coarse_prolong(C, space, with_meta=False):
+    """Interior-restricted prolongation (scipy CSC, ni x nc) of a tensor Lagrange space on the unit cell (Q1 / Q2 over
+    ne^3 coarse elements, or PU-linear: translation + 3x3 slopes per Q1 vertex); columns without interior support dropped.
+    with_meta: also (vertex integer coordinates (nc, 3), slot index (nc,)) of every kept column."""
+    import scipy.sparse as sp
+    order, ne, pu = COARSE_SPACES[space]
+    n2 = 2 * C.n + 1
+    nodes = C.nodes.cpu().numpy() if torch.is_tensor(C.nodes) else np.asarray(C.nodes)
+    xyz = np.stack(np.unravel_index(nodes, (n2,) * 3), 1).astype(float) / (n2 - 1)
+    I = C.I.cpu().numpy()
+    nn = order * ne + 1
+    e = np.minimum(np.floor(xyz * ne).astype(int), ne - 1); t = xyz * ne - e
+    sh = (lambda s_: np.stack([1 - s_, s_], -1)) if order == 1 else \
+         (lambda s_: np.stack([(2 * s_ - 1) * (s_ - 1), 1 - (2 * s_ - 1) ** 2, s_ * (2 * s_ - 1)], -1))
+    W = [sh(t[:, d]) for d in range(3)]
+    rows, cols, vals = [], [], []
+    N = len(xyz)
+    ns = 12 if pu else 3
+    for a in range(order + 1):
+        for b in range(order + 1):
+            for c in range(order + 1):
+                vid = ((order * e[:, 0] + a) * nn + order * e[:, 1] + b) * nn + order * e[:, 2] + c
+                w = W[0][:, a] * W[1][:, b] * W[2][:, c]
+                if pu:
+                    dx = xyz - np.stack([order * e[:, 0] + a, order * e[:, 1] + b, order * e[:, 2] + c], 1) / (order * ne)
+                for comp in range(3):
+                    rows.append(3 * np.arange(N) + comp); cols.append(ns * vid + comp); vals.append(w)
+                    if pu:
+                        for j in range(3):
+                            rows.append(3 * np.arange(N) + comp); cols.append(ns * vid + 3 + 3 * comp + j); vals.append(w * dx[:, j])
+    Pd = sp.csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(3 * N, ns * nn ** 3))
+    PI = Pd[I]
+    used = np.flatnonzero(np.abs(PI).sum(0).A1 > 1e-14)
+    V = PI[:, used].tocsc()
+    if not with_meta:
+        return V
+    vid, slot = used // ns, used % ns
+    return V, np.stack(np.unravel_index(vid, (nn,) * 3), 1), slot
+
+
+def _chol_jitter(A):
+    """Cholesky of a symmetric unit-diagonal (Jacobi-scaled) matrix, with a growing diagonal shift when it is only
+    semi-definite (coarse columns that are nearly dependent on the interior); returns (L, shift)."""
+    for eps in (0.0, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4):
+        L, info = torch.linalg.cholesky_ex(A + eps * torch.eye(A.shape[0], dtype=A.dtype, device=A.device) if eps else A)
+        if int(info) == 0:
+            return L, eps
+    raise ValueError('COARSE_CHOLESKY_FAILED')
+
+
+def coarse_setup(C, space, reach=4, chunk=128):
+    """Galerkin coarse operator A_c = V^T K_II V on C's device by probing: columns are coloured by vertex coordinates mod
+    s = 2R + 1 (R = 2 + ceil(reach / h), h = node spacings per coarse vertex spacing, reach = K's stencil radius in node
+    spacings incl. ghost-penalty coupling) and slot, so one K product per colour yields every entry within distance R.
+    Jacobi-scaled, Cholesky (fp64) with a jitter fallback. Stores _cV (sparse COO ni x nc, scaled), _cL, _c_space,
+    _c_seconds, _c_shift on the cell (tensors move with it)."""
+    if getattr(C, '_c_space', None) == space:
+        return
+    order, ne, pu = COARSE_SPACES[space]
+    if order != 1:
+        raise ValueError(f'coarse_setup probing supports Q1 / PU spaces, not {space}')
+    t0 = time.perf_counter()
+    dvc = C.dK.device
+    V, vc, slot = coarse_prolong(C, space, with_meta=True)
+    nc = V.shape[1]
+    h = (2 * C.n) / ne
+    R = 2 + int(math.ceil(reach / h))
+    s = 2 * R + 1
+    color = ((vc[:, 0] % s) * s + (vc[:, 1] % s)) * s + (vc[:, 2] % s)
+    color = color * (12 if pu else 3) + slot
+    ucol, cidx = np.unique(color, return_inverse=True)
+    Vc = V.tocoo()
+    Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
+    VtT = Vt.t().coalesce()
+    Y = torch.zeros((nc, len(ucol)), dtype=dt, device=dvc)
+    for c0 in range(0, len(ucol), chunk):
+        c1 = min(len(ucol), c0 + chunk)
+        sel = np.flatnonzero((cidx >= c0) & (cidx < c1))
+        oh = torch.sparse_coo_tensor(np.stack([sel, cidx[sel] - c0]), np.ones(len(sel)), (nc, c1 - c0), dtype=dt, device=dvc)
+        probe = torch.sparse.mm(Vt, oh.to_dense())                              # ni x chunk
+        full = torch.zeros((C.nb, c1 - c0), dtype=dt, device=dvc); full[C.I] = probe
+        Y[:, c0:c1] = torch.sparse.mm(VtT, (C.K @ full)[C.I])
+        del probe, full
+    vct = torch.as_tensor(vc, device=dvc)
+    near = (vct[:, None, :] - vct[None, :, :]).abs().amax(2) <= R                  # nc x nc
+    A = torch.where(near, Y[:, torch.as_tensor(cidx, device=dvc)], torch.zeros((), dtype=dt, device=dvc))
+    del Y, near
+    A = (A + A.T) / 2
+    d = torch.sqrt(torch.diagonal(A).clamp_min(1e-300))
+    A = A / d[:, None] / d[None, :]
+    L, shift = _chol_jitter(A)
+    del A
+    dcol = (1 / d)[Vt.indices()[1]]
+    C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, V.shape, dtype=dt, device=dvc).coalesce()
+    C._cL = L
+    C._c_space, C._c_shift, C._c_seconds = space, shift, time.perf_counter() - t0
+
+
+def coarse_correct(C, x):
+    """x_I <- x_I + V A_c^-1 V^T r_I, r_I = -(K x)_I (ports held); linear in x, differentiable."""
+    xx = x.to(dt)
+    r = -_KMat.apply(xx, C.K)[C.I]
+    c = torch.cholesky_solve(torch.sparse.mm(C._cV.t(), r), C._cL)
+    return xx.index_add(0, C.I, torch.sparse.mm(C._cV, c))
+
+
+@torch.no_grad()
+def coarse_correct_T(C, y):
+    """Adjoint of coarse_correct: y - K[:, I] V A_c^-1 V^T y_I."""
+    y = y.to(dt)
+    g = torch.sparse.mm(C._cV, torch.cholesky_solve(torch.sparse.mm(C._cV.t(), y[C.I]), C._cL))
+    full = torch.zeros_like(y); full[C.I] = g
+    return y - C.K @ full
+
+
+def wrap(C, u, model):
+    """Physics wrapper after the network (default off): tail (smooth_k sweeps); with coarse_space also a Galerkin coarse
+    correction and a second tail (tail - coarse - tail). Linear in u; S_hat = E^T K E stays symmetric and >= S."""
+    k, cs = getattr(model, 'smooth_k', 0), getattr(model, 'coarse_space', None)
+    if not k and not cs:
+        return u
+    x = smooth_tail(C, u, k, model.smooth_alpha) if k else u.to(dt)
+    if cs:
+        coarse_setup(C, cs)
+        x = coarse_correct(C, x)
+        if k:
+            x = smooth_tail(C, x, k, model.smooth_alpha)
+    return x.to(u.dtype)
+
+
+@torch.no_grad()
+def wrap_T(C, y, model):
+    k, cs = getattr(model, 'smooth_k', 0), getattr(model, 'coarse_space', None)
+    if not k and not cs:
+        return y
+    y = y.to(dt)
+    if cs:
+        coarse_setup(C, cs)
+        if k:
+            y = smooth_tail_T(C, y, k, model.smooth_alpha)
+        y = coarse_correct_T(C, y)
+    if k:
+        y = smooth_tail_T(C, y, k, model.smooth_alpha)
+    return y
 
 
 def smooth_tail(C, u, k, alpha=30.0):
@@ -200,9 +389,7 @@ class Geo:
         u = model(self, qd)
         u = u + self.RA.to(torch.float32) @ c
         u = u.index_copy(0, self.P, q32)                                  # exact port values
-        if getattr(model, 'smooth_k', 0):                                 # fallback-A tail (default off)
-            u = smooth_tail(self.C, u, model.smooth_k, model.smooth_alpha)
-        return u
+        return wrap(self.C, u, model)                                     # physics wrapper (default off: identity)
 
     def sens_hat(self, u, chunk=256):
         import os
