@@ -144,3 +144,13 @@
   2005 x 0.18/1.22, y 0.27/0.88 pass; 2006 x 0.19/1.89 pass. Decomposition 2000 x (A2): eps 0.41 0.40 0.28 | 0.74 0.41 1.11,
   sens field_only 0.56 0.63 0.63 | 1.45 0.82 2.46, sol_only 0.84 0.80 0.60 | 1.02 0.51 1.56 -> the remaining 2000
   failure (nbr_z, dragged free end) is now FIELD-dominated.
+
+- E3 WITH FEWER SWEEPS (untrained, v2L1; tail(k) + coarse + tail(k), energy excess %, force_c / force):
+                 k=2               k=4              k=8
+  2003 Q1_17:    1.02 / 0.59       0.42 / 0.25      0.19 / 0.11
+  2003 PU_9:     0.86 / 0.52       0.33 / 0.21      0.11 / 0.08
+  2003 Q1_9:     2.33 / 1.22       1.33 / 0.69      0.81 / 0.42
+  2000 Q1_17:    0.13 / 0.14       0.05 / 0.06      0.03 / 0.03
+  Query cost ~ (2k + 1 residual) K products + one coarse solve per field (and the same again for the adjoint).
+- A3_2grid (trained through tail8 + Q1_17 + tail8): training-batch energy excess ~1e-3 at step 50 and ~1e-4 (bank
+  normalisation floor, sometimes negative) from step ~1500 (A0 at the same steps: 16%, 2.3%, 0.6%). 0.6 s/step.

@@ -199,15 +199,21 @@ def coarse_setup(C, space, reach=4, chunk=128):
         full = torch.zeros((C.nb, c1 - c0), dtype=dt, device=dvc); full[C.I] = probe
         Y[:, c0:c1] = torch.sparse.mm(VtT, (C.K @ full)[C.I])
         del probe, full
-    vct = torch.as_tensor(vc, device=dvc)
-    near = (vct[:, None, :] - vct[None, :, :]).abs().amax(2) <= R                  # nc x nc
-    A = torch.where(near, Y[:, torch.as_tensor(cidx, device=dvc)], torch.zeros((), dtype=dt, device=dvc))
-    del Y, near
-    A = (A + A.T) / 2
-    d = torch.sqrt(torch.diagonal(A).clamp_min(1e-300))
-    A = A / d[:, None] / d[None, :]
+    vct = torch.as_tensor(vc, dtype=torch.int16, device=dvc)
+    cix = torch.as_tensor(cidx, device=dvc)
+    A = torch.zeros((nc, nc), dtype=dt, device=dvc)
+    for r0 in range(0, nc, 1024):                                                 # row blocks: no nc x nc x 3 temporary
+        r1 = min(nc, r0 + 1024)
+        near = (vct[r0:r1, None, :] - vct[None, :, :]).abs().amax(2) <= R
+        A[r0:r1] = torch.where(near, Y[r0:r1][:, cix], torch.zeros((), dtype=dt, device=dvc))
+        del near
+    del Y
+    d = torch.sqrt(torch.diagonal(A).clamp_min(1e-300))                          # symmetric up to rounding; Cholesky reads
+    A.div_(d[:, None]).div_(d[None, :])                                           # the lower triangle only
     L, shift = _chol_jitter(A)
     del A
+    if dvc.type == 'cuda':
+        torch.cuda.empty_cache()
     dcol = (1 / d)[Vt.indices()[1]]
     C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, V.shape, dtype=dt, device=dvc).coalesce()
     C._cL = L
