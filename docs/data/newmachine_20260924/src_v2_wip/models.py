@@ -560,9 +560,12 @@ def load_compat(model, sd):
 
 class MGNO(nn.Module):
     def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, ckpt=False, sparse=False,
-                 bounded=False, feat_v2=False, bounds=None, bound_knee=0.0, b3=False, coarse_split=False):
+                 bounded=False, feat_v2=False, bounds=None, bound_knee=0.0, b3=False, coarse_split=False, smooth_k=0, smooth_alpha=30.0):
         super().__init__()
         self.coarse_split = coarse_split                                            # topology-aware coarse levels (default off)
+        # smooth_k > 0: fallback-A-type tail (trainlib.smooth_tail), k Chebyshev sweeps of exact interior equilibrium after the
+        # network; applied by trainlib.Geo.field and fastnet.FastNet, not by forward(). Default 0 = the fully learned model.
+        self.smooth_k, self.smooth_alpha = int(smooth_k), float(smooth_alpha)
         self.F, self.H, self.L_pre, self.L_post, self.levels, self.cpl = F, H, L_pre, L_post, levels, conv_per_level
         self.ckpt = ckpt and not sparse
         self.sparse = sparse                                                        # training-time sparse hyperedge layers
@@ -885,12 +888,13 @@ class MGNO(nn.Module):
 # ---------------------------------------------------------------------------------------------------------------------
 class MGNO2(MGNO):
     def __init__(self, geos, F=32, H=4, L_pre=4, L_post=4, levels=3, Cg=64, conv_per_level=2, slot_dim=8, n_fringe=4, sparse=False,
-                 bounded=False, feat_v2=False, fringe_soft=False, bounds=None, bound_knee=0.0, b3=False, coarse_split=False):
+                 bounded=False, feat_v2=False, fringe_soft=False, bounds=None, bound_knee=0.0, b3=False, coarse_split=False,
+                 smooth_k=0, smooth_alpha=30.0):
         if fringe_soft and not feat_v2:
             raise ValueError('fringe_soft needs feat_v2 (the soft weak score s)')
         super().__init__(geos, F=F, H=H, L_pre=L_pre, L_post=L_post, levels=levels, Cg=Cg,
                          conv_per_level=conv_per_level, slot_dim=slot_dim, sparse=sparse, bounded=bounded, feat_v2=feat_v2,
-                         bound_knee=bound_knee, b3=b3, coarse_split=coarse_split)
+                         bound_knee=bound_knee, b3=b3, coarse_split=coarse_split, smooth_k=smooth_k, smooth_alpha=smooth_alpha)
         self.n_fringe = n_fringe
         self.fringe_soft = fringe_soft
         self.face_in = _mlp(2 * Cg + 3, Cg, Cg)

@@ -1,0 +1,7 @@
+PU Q1     on  8^3 elements (1449 dof): best energy excess consistent 2.1770 macro 0.0972  (31s)
+PU rigid  on  8^3 elements (2898 dof): best energy excess consistent 0.2916 macro 0.0446  (46s)
+PU linear on  8^3 elements (5796 dof): best energy excess consistent 0.0418 macro 0.0131  (84s)
+PU Q1     on 16^3 elements (6348 dof): best energy excess consistent 0.4628 macro 0.0341  (123s)
+PU rigid  on 16^3 elements (12696 dof): best energy excess consistent 0.0592 macro 0.0134  (151s)
+PU linear on 16^3 elements (25392 dof): best energy excess consistent 0.0032 macro 0.0026  (276s)
+done

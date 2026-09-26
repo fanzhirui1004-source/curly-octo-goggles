@@ -243,10 +243,24 @@ class FastNet:
         q32 = q.to(f32)
         cc = self.RPpinv @ q32
         u = self.ext(q32 - self.RP @ cc) + self.RA @ cc
-        return u.index_copy(0, self.Pidx, q32)
+        u = u.index_copy(0, self.Pidx, q32)
+        k = getattr(self.model, 'smooth_k', 0)
+        if k:                                                                           # fallback-A tail (default off)
+            u = TL.smooth_tail(self.geo.C, u, k, self.model.smooth_alpha)
+        return u
+
+    def _tail_T(self, y):
+        """Adjoint of the (linear) smoothing tail by one reverse pass at x = 0."""
+        x = torch.zeros(y.shape, dtype=f64, device=y.device, requires_grad=True)
+        with torch.enable_grad():
+            out = TL.smooth_tail(self.geo.C, x, self.model.smooth_k, self.model.smooth_alpha)
+            g, = torch.autograd.grad(out, x, grad_outputs=y.to(f64))
+        return g
 
     @torch.no_grad()
     def field_T(self, y):
+        if getattr(self.model, 'smooth_k', 0):
+            y = self._tail_T(y)
         y = y.to(f32)
         yP = y[self.Pidx]
         yI = y.index_fill(0, self.Pidx, 0.0)

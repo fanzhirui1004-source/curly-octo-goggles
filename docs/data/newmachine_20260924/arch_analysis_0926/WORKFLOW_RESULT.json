@@ -1,0 +1,686 @@
+{
+ "lenses": [
+  {
+   "lens": "MECHANICS (continuum/structural mechanics of thin-walled TPMS lattices in CutFEM). New computations are exact fp64 numpy/scipy/PARDISO runs on the two local fixture cells: fresh_train_0021_cover01_r1 (light cut, 76% retained, 210k DOF) and fresh_train_0010_cover01_r1 (heavy cut, 5.5% retained). I also ran a 2D Q2 thin-strip toy model and re-analysed the pack JSONs and LATE_RESULTS.md. Scripts, logs and JSON are in /tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/pack/work/mech2/ (gpA.py, expB1.py, expB2.py, expB2c.py, expB2d.py, expB3.py, expB4.py, expB5.py, toy_strip.py, comp.py, psd.py). I reused cell.py, loads.py, a2_invert.py, a3_thick.py and the finite-difference dM_*.npy (dMoments/dtau) from the sibling folder work/mechanics/, which was written earlier by another session using the same lens. No local FULL cell was available, so FULL-cell statements rest on pack data only.",
+   "insights": [
+    "RESOLUTION (SHOWS, a3_thick.py on the Schwarz-P surface): wall thickness is 2*tau/|grad phi|. Measured in element sizes h=1/32 (p5/p50/p95): 1.06/1.38/1.70 h at tau=0.1755, 1.52/1.97/2.44 h at tau=0.25, and 1.82/2.36/2.94 h at tau=0.30. That is 2.8-4.7 Q2 node layers through the wall. On 0021 only 18% of active elements are full; 23% have vf<0.1, 20% have vf 0.1-0.5, and 39% have vf 0.5-0.999. Every wall is therefore a thin plate one to three elements thick, and most of the material sits in cut elements.",
+    "SOFT/STIFF CONTRAST (SHOWS): Rayleigh quotients q^T S q/|q|^2 on 0021 (expB1): traction-consistent face loads have median 5.5e-7, affine macro port data 7.9e-5, so the contrast kappa is about 143. From the training banks (DONE.json): 0021 force median 2.5e-7 vs macro 9.5e-5 (380x); 0010 heavy force 4.4e-8 vs macro 1.3e-4 (about 3000x). In the toy clamped Q2 strip the stiff/soft contrast is 457, 167 and 67 at t = 1.5, 2.5 and 4 h, which scales like (L/t)^2 as bending vs membrane theory predicts.",
+    "THE delta^2*kappa LAW (SHOWS): for an error e at fixed port values, the energy excess is ||e||_K^2/||u||_K^2 = delta^2 * R(e)/R(u), where delta is the relative L2 size of e. On 0021 (expB4), kappa=R(e)/R(u) for soft (consistent-load) fields is 3206 for smooth errors (<=2 cycles/cell), 7843 for errors up to 8 cycles/cell, 1.13e5 for nodal white noise, 3947 for the Q1-locking residual and 1374 for the long-wave Q2_17 residual. For stiff macro fields the same error types give 59, 152, 2018, 17.6 and 14.4. So the same field error costs 55-220x more energy on soft loads. INFER: 1% energy excess on soft loads needs a relative displacement accuracy of about 0.18% for smooth errors and about 0.03% for element-scale errors. This is the learned-field analogue of locking: an L2-small error that is not in the kernel of the membrane/shear operator is paid at membrane stiffness. The toy strip shows the same ordering (t=1.5h, soft base): kappa is 228 for a Kirchhoff-consistent bending error, 3667 for a shear-violating one, 12834 for membrane, 3.4e5 for a through-thickness profile error and 3.2e6 for white noise.",
+    "COARSE SPACES WITH TRILINEAR TRANSFERS LOCK ON SOFT FIELDS (SHOWS, expB2/expB2c/expB5 on 0021): median best achievable energy excess of an extension q + span(P) in the energy norm, with ports exact, soft consistent loads / stiff macro. Q1 on 33^3 (h, 30.5k dof): 11.5% / 1.0%. Q2 with 2h elements (39k): 0.27% / 0.20%. Q1 17^3 (6.3k): 46% / 3.4%. Q2 with 4h elements (8.5k): 3.0% / 1.05%. Q1 9^3 (1.4k): 218% / 9.7%. For the 12 softest interior modes (x=lam/lmax 7e-5..2.6e-4): Q1_33 9.6%, Q1_17 26%, Q1_9 52%, Q2_17 5.5%. Partition-of-unity enrichment u(x)=sum_v N_v(x)[a_v + B_v(x-x_v)] on the same grids gives 218% -> 29% (adding rotations, 6 dof/node) -> 4.2% (full linear, 12 dof/node) on 9^3, and 46% -> 5.9% -> 0.32% on 17^3. Jacobi-smoothed Q1 prolongation (smoothed aggregation) makes it worse, not better (Q1_9 2.2 -> 9-153, depending on omega). This is consistent with route-1 E0 (quadratic vs affine coarse: 64-layer witness 7.75 -> 1.26) and the smoothed-aggregation null result in ROUTES_PROGRESS. MGNO2 prolongs every channel trilinearly with a per-node scalar weight (models.py _prolong), and u = X W_out is a node-independent channel mix. Before the post layers, the U-Net contribution therefore lies in diag(w)*Q1, a space whose best soft-load floor is 11.5-218%. INFER: all soft-field accuracy must be produced by 4+4+4 local hyperedge layers.",
+    "WHERE THE ENERGY ERROR SITS (SHOWS, re-analysis): inverting the measured Chebyshev decay curves into the spectral measure of the error over x = lambda/lmax of D^-1 K_II (a2_invert.py) gives the following. 2010 heavy: 99.7% of force_c error energy is at x>0.1, i.e. element scale. 2003/2006 medium: 37-39% at x<1e-2, and 12-15% is essentially untouched by 32 sweeps. The 2003 spectrum (LATE_RESULTS) puts about 25% of error energy in the softest 200 modes, with a relative error of about 67% inside that subspace (2006: 14%). Reference decays on 0021 at k=8: a random smooth k<=2 error keeps 21% of its energy, white noise 0.6%, the Q1-locking residual 1%, the Q2_17 long-wave residual 6.6%. The network keeps 35% (2003), 29% (2006) and 33% (2000 force_c). INFER: the network's residual error is softer than a random smooth field. It has learned the stiff/local content and misses the long-wave bending/rotation content of walls and cut flaps, i.e. 'soft modes wrong' for the energy on medium and larger cells, and 'local equilibrium' on tiny heavy cells.",
+    "SENSITIVITY LIVES ON THE SURFACE (SHOWS): dK_e/dtau_c is PSD, with min eigenvalue about 0 to roundoff on 300 random cut elements x 8 corners (psd.py). Material is only added when a corner tau increases, so the second-order part e^T A e of the sensitivity error is one-sided: learned fields overestimate |s|. The ratio ||dK_e/dtau||/||K_e|| grows as the element volume fraction falls (expB1, 0021): 0 (full), 1.37 (vf 0.8-1), 3.7 (0.5-0.8), 5.6 (0.3-0.5), 8.9 (0.1-0.3), 11.9 (0.05-0.1), 17 (0.01-0.05), 31 (1e-3-1e-2), 108 (<1e-3). Mechanically, s_c = -integral over the wall surface of V_n eps:C:eps, i.e. it samples the surface strain energy. In a cut Q2 element that strain is fixed largely by fictitious-node values, which the energy loss weights only by vf and gamma. INFER: this is why sensitivity error falls faster than energy error under smoothing. Examples at k=8: 2003 force_c sens 14.1 -> 2.8% while energy 13.5 -> 4.7%; 2010 sens 75% -> 0.77% while energy 35% -> 0.21%. On 0021, 8 sweeps cut the sensitivity error from the locking residual about 9.5x and from white noise about 65x (expB4).",
+    "FORCE-CLASS PORT CONCENTRATION IS A LOAD ARTEFACT (SHOWS): the 'force' class (prep_data.py) applies nodal plane-wave or patch forces uniformly to all box-port nodes, including fictitious ones. On 0021 the exact fields of such loads carry a median 68% of their strain energy in the ghost-penalty term. Consistent loads carry 0.015% and macro 0.026%. The exact sensitivity density of the nodal loads is already 91% in port-touching elements (23% of elements) and 56% in vf<0.1 elements; for consistent loads the figures are 29% and 11% (expB1). On 0010, nodal loads put 11.5% of the load norm on weak nodes vs 1.1% for consistent loads (gpA). INFER: the reported 83%-of-|D| in the 13% of port-adjacent elements (FULL, force class, diag_sens_v2L1_cpu.json: touch_port abs share 0.83 vs force_c 0.23) mirrors where that load's own sensitivity lives. It is not a network defect, and it is irrelevant to the traction-consistent gate. The 'force' column of the headline table measures learning of ghost-penalty-held fictitious port motions.",
+    "HEAVY-CUT SOFT DIRECTIONS ARE GHOST-PENALTY-HELD NEAR-MECHANISMS (SHOWS, gpA on 0010): for traction-consistent box loads, the Neumann compliance scales roughly like gamma^-0.7. It is 4.9x larger at gamma 1e-5 than at 1e-4, and 0.32x / 0.16x at gamma 1e-3 / 1e-2. The GP term carries 60% of the exact strain energy at gamma=1e-4 (78% at 1e-5). The 20 lowest non-rigid eigenvalues of S (9e-9..3.3e-8, vs S_max 0.15) have a 72-91% GP energy share, and their count below 1e-6 is 786 / 348 / 105 / 11 at gamma 1e-5 / 1e-4 / 1e-3 / 1e-2. lambda_min(K_II) is proportional to gamma (1.71e-7 per 1e-4, a1 json). Face-adjacency material components: 1 (2 at vf>0.05). INFER (estimate): a sub-element sliver of local thickness vf*h has bending stiffness ~E h vf^3, against GP stiffness ~gamma E h. Bending is therefore GP-controlled for vf below about (c*gamma)^(1/3), roughly 0.05-0.1 at gamma=1e-4, which matches the vf<0.1 class. The softest heavy-cut directions are numerical, gamma-dependent responses of under-resolved slivers, not continuum mechanics. The worst validation cells being those with the lowest force_c Rayleigh quotients (BRIEF 3.1) is what this predicts.",
+    "SAINT-VENANT LAYERS (SHOWS, expB3 on 0021, per-face self-equilibrated tractions of Legendre degree >=1, >=2, >=3 on the y=0 face): the first element layer (4.1% of volume) holds 29-31% of the energy, and the cumulative share is 50% within 2 elements, 75% within 4, 92% within 8 and 97% within 12, nearly independent of degree. The decay length is about 2-3 elements, i.e. about one wall thickness plus a shell-edge tail. The GP share is 1e-4. INFER: loads on which the test cell carries 0.1-0.9% of the lattice energy (2000 FULL, nbr loads, gate_cont) leave only a 2-4-element interface boundary layer in the test cell, so its 8-corner sensitivity sits in port-adjacent cut elements. The gate decomposition (LATE_RESULTS) shows that the lattice solution error q_hat-q, which is first order in eps, contributes more than the field error. Hence gate sensitivity is about 1.5-2.5x eps, and the gate needs eps of about 1.2-1.5% on lattice-relevant directions.",
+    "JUDGEMENT: two different defects, and they matter for different outputs. (a) Local equilibrium is not satisfied at element scale: fictitious fringe, through-thickness profile, Q2 mid-node content, port boundary layers. This dominates the field part of the sensitivity error everywhere, and all of the error on tiny heavy cells (2010: 166x energy reduction in 8 sweeps). An exact-K Jacobi/Chebyshev tail removes it, and A2_tail8 trained end-to-end already gives 4-10x lower validation energy (force_c 6.67 -> 1.62%). (b) Long-wave soft modes are wrong: bending/rotation fields of walls and cut flaps over 2-16 elements, which trilinear coarse levels cannot carry without locking. This is about 2/3 of the energy error on medium/FULL cells and drives the lattice solution error, the dominant part of the gate. A tail alone leaves 6.6-21% of such errors after 8 sweeps. (c) On heavy cuts a third component is not mechanics at all: GP-held sliver motions whose target itself depends on gamma."
+   ]
+  },
+  {
+   "lens": "Numerical analysis and applied mathematics. I use Galerkin/Ritz identities, pencil spectral bounds, multigrid and AMG theory (smoothing vs approximation property, near-null space), Chebyshev polynomial analysis, and precision and representation arguments for an open-loop linear-in-q learned extension. The analysis is checked with LP deconvolution of the measured smoothing curves and with 2D high-contrast CutFEM-like toy experiments. Scripts are in /tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/pack/work/numan/ (toy.py, exp1-4.py, deconv.py, deconv2.py).",
+   "insights": [
+    "EXACT IDENTITY (math). With a learned test cell and exact neighbours, the learned lattice is the Ritz-Galerkin solution of the full-field problem on the trial space range(E_hat). Hence C - C_hat = ||u - u_hat||_K^2 >= 0 (u_hat = E_hat q_hat). The lat_full 'bound' w*eps is ||(E_hat-E)q||_K^2 / C at the exact lattice q. The gap = bound - compliance_err equals ||q_hat - q||_A_hat^2 / C exactly, since q_hat - q = -A_hat^-1 Delta q. Two consequences follow. (a) The q-error of the test cell satisfies ||q_hat-q||_S/||q||_S <= sqrt(gap/w). (b) gap/bound <= delta/(1+delta), where delta = max relative spectral error of the pencil (S_hat, S). So compliance is controlled by the directional eps at the lattice q, and the lattice solution error needs the WORST-direction delta: ||dq|| <= sqrt(delta/(1+delta) * eps_q). A probe-bank average controls neither.",
+    "WHAT THE GATE DATA ALREADY IMPLY (computed from gate_cont_v2L1_*.json). Lower bounds on the worst-direction pencil error: FULL 2000 delta_eff >= 0.043, FULL 2001 >= 0.023, medium 2006 >= 0.12, heavy 2005 >= 0.145-0.172, medium 2003 >= 0.249. The eps on the same loads are only 0.3-15%. Upper bounds on the test-cell q-error ||q_hat-q||_S/||q||_S: 2000 x 1.7-2.4% (test loads), up to 3.1% on nbr_z; 2003 x 11.5-17.2%; 2005 2.8-5.2%; 2006 4.2-5.0%. In the 2D toy (exp3.py) the true q_err is 0.7-1.0x this bound, so sqrt(gap/w) is a usable prediction for gate_decomp's q_err_S. For comparison, an older r2 net had worst-direction Ritz mu = 1.44 (diag_mu_r2.json), so delta_max = 0.44, while class means were a few %. Shown: worst direction >> average. Inferred: the lattice sensitivity error has a large solution-error component on cut cells.",
+    "SENSITIVITY ERROR STRUCTURE (math plus data). For a single cell, Galerkin orthogonality gives u^T K e = 0 exactly (e is interior and (Ku)_I = 0). The first-order term 2u^T A_j e survives only as far as A_j = dK/dtau_j differs from K locally, so D_j ~ -e^T A_j e: second order and biased (learned sensitivities too negative when A_j >= 0). This explains the small first-order shares (0.01-0.43, diag_sens_v2L1_cpu.json) and gives sens ~ c*eps with c = 1-4. Observed c: 0.3-3.6 on gate loads, 2.1-4.2 along the 2010 smoothing path. At small eps a sqrt(eps) first-order floor appears: FULL 2000 force_c sens stays at 0.46-0.66% while energy falls 1.27 -> 0.28% (LATE_RESULTS). At the lattice level, q_hat - q enters at FIRST order because it is not protected by orthogonality. Data: sens/(2*sqrt(gap/w)) = 0.1-0.35 on test loads and 0.9-1.04 on FULL nbr_z loads (w ~ 0.1%). There the 5.8% failure is fully consistent with solution error, though a field-reconstruction cause is equally consistent (eps 2.3%, c ~ 2.5); gate_decomp will decide. Keep the field formula -u_hat^T A u_hat: autodiff of the surrogate C_hat adds 2(du_hat_I/dtau)^T K_II e_I, which is FIRST order in e.",
+    "SPECTRAL LOCATION OF THE NETWORK ERROR (LP deconvolution of E(k) = sum_i w_i p_k(lambda_i)^2 with Chebyshev on [lmax/30, lmax]; deconv2.py). Tiny heavy cell 2010: >= 82% of the error energy has lambda >= lmax/30 ('rough'), and 0% lies below lmax/300. The zero-start curve needs no mass below lmax/90, so this 1125-DOF cell has kappa(D^-1 K_II) <~ 100 and is not representative. Realistic cells: the share below lmax/30 is 34-74% (2003 medium), 31-73% (2006 medium), 17-75% (2000 FULL), 14-56% (2005 heavy). The share below lmax/300 is 10-44% (2003), 12-42% (2000 force_c), 4-36% (2006), 0-11% (2005). Error left after 32 sweeps: 22% (2003, 2000 force_c), 11-17% (2006), 3% (2005). Absolute soft remainder: 2003 2.95%, 2006 0.61%, 2000 0.28%, 2005 0.06%, 2010 0.003%. Conclusion: the network gets roughly half its error from local equilibrium, which a few exact sweeps remove, and the other half from soft modes, which no cheap smoother reaches. In multigrid language, the network lacks both the smoothing property AND the approximation property. The exact smoother supplies the first, but only a coarse (Galerkin) correction supplies the second.",
+    "MECHANICS OF THE SOFT REMAINDER (inferred). The soft remainder is largest in MEDIUM cuts (large free-hanging thin-walled overhangs), smaller in FULL cells (Dirichlet on all 6 faces), and tiny in heavy cuts (short stubs clamped at the port face). It follows the conditioning of the interior Dirichlet problem, matching 'worst val cells = lowest force_c Rayleigh quotients'. Soft-mode amplitudes are c_i = -(v_i^T K_IP q)/lambda_i. An open-loop network must therefore learn lambda_i, a global and strongly nonlinear functional of geometry (bending ~ t^3). Energy error ~ share_soft * (delta lambda/lambda)^2, so eps = 13.5% on 2003 means soft-amplitude errors of ~20-35%. A Galerkin coarse solve computes lambda exactly from K: the amplitude error disappears and only basis-shape error (second order) remains.",
+    "PRECISION REQUIREMENT (math plus data). eps = (R(e)/R_I(u)) * delta^2 with delta = ||e||_D/||u_I||_D and R the D-scaled Rayleigh quotient. From 2010 zero start, R(e0)/R_I(u) >= 9907, so R_I(u) <= lmax/9907. With the network error >= 82% rough (R(e) >= lmax/30), eps = 35% means delta_l2 <= ~3.3%: the field is ~97% right in l2 yet 35% off in energy ('accuracy is all cancellation', quantified). For eps <= 1%, rough errors need delta <~ sqrt(eps/kappa_eff) ~ 1e-3 to 5e-3, which is uneconomic to learn and trivial for 2-8 exact sweeps. The soft band needs only delta_soft <~ sqrt(eps/share) ~ 7-10%, but on a quantity (modal stiffness) that an open-loop map generalizes poorly. Weak corroboration, depending on how the TF32 row is read (V2_ARMS doc section 4): a field perturbation of 1.7e-5 changed the energy error by <= 0.07% relative. If that is relative to eps ~ 1%, it implies kappa_eff ~ 2e4, the same order.",
+    "OPEN-LOOP vs CLOSED-LOOP (NN plus math). MGNO2 is a ~40-stage geometry-modulated linear map shaped like a V-cycle but with no residual feedback, so multigrid contraction theory does not apply. Its error is an approximation error of the map geometry -> E(geometry), and improvements come on average, not uniformly. Training with the energy loss is a gradient flow in output space driven by K (Richardson-like): components with small lambda converge last unless the NTK acts as a multigrid preconditioner. Consistent with this (inferred): train medians ~ val medians (FULL 0.79% vs 0.73%, d0 4.66% vs 3.67% force; trainfit/newval_v2L1.json), and single-geometry fits floor at 2.3-3.6% mean with worst directions at 54-57% (design doc section 10). A closed-loop step using exact K matvecs contracts EVERY direction: delta_max,new <= rho^2 * delta_max,old. That is the only structural way to control the worst-direction error that drives lattice solution error.",
+    "TAIL AND WRAPPER PROPERTIES (math). Any fixed polynomial smoother and/or Galerkin coarse correction applied after the network gives E_new q = [q; M(N_theta(q))], with M affine in the network output and linear in q. The error becomes F_new = (I - Pi_V^K) p_k(D^-1 K_II) F, so S_hat_new - S = F_new^T K_II F_new >= 0. S_hat stays symmetric, >= S and linear in q, with the variational readout kept. This is a change of trial space, NOT the 'local post-correction with a different reaction' that ARCH_REVIEW_20260924 warned against. Energy contraction for all q requires |p_k| <= 1 on the whole spectrum, so lmax must be an UPPER bound (Lanczos x1.05, frozen per geometry). Otherwise p_k blows up for lambda > lmax: still >= S, but much worse. Pi_V^K is a K-orthogonal projection, so it is always contractive. Differentiability: K(tau), D(tau) and V^T K V are smooth in tau; freeze lmax and V per geometry.",
+    "CHEBYSHEV COST ARGUMENT. Reducing the band [lmax/alpha, lmax] by a factor r costs k ~ (sqrt(alpha)/2) ln(2/r) sweeps. Reaching the lambda < lmax/300 mass (10-44% on 2003) needs alpha ~ 300-3000, i.e. 30-80 sweeps. This is exactly Route-1's 32-64 layers (ROUTES_PROGRESS: 32 layers 1.9%/5.7%, 64 layers pass). A polynomial tail alone cannot economically close the soft band on realistic cells; a coarse space is required. In the 2D toy (exp4.py), a smoothly misread stiffness field (+-20%) gives tail8 ratios 0.33-0.42, matching real 2003/2006 E8/E0 = 0.29-0.35. Galerkin on H=4h hat x {translations + rotation} plus tail8 gives 0.0024-0.0047. The lowest 40 exact eigvecs plus tail8 give 1e-4 to 1e-3. Galerkin on the span of the model's own outputs (40 bank directions) gives only 0.09-0.32: the network's wrong soft modes are NOT in the span of its own outputs, so a 'Ritz head on network outputs' is not the fix.",
+    "REPRESENTATION. E = -K_II^-1 K_IP is dense, but its far-field blocks are numerically low rank. For thin-walled high-contrast geometry the rank grows with the number of walls and struts crossing a separator (~6 per crossing), giving hundreds to a few thousand, the size of a 9^3 x 6 aggregate coarse space (4374 DOF). Receptive field at the 9^3 level: 2+2 convs of 3^3 plus transfers plus 12 fine layers is about 36 elements against a 32-element cell. Borderline but adequate, and t_split rules out cross-void short circuits. So the demonstrated bottleneck is precision and generalization of soft amplitudes plus rough-band precision, not reach. Near-null space: global rigid modes are separated exactly, but LOCAL near-null vectors (overhang and hinge rotations, weak-node clusters) are not, and AMG theory requires the coarse space to reproduce them locally (per-aggregate RBMs).",
+    "DEPLOYMENT COST, HONEST ACCOUNTING (bench_deploy.json). FULL 0007: learned 198 ms (fused 173) vs exact fp32 129 ms per 16 RHS, after a 3.45 s fp32 factorization (0.65 GB). One K application costs ~12-17 ms at B=16 on 0020_full ((cert_m8 - cert_m0)/8). A k=8 two-sided tail (16 SpMVs) adds ~200-250 ms per 16 RHS, and a 9^3 x 6 coarse correction adds ~5-10 ms plus a once-per-geometry dense Cholesky of 4374^2 (~0.03 s). Per query, the wrapped learned operator is ~2-3x slower than the exact fp32 factor. Its value is re-encode cost (0.15 s vs 3.45 s per changed cell per design iteration) and memory, not query speed. Cheap mitigations: run the wrapper only in outer defect-correction steps (outer iterations ~ log(tol)/log(delta_max,0)) and use the raw network inside the PCG; or use matrix-free fused element kernels for K.",
+    "WEAK-NODE / GP MODES, a second type of 'soft' (history). Route-1 found the slowest modes after good smoothing to be LOCAL motions on weak (GP-supported) nodes: 94-99% of amplitude, 11-30 nodes per mode, clustered in a band ([0.0039, 0.0062], ROUTES_PROGRESS E1-E3). Adding 128 exact modes helped little. A4 found a ghost-penalty share of 32-68% of soft-class error energy on cut cells and 39-42% on FULL cells. So the post-tail remainder may be global/structural soft modes (fix: coarse space), local weak-cluster modes (fix: exact block solves on weak clusters, i.e. the paired smoother), or both. The data do not yet tell these apart."
+   ]
+  },
+  {
+   "lens": "Neural network / learning theory: approximation, optimization and estimation decomposition of the MGNO2 (v2L1) error, data and compute scaling, spectral bias and energy-loss conditioning, what \"learning in the right basis\" means here, and the data budget a purely learned model would need compared with architecture changes.",
+   "insights": [
+    "ERROR DECOMPOSITION BY CELL TYPE. Data: force-class mean (median) energy excess. Validation is newval_v2L1.json (80 unseen cells, 20 per type); train fit is trainfit_v2L1.json (24 training cells with held-out q; the near-mechanism cell 2013 excluded). FULL: val 0.9 (0.7) vs train 1.1 (0.8). Light: 3.2 (2.5) vs 2.0 (1.3). Medium: 4.7 (3.4) vs 6.9 (3.5). Heavy: 11.3 (7.1) vs 4.5 (2.5). My reading (inferred): FULL and medium show no measurable geometry-generalisation gap, so their error is approximation plus optimisation. The heavy gap is 2.5-2.8x, so about 60% of the heavy-cut error is estimation (the model has not seen enough geometries); light is about 40% estimation. Caveat: only 4-8 training cells per type. v2L1 visited each geometry about 1.3 times (40k steps, a swap every 100 steps, pool of 3, 305 geometries), so this is close to online training and the train-fit number includes forgetting.",
+    "COMPUTE VERSUS DATA, NEW RESULT (A0 in LATE_RESULTS.md). 15k more steps on the same data reduced heavy force error 11.3 -> 10.0 (-12%) and force_c 12.6 -> 10.2, but medium only 4.7 -> 4.5 (-4%) and FULL 0.91 -> 0.88. Medium therefore does not move with more data (no gap) or with more steps. It sits on a floor set by the architecture. Heavy-cut error moves with both.",
+    "DATA SCALING (from the per-cell ratios in newval_v2s.json and newval_v2L1.json; script work/nnlt/scale.py). The v2s -> v2L1 gain is a near-uniform per-cell multiplicative shift: median ratio FULL 0.89, light 0.82, medium 0.77, heavy 0.76 (IQR 0.68-0.84). 90-100% of cells improved, and harder cells improved more (Spearman -0.47). The implied per-cell exponents for 148 -> 305 geometries are FULL 0.17, light 0.28, medium 0.35, heavy 0.38-0.42 (0.52 from the heavy mean, which outliers dominate). Two things make these upper bounds on the true data exponent: v2L1 also got +40k steps, and the new cells come from the validation distribution (about 28 old families -> about 185 independent fields). The stiff classes barely scale: macro exponent 0.11-0.26, grf 0.05-0.18, with train ≈ val at a type-independent floor (grf 1.7-2.6%). That is a representation floor on high-frequency boundary data, not a data problem.",
+    "EXTRAPOLATION TO ABOUT 3000 CELLS, highly uncertain. It assumes training steps scale with the data, and uses a plausible data exponent of 0.15-0.52 over an effective data increase of 10-16x. Heavy mean 11.3% -> 3.4-7.5% (central about 5%); heavy median 7.1% -> about 3%. Medium mean 4.7% -> 1.8-3.2% if only data mattered, but medium's train-fit floor (median 3.5%) and the A0 compute result say medium will stay near 3.5-4.5% without an architecture change. FULL -> about 0.6-0.7%. Reaching the lattice-relevant target by data alone would take heavy >= 15k-60k labelled cells with exponent 0.52-0.38 (unreachable with 0.15), plus proportional compute (up to about 2M steps, weeks on one RTX 5090) and about 15-60 TB at the current ~1 GB/cell. The target is eps <~ 1.2-1.5% on lattice directions (gate_decomp rule of thumb in LATE_RESULTS) and <~1% per cell for all-learned deployment (A7). For medium, no data budget reaches it with this architecture.",
+    "SMOOTHING HEADROOM WORTH MORE THAN ANY PLAUSIBLE DATA SCALING (smooth_v2L1.json, LATE_RESULTS.md). 8 exact Jacobi-Chebyshev sweeps remove 65-99% of the network's error energy. Energy reduction factors at k=8: 2010 heavy 166x/85x, 2005 heavy 7.2x/9.2x, 2000 FULL 3.0x/6.7x, 2006 medium 3.5x/4.8x, 2003 medium 2.9x/3.1x. With data exponent 0.38-0.52 these equal about 8-20x more data for 2003 and 2000, 45-340x for 2005, and >5e3x for 2010. After k=8 on v2L1 the energy excess is <= 1.04% on every measured cell except 2003 (force 2.3%, force_c 4.7%, and still 1.45/2.95% at k=32).",
+    "The generalisation failure on the worst validation cell (2010, force_c 35%) is almost entirely high-frequency: 8 sweeps take it to 0.21%, and about 80% of its error lies above lambda = 0.42 of lmax about 4.1. So out-of-distribution failure is local misreading of the geometry at element scale, not a wrong global mode shape. The exact smoother fixes it because it has the exact local K, which the network must infer from 125 moments per element.",
+    "SPECTRAL BIAS DOES NOT EXPLAIN THE HIGH-FREQUENCY FLOOR, BUT IT DOES EXPLAIN THE LOW-FREQUENCY FLOOR. The energy loss has Hessian K_II with respect to the field (D-scaled spectrum about 5.7e-4..4 on 2003, kappa about 7000). The gradient on error mode lambda scales like lambda, so the loss already favours the high band, which gradient descent should learn first. That the network still leaves most of its error energy in the high band points to limited representation or amortisation, not to conditioning. My mechanism hypothesis: a fine hyperedge layer applies sum_h b_h a_h^T (x) W_h to the 27 element slots, which has slot rank <= H = 4 per layer. An exact 27-node element stiffness is a Kronecker sum of about 9 terms, each with a nearly full-rank 27x27 slot factor. On top of that the local diagonal (weak nodes, GP gamma = 1e-4, a contrast of about 1e4) has to be inverted with bounded (B1) gains. The low band is the other way round: the gradient scales like lambda (rates about 1.4e-4 relative on 2003), and the U-Net's NTK acts like a BPX preconditioner whose transfers do not depend on geometry. It is not robust for soft modes specific to a cut geometry. Evidence: relative energy error inside the softest 200 interior modes is about 67% on 2003 and about 14% on 2006 (LATE_RESULTS spectra).",
+    "TOY CORROBORATION (work/nnlt/amort.py; res_*.json). The toy is a 2D amortised MGNO-like linear-in-q network on 320 random cut and full CutFEM-like cells (n=16), trained with the same normalised energy loss. (a) Plain training leaves 53-83% of its error energy in the band lambda > lmax/30, reproducing the real signature. (b) Slot rank 1 instead of 4 doubles the error (FULL 9.7 -> 20.7%, medium 9.8 -> 24.6%) and raises the high-band share to 0.81-0.87, which supports the rank mechanism. (c) At matched total sweeps, smoother-in-loop training (k=4 or 8) is roughly equal to post-hoc smoothing on typical cells: T8 FULL 0.77-0.86 vs 0.71-0.87, medium 0.54-0.81 vs 0.37-0.47, heavy 1.60-1.65 vs 1.75-1.93. It is 3.5-4.5x better on the hard outlier cells (light-type T8 3.4-4.1 vs 14.4-15.8) and fits hard training cells 2.4-3x better (heavy train T8 1.4-1.9 vs 4.2-4.6). In the toy, the benefit of in-loop training is in the tail and in freeing capacity. (d) The toy is compute-limited (3x steps -> 4x lower error; 5x data -> <= 1.3x), unlike the real medium cells. Caveats: 2D, kappa about 280 vs about 7000, small cells, mostly one seed.",
+    "Q-SPACE ESTIMATION (bank directions vs lattice directions) IS NOT THE MAIN TERM ANY MORE. Lattice-load eps on the test cell tracks the bank means within 1-2x: 2003 6.8-14.8% vs bank force 7.2% and force_c 13.5%; 2000 0.8-1.4% vs 0.74/1.27%; 2005 0.3-2.4% vs 1.8% (gate_cont_*.json, gate_decomp in LATE_RESULTS). The gate is limited by the typical error on soft directions, not by the worst-direction tail. Step-1 single-geometry fits had mean 2.3-3.6% but worst directions 54-57%, yet lattice directions behave like typical directions. Because S_hat >= S (Galerkin), reducing the tail can never increase lattice compliance error. The old 'fixing worst directions makes it worse' result (CUT_CELL_ACCURACY_IS_ALL_CANCELLATION_20260919.md) came from the pre-Galerkin two-sided M_q regime and does not carry over, but the tail is also not the lever for the gate.",
+    "The sensitivity gate responds to the high band. gate_decomp shows gate sens about 1.5-2.5x eps, with the solution part >= the field part on 2000. Smoothing lowers sensitivity error faster than energy error: 2003 force_c 14.1 -> 2.8% sens vs 13.5 -> 4.7% energy at k=8; 2006 5.2 -> 0.84 vs 3.6 -> 1.04. When errors are large the second-order term e^T A e dominates (first-order share 0.01-0.09 on bad cells, diag_sens_v2L1_cpu.json). Inferred: the sensitivity-relevant error is high-frequency and near the surface, which the exact local operator removes, while the network's inferred local operator does not.",
+    "FP32 AND OPTIMIZER NOISE ARE NOT THE FLOOR. Two fp32 paths differ by 5-7e-6 in energy (about 0.03% of eps), O_h views by 4-8e-5, and three seeds change the gate by <= 0.11 percentage points (ARCH_REVIEW and V2_ARMS docs). The v1 learning curve and A0 show continued training helps heavy cells a little and medium not at all.",
+    "THE ENERGY TERM OF THE LOSS IS LABEL-FREE. train3.py:253 uses mean log e_hat with q normalised to unit exact energy, so the gradient d log(q^T S_hat q) does not depend on the exact q^T S q. Only building the soft q banks (force, support, face, adv) and the sensitivity labels needs the teacher. Estimation error, which is about 60% of heavy-cut error, can therefore be attacked with many teacher-free geometries if soft directions are generated approximately."
+   ]
+  },
+  {
+   "lens": "Physical application / system view: graded-thickness TPMS lattice compliance optimisation. Covers what the downstream loop consumes (assembled nodal gradients, compliance, lattice PCG queries), how per-cell errors propagate to design quality, which cell types occur and how often, and the end-to-end cost of exact versus learned versus hybrid routing. Scratch scripts and outputs are in /tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/pack/work/app/ (metrics.py, sensratio.py/.json, regret_toy*.py/.json, cutdist.py, toy_share.py, densecost.py).",
+   "insights": [
+    "SHOWS (local exact computation on the real fixture cell fresh_train_0010_cover01_r1, a 425-element heavy cut, work/app/sensratio.json): the corner-sensitivity norm is proportional to the cell's strain energy. kappa = ||s||_2 * tau_mean / (2W) = 0.58-0.68 for 6 macro-strain (load-path) states and 0.71-0.93 for 6 'passenger' states (only the shared face x=0 prescribed, all other ports free, like the gate's neighbour loads). All 96 corner sensitivities were <= 0. The Euler ratio -tau.s/(2W), an effective stiffness exponent, was 1.16-1.83. INFER: a cell's contribution to the assembled lattice gradient scales with its energy share to within a factor of ~1.6. Shared-corner sums are constructive (same sign, no cancellation), so ||G_lattice|| >= max_c ||s_c||. Caveat: verified on one heavy cut only; FULL cells are not verified.",
+    "SHOWS (work/app/metrics.py on gate_cont_v2L1_fresh_val_*.json; metrics side by side; the current gate is kept as is). For each cell: current max per-cell relative sensitivity / per-cell max over loads with test-cell share >= 5% / energy-weighted RMS over gated loads / estimated assembled-gradient error (UB). 2000 FULL x: 5.83% / 2.38% / 2.21% / 1.31% (UB 2.09%). 2000 FULL y: 5.39 / 2.43 / 2.26 / 1.28 (UB 2.05). 2001: 2.00 / 0.59 / 0.52 / 0.22. 2005 x: 2.51 / 2.51 / 2.04 / 2.80. 2005 y: 1.82 / 1.82 / 1.40 / 2.02. 2006 x: 2.54 / 2.54 / 1.82 / 0.91. 2003 medium x: 12.15 / 12.15 / 9.65 / 12.6 (UB 12.8). Every alternative metric flips the 2000 FULL verdict to PASS. No metric rescues 2003, which is a genuine failure. Compliance max stays <= 0.47% for 2000 and 4.38% for 2003.",
+    "SHOWS (gate_decomp in LATE_RESULTS.md, 2000 x): the failing nbr_z load has test-cell energy share 0.13%. It is also the direction where the operator is least accurate: eps is 2.31% there, against 0.78-1.39% on the test loads. So the 5.8% is not purely a small-denominator effect: that face-local deformation direction really is approximated worse. INFER: it matters for design only if that direction can become energetic for the cell in some lattice. The share-aware metrics count it automatically whenever it does. A test that makes the direction energetic resolves the question (see H1).",
+    "SHOWS (toy nodal-thickness lattice optimisation, 800 cells, shared corners, OC with volume constraint; work/app/regret_toy*.py). Per-cell sensitivity errors fixed per cell (the realistic, deterministic kind) of 3% / 6% / 15% gave exact-compliance regret of 0.045% / 0.13% / 0.73%, with thickness-field distance of 17% / 24% / 41%. Errors re-drawn every iteration gave ~10x less regret. A uniform +10% scale error gave 0.000% regret, because lambda absorbs it. 30% error on the cells with share < 0.01% gave 0.000% regret. However, 64% of cells have share < 0.1% and together carry 25% of the energy, and 6% error on them alone cost 0.08%. INFER: an absolute share threshold is not scale-free. The physically meaningful normalisation is the share relative to the mean cell, N*w. The gate's passenger loads have N*w = 2 x 0.0013 = 0.0026, far below the cells that matter. Regret scales like 1/2 * m/(m+1) * sum_c w_c * delta_c^2, i.e. quadratically. Compliance design is flat: regret is tiny while the thickness field moves a lot. Stress- or buckling-driven objectives would be more sensitive (not tested).",
+    "SHOWS (bench_deploy.json): per-column query cost at B16/B64 is higher for the learned operator than for an exact resident-factor solve. FULL 0020: learned fused B16 0.135 s vs exact fp64 0.077 s; B64 0.50 vs 0.23. FULL 0007: 0.173 vs 0.100; 0.65 vs 0.32. Medium r2: 0.086 vs 0.043. Heavy r1: 0.033 vs 0.013. The learned operator wins only at B1 (FULL 13 vs 54 ms; r1 6.2 vs 7.9 ms) and on encode (freeze_fused 8-12 ms vs fp64 factor 0.64/2.7/5.6/8.6 s). Break-even (factor time over per-B16-batch difference) is 32 (r1), 63 (r2), 96 (FULL 0020) and 118 (FULL 0007) B16 queries per design iteration. The deployable lattice PCG (BNN) needs 119-204 iterations (bench_precond.json), and the doc (V2_ARMS_SPEED_DEPLOY section 10) reports 3x3x3 end-to-end learned ~225 s vs exact ~320 s, only 1.4x. INFER: at the observed PCG iteration counts, per-cell exact factorisation is already cost-competitive for FULL cells and cheaper for cut cells. The 'fast query' half of the contract is not delivered at multi-load batch sizes; only 'cheap encode' is.",
+    "SHOWS (bench_deploy cert_m8_B16 vs cert_m0_B16; m=8 uses 9 more K products than m=0): one extra sparse K product at B16 costs 3.2 ms (r1), 8.9 (r2), 15.1 (FULL 0020) and 18.4 (FULL 0007). A k=8 tail therefore adds about +26 / +71 / +121 / +147 ms per B16 query, roughly +85-95% of the learned query. INFER: inside the lattice PCG (~140 iterations) learned+tail8 would cost ~115-155 ms per cell per iteration (B6), against ~26 ms for exact and ~60 ms for learned alone. That makes the learned route ~1.4x SLOWER than exact at the 3x3x3 scale. Applied once after the solve (final field for sensitivities), the tail costs <2% of a design iteration. It then fixes only the field-only part (2000: 0.4-2.7%), not the larger solution part from q_hat - q (1.3-3.3%).",
+    "SHOWS (element and DOF counts: diag_sens_v2L1_cpu.json, bench_deploy.json, local fixture): heavy cuts are tiny. 2010: 308 elements / 1125 interior DOFs. 2005: 1047 elements. 0029_r2: 1771. r1: 2244 elements / 48k interior. Local 0010_r1: 425 elements, 14355 DOFs of which 9594 (67%) are ports and 4761 interior. Medium cuts are ~6000 elements (~150k interior); FULL cells 9.2-14.6k elements (272-378k interior). For r1 (heavy), exact costs 0.64 s factor (fp64, 0.16 GB) + 7.9 ms B1 / 12.9 ms B16, against learned 6.2 / 38 ms. The lattice gate returned NaN on 2010 (LATE_RESULTS), so tiny cells are numerically awkward even for the harness. Local CPU timings (4 weak cores, SuperLU) are not representative and are not used for conclusions.",
+    "INFER (Monte Carlo of oblique vertical trimming planes, theta in [0,45deg], work/app/cutdist.py). Retained box fraction v among cut cells: 8.7% have v < 0.02 (outside the generator contract, v in [0.02,0.98]); 11.1% are 0.02-0.10; 19.5% are 0.10-0.34; 22.0% are 0.34-0.66; 30.3% are 0.66-0.98; 7.6% are > 0.98. There are 1.27 cut cells per cell of boundary length, so for an L x L footprint trimmed on 4 sides the cut fraction is ~5.1/L: 51% at L=10, 25% at L=20, 13% at L=40. Heavy cuts (v < 0.34) are ~39% of cut cells, i.e. ~5-20% of all cells, against 25% of the training mix. By cost they are a small fraction of a lattice, because they are small cells.",
+    "SHOWS (toy): in bending-dominated optima the boundary cells (outer fibres and tip column) are 12% of cells but carry 27% of the energy (2.6x the mean), and the outer two rows carry 44%. INFER: trimmed-boundary (cut) cells are not energetically negligible in real parts. The cut-surface loads, which are currently not gated, are physically more relevant than the gated passenger loads: 2003 has cut-load sensitivity errors of 4.1-9.9% at shares 0.29-0.59 and compliance errors of 2.5-2.9% (gate_cont_v2L1_fresh_val_2003_d1_v1.json).",
+    "SHOWS (gate files, bound_holds = true): lattice compliance relative error <= sum_c w_c * eps_c holds, e.g. 2000 x test_x: bound 0.485% vs actual 0.465%. The error is always non-conservative, because the learned operator is too stiff and compliance is underestimated. cert.lattice_lower gives a deployable, rigorous lower bound at 2 K products per cell (m=0; cert_m0_B16 5.7-30 ms per cell). INFER: an energy-weighted budget sum_c w_c * eps_c <= tol is the physically correct way to allocate error between cells, and both w_c (from q^T S_hat q) and a lower bound on eps_c are available at deployment, so routing can be adaptive.",
+    "SHOWS (bench_deploy K_GB 0.5-2.7 GB per cell; learned_state 0.27-1.37 GB CSR / 0.06-0.34 GB fused; exact fp32 factor 0.1-0.65 GB): the learned variational readout needs the assembled K, which is the largest per-cell object. INFER: at ~1000 FULL cells neither route's state fits on the 32 GB GPU. Exact fp32 factors (~0.65 TB) roughly fit the 750 GB host RAM. The learned route wins decisively only where its cheap re-encode (8-12 ms fused freeze) replaces storage: lattices of more than ~1000 cells, B=1 queries, or very few lattice iterations. Matrix-free K from the 125 moments per element is a prerequisite at that scale (the doc lists it as priority 2)."
+   ]
+  },
+  {
+   "lens": "HISTORY AUDITOR: a chronological audit of docs 2026-09-11 to 09-26 (V2_ARMS_SPEED_DEPLOY section 13, arch_workflow, arch_review2), checked against the new pack evidence (LATE_RESULTS.md, re-read at 07:41 with no further changes, and smooth_v2L1.json, which still holds only 2010). Each point says whether the data SHOWS it or I INFER it. Scratch computations are in pack/work/history/ (cheb.py, band.py).",
+   "insights": [
+    "OVERALL (shown, ARCHITECTURE_HISTORY_20260923 §2): about 10 architectures in 12 days. Most switches came from a supervision or metric that did not match the physics, not from a lack of representation. Two things recur in the MGNO era. (a) Force-driven, lattice-relevant directions are the hardest (route-1 D2: 32 layers give 0.3% probe error but 1.9-5.7% lattice error; MGNO force-class Rayleigh quotients are about 1000x softer than macro). (b) The directions that fail the gate lie in the tail of the training q distribution (r1 y 09-24, r2 y nbr_z 09-24, now 2000 nbr_z).",
+    "TABLE 1 (hypothesis | test | result | decision), part A, the matrix-learning era. T01 09-11: dense Cholesky with Frobenius loss | 10 runs | 39.07/38.96/38.90% vs a diagonal-only floor of 38.78%; truncation at 0.47% Frobenius still gives 39-70% response error | REJECTED, the metric does not control mechanics. T02 09-12: banded L + low-rank softening | V0/V1 | whitened error 1e-4 but mu in [0.145, 3.62]; V1 e_A 27%, mu_max 670 | REJECTED: low rank only softens; a fixed coarse basis captures 72% at 3000 columns; near/far cancellation 1e3-1e4 defeats banding. T03 09-13: collar + learned 6x6 core material (B2) | 23,016 numbers, mu in [0.924, 1.150]; proven one-layer bound mu_max >= 1.111 | ABANDONED under the old ±10% gate and 'no FE at inference'; both have since been lifted, but it was never revisited. T04 09-15: optimisation coordinates are the problem | Newton free factor | D/d 2.1e-5 | ADOPTED as a reachability proof. T05 09-17: dense-entry prediction | Codex M4 | needs 3e-4 per entry, achieves 3-6; coherence only 2.5x | REJECTED structurally. T06 09-18: eps_op is a valid metric | chol vs A^1/2 heads | ranks the arms backwards (sensitivity 25% -> 542%) | METRIC RETIRED. T07 09-18: the error is at the spectral extreme | log-pivot loss | g improves 2.6x, sensitivity 25.43 -> 25.16% | REJECTED, the error is broad. T08: whitened-Frobenius aggregate | eps_op better on 8/8 seats, mu_min -> 0 on 6/8 | REJECTED, capped on the soft side. T09: 'floor = softest decile' | 94-96% of load energy sits in the softest 10% of S | ADOPTED (target soft directions); the 'nowhere else' attribution was later withdrawn (code weight bug).",
+    "TABLE 1, part B. T10 09-18: label basis and index-aware encoder cause the floor | M_q + EquiModel | 0.207% sensitivity on a single seat | ADOPTED for box cells. T11 09-19: tail or response loss weighting | worst compliance 2.09 -> 9.44 / 14.7% | REJECTED ('leverage is not the loss'). T12 09-19: capacity | WIDE_BOX 3.2x parameters | operator metrics better, contract worse (2.09 -> 3.97%, bias/halfvar cancellation); an ensemble of 2 helps | capacity REJECTED; ensemble never pursued. T13: cut cells unlearnable | single seat | 40% cut 1.19%, 73% cut 12.7% | WITHDRAWN; mixing cut with full costs 9x. T14: two error regimes | box E(mu>2) 0.04-0.76% vs cut 33-68% | ADOPTED. T15 09-20: fix a cut cell's worst modes (rank-k head / clip) | stack error 3.91 -> 6.64 (311 modes) -> 8.05 (1816) -> 4.95% (5796) | whole family REJECTED (cancellation). T16: augmentation hurts cut cells | dose experiment | costs 13x in-sample, gains 1.6x held-out; 24 proper rotations 1.91R vs 48 1.07R | REVERSED. T17: cut teacher is non-covariant | residual 1e-14 | REJECTED (pivot gauge). T18 09-21: cut cause H1-H4 | basis 0.3-1.5% (no); 7-8 of 8 gradient pairs opposed; last-layer refit leaves 48-59% | upstream representation. T19: F_bg label | no gain | REJECTED. T20 09-22 S1: entry-loss descent fights physics | mu_max 5.9e3 -> 1.8e6; 19 negative eigenvalues | CONFIRMED.",
+    "TABLE 1, part C, route 1 (exact or learned skeleton). T21 09-22: Codex mechanics net, 16 layers | worst ratio 123-311; 512 layers 1.104 | bottleneck is depth of interior equilibrium propagation. T22: learned local factor | 1.31 -> 1.59 (non-smooth head); smooth head +11.6% | 'failed first implementation', never repaired (self-criticised in ARCH_HISTORY). T23: paired smoother (s_ij >= 0.9, <= 4 nodes) | medium 12.6 -> [1.0000, 1.00133] at 64 layers; 4 of 6 dev cells stay at 4.2-9.2 without it; fixed 64 layers not universal (dev0006 1.071); adaptive depth needs 107-221 layers because the zero-start error is ~1e5x the boundary energy | ADOPTED. T24 E1: ideal enrichment with the 128 slowest modes | 64-layer witness 1.26 -> 1.09 | LIMITED, the slow band is dense ([0.0039, 0.0062]). T25 E2: blocks disconnected | 548 -> 551 components | REJECTED (GP ties slivers). T26 E3: smoother too conservative | Lanczos step halves the layer count | ADOPTED. T27: slow-mode location | 99.4% (0013) / 94% (0020) of amplitude on weak nodes, 11-30 nodes per mode; weak-group exact solves v1 worse (1.26 -> 3.80), v2 only +14% lambda_min | local exact solves do not lift the band. T28 E1b: learned per-layer Chebyshev coefficients (32 numbers, label-free) | 24 learned layers pass the lattice gate (0.72/1.7% compliance, 0.93/2.6% sensitivity) vs 40-48 fixed | superseded by cuDSS, then by the feed-forward mandate. T29: affine vs quadratic coarse | 32 layers 274 vs 56.7, 64 layers 7.75 vs 1.26 | quadratic ADOPTED.",
+    "TABLE 1, part D, MGNO era. T30 09-24: harmonic zero-parameter baseline | force energy 8.4 / 14.4, lattice 21-58% | defines the gap. T31: 'a pure feed-forward net cannot reach soft cancellation' (4 design lenses; SGNO R13: 1-2% accuracy on a 20-64x lift) | MGNO v0 r1: force 0.023, worst direction 1.54 | REFUTED for single geometry; A-FF becomes the main line. T32: error sits in the virtual fringe | 36% GP energy, 45% of body error in weak elements | MGNO2 ADOPTED (0.85 vs 2.0 at 4k). T33: coverage of direction classes | support: r1 y 5 -> 1.2%; face: r2 y 4.42 -> 3.10% | ADOPTED. T34: uniform nodal loads inflate sensitivity | r2 10.3 -> 4.0%, FULL 8.2 -> 2.0% | user O4: consistent traction. T35: diag_lat decomposition | extension-only 5-10% and interface-only 3-9%, opposite signs, 2-3% total; the r2 nbr_z failure (0.13% share) is interface (4.8 vs 1.0%) | 'field must stay paired with its own readout'. T36: gain runaway | macro 1e10x zero-shot | B1 bounded (neutral). T37: feature drift (median d3 9.9x) | B2 neutral. T38: forgetting | trainer v2 (4.4 -> 3.9%). T39: orientation | 7% identity vs 40% mean over 48 | O_h ADOPTED (rotated 26 -> 6.8%, identity +30%).",
+    "TABLE 1, part E. T40 A4: GP share of soft-class error 32-68%; weak-element relative field error lower than port/other | B5 not triggered, B3 triggered; B3 is ON in v2L1 (v2L1.json model_args b3=true). T41 A8: fringe continuation oracle | extra energy: zero 8.7, Q2 extrapolation 7.4, affine 5.5, learned local linear map 0.002 | learned continuation head (P3) recommended, awaiting user decision, NEVER BUILT. T42 A6: mu bound drives interface error | bound holds, Spearman 0.83 | user approved 'mu into training', BUT v2L1/A0 run tail_w=0 (Ritz tail loss off) with adv_k=8 / adv_iters=4 (the search ARCH_REVIEW called too weak). T43 A5: Krylov m=16 certificate recovers 92-98% of the true error. T44 A7: two learned cells give 2.5-3.3% / 6-9% | per-cell eps target <~1%. T45: consistent traction, spring and glued classes (p_A2) | compliance -44% | ADOPTED. T46: smooth-L1 sensitivity loss | 2.1 -> 3.7% | REJECTED. T47: TF32 | <=0.07% | not accuracy; fp32 conv for symmetry. T48: data x2 | heavy 17.7 -> 11.3 | ADOPTED (3000 production). T49: A0 +15k steps | heavy 11.3 -> 10.0, glued 16.8 -> 18.2, 2000 gate 5.83 -> 4.89 | marginal. T50: coarse_split | 0 / <=26 extra nodes | REFUTED. T51: sensitivity head or loss | first-order share 0.01-0.09 on bad cells | REFUTED (A1_sens3 stopped). T52: gate_decomp | 2000 nbr_z sol_only 3.30 > field_only 2.67; sensitivity ~1.5-2.5x eps | need eps <~1.2-1.5% on lattice directions. T53: smoothing headroom | 2010 166x, 2003 2.9x at k=8 | PARTIAL. T54: spectrum 2003 | 24.5% of error in the lowest 200 modes, ~40% mid band, ~35% high | NEW.",
+    "TABLE 2, user decisions and constraints, 09-23 (OPERATOR_LEARNING_DESIGN §2/§4; ROUTES_1_2_7_PLAN): learn the solution operator, not the matrix. Full-resolution ports, no compression; compressed and hierarchical-low-rank representations and per-boundary-DOF shape functions are rejected. Fixed background grid. Cut band as true ports (XP). Main line = feed-forward fully learned multiscale GNO. Fallback A = learned iteration with exact residual r = f - Ku plus a geometry-modulated linear correction. Fallback B = route-1 skeleton (paired smoother, coarse space, Chebyshev) with a few geometry-generated coefficients. Route priority 7 -> 1, 2 -> 4 -> 3; route 6 (per-part specialist) abandoned. v2 data only. Main gate = lattice compliance and sensitivity at 3%; full spectrum is a diagnostic.",
+    "TABLE 2 continued. Anti-drift rules (OVERNIGHT_PLAN_20260924 §防止跑偏): exact solves only for the teacher and acceptance; no exact factorization in the forward; only learned models count as progress; a failing learned part is fixed through its parameterization or training signal, never replaced by an exact method; fallback A only as a labelled arm after main-line diagnosis. SGNO (09-24 T0) NOT adopted: classified as fallback A, and its own R8 rule says to drop the inner K if A-FF passes. 09-24: O4 = traction-consistent gate with uniform loads as a stress test; O6 = moments speed-up as a separate task; O2 = XP kept until step 3. Step-2 scope: vf 0.1-0.4, cut angle 0-45 deg in one plane, full depth range; 3D tilt and multi-cut deferred; no learning curve. 09-25 approvals: let v1 finish; O_h early; data re-prep after the r2 pilot; mu in training and selection; fully learned lattice gate as an extra report; B1/B2 only as arms. 'r2 y 3.10%: chase it last'; 'the gate definition does not change'. Standing rules: no fp16/bf16/TF32; flags default to old behaviour; frozen contracts; sealed test set never read. Adopting a hybrid (A2_tail8) is the user's call.",
+    "TABLE 2, route-1 layer counts (ROUTES_PROGRESS §D2 lattice, polyhedral elements), compliance x/y and sensitivity x/y. Chebyshev 16 layers: 36.5/37.4%, 47/56%. 24 layers: 15.2/24.1%, 19/37%. 32 layers: 1.9/5.7%, 2.4/8.9% (y fails). 64 layers: 0.04/0.07%, 0.06/0.09% (pass). Learned coefficients, 16 layers: 6.8/13.2%, 8.9/20.4% (fail). 24 layers: 0.72/1.7%, 0.93/2.6% (PASS). Paired-smoother results: see T23. The design critiques (CRITIQUE_mechanics/systems) derived kappa ~ 125-143 for the route-1 preconditioner and predicted 12-24 cycles for any SGNO-type hybrid started from zero.",
+    "NEW, INFERRED, quantitative (pack/work/history/band.py): take 2003's measured spectral budget (24.5% of error with lambda < 0.011, ~40% in 0.011-0.13, ~35% above 0.13) and apply the exact Chebyshev residual polynomial on [lmax/30, lmax]. This predicts force_c eps of 10.6 / 9.2 / 7.0 / 5.25 / 4.0 / 2.97% at k = 1/2/4/8/16/32; measured is 9.9 / 7.9 / 6.1 / 4.7 / 3.8 / 2.95%. The band picture therefore explains the smoothing data. Consequence: even with perfect mid- and high-band smoothing, the lowest-200-mode band alone leaves 0.245 x 13.5% = 3.3% on 2003, above the ~1.2-1.5% eps the gate needs (gate_decomp rule). No Jacobi-Chebyshev tail of moderate degree can pass 2003. The soft interior subspace has to come from the network or from a coarse space. This repeats route 1: the coarse space, not the smoother, set kappa (T24/T29).",
+    "INFERRED: the V0_SPEC/critique prediction ('a pure FF net must carry the 20-64x-energy boundary ramp next to the ports to 1-2%') is PARTLY CONFIRMED by the new evidence. Force-class sensitivity error concentrates in port-adjacent elements (13% of elements carry 83% of |D|, diag_sens), and 1-2 sweeps remove 30-65% of the error energy. The critiques' '12-24 cycles' was calibrated from a ZERO start. Starting from the network changes the count: on 2010, network + 8 sweeps = 0.21% vs zero + 32 sweeps = 0.42%.",
+    "INFERRED, status change: the 09-20 refutation of 'fix the worst directions' (T15) came from a TWO-SIDED error (M_q era, mu from 0.027 to 275). Under the Galerkin readout every mu >= 1, so any Loewner-order improvement of S_hat monotonically lowers compliance error for every load. That refutation does NOT transfer to compliance. It still binds for sensitivities, where the extension/interface cancellation (T35) exists. The limit on low-rank fixes now comes from E1 (dense slow band) and from the 2003 spectrum: the lowest 200 modes hold only ~25% of the error.",
+    "CORRECTION to BRIEF §2 (shown, DOSSIER.md §2 and MORNING_REPORT_20260924): MGNO2 at F=32, H=4 has about 0.60M parameters (v0 0.50M), not '~12M'. The capacity history (WIDE_BOX 31M, WIDE_CUT 31M, where capacity did not move the contract) was measured on the EquiModel dense-M_q architecture, so it does NOT transfer to MGNO2. For MGNO2, capacity scaling is untested, not refuted.",
+    "SHOWN, recurrence: the 2000 FULL failure (5.8%, nbr_z, test-cell share 0.1%, sol_only > field_only) is the same phenomenon as r2 y nbr_facex0_z on 09-24 (share 0.13%, interface 4.8% vs extension 1.0%; the cell is dragged almost rigidly and the small deformation part of q carries a large relative error). The historical fix was coverage (face class, then glued). The glued class is now the worst class on heavy cuts and got WORSE with more steps (A0: 16.8 -> 18.2%). The lattice-relevant class is under-learned, not merely under-sampled."
+   ]
+  }
+ ],
+ "critiques": [
+  {
+   "verdicts": [
+    {
+     "target": "CROSS-CUTTING (a): 'smoothing headroom shows the network error is high-frequency / locally non-equilibrated'",
+     "verdict": "weak",
+     "reasoning": "SHOWS: 2010 has 1125 interior DOFs. The spectrum puts lam_min at 0.021 and lmax at 4.13, so the alpha=30 band [0.138, 4.13] covers all but roughly the lowest 5-10% of modes. From zero start, 32 sweeps already reach 0.42%, so the smoother nearly solves this cell. At equal k the network start is far ahead: k=8 0.21% vs 3357% from zero; 2003 at k=32 2.95% vs 18900% from zero. INFER: in a homogeneous Q2 model (work/review/wav.py), lam >= lmax/30 means wavelengths shorter than about 7 elements, so 'in band' is not 'element scale'. Relative to the exact field the network error is ENRICHED in soft modes on every measured cell. Per-band relative error in the lowest-200 subspace vs the rest: 2010 111% vs 31%; 2003 67% vs 10.7%; 2006 14% vs 3.1% (LATE_RESULTS spectra). On 2010 the ratio net(k=16)/net(0) = 5.1e-4 is 17x above the in-band Chebyshev bound (2.9e-5), so modes below lmax/30 hold about 0.1-0.5% of the network error vs about 3e-6 for the exact field (work/review/band2.py). Realistic cells keep 1/3 (2003) and 0.29 (2006) of their error after 8 sweeps. Supportable claim: about 30% of the error (the part 1-2 sweeps remove, which halves the sensitivity error) is short-wavelength / local; on cells of 6000+ elements the majority is not.",
+     "missing_evidence": "smooth_v2L1.json still holds only 2010 (checked at 09:07). No light-cut cell, not the worst heavy cell (2026, 70% force), not the worst medium cell (2051, 21%), and not old-gate r1 (20% lattice compliance) has been measured. smooth_headroom.py is not in the snapshot, so the exact polynomial and lmax estimate cannot be verified."
+    },
+    {
+     "target": "CROSS-CUTTING (b): 'the FULL 2000 continuous-gate failure is only a low-energy-share metric artefact'",
+     "verdict": "refuted",
+     "reasoning": "SHOWS (gate_cont_v2L1_fresh_val_2000_full.json, all 12 loads): the failing loads are nbr_x (x, 3.54%, w 0.36%), nbr_z (x, 5.83%, w 0.13%) and nbr_z (y, 5.39%, w 0.14%). On them the operator error eps is the LARGEST of all loads: 1.82 / 2.31 / 2.06% vs 0.78-1.39% on the energetic test loads. sens/eps is 1.95 / 2.52 / 2.62 vs 1.7-2.05 on test loads. 2001 nbr_z shows the highest ratio in the pack, 3.6. So the relative metric is not blown up by a small denominator; the network is genuinely 1.7-3x worse on this direction family. The load geometry also differs from what every analyst assumed: lattice3.py puts loads on the y=0 (config x) or x=0 (config y) side face, i.e. the Schwarz-P neck ring about 8 elements from the shared face, not on a far face. The test cell is always the free end of a cantilever clamped at the neighbour's far face, so for nbr loads it is an unloaded free body: rigid motion plus a self-equilibrated interface/warping disturbance. The energetic-load margin is thin: max 2.43%, and sol_only on those loads is 2.44-2.95%, i.e. passing relies on field/solution cancellation. A0 still fails (4.89 / 4.72%).",
+     "missing_evidence": "Whether 'design-irrelevant' holds needs (i) an energetic-passenger load (test-cell share >= 5%) and (ii) assembled-gradient error from saved raw sensitivity vectors (app H1). The kappa proportionality ||s|| ~ energy is shown on one heavy cut only."
+    },
+    {
+     "target": "MECH H1 / HIST H3: Q1 trilinear U-Net transfers lock and cannot carry long-wave soft (bending/rotation) content; PU-affine enrichment (P1) is the fix",
+     "verdict": "weak",
+     "reasoning": "CODE (models.py:446-470, 1011-1020): the fine grid is 65^3 Q2 nodes, and only the LAST prolongation (33^3 at spacing h, then 65^3) is fixed-trilinear. Content from 17^3 and 9^3 passes through gated per-voxel 3x3x3 convolutions at 33^3, with a skip from the pre-layers, then 12 local post layers. So the Q1_17 (46%) and Q1_9 (218%) floors do not bind the network; only Q1_33 (11.5%) is structural, and it is followed by local layers. DATA (mech2/expB4.json): best-approximation residuals of Q1 spaces are SMOOTHABLE. The Q1_33 residual keeps 1.0% of its energy after 8 sweeps, the Q1_17 residual 2.3%, the Q2_17 residual 6.6%. The network error keeps 29-35% (2003/2006/2000). So the network's unsmoothable residual is mostly content that Q1 spaces CAN represent, which points to wrong amplitudes, not a missing shape space. 2003 and 2006 have nearly identical interior soft spectra (lowest 200 modes in [5.7e-4, 1.13e-2] vs [9.4e-4, 1.17e-2]; field share 4.9 vs 4.6%) yet the soft-subspace relative error differs 67% vs 14%. A fixed architectural locking floor would not produce a 5x spread between two cells of the same type. INFER from mech's own numbers: a two-grid (Galerkin coarse + 8 sweeps) on 0021 soft loads leaves about 11.5%x1.0% = 0.12% (Q1_33), 46%x2.3% = 1.1% (Q1_17) or 3%x6.6% = 0.2% (Q2_17), so plain Q1 coarse spaces would suffice INSIDE a closed-loop wrapper.",
+     "missing_evidence": "All locking numbers come from light cut 0021, while the network decay rates come from other cells: a cross-cell comparison. The proposed decisive test must include Q1_33 (the network's own last coarse space) and measure Galerkin removal of the ACTUAL v2L1 error on 2003/2006/2000/r1."
+    },
+    {
+     "target": "MECH insight: 2010 has 99.7% of force_c error energy at x > 0.1 (element scale), from a2_invert",
+     "verdict": "refuted",
+     "reasoning": "The direct eigen-decomposition (LATE_RESULTS) puts 15.2% of 2010's force_c error energy in the lowest 200 modes, all with lam <= 0.42, i.e. x <= 0.10. a2_invert.py fits 7 curve points with NNLS. It cannot tell modes in [1/30, 0.1]·lmax (damped like the rest of the band) from modes above 0.1, so the 99.7% is a non-identifiable regularisation outcome. Numan's '>= 82% rough' is consistent. Numan's '2010 kappa <~ 100' is also contradicted by the spectrum (lmax/lam_min = 4.13/0.021 ≈ 197).",
+     "missing_evidence": "None needed; the spectrum is direct."
+    },
+    {
+     "target": "MECH H2: the field part of the sensitivity error is a surface-local equilibrium defect that a few exact sweeps remove",
+     "verdict": "plausible",
+     "reasoning": "SHOWS: sensitivity error falls faster than energy under the tail on cut cells: 2003 force_c 14.1 -> 2.8% (5.0x) vs 13.5 -> 4.7% (2.9x); 2006 6.2x vs 3.5x; 2010 97x vs 166x in energy; 2005 7.3x vs 7.2x. dK/dtau is PSD (a surface integral with V_n >= 0), so it is sound. Against: on 2000 FULL force_c the sensitivity error is non-monotone and plateaus at 0.46-0.53% while energy falls 4.5x, a first-order floor. The single-cell field part is not the gate: removing it alone can INCREASE the gate error (see the post-solve tail item).",
+     "missing_evidence": "Per-vf-bin |D| before and after the tail on the same cells. The same analysis on an FE-sized cut cell other than 2003."
+    },
+    {
+     "target": "MECH H3: heavy-cut soft directions are ghost-penalty-held sliver near-mechanisms with gamma-dependent targets",
+     "verdict": "weak",
+     "reasoning": "Shown on one training cell (0010): compliance ~gamma^-0.7, the lowest S modes are 72-91% GP energy, and the count below 1e-6 falls 786 -> 11 as gamma goes 1e-5 -> 1e-2. Not shown on any validation cell, and not correlated with error. The BRIEF claim 'worst val cells have the lowest force_c Rayleigh' cannot be checked from the pack: force_c exists for only 5 of 20 heavy val cells, and the worst one (2026, 70%) has no force_c bank. 2010 has lam_min(D^-1 K_II) = 0.021, with no very soft interior modes.",
+     "missing_evidence": "GP energy share and gamma-sensitivity of exact S on 5+ heavy val cells including 2026 and 2010, rank-correlated with v2L1 error."
+    },
+    {
+     "target": "MECH H4: FULL gate failure = interface Saint-Venant layer plus first-order lattice solution error",
+     "verdict": "plausible",
+     "reasoning": "The physics is actually supported by the true load geometry. The test cell is an unloaded free end, so the interface traction is self-equilibrated and should decay (expB3: 75% within 4 element layers on 0021). gate_decomp for 2000 x nbr_z: sol_only 3.30%, field_only 2.67%, full 5.83%, i.e. the two parts ADD here (on test loads they cancel). The hypothesis statement describes loads 'on the neighbour's far face', which is wrong (lattice3.py: side-face neck ring). No per-element location data exists for the gate load.",
+     "missing_evidence": "Per-element |D| binned by distance to the shared face for nbr loads."
+    },
+    {
+     "target": "MECH H5 / NUMAN precision argument: energy excess = delta^2*R(e)/R(u); soft directions need 1-2 orders tighter field accuracy",
+     "verdict": "plausible",
+     "reasoning": "This is an exact identity, and the measured kappa values are credible. It is consistent with the network's relative error being 3.6-6x larger in the soft subspace than elsewhere. The 'regression is blind to kappa' framing is wrong: the loss is the energy itself (the Dirichlet principle). So the identity explains why the requirement is hard; it does not say why training fails to meet it.",
+     "missing_evidence": "none critical"
+    },
+    {
+     "target": "MECH P4: exact rigid split per component (new proposal)",
+     "verdict": "refuted",
+     "reasoning": "Already implemented. trainlib.py:4-5 and ops.py:7,45-80 extend the rigid part of q exactly (least squares on ports) and send only qd to the network. The rigid split is also used in fastnet.py:139. Only the per-material-component refinement is new, and no data shows that multi-component rigid motion is an error source.",
+     "missing_evidence": "Count of val cells with more than one port-touching component, and their errors."
+    },
+    {
+     "target": "MECH insight: the 'force' class port concentration (83% of |D| in 13% port-adjacent elements) is a load artefact",
+     "verdict": "supported",
+     "reasoning": "CODE: prep_data.py:83-90 applies nodal plane-wave or patch forces uniformly on box-port nodes, including weak/fictitious ones. DATA (diag_sens_v2L1_cpu.json, 2000): touch_port abs share is 0.83 for force vs 0.23 for force_c over 13.2% of elements; vf<0.1 share is 0.52 vs 0.11. The traction-consistent class that matches the gate shows only 1.7x enrichment.",
+     "missing_evidence": "Same split on cut cells, where force_c is 2-3x worse than force."
+    },
+    {
+     "target": "NUMAN identity: learned lattice = Ritz-Galerkin; gap = bound - comp_err = ||q_hat-q||^2_A_hat / C; q_err_S <= sqrt(gap/w); gap/bound <= delta/(1+delta)",
+     "verdict": "supported",
+     "reasoning": "The algebra checks out: (q-q_hat)^T A_hat (q-q_hat) = q^T Delta q - (C - C_hat). The delta/(1+delta) bound follows from x^2/(1+x) <= delta/(1+delta)·x on [0, delta]. Empirically, q_err_S (gate_decomp) divided by sqrt(gap/w) (gate JSON) is 0.93/0.92/0.91/0.78/0.83/0.79 on 2000 x, 0.92/0.93/0.90/0.84/0.80/0.79 on 2000 y, and 0.83/0.83/0.85/0.82/0.81/0.84/0.86/0.83/0.86 on 2003 x. Minor inaccuracies: 'sens/(2 sqrt(gap/w)) = 0.1-0.35 elsewhere' is 0.42-0.51 on the 2000 test loads, and 'sens ~ c·eps with c = 1-4' is 0.3-1.5 on cut cells.",
+     "missing_evidence": "none"
+    },
+    {
+     "target": "NUMAN H1: the post-tail remainder is an amplitude error of soft interior modes; an exact Galerkin coarse correction removes most of it",
+     "verdict": "plausible",
+     "reasoning": "Indirect support: the soft-subspace relative error is 67% on 2003, and the Q1/Q2 best-approximation residuals are 93-99% smoothable (expB4). By the two-grid principle, coarse correction plus tail should therefore work even with plain Q1 coarse spaces (about 0.1-1% predicted on 0021). The band model (work/review/band2.py) says a pure tail needs about 128 sweeps to reach eps 1.37% on 2003. None of this has been run on network outputs. The 2D toy is Q1 without GP.",
+     "missing_evidence": "The oracle and geometric two-grid on v2L1 fields for 2003/2006/2000/r1 (must-run E3)."
+    },
+    {
+     "target": "NUMAN H2 / HIST H2: the remainder is local weak-node / GP cluster modes",
+     "verdict": "weak",
+     "reasoning": "No measurement on the D^-1 K_II modes of the current cells. The route-1 statistic was measured on a different preconditioned pencil. A4 reports the weak-element relative field error as lower than port/other. Cheap to decide from the existing eigenvectors.",
+     "missing_evidence": "Participation ratio and weak-node amplitude share of 2003's lowest-200 modes and of the post-32-sweep error."
+    },
+    {
+     "target": "NUMAN H3: cut-cell gate failures = field + first-order solution error governed by worst-direction delta (delta_eff >= 0.25 on 2003)",
+     "verdict": "plausible",
+     "reasoning": "The lower bounds are valid (they bound the pencil error relative to the lattice operator, which is <= delta relative to S). 2003 decomposition: field 10-16%, solution 12-19%, full 6-12%, so the parts partially CANCEL. 'Solution error dominates' is therefore not identifiable from sol_only > field_only. What is established: fixing either part alone is not enough, and can make things worse.",
+     "missing_evidence": "delta_max from pencil Lanczos, before and after the tail."
+    },
+    {
+     "target": "NUMAN H4: open-loop floor, not data",
+     "verdict": "weak",
+     "reasoning": "For medium: A0 +15k steps gives 4.7 -> 4.5%, and the trainfit median equals the val median (3.5 vs 3.4). But v2L1 visits each geometry about 1.3 times (40k steps, swap every 100, pool 3, 305 geometries; best.pt at step 30000), so train-fit is effectively out-of-sample. It cannot separate estimation from approximation. Heavy data doubling helped 36%. 2003 vs 2006 (same spectrum, 5x error spread) looks like per-geometry generalisation, not a uniform floor.",
+     "missing_evidence": "A single-geometry overfit on 2003 with the v2L1 architecture (must-run E4)."
+    },
+    {
+     "target": "NUMAN H5 / NN P1 claim: the tail passes small/medium cells; smoothing headroom 'worth 8-20x data, >5e3x on 2010'",
+     "verdict": "weak",
+     "reasoning": "The headroom numbers are measured, but the extrapolations rest on 2010 (tiny, near-solved by the smoother alone) and on a confounded data exponent. Realistic cells gain 2.9-7x at k=8. The worst cells (2026, 2051, r1) are unmeasured.",
+     "missing_evidence": "Headroom on 3+ cells per type, including the worst ones."
+    },
+    {
+     "target": "NN H1: the high-band floor is a representation limit (slot rank <= 4 per fine layer, bounded gains)",
+     "verdict": "weak",
+     "reasoning": "The high band is fit relatively WELL: on 2003 the error above mode 200 is 10.7% relative vs 67% in the soft subspace (2006: 3.1% vs 14%). Its large absolute share reflects the target's spectral content (95% of field energy above mode 200), not an anomalous floor. The slot-rank argument is correct as algebra, but the evidence is a 2D toy only. A2_tail8 grf 2.03 -> 0.32% shows the in-band error is removable by exact sweeps; it does not identify the cause.",
+     "missing_evidence": "An H=16 or per-slot-diagonal fine-tune; the grf/macro headroom."
+    },
+    {
+     "target": "NN H2: about 60% of heavy-cut error is estimation (train 4.5% vs val 11.3%)",
+     "verdict": "weak",
+     "reasoning": "The heavy val mean is dominated by one cell: 2026 at 70.1% force. Without it the mean is 8.2% (median 7.07%). The train heavy set has n=7 after excluding 2013. The training regime is online (about 1.3 visits per geometry), so 'train fit' is not in-sample. Medium training cell 2014 sits at 19.3% force, i.e. the model does not fit all its own cells.",
+     "missing_evidence": "Matched-step v2L2 vs A0; a single-geometry fit; heavy train vs val cells matched on volume fraction."
+    },
+    {
+     "target": "NN H3: the low/mid-band residual is coarse-path approximation error, not data",
+     "verdict": "plausible",
+     "reasoning": "Medium does not move with compute (A0 -4%), and 2003 has 67% soft-subspace error. But 2006 has the same spectrum and only 14%, so the architecture can represent such modes on at least some geometries. The claim has to be split into representation vs per-geometry generalisation.",
+     "missing_evidence": "E4 single-geometry fit; A2_tail8 soft-subspace error on 2003."
+    },
+    {
+     "target": "NN H5: lattice directions ~ typical directions; gate sens ~1.5-2.5x eps; the tail passes every cell with post-tail eps <= 1.2%",
+     "verdict": "weak",
+     "reasoning": "sens/eps is 1.4-3.6 on FULL but 0.3-1.5 on cut cells (all gate files), so the ratio is not universal. The failing FULL directions have 1.7-3x higher eps than the energetic ones, i.e. direction-specific. q_err depends on the worst-direction delta, which a tail may not reduce as much as eps. Under smoothing the sens-vs-energy relation changes (2000 force_c sens plateaus). The '1.2-1.5% rule' comes from one FULL cell.",
+     "missing_evidence": "gate_decomp with the tail on >= 6 cells; fit sens = a·eps^b."
+    },
+    {
+     "target": "NN insight: the energy term of the loss is label-free",
+     "verdict": "supported",
+     "reasoning": "Dirichlet principle: min over E_hat of q^T E_hat^T K E_hat q is minimised by the exact extension, and d log(q^T S_hat q) does not need q^T S q. The caveat is that soft q directions (S^+ f) and the sensitivity labels still need the teacher.",
+     "missing_evidence": "none"
+    },
+    {
+     "target": "Claim (LATE_RESULTS / NN P1): the trained tail gives 4-10x vs about 3x for the untrained tail",
+     "verdict": "weak",
+     "reasoning": "Not a matched comparison. A2 vs A0 is a mean over 40 training-val geometries, and the mean is dominated by bad cells. The post-hoc ratios come from 5 cells, one of which (2010) improves 85-166x post-hoc. Post-hoc v2L1+tail8 on the same 40 geometries could also give 4-6x.",
+     "missing_evidence": "Post-hoc v2L1+smooth_k=8 on the same 40 geometries and on the 80 newval cells (must-run E1)."
+    },
+    {
+     "target": "APP H1: the 2000 FULL failure has negligible design impact",
+     "verdict": "plausible",
+     "reasoning": "Shares are 0.13-0.36%, the share-aware metrics give 1.3-2.4%, and compliance error is <= 0.01% on those loads. But the direction error is real (eps highest, sens/eps highest on passenger z loads across 2000 and 2001) and persists after +15k steps. kappa ~ energy is verified on one heavy cell only.",
+     "missing_evidence": "Energetic-passenger load; assembled lattice-gradient error from saved raw s vectors."
+    },
+    {
+     "target": "APP proposal: apply the tail post-solve only (fixes the field part cheaply)",
+     "verdict": "refuted",
+     "reasoning": "gate_decomp shows the field and solution parts partially cancel. On 2000 x test loads sol_only 2.95/2.64/1.76% > full 2.38/2.24/1.39%, and on every 2003 load sol_only (12-21.5%) > full (6-14%). Removing only the field part would push these loads toward the sol_only values, i.e. WORSE. For example 2003 test_y would go 12.2% -> ~19%, and 2000 x test_x 2.38% -> ~2.95%, near the gate.",
+     "missing_evidence": "A direct run of gate_decomp with a post-solve tail would confirm it."
+    },
+    {
+     "target": "APP H2/H3: exact routing of small cut cells is cost-neutral; an in-PCG tail makes learned slower than exact",
+     "verdict": "plausible",
+     "reasoning": "bench_deploy confirms per-B16 query cost: learned fused 0.135 s vs exact fp64 0.077 s on FULL 0020; r1 0.033 vs 0.013 s. cert_m8 - cert_m0 gives 3-18 ms per extra K product at B16. These are measured on 4 cells with resident factors, not at lattice scale. Both conflict with the user's anti-drift rule (user decision).",
+     "missing_evidence": "The bench_precond 3x3x3 mixed-routing wall-clock."
+    },
+    {
+     "target": "HIST H1: realistic cut cells are dominated by soft/mid-band error that a moderate tail cannot reach (3.3% floor on 2003)",
+     "verdict": "plausible",
+     "reasoning": "Supported for post-hoc on 2003 (measured 2.95% at k=32; the band model needs k ≈ 128 for 1.37%). But '3.3% floor' is wrong: at k=32 the soft band keeps about 75%, at k=128 about 41%. 2006 reaches 1.04% at k=8. It is one failing cell, and the trained tail (A2) changes the network's error distribution, so the post-hoc band model does not bound A2.",
+     "missing_evidence": "A2_tail8 on 2003 plus the worst medium cells (2051, 2054, 2067)."
+    },
+    {
+     "target": "HIST H4: the first-sweep-removable error is fringe/GP/port ramp; a learned continuation head (A8) can remove it fully learned",
+     "verdict": "weak",
+     "reasoning": "The A8 oracle was measured on exact fields, not network fields. A4 finds lower relative error in weak elements. The 83%-port-adjacent statistic is the nodal-force artefact.",
+     "missing_evidence": "diag_error attribution of the energy removed by the first 2 sweeps (hist E-H4)."
+    },
+    {
+     "target": "HIST H5: low-share gate failures are interface error on under-trained lattice-relevant directions; turn on the approved Ritz tail loss",
+     "verdict": "plausible",
+     "reasoning": "The recurrence is real (r2 nbr_z 09-24, 2000 nbr_z now), and the failing directions have the highest eps. Additional support: glued is NOT in score_classes (v2L1.json), so model selection ignores the glued class, which got worse under A0 (16.8 -> 18.2%) unnoticed. The fix is untested and carries C3 risk.",
+     "missing_evidence": "Tail-loss arm with 2 seeds; eps on passenger directions across cells."
+    },
+    {
+     "target": "HIST H7: sensitivity error on bad cells is second-order; sensitivity losses/heads will not fix it",
+     "verdict": "supported",
+     "reasoning": "First-order share is 0.07 (2003), 0.09 (2006) and 0.01 (2010) for force_c (diag_sens). The smooth-L1 sensitivity loss regressed 2.1 -> 3.7%, and A1_sens3 was stopped.",
+     "missing_evidence": "none"
+    },
+    {
+     "target": "HIST H10 / NUMAN 'soft remainder follows interior conditioning'",
+     "verdict": "weak",
+     "reasoning": "2003 and 2006 have nearly identical interior soft spectra (lam_min 5.7e-4 vs 9.4e-4; lowest-200 field share 4.9 vs 4.6%) but 5x different soft-subspace relative error (67 vs 14%) and soft remainder (2.95 vs 0.61% at k=32). Interior conditioning does not explain the ranking. The S-Rayleigh correlation cannot be checked in the pack (force_c exists on only 4-5 cells per cut type).",
+     "missing_evidence": "Across all 80 val cells, correlation of error with log lambda_min, S-Rayleigh and geometric descriptors."
+    },
+    {
+     "target": "Rule of thumb: gate sensitivity <= 3% needs eps <= 1.2-1.5% on lattice directions",
+     "verdict": "weak",
+     "reasoning": "It is derived from 2000 FULL (sens/eps 1.4-2.6). Cut cells show 0.3-1.5, and 2001 nbr_z shows 3.6. In the small-eps first-order regime sens ~ sqrt(eps) (2000 force_c plateau). Using 2000 nbr_z (c = 0.058/sqrt(0.0231) = 0.38), a sqrt law gives eps <= 0.6%, not 1.2%.",
+     "missing_evidence": "sens vs eps across cells and tail depths."
+    }
+   ],
+   "alternative_explanations": [
+    "LOAD GEOMETRY MISDESCRIBED EVERYWHERE. lattice3.py puts gate loads on the y=0 (config x) or x=0 (config y) side face, i.e. the Schwarz-P neck ring about 8 elements from the shared face, not on a 'far face'. The test cell is always the FREE END of a two-cell cantilever clamped at the neighbour's far face. For nbr loads it is an unloaded free body: rigid motion plus a self-equilibrated interface/warping disturbance. The failing FULL directions (nbr_z, which has the highest sens/eps in 2000 x/y and 2001: 2.5-3.6) are a specific physical class: warping of a dragged appendage. 'Low share' is incidental.",
+    "CLASS COVERAGE / SELECTION, NOT ARCHITECTURE. Traction-consistent classes exist for only 4-5 val cells per cut type, and on cut cells they are 2-3x worse than nodal 'force': light 2007 5.7 vs 15.2%, 2015 3.8 vs 10.7%; medium 2003 6.8 vs 13.0%; heavy 2010 17.4 vs 35.2% (newval_v2L1.json). On FULL they are equal or better. Light-cut force_c (3 of 4 cells at 10.7-15.2%) is as bad as heavy, and NO analyst examined a light cell. Model selection (score_classes in v2L1.json) excludes 'glued', the lattice-relevant neighbour class, which worsened under A0 (16.8 -> 18.2%) unnoticed. The fraction of training geometries carrying c/k/glued banks is unknown.",
+    "PER-GEOMETRY GENERALISATION FAILURE, NOT A SPECTRAL FLOOR. 2003 and 2006 have the same interior soft spectrum yet a 5x different soft-subspace relative error. Candidates are an out-of-distribution geometric feature (cut position/angle relative to necks) or B1 bounded-gain/transfer-weight saturation. Soft-mode amplitudes need gains ~1/lambda (up to ~1e3 in D-scaled units), which a product of bounded linear stages may be unable to supply for one geometry. This is testable with sat_stats and a single-geometry fit.",
+    "FIELD/SOLUTION CANCELLATION. The learned field is paired with its own Ritz lattice solution, so the field and solution sensitivity errors partially cancel (full < sol_only on 2000 test loads and on all 2003 loads). Any fix acting on one part only (post-solve tail, field-only correction, sensitivity head) can increase the gate error even while eps falls.",
+    "SAMPLE SELECTION BIAS OF THE DIAGNOSTIC CELLS. The smoothing/spectrum cells are 2010 (tiny, 18th of 20 heavy), 2005 (3rd best heavy, also small), 2003 (17th of 20 medium), 2006 (4th medium) and 2000 FULL. There are no light cells. The worst heavy (2026, 70%) and worst medium (2051, 21%) cells are missing, as is old-gate heavy 0020_r1 (2244 elements, 48k interior DOFs, unseen). v2L1 fails r1 at 14-20% lattice COMPLIANCE on energetic loads (gate_old_v2L1.json, w 0.90-0.95). Heavy failures are therefore not all 'tiny cells that a tail fixes'.",
+    "SHAPE vs AMPLITUDE. The Q1/Q2 coarse-space best-approximation residuals are 93-99% smoothable (expB4), while the network error is not (29-35% kept at k=8). The network error sits mostly in content that coarse spaces DO represent, so wrong amplitudes, not missing shapes, is the more economical explanation. That argues for an exact coarse Galerkin solve (amplitudes from K) over richer learned prolongations.",
+    "GP-DEFINED TARGETS on heavy cuts (mech H3). On 0010, compliance scales about gamma^-0.7 and the softest S modes are 72-91% GP energy. Some heavy-cut 'errors' are about numerically defined sliver modes whose exact target moves with gamma, so the fix belongs to the contract or routing, not the architecture. Unverified on val cells."
+   ],
+   "must_run_experiments": [
+    "E1 (CPU/GPU, <1 h, no training): matched post-hoc vs trained tail. Evaluate v2L1 + smooth_k=8 (untrained tail) on the SAME 40 training-val geometries and on the 80 newval cells, per type and class, next to A2_tail8 at 15k steps. DECISION: if A2_tail8 is not >= 1.5x better than post-hoc on per-type medians, in-loop training adds little, and the decision is only 'adopt a wrapper or not' (user). If >= 1.5x, keep training through the tail.",
+    "E2 (CPU, about 1 h per cell): smoothing headroom plus error_spectrum on a representative sample: the worst heavy (2026), worst medium (2051), 2 light cells with force_c (2007, 2012), and old-gate heavy 0020_r1. Report k=8 retention and soft-subspace relative error. DECISION: if >= 2/3 of cells with >= 2000 elements keep > 25% of their error after 8 sweeps, a tail alone is insufficient, so a coarse component (two-grid wrapper or learned amplitude fix) is required before any architecture choice. If < 10% is kept, a tail alone suffices.",
+    "E3 (CPU, 1-3 h per cell): two-grid oracle on the ACTUAL v2L1 error for 2003, 2006, 2000, r1 and 2026. Galerkin-correct e_net in span(P) (ports fixed) for P = Q1_33 x R^3 (the network's own last coarse space), Q1_17, Q2_17 / PU-linear_17, and the lowest m = 50/200 eigvecs. Report energy and 8-corner sensitivity with and without 8 post-sweeps. DECISION: (i) If Galerkin on Q1_33 or Q1_17 alone removes > 50% of e_net, the shapes are in the network's own space and the defect is amplitude, so do not build PU-enriched learned transfers (mech P1); consider an exact coarse solve (hybrid) or amplitude supervision. (ii) If only PU/Q2 removes it, P1 is justified. (iii) If only the eigvec oracle works, the modes are local weak-node modes, so use a cluster block smoother. Predicted from expB4 x expB2 on 0021: Q1_17 + tail about 1%, Q1_33 + tail about 0.1%.",
+    "E4 (GPU, about 2 GPU-h per cell): single-geometry overfit of the v2L1 architecture (fine-tune only on 2003, then on r1) for 10k steps. DECISION: if force_c <= 2% and soft-subspace relative error <= 15%, representation is adequate and the failure is estimation, so use data/coverage remedies (label-free geometry stream, class rebalancing). If it plateaus >= 6%, it is an architecture floor, so change the q-path or adopt a closed-loop component. Also record B1 sat_stats on 2003 vs 2006; if 2003 saturates > 2x more, relax the bounds in an arm.",
+    "E5 (CPU/GPU, <1 h): gate_decomp with the tail applied (a) only post-solve and (b) inside the operator in the lattice PCG, on 2000, 2003, 2006, 2005 and r1. Add one 'energetic passenger' load: a concentrated load on the neighbour near the shared face so that test-cell share >= 5%. Also save the raw 8-corner vectors to compute assembled-gradient error. DECISION: if (a) raises any test-load error (predicted from cancellation), rule out post-solve-only designs. If the energetic-passenger sens > 3%, the FULL nbr_z weakness is design-relevant and must be fixed in the model, not by a metric change. If it is <= 2%, report share-aware metrics next to the unchanged gate (user decides).",
+    "E6 (CPU, minutes per cell with the exact factor): pencil Lanczos delta_max (worst-direction S_hat/S error) for v2L1 and A2_tail8 on 6+ val cells. DECISION: if the tail lowers eps by >= 4x but delta_max by < 2x, the gate's solution part (bounded by sqrt(delta/(1+delta)·eps)) will not follow eps, and a coarse Galerkin component is needed for the gate.",
+    "E7 (CPU, <1 h, no training): coverage audit. Count training geometries carrying force_c / face_c / support_k / glued banks, and compute per-class, per-type val errors including the 'glued' class that selection currently ignores. DECISION: if the consistent classes cover < 50% of training geometries or glued is > 2x the selection classes, rebalance data and selection BEFORE any architecture change, and re-measure.",
+    "E8 (CPU, about 2 h): gamma-sensitivity and GP energy share of exact force_c/face_c fields on 5 heavy val cells including 2026 and 2010, rank-correlated with v2L1 error. DECISION: if cells with GP share > 30% account for most of the heavy-cut mean, treat them by contract/routing (user decision), not architecture, and report heavy statistics with and without them.",
+    "E9 (CPU, <1 h): localisation of 2003's lowest-200 modes and of its post-32-sweep error: participation ratio and weak-node amplitude share. DECISION: participation of O(10-100) nodes with > 70% weak-node share means the modes are local, so use a cluster block smoother. Participation of >> 1000 nodes means global, so use a coarse space (E3 picks which one)."
+   ],
+   "ranked_proposals": [
+    {
+     "name": "Run the cheap discriminating diagnostics first (E1, E3, E4, E7) before any architecture change",
+     "rank": 1,
+     "rationale": "Each of these decides between mutually exclusive remedies: amplitude vs shape, estimation vs representation, coverage vs architecture, trained vs post-hoc tail. All cost hours or less, and none has been run on network outputs from representative cells."
+    },
+    {
+     "name": "NUMAN two-grid closed-loop wrapper (Galerkin coarse on a plain geometric Q1 space + Chebyshev tail), as an evaluated arm",
+     "rank": 2,
+     "rationale": "It is the only proposal whose mechanism is consistent with all the data: in-band error is removable, the Q1 residual is smoothable (expB4), and the soft error is an amplitude error. It preserves linearity, symmetry, S_hat >= S and the variational readout. Adoption is a user decision under the anti-drift rule. Per-query cost is about +90-180% of the learned query (bench_deploy)."
+    },
+    {
+     "name": "A2_tail8 (exact Chebyshev tail), judged only after E1/E5/E6",
+     "rank": 3,
+     "rationale": "It is measured to remove 65-99% of error energy post-hoc. It does not reach 2003's soft band at k <= 32 (2.95%), and it must be evaluated in the lattice solve, not post-solve, because of the field/solution cancellation."
+    },
+    {
+     "name": "Coverage/selection fixes (include glued in selection, rebalance consistent classes, analyse light-cut force_c)",
+     "rank": 4,
+     "rationale": "Cheap and needs no user decision. The data show consistent classes 2-3x worse on cut cells and glued degrading unnoticed."
+    },
+    {
+     "name": "MECH P1 PU-affine enriched learned transfers",
+     "rank": 5,
+     "rationale": "Justified only if E3 shows PU/Q2 spaces capture error that Q1_33/Q1_17 cannot. Current evidence (a smoothable Q1 residual; the 2003 vs 2006 spread) points away from shape deficiency."
+    },
+    {
+     "name": "Share-aware gate reporting (next to the unchanged gate)",
+     "rank": 6,
+     "rationale": "Useful, but the FULL failure is a real direction-specific weakness (highest eps). Pursue it only after the energetic-passenger test, and gate changes are the user's call."
+    }
+   ]
+  },
+  {
+   "verdicts": [
+    {
+     "target": "Exact Jacobi-Chebyshev tail removes the local-equilibrium / high-band error (Mech H2, NumAn H5, NN H1 part)",
+     "verdict": "supported",
+     "reasoning": "SHOWN in smooth_v2L1.json and LATE_RESULTS.md. At k=8, energy excess falls 166x on 2010, 7x on 2005, 3.5x on 2006, 2.9x on 2003 and 3x on 2000 (force_c). Sensitivity error falls faster than energy error (2003: 14.1 -> 2.8% vs 13.5 -> 4.7%). A2_tail8 trained end-to-end reaches 4-10x lower training-time validation mean at 7.5k steps (force_c 6.67 -> 1.62%, grf 2.03 -> 0.32%, macro 0.85 -> 0.25%). The grf and macro gains partly answer NN H1a: the stiff-class 'floor' can be removed by the exact local operator. The selection score only moves 0.094 -> 0.058 (1.6x), so the means may be dominated by a few heavy outliers.",
+     "missing_evidence": "Per-type newval and continuous gates at 15k. diag_sens per vf-bin before and after the tail. Whether the trained-tail gain holds on medium cells rather than only on tiny heavy cells."
+    },
+    {
+     "target": "The post-tail remainder on realistic medium cells is soft or mid-band, and a moderate-degree tail cannot reach it (History H1, NumAn H1 first half, NN H3)",
+     "verdict": "supported",
+     "reasoning": "SHOWN for the post-hoc tail on 2003: 13.5% -> 4.7% (k=8) -> 2.95% (k=32). 24.5% of the error sits in the lowest 200 modes (lambda < 0.011), with about 67% relative error inside that subspace. History's band model reproduces all measured k points to 10-20%. 2006 behaves similarly but milder (14% soft-subspace error). The claim is untested for the in-loop trained tail: A2_tail8 may move capacity into the soft band.",
+     "missing_evidence": "A2_tail8 at 15k on 2003/2006: energy excess and the soft-200-subspace relative error."
+    },
+    {
+     "target": "Mech H1 / History H3: MGNO2's trilinear coarse transfers cannot carry soft thin-wall bending content (Q1 locking), so an affine/PU-enriched prolongation is the fix",
+     "verdict": "plausible",
+     "reasoning": "The code confirms the structural premise. models.py _prolong gives fine_i = w_i * sum_v t_w Xc_v / sum t_w, with the same scalar weights for every channel, and W_out is a node-independent mix, so the coarse contribution lies in diag(w)*Q1^3 before the 12 post layers. The best-approximation floors (Q1_17 46% vs PU-linear_17 0.32% on soft loads) come from one light cut (0021) and describe the field from zero, not the network's error. Route-1 T29 (quadratic coarse beat affine 5-6x) supports the idea. It has not been tested against the actual network error.",
+     "missing_evidence": "Galerkin projection of the v2L1 and A2_tail8 error on 2003/2006 onto Q1_17 vs PU-linear_17 / Q2_17 (CPU)."
+    },
+    {
+     "target": "Soft remainder is weak-node/GP-local rather than global bending (NumAn H2, History H2)",
+     "verdict": "plausible",
+     "reasoning": "The evidence conflicts. Route-1 found 94-99% of slow-mode amplitude on weak nodes, but on a different preconditioned pencil. A4 found weak-element relative error lower than port/other elements. The soft remainder ranks with cell span (medium > FULL > heavy), which looks structural. The existing error_spectrum eigenvectors can decide this in under 1 CPU-h.",
+     "missing_evidence": "Weak-node amplitude share and participation ratio of the lowest-200 modes and of the post-32-sweep residual on 2003/2006."
+    },
+    {
+     "target": "Mech H3: heavy-cut softest directions are ghost-penalty-held sliver near-mechanisms, and the 'force' class mostly measures GP-held fictitious port motion",
+     "verdict": "plausible",
+     "reasoning": "SHOWN on single fixtures only. On 0010, compliance scales about gamma^-0.7 and the lowest S modes have 72-91% GP share. On 0021, nodal 'force' loads carry 68% GP energy. This fits the user's 09-24 O4 decision that uniform nodal loads are a stress test, not a gate. 2005 (heavy, 9% volume) passes, so not every heavy cell is GP-dominated.",
+     "missing_evidence": "GP energy share of exact force_c fields across the 20 heavy val cells, correlated with per-cell error."
+    },
+    {
+     "target": "App H1: the 2000 FULL gate failure (5.83% nbr_z) is a low-energy-share artefact with negligible design impact",
+     "verdict": "plausible",
+     "reasoning": "It is partly an artefact, not purely one. The share is 0.13% and share-aware metrics give 1.3-2.4%. But gate_decomp shows nbr_z has the largest eps of the six loads (2.31% vs 0.78-1.39%), and its sol_only alone is 3.30% (>3%). A0 +15k steps leaves it at 4.89%. History shows the same pattern on r2 nbr_z (09-24). The 'negligible design impact' part rests on a 2D toy and on kappa proportionality measured on one heavy cut.",
+     "missing_evidence": "Saved raw s vectors and assembled-gradient error. An 'energetic passenger' load with share >= 5%."
+    },
+    {
+     "target": "NN H2: about 60% of heavy-cut val error is estimation; medium and FULL sit on an architecture floor",
+     "verdict": "plausible",
+     "reasoning": "Heavy val/train is 2.5x mean (11.3 vs 4.5), but on only 4-8 train cells per type, and the numbers include forgetting (about 1.3 visits per geometry). Medium moved -4% under A0 compute but -23% from v2s to v2L1, where data and steps are confounded. So a data effect on medium is not excluded.",
+     "missing_evidence": "v2L2 (591 geos) vs A0 at matched steps."
+    },
+    {
+     "target": "NumAn H4: an open-loop network has a floor that only closed-loop exact feedback removes",
+     "verdict": "plausible",
+     "reasoning": "The A2_tail8 in-loop gain (4-10x vs about 3x post-hoc) supports the value of closed-loop feedback. It does not show that a fully learned alternative (enriched coarse transfers, higher rank) could not approach it: none has been tried on MGNO2. Capacity was only refuted on EquiModel, and MGNO2 has 0.60M parameters (DOSSIER), not the ~12M the BRIEF states.",
+     "missing_evidence": "A fully learned structural arm (P1) at matched steps vs A0_ctrl and A2_tail8."
+    },
+    {
+     "target": "NN toy claim: in-loop tail training is roughly equal to post-hoc smoothing on typical cells",
+     "verdict": "weak",
+     "reasoning": "The real A2_tail8 at 7.5k is about 4-10x better than A0 on means, while the post-hoc k=8 tail on v2L1 gives about 3x on the measured cells. In-loop training therefore adds about 1.5-3x on the real problem. The 2D toy (kappa ~280 vs ~7000) does not transfer.",
+     "missing_evidence": "Post-hoc tail8 on A0_ctrl-15k vs A2_tail8-15k on the same newval cells."
+    },
+    {
+     "target": "Mech P4: exact rigid split (fixes BNN deflation, near-rigid dragged cells)",
+     "verdict": "refuted",
+     "reasoning": "The global exact rigid split already exists. trainlib.Geo/fastnet wrapper: u = RA c + model(qd), with qd the rigid-free part. ARCH_REVIEW E already rated an fp64 rigid wrapper as a 10-minute check (rounding 4e-6 << 1e-4) and per-component splitting as diagnostic-only, with no island evidence. The BNN deflation divergence is fp32 rounding in the rigid directions and belongs in the preconditioner, not the network.",
+     "missing_evidence": "Evidence that multiple port-touching material components exist in val cells at vf>0.05."
+    },
+    {
+     "target": "App H3 / NumAn deployment claim: a tail inside every lattice PCG matvec makes the learned route slower than exact",
+     "verdict": "supported",
+     "reasoning": "fastnet.s_hat = field_T(K field(q)), so a k-sweep tail adds 2k K products per query (forward plus adjoint), not k as the App lens assumed. Per K product at B16 (bench_deploy, (cert_m8 - cert_m0)/9): 3.2 ms r1, 8.9 ms r2, 15.1 ms FULL 0020, 18.4 ms FULL 0007. FULL 0020 B16: learned 135 ms -> 195/255/376 ms at k=2/4/8, vs exact fp64 77 ms. Break-even vs the fp64 factor drops from 96 to 47/31/19 B16 queries, against 119-204 BNN iterations. Estimated 3x3x3 lattice: 224 s -> ~760 s at k=8, vs exact ~318 s (fp64 factor) or ~180 s (fp32 factor). The B6 K-product cost is my assumption. Script: /tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/pack/work/feas/cost.py.",
+     "missing_evidence": "bench_deploy/bench_precond with smooth_k in fastnet at B1/B6/B16."
+    },
+    {
+     "target": "History H7: sensitivity losses or heads cannot fix the sensitivity error",
+     "verdict": "supported",
+     "reasoning": "The first-order share is 0.01-0.09 on the bad cells (diag_sens_v2L1_cpu.json). Smooth-L1 made the gate worse (2.1 -> 3.7%, V2 section 8). A1_sens3 was stopped.",
+     "missing_evidence": "None needed."
+    },
+    {
+     "target": "Coarse levels short-circuit across voids (History H9)",
+     "verdict": "refuted",
+     "reasoning": "t_split_v2L1.json: 0 extra nodes at 33^3 and <=26 (<=1.3%) at 17^3/9^3.",
+     "missing_evidence": "None."
+    },
+    {
+     "target": "Port reduction (App H5) and sliver-avoiding geometry change (Mech P3-iv)",
+     "verdict": "weak",
+     "reasoning": "Neither has been tested, and both conflict with recorded decisions. 09-23 chose full-resolution ports with no compression, and hierarchical low-rank and compressed representations were rejected. The frozen geometry/teacher contract forbids changing slivers. They are only admissible as a user-initiated contract change.",
+     "missing_evidence": "A user decision first. Any CPU test with the T64 caches is optional."
+    }
+   ],
+   "alternative_explanations": [
+    "A2_tail8's 4-10x gain in the training-time validation mean may be dominated by tiny heavy cells like 2010, where the smoother alone is decisive (zero start + 32 sweeps = 0.42%). The selection score improves only 1.6x (0.094 -> 0.058), and medium cells may gain only about 3x, as in post-hoc smoothing.",
+    "The deep spectral evidence for a soft-band floor comes from one medium cell (2003). 2006 has a 14% soft-subspace relative error vs 67% on 2003, so 2003 may be a near-mechanism outlier of the medium class rather than typical.",
+    "Mechanics' Q1-locking floors measure best approximation of the exact field from zero on a light cut (0021). The trained network, with 12 post-U-Net local layers, may already synthesize most of the slope content, so the missing part could be amplitude or generalization error rather than representability.",
+    "The 2000 nbr_z gate error may come from a direction that is under-sampled in training (glued-class error got worse under A0: 16.8 -> 18.2%) rather than from low-share denominator effects or coarse-space limits.",
+    "Heavy-cut val/train gaps (2.5x) may reflect that the 4-8 trainfit heavy cells are easier, or include forgetting in the online regime (about 1.3 visits per geometry), rather than true estimation error.",
+    "The trained tail's apparent gain may partly be co-adaptation to the exact lmax and polynomial used in training. If deployment estimates lmax differently (it must be an upper bound, e.g. Gershgorin or Lanczos x1.05), accuracy could differ.",
+    "The medium-cell 'architecture floor' (A0 -4%) could also be a learning-rate/schedule effect: A0 re-warms with OneCycle at lr 3e-4 from a converged model, and the docs warn that re-warming can hurt."
+   ],
+   "must_run_experiments": [
+    "A2_tail8 at 15k (running): newval per type with eval_views [0,17] on 80 cells vs A0_ctrl-15k; continuous gates on 2000/2001/2003/2005/2006 x/y with gate_decomp (field_only, sol_only, q_err_S); diag_sens per vf-bin; bench_deploy with smooth_k=8 applied in both fastnet field and field_T at B1/B16/B64. Report ms/column next to accuracy. Confirm the arm uses a guaranteed lmax upper bound.",
+    "CPU coarse-space projection (0 GPU-h): for the v2L1 and A2_tail8 error fields on 2003, 2006, 2000 and 2005 (force_c, face_c, glued), compute the fraction of error energy removed by the K-orthogonal projection onto Q1_17, Q2_17 (4h), PU-rotation_17, PU-linear_17, 9^3 x RBM aggregates and the oracle lowest m = 50/200 eigvecs (ports fixed). Also run a post-hoc tail8 + coarse correction. Decision rule: if PU-linear/Q2 removes more than 2x what Q1 removes, run the P1 arm; if only oracle or exact-amplitude correction works, it becomes a hybrid question for the user.",
+    "CPU localization (under 1 h): weak-node amplitude share and participation ratio of the lowest-200 error_spectrum modes and of the post-32-sweep residual on 2003/2006. Fringe-local modes point to the continuation head or GP layers; global modes point to coarse-space changes.",
+    "CPU attribution (about 1 h): split the energy removed by the first 1-2 sweeps into GP, weak-element, port-adjacent and interior groups on 2003/2006/2000. This gates the fringe continuation head.",
+    "Recompute from existing gate JSONs (minutes): gap = bound - compliance_err, the q-error bound sqrt(gap/w), the pencil bound delta_eff, and share-aware and energy-weighted sensitivity reported next to the unchanged gate. Add an 'energetic passenger' load for 2000 (share >= 5%) to test whether the nbr_z direction error is real.",
+    "Config-only C3 arm (about 2 GPU-h), after checking that data_v2 carries F for every non-adv class (otherwise want_F silently disables the tail term): init v2L1 best.pt, SPLIT_ARMS, 15000 steps, lr 3e-4, tail_w 0.3, tail_tau 0.1, adv_k 16, adv_iters 8, everything else as A0_ctrl. Evaluate eps and gate sens on 2000 nbr_z, the glued class, and bank means vs A0_ctrl-15k."
+   ],
+   "ranked_proposals": [
+    {
+     "name": "CPU decision bundle: coarse-space Galerkin projection of the network and post-tail error, soft-mode localization, first-sweep attribution, grf/macro headroom (merges Mech H1 test, NumAn H1/H2 tests, History H2/H3/H4 tests, NN H1a)",
+     "rank": 1,
+     "rationale": "Uses 0 GPU-hours: the 16-core CPU with 750 GB RAM and PARDISO, the existing error_spectrum eigvecs, smooth_headroom and diag_sens. It decides between four otherwise speculative branches: fully learned PU-affine transfers (P1), a hybrid coarse Galerkin correction, a fringe continuation head, or higher-rank fine layers. No constraint conflicts, since exact solves are allowed for diagnosis. Effort is about half a day of scripting plus 1-3 CPU-h per cell. History: route-1 E1 found that 128 ideal slow modes helped little, so the oracle-m arm is included to tell 'not in span' apart from 'needs exact amplitudes'."
+    },
+    {
+     "name": "Report-only metrics from existing outputs: gap-derived q-error bound and delta_eff, share-aware and energy-weighted sensitivity next to the unchanged gate, GP share per bank direction, 'force' class demoted to a stress-test column",
+     "rank": 2,
+     "rationale": "Costs minutes of CPU and no GPU. It separates genuine failures (2003: 9.7-12.8% under every metric) from low-share effects (2000: 5.83% -> 1.3-2.4%) without touching the user-owned gate ('the gate definition does not change'). Removing 'force' from score_classes changes model selection, so it needs a flag with the old default. Keep 'force' in the training mix; the 09-24 O4 decision already made uniform nodal loads a stress test."
+    },
+    {
+     "name": "Finish and fully evaluate A2_tail8 (labelled fallback-A arm), including deployment timing",
+     "rank": 3,
+     "rationale": "The arm is mostly sunk cost: about 0.6 GPU-h of training left (0.29 s/step) plus about 1-2 GPU-h of evaluation. It is the only measured lever with a 4-10x gain. It conflicts with anti-drift rule 4 and ARCH_REVIEW E ('exact residual smoothing = fallback A only'). It is legal as a labelled arm after the main-line diagnosis, but adopting it is the user's call. Its deployment cost must be reported: +2k K products per query, since the adjoint is also smoothed. FULL 0020 B16 goes from 135 to ~376 ms vs exact 77 ms, and the estimated 3x3x3 lattice from ~224 s to ~760 s vs exact ~180-320 s. The per-query 'fast' half of the goal is then lost unless the tail runs post-solve or in outer defect correction. Deliver: newval per type, gates with gate_decomp, diag_sens per vf-bin, bench_deploy with smooth_k=8."
+    },
+    {
+     "name": "P1 (Mechanics): PU-affine 'slope-channel' prolongation in the U-Net, fully learned",
+     "rank": 4,
+     "rationale": "Conditional on rank 1 showing that PU-linear_17 or Q2_17 captures at least 2x more of the network error than Q1_17. It has no constraint conflict: the transfer is fixed and geometric, with no K in the forward pass. Implementation, about 1 day: per level l, add 3 fixed sparse matrices with entries t_w(i,v)(x_i - x_v)_k/H_l, and add w_i * sum_k P_l^k (Xc W_slope[l,k]) to the prolongation, with W_slope (levels x 3 x F x F) zero-initialized. Put it behind model_args 'prolong_affine': false (default). Extend load_compat to keep missing W_slope keys, as it already does for b3_*, so v2L1 loads with an identical function. Add the transposed matrices to fastnet ext_T and rerun the t_fast parity test. First arm: init v2L1 best.pt, SPLIT_ARMS, 15000 steps, lr 3e-4, config identical to A0_ctrl plus prolong_affine true. Expected cost ~2 GPU-h (coarse levels are small; estimated +5-15% step time). Compare with A0_ctrl-15k on newval medium force_c/face_c and on the soft-200-subspace error of 2003/2006. Go if medium improves >=25%. If the hybrid is adopted, test P1 + smooth_k 8 against A2_tail8. It is not refuted by history: route-1 T29 favoured quadratic coarse spaces, and MGNO2 has only ever had trilinear transfers."
+    },
+    {
+     "name": "C3: approved Ritz tail loss plus stronger persistent adversary (config only)",
+     "rank": 5,
+     "rationale": "The user approved 'mu into training' on 09-25, yet v2L1 and A0 run tail_w=0, adv_k 8 and adv_iters 4. It needs no engineering, about 2 GPU-h, and can use the GPU while P1 is being coded. Config: A0_ctrl plus tail_w 0.3, tail_tau 0.1, adv_k 16, adv_iters 8, init v2L1, 15000 steps. Precondition: F present in data_v2 for all non-adv classes, otherwise the term is silently off (check that the log has 'tail'). It targets the worst-direction and pencil error behind the q_hat - q part of the gate (2000 nbr_z sol_only 3.3%). It does not address the medium soft band. The T11 refutation (tail weighting worsened compliance 2.09 -> 9.44%) came from the two-sided M_q era: under the one-sided Galerkin readout compliance cannot get worse, but sensitivities can. Seed noise is <=0.11 pp on the gate, so one seed is enough unless the effect is <0.3 pp."
+    },
+    {
+     "name": "Deployment measurements without training: tail in PCG vs post-solve vs one outer defect-correction step; PCG tolerance 1e-3/1e-4/1e-8; warm starts; mixed exact routing for small cut cells",
+     "rank": 6,
+     "rationale": "About 1-2 GPU-h on bench_precond (r2+FULL and 3x3x3). The results decide whether any K-tail hybrid is deployable. bench_deploy already shows the learned route 1.7-2.5x slower per column than a resident exact factor at B16/B64, and 4x faster only at B1. Routing heavy cuts to exact conflicts with anti-drift rule 3 unless the user adopts ARCH_REVIEW D1 (certificate-flagged cells replaced whole by a labelled fallback, an open decision). Adds nothing to model accuracy."
+    },
+    {
+     "name": "Two-grid closed-loop wrapper / learned coarse space with exact Galerkin coarse solve (NumAn, NN P2, History fallback B with network start)",
+     "rank": 7,
+     "rationale": "This has the highest potential for 2003-type medium cells: the 2D toy gave 200-400x with tail + H=4h coarse, and route-1 T29 favoured quadratic coarse spaces. But it puts a (dense or sparse) Cholesky of V^T K V in the forward pass, a direct conflict with anti-drift rule 1 ('no exact factorization in the forward'). That is stronger than the tail's conflict, and fallback B was reserved for main-line failure. Run it only post-hoc on CPU inside rank 1. A training arm (estimated 1.5-2x step time, encode +0.1-1 s per geometry, query +5-10 ms plus the tail cost) needs explicit user approval and should show >=5x post-tail on 2003 first. Mech's floors warn that 9^3 x RBM locks (29% soft floor); PU-linear_17 (0.32%) would need a sparse, not dense, coarse factor."
+    },
+    {
+     "name": "Tail-degree frontier (smooth_k 2/4) and label-free learned Chebyshev coefficients (E1b revived)",
+     "rank": 8,
+     "rationale": "Only meaningful if the user adopts a fallback-A hybrid. Each arm is ~1.7 GPU-h: A0_ctrl config plus model_args.smooth_k 2 or 4, init v2L1, 15000 steps. Learned per-sweep coefficients are hours of work and label-free (E1b: 24 learned layers passed where 40-48 fixed ones were needed). Value: the accuracy vs ms/column Pareto front. At k=2 the FULL B16 query costs ~195 ms vs ~376 ms at k=8."
+    },
+    {
+     "name": "Fully learned fringe/port continuation head (A8/P3, awaiting a user decision since 09-25)",
+     "rank": 9,
+     "rationale": "The A8 oracle (learned local map, 0.2% extra energy) was measured on exact fields. MGNO2 already has n_fringe=4 learned element+GP layer pairs on weak elements, so the marginal gain is unclear. A4 found weak-element error lower than in port/other groups. Build it only if the rank-1 attribution puts >50% of the first-sweep-removed energy in weak/GP groups. Cost: ~1 day of code across three q-path copies, plus ~2 GPU-h."
+    },
+    {
+     "name": "Higher-rank fine layers (H 4 -> 8) or per-node geometry-generated gains (NN P3)",
+     "rank": 10,
+     "rationale": "Fully learned, but risky. load_compat raises on shape mismatch, so zero-padded extra heads need new code. The fine-layer memory at H=16 would likely exceed the 28-31 GB peak with pool_dofs 700k, so try H=8. Unbounded diagonal gains repeat the B1 gain-runaway history (macro 1e10x zero-shot). The A2 grf 6x gain shows the high-band floor is removable by the exact operator; whether rank can emulate it is untested. Cost: 2-3 days of code plus ~2-3 GPU-h."
+    },
+    {
+     "name": "Data-vs-compute scaling at matched steps (v2L2 591 geos vs A0 305 geos)",
+     "rank": 11,
+     "rationale": "About 5 GPU-h to take the paused v2L2 to about 55k matched steps. It turns the confounded v2s -> v2L1 gains into a usable exponent for the 3000-cell production, which is already running on rented GPUs. It informs heavy-cut planning but does not change the architecture decision, which rank 1 settles more cheaply."
+    },
+    {
+     "name": "Cheap variance diagnostics: 2-model ensemble, 24 proper rotations, width-2x MGNO2",
+     "rank": 12,
+     "rationale": "The ensemble costs ~1 h: averaging extensions keeps the Galerkin bound by convexity, and it tells bias from variance. The 24 proper rotations were a DOSE_24 finding (1.91R vs 1.07R) that was never run on MGNO2. Width is untested on MGNO2 (0.60M parameters; the EquiModel refutation does not transfer). Low priority because A0 shows steps barely move medium cells."
+    },
+    {
+     "name": "Label-free training on a stream of fresh geometries (NN P4)",
+     "rank": 13,
+     "rationale": "No constraint conflict, but 3-5 days of engineering, unverified per-geometry cost (GP caches, moments), and soft directions derived from S_hat are biased toward what the model already represents. It targets only heavy-cut estimation error."
+    },
+    {
+     "name": "End-to-end design-level acceptance test (graded 4x4x2 trimmed lattice, three routes)",
+     "rank": 14,
+     "rationale": "It measures what ultimately matters, but costs about 12-18 GPU-h plus ~1 day of scripting, and gate definitions are the user's. Defer until a candidate operator passes the per-cell gates."
+    },
+    {
+     "name": "Per-component exact rigid split (Mech P4)",
+     "rank": 15,
+     "rationale": "The global exact rigid split is already implemented (trainlib: u = RA c + model(qd)). ARCH_REVIEW E made the per-component split diagnostic-only, with no island evidence. The BNN deflation problem is fp32 rounding and should be fixed in the preconditioner."
+    },
+    {
+     "name": "Loss reweighting for the low band (D-weighted L2 field term, level-wise LR; NN P7)",
+     "rank": 16,
+     "rationale": "History is negative (THE_LEVERAGE_IS_NOT_THE_LOSS, T11). It needs labels and takes weight away from the high band that sensitivities depend on. Not recommended before the structural tests."
+    },
+    {
+     "name": "Port reduction (SCRBE) and sliver-avoiding geometry/teacher contract change",
+     "rank": 17,
+     "rationale": "Both conflict with recorded user decisions: full-resolution ports with no compression (09-23), and the frozen geometry/teacher contracts. Raise them only as a question to the user. Do not run arms."
+    }
+   ]
+  }
+ ],
+ "synthesis": {
+  "report_path": "NOT WRITTEN: the harness blocked writing /tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/pack/ANALYSIS_CN.md (\"subagents should return findings as text\"). The full Chinese report is in summary_cn below; the orchestrator can save it to that path verbatim.",
+  "summary_cn": "# MGNO2 学习算子的误差来源与架构升级：综合分析（2026-09-26）\n\n注：按要求应写入 pack/ANALYSIS_CN.md，但工具拦截了子代理写报告文件，全文放在这里，可原样保存。\n数据截至 LATE_RESULTS.md 最后更新（08:36）。smooth_v2L1.json 仍然只含 2010（09:17 复查）。\n“数据显示”指可以直接读出或复算的结论，“推断”指由此推理、尚未直接测量的结论。批评者判为“弱”或“已否定”的说法，照实标出。\n\n**符号（只定义一次）**\n- K：精确 CutFEM 刚度，单元为 Q2 27 节点、81 DOF。BRIEF 写的 “Q1 / 8 节点” 有误：models.py 用的是 65³ Q2 节点、E×27。I 为内部自由度，P 为端口自由度，D = diag(K_II)。\n- λ：D⁻¹K_II 的特征值，λmax 约为 4。\n- 尾部平滑：k 步 Jacobi-Chebyshev 迭代，区间 [λmax/30, λmax]，只做精确 K 乘法，端口值固定。\n- S 为精确 Schur 补。Ŝ = ÊᵀKÊ 为学习算子，恒有 Ŝ ≥ S。\n- ε(q)：能量超额，等于 ‖(Ê−E)q‖²_K/‖Eq‖²_K。\n- δ：束 (Ŝ, S) 的最坏方向相对误差。\n- w：测试胞的能量份额。\n- sens：8 角点灵敏度的相对误差。\n- 软子空间：最低 200 个内部模态张成的子空间。\n\n## 1. 结论摘要\n1. **误差分两部分，比例随胞的尺寸变化。**\n   - 8 步尾部平滑使能量超额下降：2010 为 166 倍，2005 为 7.2 倍，2006 为 3.5 倍，2003 为 2.9 倍，2000 为 3.0 倍（force_c 类）。\n   - 6000 单元以上的胞在 k=8 后仍保留 29–35% 的误差。2003 在 k=32 时仍有 2.95%。\n   - 批评者指出：λ ≥ λmax/30 对应的是波长小于约 7 个单元的误差，并不等于“单元尺度”。\n2. **网络误差相对精确场更偏向软模态，但看起来不是固定的架构下限。**\n   - 软子空间内与其余部分的相对误差：2003 为 67% 对 10.7%，2006 为 14% 对 3.1%，2010 为 111% 对 31%。\n   - 2003 和 2006 的软谱几乎相同，软子空间误差却差 5 倍。这更像个别几何的幅值学错了，而不是形状缺失。尚未判定。\n3. **格子门的误差 = 场误差 + 一阶的格子解误差，两者部分抵消。**\n   - 恒等式 ‖q̂−q‖_S/‖q‖_S ≤ √(gap/w) 成立，实测比值为 0.78–0.93。\n   - 2003 在所有指标下都是真失败：sens 12.2%，柔度误差 4.4%。\n   - 2000 FULL 的 5.8% 不纯是假象：失败的 nbr_z 载荷上 ε 为 2.31%，是 6 个载荷中最大的。\n   - 只在求解之后平滑会让门变差：2003 test_y 从 12.2% 升到约 19%。\n4. **在同样数据上多训几乎没用。**\n   - A0：中切 4.7%→4.5%，重切 11.3%→10.0%，2000 门 5.83%→4.89%，重切 glued 反而从 16.8% 升到 18.2%。\n   - 数据翻倍带来 −32% 到 −36%，但与更多训练步数混在一起。\n   - 重切均值被 2026 一个胞（70.1%）主导，去掉它后为 8.2%。\n5. **A2_tail8（第 7500 步）的验证均值下降 4–10 倍**，例如 force_c 6.67%→1.62%。但：\n   - 选择分数只改善 1.6 倍（0.094→0.058）；\n   - 还没有和“事后加尾部”做同几何配对比较；\n   - 部署时每次查询多 2k 次 K 乘法。FULL 0020 在 B16 下从 135 ms 变为约 376 ms，而精确分解只要 77 ms。\n6. **类别覆盖和模型选择有漏洞。**\n   - glued 类不在 score_classes 里。\n   - 轻切的 force_c 均值 9.9%（n=4），与重切一样差，但没有人分析过。\n   - 节点力 force 类在 0021 上有 68% 的能量在 GP 项。\n7. **学习算子目前查询更慢，只在编码上更便宜。**\n   - B16 下 135 ms 对 77 ms；B1 下 13 ms 对 54 ms。\n   - 编码 8–12 ms 对分解 0.6–8.6 s。\n   - 盈亏平衡是每个设计迭代 32–118 次查询，而 PCG 要 119–204 次迭代。\n   - 3×3×3 格子：学习约 225 s，精确约 320 s。\n8. **力学根源。**\n   - 壁厚只有 1.1–2.9 h（2.8–4.7 层 Q2 节点），软刚对比 143–3000 倍。\n   - 在软方向上，1% 的能量误差要求位移精度达到 0.18%（光滑误差）到 0.03%（单元尺度误差）。\n   - 开环网络必须跨几何学出软模态的刚度（∝ t³），而闭环修正可以直接从 K 得到。\n\n## 2. 误差来源（按证据强度排序）\n| # | 来源 | 证据 | 批评者裁定 |\n|---|---|---|---|\n| 1 | 短波段局部平衡缺陷（割单元、虚拟节点、端口层） | 存在性强，份额中等 | 支持；“单元尺度”的说法弱 |\n| 2 | 软/中频段模态幅值误差 | 中到强 | 事后尾部够不着：支持；“Q1 锁死”：弱 |\n| 3 | 格子解误差（一阶）及抵消 | 强（恒等式） | 支持 |\n| 4 | 被拖动自由端的翘曲方向（nbr_z）；glued 欠训练且不参与选择 | 中 | “纯假象”：已否定；“欠训练”：合理 |\n| 5 | 重切估计误差 | 弱到中 | 弱 |\n| 6 | 重切中由 GP 撑住的薄片近机构 | 弱（只有 1 个训练胞） | 弱 |\n| 7 | 弱节点局部簇模态 | 弱，未测 | 弱 |\n| — | 已排除：粗层跨空洞短路、fp32/种子噪声、缺灵敏度损失、刚体分离（已经实现） | — | 已否定 |\n\n**2.1 短波段局部缺陷**\n- 机制：dK_e/dτ 半正定，是表面积分。它与 K_e 的范数比随体积分数 vf 升高：vf≈1 时为 1.4，vf 在 0.1–0.3 时为 8.9，vf<1e-3 时为 108。割单元里的应变主要由虚拟节点决定。\n- 支持：\n  - 第 1 步平滑去掉 30%（2003）到 64%（2010）的误差能量。\n  - 灵敏度降得比能量快：2003 灵敏度降 5 倍、能量降 2.9 倍；2006 为 6.2 倍对 3.5 倍。\n  - 零初值时平滑器在 2003 上完全无效（k=32 时仍为 189 倍）。\n- 反证：\n  - 2000 的 force_c 灵敏度随 k 不单调，停在 0.46%。\n  - mech 称 2010 有 99.7% 在 x>0.1，已被否定：直接谱分解显示最低 200 个模态就占 15.2%。\n  - “槽秩 ≤ 4 造成下限”弱：这一段的相对误差本来就低（10.7%）。\n- 裁定：约 30% 的误差是短波，大胞上大部分误差不是。\n\n**2.2 软/中频段幅值误差**\n- 机制：c_i = −v_iᵀK_IP q/λ_i。网络需要学出 λ_i(几何)，而 Galerkin 修正直接用 K 算出幅值。\n- 支持：\n  - 2003 的误差预算：25% 在软子空间，约 40% 在中频段，约 35% 在 0.13 以上。带模型能复现 7 个测量点。\n  - 单靠尾部，要约 128 步才能到 1.37%。\n- 形状还是幅值：\n  - mech 在 0021 上算的最佳逼近下限：Q1_33 为 11.5%，Q1_17 为 46%，PU-linear_17 为 0.32%。\n  - 但代码显示只有 33³→65³ 这一步是固定三线性，所以只有 Q1_33 真正约束。\n  - Q1 空间的残差可以被平滑（8 步后只剩 1–2.3%），网络误差却剩 29–35%。这更支持“幅值错”。\n  - 以上是跨胞比较，要由 E3 判定。\n- 表示还是泛化：2006 只有 14%，说明架构能表示。训练处于在线状态（每个几何约 1.3 次访问），训练拟合和验证分不开。由 E4 判定。\n- 另外，深入的谱证据只来自 2003 一个胞。\n\n**2.3 解误差与抵消**\n- 恒等式：gap = ‖q̂−q‖²_Â/C，且 gap/bound ≤ δ/(1+δ)。\n- δ 的下界：2003 ≥ 0.249，2005 ≥ 0.145–0.172，2006 ≥ 0.12，2000 ≥ 0.043，2001 ≥ 0.023。\n- 2003 的分解：场部分 10–16%，解部分 12–21.5%，合在一起 6–14%。2000 nbr_z 则是两部分相加（3.30+2.67 → 5.83）。\n- 结论：\n  - 只修其中一部分，结果可能更差。\n  - sens/ε 在 FULL 上为 1.4–3.6，在割胞上为 0.3–1.5。\n  - “ε ≤ 1.2–1.5% 就能过门”的经验规则弱；按 √ε 律推算应为 0.6%。\n\n**2.4 载荷几何的更正**\n- lattice3.py 显示载荷在侧面 y=0 或 x=0 上，邻居远端面固支，测试胞是悬臂的自由端。\n- 在 nbr 载荷下，测试胞相当于被拖动的自由体：刚体运动加自平衡的界面翘曲。这种扰动 75% 在 4 层单元以内。\n- nbr_z 上 sens/ε 为 2.5–3.6，是最高的，与 09-24 的 r2 nbr_z 同类重现。\n\n**2.5 重切估计误差**\n- 训练对验证：均值 4.5% 对 11.3%，但 2026 主导验证均值，训练只有 7 个胞，而且是在线训练。判为弱。\n\n**2.6 GP 薄片（只有 0010 一个胞）**\n- 柔度按 γ^-0.7 变化；最软的 S 模态中 GP 占 72–91%；特征值小于 1e-6 的个数随 γ 从 786 降到 11。\n- 2010 的 λ_min = 0.021，没有很软的模态。判为弱，由 E8 判定。\n\n**2.7 弱节点簇**\n- 路线 1 的统计来自另一个束；A4 显示弱单元误差较低。判为弱，由 E9 判定。\n\n## 3. 各视角要点\n**力学**\n- δ²κ 律：κ 在软载荷上为 3206（光滑误差）到 1.1e5（白噪声），在刚性载荷上为 59 到 2018。损失本来就是能量，所以这条律说明“为什么难”，不说明“为什么训不到”。\n- 圣维南层：能量 50% 在 2 层内，75% 在 4 层内。\n- dK/dτ 半正定，所以 |s| 被高估。\n- 节点力类的 68% 在 GP 项，这支持 O4 决定。\n\n**数值数学**\n- 网络是开环的：没有光滑性质，也没有逼近性质。\n- 包装器（尾部加 K-正交粗校正）保持线性、对称、Ŝ ≥ S 和变分读出，前提是 λmax 取上界。\n- Chebyshev 成本：k ≈ (√α/2)·ln(2/r)。\n- 在网络自身输出的张成上做 Galerkin 只得到 0.09–0.32，所以 Ritz 头不能解决问题。\n- 场灵敏度公式应保留 −ûᵀAû 形式，因为它是二阶的；自动微分会引入一阶项。\n\n**学习理论**\n- 能量项不需要标签。\n- 损失 Hessian 是 K_II，梯度 ∝ λ，所以软模态收敛最慢。\n- 在线训练状态下，数据指数只能算上界。\n- B1 有界增益可能给不出软幅值需要的约 1/λ 增益，这一点待用 sat_stats 验证。\n- 2D 玩具的“在环训练约等于事后平滑”在真实问题上弱：实测是 4–10 倍对约 3 倍。\n\n**物理应用**\n- ‖s‖ ∝ 能量（κ 为 0.58–0.93，只测了 1 个重切胞）。\n- 后悔值：3/6/15% 的误差对应 0.045/0.13/0.73% 的后悔值，约为二次关系；柔度目标很平坦。\n- 割胞约占 5.1/L，重切占全部胞的 5–20%。边界胞承担 2.6 倍能量，所以没有进门的割面载荷反而更重要：2003 在这类载荷上是 4.1–9.9%。\n- 成本表（单位 ms，B1/B16；最后一列是 fp64 分解时间）：\n\n  | 胞 | 学习 | 精确 | 分解 |\n  |---|---|---|---|\n  | r1 | 7.1/33 | 7.9/13 | 0.64 s |\n  | r2 | 9.4/86 | 29/43 | 2.69 s |\n  | FULL0020 | 13/135 | 54/77 | 5.58 s |\n  | FULL0007 | 15/173 | 73/100 | 8.60 s |\n\n  每次 K 乘法在 B16 下为 3.2 / 8.9 / 15.1 / 18.4 ms。\n- 学习读出需要 K（0.5–2.7 GB），它比 fp32 分解还大，所以没有内存优势。\n- cert m=0 可以在部署时给出严格下界。\n\n## 4. 升级方案分层\n**根本需要。** 求解器需要三样：(i) 局部平衡；(ii) 由 K 决定的软幅值；(iii) 局部近零空间。可以有三种原型：\n- A：纯开环加更好的表示和更多数据，这是现在的主线。\n- B：网络给初值，再加精确平滑，属于退路 A。\n- C：网络生成与 q 无关的粗空间和初值，用精确 Galerkin 求幅值，再加平滑。这是学习型 AMG，属于退路 B 类，会与防跑偏第 1 条冲突。\n\nC 与“编码一次”形式上一致，但 B 和 C 的查询都比常驻精确分解慢，价值只在编码上。\n\n**(a) 主线内**\n- a1：PU 仿射斜率通道。只有当 E3 显示 PU/Q2 比 Q1 多去掉 2 倍以上时才做。成本 1 天加 2 GPU-h，训练步时 +5–15%。\n- a2：放宽 B1 或加幅值监督，以 E4 的饱和度结果为条件。\n- a3：A8 延续头，以首步归因为条件。\n- a4：H=8 或节点增益，风险高。\n- a5：宽度×2、集成、24 个旋转。MGNO2 约 0.60M 参数，容量从未测过。\n- a6：把 ms/列 作为一级指标。\n\n如实说明：主线内还没有一项实测收益超过 1.5 倍。\n\n**(b) 跨线方案（需要用户决定）**\n- b1 精确尾部（A2_tail8，即退路 A）：实测收益 2.9–166 倍。部署时 k=8 为 FULL B16 376 ms，k=2 为 195 ms；3×3×3 估计约 760 s，而精确路线为 180–320 s。\n- b2 两网格包装器：Q1_17×R³ 或 9³×RBM 的 Galerkin 加尾部。推断在 0021 上 Q1_33 加尾部约 0.12%，Q1_17 加尾部约 1.1%。编码 +0.1–1 s。前向里有小规模分解，属退路 B。\n- b3 神经 AMG：需要数周。\n- b4 弱节点簇块平滑：以 E9 为条件，历史结果不好。\n- b5 应用层把小割胞路由到精确求解：每胞成本 −30% 到 +15%，网络本身不变。对应 ARCH_REVIEW D1，尚未决定。\n- b6 证书驱动的升级。\n- b7 外层缺陷校正。\n- b8 契约变更（薄片聚合、SCRBE 端口降阶）：与 09-23 的决定冲突，只作为问题提出。\n\n**(c) 指标层（门定义不改）**\n- c1：gap、√(gap/w)、δ_eff、δ_max。\n- c2：份额感知指标和组装梯度误差，与原门并列。它只改变 2000 的判定（5.83% 变为 1.3–2.4%），2003 仍为 9.7–12.8%。\n- c3：GP 份额；把 force 类作为压力测试。\n- c4：报告割面载荷。\n- c5：PCG 容差和热启动，可减少 2–5 倍调用。\n- c6：设计层验收，放到后面做。\n\n**(d) 数据与训练**\n- d1：把 glued 纳入选择，并做覆盖审计。\n- d2：C3（tail_w 0.3，adv 16/8）。已批准但一直是 0；需要先确认 F 数据存在。\n- d3：在相同步数下比较 v2L2 与 A0。\n- d4：通过包装器训练。\n- d5：无标签几何流。\n- d6：训练配比向设计分布靠拢。\n\n不要重做：灵敏度损失、只加容量、精确弱组求解、FNO、换标签、低频损失重加权。\n\n## 5. 实验顺序\n| 序号 | 实验 | 设备与耗时 | 判定规则 |\n|---|---|---|---|\n| 0 | 从 JSON 算免费指标 | CPU，几分钟 | — |\n| 1 | E7 覆盖审计 | CPU，<1 h | 一致类覆盖 <50% 或 glued 差 2 倍以上：先修数据 |\n| 2 | E9 定位 | CPU，<1 h | 参与节点 10–100 且弱节点 >70%：局部；远大于 1000：全局 |\n| 3 | E3 粗空间投影（2003/2006/2000/r1/2026，实际误差，含 Q1_33） | CPU，每胞 1–3 h | 见下 |\n| 4 | E2 余量（2026、2051、2007、2012、r1） | CPU，每胞约 1 h | ≥2/3 保留 >25%：需要粗部件 |\n| 5 | A2_tail8 收尾 + E1 配对比较 | GPU | 不到 1.5 倍：在环训练价值小 |\n| 6 | E5 gate_decomp 加尾部 + 高能被拖动载荷 | GPU/CPU，<1 h | 见下 |\n| 7 | E6 δ_max | CPU | ε 降 ≥4 倍而 δ 降 <2 倍：需要粗部件 |\n| 8 | E8 GP/γ | CPU，约 2 h | — |\n| 9 | 首步归因 | CPU，约 1 h | — |\n| 10 | E4 单几何过拟合（2003、r1）+ sat_stats | GPU，每胞 2 h | 见下 |\n| 11 | C3 | GPU，2 h | — |\n| 12 | 部署计时 Pareto | GPU，1–2 h | — |\n| 13 | v2L2 对 A0 | GPU，5 h | — |\n| 14 | a1 | 以第 3 项结论 (ii) 为条件 | — |\n| 15 | b2 训练 | — | 需用户拍板 |\n| 16 | b5 | — | 作为部署方案需用户拍板 |\n\n第 3、6、10 项的判定规则：\n- 第 3 项：\n  - Q1_33 或 Q1_17 能去掉 >50%：是幅值问题，走 b2 或 a2，不做 a1；\n  - 只有 PU/Q2 有效：做 a1；\n  - 只有特征向量 oracle 有效：做 b4。\n- 第 6 项：\n  - 只在求解后平滑使任一载荷变差：排除这种做法；\n  - 高能被拖动载荷的 sens >3%：必须修模型；≤2% 则只并列报告。\n- 第 10 项：\n  - force_c ≤2% 且软误差 ≤15%：问题在估计，靠数据解决；\n  - 停在 ≥6%：是架构问题，需改 q 路径或引入闭环。\n\n第 0–4 项和第 7–9 项都在 CPU 上，可以并行，约一个工作日。\n\n## 6. 需要用户拍板的问题\n1. 前向里能否加入精确 K 乘法（b1）？只作为标明的对照臂，还是作为候选主线？\n2. 前向里能否对小规模粗矩阵 VᵀKV 做分解（b2/b3）？建议等第 3 项实验结果出来再决定。\n3. 能否在应用层把小割胞路由到精确求解（网络仍然完全学习）？ARCH_REVIEW D1 是否同时定下来？\n4. 能否在原门旁并列报告份额感知指标、组装梯度误差和割面载荷？\n5. 能否把 glued 加入 score_classes、把 force 类作为压力测试？（用开关控制，默认保持旧行为）\n6. 学习路线的价值定位是什么？请给出载荷工况数 B、目标格子规模、所需 PCG 容差。\n7. 零件是否有蒙皮？v<0.02 的薄片胞如何处理？\n8. 目标是否只有柔度？\n\n## 7. 与历史的关系\n**需要重新评估：**\n- SGNO/退路 A 当初被排除，技术理由之一是“需要 12–24 个循环”。网络初值改变了这一点：2010 用网络加 8 步 = 0.21%，零初值加 32 步 = 0.42%，零初值加 8 步 = 3357%。这条技术理由不再成立，政策理由仍在。SGNO 的 R8 规则要求纯前馈过门，而 2003 没有过。\n- T15 “修最坏方向适得其反”：在 Galerkin 读出下，这一否定对柔度不再适用，对灵敏度仍适用。C3 已批准但从未开启。\n- T11：对柔度要重新检验。\n- 容量结论来自 EquiModel，对 MGNO2 属于未测。\n- T29 二次粗空间：由 E3 判定。\n- E1b 学习 Chebyshev 系数：如果采用 b1，这是最便宜的增益。\n- DOSE_24 和集成：可以作为诊断。\n- A8：以首步归因为条件。\n- “2000 是小份额假象”：只有一部分是。\n\n**仍然成立：**\n- 学矩阵条目或稠密因子的路线无效。\n- 灵敏度损失和灵敏度头无效：一阶份额只有 0.01–0.09。\n- 跨空洞短路：已否定。\n- 精确弱组求解：除非 E9 给出不同结论。\n- 低秩软头：最低 200 个模态只占 25%。\n- 端口不压缩、route 6 已放弃、TTA 不作主线。\n- “场与读出配对”原则得到强化：只在求解后平滑已被否定。\n- O4 得到强化：force 类 68% 在 GP 项。\n- 损失重加权对灵敏度无效。\n\n**需要更正的记录：**\n- 单元是 Q2 27 节点，不是 Q1。\n- 参数量约 0.60M，不是 12M（来自历史审计核对的 DOSSIER）。\n- 载荷在侧面，测试胞是悬臂自由端。\n- “最差胞 = Rayleigh 最低”无法核对（force_c 只在每类 4–6 个胞上有）。\n- “ε ≤ 1.2–1.5%”这条经验规则只来自一个 FULL 胞。",
+  "ranked_causes": [
+   "1. 短波段局部平衡缺陷：割单元、虚拟节点、端口边界层。1–8 步精确 Chebyshev 迭代可以消去。k=8 时误差下降：2010 为 166 倍，2005 为 7.2 倍，2006 为 3.5 倍，2003 为 2.9 倍，2000 为 3.0 倍。在大胞上这部分只占约 30%，但对灵敏度的影响最大。批评者裁定为'支持'，其中'单元尺度'这一说法为弱。",
+   "2. 中切及更大胞上软段和中频段的模态幅值误差。2003 的误差中 25% 落在最软的 200 个模态，约 40% 在中频段。软子空间内部的相对误差为 67%（2006 为 14%）。单靠尾部平滑，k=32 时仍有 2.95%。'Q1 锁死、形状缺失'的解释为弱；'幅值错误、需要精确 Galerkin 修正'的解释合理，但尚未在网络误差上验证。",
+   "3. 格子解误差 q̂−q 以一阶进入，并与场误差部分抵消。已验证不等式 q_err ≤ sqrt(gap/w)，实测比值 0.78–0.93。δ_eff 下界：2003 ≥0.249，2006 ≥0.12，2000 ≥0.043。由此推出'只在求解后平滑'会让结果变差。",
+   "4. 方向特定的弱点：被拖动自由端的翘曲方向。2000 nbr_z 的 ε 为 2.31%，是所有方向中最高的；sens/eps 为 2.5–3.6。glued 类没有纳入 score_classes，而且在 A0 中变差（16.8→18.2%）。'纯属低份额假象'的解释已被否定。",
+   "5. 重切几何的覆盖不足（估计误差）。数据翻倍带来 −32 到 −36%，但与训练步数混杂；验证均值被 2026 一个胞（70%）主导。证据强度：弱到中。",
+   "6. 重切中由 ghost penalty 撑住的薄片近机构，其目标值随 γ 变化。只在一个训练胞 0010 上测过：柔度约按 γ^-0.7 变化，最软模态中 GP 能量占 72–91%。证据弱。",
+   "7. 弱节点局部簇模态。尚未在当前束上测量，证据弱。",
+   "已排除：粗层跨空洞短路（t_split）、fp32 与随机种子噪声、缺少灵敏度损失、缺少刚体分离（已经实现）。"
+  ],
+  "experiments": [
+   {
+    "name": "X0 免费指标",
+    "what": "从现有 gate_cont JSON 计算 gap、sqrt(gap/w)、δ_eff，以及份额感知/能量加权的灵敏度；只报告，不改门定义",
+    "where": "cpu",
+    "cost": "几分钟",
+    "decision_rule": "作为 E5/E6 的基线；只改变 2000 的判定时，与原门并列展示",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E7 覆盖审计",
+    "what": "统计训练几何中带 force_c/face_c/support_k/glued 库的比例；按类型和类别计算验证误差，包括 glued",
+    "where": "cpu",
+    "cost": "<1 h",
+    "decision_rule": "一致类覆盖不到 50% 的几何，或 glued 误差超过选择类的 2 倍时，先调整数据和选择口径再重测，之后才考虑改架构",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E9 软模态定位",
+    "what": "对 2003/2006 最低 200 个模态，以及 32 步平滑后的残差，计算参与比和弱节点幅值份额",
+    "where": "cpu",
+    "cost": "<1 h（特征向量已有）",
+    "decision_rule": "参与节点 O(10-100) 且弱节点份额 >70%：模态是局部的，用簇块平滑或延续头；参与节点远大于 1000：模态是全局的，用粗空间",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E3 粗空间投影 / 两网格 oracle",
+    "what": "对 2003/2006/2000/r1/2026 的实际 v2L1 误差，在以下空间上做 K 正交投影（端口固定）：Q1_33×R³、Q1_17、Q2_17、PU-linear_17、9³×RBM、特征向量 oracle m=50/200。分别测有无 8 步后平滑时的能量和灵敏度",
+    "where": "cpu",
+    "cost": "每胞 1-3 h",
+    "decision_rule": "Q1_33 或 Q1_17 能去掉 >50%：问题在幅值，走 b2/a2，不做 PU。只有 PU/Q2 有效：做 a1。只有 oracle 有效：做局部块平滑",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E2 代表性胞的平滑余量",
+    "what": "在 2026、2051、2007、2012、0020_r1 上跑 smooth_headroom 和 error_spectrum",
+    "where": "cpu",
+    "cost": "每胞约 1 h",
+    "decision_rule": "≥2/3 的 ≥2000 单元胞在 k=8 后仍保留 >25% 误差：必须有粗部件；保留 <10%：只加尾部就够",
+    "needs_user_decision": false
+   },
+   {
+    "name": "A2_tail8 收尾 + E1 配对比较",
+    "what": "在相同的 40 个几何和 80 个新验证胞上，把 v2L1 加事后 k=8 尾部与 A2_tail8@15k 逐类型、逐类别对比，使用 eval_views [0,17]",
+    "where": "gpu",
+    "cost": "剩余约 0.6 GPU-h 训练，另加 <1 h 评估",
+    "decision_rule": "A2 比事后尾部好不到 1.5 倍：在环训练价值小，只剩'是否采用包装器'的问题；≥1.5 倍：若采用混合方案，就连同尾部一起训练",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E5 gate_decomp 加尾部",
+    "what": "在 2000/2003/2006/2005/r1 上比较：(a) 只在求解后平滑，(b) PCG 内部使用平滑后的算子。另加一个高能被拖动载荷（w ≥5%），并保存原始 8 角点向量",
+    "where": "either",
+    "cost": "<1 h",
+    "decision_rule": "(a) 使任一载荷变差：排除只在求解后平滑的设计。高能被拖动载荷 sens >3%：必须修模型；≤2%：只做并列报告",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E6 束 Lanczos δ_max",
+    "what": "在 ≥6 个验证胞上计算 v2L1 与 A2_tail8 的最坏方向误差",
+    "where": "cpu",
+    "cost": "每胞几分钟",
+    "decision_rule": "尾部使 ε 下降 ≥4 倍但 δ_max 下降 <2 倍：门的解误差部分跟不上，需要粗 Galerkin 部件",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E8 GP 份额与 γ 敏感性",
+    "what": "在 5 个重切验证胞（含 2026、2010）上计算 GP 能量份额，以及 c(γ=1e-3)/c(1e-4)，并与误差做秩相关",
+    "where": "cpu",
+    "cost": "约 2 h",
+    "decision_rule": "若 GP 份额 >30% 的胞贡献了大部分重切均值：通过契约或路由处理（需用户决定），并分别报告含和不含这些胞的统计",
+    "needs_user_decision": false
+   },
+   {
+    "name": "首步归因",
+    "what": "把前 1-2 步平滑移除的能量，按 GP / 弱单元 / 端口邻近 / 内部分组统计（2003/2006/2000）",
+    "where": "cpu",
+    "cost": "约 1 h",
+    "decision_rule": "弱单元加 GP 占 >50%：值得做 A8 延续头",
+    "needs_user_decision": false
+   },
+   {
+    "name": "E4 单几何过拟合",
+    "what": "用 v2L1 架构只在 2003 上微调 10k 步，然后在 r1 上重复；比较 2003 与 2006 的 B1 sat_stats",
+    "where": "gpu",
+    "cost": "每胞约 2 GPU-h",
+    "decision_rule": "force_c ≤2% 且软子空间误差 ≤15%：表示能力够，问题在估计，靠数据/覆盖解决。停在 ≥6%：架构下限，需要改 q 路径或引入闭环。2003 的饱和比 2006 高 2 倍以上：做 a2",
+    "needs_user_decision": false
+   },
+   {
+    "name": "C3 arm",
+    "what": "以 A0_ctrl 配置为基础，加 tail_w 0.3、tail_tau 0.1、adv_k 16、adv_iters 8，从 v2L1 初始化训练 15k 步；先确认所有非 adv 类在 data_v2 中都有 F",
+    "where": "gpu",
+    "cost": "约 2 GPU-h",
+    "decision_rule": "2000 nbr_z 的 ε ≤1.3%，门 sens <3%，且库均值不变差：保留",
+    "needs_user_decision": false
+   },
+   {
+    "name": "部署计时 Pareto",
+    "what": "在 fastnet 中测 smooth_k 2/4/8 下 B1/B16/B64 的耗时；在 bench_precond 3x3x3 上比较：PCG 内尾部 / 外层缺陷校正 / 小割胞走精确路由，容差 1e-3/1e-4/1e-8，并测热启动",
+    "where": "gpu",
+    "cost": "1-2 GPU-h",
+    "decision_rule": "给出精度与 ms/列 的 Pareto 前沿，供用户在 Q1/Q3/Q6 上决策",
+    "needs_user_decision": false
+   },
+   {
+    "name": "v2L2 与 A0 同步数对比",
+    "what": "591 个几何对 305 个几何，在相同步数下比较，拟合 E=E_floor+A N^-α+B C^-β",
+    "where": "gpu",
+    "cost": "约 5 GPU-h",
+    "decision_rule": "重切的数据指数 <0.2：不要指望 3000 个胞能解决重切问题",
+    "needs_user_decision": false
+   },
+   {
+    "name": "a1 PU 斜率通道 arm",
+    "what": "prolong_affine 开关（默认 false），W_slope 零初始化，从 v2L1 初始化训练 15k 步，与 A0_ctrl 对比",
+    "where": "gpu",
+    "cost": "1 天代码，约 2 GPU-h",
+    "decision_rule": "前提是 E3 结果为 (ii)；中切 force_c/face_c 改善 ≥25% 时继续",
+    "needs_user_decision": false
+   },
+   {
+    "name": "b2 两网格包装器训练 arm",
+    "what": "网络之后接 Q1_17×R³ 或 9³×RBM 的 Galerkin 粗校正，再接 Chebyshev 尾部，端到端训练",
+    "where": "gpu",
+    "cost": "1-2 天代码，数 GPU-h；训练步时 1.5-2 倍",
+    "decision_rule": "先在事后测试中证明 2003 在尾部之后还能再好 ≥5 倍",
+    "needs_user_decision": true
+   },
+   {
+    "name": "b5 小割胞精确路由的端到端测试",
+    "what": "在 bench_precond 上比较混合格子：全学习、割胞精确、全精确三种方式",
+    "where": "gpu",
+    "cost": "约 1 GPU-h",
+    "decision_rule": "混合方式的时间在全学习的 ±15% 以内，且格子误差降到 FULL 水平；作为部署方案需要用户拍板",
+    "needs_user_decision": true
+   }
+  ],
+  "user_decisions": [
+   "精确 K 乘法（不做分解）能否进入前向（b1 精确尾部，属退路 A）？只作为标明的对照臂，还是可以作为候选主线？",
+   "前向中能否对小规模粗矩阵 V^T K V 做分解（b2 两网格或 b3 神经 AMG，属退路 B 类）？建议等 E3 事后结果出来再定。",
+   "能否在应用层把小割胞路由到精确分解，网络本身仍保持完全学习？ARCH_REVIEW D1（证书报警后整胞走退路）是否一并确定？",
+   "能否在原门旁并列报告份额感知灵敏度、组装梯度误差和割面载荷？门定义不变。",
+   "能否把 glued 纳入 score_classes，并把节点 force 类改为压力测试列？用开关控制，默认保持旧行为。",
+   "学习路线的价值定位是什么？请提供载荷工况数 B、目标格子规模、设计循环所需的 PCG 容差。",
+   "真实零件的裁边处是否有蒙皮？v<0.02 的薄片胞是否可以聚合或排除？（后者属于契约变更）",
+   "目标函数是否只有柔度，还是会加入应力或屈曲约束？"
+  ]
+ }
+}

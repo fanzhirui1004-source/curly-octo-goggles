@@ -1,0 +1,13 @@
+consistent smooth planewave k<=2        kappa     3205.6 | sens err at 5% energy excess: 0.020 (after 8 sweeps 0.0055) | energy left k=1,2,4,8,16,32: 0.733 0.528 0.339 0.209 0.142 0.091
+consistent planewave k<=8               kappa     7843.1 | sens err at 5% energy excess: 0.019 (after 8 sweeps 0.0045) | energy left k=1,2,4,8,16,32: 0.771 0.542 0.305 0.154 0.077 0.035
+consistent white noise                  kappa   113161.2 | sens err at 5% energy excess: 0.020 (after 8 sweeps 0.0003) | energy left k=1,2,4,8,16,32: 0.287 0.246 0.094 0.006 0.000 0.000
+consistent Q1_33 locking residual       kappa     3946.6 | sens err at 5% energy excess: 0.035 (after 8 sweeps 0.0037) | energy left k=1,2,4,8,16,32: 0.484 0.143 0.123 0.010 0.006 0.005
+consistent Q2_17 residual (long-wave)   kappa     1373.7 | sens err at 5% energy excess: 0.066 (after 8 sweeps 0.0079) | energy left k=1,2,4,8,16,32: 0.651 0.392 0.179 0.066 0.031 0.015
+consistent Q1_17 residual               kappa     3917.8 | sens err at 5% energy excess: 0.043 (after 8 sweeps 0.0067) | energy left k=1,2,4,8,16,32: 0.625 0.267 0.103 0.023 0.012 0.009
+macro      smooth planewave k<=2        kappa       58.7 | sens err at 5% energy excess: 0.044 (after 8 sweeps 0.0149) | energy left k=1,2,4,8,16,32: 0.736 0.531 0.342 0.208 0.139 0.088
+macro      planewave k<=8               kappa      152.0 | sens err at 5% energy excess: 0.041 (after 8 sweeps 0.0089) | energy left k=1,2,4,8,16,32: 0.760 0.523 0.285 0.138 0.070 0.032
+macro      white noise                  kappa     2017.8 | sens err at 5% energy excess: 0.043 (after 8 sweeps 0.0006) | energy left k=1,2,4,8,16,32: 0.287 0.245 0.093 0.006 0.000 0.000
+macro      Q1_33 locking residual       kappa       17.6 | sens err at 5% energy excess: 0.139 (after 8 sweeps 0.0248) | energy left k=1,2,4,8,16,32: 0.459 0.228 0.142 0.040 0.032 0.028
+macro      Q2_17 residual (long-wave)   kappa       14.4 | sens err at 5% energy excess: 0.192 (after 8 sweeps 0.0316) | energy left k=1,2,4,8,16,32: 0.619 0.380 0.197 0.078 0.042 0.025
+macro      Q1_17 residual               kappa       17.2 | sens err at 5% energy excess: 0.173 (after 8 sweeps 0.0449) | energy left k=1,2,4,8,16,32: 0.609 0.336 0.185 0.099 0.081 0.071
+done 459.98877930641174

@@ -1,0 +1,6 @@
+exec(open('regret_toy.py').read().split("rows = []")[0])
+_, _, w = solve(t0)
+bnd = (ely == 0) | (ely == ny-1) | (elx == nx-1)
+bnd2 = (ely <= 1) | (ely >= ny-2)
+print('boundary-row cells (outer fibres + tip col): %.1f%% of cells carry %.1f%% of energy; mean share ratio vs interior %.2f' % (100*bnd.mean(), 100*w[bnd].sum(), w[bnd].mean()/w[~bnd].mean()))
+print('outer two rows: %.1f%% of cells carry %.1f%% of energy' % (100*bnd2.mean(), 100*w[bnd2].sum()))

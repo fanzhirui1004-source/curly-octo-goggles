@@ -41,6 +41,59 @@ def energy(u, K):
     return _Energy.apply(u, K)
 
 
+class _KMat(torch.autograd.Function):
+    """y = K x with the symmetric CutFEM stiffness (fp64); backward K g."""
+
+    @staticmethod
+    def forward(ctx, x, K):
+        ctx.K = K
+        return K @ x
+
+    @staticmethod
+    def backward(ctx, g):
+        return ctx.K @ g, None
+
+
+def tail_bounds(C, alpha):
+    """Chebyshev interval [lmax / alpha, lmax] of D^-1 K_II (lmax by 40 power steps, x1.05), cached on the cell."""
+    t = getattr(C, '_tail_bounds', None)
+    if t is not None and t[0] == alpha:
+        return t[1], t[2]
+    g = torch.Generator(device=dev); g.manual_seed(0)
+    dinv = (1 / C.dK[C.I])[:, None]
+    v = torch.randn((C.ni, 1), dtype=dt, device=dev, generator=g); x = torch.zeros((C.nb, 1), dtype=dt, device=dev)
+    lam = 1.0
+    with torch.no_grad():
+        for _ in range(40):
+            v = v / v.norm(); x[C.I] = v
+            w = dinv * (C.K @ x)[C.I]
+            lam = float((v * w).sum()); v = w
+    lmax = 1.05 * lam
+    C._tail_bounds = (alpha, lmax / alpha, lmax)
+    return lmax / alpha, lmax
+
+
+def smooth_tail(C, u, k, alpha=30.0):
+    """k Jacobi-preconditioned Chebyshev sweeps on the interior equilibrium K_II u_I = -K_IP u_P (ports held), from u.
+    Linear in u, energy-norm contractive: S_hat stays symmetric and >= S. Differentiable (fp64); returns u.dtype."""
+    lmin, lmax = tail_bounds(C, alpha)
+    theta, delta = (lmax + lmin) / 2, (lmax - lmin) / 2
+    sigma = theta / delta; rho = 1 / sigma
+    dinv = (1 / C.dK[C.I])[:, None]
+    x = u.to(dt)
+    r = -_KMat.apply(x, C.K)[C.I]
+    d = dinv * r / theta
+    for i in range(k):
+        x = x.index_add(0, C.I, d)
+        if i == k - 1:
+            break
+        r = -_KMat.apply(x, C.K)[C.I]
+        rho_n = 1 / (2 * sigma - rho)
+        d = rho_n * rho * d + (2 * rho_n / delta) * dinv * r
+        rho = rho_n
+    return x.to(u.dtype)
+
+
 class _Sens(torch.autograd.Function):
     """s[c, b] = -u_b^T (dK/dtau_c) u_b from element moments derivatives (chunked, float32 products, float64 sums)."""
 
@@ -147,6 +200,8 @@ class Geo:
         u = model(self, qd)
         u = u + self.RA.to(torch.float32) @ c
         u = u.index_copy(0, self.P, q32)                                  # exact port values
+        if getattr(model, 'smooth_k', 0):                                 # fallback-A tail (default off)
+            u = smooth_tail(self.C, u, model.smooth_k, model.smooth_alpha)
         return u
 
     def sens_hat(self, u, chunk=256):
