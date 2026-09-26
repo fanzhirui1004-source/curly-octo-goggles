@@ -23,7 +23,7 @@ Raw per-direction arrays: <out>.npz.  The helpers (load_geo, net_for, field_fn, 
 lat_full.py and diag_fringe.py.
 Usage: diag_cert.py <out.json> [--parts own,zeroshot,step2] [--ms 0,8,16] [--step2 <ckpt>] ... (--help)
 """
-import json, sys, time, gc, argparse
+import json, os, sys, time, gc, argparse
 from pathlib import Path
 import numpy as np
 import torch
@@ -80,7 +80,11 @@ def load_ckpt(path):
 def net_for(ck, geo):
     """The checkpoint's network built on geo (eval mode) and the number of missing keys (strict=False as evalnet)."""
     cfg = ck['cfg']
-    m = MD.build(cfg['model'], [geo], **cfg.get('model_args', {})).to(dev)
+    ma = dict(cfg.get('model_args', {}))
+    ov = os.environ.get('OPL_MODEL_ARGS_OVERRIDE')                                  # e.g. an untrained wrapper on fixed weights
+    if ov:
+        ma.update(json.loads(ov))
+    m = MD.build(cfg['model'], [geo], **ma).to(dev)
     res = m.load_state_dict(ck['model'], strict=False)
     return m.eval(), len(res.missing_keys)
 
