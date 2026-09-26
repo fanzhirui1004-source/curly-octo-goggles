@@ -1,0 +1,166 @@
+{
+ "args": {
+  "out": "/root/autodl-tmp/OPL/S1/V2/gate_A3_2grid_fresh_val_2001_full_y.json",
+  "pairs": "",
+  "configs": "y",
+  "sets": "test",
+  "s1": "/root/autodl-tmp/OPL/S1",
+  "r2_run": "mgno2_r2_d2",
+  "r1_run": "mgno_r1_e",
+  "full_run": "mgno_full_c",
+  "r2_case": "fresh_train_0020_cover01_r2",
+  "r1_case": "fresh_train_0020_cover01_r1",
+  "full_case": "fresh_train_0020_full",
+  "custom": "/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt:fresh_val_2001_full:/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt:",
+  "maxit": 400,
+  "nb_mode": "explicit"
+ },
+ "results": [
+  {
+   "test": {
+    "gate_compliance_max": 1.5919509613770977e-05,
+    "gate_sens_max": 0.000726089607944938,
+    "gate_pass": true,
+    "gate_sens_max_per_cell": [
+     0.000726089607944938,
+     4.6544448385655115e-06
+    ],
+    "compliance_rel_err": [
+     4.501954435132127e-06,
+     1.5919509613770977e-05,
+     4.017616202389718e-06,
+     2.8500316640034384e-07,
+     1.8403866020033632e-07,
+     7.609901142568987e-08
+    ],
+    "sens_vec_rel_err": [
+     [
+      0.0005809196200111027,
+      0.00019013530923117536,
+      0.000726089607944938,
+      0.0003738504623458452,
+      0.0004896107374388393,
+      0.0006671288893327416
+     ],
+     [
+      1.1436255781609822e-06,
+      4.6544448385655115e-06,
+      1.2736442770568075e-06,
+      2.833280029077211e-07,
+      1.5770544841310536e-07,
+      9.397286242946837e-08
+     ]
+    ],
+    "eps": [
+     [
+      5.03860055183214e-05,
+      5.570841619850775e-05,
+      3.981743069081389e-05,
+      5.053375000518834e-05,
+      6.724283236847484e-05,
+      8.804987341970438e-05
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "w": [
+     [
+      0.0894365812612011,
+      0.28582507585401434,
+      0.10093118361175243,
+      0.005650220451372832,
+      0.002743047292986862,
+      0.0008672508986811518
+     ],
+     [
+      0.9105634187388998,
+      0.7141749241463398,
+      0.8990688163879628,
+      0.9943497795489281,
+      0.9972569527070375,
+      0.9991327491010555
+     ]
+    ],
+    "bound": [
+     4.506352076966679e-06,
+     1.592286228564548e-05,
+     4.018820408002764e-06,
+     2.8552682776387715e-07,
+     1.8445026930111424e-07,
+     7.63613318520003e-08
+    ],
+    "bound_holds": true,
+    "eps_gate_max_per_cell": [
+     8.804987341970438e-05,
+     0.0
+    ],
+    "cut_compliance_max": null,
+    "cut_sens_max": null,
+    "pcg_iterations": 4,
+    "seconds": 20.220434598624706
+   },
+   "loads": [
+    "test_facex0_x_cons",
+    "test_facex0_y_cons",
+    "test_facex0_z_cons",
+    "nbr_facex0_x_cons",
+    "nbr_facex0_y_cons",
+    "nbr_facex0_z_cons"
+   ],
+   "gate": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ],
+   "energy_share": [
+    [
+     0.0894365812612011,
+     0.28582507585401434,
+     0.10093118361175243,
+     0.005650220451372832,
+     0.002743047292986862,
+     0.0008672508986811518
+    ],
+    [
+     0.9105634187388998,
+     0.7141749241463398,
+     0.8990688163879628,
+     0.9943497795489281,
+     0.9972569527070375,
+     0.9991327491010555
+    ]
+   ],
+   "pair": "custom0",
+   "config": "y",
+   "test_cell": {
+    "case": "fresh_val_2001_full",
+    "run": "A3_2grid",
+    "ckpt": "/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt",
+    "missing_keys": 0,
+    "ckpt_conv_fp32": true
+   },
+   "nbr_cell": {
+    "case": "fresh_val_2001_full_nbmy",
+    "run": "A3_2grid",
+    "ckpt": "/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt",
+    "missing_keys": null,
+    "ckpt_conv_fp32": true
+   },
+   "seconds": 69.24521929770708,
+   "conv_tf32": false
+  }
+ ],
+ "conv": {
+  "conv_tf32": false,
+  "OPL_CONV_FP32": "1"
+ }
+}

@@ -1,0 +1,1158 @@
+{
+ "setup": "clamp z=0 box face; unit consistent traction on z=1 (x, y, z); host PARDISO",
+ "per_case": {
+  "fresh_val_2005_d1_v0": {
+   "n": {
+    "24": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 16227,
+     "free": 16227,
+     "elements": 501,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ]
+    },
+    "32": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 32121,
+     "free": 32121,
+     "elements": 1047,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ]
+    },
+    "40": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 55275,
+     "free": 55275,
+     "elements": 1867,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ]
+    },
+    "48": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 87747,
+     "free": 87747,
+     "elements": 3041,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ]
+    }
+   },
+   "vs_finest": {
+    "24": {
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    },
+    "32": {
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    },
+    "40": {
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    },
+    "48": {
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    }
+   },
+   "observed_order": "unequal ratios: see vs_finest",
+   "fd": {
+    "sens_by_h": {
+     "0.001": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "0.0001": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "1e-05": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "1e-06": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ]
+    },
+    "rel_to_h1e_5": {
+     "0.001": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "0.0001": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "1e-05": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "1e-06": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    },
+    "direct": [
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ]
+    ],
+    "direct_vs_sens": [
+     NaN,
+     NaN,
+     NaN
+    ]
+   },
+   "gamma": {
+    "1e-05": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 32121,
+     "free": 32121,
+     "elements": 1047,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    },
+    "0.0001": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 32121,
+     "free": 32121,
+     "elements": 1047,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    },
+    "0.001": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 32121,
+     "free": 32121,
+     "elements": 1047,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    }
+   },
+   "integ": {
+    "4:2": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 32121,
+     "free": 32121,
+     "elements": 1047,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    },
+    "6:1": {
+     "compliance": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "ghost_share": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "dofs": 32121,
+     "free": 32121,
+     "elements": 1047,
+     "sens": [
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ],
+      [
+       NaN,
+       NaN,
+       NaN
+      ]
+     ],
+     "compliance_rel": [
+      NaN,
+      NaN,
+      NaN
+     ],
+     "sens_rel": [
+      NaN,
+      NaN,
+      NaN
+     ]
+    }
+   },
+   "base32": {
+    "compliance": [
+     NaN,
+     NaN,
+     NaN
+    ],
+    "ghost_share": [
+     NaN,
+     NaN,
+     NaN
+    ],
+    "dofs": 32121,
+    "free": 32121,
+    "elements": 1047,
+    "sens": [
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ],
+     [
+      NaN,
+      NaN,
+      NaN
+     ]
+    ]
+   },
+   "seconds": 1216.8891449719667
+  },
+  "fresh_val_2003_d1_v1": {
+   "n": {
+    "24": {
+     "compliance": [
+      908.0891344909019,
+      969.4699013426043,
+      133.1258316394999
+     ],
+     "ghost_share": [
+      0.00014953628236280547,
+      0.0001436644847658819,
+      0.00014265376142508224
+     ],
+     "dofs": 94977,
+     "free": 93612,
+     "elements": 3100,
+     "sens": [
+      [
+       -1223.1095251438976,
+       -1311.7465297056963,
+       -131.96437221284762
+      ],
+      [
+       -786.4271895653103,
+       -881.3030318735828,
+       -123.60186157830638
+      ],
+      [
+       -1016.0583991211214,
+       -1075.9093713979441,
+       -150.94719213095723
+      ],
+      [
+       -667.4628904613014,
+       -620.7074776021283,
+       -130.73344383679915
+      ],
+      [
+       -875.6758980491951,
+       -952.4435528769594,
+       -136.0560356345248
+      ],
+      [
+       -472.70320711136225,
+       -602.673503425084,
+       -113.04844443441188
+      ],
+      [
+       -432.9267125307908,
+       -504.8132559287464,
+       -75.1396936316421
+      ],
+      [
+       -230.8202031726926,
+       -252.9731513667225,
+       -55.923918842347376
+      ]
+     ]
+    },
+    "32": {
+     "compliance": [
+      908.3530156417096,
+      969.3754505532889,
+      132.77151783313133
+     ],
+     "ghost_share": [
+      5.2196529849224405e-05,
+      5.186804894741215e-05,
+      4.804507010869319e-05
+     ],
+     "dofs": 191895,
+     "free": 189750,
+     "elements": 6490,
+     "sens": [
+      [
+       -1223.8324139406527,
+       -1312.2612764250114,
+       -131.75151669712776
+      ],
+      [
+       -786.4906785537621,
+       -881.2726082227408,
+       -123.35766715149957
+      ],
+      [
+       -1017.0650976290376,
+       -1076.8517515726373,
+       -150.9322738359206
+      ],
+      [
+       -668.3527189281223,
+       -621.0280042172434,
+       -130.83799972126843
+      ],
+      [
+       -876.0162803475047,
+       -952.5135648210864,
+       -135.4309498386251
+      ],
+      [
+       -472.40758520699023,
+       -602.2030831622544,
+       -112.3609051475796
+      ],
+      [
+       -433.28051527329853,
+       -505.1730962689014,
+       -74.97852028046817
+      ],
+      [
+       -230.9668578960326,
+       -252.91017980918474,
+       -55.797788540091354
+      ]
+     ]
+    },
+    "40": {
+     "compliance": [
+      908.8563790458625,
+      970.036514883692,
+      133.01133518988948
+     ],
+     "ghost_share": [
+      2.653132731700314e-05,
+      2.693395898134554e-05,
+      2.2647521519814084e-05
+     ],
+     "dofs": 347379,
+     "free": 344232,
+     "elements": 12142,
+     "sens": [
+      [
+       -1224.572728445667,
+       -1313.2265853669153,
+       -131.9410561803133
+      ],
+      [
+       -787.1853103211928,
+       -882.1798475998145,
+       -123.56328998159884
+      ],
+      [
+       -1017.7468197054242,
+       -1077.561049220606,
+       -151.21763379912824
+      ],
+      [
+       -668.9400724011017,
+       -621.6116381357247,
+       -131.12631469454314
+      ],
+      [
+       -876.4991188170104,
+       -953.3178426661475,
+       -135.69003012168284
+      ],
+      [
+       -472.7551334553393,
+       -602.8434394731372,
+       -112.59605911538074
+      ],
+      [
+       -433.57100784079233,
+       -505.57100972245576,
+       -75.14046662722862
+      ],
+      [
+       -231.16728499883013,
+       -253.17041125638897,
+       -55.94056573141842
+      ]
+     ]
+    },
+    "48": {
+     "compliance": [
+      908.7013365765129,
+      969.9245699998487,
+      132.8464856937304
+     ],
+     "ghost_share": [
+      1.412526140875947e-05,
+      1.532328553699447e-05,
+      1.2082986862060885e-05
+     ],
+     "dofs": 547653,
+     "free": 543498,
+     "elements": 19504,
+     "sens": [
+      [
+       -1224.5530740167592,
+       -1313.2410202035633,
+       -131.8622193886402
+      ],
+      [
+       -786.9938261343835,
+       -881.9198038372816,
+       -123.45874749587566
+      ],
+      [
+       -1017.5952835072233,
+       -1077.5111294361247,
+       -150.9542388851861
+      ],
+      [
+       -668.6214618679351,
+       -621.2840669277299,
+       -130.8496061520945
+      ],
+      [
+       -876.6034020568725,
+       -953.4008220048121,
+       -135.613637554672
+      ],
+      [
+       -472.71206632142497,
+       -602.8076333415204,
+       -112.5201081041404
+      ],
+      [
+       -433.55783775894713,
+       -505.5982476894129,
+       -75.02613318554748
+      ],
+      [
+       -231.04839107261418,
+       -253.06423715471809,
+       -55.827827053665466
+      ]
+     ]
+    }
+   }
+  }
+ }
+}
