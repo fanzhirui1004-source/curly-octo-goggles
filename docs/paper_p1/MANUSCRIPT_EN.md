@@ -94,7 +94,7 @@ Under a prescribed force \(f_g\), compliance is \(C=f_g^TU\), with \(\widehat C=
 | Principal interior coarse space | Trilinear vector functions on a \(17^3\)-vertex grid, restricted to the internal degrees of freedom |
 | Thickness-difference step | \(h_c=10^{-5}\tau_c\), with fixed active coordinates and ghost contribution |
 
-The mesh, material and stabilisation entries apply to all 80 validation geometries. Length is expressed relative to the unit reference box and the modulus is normalised. Integration and spectral-estimation entries specify the standard implementation. The coarse dimension and smoothing count vary by geometry and correction sequence and are reported with those comparisons. Training populations and the computational benchmark are specified in Tables 2 and 4.
+The mesh, material and stabilisation entries apply to all 80 validation geometries. Length is expressed relative to the unit reference box and the modulus is normalised. Integration and spectral-estimation entries specify the standard implementation. The coarse dimension and smoothing count vary by geometry and correction sequence and are reported with those comparisons. Training populations and the computational benchmark are specified in Tables 2 and 5.
 
 ## 3. Geometry-conditioned neural displacement extension
 
@@ -176,6 +176,8 @@ Training probes the extension through retained displacement directions that exer
 \]
 
 The energy term is the mean logarithm of the predicted-to-reference energy ratio. For an admissible extension, the variational identity in Section 4 makes its minimum correspond to the equilibrium field on each sampled direction. The sensitivity term additionally measures the complete eight-corner vectors, so that training accounts for how the reconstructed field weights the local design derivatives. The set \(\mathcal J_s\) contains directions with reference sensitivity labels; this term is omitted when the set is empty, and the reported configurations use \(w_s=1\). Gradients with respect to \(\theta\) pass through the reconstructed field to the geometry encoders, coefficient heads and linear displacement maps. The stiffness, retained-coordinate maps and rigid basis define the mechanical objective deterministically.
+
+The correction of Section 5 can also be placed inside the training loop. The principal predictor evaluates Eq. (8) on the corrected extension \(F=\mathcal W\widehat E\), with \(\mathcal W\) the eight-step smoothing, trilinear coarse solve and eight-step smoothing sequence of Section 5.2. Because \(\mathcal W\) is linear and fixed for a given geometry, the gradient of Eq. (8) passes through the smoothing recurrence and the coarse solve to the network parameters; the network is thereby trained to supply the initial field that the correction completes, rather than a field that must be accurate on its own. The smoothing interval and coarse factorisation depend only on \(K\) and are recomputed per geometry, so training through the correction adds no trainable parameters.
 
 Finite direction banks sample only part of the retained space. Large-energy-ratio directions are therefore sought by a block search on the rigid complement and by a search within the span of stored directions. Adding them focuses subsequent training on observed weaknesses of the extension. Geometry augmentation uses the 48 cube symmetries with consistent transformations of vector components; predicted fields are returned to the original frame for mechanical evaluation. Appendix G specifies the direction classes, sampling weights, normalisation and optimisation settings. Table 2 identifies the model roles, and Table ST12 records the training and weight-selection settings. The fixed-weight correction study in Section 6.4 changes the internal correction while using the same learned extension.
 
@@ -327,18 +329,23 @@ The examples follow the error of a learned local extension into the quantities r
 
 The 80 validation geometries span uncut, lightly cut, moderately cut and heavily cut cells, with 20 geometries in each stratum. They use the material parameters and background discretisation in Table 1 and comprise 20 uniform, 30 affine and 30 mixed trilinear thickness fields. Their corner parameters range from 0.1762 to 0.6983. Canonical cut normals are \((\cos\vartheta,\sin\vartheta,0)\), with \(0<\vartheta<\pi/4\). Cut severity refers to the retained macro-box volume before intersection with the TPMS material: heavy cuts retain less than one third, moderate cuts between one and two thirds, and light cuts more than two thirds. Table ST11 gives the parameter domain and stratum-specific ranges. U, M and H identify the selected uncut, moderately cut and heavily cut cells used for detailed comparisons.
 
-The predictors in Table 2 distinguish changes in the learned approximation from corrections applied after training. B supplies the fixed network for the local smoothing and coarse-correction examples. C and S8 are separate continuations of B on the same larger training population; S8 also applies eight smoothing steps when evaluated. P0 provides a reference trained on a smaller population. The computational examples in Section 6.8 use a separate uncorrected predictor D.
+The predictors in Table 2 separate the contribution of the network, of the correction and of training through the correction. The principal predictor A3 continues B on the larger training population with the complete correction of Section 5.2 inside the training loop (Section 3.3) and applies the same correction when evaluated. B supplies the fixed network for the local correction examples; B+W applies A3's correction to B's unchanged weights, isolating the effect of training through the correction. C continues B without correction. S8 continues B with eight smoothing steps at evaluation; only part of its training steps passed through the smoothing stage, so S8 is used as a comparison predictor and not interpreted as a trained smoothing variant. A2b continues B with eight smoothing steps included in every training step and no coarse solve. P0 provides a reference trained on a smaller population. The historical computational examples use a separate uncorrected predictor D.
 
 **Table 2. Learned predictors and their roles in the numerical comparisons**
 
-| Predictor | Role in the comparison | Training geometries | Correction at evaluation |
-| --- | --- | ---: | --- |
-| P0 | Reference with a smaller training population | 148 | None |
-| B | Fixed weights for the local correction study | 305 | None in the population comparison |
-| C | Uncorrected predictor for population and assembly accuracy | 591 | None |
-| S8 | Separately continued predictor for population and assembly accuracy | 591 | Eight smoothing steps |
+| Predictor | Role in the comparison | Training geometries | Correction in training | Correction at evaluation |
+| --- | --- | ---: | --- | --- |
+| **A3** | **Principal predictor** | 591 | 8 / \(Q_1(17)\) / 8 | 8 / \(Q_1(17)\) / 8 |
+| B+W | B's weights with A3's correction, untrained | 305 | None | 8 / \(Q_1(17)\) / 8 |
+| A2b | Smoothing-only training | 591 | 8 steps | 8 steps |
+| S8 | Comparison predictor | 591 | Partial (see text) | 8 steps |
+| C | Uncorrected continuation | 591 | None | None |
+| B | Fixed weights for the local correction study | 305 | None | None |
+| P0 | Reference with a smaller training population | 148 | None | None |
 
-All four predictors use the same validation set. Table ST01 specifies direction-class coverage, and Table ST12 gives training schedules, weight selection and evaluation orientations.
+All predictors share the architecture of Section 3 (603,464 trainable parameters) and the same validation set. A3, A2b, C and S8 continue B for 15,000 steps; B was trained for 40,000 steps with weights selected at step 30,000. A3's continuation took 2.7 h on one NVIDIA GeForce RTX 5090 (peak device memory 29.6 GB). Table ST01 specifies direction-class coverage, and Table ST12 gives training schedules, weight selection and evaluation orientations.
+
+Two properties of the evaluation data are relevant to the comparisons. First, the weights of the continued predictors were selected on a validation list whose first 40 geometries include 20 of the 80 reported validation geometries (6 uncut, 14 cut); selection compared two checkpoints per predictor. Population statistics are therefore also reported for the 60 geometries that did not enter selection. Second, the cells used in the assembly examples served repeatedly as development cases during method development, so the assembly results characterise these configurations rather than an independent test sample. All geometries carry a single planar cut with normal \((\cos\vartheta,\sin\vartheta,0)\); multiple cuts per cell and curved boundaries are outside the present study.
 
 Population statistics first average directional energy excess within each geometry and loading class, then give equal weight to the available geometries. The five basic classes cover all 80 geometries; consistent tractions, single-face consistent tractions, stiffness-scaled supports and neighbour-induced displacements cover smaller subsets (Figure 5 and Table ST01). The population maximum is consequently the largest geometry-level direction mean. This aggregation separates variation across geometries from variation among directions within one cell.
 
@@ -350,9 +357,11 @@ The assembly examples join a learned target to an exact neighbouring cell, with 
 
 ### 6.2. Dependence on geometry and loading
 
-The uncorrected baseline exhibits a pronounced dependence on cut severity under mechanical loading (Figure 5). Its mean nodal-force energy excess increases from 0.908% in uncut cells to 11.3% in heavily cut cells, with the same trend under spring-supported loading. The overall mean of 5.04% coexists with a largest geometry mean of 70.1%. The high-error tail therefore matters alongside the average when assessing an extension that will later be used in an assembled structure.
+Consistent tractions are the principal loading class. They represent the surface loads and neighbour tractions of an assembled structure, and the energy of their exact fields resides almost entirely in the bulk material: the ghost-penalty contribution is below 0.05% of the exact field energy in all cells examined in Section 6.3. Equal nodal forces on the retained coordinates, by contrast, also load weakly supported nodes of small cut elements, and 49–81% of the corresponding exact field energy resides in the ghost-penalty term. The nodal-force class is therefore retained as a stress test of the stabilised discrete problem, not as the measure of mechanical accuracy.
 
-S8 has lower mean errors across the displayed geometric strata and enriched loading classes. Its heavily cut nodal-force mean is about 1%, while consistent tractions and neighbour-induced retained displacements give means of 1.43% and 1.48%. The latter class probes displacement patterns produced by intercell coupling. These population comparisons describe the complete predictors in Table 2; the fixed-B examples below identify the effect of correction at unchanged network weights.
+The principal predictor removes most of the geometric dependence of the uncorrected extension (Figure 5). Under consistent tractions, A3's mean directional energy excess is [TBD:newval2-A3-forcec-strata] across the uncut, lightly, moderately and heavily cut strata of all 80 geometries, compared with [TBD:newval2-B-forcec-strata] for B. The same holds for the loading classes that probe assembly: neighbour-induced retained displacements give [TBD:newval2-glued] and spring-supported faces [TBD:newval2-supportk]. On the nodal-force stress test, B's mean increases from 0.908% in uncut cells to 11.3% in heavily cut cells, with a largest geometry mean of 70.1%, whereas A3's stratum means lie between 0.0135% and 0.0897% and its largest geometry mean is 0.325%. Restricting the statistics to the 60 geometries that did not enter weight selection leaves A3's nodal-force mean essentially unchanged (0.0591% against 0.0579% on all 80).
+
+The intermediate predictors locate this improvement. C, which continues B without correction, changes the population means only marginally (nodal forces 4.61% against 5.04%). S8, evaluated with eight smoothing steps, reduces the mean to 0.672%, and A3 to 0.0579%. The fixed-weight examples in Section 6.4 separate the contribution of the correction from that of the network weights.
 
 Orientation supplies another source of variation. Under the tested nonidentity cube transformation, B's consistent-traction mean changes from 6.62% to 7.49%. Thus the transformed examples expose differences that are hidden by evaluation in a single orientation. The distributions in Table ST01 and Figure S02 motivate examining both the magnitude and the internal structure of the extension error.
 
@@ -382,31 +391,48 @@ An interior coarse correction addresses the error that remains after relaxation.
 
 The remaining error can be varied through the correction budget. On M1, two, four and eight smoothing steps on each side of the trilinear coarse update give 1.02%, 0.422% and 0.186%, respectively. These fixed-weight results establish the local accuracy benefit of combining smoothing and coarse correction while preserving the retained representation. Quadratic interpolation, partition-of-unity enrichment and zero-field comparisons are given in Figure S03B and Table ST04; Appendix F.1 describes their coarse representations and the independence requirements for the projection interpretation.
 
+What does the learned field contribute once the correction is applied? Table 3 applies the same correction to four starting fields at the same retained displacements: a zero interior, a graph-harmonic interior extension, B's learned field, and, for reference, A3. The zero and harmonic fields receive the same exact rigid-body split as the network. With eight smoothing steps on each side of the coarse solve, a zero interior leaves 28–1100% energy excess and the harmonic extension 0.08–17%, whereas B's field ends at 0.012–0.19%, lower than the harmonic start by factors of 7 to 250. Quadrupling the smoothing budget to 32 steps per stage does not close the gap: the harmonic start then reaches 0.0006–4.1%, still above B's field at the eight-step budget in three of the four cells. The learned field therefore supplies the part of the interior equilibrium that the smoothing and the coarse space do not reach at a practical budget, chiefly the slowly relaxed components identified in Section 6.3.
+
+**Table 3. Mean energy excess (%) after the same correction applied to different starting fields (consistent tractions, 32 directions)**
+
+| Cell | Correction | Zero interior | Harmonic | B (learned) | A3 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| M1 | 8 / \(Q_1(17)\) / 8 | 1097 | 17.2 | 0.186 | 0.131 |
+| M1 | 32 / \(Q_1(17)\) / 32 | 185 | 4.11 | 0.0727 | — |
+| M2 | 8 / \(Q_1(17)\) / 8 | 324 | 6.72 | 0.0273 | 0.0358 |
+| M2 | 32 / \(Q_1(17)\) / 32 | 38.9 | 1.52 | 0.00691 | — |
+| H1 | 8 / \(Q_1(17)\) / 8 | 39.9 | 1.28 | 0.0131 | 0.0115 |
+| H1 | 32 / \(Q_1(17)\) / 32 | 2.92 | 0.199 | 0.00130 | — |
+| H2 | 8 / \(Q_1(17)\) / 8 | 28.3 | 0.0806 | 0.0117 | 0.0148 |
+| H2 | 32 / \(Q_1(17)\) / 32 | 0.0156 | 0.000614 | 0.000182 | — |
+
+Uncorrected, B's errors in these cells are 13.5% (M1), 3.64% (M2), 1.81% (H1) and 35% (H2). The harmonic extension solves a graph Laplacian on the element connectivity weighted by material volume; its setup cost is one sparse factorisation of that Laplacian. The comparison also shows that, locally, applying the correction to B's unchanged weights (B+W) is about as accurate as the predictor trained through the correction: A3 is lower on M1 and H1 and higher on M2 and H2. The assembled comparison of B+W and A3 in Section 6.5 [TBD:B2grid-gates] determines whether training through the correction matters for the structural responses.
+
 ![Figure 7](figures/F04_correction.png)
 
 **Figure 7. Accuracy gained by correcting B at fixed weights.** (a,b) Mean directional energy excess and field-based sensitivity error during Chebyshev smoothing on five cells. (c) M1 with no correction, eight smoothing steps, coarse correction followed by eight steps, and eight steps on each side of the coarse correction. The mean excesses are 13.5%, 4.68%, 0.230% and 0.186%, with 0, 8, 8 and 16 smoothing steps in total. Dots show means and caps the 90th percentile. The two methods with eight smoothing steps differ by one additional coarse solve. The \(Q_1(17)\) representation contains 5,601 coefficient columns for 165,927 internal degrees of freedom. (d) Mean energy excess versus steps per smoothing stage; the complete cycle uses twice this count. All panels use consistent tractions, fixed retained displacements and \(\alpha=30\). In (a,b), the step axis is linear from zero to one and logarithmic thereafter.
 
 ### 6.5. Compliance and local sensitivity after assembly
 
-Assembly places different accuracy demands on global work and local design quantities. Figure 8 compares B, C and S8 in the two-cell configurations of Figure 4, with an exact neighbour in every case. On the nine configurations evaluated for both C and S8, S8 has lower maximum compliance and sensitivity errors. Both quantities lie within 3% in the same five of nine configurations; sensitivity remains above 3% in the other four. Thus S8 improves the response estimates without increasing the number of configurations satisfying both accuracy requirements in this sample.
+Assembly places different accuracy demands on global work and local design quantities. Figure 8 compares the predictors in the two-cell configurations of Figure 4, with an exact neighbour in every case, using 3% on compliance and on each cell's eight-parameter sensitivity vector as a common accuracy reference. The principal predictor meets both requirements in all nine configurations: its largest compliance error over the six face loads is 0.056% (M1/x) and its largest sensitivity error, taken over both cells, is 0.67% (U1/y). The uncorrected continuation C fails the sensitivity requirement in four of the nine configurations (U1/x, U1/y, M1/x, M1/y, with up to 11.4%), and S8 in the same four (up to 5.83%). B+W, which applies the same correction to B's unchanged weights, gives [TBD:B2grid-gates]. The configurations M2/y and those of two further cut cells were not evaluated in the original runs because the dense reference factor exceeded device memory; [TBD:lat-cpu-reruns].
 
-The load-specific responses show why both quantities are needed. For H1/x with S8, one target-face load produces compliance and target-cell sensitivity errors of 0.178% and 1.22%, attaining both six-load maxima. Under a neighbour-face load on U1/x, compliance error is only 0.00137%, while the target-cell sensitivity error is 3.89%. A target-face load on M1/x gives 1.42% and 5.83%, respectively (Table 3). The larger local errors motivate the participation and field-recovery analysis in Section 6.6. The complete configuration results and additional cut-face loads are given in Tables ST13 and ST06.
+The load-specific responses show why both quantities are needed, and how the correction changes their relation. For the uncorrected and partially corrected predictors, an accurate compliance does not guarantee an accurate local sensitivity: under a neighbour-face load on U1/x, S8's compliance error is 0.00137% while the target-cell sensitivity error is 3.89%, with the target carrying 0.13% of the exact assembled energy. A3 reduces both errors under the same loads (Table 4): the target-cell sensitivity error of that load falls to 0.598%, and on M1/x, the configuration with the largest errors for C and S8, the target-face y load gives 0.0481% and 0.145% instead of 1.42% and 5.83%. The separation between global and local accuracy therefore remains visible in A3, in that its sensitivity error exceeds its compliance error by a factor of about two for a target-face load on the heavily cut H1 and by four orders of magnitude for the weakly participating U1 target, but both now lie well within the accuracy reference. Sections 6.6 and 7.2 explain this separation through energy participation and the derivative weighting of the sensitivity.
 
 ![Figure 8](figures/F05_assembly.png)
 
 **Figure 8. Global compliance and local sensitivity in assembled cell pairs.** The target uses a learned operator and the neighbour exact condensation. (a,b) Maximum errors over six face loads for 25 model–configuration combinations; sensitivity is also maximised over both cells. Blank entries indicate unavailable results. (c) S8 on H1/x under target-face (T), neighbour-face (N) and macro-cut (C) tractions, each in the x, y and z directions; sensitivity refers to the target cell. (d) B on M1/x under target-face loads, comparing the full reconstructed response with fields obtained using the exact retained displacement or exact extension. These replacements probe separate effects on the sensitivity vector. Dashed lines mark 3%; cut-face loads are shown separately from the six-face-load comparison.
 
-**Table 3. Compliance and target-cell sensitivity under individual face loads**
+**Table 4. Compliance and target-cell sensitivity under individual face loads**
 
-The entries use S8 on the target and exact condensation on its neighbour. T and N identify the loaded face; x, y and z give the traction direction. Each row compares the two response errors for the same load.
+The target uses the learned operator and the neighbour exact condensation. T and N identify the loaded face; x, y and z give the traction direction. Each row compares the two response errors for the same load; the last column gives the target cell's share of the exact assembled energy.
 
-| Target / configuration | Model | Load | Compliance error (%) | Target sensitivity error (%) |
-| --- | --- | --- | --- | --- |
-| H1/x | S8 | T-x | 0.178 | 1.22 |
-| U1/x | S8 | N-z | 0.00137 | 3.89 |
-| M1/x | S8 | T-y | 1.42 | 5.83 |
+| Target / configuration | Load | C: compliance / sensitivity (%) | S8: compliance / sensitivity (%) | A3: compliance / sensitivity (%) | Target energy share |
+| --- | --- | --- | --- | --- | ---: |
+| H1/x | T-x | 1.06 / 2.47 | 0.178 / 1.22 | 0.0076 / 0.0133 | 0.643 |
+| U1/x | N-z | 0.0023 / 4.89 | 0.00137 / 3.89 | 7.3×10⁻⁵ / 0.598 | 0.0013 |
+| M1/x | T-y | 3.44 / 11.4 | 1.42 / 5.83 | 0.0481 / 0.145 | 0.311 |
 
-H1 is heavily cut, M1 moderately cut and U1 uncut. H1/T-x attains both six-load maxima; the largest compliance error in U1 and M1 instead occurs under T-x. Configuration-level sensitivity maxima include both cells.
+H1 is heavily cut, M1 moderately cut and U1 uncut. Configuration-level sensitivity maxima include both cells.
 
 ### 6.6. Energy participation and field recovery
 
@@ -432,7 +458,7 @@ At \(r=8\), the restricted problem has 14,001 reduced coordinates, compared with
 
 The computational benefit of a reusable substructure depends on both preparation and the subsequent queries. Exact condensation requires an interior factorisation, which can be reused across retained displacement vectors. A learned action requires geometry-dependent preparation followed by extension, stiffness and transpose-extension operations. We examine this trade-off for the uncorrected predictor D on an NVIDIA GeForce RTX 5090. Across four cells, double-precision interior factorisation takes 0.64–8.6 s (Figure 11).
 
-Batch size changes the relative application cost. D is faster for a single direction in every cell, whereas the exact factor is faster for batches of 64 directions (Table 4a). The benefit of a cheap individual action also depends on the assembled iteration. With the balanced two-level preconditioner of Supplementary Note S1, the learned two-cell pair has a lower elapsed solve time than its exact counterpart, while both learned repeated-cell arrays require more time (Table 4b). For the 27-cell array, the times are 222 s and 94.6 s, respectively.
+Batch size changes the relative application cost. D is faster for a single direction in every cell, whereas the exact factor is faster for batches of 64 directions (Table 5a). The benefit of a cheap individual action also depends on the assembled iteration. With the balanced two-level preconditioner of Supplementary Note S1, the learned two-cell pair has a lower elapsed solve time than its exact counterpart, while both learned repeated-cell arrays require more time (Table 5b). For the 27-cell array, the times are 222 s and 94.6 s, respectively.
 
 The accuracy attained at those stopping points is part of the cost comparison. In the 27-cell learned solve, the recursive residual reaches \(9.59\times10^{-9}\), but recomputation with the same learned operator gives \(8.99\times10^{-3}\), and the maximum compliance error is 1.86%. Both residuals of the exact solve are near \(10^{-8}\). Moreover, every learned deflated solve reaches the 300 s limit with a large residual (Figure S05 and Table ST09). These results show that action cost, solver convergence and response accuracy must be assessed together. Tables ST08, ST10 and ST14 give the other solver choices, memory definitions and setup components. The additional setup and coarse solves used to correct B in Section 6.4 require separate timing to determine their computational benefit.
 
@@ -440,9 +466,9 @@ The accuracy attained at those stopping points is part of the cost comparison. I
 
 **Figure 11. Preparation and application cost of predictor D.** (a–c) Time per complete batch of one, 16 and 64 vectors on four cells, comparing exact interior solves with learned sparse-matrix (CSR) and fused implementations. The fp32 factor uses three fp64 iterative-refinement steps (IR). (d) Interior factorisation, network caching and preparation of the reusable learned action. (e) Sparse-stiffness storage and free-memory changes associated with the exact factor and learned state; the allocation measures are not additive. Measurements use an NVIDIA GeForce RTX 5090, with three timed repetitions after one warm-up. Memory is expressed in GiB. The supplementary geometry key identifies G1–G4.
 
-**Table 4. Application cost and accuracy attained in assembled solves**
+**Table 5. Application cost and accuracy attained in assembled solves**
 
-**4a. Application time across four cells (ms per complete batch)**
+**5a. Application time across four cells (ms per complete batch)**
 
 | Directions per batch | Exact double precision | Learned predictor D |
 | --- | --- | --- |
@@ -451,7 +477,7 @@ The accuracy attained at those stopping points is part of the cost comparison. I
 
 Ranges give the minimum and maximum over the same four cells. Table ST14 includes the individual timings, batches of 16 and the fused implementation.
 
-**4b. Assembly solves with the balanced two-level preconditioner**
+**5b. Assembly solves with the balanced two-level preconditioner**
 
 | Assembly | Free DOFs | Exact: iterations / s | Learned: iterations / s | Learned recomputed residual | Max. compliance error (%) |
 | --- | --- | --- | --- | --- | --- |
