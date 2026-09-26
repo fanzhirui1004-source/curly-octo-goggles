@@ -20,6 +20,8 @@ The S8 predictor has its own learned weights. Applying eight steps to B in the f
 | H1 | Heavily cut | fresh_val_2005_d1_v0 |
 | M2 | Moderately cut | fresh_val_2006_d0_v1 |
 | H2 | Heavily cut | fresh_val_2010_d0_v0 |
+| H3 | Heavily cut | fresh_val_2002_d0_v0 |
+| L1 | Lightly cut | fresh_val_2004_d0_v2 |
 
 The x/y suffix identifies the neighbouring-cell configuration. The deployment geometries use the G1–G4 labels in Figure 11 and Figure S05. The complete timing tables retain the corresponding abbreviated geometry identifiers for lookup.
 

@@ -440,7 +440,7 @@ The load-specific responses show why both quantities are needed, and how the cor
 
 ![Figure 9](figures/F05_assembly_A3.png)
 
-**Figure 9. Compliance and thickness sensitivity in assembled cell pairs.** The target cell uses a learned operator and the neighbour exact condensation. (a,b) Maximum errors over the six face loads in each configuration; the sensitivity error is also maximised over both cells. (c,d) Compliance and target-cell sensitivity errors of the individual face loads on M1/x and U1/x; filled markers denote target-face loads and open markers neighbour-face loads. Dashed lines mark 3%. The uncorrected predictor C reaches sensitivity errors of 4.7–11.4% in four configurations; the principal predictor A3 stays below 0.06% in compliance and 0.67% in sensitivity. [TBD:fig8-B+W-and-reruns]
+**Figure 9. Compliance and thickness sensitivity in assembled cell pairs.** The target cell uses a learned operator and the neighbour exact condensation. (a,b) Maximum errors over the six face loads in each configuration; the sensitivity error is also maximised over both cells. (c,d) Compliance and target-cell sensitivity errors of the individual face loads on M1/x and U1/x; filled markers denote target-face loads and open markers neighbour-face loads. Dashed lines mark 3%. The uncorrected predictor C reaches sensitivity errors of 4.7–11.4% in four configurations and A2b, trained through smoothing alone, 3.2–4.4% in the same four; the principal predictor A3 stays below 0.06% in compliance and 0.67% in sensitivity in all twelve configurations. H3 is a further heavily cut cell evaluated for A2b and A3 only. [TBD:fig8-B+W-complete]
 
 **Table 4. Compliance and target-cell sensitivity under individual face loads**
 
