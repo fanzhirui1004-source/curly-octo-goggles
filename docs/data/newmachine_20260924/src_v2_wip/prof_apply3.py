@@ -34,7 +34,7 @@ def main():
     q = torch.randn((C.np_, a.B), dtype=dt, device=dev, generator=torch.Generator(device=dev).manual_seed(0))
     f.s_hat(q)
     r = dict(case=case, B=a.B, nb=C.nb, ni=C.ni, ports=C.np_, elements=int(len(C.M)), ghost_faces=C.GF64.faces,
-             smooth_k=m.smooth_k, coarse=m.coarse_space, nc=int(C._cL32.shape[0]))
+             smooth_k=m.smooth_k, coarse=m.coarse_space, nc=int(C._cV32.shape[1]))
     x = torch.randn((C.nb, a.B), dtype=dt, device=dev)
     x2 = torch.randn((C.nb, 2 * a.B), dtype=dt, device=dev)
     seg = {}

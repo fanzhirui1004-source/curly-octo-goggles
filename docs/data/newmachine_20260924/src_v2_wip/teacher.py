@@ -181,7 +181,7 @@ class _Kfp32:
         else:
             y = self.G @ x32
         ch = C._lean_chunk
-        if self.symv:
+        if self.symv and not (torch.is_grad_enabled() and x.requires_grad):
             import ke_symv as KS
             y, x32 = y.contiguous(), x32.contiguous()
             if self._kp_tmp is not None:
@@ -424,7 +424,7 @@ class Cell:
         taus = self.taus0 if taus is None else taus
         self.taus = list(taus)
         self._free()
-        for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cV32', '_cV32t', '_cL32_keep', '_Kc', 'GF64', 'M', 'dM',
+        for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cAi32', '_cV32', '_cV32t', '_cL32_keep', '_Kc', 'GF64', 'M', 'dM',
                   '_kpp_cache', 'diag3'):                                       # state of the previous design (if any)
             setattr(self, k, None)
         gc.collect(); torch.cuda.empty_cache()
@@ -496,6 +496,13 @@ class Cell:
         if getattr(self, '_deploy', False):
             y = self.G64 @ x if self.G64 is not None else self.GF64.matvec(x, torch.zeros_like(x)).mul_(self.gamma)
             Tf = self.Tm.reshape(125, 81 * 81)
+            if os.environ.get('OPL_KE_SYMV64') == '1' and x.dim() == 2 and not (torch.is_grad_enabled() and x.requires_grad):
+                import ke_symv as KS                                           # packed upper K_e, fused Triton product
+                y, xc, heldp = y.contiguous(), x.contiguous(), getattr(self, '_kp64_tmp', None)
+                for j, lo in enumerate(range(0, len(self.M), self._lean_chunk)):
+                    P = heldp[j] if heldp is not None else self.M[lo:lo + self._lean_chunk] @ self.Tm_up
+                    KS.symv_(y, P, self.dofs[lo:lo + self._lean_chunk], xc)
+                return y
             held = getattr(self, '_ke64_tmp', None)
             for j, lo in enumerate(range(0, len(self.M), self._lean_chunk)):
                 de = self.dofs[lo:lo + self._lean_chunk]
@@ -533,15 +540,19 @@ class Cell:
 
         @contextlib.contextmanager
         def ctx():
-            own = FI.ON and getattr(me, '_deploy', False) and getattr(me, '_ke64_tmp', None) is None
+            own = FI.ON and getattr(me, '_deploy', False) and getattr(me, '_ke64_tmp', None) is None \
+                and getattr(me, '_kp64_tmp', None) is None
             if own:
                 Tf, ch = me.Tm.reshape(125, 81 * 81), me._lean_chunk
-                me._ke64_tmp = [me._ke64(lo, lo + ch) for lo in range(0, len(me.M), ch)]
+                if os.environ.get('OPL_KE_SYMV64') == '1':                      # packed upper triangles only
+                    me._kp64_tmp = [me.M[lo:lo + ch] @ me.Tm_up for lo in range(0, len(me.M), ch)]
+                else:
+                    me._ke64_tmp = [me._ke64(lo, lo + ch) for lo in range(0, len(me.M), ch)]
             try:
                 yield
             finally:
                 if own:
-                    me._ke64_tmp = None
+                    me._ke64_tmp = me._kp64_tmp = None
         return ctx()
 
     def __matmul__(self, x):                                                   # so that cell.K @ x keeps working

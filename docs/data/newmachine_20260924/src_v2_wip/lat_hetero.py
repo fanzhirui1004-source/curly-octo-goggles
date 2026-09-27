@@ -307,7 +307,7 @@ def main(argv=None):
             del ops, h; free()
             if a.park:
                 for C in Cs:
-                    for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cV32', '_cV32t'):          # correction caches are per model settings
+                    for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cAi32', '_cV32', '_cV32t'):          # correction caches are per model settings
                         if hasattr(C, k):
                             delattr(C, k)
                 free()

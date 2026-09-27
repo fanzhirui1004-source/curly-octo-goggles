@@ -402,7 +402,13 @@ def _coarse_solve(C, r):
                 C._cL = C._cV = None                                            # float32 copies only (deployment memory)
             else:
                 C._cL32_keep = C._cL
+            C._cAi32 = None
+            if os.environ.get('OPL_COARSE_INV') == '1':                        # explicit float32 inverse from the float32
+                C._cAi32 = torch.cholesky_inverse(C._cL32)                      # factor: one GEMM per solve instead of two
+                C._cL32 = None                                                  # latency-bound triangular solves (same memory)
         r32 = r.to(torch.float32)
+        if getattr(C, '_cAi32', None) is not None:
+            return torch.sparse.mm(C._cV32, C._cAi32 @ torch.sparse.mm(C._cV32t, r32)).to(r.dtype)
         return torch.sparse.mm(C._cV32, torch.cholesky_solve(torch.sparse.mm(C._cV32t, r32), C._cL32)).to(r.dtype)
     return torch.sparse.mm(C._cV, torch.cholesky_solve(torch.sparse.mm(C._cV.t(), r), C._cL))
 
