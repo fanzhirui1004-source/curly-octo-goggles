@@ -205,6 +205,8 @@ def main(argv=None):
             ops = [(exact_op_host if a.exact_host else exact_op)(Cmap[c]) for c in order]
         X, st = solve(lat, ops, a.prec, a.tol, a.maxit, kpp)
         comp = (lat.F * X).sum(0).cpu().numpy()
+        if a.exact_dense:                                                       # the dense S are not needed for the fields:
+            ops = None; free()                                                  # release them before the per-cell factors
         S, E = [], []
         for i, c in enumerate(order):
             C = Cmap[c]; q = lat.gather(X, i)

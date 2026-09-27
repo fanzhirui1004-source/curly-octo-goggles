@@ -5,7 +5,10 @@ in. This builder defines the body from the discrete geometry of the moment integ
   active cells   the material volume of the cell (polyref_torch_fast.cell_moments, the same s / levels as the teacher,
                  so the same piecewise-linear psi that defines the element moments) is positive, or the frozen witness
                  search (3-D, continuous level set) finds positive-measure material in it; face-connected
-                 components other than the largest are dropped (recorded)
+                 components other than the largest are dropped (recorded); with --layout <lattice.json> the
+                 components are those of the whole lattice (cells of neighbouring lattice cells joined across the
+                 shared box face), so that material disconnected inside one cell but connected through a neighbour
+                 is kept on both sides and the box patches of neighbours match
   full cells     the frozen rule: no cell corner beyond the macro plane and both constraints strictly negative over
                  the cell by an interval enclosure of f (surfaces.f_range_box) and of the trilinear thickness (corner
                  min / max), margin 1e-10; ghost faces join active neighbours unless both are full (the frozen face rule)
@@ -16,7 +19,8 @@ in. This builder defines the body from the discrete geometry of the moment integ
                  plane that is a box face (FULL packets) has no cut patch
 Nodes, DOF map, face list and file formats are those of fast_prep4. With surface 'P' the output can be compared with
 the frozen bodies (gyr_prep_check.py): the rules above are the discrete counterparts of the frozen certified ones.
-Usage: gyr_prep.py <out_dir> <case> [<case> ...]"""
+Usage: gyr_prep.py <out_dir> <case> [<case> ...]
+       gyr_prep.py <out_dir> --layout <lattice.json>        (all cells of the layout, lattice components)"""
 import json, sys, time, os
 from itertools import product
 from fractions import Fraction
@@ -219,7 +223,9 @@ def box_plane(normal, offset):
     return normal is not None and sum(v != 0 for v in normal) == 1 and abs(offset) in (0.0, 1.0)
 
 
-def main(out, case, samples=65):
+def main(out, case, samples=65, select=None):
+    """select: None (largest face-connected component of this cell), 'active' (return the active cells, no files), or
+    a callable cells -> keep mask (lattice components)."""
     t0 = time.perf_counter()
     ctx = json.loads((packet_dir(case) / 'FRESH_CONTEXT.json').read_text())
     cs = ctx['case']; n = int(ctx['n'])
@@ -247,6 +253,12 @@ def main(out, case, samples=65):
     row = dict(case=case, surface=surface, n=n, candidates=int(len(cand)), positive=int((vol > 0).sum()),
                zero_volume_active=int(extra.sum()), witness_undecided_active=int(und_act),
                volume_fraction=float(vol.sum()))                          # moments carry the physical measure
+    if select == 'active':
+        return cells
+    if callable(select):
+        keep = select(cells)
+        row['dropped_components'] = 'lattice'; row['dropped_cells'] = int((~keep).sum())
+        cells = cells[keep]
     # face-connected components: keep the largest
     lookup = {tuple(map(int, x)): k for k, x in enumerate(cells)}
     ei, ej = [], []
@@ -258,7 +270,9 @@ def main(out, case, samples=65):
                 ei.append(k); ej.append(nb)
     G = sparse.coo_matrix((np.ones(len(ei)), (ei, ej)), shape=(len(cells), len(cells)))
     ncomp, lab = connected_components(G, directed=False)
-    if ncomp > 1:
+    if ncomp > 1 and callable(select):
+        row['cell_components'] = int(ncomp)                             # connected through neighbours only
+    elif ncomp > 1:
         big = np.bincount(lab).argmax()
         row['dropped_components'] = int(ncomp - 1); row['dropped_cells'] = int((lab != big).sum())
         cells = cells[lab == big]
@@ -345,10 +359,34 @@ def main(out, case, samples=65):
 
 
 if __name__ == '__main__':
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    args = [a for a in sys.argv[1:] if not a.startswith('--') and not a.endswith('.json')]
     smp = 65
     if '--samples' in sys.argv:
         smp = int(sys.argv[sys.argv.index('--samples') + 1]); args.remove(str(smp))
     out = args[0]
-    for case in args[1:]:
-        main(out, case, smp)
+    if '--layout' in sys.argv:
+        lay = json.loads(Path(sys.argv[sys.argv.index('--layout') + 1]).read_text())
+        pos = {c['case']: np.asarray(c['position'], dtype=np.int64) for c in lay['cells']}
+        act = {c: main(out, c, smp, select='active') for c in pos}
+        n = int(json.loads((packet_dir(next(iter(pos))) / 'FRESH_CONTEXT.json').read_text())['n'])
+        glob = np.concatenate([pos[c][None] * n + act[c] for c in pos])            # lattice cell coordinates
+        owner = np.concatenate([[c] * len(act[c]) for c in pos])
+        lookup = {tuple(map(int, x)): k for k, x in enumerate(glob)}
+        ei, ej = [], []
+        for k, x in enumerate(glob):
+            for axis in range(3):
+                y = x.copy(); y[axis] += 1
+                nb = lookup.get(tuple(map(int, y)))
+                if nb is not None:
+                    ei.append(k); ej.append(nb)
+        G = sparse.coo_matrix((np.ones(len(ei)), (ei, ej)), shape=(len(glob), len(glob)))
+        ncomp, lab = connected_components(G, directed=False)
+        big = np.bincount(lab).argmax()
+        keepset = {c: set(map(tuple, (glob[(owner == c) & (lab == big)] - pos[c] * n).tolist())) for c in pos}
+        print(json.dumps(dict(layout=lay['name'], lattice_components=int(ncomp), lattice_cells=int(len(glob)),
+                              dropped=int((lab != big).sum()))), flush=True)
+        for c in pos:
+            main(out, c, smp, select=lambda cells, c=c: np.asarray([tuple(map(int, x)) in keepset[c] for x in cells], dtype=bool))
+    else:
+        for case in args[1:]:
+            main(out, case, smp)
