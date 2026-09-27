@@ -717,3 +717,18 @@ These records support Sections 6.2, 6.4 and 6.5 of the main text. They are gener
 | H1 | 4.994 | 5.191 | 3.9% | 78.2 | 5.6e-09 | 4.0e-09 | 4.2e-08 | 1.6e-12 | 7.9e-05 / 0.81 | 1.23%, 124 | 0.186%, 33 |
 | M2 | 5.027 | 5.228 | 4.0% | 100 | 8.7e-09 | 3.4e-09 | 9.4e-08 | 2.4e-12 | 3.6e-05 / 0.66 | 1.15%, 294 | 0.156%, 163 |
 | M1 | 4.979 | 5.193 | 4.3% | 99.5 | 7.3e-09 | 4.4e-09 | 9.3e-08 | 1.4e-11 | 0.00012 / 0.58 | 1.26%, 866 | 0.179%, 426 |
+
+## Supplementary Note S8. Enriched partition-of-unity coarse spaces as a numerical observation
+
+The enriched spaces of Appendix F.1 (PU_9, PU_17 in Table ST04 and Figure S03B) are not used by any reported predictor. Their entries record what the archived solves produced and are not presented as verified Galerkin projections.
+
+The enriched generating functions have a specific coefficient redundancy. The trilinear nodal basis reproduces linear coordinates, so
+
+\[
+\sum_v N_v(x)=1,\qquad \sum_v N_v(x)x_v=x,
+\qquad \sum_v N_v(x)(x_j-x_{v,j})=0.
+\]
+
+Thus taking \(a_v=0\) and the same slope matrix \(B_v=B\) at every vertex produces the zero displacement field. Restriction to internal coordinates preserves this identity. Support and diagonal-energy screens do not certify independence of the surviving columns. The archived PU records give column counts and field-error statistics, but no rank-revealing representation or coarse-equation residual. Their values in Table ST04 are therefore retained as numerical observations of those solves, rather than verification of the full-rank projection assumptions. The reported Q1(17) result is the principal coarse-correction result.
+
+Coefficient redundancy does not preclude energy minimisation over the coarse range. Since \(A\succ0\), \(\ker(V^TAV)=\ker V\), and \(V^Tr_I\) is orthogonal to this kernel. An exactly solved compatible coarse equation therefore defines a unique displacement correction even when its coefficient vector is nonunique. Establishing that property for the archived numerical PU solve requires the corresponding representation and solve-accuracy evidence.

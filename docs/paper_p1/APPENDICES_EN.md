@@ -282,16 +282,7 @@ Coarse tensor-product shape functions are evaluated at the active background-nod
 
 Columns with an absolute interior-support sum at most \(10^{-14}\) are removed. In the fixed-weight CPU study, the symmetric internal matrix is formed from its stored upper triangle. The coarse matrix is explicitly computed as \(V^TAV\) and symmetrised. Columns whose diagonal energy is at most \(10^{-12}\) times the largest coarse diagonal are then removed. The resulting sparse matrix is factorised with PARDISO, or SuperLU when PARDISO is unavailable. This construction adds no explicit diagonal shift. The projection formulas in Eqs. (16)–(17) apply to linearly independent surviving coarse columns and the exact Galerkin action. Interpreting a recorded numerical solve through those formulas additionally requires verification of its solve accuracy.
 
-The enriched generating functions have a specific coefficient redundancy. The trilinear nodal basis reproduces linear coordinates, so
-
-\[
-\sum_v N_v(x)=1,\qquad \sum_v N_v(x)x_v=x,
-\qquad \sum_v N_v(x)(x_j-x_{v,j})=0.
-\]
-
-Thus taking \(a_v=0\) and the same slope matrix \(B_v=B\) at every vertex produces the zero displacement field. Restriction to internal coordinates preserves this identity. Support and diagonal-energy screens do not certify independence of the surviving columns. The archived PU records give column counts and field-error statistics, but no rank-revealing representation or coarse-equation residual. Their values in Table ST04 are retained as numerical observations of those solves, rather than verification of the full-rank projection assumptions. The reported Q1(17) result is the principal coarse-correction result.
-
-Coefficient redundancy does not preclude energy minimisation over the coarse range. Since \(A\succ0\), \(\ker(V^TAV)=\ker V\), and \(V^Tr_I\) is orthogonal to this kernel. An exactly solved compatible coarse equation therefore defines a unique displacement correction even when its coefficient vector is nonunique. Establishing that property for the archived numerical PU solve requires the corresponding representation and solve-accuracy evidence.
+The enriched generating functions are linearly dependent, and the surviving columns are not certified independent; the enriched entries of Table ST04 are therefore reported as numerical observations in Supplementary Note S8, and the \(Q_1(17)\) result is the principal coarse-correction result.
 
 For each input direction, the study evaluates the exact field and the uncorrected network field once. It compares the network alone, a smoothing tail, a coarse update, coarse followed by smoothing, smoothing on both sides of the coarse update, and a zero-interior initialization followed by the same complete cycle. Its energy ratios use a recomputed teacher energy for the supplied direction. The fields are converted to float64 before correction.
 
