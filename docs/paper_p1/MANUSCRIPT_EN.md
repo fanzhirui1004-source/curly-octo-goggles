@@ -377,9 +377,9 @@ The intermediate predictors locate this improvement. Under consistent tractions,
 
 Orientation supplies another source of variation. Under the tested nonidentity cube transformation, B's consistent-traction mean changes from 6.62% to 7.49%. Thus the transformed examples expose differences that are hidden by evaluation in a single orientation. The distributions in Table ST01 and Figure S02 motivate examining both the magnitude and the internal structure of the extension error.
 
-![Figure 5](figures/F02_validation.png)
+![Figure 5](figures/F02_validation_A3.png)
 
-**Figure 5. Geometry and loading dependence of directional energy error.** (a,b) Geometry-weighted means under nodal-force and spring-supported loading, with 20 geometries per cut-severity stratum. (c) Means under consistent tractions, single-face consistent tractions, stiffness-scaled supports and neighbour-induced retained displacements; counts indicate geometries with an available observation. Panels (a–c) use the original orientation. (d) Paired nodal-force results for B on all 80 geometries in the original and transformed orientations. Open circles denote uncut cells and filled triangles cut cells; the dashed line denotes equality. Each observation is a geometry's mean directional energy excess, \(q^T(\widehat S-S)q/(q^TSq)\).
+**Figure 5. Directional energy error of the learned substructures on 80 unseen geometries.** Each observation is a geometry's mean directional energy excess \(q^T(\widehat S-S)q/(q^TSq)\) over the validation directions of a loading class. (a) Consistent tractions, 20 geometries per cut stratum: markers give the mean over geometries and bars the range from the 10th percentile to the maximum. (b) Geometry means of B and of the principal predictor A3 under consistent tractions; the dotted line denotes equality. (c) Neighbour-induced retained displacements, spring-supported faces, single-face consistent tractions and equal nodal forces, all geometries; the nodal-force class is a stress test whose exact energy resides largely in the ghost penalty. Predictors as in Table 2.
 
 ### 6.4. Components of the extension error
 
