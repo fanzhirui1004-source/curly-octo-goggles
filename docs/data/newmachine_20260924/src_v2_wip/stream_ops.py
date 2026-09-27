@@ -17,6 +17,7 @@ import contextlib
 import torch
 
 MIN_BYTES = 1 << 20
+REGISTER = True                                                         # page-lock the host buffer (async copies)
 dev = torch.device('cuda')
 _STREAM = [None]
 _OWNED = {}                                                             # (id(container), key) -> StreamedOp
@@ -100,20 +101,36 @@ class StreamedOp:
         handles = [h for h in handles if not isinstance(h[0], tuple)]
         self.skipped_owned = sum((id(o), k) in _OWNED for o, k, _ in handles)
         handles = [h for h in handles if (id(h[0]), h[1]) not in _OWNED]
-        self.pinned, slots, byid = {}, [], {}
+        src, slots, byid = {}, [], {}
         for o, k, t in handles:
             if id(t) not in byid:
                 keys = []
                 for x in _parts(t):
                     key = (x.data_ptr(), x.dtype, tuple(x.shape), tuple(x.stride()))
-                    if key not in self.pinned:
-                        self.pinned[key] = x.cpu().pin_memory()
+                    src.setdefault(key, x)
                     keys.append(key)
                 byid[id(t)] = _Slot(t, keys)
             slots.append((o, k, byid[id(t)]))
             _OWNED[(id(o), k)] = self
         self.slots = slots
-        self.bytes = sum(x.numel() * x.element_size() for x in self.pinned.values())
+        # one exact-size host buffer per op, page-locked by cudaHostRegister (the caching pinned allocator rounds every
+        # block up to a power of two); every part is a 512-byte aligned view of it; one copy per prefetch
+        self.layout, off = {}, 0
+        for key, x in src.items():
+            nb = x.numel() * x.element_size()
+            self.layout[key] = (off, nb, x.dtype, tuple(x.shape))
+            off += (nb + 511) // 512 * 512
+        self.total = max(off, 512)
+        self.buf = torch.empty(self.total, dtype=torch.uint8)
+        for key, x in src.items():
+            self._view(self.buf, key).copy_(x.contiguous())
+        self.registered = False
+        if self.total and REGISTER:
+            err = torch.cuda.cudart().cudaHostRegister(self.buf.data_ptr(), self.total, 0)
+            self.registered = int(err) == 0
+        self.pinned = {key: self._view(self.buf, key) for key in src}
+        del src
+        self.bytes = sum(v[1] for v in self.layout.values())
         self.n_tensors = len(byid)
         self.nxt, self.loaded, self.ev, self.depth = None, None, None, 0
         self.copies = 0
@@ -121,27 +138,43 @@ class StreamedOp:
         self._park()
         torch.cuda.empty_cache()
 
+    def _unregister(self):
+        if getattr(self, 'registered', False) and getattr(self, 'buf', None) is not None:
+            torch.cuda.cudart().cudaHostUnregister(self.buf.data_ptr())
+        self.registered = False
+
+    def __del__(self):
+        try:
+            self._unregister()
+        except Exception:
+            pass
+
+    def _view(self, buf, key):
+        o, nb, dty, shp = self.layout[key]
+        return buf[o:o + nb].view(dty).view(shp)
+
     def _park(self):
         for o, k, s in self.slots:
             _set(o, k, s)
-        self.loaded = None
+        self.loaded = self.dbuf = None
         _LIVE.discard(self)
 
     def prefetch(self, stream):
         if self.loaded is not None:
             return
         with torch.cuda.stream(stream):
-            p = {k: x.to(dev, non_blocking=True) for k, x in self.pinned.items()}
+            dbuf = torch.empty(self.total, dtype=torch.uint8, device=dev)
+            dbuf.copy_(self.buf, non_blocking=self.registered)
+            p = {k: self._view(dbuf, k) for k in self.layout}
             ev = torch.cuda.Event(); ev.record(stream)
-        self.loaded, self.ev = p, ev
+        self.loaded, self.ev, self.dbuf = p, ev, dbuf
         self.copies += 1
         _LIVE.add(self)
 
     def _bind(self):
         cur = torch.cuda.current_stream()
         cur.wait_event(self.ev)
-        for x in self.loaded.values():
-            x.record_stream(cur)
+        self.dbuf.record_stream(cur)
         built = {}
         for o, k, s in self.slots:
             if id(s) not in built:
@@ -192,9 +225,10 @@ class StreamedOp:
                 built[id(s)] = s.build(host)
             _set(o, k, built[id(s)])
             _OWNED.pop((id(o), k), None)
-        self.loaded = None
+        self.loaded = self.dbuf = None
         _LIVE.discard(self)
-        self.pinned, self.slots = {}, []
+        self._unregister()
+        self.pinned, self.slots, self.buf = {}, [], None
         self.nxt = self.op = self.C = None                              # the prefetch ring must not keep released ops alive
 
 

@@ -75,6 +75,7 @@ def main(argv=None):
     ap.add_argument('--resident-gb', type=float, default=0.0,
                     help='keep cells on the device (not streamed) while the allocated device memory stays below this')
     ap.add_argument('--sparse-coarse', action='store_true', help='OPL_COARSE_SPARSE=1: sparse coarse space (lat_precond.SparseCoarse)')
+    ap.add_argument('--ad-batch', type=int, default=512, help='element rows per reverse pass (moments_ad)')
     ap.add_argument('--limit', type=int, default=0, help='first N cells of the layout only (smoke tests)')
     a = ap.parse_args(argv)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
@@ -205,7 +206,7 @@ def main(argv=None):
                     g = C.energy_density(u)
                     if a.sens_obj == 'sum':
                         g = g.sum(2, keepdim=True)                                 # linear in g: d(sum_k c_k)/dtau
-                    s_ad = MA.cell_sens(C, g).cpu(); del g
+                    s_ad = MA.cell_sens(C, g, batch=a.ad_batch).cpu(); del g
                     add('sens_ad', T() - t1)
                     S.setdefault('ad', []).append(s_ad)
                 del u

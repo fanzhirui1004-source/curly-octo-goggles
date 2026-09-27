@@ -178,6 +178,67 @@ def _chol_jitter(A):
     raise ValueError('COARSE_CHOLESKY_FAILED')
 
 
+def _gather_blocks(crow, col, val, R):
+    """Rows R (nb x L, long) of a CSR matrix (crow, col, val) as dense blocks: Vb (nb x L x w) and the block columns
+    cols (nb x w, padded with column 0 and zero entries), w = the largest number of distinct columns in a block."""
+    nbk, L = R.shape
+    r = R.reshape(-1)
+    s, e = crow[r], crow[r + 1]
+    cnt = e - s
+    tot = int(cnt.sum())
+    rid = torch.repeat_interleave(torch.arange(len(r), device=R.device), cnt)
+    idx = torch.arange(tot, device=R.device) - torch.repeat_interleave(torch.cumsum(cnt, 0) - cnt, cnt) \
+        + torch.repeat_interleave(s, cnt)
+    blk, lr, cc, vv = rid // L, rid % L, col[idx], val[idx]
+    nc = int(col.max()) + 1 if len(col) else 1
+    key, inv = torch.unique(blk * nc + cc, return_inverse=True)
+    kb = key // nc
+    first = torch.searchsorted(key, kb * nc)                                   # rank of a column within its block
+    rank = torch.arange(len(key), device=R.device) - first
+    w = int(rank.max()) + 1 if len(rank) else 1
+    cols = torch.zeros((nbk, w), dtype=torch.long, device=R.device)
+    cols[kb, rank] = key % nc
+    Vb = torch.zeros((nbk, L, w), dtype=val.dtype, device=R.device)
+    Vb[blk, lr, rank[inv]] = vv
+    return Vb, cols
+
+
+def coarse_galerkin_elem(C, V, chunk=2048):
+    """A_c = V^T K_II V (V: ni x nc, scipy) summed over elements (K_e = M_e T, float64) and ghost faces (gamma B^T B,
+    teacher.GhostFaces): the same matrix as the probing of coarse_setup, reassociated (OPL_COARSE_ELEM=1, deployment cells)."""
+    dvc = C.dK.device
+    Vc = V.tocsr()
+    nc = V.shape[1]
+    # prolongation on all DOFs (port rows empty): CSR over nb rows
+    cnt = np.zeros(C.nb + 1, np.int64)
+    rI = C.I.cpu().numpy()
+    cnt[rI + 1] = np.diff(Vc.indptr)
+    crow = torch.as_tensor(np.cumsum(cnt), device=dvc)
+    col = torch.as_tensor(Vc.indices.astype(np.int64), device=dvc)
+    val = torch.as_tensor(Vc.data, dtype=dt, device=dvc)
+    A = torch.zeros((nc, nc), dtype=dt, device=dvc)
+
+    def acc(Vb, cols, KV):
+        Ab = Vb.transpose(1, 2) @ KV                                             # blocks x w x w
+        w = cols.shape[1]
+        A.index_put_((cols[:, :, None].expand(-1, w, w).reshape(-1), cols[:, None, :].expand(-1, w, w).reshape(-1)),
+                     Ab.reshape(-1), accumulate=True)
+    Tf = C.Tm.reshape(125, 81 * 81)
+    for lo in range(0, len(C.M), chunk):
+        Vb, cols = _gather_blocks(crow, col, val, C.dofs[lo:lo + chunk])
+        Ke = (C.M[lo:lo + chunk] @ Tf).reshape(-1, 81, 81)
+        acc(Vb, cols, torch.bmm(Ke, Vb))
+        del Vb, cols, Ke
+    GF = C.GF64
+    for idx, B in zip(GF.idx, GF.B):
+        BtB = C.gamma * (B.t() @ B)
+        for lo in range(0, len(idx), chunk):
+            Vb, cols = _gather_blocks(crow, col, val, idx[lo:lo + chunk].long())
+            acc(Vb, cols, BtB @ Vb)
+            del Vb, cols
+    return A
+
+
 def coarse_setup(C, space, reach=4, chunk=128):
     """Galerkin coarse operator A_c = V^T K_II V on C's device by probing: columns are coloured by vertex coordinates mod
     s = 2R + 1 (R = 2 + ceil(reach / h), h = node spacings per coarse vertex spacing, reach = K's stencil radius in node
@@ -193,6 +254,11 @@ def coarse_setup(C, space, reach=4, chunk=128):
     dvc = C.dK.device
     V, vc, slot = coarse_prolong(C, space, with_meta=True)
     nc = V.shape[1]
+    if os.environ.get('OPL_COARSE_ELEM') == '1' and getattr(C, 'GF64', None) is not None:
+        Vc = V.tocoo()
+        Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
+        A = coarse_galerkin_elem(C, V)
+        return _coarse_finish(C, space, A, Vt, dvc, t0)
     h = (2 * C.n) / ne
     R = 2 + int(math.ceil(reach / h))
     s = 2 * R + 1
@@ -220,6 +286,11 @@ def coarse_setup(C, space, reach=4, chunk=128):
         A[r0:r1] = torch.where(near, Y[r0:r1][:, cix], torch.zeros((), dtype=dt, device=dvc))
         del near
     del Y
+    return _coarse_finish(C, space, A, Vt, dvc, t0)
+
+
+def _coarse_finish(C, space, A, Vt, dvc, t0):
+    """Jacobi scaling, Cholesky with jitter, scaled prolongation; stores the coarse caches on C."""
     d = torch.sqrt(torch.diagonal(A).clamp_min(1e-300))                          # symmetric up to rounding; Cholesky reads
     A.div_(d[:, None]).div_(d[None, :])                                           # the lower triangle only
     L, shift = _chol_jitter(A)
@@ -227,7 +298,7 @@ def coarse_setup(C, space, reach=4, chunk=128):
     if dvc.type == 'cuda':
         torch.cuda.empty_cache()
     dcol = (1 / d)[Vt.indices()[1]]
-    C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, V.shape, dtype=dt, device=dvc).coalesce()
+    C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, Vt.shape, dtype=dt, device=dvc).coalesce()
     C._cL = L
     C._c_space, C._c_shift, C._c_seconds = space, shift, time.perf_counter() - t0
 
