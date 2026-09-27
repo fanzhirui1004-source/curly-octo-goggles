@@ -33,9 +33,11 @@ Sections 2 and 3 define the discrete substructures and their learned displacemen
 We consider three-dimensional thin-walled TPMS cells in the reference box \(\mathcal B=[0,1]^3\). Their material domain is defined by a P-type trigonometric level-set field, a spatially varying band parameter, and an optional planar cut:
 
 \[
-\phi(x)=\sum_{a=1}^{3}\cos(2\pi x_a),\qquad
-\tau(x)=\sum_{c\in\{0,1\}^{3}}N_c^{Q_1}(x)\tau_c,\qquad
-\Omega(\eta)=\{x\in\mathcal B:|\phi(x)|\le\tau(x),\ \boldsymbol n\cdot x\le b_{\rm cut}\}.
+\begin{aligned}
+&\phi(x)=\sum_{a=1}^{3}\cos(2\pi x_a),\qquad
+\tau(x)=\sum_{c\in\{0,1\}^{3}}N_c^{Q_1}(x)\tau_c,\\
+&\Omega(\eta)=\{x\in\mathcal B:|\phi(x)|\le\tau(x),\ \boldsymbol n\cdot x\le b_{\rm cut}\}.
+\end{aligned}
 \tag{1}
 \]
 
@@ -54,10 +56,12 @@ The retained coordinates are chosen from the kinematics of cell coupling and the
 Let \(I\) denote the remaining internal degrees of freedom, \(p=|P|\), \(i=|I|\), and \(n_a=p+i\). The selectors \(J_P\) and \(J_I\) extract the two sets from the active displacement vector, and \(q=J_Pu\) is the retained displacement. Boundary loads act through \(q\); internal body loads are zero. In the displayed \((P,I)\) ordering, static condensation gives
 
 \[
-K=\begin{bmatrix}K_{PP}&K_{PI}\\K_{IP}&A\end{bmatrix},\qquad
+\begin{aligned}
+&K=\begin{bmatrix}K_{PP}&K_{PI}\\K_{IP}&A\end{bmatrix},\qquad
 A=K_{II},\qquad
-E=\begin{bmatrix}I_p\\-A^{-1}K_{IP}\end{bmatrix},\qquad
-S=K_{PP}-K_{PI}A^{-1}K_{IP}=E^TKE.
+E=\begin{bmatrix}I_p\\-A^{-1}K_{IP}\end{bmatrix},\\
+&S=K_{PP}-K_{PI}A^{-1}K_{IP}=E^TKE.
+\end{aligned}
 \tag{2}
 \]
 

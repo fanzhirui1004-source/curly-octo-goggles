@@ -602,7 +602,6 @@ For conforming cell fields, use the energy form \(a(v,v)=\sum_m v_m^TK_mv_m\). S
 \boxed{C-\widehat C=a(\widehat u-u,\widehat u-u)
 =\|\widehat U-U\|_{\mathbb K}^2
 +\sum_m\|H_m\widehat q_m\|_{A_m}^2.}
-
 \]
 
 The second equality follows from
@@ -631,7 +630,6 @@ For zero-energy cells with exact rigid reproduction, the corresponding numerator
 =\frac{z^TT(I+T)^{-1}z}{z^Tz},\qquad
 \boxed{\frac{\beta}{1+\rho}\le\frac{C-\widehat C}{C}
 \le\frac{\beta}{1+\beta}\le\beta.}
-
 \]
 
 The lower bound uses \(\lambda/(1+\lambda)\ge\lambda/(1+\rho)\). For the sharper upper bound, insert \(V=\alpha U\) in the maximum principle
@@ -656,7 +654,6 @@ C-\widehat C_t&=t^2U^T\mathbb D_0U+O(t^4),\\
 -t^2E_mB_m\mathbb K^{-1}\mathbb D_0U+O(t^3).
 \end{aligned}
 \tag{J.2}
-
 \]
 
 Thus the retained displacement and compliance errors are \(O(t^2)\), the local full-field error is generically \(O(t)\), and the retained-error contribution in Eq. (11) is \(O(t^4)\). If \(\mathbb D_0U=0\), then \(H_{0,m}q_m=0\) for every affected cell, and this load is reproduced exactly for all \(t\). Uniform estimates across a family of geometries require uniform coercivity and bounded maps; fixed-geometry big-O constants do not supply those estimates automatically.
@@ -683,7 +680,6 @@ Cauchy–Schwarz and the quadratic-form operator bound give
 \le2L\sqrt{\mathcal E}+Q\mathcal E,
 \qquad e_s\le\frac{2L\sqrt{q^TSq}}{\|\boldsymbol s\|_2}\sqrt\varepsilon
 +\frac{Qq^TSq}{\|\boldsymbol s\|_2}\varepsilon.}
-
 \tag{J.3}
 \]
 
@@ -692,10 +688,12 @@ All eight components are included, and the denominator is the norm of the exact 
 For a re-equilibrated assembly, the quadratic expansion remains exact with \(d_m=\widehat u_m-u_m\), but \(d_m\) now includes a changed retained trace. Eq. (J.2) gives, componentwise,
 
 \[
+\begin{aligned}
 \widetilde s_{m,c}(t)-s_{m,c}
-=-2t(J_I^TH_{0,m}q_m)^TD_cu_m
-+t^2\{2(E_mB_m\mathbb K^{-1}\mathbb D_0U)^TD_cu_m
--(J_I^TH_{0,m}q_m)^TD_c(J_I^TH_{0,m}q_m)\}+O(t^3).
+={}&-2t(J_I^TH_{0,m}q_m)^TD_cu_m\\
+&+t^2\{2(E_mB_m\mathbb K^{-1}\mathbb D_0U)^TD_cu_m\\
+&\qquad-(J_I^TH_{0,m}q_m)^TD_c(J_I^TH_{0,m}q_m)\}+O(t^3).
+\end{aligned}
 \]
 
 The leading term is the same as the fixed-trace term. The solution-only replacement is \(O(t^2)\); its coefficient can be large on a soft assembly or relative to a small local reference. If only one cell has a learned extension, an exact neighbouring cell has no \(O(t)\) reconstruction term, although its solved trace can change at order \(t^2\).
@@ -738,7 +736,6 @@ Equivalently, differentiate the variational stiffness error:
 \[
 \boxed{(\widehat S-S)_{,c}
 =H_{,c}^TAH+H^TA_{,c}H+H^TAH_{,c}.}
-
 \tag{J.5}
 \]
 
@@ -784,7 +781,6 @@ Let \(\bar U\) be an approximate solution of the same fixed variational operator
 =a(\bar u-u,\bar u-u)+\bar U^T\rho,
 \quad
 J(\bar U)=\bar C+\bar U^T\rho\le\widehat C\le C.}
-
 \]
 
 The error of the corrected functional is \(\widehat C-J(\bar U)=\rho^T\widehat{\mathbb K}^{-1}\rho\), and \(\widehat C-\bar C=\widehat U^T\rho\). Thus the work \(f^T\bar U\) can violate the variational compliance ordering if the algebraic residual is appreciable, while the concave work functional retains a quadratic residual error. A Euclidean residual bound converts through
