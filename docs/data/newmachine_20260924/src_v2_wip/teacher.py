@@ -151,9 +151,12 @@ class _Kfp32:
     def __init__(self, C, ke_moments=False, ghost_faces=False, gf_like=None):
         f32 = torch.float32
         self.C, self.ke_moments, self.gf = C, ke_moments, None
-        self._ke_tmp, self._hold = None, 0
+        self._ke_tmp, self._kp_tmp, self._hold = None, None, 0
+        self.symv = ke_moments and os.environ.get('OPL_KE_SYMV') == '1'      # packed upper Ke, fused Triton product
         if ke_moments:
             self.Ke, self.M32, self.Tf32 = None, C.M.to(f32), C.Tm.reshape(125, 81 * 81).to(f32)
+            if self.symv:
+                self.Tup32 = C.Tm_up.reshape(125, -1).to(f32)
         else:
             self.Ke = C.Ke.to(f32)
         if ghost_faces:
@@ -178,6 +181,15 @@ class _Kfp32:
         else:
             y = self.G @ x32
         ch = C._lean_chunk
+        if self.symv:
+            import ke_symv as KS
+            y, x32 = y.contiguous(), x32.contiguous()
+            if self._kp_tmp is not None:
+                KS.symv_(y, self._kp_tmp, C.dofs, x32)
+            else:
+                for lo in range(0, len(C.dofs), ch):
+                    KS.symv_(y, self.M32[lo:lo + ch] @ self.Tup32, C.dofs[lo:lo + ch], x32)
+            return y.to(x.dtype)
         Xe = FI.rows(x32, C.dofs) if FI.ON else None                           # all element vectors at once
         for j, lo in enumerate(range(0, len(C.dofs), ch)):
             de = C.dofs[lo:lo + ch]
@@ -199,7 +211,12 @@ class _Kfp32:
 
         @contextlib.contextmanager
         def ctx():
-            if me.ke_moments and FI.ON and me._hold == 0:
+            if me.symv and me._hold == 0:
+                ch = me.C._lean_chunk
+                me._kp_tmp = torch.empty((len(me.M32), me.Tup32.shape[1]), dtype=me.M32.dtype, device=me.M32.device)
+                for lo in range(0, len(me.M32), ch):
+                    torch.matmul(me.M32[lo:lo + ch], me.Tup32, out=me._kp_tmp[lo:lo + ch])
+            elif me.ke_moments and FI.ON and me._hold == 0:
                 ch = me.C._lean_chunk
                 me._ke_tmp = [(me.M32[lo:lo + ch] @ me.Tf32).reshape(-1, 81, 81) for lo in range(0, len(me.M32), ch)]
             me._hold += 1
@@ -208,7 +225,7 @@ class _Kfp32:
             finally:
                 me._hold -= 1
                 if me._hold == 0:
-                    me._ke_tmp = None
+                    me._ke_tmp = me._kp_tmp = None
         return ctx()
 
 
