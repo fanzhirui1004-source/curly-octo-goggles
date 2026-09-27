@@ -19,7 +19,7 @@ for subset, keep in (('all 80', lambda c: True), ('60 non-selection', lambda c: 
                 row.append(f'{P(np.mean(v))} / {P(np.max(v))} (n={len(v)})' if v else '—')
             out.append('| ' + ' | '.join(row) + ' |')
 # 2. gates
-lab = {'2000_full': 'U1', '2001_full': 'U2', '2003_d1_v1': 'M1', '2005_d1_v0': 'H1', '2006_d0_v1': 'M2', '2010_d0_v0': 'H2', '2002_d0_v0': '2002', '2004_d0_v2': '2004'}
+lab = {'2000_full': 'U1', '2001_full': 'U2', '2003_d1_v1': 'M1', '2005_d1_v0': 'H1', '2006_d0_v1': 'M2', '2010_d0_v0': 'H2', '2002_d0_v0': 'H3', '2004_d0_v2': 'L1'}
 out.append('\n### Two-cell continuous-neighbour gates: max compliance / max sensitivity error (%) over the six face loads\n\n| cell/config | C | S8 | A3 |\n|---|---|---|---|')
 def g(f):
     try:

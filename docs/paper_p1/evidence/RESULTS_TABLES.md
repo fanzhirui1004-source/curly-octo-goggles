@@ -153,10 +153,10 @@
 | M2/y | — | — | 0.00472 / 0.154 PASS |
 | H2/x | — | — | — |
 | H2/y | nan / 7.5e+08 fail | nan / 4.96e+09 fail | nan / 2.12e+12 fail |
-| 2002/x | — | — | 0.0064 / 0.124 PASS |
-| 2002/y | — | — | 0.0103 / 0.196 PASS |
-| 2004/x | — | — | — |
-| 2004/y | — | — | — |
+| H3/x | — | — | 0.0064 / 0.124 PASS |
+| H3/y | — | — | 0.0103 / 0.196 PASS |
+| L1/x | 0.174 / 1.89 PASS | — | 0.00202 / 0.101 PASS |
+| L1/y | 0.182 / 1.65 PASS | — | 0.00197 / 0.0779 PASS |
 
 ### Local checks (fixed retained displacement, 32 val directions): mean energy excess (%)
 
