@@ -7,7 +7,7 @@ def strat(c):
 out = []
 P = lambda x: f'{100*x:.3g}'
 # 1. population
-models = [('B (v2L1)', 'newval_v2L1.json'), ('C (A0_ctrl)', 'newval_A0_ctrl.json'), ('S8 (A2_tail8)', 'newval_A2_tail8.json'), ('A3', 'newval_A3_2grid.json')]
+models = [('B (v2L1)', 'newval2_v2L1.json'), ('C (A0_ctrl)', 'newval2_A0_ctrl.json'), ('S8 (A2_tail8)', 'newval2_A2_tail8.json'), ('A2b', 'newval2_A2b_tail8.json'), ('B+W (B2grid)', 'newval2_B2grid.json'), ('A3', 'newval2_A3_2grid.json')]
 for subset, keep in (('all 80', lambda c: True), ('60 non-selection', lambda c: not meta[c]['sel'])):
     out.append(f'\n### Population, directional energy excess (%), mean / max over geometries — {subset}\n')
     for cls in ('force_c', 'glued', 'support_k', 'face_c', 'force', 'support'):
@@ -30,7 +30,7 @@ for k, l in lab.items():
     for conf in 'xy':
         out.append(f"| {l}/{conf} | {g(f'gate_A0_ctrl_fresh_val_{k}_{conf}.json')} | {g(f'gate_A2_tail8_fresh_val_{k}_{conf}.json')} | {g(f'gate_A3_2grid_fresh_val_{k}_{conf}.json')} |")
 # 3. local checks
-pc = json.load(open('p1_checks_cpu.json'))['per_case']
+pc = dict(json.load(open('p1_checks_cpu.json'))['per_case'], **json.load(open('p1_checks_u2.json'))['per_case'])
 out.append('\n### Local checks (fixed retained displacement, 32 val directions): mean energy excess (%)\n\n| cell | class | B | A3 | B+8/Q1/8 | harmonic+8/Q1/8 | zero+8/Q1/8 | B+32/Q1/32 | harmonic+32 | zero+32 |\n|---|---|---|---|---|---|---|---|---|---|')
 inv = {('fresh_val_' + k): v for k, v in lab.items()}
 for c, r in pc.items():
