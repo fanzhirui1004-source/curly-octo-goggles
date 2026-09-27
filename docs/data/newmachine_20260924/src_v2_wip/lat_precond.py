@@ -504,7 +504,8 @@ class Factory:
             st = dict(f.setup)
             return f, dict(st, total_s=sum(st.values())), dict(fine=parts[0])
         comb, fname, cname = parts
-        f, c = self.fine(fname), self.coarse_space(cname)
+        c = self.coarse_space(cname)                                        # coarse first: its setup temporaries
+        f = self.fine(fname)                                                # are freed before the K_PP factor
         pc = dict(add=Additive, bnn=BNN, defl=Deflated)[comb](c, f)
         st = dict(f.setup); st.update({'coarse_' + k: v for k, v in c.setup.items()})
         return pc, dict(st, total_s=sum(st.values())), dict(fine=fname, coarse=dict(c.desc))

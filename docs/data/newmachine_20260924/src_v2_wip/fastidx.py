@@ -7,12 +7,15 @@ import os
 import torch
 
 ON = os.environ.get('OPL_FASTIDX') == '1'
+CACHE_MAX_COLS = 8
 
 
 def rows(x, idx):
     if not ON or x.dim() != 2 or x.shape[1] == 1 or not x.is_contiguous():
         return x[idx]
     b = x.shape[1]
+    if b > CACHE_MAX_COLS:                                              # wide blocks: no cached index (memory)
+        return torch.take(x, (idx.reshape(-1, 1).long() * b + torch.arange(b, device=idx.device)).reshape(-1)).view(*idx.shape, b)
     cache = getattr(idx, '_fi_flat', None)
     flat = None if cache is None else cache.get(b)
     if flat is None:

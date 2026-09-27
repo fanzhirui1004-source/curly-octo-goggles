@@ -89,11 +89,14 @@ def main(argv=None):
                     help='N > 0: build the preconditioner (K_PP factor, coarse A Z) every N design iterations and reuse it in '
                          'between (an SPD preconditioner of the previous design; the PCG tolerance on the current system is unchanged)')
     ap.add_argument('--coarse-tpl', action='store_true', help='OPL_COARSE_ELEM=1: cell coarse Galerkin matrix by element/face templates (trainlib.coarse_galerkin_tpl)')
+    ap.add_argument('--tet-triton', action='store_true', help='OPL_TET_TRITON=1: fused per-tetrahedron moment kernels (forward and written-out VJP)')
     ap.add_argument('--limit', type=int, default=0, help='first N cells of the layout only (smoke tests)')
     a = ap.parse_args(argv)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
     if a.coarse_tpl:
         os.environ['OPL_COARSE_ELEM'] = '1'
+    if a.tet_triton:
+        os.environ['OPL_TET_TRITON'] = '1'
     if a.sparse_coarse:
         os.environ['OPL_COARSE_SPARSE'] = '1'
     FN.FUSED = True

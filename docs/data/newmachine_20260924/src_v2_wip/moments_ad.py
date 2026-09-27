@@ -16,6 +16,7 @@ Design sensitivities: for an energy density g[e, m, k] = u_e^T Tm_m u_e (fixed f
 is one reverse pass per load (or one pass for a weighted sum of loads, which is what a design objective needs),
 instead of 16 moment evaluations for the full dM/dtau.
 """
+import os
 from itertools import product
 import numpy as np
 import torch
@@ -43,16 +44,28 @@ class _Rule:
         return cls.cache[key]
 
 
+def _det3(E_):
+    """det of (T, 3, 3) rows e1, e2, e3: batched LU (torch.linalg.det) or, with OPL_TET_TRITON=1, the triple product
+    e1 . (e2 x e3) (same value up to rounding; no batched LU in the forward or the backward)."""
+    if os.environ.get('OPL_TET_TRITON') == '1':
+        e1, e2, e3 = E_[:, 0], E_[:, 1], E_[:, 2]
+        return (e1 * torch.linalg.cross(e2, e3)).sum(-1)
+    return torch.linalg.det(E_)
+
+
 def _jac(tets):
     E_ = torch.stack([tets[:, 1] - tets[:, 0], tets[:, 2] - tets[:, 0], tets[:, 3] - tets[:, 0]], 1)
-    return torch.linalg.det(E_).abs()
+    return _det3(E_).abs()
 
 
 def _quad(tets, tref, tw):
     """125 moments of each tetrahedron (tensor-product form, as polyref_torch_fast). Checkpointed under autograd: only
     the vertices are kept for the backward pass, the quadrature intermediates are recomputed."""
+    if os.environ.get('OPL_TET_TRITON') == '1':                               # fused kernels, written-out VJP
+        import fast_tet2 as FT2
+        return FT2.TetMoments2.apply(tets, tref, tw)
     E_ = torch.stack([tets[:, 1] - tets[:, 0], tets[:, 2] - tets[:, 0], tets[:, 3] - tets[:, 0]], 1)
-    J = torch.linalg.det(E_).abs()
+    J = _det3(E_).abs()
     P = tets[:, None, 0, :] + torch.einsum('qk,tkd->tqd', tref, E_)
     P2 = P * P
     pw = torch.stack([torch.ones_like(P), P, P2, P2 * P, P2 * P2], -1)
@@ -87,7 +100,10 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
             phys = (cb[own][:, None, :] + (xi + 1) / 2) / n
             f = torch.cos(2 * torch.pi * phys).sum(-1)
             w8 = torch.where(cmask, phys[None], 1 - phys[None]).prod(-1)          # 8(corner) x C x 8
-            tau = torch.einsum('Cc,cCk->Ck', tb[own], w8)
+            if os.environ.get('OPL_TET_TRITON') == '1':               # elementwise (no batched 1 x 8 @ 8 x 8 gemv)
+                tau = (tb[own][:, :, None] * w8.permute(1, 0, 2)).sum(1)
+            else:
+                tau = torch.einsum('Cc,cCk->Ck', tb[own], w8)
             p3 = ob[own][:, None] - (phys * nb_[own][:, None, :]).sum(-1)
             return torch.stack([tau - f, tau + f, p3], -1)
 
@@ -122,7 +138,7 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
                 with torch.no_grad():
                     keep = _jac(tets) > 0
                 tets, town = tets[keep], town[keep]
-                ck = CHECKPOINT and torch.is_grad_enabled() and tets.requires_grad
+                ck = CHECKPOINT and torch.is_grad_enabled() and tets.requires_grad and os.environ.get('OPL_TET_TRITON') != '1'
                 for lo_t in range(0, len(tets), 65536):
                     tc = tets[lo_t:lo_t + 65536]
                     mom = torch.utils.checkpoint.checkpoint(_quad, tc, tref, tw, use_reentrant=False) if ck else _quad(tc, tref, tw)
