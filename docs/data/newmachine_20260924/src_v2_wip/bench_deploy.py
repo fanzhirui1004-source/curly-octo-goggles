@@ -58,13 +58,16 @@ def free_gb():
 def netdata(C, body, d):
     """prep_data.netdata without its sys.argv dependence (same arrays), plus PORTS.json: what trainlib.Geo reads."""
     N = len(C.nodes)
-    diag3 = torch.zeros((N, 3, 3), dtype=dt, device=dev)
-    ru, cu = C.ru.long(), C.cu.long()
-    same = (ru // 3) == (cu // 3)
-    r, c, v = ru[same], cu[same], C.vals[same]
-    diag3.index_put_((r // 3, r % 3, c % 3), v, accumulate=True)
-    off = r != c
-    diag3.index_put_((c[off] // 3, c[off] % 3, r[off] % 3), v[off], accumulate=True)
+    if getattr(C, '_scratch', False):                                   # teacher.Cell.assemble_deploy: summed from blocks
+        diag3 = C.diag3
+    else:
+        diag3 = torch.zeros((N, 3, 3), dtype=dt, device=dev)
+        ru, cu = C.ru.long(), C.cu.long()
+        same = (ru // 3) == (cu // 3)
+        r, c, v = ru[same], cu[same], C.vals[same]
+        diag3.index_put_((r // 3, r % 3, c % 3), v, accumulate=True)
+        off = r != c
+        diag3.index_put_((c[off] // 3, c[off] % 3, r[off] % 3), v[off], accumulate=True)
     nrm = diag3.reshape(N, 9).norm(dim=1)
     weak = (nrm < 0.01 * nrm.median()).cpu().numpy()
     d.mkdir(parents=True, exist_ok=True)

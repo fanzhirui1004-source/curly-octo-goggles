@@ -97,14 +97,61 @@ class SPDSolver:
         self.solver.free()
 
 
+class GhostFaces:
+    """Matrix-free unit ghost-penalty product G x = sum_f P_f^T B_d(f)^T B_d(f) P_f x from the face list (GP_FACES.npy) and
+    the three fixed face templates B_d (GP_TEMPLATES_n<n>.npz, 54 x 135): the same sum as box_encode.ghost_faces_gpu,
+    which assembles it (reassociated; no stored matrix). Face DOFs int32, faces grouped by template."""
+
+    def __init__(self, C, dtype, chunk=2048, like=None):
+        self.chunk, self.dtype = chunk, dtype
+        if like is not None:                                                    # same faces, other precision
+            self.idx, self.faces = like.idx, like.faces
+            self.B = [B.to(dtype) for B in like.B]
+            return
+        d = Path(C._body_dir) / C.case
+        faces = np.load(d / 'GP_FACES.npy').astype(np.int64)
+        tpl = np.load(Path(C._body_dir) / f'GP_TEMPLATES_n{C.n}.npz')
+        offs = tpl['offsets'].astype(np.int64)
+        g = 2 * C.cells[faces[:, 0]][:, None, :] + offs[faces[:, 2]]
+        M = 2 * C.n + 1
+        local = np.searchsorted(C.nodes, (g[..., 0] * M + g[..., 1]) * M + g[..., 2])
+        if not np.array_equal(C.nodes[local], (g[..., 0] * M + g[..., 1]) * M + g[..., 2]):
+            raise ValueError('GHOST_FACE_NODE_MISSING')
+        dofs = (3 * local[:, :, None] + np.arange(3)).reshape(len(faces), -1)
+        self.idx = [torch.as_tensor(dofs[faces[:, 2] == k], dtype=torch.int32, device=dev) for k in range(len(offs))]
+        self.B = [torch.as_tensor(tpl['canonical'][k], dtype=dtype, device=dev) for k in range(len(offs))]
+        self.faces = len(faces)
+
+    def matvec(self, x, y):
+        """y += G x (x, y: nb x b, self.dtype)."""
+        b = x.shape[1]
+        for idx, B in zip(self.idx, self.B):
+            for lo in range(0, len(idx), self.chunk):
+                ii = idx[lo:lo + self.chunk].long()
+                X = x[ii].permute(1, 0, 2).reshape(ii.shape[1], -1)                 # 135 x (faces * b)
+                Y = B.t() @ (B @ X)
+                y.index_add_(0, ii.reshape(-1), Y.reshape(ii.shape[1], len(ii), b).permute(1, 0, 2).reshape(-1, b))
+        return y
+
+
 class _Kfp32:
     """K x in float32 (element matrices and the symmetric ghost-penalty part, int32 indices) for the equilibrium correction's
     smoothing and coarse residuals (teacher.Cell.lean(correction_fp32=True)); input and output keep their dtype. The
-    condensed product F^T K F and all energies keep the float64 K."""
+    condensed product F^T K F and all energies keep the float64 K.
+    ke_moments: element matrices recomputed per chunk from float32 moments (M T in float32) instead of stored;
+    ghost_faces: ghost part by face templates (GhostFaces, float32) instead of the stored CSR."""
 
-    def __init__(self, C):
+    def __init__(self, C, ke_moments=False, ghost_faces=False, gf_like=None):
         f32 = torch.float32
-        self.C, self.Ke = C, C.Ke.to(f32)
+        self.C, self.ke_moments, self.gf = C, ke_moments, None
+        if ke_moments:
+            self.Ke, self.M32, self.Tf32 = None, C.M.to(f32), C.Tm.reshape(125, 81 * 81).to(f32)
+        else:
+            self.Ke = C.Ke.to(f32)
+        if ghost_faces:
+            self.gf, self.G, self.G64vals = GhostFaces(C, f32, like=gf_like), None, None
+            self.gamma = C.gamma
+            return
         Gf = (C.G.to_sparse_coo() + C.Gt.to_sparse_coo()).coalesce()
         nb = C.nb
         Gf = (torch.sparse_coo_tensor(Gf.indices(), Gf.values(), Gf.shape)
@@ -118,15 +165,20 @@ class _Kfp32:
         x32 = x.to(f32)
         if self.G64vals is not None and not getattr(C, '_deploy', False):
             self.G64vals = None                                                 # not needed outside deploy mode
-        y = self.G @ x32
-        for lo in range(0, len(self.Ke), C._lean_chunk):
-            de = C.dofs[lo:lo + C._lean_chunk]
-            y.index_add_(0, de.reshape(-1), torch.bmm(self.Ke[lo:lo + C._lean_chunk], x32[de]).reshape(-1, x.shape[1]))
+        if self.gf is not None:
+            y = self.gf.matvec(x32, torch.zeros_like(x32)).mul_(self.gamma)
+        else:
+            y = self.G @ x32
+        ch = C._lean_chunk
+        for lo in range(0, len(C.dofs), ch):
+            de = C.dofs[lo:lo + ch]
+            Ke = (self.M32[lo:lo + ch] @ self.Tf32).reshape(-1, 81, 81) if self.ke_moments else self.Ke[lo:lo + ch]
+            y.index_add_(0, de.reshape(-1), torch.bmm(Ke, x32[de]).reshape(-1, x.shape[1]))
         return y.to(x.dtype)
 
 
 class Cell:
-    def __init__(self, case, body_dir, ports=('box', 'cut'), s=4, levels=1, log=print):
+    def __init__(self, case, body_dir, ports=('box', 'cut'), s=4, levels=1, log=print, deploy=False):
         import element_moments as EM
         import polyref_torch_fast as PT
         import box_encode as BX
@@ -143,6 +195,7 @@ class Cell:
         self.offset = None if self.normal is None else float(Fraction(cs['offset']))
         self.gamma = float(json.loads((packet_dir(case) / 'SAMPLE.json').read_text())['gp']['gamma'])
         d = Path(body_dir) / case
+        self._body_dir = body_dir
         self.nodes = np.load(d / 'NODES.npy'); self.cells = np.load(d / 'CELL_INDICES.npy')
         dofs = np.load(d / 'dofs.npy')
         arr = {'NODES.npy': self.nodes, 'dofs.npy': dofs, 'CELL_INDICES.npy': self.cells}
@@ -156,40 +209,43 @@ class Cell:
         self.Tm_up = self.Tm[:, iu[0], iu[1]].contiguous()
         nb = 3 * len(self.nodes); self.nb = nb
         self.dofs = torch.as_tensor(dofs, dtype=torch.long, device=dev)
-        r, c = self.dofs[:, iu[0]], self.dofs[:, iu[1]]
-        key_e = torch.minimum(r, c) * nb + torch.maximum(r, c)
-        gcache = d / 'GP_UPPER.npz'                                          # unit ghost matrix, upper, cached
-        if gcache.exists():
-            z = np.load(gcache)
-            key_g, val_g = torch.as_tensor(z['keys'], device=dev), torch.as_tensor(z['vals'], device=dev)
+        if deploy:                                                              # deploy_from_scratch: no global pattern
+            self._scratch = True
         else:
-            G = BX.ghost_faces_gpu(body_dir, case, self.n, nb)
-            gi, gv = G.indices(), G.values()
-            up = gi[0] <= gi[1]
-            key_g, val_g = gi[0][up] * nb + gi[1][up], gv[up]
-            del G, gi, gv
+            r, c = self.dofs[:, iu[0]], self.dofs[:, iu[1]]
+            key_e = torch.minimum(r, c) * nb + torch.maximum(r, c)
+            gcache = d / 'GP_UPPER.npz'                                          # unit ghost matrix, upper, cached
+            if gcache.exists():
+                z = np.load(gcache)
+                key_g, val_g = torch.as_tensor(z['keys'], device=dev), torch.as_tensor(z['vals'], device=dev)
+            else:
+                G = BX.ghost_faces_gpu(body_dir, case, self.n, nb)
+                gi, gv = G.indices(), G.values()
+                up = gi[0] <= gi[1]
+                key_g, val_g = gi[0][up] * nb + gi[1][up], gv[up]
+                del G, gi, gv
+                gc.collect(); torch.cuda.empty_cache()
+                if os.environ.get('OPL_GP_CACHE', '1') != '0':                 # OPL_GP_CACHE=0: rebuild every time, never
+                    np.savez(gcache, keys=key_g.cpu().numpy(), vals=val_g.cpu().numpy())   # write (disk for thousands of cells)
+            U = torch.unique(torch.cat([key_e.reshape(-1), key_g]))
+            self.pos_e = torch.searchsorted(U, key_e.reshape(-1)).int()
+            del key_e
+            self.base = torch.zeros(len(U), dtype=dt, device=dev)
+            self.base.index_add_(0, torch.searchsorted(U, key_g), self.gamma * val_g)
+            del key_g, val_g
+            # memory-lean upper pattern (int32 indices; nb < 2^31, nnz < 2^31)
+            self.ru, self.cu = (U // nb).int(), (U % nb).int()
+            del U
             gc.collect(); torch.cuda.empty_cache()
-            if os.environ.get('OPL_GP_CACHE', '1') != '0':                 # OPL_GP_CACHE=0: rebuild every time, never
-                np.savez(gcache, keys=key_g.cpu().numpy(), vals=val_g.cpu().numpy())   # write (disk for thousands of cells)
-        U = torch.unique(torch.cat([key_e.reshape(-1), key_g]))
-        self.pos_e = torch.searchsorted(U, key_e.reshape(-1)).int()
-        del key_e
-        self.base = torch.zeros(len(U), dtype=dt, device=dev)
-        self.base.index_add_(0, torch.searchsorted(U, key_g), self.gamma * val_g)
-        del key_g, val_g
-        # memory-lean upper pattern (int32 indices; nb < 2^31, nnz < 2^31)
-        self.ru, self.cu = (U // nb).int(), (U % nb).int()
-        del U
-        gc.collect(); torch.cuda.empty_cache()
-        self.crow = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(self.ru, minlength=nb), 0)])
-        self.diag = torch.nonzero(self.ru == self.cu).squeeze(1)
-        # transposed pattern (CSR of U^T): permutation of the upper entries sorted by (col, row)
-        self.tperm = torch.argsort(self.cu.long() * nb + self.ru.long()).int()
-        self.crow_t = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(self.cu, minlength=nb), 0)]).int()
-        self.col_t = self.ru[self.tperm.long()]
-        gc.collect(); torch.cuda.empty_cache()
-        if len(self.diag) != nb:
-            raise ValueError('DIAGONAL_INCOMPLETE')
+            self.crow = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(self.ru, minlength=nb), 0)])
+            self.diag = torch.nonzero(self.ru == self.cu).squeeze(1)
+            # transposed pattern (CSR of U^T): permutation of the upper entries sorted by (col, row)
+            self.tperm = torch.argsort(self.cu.long() * nb + self.ru.long()).int()
+            self.crow_t = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(self.cu, minlength=nb), 0)]).int()
+            self.col_t = self.ru[self.tperm.long()]
+            gc.collect(); torch.cuda.empty_cache()
+            if len(self.diag) != nb:
+                raise ValueError('DIAGONAL_INCOMPLETE')
         box = np.load(d / 'BOX_NODES.npy'); cut = np.load(d / 'CUT_NODES.npy') if 'cut' in ports else np.zeros(0, np.int64)
         self.is_box = np.isin(self.nodes, box); self.is_cut = np.isin(self.nodes, cut)
         onport = self.is_box | self.is_cut if 'box' in ports else self.is_cut
@@ -211,6 +267,8 @@ class Cell:
                                dtype=dt, device=dev)
 
     def assemble(self, taus=None):
+        if getattr(self, '_scratch', False):
+            raise RuntimeError('DEPLOY_CELL_USE_assemble_deploy')
         if getattr(self, '_lean', False):
             raise RuntimeError('LEAN_CELL_HAS_NO_ASSEMBLY_MAPS')
         taus = self.taus0 if taus is None else taus
@@ -236,12 +294,15 @@ class Cell:
             return self._Kx_lean(x)
         return self.U @ x + self.Ut @ x - self.dK[:, None] * x
 
-    def lean(self, keep_kpp=True, chunk=4096, correction_fp32=False, deploy=False):
+    def lean(self, keep_kpp=True, chunk=4096, correction_fp32=False, deploy=False, ke_moments=False, ghost_faces=False):
         """Deployment storage (called explicitly; default off). K x = sum_e P_e^T K_e P_e x + G x with the element matrices
         K_e = sum_m M_em T_m (fp64, E x 81 x 81) and the ghost-penalty part G = gamma * (unit ghost matrix) as its own upper
         CSR and transpose. The assembled upper CSR, its transpose, the ghost baseline and the assembly index maps are released;
         K_PP's upper triplets are cached first for lattice preconditioners (lat_multi.from_teacher). factor() and assemble()
-        are unavailable afterwards. The arithmetic of K x is the same sum, reassociated."""
+        are unavailable afterwards. The arithmetic of K x is the same sum, reassociated.
+        ke_moments (with correction_fp32 / deploy): the float32 correction stiffness recomputes its element matrices from the
+        moments per chunk (no stored float32 K_e). ghost_faces (with deploy): the ghost part of both the float32 correction
+        stiffness and the float64 K by face templates (GhostFaces), no stored ghost matrix."""
         if getattr(self, '_lean', False):
             return self
         d = self.vals.device
@@ -252,27 +313,41 @@ class Cell:
             sel = torch.nonzero(pm[ru] & pm[cu] & (self.vals != 0)).squeeze(1)
             self._kpp_cache = (pnew[ru[sel]], pnew[cu[sel]], self.vals[sel].clone())
             del pm, pnew, ru, cu, sel
-        g = torch.nonzero(self.base).squeeze(1)
-        gr, gcl, gv = self.ru[g].long(), self.cu[g].long(), self.base[g].clone()
-        del g
+        faces_only = deploy and ghost_faces                                     # no stored ghost matrix / K_e at any point
         nb = self.nb
-        self.G = torch.sparse_coo_tensor(torch.stack([gr, gcl]), gv, (nb, nb)).coalesce().to_sparse_csr()
-        self.Gt = torch.sparse_coo_tensor(torch.stack([gcl, gr]), gv, (nb, nb)).coalesce().to_sparse_csr()
-        on = gr == gcl
-        self.dG = torch.zeros(nb, dtype=dt, device=d).index_add_(0, gr[on], gv[on])
-        self.lean_info = dict(ghost_nnz_upper=int(len(gv)), elements=int(len(self.cells)))
-        del gr, gcl, gv, on
-        self.Ke = torch.empty((len(self.M), 81, 81), dtype=dt, device=d)
-        Tf = self.Tm.reshape(125, 81 * 81)
-        for lo in range(0, len(self.M), chunk):
-            self.Ke[lo:lo + chunk] = (self.M[lo:lo + chunk] @ Tf).reshape(-1, 81, 81)
+        if faces_only:
+            self.G = self.Gt = self.dG = None
+            self.lean_info = dict(ghost_nnz_upper=int(torch.count_nonzero(self.base)), elements=int(len(self.cells)))
+        else:
+            g = torch.nonzero(self.base).squeeze(1)
+            gr, gcl, gv = self.ru[g].long(), self.cu[g].long(), self.base[g].clone()
+            del g
+            self.G = torch.sparse_coo_tensor(torch.stack([gr, gcl]), gv, (nb, nb)).coalesce().to_sparse_csr()
+            self.Gt = torch.sparse_coo_tensor(torch.stack([gcl, gr]), gv, (nb, nb)).coalesce().to_sparse_csr()
+            on = gr == gcl
+            self.dG = torch.zeros(nb, dtype=dt, device=d).index_add_(0, gr[on], gv[on])
+            self.lean_info = dict(ghost_nnz_upper=int(len(gv)), elements=int(len(self.cells)))
+            del gr, gcl, gv, on
+        if faces_only and ke_moments:
+            self.Ke = None
+        else:
+            self.Ke = torch.empty((len(self.M), 81, 81), dtype=dt, device=d)
+            Tf = self.Tm.reshape(125, 81 * 81)
+            for lo in range(0, len(self.M), chunk):
+                self.Ke[lo:lo + chunk] = (self.M[lo:lo + chunk] @ Tf).reshape(-1, 81, 81)
         self._lean_chunk = chunk
         self.U = self.Ut = None
         self.vals = self.base = self.ru = self.cu = self.tperm = self.col_t = self.crow_t = self.pos_e = None
         self._lean = True
+        if faces_only:
+            self.G64, self.GF64 = None, GhostFaces(self, dt)
         if correction_fp32 or deploy:                                           # trainlib uses C._Kc inside the correction only
-            self._Kc = _Kfp32(self)
-        if deploy:
+            self._Kc = _Kfp32(self, ke_moments=ke_moments, ghost_faces=faces_only, gf_like=getattr(self, 'GF64', None))
+        if faces_only:
+            self.G = self.Gt = self.dG = None
+            self.Ke = None
+            self._deploy = True
+        elif deploy:
             # deployment memory: one symmetric float64 ghost matrix sharing the float32 copy's int32 indices, element
             # matrices recomputed from the moments for every float64 product (K_e = M_e T), no stored float64 K_e
             g32 = self._Kc.G
@@ -285,9 +360,87 @@ class Cell:
         gc.collect(); torch.cuda.empty_cache()
         return self
 
+    def assemble_deploy(self, taus=None, chunk=4096, ke_moments=True):
+        """Deployment state directly from the moments (Cell(..., deploy=True); no global pattern or assembled matrix at any
+        point): the state of lean(deploy=True, ke_moments, ghost_faces=True) with K_PP's upper triplets (the same entries as
+        the assembled upper CSR restricted to port pairs, nonzeros only), the diagonal of K and the node 3 x 3 diagonal blocks
+        (diag3, for bench_deploy.netdata) summed from element and face blocks (same sums, reassociated)."""
+        if not getattr(self, '_scratch', False):
+            raise RuntimeError('assemble_deploy needs Cell(..., deploy=True)')
+        taus = self.taus0 if taus is None else taus
+        self.taus = list(taus)
+        self._free()
+        for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cV32', '_cV32t', '_cL32_keep', '_Kc', 'GF64', 'M', 'dM',
+                  '_kpp_cache', 'diag3'):                                       # state of the previous design (if any)
+            setattr(self, k, None)
+        gc.collect(); torch.cuda.empty_cache()
+        self.M = self.moments(taus)
+        nb, N, E = self.nb, len(self.nodes), len(self.M)
+        self.GF64 = GF = GhostFaces(self, dt)
+        # node diagonal blocks and diag(K)
+        T5 = self.Tm.reshape(125, 27, 3, 27, 3)
+        Td = torch.diagonal(T5, dim1=1, dim2=3).permute(0, 3, 1, 2).reshape(125, 27 * 9)      # (125, 27 * 3 * 3)
+        nodes_e = self.dofs[:, ::3] // 3
+        d3 = torch.zeros((N, 9), dtype=dt, device=dev)
+        for lo in range(0, E, chunk):
+            d3.index_add_(0, nodes_e[lo:lo + chunk].reshape(-1), (self.M[lo:lo + chunk] @ Td).reshape(-1, 9))
+        for idx, B in zip(GF.idx, GF.B):
+            BtB = B.t() @ B
+            bd = torch.diagonal(BtB.reshape(45, 3, 45, 3), dim1=0, dim2=2).permute(2, 0, 1).reshape(45, 9)
+            nf = idx[:, ::3].long() // 3
+            d3.index_add_(0, nf.reshape(-1), (self.gamma * bd).repeat(len(idx), 1))
+        self.diag3 = d3.reshape(N, 3, 3)
+        self.dK = torch.diagonal(self.diag3, dim1=1, dim2=2).reshape(-1).clone()
+        # K_PP upper triplets (port numbering; P sorted, so upper stays upper)
+        pm = torch.zeros(nb, dtype=torch.bool, device=dev); pm[self.P] = True
+        pnew = torch.full((nb,), -1, dtype=torch.long, device=dev); pnew[self.P] = torch.arange(self.np_, device=dev)
+        rows, cols, vals = [], [], []
+        Tf = self.Tm.reshape(125, 81 * 81)
+        el = torch.nonzero(pm[self.dofs].sum(1) >= 1).squeeze(1)
+        for lo in range(0, len(el), chunk):
+            e = el[lo:lo + chunk]; de = self.dofs[e]
+            Ke = (self.M[e] @ Tf).reshape(-1, 81, 81)
+            r, c = de[:, :, None].expand_as(Ke), de[:, None, :].expand_as(Ke)
+            sel = pm[r] & pm[c] & (r <= c)
+            rows.append(pnew[r[sel]]); cols.append(pnew[c[sel]]); vals.append(Ke[sel])
+            del Ke, r, c, sel
+        for idx, B in zip(GF.idx, GF.B):
+            BtB = self.gamma * (B.t() @ B)
+            ii = idx.long()
+            ii = ii[pm[ii].sum(1) >= 1]
+            for lo in range(0, len(ii), 1024):
+                de = ii[lo:lo + 1024]
+                r, c = de[:, :, None].expand(-1, 135, 135), de[:, None, :].expand(-1, 135, 135)
+                sel = pm[r] & pm[c] & (r <= c)
+                rows.append(pnew[r[sel]]); cols.append(pnew[c[sel]]); vals.append(BtB.expand(len(de), -1, -1)[sel])
+                del r, c, sel
+        kp = torch.sparse_coo_tensor(torch.stack([torch.cat(rows), torch.cat(cols)]), torch.cat(vals), (self.np_, self.np_)).coalesce()
+        del rows, cols, vals
+        ki, kv = kp.indices(), kp.values()
+        nz = kv != 0
+        self._kpp_cache = (ki[0][nz], ki[1][nz], kv[nz])
+        del kp, ki, kv, nz
+        # deployment state (as lean(deploy=True, ke_moments, ghost_faces=True))
+        self._lean_chunk = chunk
+        self.U = self.Ut = self.vals = self.base = None
+        self.G = self.Gt = self.dG = self.G64 = None
+        self.lean_info = dict(ghost_faces=GF.faces, elements=int(E))
+        if ke_moments:
+            self.Ke = None
+        else:
+            self.Ke = torch.empty((E, 81, 81), dtype=dt, device=dev)
+            for lo in range(0, E, chunk):
+                self.Ke[lo:lo + chunk] = (self.M[lo:lo + chunk] @ Tf).reshape(-1, 81, 81)
+        self._lean = self._deploy = True
+        self._Kc = _Kfp32(self, ke_moments=ke_moments, ghost_faces=True, gf_like=GF)
+        self.Ke = None
+        self.K = self
+        gc.collect(); torch.cuda.empty_cache()
+        return self
+
     def _Kx_lean(self, x):
         if getattr(self, '_deploy', False):
-            y = self.G64 @ x
+            y = self.G64 @ x if self.G64 is not None else self.GF64.matvec(x, torch.zeros_like(x)).mul_(self.gamma)
             Tf = self.Tm.reshape(125, 81 * 81)
             for lo in range(0, len(self.M), self._lean_chunk):
                 de = self.dofs[lo:lo + self._lean_chunk]

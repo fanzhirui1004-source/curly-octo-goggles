@@ -166,7 +166,15 @@ def main(argv=None):
     ap.add_argument('--deploy', action='store_true', help='learned cells in deployment mode: lean(deploy=True), float32 correction, fused tail transpose, float32 coarse solve')
     ap.add_argument('--park', action='store_true', help='keep learned cells on the host between operator calls')
     ap.add_argument('--resident', type=int, default=0, help='with --park: number of cells kept on the device')
+    ap.add_argument('--stream', action='store_true', help='learned cells streamed from pinned host memory with one-cell-ahead prefetch (stream_ops); implies --deploy, --park and the fused hyperedge kernel')
+    ap.add_argument('--kem', action='store_true', help='with --deploy: float32 correction K_e recomputed from the moments (no stored K_e)')
+    ap.add_argument('--faces', action='store_true', help='with --deploy: ghost penalty by face templates (no stored ghost matrix)')
     a = ap.parse_args(argv)
+    if a.stream:
+        a.deploy, a.park, a.resident = True, True, 0
+        FN.FUSED = True
+        import stream_ops as SO
+        SO.init()
     if a.deploy:
         os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
     log = lambda d: print(json.dumps(d, default=float), flush=True)
@@ -233,15 +241,30 @@ def main(argv=None):
                 geo = TL.Geo(c, a.body, BD.TMP, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
                 op = EN.FastOp(FN.FastNet(h.add(geo), geo))
                 if a.deploy and not getattr(C, '_lean', False):
-                    C.lean(deploy=True); free()
+                    C.lean(deploy=True, ke_moments=a.kem, ghost_faces=a.faces); free()
                 elif a.lean and not getattr(C, '_lean', False):
                     C.lean(); free()
-                if a.park:
+                if a.stream:
+                    op.apply(torch.zeros((C.np_, 1), dtype=dt, device=dev))            # builds the correction caches on C
+                    if torch.is_tensor(getattr(C, 'dM', None)) and C.dM.is_cuda:       # sensitivities only: host, not streamed
+                        C.dM = C.dM.cpu().pin_memory()
+                    if isinstance(getattr(C, '_kpp_cache', None), tuple):             # K_PP already assembled (kpp)
+                        C._kpp_cache = list(C._kpp_cache)
+                    op = SO.StreamedOp(op, C, [op.fast, geo, C])
+                    free()
+                elif a.park:
                     op.apply(torch.zeros((C.np_, 1), dtype=dt, device=dev))            # builds the correction caches on C
                     op = ParkedOp(op, C, resident=j < a.resident)
                     if not op.resident:
                         _move(C, torch.device('cpu')); free()
                 ops.append(op)
+            if a.stream:
+                SO.link(ops)
+                rec[name + '_stream'] = dict(bytes=[o.bytes for o in ops], tensors=[o.n_tensors for o in ops],
+                                             skipped_tuple=[o.skipped_tuple for o in ops], skipped_owned=[o.skipped_owned for o in ops],
+                                             device_GB_after_prep=torch.cuda.memory_allocated() / 1e9)
+                log(dict(event='STREAM', lattice=L['name'], model=name, **rec[name + '_stream']))
+                torch.cuda.reset_peak_memory_stats()
             prep = time.perf_counter() - t
             X, st = solve(lat, ops, a.prec, a.tol, a.maxit, kpp)
             ch = (lat.F * X).sum(0).cpu().numpy()
@@ -251,10 +274,15 @@ def main(argv=None):
             for i, c in enumerate(order):
                 C = Cmap[c]
                 with (ops[i].active() if a.park else contextlib.nullcontext()):
-                    if a.park:
+                    if a.park and not a.stream:
                         _move(C, dev, min_bytes=0)                              # sens reads the small tensors too
                     u = ops[i].field(lat.gather(X, i)).to(dt)
-                    sh = C.sens(u).cpu(); del u
+                    if a.stream and not C.dM.is_cuda:
+                        dMh = C.dM; C.dM = dMh.to(dev, non_blocking=True)
+                        sh = C.sens(u).cpu(); C.dM = dMh
+                    else:
+                        sh = C.sens(u).cpu()
+                    del u
                     serr.append(((sh - S[i]).norm(dim=0) / S[i].norm(dim=0)).numpy())
                     qe = lat.gather(Xref.to(dev), i)
                     eps.append(((qe * ops[i].apply(qe)).sum(0).cpu() / E[i] - 1).numpy())
@@ -265,16 +293,21 @@ def main(argv=None):
                        solution_rel_err=float((X.cpu() - Xref).norm() / Xref.norm()),
                        gate_compliance_max=float(cerr[:ncons].max()), gate_sens_max=float(serr[:, :ncons].max()),
                        gate_sens_max_per_cell=serr[:, :ncons].max(1).tolist(), random_compliance_max=float(cerr[ncons:].max()) if a.n_random else None)
+            if a.stream:
+                row.update(peak_device_GB=torch.cuda.max_memory_allocated() / 1e9, stream_copies=[o.copies for o in ops])
             rec[name] = row
             log(dict(event='LEARNED', lattice=L['name'], model=name, gate_compliance_max=row['gate_compliance_max'],
                      gate_sens_max=row['gate_sens_max'], iterations=st['iterations'], seconds=st['seconds'], prep_s=prep,
                      true_residual=st['true_residual']))
+            if a.stream:
+                for o in ops:
+                    o.release()
             for c in order:
                 h.model.caches.pop(c, None)
             del ops, h; free()
             if a.park:
                 for C in Cs:
-                    for k in ('_cV', '_cL', '_c_space', '_tail_bounds'):          # correction caches are per model settings
+                    for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cV32', '_cV32t'):          # correction caches are per model settings
                         if hasattr(C, k):
                             delattr(C, k)
                 free()
