@@ -23,7 +23,7 @@ The S8 predictor has its own learned weights. Applying eight steps to B in the f
 | H3 | Heavily cut | fresh_val_2002_d0_v0 |
 | L1 | Lightly cut | fresh_val_2004_d0_v2 |
 
-The x/y suffix identifies the neighbouring-cell configuration. The deployment geometries use the G1–G4 labels in Figure 11 and Figure S05. The complete timing tables retain the corresponding abbreviated geometry identifiers for lookup.
+The x/y suffix identifies the neighbouring-cell configuration. The deployment geometries use the G1–G4 labels in Table 5 and Figures S05–S06. The complete timing tables retain the corresponding abbreviated geometry identifiers for lookup.
 
 | Benchmark label | Abbreviated geometry | Archived geometry identifier |
 | --- | --- | --- |
@@ -591,7 +591,7 @@ The implementation also contains a uniform-nodal-force branch. The comparisons i
 
 ## Supplementary Note S2. Definition of the illustrative matrix example
 
-The re-equilibration example in Appendix J.9.1 uses two retained and three internal coordinates. Its matrices are
+The re-equilibration example (example 1 of Appendix J.9) uses two retained and three internal coordinates. Its matrices are
 
 \[
 A=\begin{bmatrix}3&.2&.1\\.2&2&-.1\\.1&-.1&1.4\end{bmatrix},\qquad
@@ -617,7 +617,7 @@ f=(1,-.4,.8)^T,
 U=G^{-1}f,\quad \widehat U_t=\widehat G_t^{-1}f.
 \]
 
-Eight symmetric derivative matrices are generated once with NumPy's default generator and seed 620260926: for each corner, draw a \(5\times5\) standard-normal matrix \(R_c\), then set \(D_c=(R_c+R_c^T)/16\). These matrices provide algebraic sensitivity directions; the positive-semidefinite nested-thickening counterexamples are given separately in Appendix J.9.2–3. The saved sequence is \(t=0.1,0.05,0.025,0.0125,0.00625\). The final two entries give the following log-two slopes:
+Eight symmetric derivative matrices are generated once with NumPy's default generator and seed 620260926: for each corner, draw a \(5\times5\) standard-normal matrix \(R_c\), then set \(D_c=(R_c+R_c^T)/16\). These matrices provide algebraic sensitivity directions; the positive-semidefinite nested-thickening counterexamples are given separately in examples 2 and 3 of Appendix J.9. The saved sequence is \(t=0.1,0.05,0.025,0.0125,0.00625\). The final two entries give the following log-two slopes:
 
 | Quantity | Saved slope |
 | --- | --- |
@@ -637,7 +637,7 @@ These entries reproduce the previously saved algebraic check; they are not TPMS 
 
 ![Figure S03A](figures/S03A_smoothing.png)
 
-**Figure S03A. Smoothing from learned and zero internal fields.** (a,b) Mean directional energy excess for consistent-traction and nodal-force responses; (c,d) corresponding field-based sensitivity errors. Both initialisations prescribe the same retained displacement. Solid curves with filled markers start from predictor B; dashed curves with open markers start from zero internal displacement. Zero-start sensitivity is recorded only at 32 steps. All corrections use \(\alpha=30\). The step axis is linear between zero and one and logarithmic thereafter.
+**Figure S03A. Smoothing from learned and zero internal fields.** (a,b) Mean directional energy excess for consistent-traction and nodal-force responses; (c,d) corresponding field-based sensitivity errors. Both initialisations prescribe the same retained displacement. Solid curves with filled markers start from predictor B; dashed curves with open markers start from zero internal displacement. Zero-start sensitivity is recorded only at 32 steps. All corrections use \(a=b/30\). The step axis is linear between zero and one and logarithmic thereafter.
 
 ![Figure S03B](figures/S03B_coarse_spaces.png)
 
@@ -673,7 +673,7 @@ The accuracy attained at those stopping points is part of the cost comparison. I
 
 **Table ST17. Application cost and accuracy attained in assembled solves**
 
-**5a. Application time across four cells (ms per complete batch)**
+**ST17a. Application time across four cells (ms per complete batch)**
 
 | Directions per batch | Exact double precision | Learned predictor D |
 | --- | --- | --- |
@@ -682,7 +682,7 @@ The accuracy attained at those stopping points is part of the cost comparison. I
 
 Ranges give the minimum and maximum over the same four cells. Table ST14 includes the individual timings, batches of 16 and the fused implementation.
 
-**5b. Assembly solves with the balanced two-level preconditioner**
+**ST17b. Assembly solves with the balanced two-level preconditioner**
 
 | Assembly | Free DOFs | Exact: iterations / s | Learned: iterations / s | Learned recomputed residual | Max. compliance error (%) |
 | --- | --- | --- | --- | --- | --- |

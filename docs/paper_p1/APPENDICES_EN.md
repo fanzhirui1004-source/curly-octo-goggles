@@ -45,7 +45,7 @@ e_s&=\frac{\|\widetilde{\boldsymbol s}-\boldsymbol s\|_2}{\|\boldsymbol s\|_2},
 
 The local same-retained-displacement comparison uses \(u=Eq\). The assembled comparison uses the recovered fields at the respective global equilibria, whose retained displacements generally differ. All relative denominators are nonzero. A geometry-level energy score averages over the evaluated directions in one class; population means then give equal weight to each available geometry. A population maximum of geometry means is distinct from a worst-direction operator error.
 
-The pair-assembly comparison joins a learned target to an exact neighbour with matched thickness parameters on the common face. Its six face-load cases define the selected 3% joint compliance/sensitivity criterion, with sensitivity maxima taken over both cells. Cut-traction cases are reported separately. Tables 2 and 3 and the complete supplementary result tables identify the populations and loading sets.
+The pair-assembly comparison joins a learned target to an exact neighbour with matched thickness parameters on the common face. Its six face-load cases define the selected 3% joint compliance/sensitivity criterion, with sensitivity maxima taken over both cells. Cut-traction cases are reported separately. Table 2 and Tables ST01, ST12 and ST13 identify the populations and loading sets.
 
 ## Appendix B. Variational identity, rigid kernel, and directional norms
 
@@ -298,7 +298,7 @@ The recovered matrix is Jacobi scaled with the corresponding column scaling of \
 \tag{F.1}
 \]
 
-Expanding the squared norms, as in Eq. (J.9) with basis \(V_s\) and \(G=B_c\), gives \(b_s^T(2B_c-B_cH_cB_c)b_s\), and multiplication by \(H_c+\xi I\) establishes the equality. A positive shift changes the exact projection but preserves this energy decrease when the solved matrix is the stated scaled Galerkin matrix. The identity assumes that matrix equality, symmetry, and consistent forward and transpose solves.
+Expanding the squared norms, as in Eq. (J.9) with basis \(V_s\), \(G=B_c\), and \(A_c\) replaced by \(H_c\), gives \(b_s^T(2B_c-B_cH_cB_c)b_s\), and multiplication by \(H_c+\xi I\) establishes the equality. A positive shift changes the exact projection but preserves this energy decrease when the solved matrix is the stated scaled Galerkin matrix. The identity assumes that matrix equality, symmetry, and consistent forward and transpose solves.
 
 ### F.3. Precision and normalisation
 
@@ -542,7 +542,7 @@ A preconditioned residual, a coarse approximation, or a Krylov iterate can suppl
 
 If the exact reference energy is known, \(L_z/(q^TSq)\) gives a sharper lower estimate. A large value detects an inaccurate direction; a small value alone does not bound the error from above. These are real-arithmetic inequalities, with numerical evaluation requiring the stated original quadratic forms.
 
-The reduced-trace comparison in Section 6 uses a tensor-product Bernstein space of degree \(r\) on selected box faces. Its global map \(G_r\) respects shared coordinates, while cut-band coordinates outside the box trace retain identity columns. The supported Galerkin system is
+The reduced-trace comparison in Section 6.8 uses a tensor-product Bernstein space of degree \(r\) on selected box faces. Its global map \(G_r\) respects shared coordinates, while cut-band coordinates outside the box trace retain identity columns. The supported Galerkin system is
 
 \[
 \mathbb K_r=G_r^T\mathbb K G_r,\qquad
@@ -731,7 +731,7 @@ A E_{I,c}=-J_IK_{,c}E,
 
 while the condensed derivative \(S_{,c}=E^TK_{,c}E\) is Eq. (H.1). Appendix H also derives the exact assembly compliance derivative \(C_{,c}=-U^T\mathbb K_{,c}U\) and, from the surrogate's own equilibrium, Eq. (14): \(\widehat C_{,c}\) is the sum over affected cells of \(\widetilde s_{m,c}-2(F_{I,m,c}\widehat q_m)^Tr_{I,m}\). The design derivative of the solved trace has already been eliminated using equilibrium; the residual term differentiates \(F\) at fixed trace. It includes geometry-conditioned coefficients and every design-dependent correction operation.
 
-Equivalently, differentiate the variational stiffness error:
+Equivalently, with \(A_{,c}=(K_{,c})_{II}\), differentiate the variational stiffness error:
 
 \[
 \boxed{(\widehat S-S)_{,c}
@@ -768,7 +768,7 @@ This positive structure strengthens the sensitivity interpretation without requi
 \le2\sqrt{\sum_c a_c\zeta_c}+\|\boldsymbol\zeta\|_2.
 \tag{J.7}
 \]
-If \(\gamma_c=\|A^{-1/2}(K_{,c})_{II}A^{-1/2}\|_2\), then \(\zeta_c\le\gamma_c\mathcal E\), giving \(2\sqrt{\sum_c a_c\gamma_c}\sqrt{\mathcal E}+\|\boldsymbol\gamma\|_2\mathcal E\). The quadratic term in the signed sensitivity discrepancy is nonpositive; the cross term can have either sign. The reference eight-vector has nonpositive components. A small reference norm reflects small derivative-weighted local strain energy. For a general variable that moves a cut or redistributes material, an indefinite derivative is possible; that generality is unnecessary to explain the present corner-thickening mechanism.
+If \(\gamma_c=\|A^{-1/2}A_{,c}A^{-1/2}\|_2\), then \(\zeta_c\le\gamma_c\mathcal E\), giving \(2\sqrt{\sum_c a_c\gamma_c}\sqrt{\mathcal E}+\|\boldsymbol\gamma\|_2\mathcal E\). The quadratic term in the signed sensitivity discrepancy is nonpositive; the cross term can have either sign. The reference eight-vector has nonpositive components. A small reference norm reflects small derivative-weighted local strain energy. For a general variable that moves a cut or redistributes material, an indefinite derivative is possible; that generality is unnecessary to explain the present corner-thickening mechanism.
 
 Design-dependent loads and assembly maps add the chain-rule terms stated after Eq. (H.5). These changes are different derivative problems rather than modifications of Eq. (J.5).
 
@@ -831,8 +831,8 @@ Thus exact assembled compliance increases monotonically toward the reference, an
 Appendix D establishes the two components of such a correction: Chebyshev smoothing satisfies the energy bound of Eq. (D.2), with \(\rho_k\le1\) when the actual positive spectrum lies in \((0,b]\), and the exact Galerkin update \(C_V=I-VA_c^{-1}V^TA\), \(A_c=V^TAV\), is the \(A\)-orthogonal projection of Eq. (D.5). For a symmetric approximate inverse \(G\) in place of \(A_c^{-1}\), the precise condition is
 
 \[
-\|e\|_A^2-\|e-VGV^TAe\|_A^2
-=b^T(2G-GA_cG)b,\quad b=V^TAe.
+\|d\|_A^2-\|d-VGV^TAd\|_A^2
+=b_r^T(2G-GA_cG)b_r,\quad b_r=V^TAd.
 \tag{J.9}
 \]
 
@@ -842,7 +842,7 @@ The pre-smooth/coarse/post-smooth cycle \(H_{\rm tg}=P_kC_VP_kH_0\) then satisfi
 
 The benefit of learning under a fixed correction budget is measured by the error surviving the correction: \(\|TH_{\rm net}q\|_A^2\) versus \(\|TH_{\rm start}q\|_A^2\). Initial errors with the same energy can leave different corrected errors. This connects direction-sensitive training to the numerical correction actually used.
 
-Boundary-space restriction and interior correction affect different trial spaces. Exact interior condensation followed by a restriction \(U=Ry\) solves over a subspace of the retained coordinates; nested boundary spaces give nondecreasing Ritz compliance. Interior correction preserves all retained coordinates and changes the interior graph \(u=FBU\); its matrix ordering comes from contraction of \(H\), even though two such graph spaces need not be nested. In both cases compliance can approach the reference monotonically while a local sensitivity norm does not.
+Boundary-space restriction and interior correction affect different trial spaces. Exact interior condensation followed by a restriction \(U=G_ry\) solves over a subspace of the retained coordinates; nested boundary spaces give nondecreasing Ritz compliance. Interior correction preserves all retained coordinates and changes the interior graph \(u=FBU\); its matrix ordering comes from contraction of \(H\), even though two such graph spaces need not be nested. In both cases compliance can approach the reference monotonically while a local sensitivity norm does not.
 
 ### J.9. Illustrative matrix examples
 
