@@ -484,7 +484,18 @@ By Eq. (12), the compliance errors of the learned cells add with the same sign, 
 
 The practical alternative to a learned substructure is the conventional route: assemble the cut finite element stiffness of each cell and condense its interior with a sparse direct solver, either forming the dense condensed matrix \(S\) or applying it through the interior factorisation. Both routes share the geometric preprocessing, the cut-cell integration and the stiffness assembly, because the learned operator also evaluates \(F^TKF\) with the exact stiffness. They differ in the condensation: an interior factorisation, and for the explicit variant one solve per retained coordinate, against the network's geometry encoding, the smoothing-interval estimate and coarse factorisation of the correction, and the forward and transpose actions per query.
 
-Table 5 compares the two routes on four cells [TBD:cost-table]. The conventional route runs on the 16 host cores with MKL PARDISO, as a practitioner would condense a cell; the learned route runs on one RTX 5090. For reference, the same interior factorisation performed on the GPU is also given, so that the effect of the hardware can be separated from that of the method.
+Table 5 compares the two routes on four cells [TBD:cost-table-cpu].
+
+**Table 5. Preparation and application cost per cell.** Learned: A3 on one RTX 5090 (network in single precision, correction in double precision); preparation excludes the correction setup (smoothing interval and coarse factorisation, [TBD:coarse-setup-time]). Exact, same GPU: interior factorisation in double precision (cuDSS) and \(Sq=(KEq)_P\) through it. Conventional route: [TBD:cpu-columns]. Times per complete batch of retained vectors.
+
+| Cell | DOFs / retained | Learned: preparation (s) / state (GB) | Learned: \(\widehat Sq\), 1 / 16 / 64 vectors (ms) | Exact GPU: factorisation (s) / factor (GB) | Exact GPU: \(Sq\), 1 / 16 / 64 vectors (ms) |
+| --- | --- | --- | --- | --- | --- |
+| G1 (cut) | 177,507 / 24,636 | 0.40 / 0.74 | 54 / 531 / 923 | 2.82 / 4.75 | 29 / 43 / 129 |
+| G2 (cut) | 67,224 / 18,858 | 0.07 / 0.25 | 25 / 205 / 388 | 0.70 / 0.16 | 8 / 13 / 35 |
+| G3 (uncut) | 289,494 / 17,508 | 0.14 / 1.20 | 84 / 877 / 1481 | 5.95 / 5.71 | 54 / 77 / 234 |
+| G4 (uncut) | 404,148 / 25,920 | 0.20 / 1.37 | 99 / 1052 / 1828 | 9.03 / 5.07 | 73 / 100 / 316 |
+
+On the same device, the learned operator is prepared 7 to 45 times faster than the interior factorisation and holds 1.3 to 6.4 times less memory for the three larger cells, but each application costs 1.3 to 3.2 times more for a single vector and 4 to 11 times more for batches, because the correction applies the stiffness 32 times in the forward and transpose passes. Per design iteration, in which every cell is prepared anew, the learned route is therefore cheaper when a cell is queried fewer than about 100–300 times; the assembled solves of Section 6.9 [TBD:lattice-iterations]. The conventional route runs on the 16 host cores with MKL PARDISO, as a practitioner would condense a cell; the learned route runs on one RTX 5090. For reference, the same interior factorisation performed on the GPU is also given, so that the effect of the hardware can be separated from that of the method.
 
 [TBD:cost-discussion: preparation per cell, per-query cost for 1/16/64 directions, explicit-S time and memory, number of queries per design iteration at which each route is cheaper, memory per cell.]
 
