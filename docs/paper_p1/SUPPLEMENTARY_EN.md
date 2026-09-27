@@ -718,6 +718,10 @@ These records support Sections 6.2, 6.4 and 6.5 of the main text. They are gener
 | M2 | 5.027 | 5.228 | 4.0% | 100 | 8.7e-09 | 3.4e-09 | 9.4e-08 | 2.4e-12 | 3.6e-05 / 0.66 | 1.15%, 294 | 0.156%, 163 |
 | M1 | 4.979 | 5.193 | 4.3% | 99.5 | 7.3e-09 | 4.4e-09 | 9.3e-08 | 1.4e-11 | 0.00012 / 0.58 | 1.26%, 866 | 0.179%, 426 |
 
+![Figure S07](figures/S07_reference_verification.png)
+
+**Figure S07. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
+
 ## Supplementary Note S8. Enriched partition-of-unity coarse spaces as a numerical observation
 
 The enriched spaces of Appendix F.1 (PU_9, PU_17 in Table ST04 and Figure S03B) are not used by any reported predictor. Their entries record what the archived solves produced and are not presented as verified Galerkin projections.

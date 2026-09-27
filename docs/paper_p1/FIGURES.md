@@ -129,3 +129,9 @@
 ![Figure S05](figures/S05_iterative_solves.png)
 
 [PDF](figures/S05_iterative_solves.pdf) | [SVG](figures/S05_iterative_solves.svg) | [PNG](figures/S05_iterative_solves.png)
+
+## Figure S07
+
+**Figure S07. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
+
+![Figure S07](figures/S07_reference_verification.png)
