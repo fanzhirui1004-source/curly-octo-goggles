@@ -82,6 +82,7 @@ import torch
 import teacher as TE
 import prep_data as PD
 import prep_geo as PG
+import surfaces as SF
 
 _SPD0 = TE.SPDSolver
 
@@ -168,7 +169,7 @@ class ClassGens:
 def _material(C, P):
     """Quadrature points inside the material: |phi| <= tau (trilinear corner thickness) and in the retained half-space."""
     from element_polyref import CUBE
-    f = np.cos(2 * np.pi * P).sum(1)
+    f = SF.f_np(P, getattr(C, 'surface', 'P'))                          # level set of the cell's sheet family
     cube = np.asarray(CUBE, float)
     w8 = np.where(cube[:, None, :].astype(bool), P[None], 1 - P[None]).prod(-1)
     keep = np.abs(f) <= np.asarray(C.taus, float) @ w8
@@ -261,7 +262,7 @@ class Traction:
 
 def _material_plane(C, P):
     from element_polyref import CUBE
-    f = np.cos(2 * np.pi * P).sum(1)
+    f = SF.f_np(P, getattr(C, 'surface', 'P'))                          # level set of the cell's sheet family
     cube = np.asarray(CUBE, float)
     w8 = np.where(cube[:, None, :].astype(bool), P[None], 1 - P[None]).prod(-1)
     return P[np.abs(f) <= np.asarray(C.taus, float) @ w8]

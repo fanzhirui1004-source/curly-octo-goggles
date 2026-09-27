@@ -8,7 +8,9 @@ in. This builder defines the body from the discrete geometry of the moment integ
                  components other than the largest are dropped (recorded); with --layout <lattice.json> the
                  components are those of the whole lattice (cells of neighbouring lattice cells joined across the
                  shared box face), so that material disconnected inside one cell but connected through a neighbour
-                 is kept on both sides and the box patches of neighbours match
+                 is kept on both sides and the box patches of neighbours match; components inside one lattice cell
+                 with less than MIN_COMP_VOL cells of volume are dropped first (slivers without ghost-penalty
+                 support make near-zero port stiffness), repeated with the lattice components to a fixed point
   full cells     the frozen rule: no cell corner beyond the macro plane and both constraints strictly negative over
                  the cell by an interval enclosure of f (surfaces.f_range_box) and of the trilinear thickness (corner
                  min / max), margin 1e-10; ghost faces join active neighbours unless both are full (the frozen face rule)
@@ -38,6 +40,9 @@ import surfaces as SF
 OFFSETS = np.asarray(list(product(range(3), repeat=3)))
 R = Path('/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/packets')
 dev, dt = torch.device('cuda'), torch.float64
+
+
+MIN_COMP_VOL = 0.25            # --layout: per-cell components below this volume (in cells) are dropped (no ghost support)
 
 
 def packet_dir(case):
@@ -254,7 +259,7 @@ def main(out, case, samples=65, select=None):
                zero_volume_active=int(extra.sum()), witness_undecided_active=int(und_act),
                volume_fraction=float(vol.sum()))                          # moments carry the physical measure
     if select == 'active':
-        return cells
+        return cells, vol[act]
     if callable(select):
         keep = select(cells)
         row['dropped_components'] = 'lattice'; row['dropped_cells'] = int((~keep).sum())
@@ -369,8 +374,10 @@ if __name__ == '__main__':
         pos = {c['case']: np.asarray(c['position'], dtype=np.int64) for c in lay['cells']}
         act = {c: main(out, c, smp, select='active') for c in pos}
         n = int(json.loads((packet_dir(next(iter(pos))) / 'FRESH_CONTEXT.json').read_text())['n'])
-        glob = np.concatenate([pos[c][None] * n + act[c] for c in pos])            # lattice cell coordinates
-        owner = np.concatenate([[c] * len(act[c]) for c in pos])
+        vmin = MIN_COMP_VOL / n ** 3
+        glob = np.concatenate([pos[c][None] * n + act[c][0] for c in pos])         # lattice cell coordinates
+        gvol = np.concatenate([act[c][1] for c in pos])
+        owner = np.concatenate([[c] * len(act[c][0]) for c in pos])
         lookup = {tuple(map(int, x)): k for k, x in enumerate(glob)}
         ei, ej = [], []
         for k, x in enumerate(glob):
@@ -379,12 +386,31 @@ if __name__ == '__main__':
                 nb = lookup.get(tuple(map(int, y)))
                 if nb is not None:
                     ei.append(k); ej.append(nb)
-        G = sparse.coo_matrix((np.ones(len(ei)), (ei, ej)), shape=(len(glob), len(glob)))
-        ncomp, lab = connected_components(G, directed=False)
-        big = np.bincount(lab).argmax()
-        keepset = {c: set(map(tuple, (glob[(owner == c) & (lab == big)] - pos[c] * n).tolist())) for c in pos}
-        print(json.dumps(dict(layout=lay['name'], lattice_components=int(ncomp), lattice_cells=int(len(glob)),
-                              dropped=int((lab != big).sum()))), flush=True)
+        ei, ej = np.asarray(ei), np.asarray(ej)
+        same = owner[ei] == owner[ej]                                              # face pairs inside one lattice cell
+        alive = np.ones(len(glob), dtype=bool)
+        log = []
+        for it in range(50):                                                       # to a fixed point:
+            m = alive[ei] & alive[ej]
+            # (1) components inside one lattice cell below MIN_COMP_VOL cells of volume: no ghost-penalty support
+            Gi = sparse.coo_matrix((np.ones(int((m & same).sum())), (ei[m & same], ej[m & same])), shape=(len(glob),) * 2)
+            _, li = connected_components(Gi, directed=False)
+            cv = np.bincount(li, weights=gvol * alive, minlength=li.max() + 1)
+            small = alive & (cv[li] < vmin)
+            alive &= ~small
+            # (2) lattice components: keep the largest
+            m = alive[ei] & alive[ej]
+            Gl = sparse.coo_matrix((np.ones(int(m.sum())), (ei[m], ej[m])), shape=(len(glob),) * 2)
+            ncomp, lab = connected_components(Gl, directed=False)
+            big = np.bincount(lab[alive]).argmax()
+            floating = alive & (lab != big)
+            alive &= ~floating
+            log.append(dict(small=int(small.sum()), floating=int(floating.sum())))
+            if not small.any() and not floating.any():
+                break
+        keepset = {c: set(map(tuple, (glob[(owner == c) & alive] - pos[c] * n).tolist())) for c in pos}
+        print(json.dumps(dict(layout=lay['name'], lattice_cells=int(len(glob)), kept=int(alive.sum()),
+                              min_component_volume_cells=MIN_COMP_VOL, iterations=log)), flush=True)
         for c in pos:
             main(out, c, smp, select=lambda cells, c=c: np.asarray([tuple(map(int, x)) in keepset[c] for x in cells], dtype=bool))
     else:
