@@ -15,7 +15,7 @@ C = TE.Cell(case, body, log=lambda s_: None, deploy=True); C.assemble_deploy()
 h = BD.ModelHolder('/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt'); BD.netdata(C, body, BD.TMP / case)
 geo = TL.Geo(case, body, BD.TMP, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
 f = FN.FastNet(h.add(geo), geo)
-for B in (6, 12):
+for B in (3, 6):
     q = torch.randn((C.np_, B), dtype=dt, device=dev, generator=torch.Generator(device=dev).manual_seed(B))
     x = torch.randn((C.nb, B), dtype=dt, device=dev, generator=torch.Generator(device=dev).manual_seed(B + 1))
     r = {}

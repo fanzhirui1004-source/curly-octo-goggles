@@ -71,6 +71,22 @@ class _Hyper:
         Z = torch.bmm(Z.reshape(self.H, self.Eh * B, F), self.W)
         return torch.sparse.mm(self.S, Z.reshape(self.H * self.Eh, B * F)).reshape(N, B, F)
 
+    def fwd_res(self, X):
+        """X + fwd(X) with the residual folded into the scatter (fused path only)."""
+        N, B, F = X.shape
+        import fused_hyper as FH
+        Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
+        Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
+        return FH.scatter(Z, self.hn, self.b, self.deg, N, FH.BLK, True, init=X).view(N, B, F)
+
+    def adj_res(self, Y):
+        """Y + adj(Y) with the residual folded into the scatter (fused path only)."""
+        N, B, F = Y.shape
+        import fused_hyper as FH
+        Z = FH.gather(Y.reshape(N, B * F).contiguous(), self.hn, self.b, self.deg, self.H, FH.BLK, True)
+        Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.Wt).view(self.H, self.Eh, B * F)
+        return FH.scatter(Z, self.hn, self.a, self.deg, N, FH.BLK, False, init=Y).view(N, B, F)
+
     def adj(self, Y):
         N, B, F = Y.shape
         if self.fused:
@@ -193,8 +209,9 @@ class FastNet:
         X0[c.port_nodes] = qd.reshape(-1, 3, B).permute(0, 2, 1) @ self.W_in
         pre, post = self._layers()
         X = X0
+        res = lambda h, X_: h.fwd_res(X_) if (FI.ON and h.fused) else X_ + h.fwd(X_)
         for h in pre:
-            X = self._clamp(X + h.fwd(X), X0)
+            X = self._clamp(res(h, X), X0)
         skips, Xl = [], X
         for l in range(self.levels):
             skips.append(Xl)
@@ -207,7 +224,7 @@ class FastNet:
             Xl = skips[l] + self._sp(self.P[l], Xl)
         X = self._clamp(Xl, X0)
         for h in post:
-            X = self._clamp(X + h.fwd(X), X0)
+            X = self._clamp(res(h, X), X0)
         return (X @ self.W_out).permute(0, 2, 1).reshape(-1, B)
 
     @torch.no_grad()
@@ -220,10 +237,11 @@ class FastNet:
         zero = torch.zeros((), device=dev)
         pmk = (lambda X: torch.where(self.pmask, X, zero)) if FI.ON else (lambda X: X * self.pm)
         imk = (lambda X: torch.where(self.pmask, zero, X)) if FI.ON else (lambda X: X * (1 - self.pm))
+        ares = lambda h, A_: h.adj_res(A_) if (FI.ON and h.fused) else A_ + h.adj(A_)
         for h in reversed(post):
             X0b += pmk(Xb)
             A = imk(Xb)
-            Xb = A + h.adj(A)
+            Xb = ares(h, A)
         X0b += pmk(Xb)
         G = imk(Xb)
         gskip = []
@@ -240,7 +258,7 @@ class FastNet:
         for h in reversed(pre):
             X0b += pmk(Xb)
             A = imk(Xb)
-            Xb = A + h.adj(A)
+            Xb = ares(h, A)
         X0b += Xb
         return (X0b[c.port_nodes] @ self.W_in.T).permute(0, 2, 1).reshape(-1, B)
 

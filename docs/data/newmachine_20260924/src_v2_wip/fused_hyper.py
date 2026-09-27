@@ -85,10 +85,11 @@ def gather(src, hn, w, deg, H, blk, use_deg):
     return out
 
 
-def scatter(src, hn, w, deg, N, blk, use_deg):
-    """src (H, Eh, BF) -> (N, BF)."""
+def scatter(src, hn, w, deg, N, blk, use_deg, init=None):
+    """src (H, Eh, BF) -> (N, BF); init (N, BF): the scatter adds onto a copy of init instead of zeros (a fused residual
+    init + S Z, the same sum in another order)."""
     H, Eh, BF = src.shape
-    out = torch.zeros((N, BF), dtype=torch.float32, device=src.device)
+    out = torch.zeros((N, BF), dtype=torch.float32, device=src.device) if init is None else init.reshape(N, BF).clone()
     if Eh == 0 or BF == 0:
         return out
     _scatter[_grid(Eh, BF, blk)](src, hn, w, deg, out, Eh, BF, H=H, S=hn.shape[1], BLK=blk, DEG=use_deg)

@@ -17,6 +17,7 @@ Gate metrics: compliance relative error per load; sensitivity: per cell and load
 import json, time, gc
 from pathlib import Path
 import numpy as np
+import surfaces as SF
 import torch
 import teacher as TE
 import ops as OP
@@ -39,7 +40,7 @@ def plane_traction_weights(cell, pts_per_elem=6):
     S1, S2 = np.meshgrid(s, s, indexing='ij')
     P = x0[None] + S1.reshape(-1, 1) * t1[None] + S2.reshape(-1, 1) * t2[None]
     P = P[(P >= 0).all(1) & (P <= 1).all(1)]
-    f = np.cos(2 * np.pi * P).sum(1)
+    f = SF.f_np(P, getattr(cell, 'surface', 'P'))
     cube = np.asarray(CUBE, float)
     w8 = np.where(cube[:, None, :].astype(bool), P[None], 1 - P[None]).prod(-1)
     tau = np.asarray(cell.taus, float) @ w8
@@ -70,7 +71,7 @@ def face_traction_weights(cell, axis, value, pts_per_elem=6):
     A, B = np.meshgrid(s, s, indexing='ij')
     P = np.zeros((A.size, 3)); o = [d for d in range(3) if d != axis]
     P[:, axis] = value; P[:, o[0]] = A.reshape(-1); P[:, o[1]] = B.reshape(-1)
-    f = np.cos(2 * np.pi * P).sum(1)
+    f = SF.f_np(P, getattr(cell, 'surface', 'P'))
     cube = np.asarray(CUBE, float)
     w8 = np.where(cube[:, None, :].astype(bool), P[None], 1 - P[None]).prod(-1)
     tau = np.asarray(cell.taus, float) @ w8

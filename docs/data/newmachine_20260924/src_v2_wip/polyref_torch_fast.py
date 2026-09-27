@@ -17,6 +17,7 @@ import numpy as np
 import torch
 
 from element_polyref import KUHN, CUBE, tet_rule, cube_rule
+import surfaces as SF
 
 
 def _clip(tets, attr, owner, k):
@@ -66,7 +67,7 @@ def _accumulate(M, P, W, owner, chunk=1 << 20):
         M.index_add_(0, o, mono * w[:, None])
 
 
-def cell_moments(cells, n, taus, normal, offset, s, device='cuda', batch=2048, rule_order=4, levels=0):
+def cell_moments(cells, n, taus, normal, offset, s, device='cuda', batch=2048, rule_order=4, levels=0, surface='P'):
     """125 moments per cell. Base s^3 sub-cubes; partial sub-cubes are refined 2x2x2 up to `levels` times
     (octree near the material boundary only), and clipped as Kuhn tetrahedra at the finest level."""
     dt = torch.float64
@@ -84,7 +85,7 @@ def cell_moments(cells, n, taus, normal, offset, s, device='cuda', batch=2048, r
 
     def psi_at(cell_xyz, xi):  # xi local in [-1,1]; cell_xyz integer cell index per row
         phys = (cell_xyz + (xi + 1) / 2) / n
-        f = torch.cos(2 * torch.pi * phys).sum(-1)
+        f = torch.cos(2 * torch.pi * phys).sum(-1) if surface in (None, 'P') else SF.f_torch(phys, surface)
         w8 = torch.where(cube.bool().view(8, *([1] * (phys.dim() - 1)), 3), phys[None], 1 - phys[None]).prod(-1)
         tau = torch.einsum('c,c...->...', taus_t, w8)
         p3 = (offset - phys @ nrm) if nrm is not None else torch.ones_like(f)

@@ -21,6 +21,7 @@ from itertools import product
 import numpy as np
 import torch
 import torch.utils.checkpoint
+import surfaces as SF
 
 from element_polyref import KUHN, CUBE, tet_rule
 from polyref_torch_fast import _clip
@@ -82,7 +83,7 @@ def plane_rows(normal, offset, E, device):
     return nrm, torch.full((E,), float(offset), dtype=dt, device=device)
 
 
-def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=2048):
+def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=2048, surface='P'):
     """125 moments per row, scaled like cell_moments (physical measure, local xi coordinates).
     cells (E,3) integer cell indices; taus (E,8) torch float64 (may require grad); nrm (E,3), off (E,) torch."""
     device = taus.device
@@ -98,7 +99,7 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
 
         def psi_at(own, xi):                                     # xi: C x 8 x 3 local in [-1, 1]
             phys = (cb[own][:, None, :] + (xi + 1) / 2) / n
-            f = torch.cos(2 * torch.pi * phys).sum(-1)
+            f = torch.cos(2 * torch.pi * phys).sum(-1) if surface in (None, 'P') else SF.f_torch(phys, surface)
             w8 = torch.where(cmask, phys[None], 1 - phys[None]).prod(-1)          # 8(corner) x C x 8
             if os.environ.get('OPL_TET_TRITON') == '1':               # elementwise (no batched 1 x 8 @ 8 x 8 gemv)
                 tau = (tb[own][:, :, None] * w8.permute(1, 0, 2)).sum(1)
@@ -150,7 +151,7 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
     return torch.cat(outs) * (1 / (2 * n)) ** 3
 
 
-def moments_vjp(cells, n, taus, nrm, off, G, s=4, levels=1, batch=512, rule_order=4):
+def moments_vjp(cells, n, taus, nrm, off, G, s=4, levels=1, batch=512, rule_order=4, surface='P'):
     """Moments M (E,125) and the per-row vector-Jacobian products
         V[e, c, k] = sum_m (dM_em / dtau_{e,c}) G[e, m, k]        (G: (E,125,K) float64)
     Each row's moments depend only on its own tau row, so summing V over the rows of one lattice cell gives
@@ -162,7 +163,7 @@ def moments_vjp(cells, n, taus, nrm, off, G, s=4, levels=1, batch=512, rule_orde
         b1 = min(E, b0 + batch)
         tb = taus[b0:b1].detach().clone().requires_grad_(True)
         with torch.enable_grad():
-            Mb = moments_rows(cells[b0:b1], n, tb, nrm[b0:b1], off[b0:b1], s=s, levels=levels, rule_order=rule_order,
+            Mb = moments_rows(cells[b0:b1], n, tb, nrm[b0:b1], off[b0:b1], s=s, levels=levels, rule_order=rule_order, surface=surface,
                               batch=b1 - b0)
             for k in range(K):
                 gk, = torch.autograd.grad((Mb * G[b0:b1, :, k]).sum(), tb, retain_graph=k < K - 1, allow_unused=True)
@@ -182,7 +183,7 @@ def cell_rows(cell):
 
 
 @torch.no_grad()
-def full_rows(cells, n, taus, nrm, off, s=4):
+def full_rows(cells, n, taus, nrm, off, s=4, surface='P'):
     """Rows whose s^3 level-0 sub-cubes are all inside the material with a margin (every psi >= 1e-9 at every sub-cube
     corner; moments_rows' 'full' test is psi >= 0): their moments are the closed-form monomials, independent of tau."""
     device = taus.device
@@ -196,7 +197,7 @@ def full_rows(cells, n, taus, nrm, off, s=4):
         c = cb[b0:b0 + 4096]
         lo = (-1 + h * idx)[None, :, None, :] + h * cube[None, None]                   # rows x s^3 x 8 x 3 (xi)
         phys = (c[:, None, None, :] + (lo + 1) / 2) / n
-        f = torch.cos(2 * torch.pi * phys).sum(-1)
+        f = torch.cos(2 * torch.pi * phys).sum(-1) if surface in (None, 'P') else SF.f_torch(phys, surface)
         w8 = torch.where(cmask.view(8, 1, 1, 1, 3), phys[None], 1 - phys[None]).prod(-1)   # 8 x rows x s^3 x 8
         tau = torch.einsum('Rc,cRSk->RSk', taus[b0:b0 + 4096], w8)
         p3 = off[b0:b0 + 4096][:, None, None] - (phys * nrm[b0:b0 + 4096][:, None, None, :]).sum(-1)
@@ -211,10 +212,12 @@ def cell_sens(cell, g, batch=512, skip_full=False):
     contribution is exactly zero)."""
     cells, taus, nrm, off = cell_rows(cell)
     if skip_full:
-        keep = torch.nonzero(~full_rows(cells, cell.n, taus, nrm, off, s=cell.s)).squeeze(1)
+        sf = getattr(cell, 'surface', 'P')
+        keep = torch.nonzero(~full_rows(cells, cell.n, taus, nrm, off, s=cell.s, surface=sf)).squeeze(1)
         kc = keep.cpu().numpy()
         _, V = moments_vjp(np.asarray(cells)[kc], cell.n, taus[keep], nrm[keep], off[keep], g[keep], s=cell.s,
-                           levels=cell.levels, batch=batch)
+                           levels=cell.levels, batch=batch, surface=sf)
         return -V.sum(0)
-    _, V = moments_vjp(cells, cell.n, taus, nrm, off, g, s=cell.s, levels=cell.levels, batch=batch)
+    _, V = moments_vjp(cells, cell.n, taus, nrm, off, g, s=cell.s, levels=cell.levels, batch=batch,
+                       surface=getattr(cell, 'surface', 'P'))
     return -V.sum(0)

@@ -4,7 +4,7 @@ import os, json, sys
 import models as MD  # noqa
 import torch, teacher as TE, trainlib as TL, fastnet as FN, bench_deploy as BD, fastidx as FI
 dev, dt, f32 = TE.dev, TE.dt, torch.float32
-FN.FUSED = True; os.environ['OPL_COARSE_FP32'] = '1'; os.environ['OPL_TAILT_FUSED'] = '0'; FI.ON = True
+FN.FUSED = True; os.environ['OPL_COARSE_FP32'] = '1'; os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_TET_TRITON'] = '1'; FI.ON = True
 body, case = sys.argv[1].split(':'); B = int(sys.argv[2])
 BD.TMP.mkdir(parents=True, exist_ok=True)
 C = TE.Cell(case, body, log=lambda s_: None, deploy=True); C.assemble_deploy()

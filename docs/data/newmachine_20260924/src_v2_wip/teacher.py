@@ -225,6 +225,7 @@ class Cell:
         lam = Emod * nu / ((1 + nu) * (1 - 2 * nu)); mu = Emod / (2 * (1 + nu))
         cs = ctx['case']
         self.kind = cs.get('kind')
+        self.surface = cs.get('surface', 'P') or 'P'
         self.taus0 = [float(Fraction(v)) for v in cs['tau_corners']]
         self.normal = None if cs.get('normal') is None else [float(Fraction(v)) for v in cs['normal']]
         self.offset = None if self.normal is None else float(Fraction(cs['offset']))
@@ -298,7 +299,8 @@ class Cell:
 
     # ---------------------------------------------------------------- assembly
     def moments(self, taus):
-        return torch.as_tensor(self.PT.cell_moments(self.cells, self.n, taus, self.normal, self.offset, self.s, levels=self.levels),
+        return torch.as_tensor(self.PT.cell_moments(self.cells, self.n, taus, self.normal, self.offset, self.s, levels=self.levels,
+                                                    surface=self.surface),
                                dtype=dt, device=dev)
 
     def assemble(self, taus=None):
@@ -480,7 +482,7 @@ class Cell:
             held = getattr(self, '_ke64_tmp', None)
             for j, lo in enumerate(range(0, len(self.M), self._lean_chunk)):
                 de = self.dofs[lo:lo + self._lean_chunk]
-                Ke = held[j] if held is not None else (self.M[lo:lo + self._lean_chunk] @ Tf).reshape(-1, 81, 81)
+                Ke = held[j] if held is not None else self._ke64(lo, lo + self._lean_chunk)
                 y.index_add_(0, de.reshape(-1), torch.bmm(Ke, FI.rows(x, de)).reshape(-1, x.shape[1]))
             return y
         y = self.G @ x + self.Gt @ x - self.dG[:, None] * x
@@ -489,6 +491,21 @@ class Cell:
             ye = torch.bmm(self.Ke[lo:lo + self._lean_chunk], FI.rows(x, de))
             y.index_add_(0, de.reshape(-1), ye.reshape(-1, x.shape[1]))
         return y
+
+    def _ke64(self, lo, hi):
+        """float64 element matrices K_e = M_e T of rows lo:hi. OPL_FASTIDX=1: T_m is exactly symmetric, so only the upper
+        triangle (3321 of 6561 entries) is formed by the GEMM and mirrored (half the float64 flops; same products)."""
+        if not FI.ON:
+            return (self.M[lo:hi] @ self.Tm.reshape(125, 81 * 81)).reshape(-1, 81, 81)
+        sym = getattr(self, '_sym_idx', None)
+        if sym is None or sym.device != self.M.device:
+            iu = torch.triu_indices(81, 81, device=self.M.device)
+            pos = torch.full((81, 81), -1, dtype=torch.long, device=self.M.device)
+            pos[iu[0], iu[1]] = torch.arange(iu.shape[1], device=self.M.device)
+            pos = torch.where(pos >= 0, pos, pos.t())
+            self._sym_idx = sym = pos.reshape(-1)
+            self._Tup = self.Tm[:, iu[0], iu[1]].contiguous()
+        return (self.M[lo:hi] @ self._Tup)[:, sym].reshape(-1, 81, 81)
 
     def hold64(self):
         """Context: in deployment mode with OPL_FASTIDX=1, the float64 element matrices K_e = M_e T are formed once (same
@@ -502,7 +519,7 @@ class Cell:
             own = FI.ON and getattr(me, '_deploy', False) and getattr(me, '_ke64_tmp', None) is None
             if own:
                 Tf, ch = me.Tm.reshape(125, 81 * 81), me._lean_chunk
-                me._ke64_tmp = [(me.M[lo:lo + ch] @ Tf).reshape(-1, 81, 81) for lo in range(0, len(me.M), ch)]
+                me._ke64_tmp = [me._ke64(lo, lo + ch) for lo in range(0, len(me.M), ch)]
             try:
                 yield
             finally:
