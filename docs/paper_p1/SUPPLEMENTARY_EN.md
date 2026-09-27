@@ -9,6 +9,9 @@
 | C | Continued uncorrected predictor | A0_ctrl |
 | S8 | Separate continued weights with eight smoothing steps | A2_tail8 |
 | D | Earlier predictor for deployment costs | c_ctrl |
+| A2b | Continued weights trained through eight smoothing steps | A2b_tail8 |
+| B+W | B's weights evaluated with A3's correction | B2grid |
+| A3 | Principal predictor, trained through the complete correction | A3_2grid |
 
 The S8 predictor has its own learned weights. Applying eight steps to B in the fixed-weight study is a distinct comparison.
 
@@ -46,44 +49,46 @@ Geometry counts refer to geometries with an available direction-class mean. The 
 
 ## Table ST01. Identity-view energy excess by direction class
 
-Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. An em dash denotes a class absent from that model’s result.
+Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. An em dash denotes a class absent from that model’s result. B+W denotes B's weights evaluated with A3's correction.
 
-| Class | Geometries per evaluated arm | P0 | B | C | S8 |
-| --- | --- | --- | --- | --- | --- |
-| force | 80 | 7.387 / 19.508 / 109.813 | 5.036 / 12.038 / 70.122 | 4.607 / 10.750 / 62.465 | 0.672 / 1.887 / 4.398 |
-| support | 80 | 8.078 / 13.959 / 153.172 | 5.332 / 9.811 / 99.857 | 4.878 / 9.493 / 90.741 | 0.761 / 1.864 / 3.408 |
-| face | 80 | 3.203 / 6.296 / 33.992 | 2.486 / 5.209 / 22.139 | 2.233 / 4.045 / 17.635 | 0.218 / 0.435 / 2.638 |
-| macro | 80 | 0.938 / 1.533 / 2.669 | 0.842 / 1.448 / 2.636 | 0.827 / 1.446 / 2.584 | 0.255 / 0.487 / 1.148 |
-| grf | 80 | 2.125 / 3.191 / 4.747 | 2.038 / 3.104 / 4.582 | 2.009 / 3.075 / 4.550 | 0.311 / 0.709 / 1.172 |
-| force_c | 20 | — | 6.624 / 14.185 / 35.202 | 5.788 / 12.731 / 24.848 | 1.428 / 3.982 / 4.723 |
-| face_c | 20 | — | 3.838 / 4.553 / 36.337 | 3.160 / 4.184 / 25.525 | 0.510 / 1.187 / 2.241 |
-| support_k | 19 | — | 3.350 / 8.702 / 10.045 | 3.177 / 8.032 / 8.873 | 1.062 / 2.784 / 3.411 |
-| glued | 15 | — | 6.647 / 11.149 / 38.128 | 6.712 / 10.144 / 42.030 | 1.475 / 3.843 / 3.986 |
+| Class | Geometries per evaluated arm | P0 | B | C | S8 | A2b | B+W | A3 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| force | 80 | 7.387 / 19.508 / 109.813 | 5.036 / 12.038 / 70.122 | 4.607 / 10.750 / 62.465 | 0.672 / 1.887 / 4.398 | 0.525 / 1.301 / 3.658 | 0.092 / 0.180 / 0.683 | 0.058 / 0.117 / 0.325 |
+| support | 80 | 8.078 / 13.959 / 153.172 | 5.332 / 9.811 / 99.857 | 4.878 / 9.493 / 90.741 | 0.761 / 1.864 / 3.408 | 0.638 / 1.601 / 3.552 | 0.084 / 0.168 / 0.852 | 0.055 / 0.132 / 0.372 |
+| face | 80 | 3.203 / 6.296 / 33.992 | 2.486 / 5.209 / 22.139 | 2.233 / 4.045 / 17.635 | 0.218 / 0.435 / 2.638 | 0.165 / 0.341 / 1.808 | 0.072 / 0.112 / 1.990 | 0.037 / 0.056 / 0.724 |
+| macro | 80 | 0.938 / 1.533 / 2.669 | 0.842 / 1.448 / 2.636 | 0.827 / 1.446 / 2.584 | 0.255 / 0.487 / 1.148 | 0.203 / 0.382 / 0.935 | 0.022 / 0.059 / 0.165 | 0.015 / 0.034 / 0.118 |
+| grf | 80 | 2.125 / 3.191 / 4.747 | 2.038 / 3.104 / 4.582 | 2.009 / 3.075 / 4.550 | 0.311 / 0.709 / 1.172 | 0.251 / 0.552 / 0.933 | 0.029 / 0.072 / 0.180 | 0.025 / 0.060 / 0.143 |
+| force_c | 80 | — | 6.886 / 17.331 / 48.628 | 6.334 / 16.142 / 41.962 | 1.513 / 3.982 / 9.161 | 1.280 / 3.453 / 7.817 | 0.097 / 0.239 / 0.905 | 0.074 / 0.213 / 0.651 |
+| face_c | 80 | — | 3.150 / 6.726 / 36.337 | 2.806 / 6.290 / 25.525 | 0.569 / 1.277 / 3.059 | 0.483 / 1.140 / 2.326 | 0.043 / 0.102 / 0.319 | 0.032 / 0.078 / 0.210 |
+| support_k | 75 | — | 4.177 / 9.695 / 28.817 | 3.941 / 8.831 / 26.175 | 1.135 / 3.022 / 6.714 | 0.938 / 2.390 / 5.246 | 0.077 / 0.193 / 0.632 | 0.057 / 0.169 / 0.468 |
+| glued | 75 | — | 4.593 / 11.227 / 38.128 | 4.422 / 10.378 / 42.030 | 1.160 / 3.373 / 5.852 | 0.953 / 2.696 / 4.629 | 0.078 / 0.217 / 0.555 | 0.060 / 0.172 / 0.384 |
 
 
 ### ST01b. Force/support geometry-stratum means (%)
 
-| Stratum | Geometries | P0 force/support | B force/support | C force/support | S8 force/support |
-| --- | --- | --- | --- | --- | --- |
-| FULL | 20 | 1.052 / 1.815 | 0.908 / 1.413 | 0.879 / 1.332 | 0.110 / 0.278 |
-| Light cut (v2) | 20 | 4.593 / 4.142 | 3.239 / 3.049 | 3.021 / 2.832 | 0.665 / 0.777 |
-| Middle cut (v1) | 20 | 6.166 / 5.265 | 4.720 / 3.930 | 4.506 / 3.810 | 0.912 / 0.856 |
-| Heavy cut (v0) | 20 | 17.738 / 21.089 | 11.278 / 12.938 | 10.021 / 11.540 | 0.999 / 1.133 |
+| Stratum | Geometries | P0 force/support | B force/support | C force/support | S8 force/support | A2b force/support | B+W force/support | A3 force/support |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| FULL | 20 | 1.052 / 1.815 | 0.908 / 1.413 | 0.879 / 1.332 | 0.110 / 0.278 | 0.072 / 0.225 | 0.034 / 0.044 | 0.013 / 0.022 |
+| Light cut (v2) | 20 | 4.593 / 4.142 | 3.239 / 3.049 | 3.021 / 2.832 | 0.665 / 0.777 | 0.523 / 0.661 | 0.088 / 0.072 | 0.059 / 0.050 |
+| Middle cut (v1) | 20 | 6.166 / 5.265 | 4.720 / 3.930 | 4.506 / 3.810 | 0.912 / 0.856 | 0.723 / 0.698 | 0.103 / 0.075 | 0.070 / 0.050 |
+| Heavy cut (v0) | 20 | 17.738 / 21.089 | 11.278 / 12.938 | 10.021 / 11.540 | 0.999 / 1.133 | 0.783 / 0.966 | 0.141 / 0.145 | 0.090 / 0.098 |
 
 
 ### ST01c. View dependence: identity / view 17 means (%)
 
-| Class | P0 | B |
-| --- | --- | --- |
-| force | 7.387 / 8.107 | 5.036 / 5.271 |
-| support | 8.078 / 8.678 | 5.332 / 5.598 |
-| face | 3.203 / 3.223 | 2.486 / 2.417 |
-| macro | 0.938 / 1.011 | 0.842 / 0.890 |
-| grf | 2.125 / 2.240 | 2.038 / 2.119 |
-| force_c | — | 6.624 / 7.493 |
-| face_c | — | 3.838 / 4.249 |
-| support_k | — | 3.350 / 3.760 |
-| glued | — | 6.647 / 7.207 |
+This comparison uses an earlier evaluation in both views, in which the four enriched classes cover the numbers of geometries given in the second column; their identity-view means therefore differ from those of Table ST01.
+
+| Class | Geometries | P0 | B |
+| --- | --- | --- | --- |
+| force | 80 | 7.387 / 8.107 | 5.036 / 5.271 |
+| support | 80 | 8.078 / 8.678 | 5.332 / 5.598 |
+| face | 80 | 3.203 / 3.223 | 2.486 / 2.417 |
+| macro | 80 | 0.938 / 1.011 | 0.842 / 0.890 |
+| grf | 80 | 2.125 / 2.240 | 2.038 / 2.119 |
+| force_c | 20 | — | 6.624 / 7.493 |
+| face_c | 20 | — | 3.838 / 4.249 |
+| support_k | 19 | — | 3.350 / 3.760 |
+| glued | 15 | — | 6.647 / 7.207 |
 
 ## Table ST02. Same-trace sensitivity and spectral diagnostics
 
@@ -413,18 +418,21 @@ The cut volumes refer to the box before intersecting it with the TPMS band. Geom
 | B | 305 | 40 | 40,000 | 30,000 / EMA | None | 0, 17 | 80 |
 | C | 591 | 40 | 15,000 | 15,000 / EMA | None | 0 | 80 |
 | S8 | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
+| A2b | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
+| B+W | 305 | 40 | — | 30,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
+| A3 | 591 | 40 | 15,000 | 15,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
 
 
-The P0 row uses the final selected-weight snapshot; the other rows use the best selected-weight snapshot. C and S8 are separate continuation recipes initialized from B. S8 denotes evaluation of its own checkpoint with an eight-step tail. The fixed-checkpoint correction experiments use B. The new-validation set comprises 20 FULL cells and 20, 20, and 20 cells in the light-, middle-, and heavy-cut strata. The original five direction classes each cover 80 geometries; force_c and face_c cover 20 and 20, support_k covers 19, and glued covers 15. 
+The P0 row uses the final selected-weight snapshot; the other rows use the best selected-weight snapshot. C, S8, A2b and A3 are separate continuation recipes initialized from B; B+W evaluates the selected B checkpoint with A3's correction and has no training run of its own. S8 denotes evaluation of its own checkpoint with an eight-step tail. The fixed-checkpoint correction experiments use B. The new-validation set comprises 20 FULL cells and 20, 20, and 20 cells in the light-, middle-, and heavy-cut strata. In the identity view, the five basic direction classes, force_c and face_c cover all 80 geometries, and support_k and glued cover 75. The view-17 comparison in Table ST01c comes from an earlier evaluation of the same geometries, in which force_c, face_c, support_k and glued cover 20, 20, 19 and 15 geometries.
 
-For B, C and S8, checkpoint selection uses the bias-corrected EMA weights and both validation views 0 and 17, even where the new-validation table reports only view 0. Within a geometry family and view, let \(E_{fv}\) be the mean energy excess averaged over the selection classes, \(S_{fv}\) the mean relative sensitivity-vector error over classes with labels, and \(P_{fv}\) the class-average 90th percentile of directional energy excess. Each class statistic is first averaged over the available geometries in that family. The selection score is
+For B, C, S8 and A3, checkpoint selection uses the bias-corrected EMA weights and both validation views 0 and 17, even where the new-validation table reports only view 0. Within a geometry family and view, let \(E_{fv}\) be the mean energy excess averaged over the selection classes, \(S_{fv}\) the mean relative sensitivity-vector error over classes with labels, and \(P_{fv}\) the class-average 90th percentile of directional energy excess. Each class statistic is first averaged over the available geometries in that family. The selection score is
 
 \[
 J_{\rm sel}=\frac12\sum_{v\in\{0,17\}}\frac1{|\mathcal F|}
 \sum_{f\in\mathcal F}\left(E_{fv}+S_{fv}+\tfrac12P_{fv}\right).
 \]
 
-Families and the two views carry equal weight. The eight selection classes are `force`, `support`, `face`, `macro`, `grf`, `force_c`, `face_c` and `support_k`; absent classes are omitted and an absent sensitivity term contributes zero. The percentile term averages within-geometry percentiles rather than pooling all directions. No additional sensitivity-percentile term is used. B is evaluated every 10,000 updates and becomes eligible at update 10,000; C and S8 are evaluated every 7,500 updates and become eligible at update 7,500. Among eligible evaluations, the lowest finite score is selected. This selection criterion differs from the per-batch training loss in Eq. (8) and from the geometry-weighted statistics of the unseen validation set.
+Families and the two views carry equal weight. The eight selection classes are `force`, `support`, `face`, `macro`, `grf`, `force_c`, `face_c` and `support_k`; absent classes are omitted and an absent sensitivity term contributes zero. The percentile term averages within-geometry percentiles rather than pooling all directions. No additional sensitivity-percentile term is used. B is evaluated every 10,000 updates and becomes eligible at update 10,000; C, S8 and A3 are evaluated every 7,500 updates and become eligible at update 7,500; A2b is evaluated with its EMA weights at update 15,000. Among eligible evaluations, the lowest finite score is selected. This selection criterion differs from the per-batch training loss in Eq. (8) and from the geometry-weighted statistics of the unseen validation set.
 
 
 ## Table ST13. Complete continuous-neighbour assembly results
@@ -449,6 +457,8 @@ Maximum relative compliance and field-based sensitivity-vector errors over the s
 | H1 | x | C | 1.061 | 2.469 | 13 | Pass |
 | H1 | y | C | 1.223 | 1.734 | 13 | Pass |
 | M2 | x | C | 0.593 | 2.874 | 15 | Pass |
+| L1 | x | C | 0.174 | 1.894 | 16 | Pass |
+| L1 | y | C | 0.182 | 1.646 | 16 | Pass |
 | U1 | x | S8 | 0.139 | 3.894 | 7 | Above criterion |
 | U1 | y | S8 | 0.140 | 3.747 | 7 | Above criterion |
 | U2 | x | S8 | 0.031 | 1.115 | 6 | Pass |
@@ -458,9 +468,49 @@ Maximum relative compliance and field-based sensitivity-vector errors over the s
 | H1 | x | S8 | 0.178 | 1.216 | 9 | Pass |
 | H1 | y | S8 | 0.270 | 0.880 | 8 | Pass |
 | M2 | x | S8 | 0.188 | 1.887 | 8 | Pass |
+| U1 | x | A2b | 0.112 | 3.155 | 7 | Above criterion |
+| U1 | y | A2b | 0.111 | 3.166 | 7 | Above criterion |
+| U2 | x | A2b | 0.031 | 0.508 | 6 | Pass |
+| U2 | y | A2b | 0.038 | 0.782 | 6 | Pass |
+| M1 | x | A2b | 1.363 | 4.432 | 9 | Above criterion |
+| M1 | y | A2b | 1.115 | 3.974 | 9 | Above criterion |
+| H1 | x | A2b | 0.144 | 0.636 | 8 | Pass |
+| H1 | y | A2b | 0.237 | 0.561 | 8 | Pass |
+| M2 | x | A2b | 0.189 | 1.428 | 8 | Pass |
+| M2 | y | A2b | 0.213 | 2.545 | 9 | Pass |
+| H3 | x | A2b | 0.106 | 1.290 | 9 | Pass |
+| H3 | y | A2b | 0.132 | 0.678 | 10 | Pass |
+| U1 | x | B+W | 0.011 | 0.945 | 5 | Pass |
+| U1 | y | B+W | 0.011 | 0.904 | 5 | Pass |
+| U2 | x | B+W | 0.00123 | 0.142 | 4 | Pass |
+| U2 | y | B+W | 0.0014 | 0.158 | 4 | Pass |
+| M1 | x | B+W | 0.079 | 0.350 | 6 | Pass |
+| M1 | y | B+W | 0.066 | 0.339 | 6 | Pass |
+| H1 | x | B+W | 0.010 | 0.139 | 6 | Pass |
+| H1 | y | B+W | 0.013 | 0.105 | 6 | Pass |
+| M2 | x | B+W | 0.00492 | 0.083 | 6 | Pass |
+| M2 | y | B+W | 0.0034 | 0.075 | 6 | Pass |
+| H3 | x | B+W | 0.00609 | 0.132 | 6 | Pass |
+| H3 | y | B+W | 0.00894 | 0.202 | 7 | Pass |
+| L1 | x | B+W | 0.00193 | 0.065 | 7 | Pass |
+| L1 | y | B+W | 0.00181 | 0.087 | 7 | Pass |
+| U1 | x | A3 | 0.00614 | 0.598 | 5 | Pass |
+| U1 | y | A3 | 0.00681 | 0.669 | 5 | Pass |
+| U2 | x | A3 | 0.00121 | 0.082 | 4 | Pass |
+| U2 | y | A3 | 0.00159 | 0.073 | 4 | Pass |
+| M1 | x | A3 | 0.056 | 0.161 | 7 | Pass |
+| M1 | y | A3 | 0.048 | 0.206 | 7 | Pass |
+| H1 | x | A3 | 0.0076 | 0.098 | 6 | Pass |
+| H1 | y | A3 | 0.011 | 0.097 | 6 | Pass |
+| M2 | x | A3 | 0.00595 | 0.136 | 7 | Pass |
+| M2 | y | A3 | 0.00472 | 0.154 | 8 | Pass |
+| H3 | x | A3 | 0.0064 | 0.124 | 7 | Pass |
+| H3 | y | A3 | 0.010 | 0.196 | 7 | Pass |
+| L1 | x | A3 | 0.00202 | 0.101 | 8 | Pass |
+| L1 | y | A3 | 0.00197 | 0.078 | 8 | Pass |
 
 
-The comparison contains seven B configurations and nine each for C and S8. C and S8 satisfy both 3% criteria in the same five configurations. Missing model/configuration combinations have no row.
+The comparison contains seven B configurations, eleven for C, nine for S8, twelve for A2b and fourteen each for B+W and A3. C and S8 satisfy both 3% criteria in the same five of the nine configurations common to all predictors, and C also on L1/x and L1/y; A2b fails the same four configurations as C and S8; B+W and A3 satisfy both criteria in all fourteen. Missing model/configuration combinations have no row.
 
 
 ## Table ST14. Complete deployment dimensions and cost breakdown
@@ -633,7 +683,7 @@ These entries reproduce the previously saved algebraic check; they are not TPMS 
 
 ![Figure S02](figures/S02_distributions.png)
 
-**Figure S02. Distributions of geometry-level directional energy errors.** Each point is one geometry's directional mean in the original orientation; horizontal marks are population medians. The nodal-force, spring-support, single-face-force, polynomial and multiscale classes contain 80 geometries each. Consistent traction, single-face consistent traction, stiffness-scaled support and neighbour-induced displacement classes contain 20, 20, 19 and 15 geometries, respectively. P0 has no records in these four enriched classes. Marker shape and colour identify the predictor; deterministic horizontal offsets separate overlapping observations. All panels use the same logarithmic error range.
+**Figure S02. Distributions of geometry-level directional energy errors.** Each point is one geometry's directional mean in the original orientation; horizontal marks are population medians. The nodal-force, spring-support, single-face-force, polynomial and multiscale classes contain 80 geometries each. The panels show the earlier evaluation used in Table ST01c, in which the consistent-traction, single-face consistent-traction, stiffness-scaled support and neighbour-induced displacement classes contain 20, 20, 19 and 15 geometries, respectively; Table ST01 gives the complete identity-view statistics, with 80 geometries for the two consistent-traction classes and 75 for the other two. P0 has no records in these four enriched classes. Marker shape and colour identify the predictor; deterministic horizontal offsets separate overlapping observations. All panels use the same logarithmic error range.
 
 ![Figure S03A](figures/S03A_smoothing.png)
 
