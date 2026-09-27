@@ -25,6 +25,7 @@ from element_polyref import KUHN, CUBE, tet_rule
 from polyref_torch_fast import _clip
 
 dt = torch.float64
+CHECKPOINT = True                                                   # recompute _quad in the backward (memory); False: keep
 
 
 class _Rule:
@@ -121,7 +122,7 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
                 with torch.no_grad():
                     keep = _jac(tets) > 0
                 tets, town = tets[keep], town[keep]
-                ck = torch.is_grad_enabled() and tets.requires_grad
+                ck = CHECKPOINT and torch.is_grad_enabled() and tets.requires_grad
                 for lo_t in range(0, len(tets), 65536):
                     tc = tets[lo_t:lo_t + 65536]
                     mom = torch.utils.checkpoint.checkpoint(_quad, tc, tref, tw, use_reentrant=False) if ck else _quad(tc, tref, tw)
@@ -164,8 +165,40 @@ def cell_rows(cell):
     return cell.cells, taus, nrm, off
 
 
-def cell_sens(cell, g, batch=512):
-    """-u^T dK/dtau u for the fields behind g = cell.energy_density(u): (8, K), by reverse mode."""
+@torch.no_grad()
+def full_rows(cells, n, taus, nrm, off, s=4):
+    """Rows whose s^3 level-0 sub-cubes are all inside the material with a margin (every psi >= 1e-9 at every sub-cube
+    corner; moments_rows' 'full' test is psi >= 0): their moments are the closed-form monomials, independent of tau."""
+    device = taus.device
+    cube = _Rule.get(device, 4)['cube']
+    cmask = cube.bool().view(8, 1, 1, 3)
+    cb = torch.as_tensor(np.asarray(cells), dtype=dt, device=device)
+    idx = torch.tensor(list(product(range(s), repeat=3)), dtype=dt, device=device)
+    h = 2 / s
+    out = torch.empty(len(cb), dtype=torch.bool, device=device)
+    for b0 in range(0, len(cb), 4096):
+        c = cb[b0:b0 + 4096]
+        lo = (-1 + h * idx)[None, :, None, :] + h * cube[None, None]                   # rows x s^3 x 8 x 3 (xi)
+        phys = (c[:, None, None, :] + (lo + 1) / 2) / n
+        f = torch.cos(2 * torch.pi * phys).sum(-1)
+        w8 = torch.where(cmask.view(8, 1, 1, 1, 3), phys[None], 1 - phys[None]).prod(-1)   # 8 x rows x s^3 x 8
+        tau = torch.einsum('Rc,cRSk->RSk', taus[b0:b0 + 4096], w8)
+        p3 = off[b0:b0 + 4096][:, None, None] - (phys * nrm[b0:b0 + 4096][:, None, None, :]).sum(-1)
+        eps = 1e-9                                                                     # margin: a row counted full here is
+        out[b0:b0 + 4096] = ((tau - f >= eps) & (tau + f >= eps) & (p3 >= eps)).all(-1).all(-1)   # full in moments_rows too
+    return out
+
+
+def cell_sens(cell, g, batch=512, skip_full=False):
+    """-u^T dK/dtau u for the fields behind g = cell.energy_density(u): (8, K), by reverse mode.
+    skip_full: rows whose moments do not depend on tau (full_rows) are left out of the reverse pass (their
+    contribution is exactly zero)."""
     cells, taus, nrm, off = cell_rows(cell)
+    if skip_full:
+        keep = torch.nonzero(~full_rows(cells, cell.n, taus, nrm, off, s=cell.s)).squeeze(1)
+        kc = keep.cpu().numpy()
+        _, V = moments_vjp(np.asarray(cells)[kc], cell.n, taus[keep], nrm[keep], off[keep], g[keep], s=cell.s,
+                           levels=cell.levels, batch=batch)
+        return -V.sum(0)
     _, V = moments_vjp(cells, cell.n, taus, nrm, off, g, s=cell.s, levels=cell.levels, batch=batch)
     return -V.sum(0)

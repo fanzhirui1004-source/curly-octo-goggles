@@ -18,6 +18,7 @@ from pathlib import Path
 from fractions import Fraction
 import numpy as np
 import torch
+import fastidx as FI
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -125,10 +126,16 @@ class GhostFaces:
     def matvec(self, x, y):
         """y += G x (x, y: nb x b, self.dtype)."""
         b = x.shape[1]
+        if FI.ON:                                                               # one block per face template
+            for idx, B in zip(self.idx, self.B):
+                X = FI.rows(x, idx).permute(1, 0, 2).reshape(idx.shape[1], -1)
+                Y = B.t() @ (B @ X)
+                y.index_add_(0, idx.reshape(-1), Y.reshape(idx.shape[1], len(idx), b).permute(1, 0, 2).reshape(-1, b))
+            return y
         for idx, B in zip(self.idx, self.B):
             for lo in range(0, len(idx), self.chunk):
                 ii = idx[lo:lo + self.chunk].long()
-                X = x[ii].permute(1, 0, 2).reshape(ii.shape[1], -1)                 # 135 x (faces * b)
+                X = FI.rows(x, ii).permute(1, 0, 2).reshape(ii.shape[1], -1)                 # 135 x (faces * b)
                 Y = B.t() @ (B @ X)
                 y.index_add_(0, ii.reshape(-1), Y.reshape(ii.shape[1], len(ii), b).permute(1, 0, 2).reshape(-1, b))
         return y
@@ -144,6 +151,7 @@ class _Kfp32:
     def __init__(self, C, ke_moments=False, ghost_faces=False, gf_like=None):
         f32 = torch.float32
         self.C, self.ke_moments, self.gf = C, ke_moments, None
+        self._ke_tmp, self._hold = None, 0
         if ke_moments:
             self.Ke, self.M32, self.Tf32 = None, C.M.to(f32), C.Tm.reshape(125, 81 * 81).to(f32)
         else:
@@ -170,11 +178,38 @@ class _Kfp32:
         else:
             y = self.G @ x32
         ch = C._lean_chunk
-        for lo in range(0, len(C.dofs), ch):
+        Xe = FI.rows(x32, C.dofs) if FI.ON else None                           # all element vectors at once
+        for j, lo in enumerate(range(0, len(C.dofs), ch)):
             de = C.dofs[lo:lo + ch]
-            Ke = (self.M32[lo:lo + ch] @ self.Tf32).reshape(-1, 81, 81) if self.ke_moments else self.Ke[lo:lo + ch]
-            y.index_add_(0, de.reshape(-1), torch.bmm(Ke, x32[de]).reshape(-1, x.shape[1]))
+            if not self.ke_moments:
+                Ke = self.Ke[lo:lo + ch]
+            elif self._ke_tmp is not None:
+                Ke = self._ke_tmp[j]
+            else:
+                Ke = (self.M32[lo:lo + ch] @ self.Tf32).reshape(-1, 81, 81)
+            xe = Xe[lo:lo + ch] if Xe is not None else FI.rows(x32, de)
+            y.index_add_(0, de.reshape(-1), torch.bmm(Ke, xe).reshape(-1, x.shape[1]))
         return y.to(x.dtype)
+
+    def hold(self):
+        """Context: with ke_moments and OPL_FASTIDX=1, the float32 element matrices are formed once (same chunks, same
+        products) and reused by every product inside the block, then released."""
+        import contextlib
+        me = self
+
+        @contextlib.contextmanager
+        def ctx():
+            if me.ke_moments and FI.ON and me._hold == 0:
+                ch = me.C._lean_chunk
+                me._ke_tmp = [(me.M32[lo:lo + ch] @ me.Tf32).reshape(-1, 81, 81) for lo in range(0, len(me.M32), ch)]
+            me._hold += 1
+            try:
+                yield
+            finally:
+                me._hold -= 1
+                if me._hold == 0:
+                    me._ke_tmp = None
+        return ctx()
 
 
 class Cell:
@@ -442,17 +477,38 @@ class Cell:
         if getattr(self, '_deploy', False):
             y = self.G64 @ x if self.G64 is not None else self.GF64.matvec(x, torch.zeros_like(x)).mul_(self.gamma)
             Tf = self.Tm.reshape(125, 81 * 81)
-            for lo in range(0, len(self.M), self._lean_chunk):
+            held = getattr(self, '_ke64_tmp', None)
+            for j, lo in enumerate(range(0, len(self.M), self._lean_chunk)):
                 de = self.dofs[lo:lo + self._lean_chunk]
-                Ke = (self.M[lo:lo + self._lean_chunk] @ Tf).reshape(-1, 81, 81)
-                y.index_add_(0, de.reshape(-1), torch.bmm(Ke, x[de]).reshape(-1, x.shape[1]))
+                Ke = held[j] if held is not None else (self.M[lo:lo + self._lean_chunk] @ Tf).reshape(-1, 81, 81)
+                y.index_add_(0, de.reshape(-1), torch.bmm(Ke, FI.rows(x, de)).reshape(-1, x.shape[1]))
             return y
         y = self.G @ x + self.Gt @ x - self.dG[:, None] * x
         for lo in range(0, len(self.Ke), self._lean_chunk):
             de = self.dofs[lo:lo + self._lean_chunk]
-            ye = torch.bmm(self.Ke[lo:lo + self._lean_chunk], x[de])
+            ye = torch.bmm(self.Ke[lo:lo + self._lean_chunk], FI.rows(x, de))
             y.index_add_(0, de.reshape(-1), ye.reshape(-1, x.shape[1]))
         return y
+
+    def hold64(self):
+        """Context: in deployment mode with OPL_FASTIDX=1, the float64 element matrices K_e = M_e T are formed once (same
+        chunks, same products) and reused by every float64 K product inside the block (setup loops: coarse probing,
+        power iteration), then released."""
+        import contextlib
+        me = self
+
+        @contextlib.contextmanager
+        def ctx():
+            own = FI.ON and getattr(me, '_deploy', False) and getattr(me, '_ke64_tmp', None) is None
+            if own:
+                Tf, ch = me.Tm.reshape(125, 81 * 81), me._lean_chunk
+                me._ke64_tmp = [(me.M[lo:lo + ch] @ Tf).reshape(-1, 81, 81) for lo in range(0, len(me.M), ch)]
+            try:
+                yield
+            finally:
+                if own:
+                    me._ke64_tmp = None
+        return ctx()
 
     def __matmul__(self, x):                                                   # so that cell.K @ x keeps working
         return self.Kx(x)
@@ -571,7 +627,7 @@ class Cell:
         """g[e, m, k] = u_e^T Tm_m u_e for full fields u (nb, k)."""
         g = torch.empty((len(self.cells), 125, u.shape[1]), dtype=dt, device=dev)
         for lo in range(0, len(self.cells), chunk):
-            ue = u[self.dofs[lo:lo + chunk]]                              # c x 81 x k
+            ue = FI.rows(u, self.dofs[lo:lo + chunk])                              # c x 81 x k
             z = torch.einsum('eik,mij->emjk', ue, self.Tm)
             g[lo:lo + chunk] = torch.einsum('emjk,ejk->emk', z, ue)
             del z
@@ -588,7 +644,7 @@ class Cell:
         s = torch.zeros((8, u.shape[1]), dtype=dt, device=dev)
         for lo in range(0, len(self.cells), chunk):
             A = torch.einsum('cem,mij->ceij', self.dM[:, lo:lo + chunk], self.Tm)       # 8 x c x 81 x 81
-            ue = u[self.dofs[lo:lo + chunk]]                                            # c x 81 x k
+            ue = FI.rows(u, self.dofs[lo:lo + chunk])                                            # c x 81 x k
             z = torch.einsum('ceij,ejk->ceik', A, ue)
             s -= (z * ue[None]).sum((1, 2))
             del A, z

@@ -61,6 +61,14 @@ class _Resident:
         self.op = None
 
 
+def _free_prec(fac, pcnd):
+    fac.free()
+    for v in fac.shared.values():                                              # K_PP factor and triplets
+        if hasattr(v, 'free'):
+            v.free()
+    fac.shared.clear()
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument('out'); ap.add_argument('layout')
@@ -76,12 +84,22 @@ def main(argv=None):
                     help='keep cells on the device (not streamed) while the allocated device memory stays below this')
     ap.add_argument('--sparse-coarse', action='store_true', help='OPL_COARSE_SPARSE=1: sparse coarse space (lat_precond.SparseCoarse)')
     ap.add_argument('--ad-batch', type=int, default=512, help='element rows per reverse pass (moments_ad)')
+    ap.add_argument('--fastidx', action='store_true', help='fastidx.ON: element gathers, float32 K_e held per application, where() clamps')
+    ap.add_argument('--reuse-prec', type=int, default=0,
+                    help='N > 0: build the preconditioner (K_PP factor, coarse A Z) every N design iterations and reuse it in '
+                         'between (an SPD preconditioner of the previous design; the PCG tolerance on the current system is unchanged)')
+    ap.add_argument('--coarse-tpl', action='store_true', help='OPL_COARSE_ELEM=1: cell coarse Galerkin matrix by element/face templates (trainlib.coarse_galerkin_tpl)')
     ap.add_argument('--limit', type=int, default=0, help='first N cells of the layout only (smoke tests)')
     a = ap.parse_args(argv)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
+    if a.coarse_tpl:
+        os.environ['OPL_COARSE_ELEM'] = '1'
     if a.sparse_coarse:
         os.environ['OPL_COARSE_SPARSE'] = '1'
     FN.FUSED = True
+    if a.fastidx:
+        import fastidx as FI
+        FI.ON = True
     SO.init()
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     L = json.loads(Path(a.layout).read_text())
@@ -91,6 +109,7 @@ def main(argv=None):
     BD.TMP.mkdir(parents=True, exist_ok=True)
     h = BD.ModelHolder(a.model)
     Cs, kpp_host, lat, X_prev, taus, old = {}, {}, None, None, {}, {}
+    held = None                                                                  # (factory, preconditioner) kept for reuse
     for c in cells:
         taus[c['case']] = None
     for it in range(a.iters):
@@ -158,20 +177,29 @@ def main(argv=None):
                                   max_cols=a.max_cols, log=lambda s_: None)
             res['lattice'] = {k: v for k, v in lat.info().items() if k not in ('positions', 'cases', 'distinct_cases')}
             ph['lattice_setup'] = T() - t; t = T()
-        for g in lat.geoms:
-            g._kpp = None                                                          # new design: new K_PP triplets
-        kpp = lat.assemble_kpp()
-        for g in lat.geoms:
-            g._kpp = None
-        ph['kpp_assemble'] = T() - t; t = T()
         order = [g.case for g in lat.geoms]
         olist = [ops[cs] for cs in order]
         SO.link([o for o in olist if isinstance(o, SO.StreamedOp)])
         rec['resident_cells'] = sum(isinstance(o, _Resident) for o in olist)
-        fac = PR.Factory(lat, olist, shared={'kpp_triplets': kpp, 'kpp_triplets_s': 0.0}, kpp_backend='auto', log=lambda d: None)
-        pcnd, st, _ = fac.build(a.prec)
-        ph['prec_setup'] = T() - t; t = T()
-        rec['prec'] = {k: v for k, v in st.items() if isinstance(v, (int, float, str))}
+        rebuild = held is None or a.reuse_prec <= 0 or it % a.reuse_prec == 0
+        if rebuild:
+            if held is not None:
+                _free_prec(*held); held = None
+            for g in lat.geoms:
+                g._kpp = None                                                      # new design: new K_PP triplets
+            kpp = lat.assemble_kpp()
+            for g in lat.geoms:
+                g._kpp = None
+            ph['kpp_assemble'] = T() - t; t = T()
+            fac = PR.Factory(lat, olist, shared={'kpp_triplets': kpp, 'kpp_triplets_s': 0.0}, kpp_backend='auto', log=lambda d: None)
+            pcnd, st, _ = fac.build(a.prec)
+            del kpp
+            ph['prec_setup'] = T() - t; t = T()
+            rec['prec'] = {k: v for k, v in st.items() if isinstance(v, (int, float, str))}
+        else:
+            fac, pcnd = held
+            rec['prec'] = dict(reused=True)
+        rec['prec_rebuilt'] = rebuild
         r = PR.pcg(lat, olist, pcnd, tol=a.tol, maxit=a.maxit, X0=X_prev, snaps=levels)
         ph['solve'] = T() - t; t = T()
         X = r['X']
@@ -180,12 +208,11 @@ def main(argv=None):
                             start_residual=r['history'][0] if r['history'] else None)
         comp = (lat.F * X).sum(0)
         rec['compliance'] = comp.cpu().tolist()
-        fac.free()
-        for v in fac.shared.values():                                          # K_PP factor and triplets
-            if hasattr(v, 'free'):
-                v.free()
-        fac.shared.clear()
-        del fac, pcnd, r, kpp
+        if a.reuse_prec > 0:
+            held = (fac, pcnd)
+        else:
+            _free_prec(fac, pcnd)
+        del fac, pcnd, r
         gc.collect(); torch.cuda.empty_cache()
         # sensitivities
         S = {}
@@ -206,7 +233,7 @@ def main(argv=None):
                     g = C.energy_density(u)
                     if a.sens_obj == 'sum':
                         g = g.sum(2, keepdim=True)                                 # linear in g: d(sum_k c_k)/dtau
-                    s_ad = MA.cell_sens(C, g, batch=a.ad_batch).cpu(); del g
+                    s_ad = MA.cell_sens(C, g, batch=a.ad_batch, skip_full=a.fastidx).cpu(); del g
                     add('sens_ad', T() - t1)
                     S.setdefault('ad', []).append(s_ad)
                 del u

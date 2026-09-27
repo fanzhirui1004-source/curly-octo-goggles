@@ -23,6 +23,7 @@ teacher.Cell (assembled).
 import os
 import numpy as np
 import torch
+import fastidx as FI
 
 dt = torch.float64
 AXES = {'x': 0, 'y': 1, 'z': 2}
@@ -175,7 +176,7 @@ class MultiLattice:
     def gather(self, U, i):
         kp, fk = self._keep[i]
         q = torch.zeros((self.geoms[i].nport, U.shape[1]), dtype=U.dtype, device=U.device)
-        q[kp] = U[fk]
+        q[kp] = FI.rows(U, fk)
         return q
 
     def scatter_add(self, Y, y, i):

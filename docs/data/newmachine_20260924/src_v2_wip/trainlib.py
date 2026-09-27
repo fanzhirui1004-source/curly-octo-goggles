@@ -7,12 +7,13 @@ Energy readout in fp64 with the exact K: e_hat(q) = u^T K u >= q^T S q; the bank
 the per-sample loss e_hat - 1 >= 0 is the relative energy error of the extension in that direction (= mu - 1).
 Adversarial directions: block power iteration on the pencil (S_hat, S): q <- S^+ S_hat q, S-normalized, Rayleigh-Ritz.
 """
-import json, time, gc, math, os
+import json, time, gc, math, os, contextlib
 from pathlib import Path
 import time
 import numpy as np
 import torch
 import teacher as TE
+import fastidx as FI
 import ops as OP
 
 dev, dt = TE.dev, TE.dt
@@ -70,7 +71,8 @@ def tail_bounds(C, alpha):
     dinv = (1 / C.dK[C.I])[:, None]
     v = torch.randn((C.ni, 1), dtype=dt, device=dev, generator=g); x = torch.zeros((C.nb, 1), dtype=dt, device=dev)
     lam = 1.0
-    with torch.no_grad():
+    hold = C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()
+    with torch.no_grad(), hold:
         for _ in range(40):
             v = v / v.norm(); x[C.I] = v
             w = dinv * (C.K @ x)[C.I]
@@ -90,7 +92,7 @@ def _cheb(C, z0, b, k, alpha):
 
     def A(z):
         full.zero_(); full[C.I] = z
-        return dinv * (_Kc(C) @ full)[C.I]
+        return dinv * FI.rows(_Kc(C) @ full, C.I)
     z = z0.clone()
     d = (b - A(z)) / theta
     for i in range(k):
@@ -109,7 +111,7 @@ def smooth_tail_T(C, y, k, alpha=30.0):
     (T^T y)_I = D p_k(A) w,  (T^T y)_P = y_P - K_PI s_k(A) w."""
     y = y.to(dt)
     dK = C.dK[C.I][:, None]
-    w = y[C.I] / dK
+    w = FI.rows(y, C.I) / dK
     zero = torch.zeros_like(w)
     out = y.clone()
     if os.environ.get('OPL_TAILT_FUSED') == '1':                        # both recurrences in one pass on 2B columns
@@ -121,7 +123,7 @@ def smooth_tail_T(C, y, k, alpha=30.0):
         out[C.I] = dK * _cheb(C, w, zero, k, alpha)
         sw = _cheb(C, zero, w, k, alpha)
     full = torch.zeros_like(y); full[C.I] = sw
-    out[C.P] = y[C.P] - (_Kc(C) @ full)[C.P]
+    out[C.P] = FI.rows(y, C.P) - FI.rows(_Kc(C) @ full, C.P)
     return out
 
 
@@ -239,6 +241,80 @@ def coarse_galerkin_elem(C, V, chunk=2048):
     return A
 
 
+def coarse_galerkin_tpl(C, space, vc, slot, nc, chunk=4096):
+    """A_c = V^T K_II V for a Q1 coarse space (OPL_COARSE_ELEM=1, deployment cells), summed over elements (K_e = M_e T,
+    float64) and ghost faces (gamma B^T B): the prolongation entries of an element's (face's) nodes are the Q1 hats of
+    the corners of its coarse element(s), evaluated from the grid coordinates (the same exact binary fractions as
+    coarse_prolong); port rows are zero; columns without interior support are dropped (as in coarse_prolong).
+    The same matrix as the probing of coarse_setup, reassociated."""
+    order, ne, pu = COARSE_SPACES[space]
+    if order != 1 or pu or C.n % ne:
+        raise ValueError(f'COARSE_TPL_UNSUPPORTED:{space}')
+    dvc = C.dK.device
+    r2 = 2 * (C.n // ne)                                                         # grid units per coarse element
+    nn = ne + 1
+    col_of = torch.full((3 * nn ** 3 + 1,), nc, dtype=torch.long, device=dvc)      # dropped / out of range -> nc (dummy)
+    vid = torch.as_tensor((vc[:, 0] * nn + vc[:, 1]) * nn + vc[:, 2], device=dvc)
+    col_of[3 * vid + torch.as_tensor(slot, device=dvc)] = torch.arange(nc, device=dvc)
+    n2 = 2 * C.n + 1
+    nodes = torch.as_tensor(np.asarray(C.nodes), device=dvc)
+    grid = torch.stack([nodes // (n2 * n2), (nodes // n2) % n2, nodes % n2], 1).to(dt)   # (N, 3) grid coordinates
+    pm = torch.zeros(C.nb, dtype=torch.bool, device=dvc); pm[C.P] = True
+    A = torch.zeros((nc + 1, nc + 1), dtype=dt, device=dvc)
+    eye3 = torch.eye(3, dtype=dt, device=dvc)
+
+    def block(dofs, base, offs):
+        """dofs (b, 3m) node-major; base (b, 3) coarse vertex coords; offs (s, 3) slot offsets -> Vb (b, 3m, 3s), cols (b, 3s)."""
+        g = grid[dofs[:, 0::3] // 3]                                              # b x m x 3
+        v = (base[:, None, :] + offs[None]).to(dt)                                # b x s x 3
+        w = torch.clamp(1 - (g[:, :, None, :] - r2 * v[:, None, :, :]).abs() / r2, min=0).prod(-1)   # b x m x s
+        bsz, m, sl = w.shape
+        Vb = (w[:, :, None, :, None] * eye3[None, None, :, None, :]).reshape(bsz, 3 * m, 3 * sl)
+        Vb = Vb.masked_fill(pm[dofs][:, :, None], 0.0)
+        inb = ((v >= 0) & (v <= ne)).all(-1)                                      # b x s
+        vv = v.long().clamp(0, ne)
+        cid = 3 * ((vv[..., 0] * nn + vv[..., 1]) * nn + vv[..., 2])
+        cols = col_of[(cid[..., None] + torch.arange(3, device=dvc)).reshape(bsz, -1)]
+        cols = torch.where(inb.repeat_interleave(3, 1), cols, torch.full_like(cols, nc))
+        return Vb, cols
+
+    def acc(Ab, cols):
+        w = cols.shape[1]
+        A.index_put_((cols[:, :, None].expand(-1, w, w).reshape(-1), cols[:, None, :].expand(-1, w, w).reshape(-1)),
+                     Ab.reshape(-1), accumulate=True)
+    cells = torch.as_tensor(np.asarray(C.cells), device=dvc)
+    offs8 = torch.tensor([[a, b, c] for a in (0, 1) for b in (0, 1) for c in (0, 1)], device=dvc)
+    Tf = C.Tm.reshape(125, 81 * 81)
+    held = getattr(C, '_ke64_tmp', None)
+    for j, lo in enumerate(range(0, len(C.M), C._lean_chunk)):
+        hi = min(len(C.M), lo + C._lean_chunk)
+        Ke = held[j] if held is not None else (C.M[lo:hi] @ Tf).reshape(-1, 81, 81)
+        for s0 in range(lo, hi, chunk):
+            s1 = min(hi, s0 + chunk)
+            Vb, cols = block(C.dofs[s0:s1], cells[s0:s1] // (C.n // ne), offs8)
+            acc(Vb.transpose(1, 2) @ torch.bmm(Ke[s0 - lo:s1 - lo], Vb), cols)
+            del Vb, cols
+        del Ke
+    GF = C.GF64
+    for idx, B in zip(GF.idx, GF.B):
+        span = None
+        for s0 in range(0, len(idx), chunk):
+            dd = idx[s0:s0 + chunk].long()
+            g = grid[dd[:, 0::3] // 3]
+            gmin = g.min(1).values
+            if span is None:                                                      # long axis of this face template
+                span = (g.max(1).values - gmin)[0]
+                offs = torch.tensor([[a, b, c] for a in range(1 + int(span[0] > r2 // 2 + 0) + 1)
+                                     for b in range(1 + int(span[1] > r2 // 2 + 0) + 1)
+                                     for c in range(1 + int(span[2] > r2 // 2 + 0) + 1)], device=dvc)
+            base = torch.div(gmin, r2, rounding_mode='floor').long()
+            Vb, cols = block(dd, base, offs)
+            BV = B @ Vb                                                            # b x 54 x 3s
+            acc(C.gamma * (BV.transpose(1, 2) @ BV), cols)
+            del Vb, cols, BV
+    return A[:nc, :nc].contiguous()
+
+
 def coarse_setup(C, space, reach=4, chunk=128):
     """Galerkin coarse operator A_c = V^T K_II V on C's device by probing: columns are coloured by vertex coordinates mod
     s = 2R + 1 (R = 2 + ceil(reach / h), h = node spacings per coarse vertex spacing, reach = K's stencil radius in node
@@ -257,7 +333,8 @@ def coarse_setup(C, space, reach=4, chunk=128):
     if os.environ.get('OPL_COARSE_ELEM') == '1' and getattr(C, 'GF64', None) is not None:
         Vc = V.tocoo()
         Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
-        A = coarse_galerkin_elem(C, V)
+        with (C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()):
+            A = coarse_galerkin_tpl(C, space, vc, slot, nc)
         return _coarse_finish(C, space, A, Vt, dvc, t0)
     h = (2 * C.n) / ne
     R = 2 + int(math.ceil(reach / h))
@@ -269,14 +346,17 @@ def coarse_setup(C, space, reach=4, chunk=128):
     Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
     VtT = Vt.t().coalesce()
     Y = torch.zeros((nc, len(ucol)), dtype=dt, device=dvc)
+    hold = C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()
+    hold.__enter__()
     for c0 in range(0, len(ucol), chunk):
         c1 = min(len(ucol), c0 + chunk)
         sel = np.flatnonzero((cidx >= c0) & (cidx < c1))
         oh = torch.sparse_coo_tensor(np.stack([sel, cidx[sel] - c0]), np.ones(len(sel)), (nc, c1 - c0), dtype=dt, device=dvc)
         probe = torch.sparse.mm(Vt, oh.to_dense())                              # ni x chunk
         full = torch.zeros((C.nb, c1 - c0), dtype=dt, device=dvc); full[C.I] = probe
-        Y[:, c0:c1] = torch.sparse.mm(VtT, (C.K @ full)[C.I])
+        Y[:, c0:c1] = torch.sparse.mm(VtT, FI.rows(C.K @ full, C.I))
         del probe, full
+    hold.__exit__(None, None, None)
     vct = torch.as_tensor(vc, dtype=torch.int16, device=dvc)
     cix = torch.as_tensor(cidx, device=dvc)
     A = torch.zeros((nc, nc), dtype=dt, device=dvc)
@@ -306,7 +386,7 @@ def _coarse_finish(C, space, A, Vt, dvc, t0):
 def coarse_correct(C, x):
     """x_I <- x_I + V A_c^-1 V^T r_I, r_I = -(K x)_I (ports held); linear in x, differentiable."""
     xx = x.to(dt)
-    r = -_KMat.apply(xx, _Kc(C))[C.I]
+    r = -FI.rows(_KMat.apply(xx, _Kc(C)), C.I)
     c = _coarse_solve(C, r)
     return xx.index_add(0, C.I, c)
 
@@ -331,9 +411,14 @@ def _coarse_solve(C, r):
 def coarse_correct_T(C, y):
     """Adjoint of coarse_correct: y - K[:, I] V A_c^-1 V^T y_I."""
     y = y.to(dt)
-    g = _coarse_solve(C, y[C.I])
+    g = _coarse_solve(C, FI.rows(y, C.I))
     full = torch.zeros_like(y); full[C.I] = g
     return y - _Kc(C) @ full
+
+
+def _held(C):
+    k = getattr(C, '_Kc', None)
+    return k.hold() if hasattr(k, 'hold') else contextlib.nullcontext()
 
 
 def wrap(C, u, model):
@@ -342,12 +427,13 @@ def wrap(C, u, model):
     k, cs = getattr(model, 'smooth_k', 0), getattr(model, 'coarse_space', None)
     if not k and not cs:
         return u
-    x = smooth_tail(C, u, k, model.smooth_alpha) if k else u.to(dt)
-    if cs:
-        coarse_setup(C, cs)
-        x = coarse_correct(C, x)
-        if k:
-            x = smooth_tail(C, x, k, model.smooth_alpha)
+    with _held(C):
+        x = smooth_tail(C, u, k, model.smooth_alpha) if k else u.to(dt)
+        if cs:
+            coarse_setup(C, cs)
+            x = coarse_correct(C, x)
+            if k:
+                x = smooth_tail(C, x, k, model.smooth_alpha)
     return x.to(u.dtype)
 
 
@@ -357,13 +443,14 @@ def wrap_T(C, y, model):
     if not k and not cs:
         return y
     y = y.to(dt)
-    if cs:
-        coarse_setup(C, cs)
+    with _held(C):
+        if cs:
+            coarse_setup(C, cs)
+            if k:
+                y = smooth_tail_T(C, y, k, model.smooth_alpha)
+            y = coarse_correct_T(C, y)
         if k:
             y = smooth_tail_T(C, y, k, model.smooth_alpha)
-        y = coarse_correct_T(C, y)
-    if k:
-        y = smooth_tail_T(C, y, k, model.smooth_alpha)
     return y
 
 
@@ -375,13 +462,13 @@ def smooth_tail(C, u, k, alpha=30.0):
     sigma = theta / delta; rho = 1 / sigma
     dinv = (1 / C.dK[C.I])[:, None]
     x = u.to(dt)
-    r = -_KMat.apply(x, _Kc(C))[C.I]
+    r = -FI.rows(_KMat.apply(x, _Kc(C)), C.I)
     d = dinv * r / theta
     for i in range(k):
         x = x.index_add(0, C.I, d)
         if i == k - 1:
             break
-        r = -_KMat.apply(x, _Kc(C))[C.I]
+        r = -FI.rows(_KMat.apply(x, _Kc(C)), C.I)
         rho_n = 1 / (2 * sigma - rho)
         d = rho_n * rho * d + (2 * rho_n / delta) * dinv * r
         rho = rho_n

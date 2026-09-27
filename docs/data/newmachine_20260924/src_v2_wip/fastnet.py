@@ -19,6 +19,7 @@ import os
 import torch
 import torch.nn.functional as Fn
 import models as MD
+import fastidx as FI
 
 dev, f32, f64 = MD.dev, MD.f32, torch.float64
 FUSED = os.environ.get('FUSED_HYPER', '0') == '1'
@@ -95,6 +96,7 @@ class FastNet:
         gp = m.geometry(geo.case)
         self.two = isinstance(m, MD.MGNO2)
         self.pm = c.is_port.to(f32)[:, None, None]
+        self.pmask = c.is_port.bool()[:, None, None]                                     # where() forms (OPL_FASTIDX)
         self.W_in, self.W_out = m.W_in.detach().to(f32), m.W_out.detach().to(f32)
         ab = gp['ab']
         L = m.L_pre + m.L_post
@@ -142,6 +144,8 @@ class FastNet:
 
     # ------------------------------------------------------------------ pieces
     def _clamp(self, X, X0):
+        if FI.ON:                                                                       # pm in {0, 1}: the same values
+            return torch.where(self.pmask, X0, X)
         return X * (1 - self.pm) + X0 * self.pm
 
     def _conv(self, Xc, l, k, transpose=False):
@@ -213,12 +217,15 @@ class FastNet:
         Xb = y.reshape(self.N, 3, B).permute(0, 2, 1) @ self.W_out.T
         X0b = torch.zeros_like(Xb)
         pre, post = self._layers()
+        zero = torch.zeros((), device=dev)
+        pmk = (lambda X: torch.where(self.pmask, X, zero)) if FI.ON else (lambda X: X * self.pm)
+        imk = (lambda X: torch.where(self.pmask, zero, X)) if FI.ON else (lambda X: X * (1 - self.pm))
         for h in reversed(post):
-            X0b += Xb * self.pm
-            A = Xb * (1 - self.pm)
+            X0b += pmk(Xb)
+            A = imk(Xb)
             Xb = A + h.adj(A)
-        X0b += Xb * self.pm
-        G = Xb * (1 - self.pm)
+        X0b += pmk(Xb)
+        G = imk(Xb)
         gskip = []
         for l in range(self.levels):
             gskip.append(G)
@@ -231,8 +238,8 @@ class FastNet:
             G = self._sp(self.Rt[l], G) + gskip[l]
         Xb = G
         for h in reversed(pre):
-            X0b += Xb * self.pm
-            A = Xb * (1 - self.pm)
+            X0b += pmk(Xb)
+            A = imk(Xb)
             Xb = A + h.adj(A)
         X0b += Xb
         return (X0b[c.port_nodes] @ self.W_in.T).permute(0, 2, 1).reshape(-1, B)
@@ -258,7 +265,7 @@ class FastNet:
             import trainlib as TL
             y = TL.wrap_T(self.geo.C, y, self.model)
         y = y.to(f32)
-        yP = y[self.Pidx]
+        yP = FI.rows(y, self.Pidx)
         yI = y.index_fill(0, self.Pidx, 0.0)
         qd = self.ext_T(yI)
         return yP + qd + self.RPpinv.T @ (self.RA.T @ yI - self.RP.T @ qd)
@@ -266,5 +273,7 @@ class FastNet:
     @torch.no_grad()
     def s_hat(self, q):
         """S_hat q = E_hat^T K E_hat q (the K product in float64, as trainlib.Geo.s_hat_apply)."""
-        u = self.field(q).to(f64)
-        return self.field_T((self.geo.C.K @ u).to(f32)).to(f64)
+        import trainlib as TL
+        with TL._held(self.geo.C):                                                      # float32 K_e formed once
+            u = self.field(q).to(f64)
+            return self.field_T((self.geo.C.K @ u).to(f32)).to(f64)

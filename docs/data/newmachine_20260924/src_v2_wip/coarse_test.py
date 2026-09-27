@@ -4,11 +4,11 @@ Usage: coarse_test.py <body>:<case>[,...] [--ckpt ...] [--space Q1_17]"""
 import os, sys, json, time, argparse, gc
 import models as MD  # noqa
 import torch
-import teacher as TE, trainlib as TL, fastnet as FN, bench_deploy as BD
+import teacher as TE, trainlib as TL, fastnet as FN, bench_deploy as BD, fastidx as FI
 dev, dt = TE.dev, TE.dt
 ap = argparse.ArgumentParser(); ap.add_argument('cases'); ap.add_argument('--ckpt', default='/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt')
 ap.add_argument('--space', default='Q1_17'); a = ap.parse_args()
-FN.FUSED = True; os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
+FI.ON = True; FN.FUSED = True; os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
 BD.TMP.mkdir(parents=True, exist_ok=True)
 KEYS = ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cV32', '_cV32t')
 def clear(C):
