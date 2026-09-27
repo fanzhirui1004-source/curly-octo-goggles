@@ -195,6 +195,7 @@ class StreamedOp:
         self.loaded = None
         _LIVE.discard(self)
         self.pinned, self.slots = {}, []
+        self.nxt = self.op = self.C = None                              # the prefetch ring must not keep released ops alive
 
 
 def link(ops):
@@ -204,6 +205,32 @@ def link(ops):
     for a, b in zip(ops, ops[1:] + ops[:1]):
         a.nxt = b
     return ops
+
+
+def park_all():
+    """Drop every prefetched (not active) state from the device."""
+    for o in list(_LIVE):
+        if o.depth == 0:
+            o._park()
+
+
+def cuda_census(top=12):
+    """Live CUDA tensors reachable by the garbage collector, grouped by (dtype, shape): (GB, count) (diagnostics)."""
+    import gc
+    agg, seen = {}, set()
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) and obj.is_cuda and obj.layout == torch.strided:
+                key = (obj.untyped_storage().data_ptr())
+                if key in seen:
+                    continue
+                seen.add(key)
+                k = (str(obj.dtype), tuple(obj.shape))
+                g, n = agg.get(k, (0.0, 0))
+                agg[k] = (g + obj.untyped_storage().nbytes() / 1e9, n + 1)
+        except Exception:
+            pass
+    return sorted(((round(v[0], 4), v[1], str(k)) for k, v in agg.items()), reverse=True)[:top]
 
 
 def init():

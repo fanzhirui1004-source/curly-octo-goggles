@@ -32,6 +32,7 @@ Preconditioners / solvers (spec strings for build()):
                              with A W stored it costs one fine solve + 4 skinny products (no extra operator application)
   'defl:<fine>:<coarse>'     deflated PCG (A-DEF2): x0 = Q b, search directions (I - Q A) B r (Saad et al. 2000)
 """
+import os
 import time
 import numpy as np
 import torch
@@ -195,6 +196,18 @@ class Coarse:
         self.desc.update(rank=int(ok.sum()), Ac_asym=asym, Ac_cond_scaled=float(lam.max() / lam[ok].min()),
                          negative_eigs=int((lam < 0).sum()))
 
+    def WT(self, R):
+        return self.W.T @ R
+
+    def Wm(self, a):
+        return self.W @ a
+
+    def AWm(self, a):
+        return self.AW @ a
+
+    def AWT(self, y):
+        return self.AW.T @ y
+
     def Q(self, R):
         return self.W @ (self.W.T @ R)
 
@@ -204,6 +217,118 @@ class Coarse:
 
     def free(self):
         self.W = self.AW = None
+
+
+def _csr(r, c, v, shape):
+    return torch.sparse_coo_tensor(torch.stack([r, c]), v, shape).coalesce().to_sparse_csr()
+
+
+class SparseCoarse:
+    """Coarse with the same Q = Z A_c^+ Z^T for large lattices (OPL_COARSE_SPARSE=1; q1* spaces): Z and A Z are kept
+    sparse (Z: the hats of a DOF's own cell corners only; A Z: the ports of the <= 8 cells around a vertex) and
+    W = Z T, A W = (A Z) T are never formed; A_c = sum_cells (R_i Z)^T S_i (R_i Z) (the same sum as Z^T (A Z),
+    reassociated). Applications: W^T R = T^T (Z^T R), W a = Z (T a), A W a = (A Z)(T a), (A W)^T y = T^T ((A Z)^T y)."""
+
+    def __init__(self, lat, ops, kind, rcond=1e-10, batch=True):
+        if not kind.startswith('q1'):
+            raise ValueError(f'SPARSE_COARSE_Q1_ONLY:{kind}')
+        dev = lat.device
+        self.setup = {}
+        xyz, comp = lat.xyz, lat.comp
+        n = lat.nfree
+        with _T(dev) as t:
+            mk = {'q1t': 't', 'q1r': 'r', 'q1a': 'a'}[kind]
+            nm = {'t': 3, 'r': 6, 'a': 12}[mk]
+            offs = np.asarray(lat.positions)
+            verts = sorted({tuple(p + np.asarray(c)) for p in offs for c in np.ndindex(2, 2, 2)})
+            R_, C_, V_ = [], [], []
+            for j, v in enumerate(verts):                                                 # same entries as coarse_basis
+                vv = torch.as_tensor(v, dtype=dt, device=dev)
+                h = torch.clamp(1 - (xyz - vv).abs(), min=0).prod(1)
+                sup = torch.nonzero(h > 0).squeeze(1)
+                if len(sup):
+                    blk = h[sup, None] * mode_values(xyz[sup] - vv, comp[sup], mk)
+                    R_.append(sup[:, None].expand(-1, nm).reshape(-1))
+                    C_.append((nm * j + torch.arange(nm, device=dev))[None].expand(len(sup), -1).reshape(-1))
+                    V_.append(blk.reshape(-1))
+            r, c, v = torch.cat(R_), torch.cat(C_), torch.cat(V_)
+            del R_, C_, V_
+            nz = v != 0
+            r, c, v = r[nz], c[nz], v[nz]
+            ncol0 = nm * len(verts)
+            nrm = torch.zeros(ncol0, dtype=dt, device=dev).index_add_(0, c, v * v).sqrt()
+            keep = nrm > 1e-12 * nrm.max()
+            newc = torch.full((ncol0,), -1, dtype=torch.long, device=dev); newc[keep] = torch.arange(int(keep.sum()), device=dev)
+            ok = keep[c]
+            r, c, v = r[ok], newc[c[ok]], v[ok]
+            nc = int(keep.sum())
+            self.Z = _csr(r, c, v, (n, nc)); self.ZT = _csr(c, r, v, (nc, n))
+            del r, c, v
+        self.desc = dict(vertices=len(verts), kind=kind, columns=nc, dropped_zero=int((~keep).sum()), sparse=True,
+                         Z_nnz=int(self.Z.values().numel()))
+        self.setup['basis_s'] = t.s
+        with _T(dev) as t:
+            crow, col, val = self.Z.crow_indices(), self.Z.col_indices(), self.Z.values()
+            blocks, Js, rows = [], [], []
+            for i in range(len(lat.geoms)):
+                kp, fk = lat._keep[i]
+                s, e = crow[fk], crow[fk + 1]
+                cnt = e - s
+                tot = int(cnt.sum())
+                rid = torch.repeat_interleave(torch.arange(len(fk), device=dev), cnt)
+                idx = torch.arange(tot, device=dev) - torch.repeat_interleave(torch.cumsum(cnt, 0) - cnt, cnt) \
+                    + torch.repeat_interleave(s, cnt)
+                J, jinv = torch.unique(col[idx], return_inverse=True)
+                q = torch.zeros((lat.geoms[i].nport, len(J)), dtype=dt, device=dev)
+                q[kp[rid], jinv] = val[idx]
+                blocks.append(q); Js.append(J)
+            outs = lat.apply_blocks(ops, blocks, batch)
+            Ac = torch.zeros((nc, nc), dtype=dt, device=dev)
+            AR, AC, AV = [], [], []
+            for i, (q, y, J) in enumerate(zip(blocks, outs, Js)):
+                kp, fk = lat._keep[i]
+                zb, yb = q[kp], y[kp].to(dt)
+                Ac.index_put_((J[:, None], J[None, :]), zb.T @ yb, accumulate=True)
+                AR.append(fk[:, None].expand(-1, len(J)).reshape(-1)); AC.append(J[None, :].expand(len(fk), -1).reshape(-1))
+                AV.append(yb.reshape(-1))
+            del blocks, outs
+            ar, ac, av = torch.cat(AR), torch.cat(AC), torch.cat(AV)
+            del AR, AC, AV
+            self.AZ = _csr(ar, ac, av, (n, nc)); self.AZT = _csr(ac, ar, av, (nc, n))
+            del ar, ac, av
+        self.setup['AZ_s'] = t.s
+        with _T(dev) as t:
+            asym = float((Ac - Ac.T).norm() / Ac.norm())
+            Ac = (Ac + Ac.T) / 2
+            s = 1 / torch.sqrt(torch.clamp(torch.diagonal(Ac), min=1e-300))
+            lam, V = torch.linalg.eigh(s[:, None] * Ac * s[None, :])
+            ok = lam > rcond * lam.max()
+            self.T = s[:, None] * V[:, ok] / torch.sqrt(lam[ok])[None, :]
+            self.TT = self.T.T.contiguous()
+        self.setup['factor_s'] = t.s
+        self.desc.update(rank=int(ok.sum()), Ac_asym=asym, Ac_cond_scaled=float(lam.max() / lam[ok].min()),
+                         negative_eigs=int((lam < 0).sum()), AZ_nnz=int(self.AZ.values().numel()))
+
+    def WT(self, R):
+        return self.TT @ torch.sparse.mm(self.ZT, R)
+
+    def Wm(self, a):
+        return torch.sparse.mm(self.Z, self.T @ a)
+
+    def AWm(self, a):
+        return torch.sparse.mm(self.AZ, self.T @ a)
+
+    def AWT(self, y):
+        return self.TT @ torch.sparse.mm(self.AZT, y)
+
+    def Q(self, R):
+        return self.Wm(self.WT(R))
+
+    def proj_T(self, Zr):
+        return Zr - self.Wm(self.AWT(Zr))
+
+    def free(self):
+        self.Z = self.ZT = self.AZ = self.AZT = self.T = self.TT = None
 
 
 # ---------------------------------------------------------------------- preconditioners
@@ -256,9 +381,9 @@ class BNN:
 
     def __call__(self, R):
         c = self.coarse
-        a = c.W.T @ R
-        y = self.fine(R - c.AW @ a)
-        return c.W @ a + y - c.W @ (c.AW.T @ y)
+        a = c.WT(R)
+        y = self.fine(R - c.AWm(a))
+        return c.Wm(a) + y - c.Wm(c.AWT(y))
 
 
 class Deflated:
@@ -308,8 +433,8 @@ def dpcg(lat, ops, defl, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=T
     c, B = defl.coarse, defl.fine
     dev = F.device
     sync(dev); t = time.perf_counter()
-    a = c.W.T @ F
-    X = c.W @ a; R = F - c.AW @ a
+    a = c.WT(F)
+    X = c.Wm(a); R = F - c.AWm(a)
     r0 = F.norm(dim=0)
     Zr = B(R); P = c.proj_T(Zr)
     rz = (R * Zr).sum(0)
@@ -366,7 +491,8 @@ class Factory:
 
     def coarse_space(self, kind):
         if kind not in self.coarse:
-            self.coarse[kind] = Coarse(self.lat, self.ops, kind, self.rcond)
+            sparse = os.environ.get('OPL_COARSE_SPARSE') == '1' and kind.startswith('q1')
+            self.coarse[kind] = (SparseCoarse if sparse else Coarse)(self.lat, self.ops, kind, self.rcond)
             self.log(dict(event='COARSE', **self.coarse[kind].desc, **self.coarse[kind].setup))
         return self.coarse[kind]
 
