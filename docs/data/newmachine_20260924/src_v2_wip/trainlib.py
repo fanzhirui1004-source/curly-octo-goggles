@@ -315,7 +315,7 @@ def coarse_galerkin_tpl(C, space, vc, slot, nc, chunk=4096):
     return A[:nc, :nc].contiguous()
 
 
-def coarse_setup(C, space, reach=4, chunk=128):
+def coarse_setup(C, space, reach=4, chunk=None):
     """Galerkin coarse operator A_c = V^T K_II V on C's device by probing: columns are coloured by vertex coordinates mod
     s = 2R + 1 (R = 2 + ceil(reach / h), h = node spacings per coarse vertex spacing, reach = K's stencil radius in node
     spacings incl. ghost-penalty coupling) and slot, so one K product per colour yields every entry within distance R.
@@ -323,6 +323,7 @@ def coarse_setup(C, space, reach=4, chunk=128):
     _c_seconds, _c_shift on the cell (tensors move with it)."""
     if getattr(C, '_c_space', None) == space:
         return
+    chunk = chunk or int(os.environ.get('OPL_COARSE_CHUNK', '128'))            # probing columns per K product (memory)
     order, ne, pu = COARSE_SPACES[space]
     if order != 1:
         raise ValueError(f'coarse_setup probing supports Q1 / PU spaces, not {space}')
