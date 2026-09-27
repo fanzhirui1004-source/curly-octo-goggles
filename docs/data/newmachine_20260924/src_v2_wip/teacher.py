@@ -97,6 +97,34 @@ class SPDSolver:
         self.solver.free()
 
 
+class _Kfp32:
+    """K x in float32 (element matrices and the symmetric ghost-penalty part, int32 indices) for the equilibrium correction's
+    smoothing and coarse residuals (teacher.Cell.lean(correction_fp32=True)); input and output keep their dtype. The
+    condensed product F^T K F and all energies keep the float64 K."""
+
+    def __init__(self, C):
+        f32 = torch.float32
+        self.C, self.Ke = C, C.Ke.to(f32)
+        Gf = (C.G.to_sparse_coo() + C.Gt.to_sparse_coo()).coalesce()
+        nb = C.nb
+        Gf = (torch.sparse_coo_tensor(Gf.indices(), Gf.values(), Gf.shape)
+              - torch.sparse_coo_tensor(torch.stack([torch.arange(nb, device=Gf.device)] * 2), C.dG, Gf.shape)).coalesce().to_sparse_csr()
+        self.G = torch.sparse_csr_tensor(Gf.crow_indices().int(), Gf.col_indices().int(), Gf.values().to(f32), Gf.shape)
+        self.G64vals = Gf.values()                                              # kept only until lean(deploy=True) takes it
+        del Gf
+
+    def __matmul__(self, x):
+        C, f32 = self.C, torch.float32
+        x32 = x.to(f32)
+        if self.G64vals is not None and not getattr(C, '_deploy', False):
+            self.G64vals = None                                                 # not needed outside deploy mode
+        y = self.G @ x32
+        for lo in range(0, len(self.Ke), C._lean_chunk):
+            de = C.dofs[lo:lo + C._lean_chunk]
+            y.index_add_(0, de.reshape(-1), torch.bmm(self.Ke[lo:lo + C._lean_chunk], x32[de]).reshape(-1, x.shape[1]))
+        return y.to(x.dtype)
+
+
 class Cell:
     def __init__(self, case, body_dir, ports=('box', 'cut'), s=4, levels=1, log=print):
         import element_moments as EM
@@ -183,6 +211,8 @@ class Cell:
                                dtype=dt, device=dev)
 
     def assemble(self, taus=None):
+        if getattr(self, '_lean', False):
+            raise RuntimeError('LEAN_CELL_HAS_NO_ASSEMBLY_MAPS')
         taus = self.taus0 if taus is None else taus
         self.taus = list(taus)
         self._free(); self.U = self.Ut = None; gc.collect(); torch.cuda.empty_cache()
@@ -200,8 +230,76 @@ class Cell:
         return self
 
     def Kx(self, x):
-        """Symmetric product K x = U x + U^T x - diag(K) x from the upper CSR (and its transpose)."""
+        """Symmetric product K x = U x + U^T x - diag(K) x from the upper CSR (and its transpose); after lean(), element by
+        element plus the ghost-penalty part."""
+        if getattr(self, '_lean', False):
+            return self._Kx_lean(x)
         return self.U @ x + self.Ut @ x - self.dK[:, None] * x
+
+    def lean(self, keep_kpp=True, chunk=4096, correction_fp32=False, deploy=False):
+        """Deployment storage (called explicitly; default off). K x = sum_e P_e^T K_e P_e x + G x with the element matrices
+        K_e = sum_m M_em T_m (fp64, E x 81 x 81) and the ghost-penalty part G = gamma * (unit ghost matrix) as its own upper
+        CSR and transpose. The assembled upper CSR, its transpose, the ghost baseline and the assembly index maps are released;
+        K_PP's upper triplets are cached first for lattice preconditioners (lat_multi.from_teacher). factor() and assemble()
+        are unavailable afterwards. The arithmetic of K x is the same sum, reassociated."""
+        if getattr(self, '_lean', False):
+            return self
+        d = self.vals.device
+        if keep_kpp:
+            pm = torch.zeros(self.nb, dtype=torch.bool, device=d); pm[self.P.to(d)] = True
+            pnew = torch.full((self.nb,), -1, dtype=torch.long, device=d); pnew[self.P.to(d)] = torch.arange(self.np_, device=d)
+            ru, cu = self.ru.long(), self.cu.long()
+            sel = torch.nonzero(pm[ru] & pm[cu] & (self.vals != 0)).squeeze(1)
+            self._kpp_cache = (pnew[ru[sel]], pnew[cu[sel]], self.vals[sel].clone())
+            del pm, pnew, ru, cu, sel
+        g = torch.nonzero(self.base).squeeze(1)
+        gr, gcl, gv = self.ru[g].long(), self.cu[g].long(), self.base[g].clone()
+        del g
+        nb = self.nb
+        self.G = torch.sparse_coo_tensor(torch.stack([gr, gcl]), gv, (nb, nb)).coalesce().to_sparse_csr()
+        self.Gt = torch.sparse_coo_tensor(torch.stack([gcl, gr]), gv, (nb, nb)).coalesce().to_sparse_csr()
+        on = gr == gcl
+        self.dG = torch.zeros(nb, dtype=dt, device=d).index_add_(0, gr[on], gv[on])
+        self.lean_info = dict(ghost_nnz_upper=int(len(gv)), elements=int(len(self.cells)))
+        del gr, gcl, gv, on
+        self.Ke = torch.empty((len(self.M), 81, 81), dtype=dt, device=d)
+        Tf = self.Tm.reshape(125, 81 * 81)
+        for lo in range(0, len(self.M), chunk):
+            self.Ke[lo:lo + chunk] = (self.M[lo:lo + chunk] @ Tf).reshape(-1, 81, 81)
+        self._lean_chunk = chunk
+        self.U = self.Ut = None
+        self.vals = self.base = self.ru = self.cu = self.tperm = self.col_t = self.crow_t = self.pos_e = None
+        self._lean = True
+        if correction_fp32 or deploy:                                           # trainlib uses C._Kc inside the correction only
+            self._Kc = _Kfp32(self)
+        if deploy:
+            # deployment memory: one symmetric float64 ghost matrix sharing the float32 copy's int32 indices, element
+            # matrices recomputed from the moments for every float64 product (K_e = M_e T), no stored float64 K_e
+            g32 = self._Kc.G
+            vals64 = self._Kc.G64vals
+            self.G64 = torch.sparse_csr_tensor(g32.crow_indices(), g32.col_indices(), vals64, g32.shape)
+            self._Kc.G64vals = None
+            self.G = self.Gt = self.dG = None
+            self.Ke = None
+            self._deploy = True
+        gc.collect(); torch.cuda.empty_cache()
+        return self
+
+    def _Kx_lean(self, x):
+        if getattr(self, '_deploy', False):
+            y = self.G64 @ x
+            Tf = self.Tm.reshape(125, 81 * 81)
+            for lo in range(0, len(self.M), self._lean_chunk):
+                de = self.dofs[lo:lo + self._lean_chunk]
+                Ke = (self.M[lo:lo + self._lean_chunk] @ Tf).reshape(-1, 81, 81)
+                y.index_add_(0, de.reshape(-1), torch.bmm(Ke, x[de]).reshape(-1, x.shape[1]))
+            return y
+        y = self.G @ x + self.Gt @ x - self.dG[:, None] * x
+        for lo in range(0, len(self.Ke), self._lean_chunk):
+            de = self.dofs[lo:lo + self._lean_chunk]
+            ye = torch.bmm(self.Ke[lo:lo + self._lean_chunk], x[de])
+            y.index_add_(0, de.reshape(-1), ye.reshape(-1, x.shape[1]))
+        return y
 
     def __matmul__(self, x):                                                   # so that cell.K @ x keeps working
         return self.Kx(x)
@@ -215,6 +313,8 @@ class Cell:
 
     # ---------------------------------------------------------------- factorizations
     def factor(self, neumann=True, fp32=False, interior=True, fp32_neumann=False):
+        if getattr(self, '_lean', False):
+            raise RuntimeError('LEAN_CELL_HAS_NO_ASSEMBLED_MATRIX')
         self._free()
         self.fp32 = fp32
         st = {}

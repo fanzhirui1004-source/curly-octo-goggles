@@ -7,7 +7,7 @@ Energy readout in fp64 with the exact K: e_hat(q) = u^T K u >= q^T S q; the bank
 the per-sample loss e_hat - 1 >= 0 is the relative energy error of the extension in that direction (= mu - 1).
 Adversarial directions: block power iteration on the pencil (S_hat, S): q <- S^+ S_hat q, S-normalized, Rayleigh-Ritz.
 """
-import json, time, gc, math
+import json, time, gc, math, os
 from pathlib import Path
 import time
 import numpy as np
@@ -55,6 +55,12 @@ class _KMat(torch.autograd.Function):
         return ctx.K @ g, None
 
 
+def _Kc(C):
+    """Stiffness used inside the equilibrium correction: C._Kc (teacher.Cell.lean(correction_fp32=True)) or C.K."""
+    k = getattr(C, '_Kc', None)
+    return C.K if k is None else k
+
+
 def tail_bounds(C, alpha):
     """Chebyshev interval [lmax / alpha, lmax] of D^-1 K_II (lmax by 40 power steps, x1.05), cached on the cell."""
     t = getattr(C, '_tail_bounds', None)
@@ -84,7 +90,7 @@ def _cheb(C, z0, b, k, alpha):
 
     def A(z):
         full.zero_(); full[C.I] = z
-        return dinv * (C.K @ full)[C.I]
+        return dinv * (_Kc(C) @ full)[C.I]
     z = z0.clone()
     d = (b - A(z)) / theta
     for i in range(k):
@@ -106,10 +112,16 @@ def smooth_tail_T(C, y, k, alpha=30.0):
     w = y[C.I] / dK
     zero = torch.zeros_like(w)
     out = y.clone()
-    out[C.I] = dK * _cheb(C, w, zero, k, alpha)
-    sw = _cheb(C, zero, w, k, alpha)
+    if os.environ.get('OPL_TAILT_FUSED') == '1':                        # both recurrences in one pass on 2B columns
+        B = w.shape[1]
+        z = _cheb(C, torch.cat([w, zero], 1), torch.cat([zero, w], 1), k, alpha)
+        out[C.I] = dK * z[:, :B]
+        sw = z[:, B:]
+    else:
+        out[C.I] = dK * _cheb(C, w, zero, k, alpha)
+        sw = _cheb(C, zero, w, k, alpha)
     full = torch.zeros_like(y); full[C.I] = sw
-    out[C.P] = y[C.P] - (C.K @ full)[C.P]
+    out[C.P] = y[C.P] - (_Kc(C) @ full)[C.P]
     return out
 
 
@@ -223,18 +235,34 @@ def coarse_setup(C, space, reach=4, chunk=128):
 def coarse_correct(C, x):
     """x_I <- x_I + V A_c^-1 V^T r_I, r_I = -(K x)_I (ports held); linear in x, differentiable."""
     xx = x.to(dt)
-    r = -_KMat.apply(xx, C.K)[C.I]
-    c = torch.cholesky_solve(torch.sparse.mm(C._cV.t(), r), C._cL)
-    return xx.index_add(0, C.I, torch.sparse.mm(C._cV, c))
+    r = -_KMat.apply(xx, _Kc(C))[C.I]
+    c = _coarse_solve(C, r)
+    return xx.index_add(0, C.I, c)
+
+
+def _coarse_solve(C, r):
+    """V A_c^-1 V^T r (interior vectors); float32 factor and prolongation when OPL_COARSE_FP32=1 and the cell has a
+    float32 correction stiffness (teacher.Cell.lean(correction_fp32=True)); otherwise float64 as before."""
+    if os.environ.get('OPL_COARSE_FP32') == '1' and getattr(C, '_Kc', None) is not None:
+        if getattr(C, '_cL', None) is not None:                             # a fresh float64 factor from coarse_setup
+            C._cL32, C._cV32, C._cV32t = C._cL.to(torch.float32), C._cV.to(torch.float32), \
+                C._cV.t().coalesce().to(torch.float32)
+            if getattr(C, '_deploy', False):
+                C._cL = C._cV = None                                            # float32 copies only (deployment memory)
+            else:
+                C._cL32_keep = C._cL
+        r32 = r.to(torch.float32)
+        return torch.sparse.mm(C._cV32, torch.cholesky_solve(torch.sparse.mm(C._cV32t, r32), C._cL32)).to(r.dtype)
+    return torch.sparse.mm(C._cV, torch.cholesky_solve(torch.sparse.mm(C._cV.t(), r), C._cL))
 
 
 @torch.no_grad()
 def coarse_correct_T(C, y):
     """Adjoint of coarse_correct: y - K[:, I] V A_c^-1 V^T y_I."""
     y = y.to(dt)
-    g = torch.sparse.mm(C._cV, torch.cholesky_solve(torch.sparse.mm(C._cV.t(), y[C.I]), C._cL))
+    g = _coarse_solve(C, y[C.I])
     full = torch.zeros_like(y); full[C.I] = g
-    return y - C.K @ full
+    return y - _Kc(C) @ full
 
 
 def wrap(C, u, model):
@@ -276,13 +304,13 @@ def smooth_tail(C, u, k, alpha=30.0):
     sigma = theta / delta; rho = 1 / sigma
     dinv = (1 / C.dK[C.I])[:, None]
     x = u.to(dt)
-    r = -_KMat.apply(x, C.K)[C.I]
+    r = -_KMat.apply(x, _Kc(C))[C.I]
     d = dinv * r / theta
     for i in range(k):
         x = x.index_add(0, C.I, d)
         if i == k - 1:
             break
-        r = -_KMat.apply(x, C.K)[C.I]
+        r = -_KMat.apply(x, _Kc(C))[C.I]
         rho_n = 1 / (2 * sigma - rho)
         d = rho_n * rho * d + (2 * rho_n / delta) * dinv * r
         rho = rho_n

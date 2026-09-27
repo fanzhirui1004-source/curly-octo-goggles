@@ -272,26 +272,34 @@ class Deflated:
 
 
 # ---------------------------------------------------------------------- solvers
-def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=True):
+def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=True, X0=None, snaps=None):
+    """PCG on the retained system. X0: initial guess (default zero; one extra operator application); snaps: descending
+    relative-residual levels at which a copy of X and the iteration count are recorded (returned as 'snaps')."""
     F = lat.F if F is None else F
     dev = F.device
-    X = torch.zeros_like(F); R = F.clone()
+    if X0 is None:
+        X = torch.zeros_like(F); R = F.clone()
+    else:
+        X = X0.clone(); R = F - lat.matvec(ops, X, batch=batch)
     Z = prec(R); P = Z.clone()
     rz = (R * Z).sum(0); r0 = F.norm(dim=0)
     sync(dev); t = time.perf_counter(); it = 0
     hist = []
+    todo = sorted(snaps or [], reverse=True); got = []
     for it in range(1, maxit + 1):
         AP = lat.matvec(ops, P, batch=batch)
         alpha = rz / (P * AP).sum(0)
         X += alpha * P; R -= alpha * AP
         rel = float((R.norm(dim=0) / r0).max()); hist.append(rel)
+        while todo and rel < todo[0]:
+            got.append(dict(level=todo.pop(0), iterations=it, X=X.clone()))
         if rel < tol or (max_seconds and time.perf_counter() - t > max_seconds):
             break
         Z = prec(R)
         rz_new = (R * Z).sum(0)
         P = Z + (rz_new / rz) * P; rz = rz_new
     sync(dev)
-    return dict(X=X, iterations=it, seconds=time.perf_counter() - t, residual=hist[-1] if hist else 0.0, history=hist)
+    return dict(X=X, iterations=it, seconds=time.perf_counter() - t, residual=hist[-1] if hist else 0.0, history=hist, snaps=got)
 
 
 def dpcg(lat, ops, defl, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=True):

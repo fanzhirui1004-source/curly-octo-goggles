@@ -60,6 +60,8 @@ class CellGeom:
 def from_teacher(C):
     """CellGeom of an assembled teacher.Cell (K_PP from its upper CSR; consistent face weights from lattice3)."""
     def kpp():
+        if getattr(C, '_kpp_cache', None) is not None:                                   # teacher.Cell.lean()
+            return C._kpp_cache
         dev = C.vals.device
         pm = torch.zeros(C.nb, dtype=torch.bool, device=dev); pm[C.P.to(dev)] = True
         pnew = torch.full((C.nb,), -1, dtype=torch.long, device=dev); pnew[C.P.to(dev)] = torch.arange(C.np_, device=dev)
@@ -117,6 +119,7 @@ class MultiLattice:
         comp = np.zeros(N, np.int64); comp[glob] = c_all
         priv = np.zeros(N, bool); priv[glob] = pr_all
         mult = np.bincount(glob, minlength=N)
+        self.gpos, self.gcomp = gpos, comp                                      # grid position / component per DOF
         # ------------------------------------------------ clamp
         ca = AXES[clamp[0]]
         cplane, _ = _plane(offs, ca, clamp[1], P)
