@@ -58,6 +58,13 @@ for c in $(grep -E "^[0-9:]+ R1X3 END pair_" $ST | awk '$5!="rc=0"{sub("pair_","
   run pair_$c 7200 env LAT_CPU=1 FUSED_HYPER=1 $PY -u r1_pairs.py $R/pairs $c --ckpt $CK --resolve $RES
 done
 grep -qE "^[0-9:]+ R1EXT END pair_" $ST && run x3summary_after_rerun 1800 $PY -u r1x3_summary.py $R
+# coordinator 2026-09-29: lat64_222 (E3/E4 on hlat222 + hlat221a/b) was SIGKILLed in the R1X3 chain; rerun it, then regenerate the X3 summary
+if ! grep -qE "^[0-9:]+ R1X3 END lat64_222 rc=0" $ST; then
+  [ -f $R/lat64_222.json ] && cp -p $R/lat64_222.json $R/lat64_222_killed.json
+  memwait 50
+  run lat64_222_rerun 21600 $PY -u r1_lat.py $R/lat64_222 /root/autodl-tmp/OPL/S4/hlat222.json,/root/autodl-tmp/OPL/S4/hlat221a.json,/root/autodl-tmp/OPL/S4/hlat221b.json --model A3=$CK --max-cols 16 --park --resident 2 --deriv
+  run x3summary_after_latrerun 1800 $PY -u r1x3_summary.py $R
+fi
 # ---------------------------------------------------------------- plan + bodies (CPU, background)
 SPECS="m1x:pair:fresh_val_2003_d1_v1:x:max u1y:pair:fresh_val_2000_full:y:max l221:lattice:hlat221a:/root/autodl-tmp/OPL/S4/hlat221a.json:lat:101:51 m1xm:pair:fresh_val_2003_d1_v1:x:med:101:51 u1ym:pair:fresh_val_2000_full:y:med:101:51"
 $PY -u r1_sweep.py plan $E $SPECS > $E/bodies.txt 2> $R/e13_plan.log; r=$?; st "PLAN rc=$r $(wc -l < $E/bodies.txt) points"; [ $r != 0 ] && RC=$r
