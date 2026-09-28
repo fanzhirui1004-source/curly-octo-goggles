@@ -504,7 +504,7 @@ U1/x under the neighbour-face z traction. B is used on the target and its neighb
 | --- | --- | --- | --- | --- |
 | 0.1274669 | 2.312168 | 0.002947249 | 0.002827394 | 5.82992 |
 
-Figures S01–S04 provide the complementary distributions, initial-field comparisons, coarse-space comparisons, sensitivity diagnostics and iterative-solve comparisons.
+Figures S01–S03 provide the complementary distributions, initial-field and coarse-space comparisons, and sensitivity diagnostics.
 
 
 ## Supplementary Note S1. Global preconditioning and two-cell load configurations
