@@ -3,6 +3,16 @@
 **Manuscript:** "Learned static condensation for cut thin-walled TPMS cells with equilibrium correction" (method: NICE; CMAME submission)
 **Inputs:** R1_mechanics, R2_ml, R3_solvers, R4_optimisation, R5_editor, R6_factcheck, R7_critical (135 numbered findings, plus the Section 6.11 requirement lists of R1, R2, R4 and R7 and R5's title recommendation).
 **Clerk's note:** Nothing in the manuscript or the review reports was changed. Finding IDs follow the reports. "(part)" means only one part of a multi-part finding belongs to the issue. R6 severities are mapped as follows: Error → Major; Inconsistency/Unsupported → Minor, or Major when a headline claim (Abstract/Conclusions) is affected; Style → Minor. Word and cost estimates marked "clerk's estimate" are not the reviewers' own.
+**Update after commit b7dc534 (author decision):** The historical deployment study of predictor D has been removed from the supplement. The removal covers Supplementary Note S4, Figures S04–S05 and Tables ST08, ST09, ST10, ST14 and ST17, which include all same-GPU exact-factor timings, together with the mentions of D in the main text (§6.1, end of §6.10), Appendix J and the predictor key. Notes S1.1 and S1.2 are kept. Renumbering is deferred to the revision stage.
+- I-22 is now **DECIDED (removed)**.
+- Issues whose evidence came from those tables carry a dated note: I-01, I-04, I-13, I-21, I-28, I-37, I-51 and I-59.
+- The underlying concerns that remain valid independently of the removed data stay **open**:
+  - the "cheaper for any number of queries" wording (I-01);
+  - offline cost (I-02);
+  - the whole-lattice iterative/AMG baseline (I-11);
+  - scalability beyond eight cells (I-13);
+  - the strength of the host baseline: LU vs Cholesky, thread count, solve phase (I-36).
+- The reviewers' finding texts still cite the deleted tables. Those citations describe the version the reviewers read.
 
 ---
 
@@ -25,7 +35,7 @@ All five scientific reviewers recommend **major revision**. None considers the c
 ### 0.2 Consolidated issues
 
 - **Total: 59 issues** (from 135 findings).
-- Severity: 36 Major, 23 Minor.
+- Severity: 35 Major, 24 Minor.
 - Consensus:
   - 6 reviewers: 5 issues;
   - 5 reviewers: 5 issues;
@@ -34,8 +44,8 @@ All five scientific reviewers recommend **major revision**. None considers the c
   - 2 reviewers: 18 issues;
   - 1 reviewer: 14 issues.
 - Status:
-  - 4 issues **DECIDED**: I-01 (baseline choice), I-10, I-29, I-33 (pilot running);
-  - 28 issues flagged **NEEDS AUTHOR DECISION** (list in §0.5).
+  - 5 issues **DECIDED**: I-01 (baseline choice), I-10, I-22 (D study removed, b7dc534), I-29, I-33 (pilot running);
+  - 27 issues flagged **NEEDS AUTHOR DECISION** (list in §0.5).
 
 ### 0.3 Issues per theme
 
@@ -62,7 +72,7 @@ Each issue is counted once, under the most demanding action that the recommended
 | Text only | 27 | I-01*, I-05, I-09, I-14, I-15, I-16, I-21, I-25, I-27, I-28, I-29, I-39, I-40, I-41, I-42, I-44, I-45, I-46, I-47, I-49, I-50, I-52, I-55, I-56, I-57, I-58, I-59 |
 | Re-analysis of existing data / checkpoints | 13 | I-02, I-03, I-08, I-18, I-19, I-23, I-26, I-32, I-38, I-43, I-48, I-51, I-53 |
 | New experiment | 15 | I-04, I-06, I-07, I-10, I-11, I-12, I-13, I-17, I-20, I-24, I-30, I-31, I-33, I-34, I-36 |
-| Cut or move | 4 | I-22, I-35, I-37, I-54 |
+| Cut or move | 4 | I-22 (done: removed in b7dc534), I-35, I-37, I-54 |
 
 \* I-01 is text only under the DECIDED host baseline. It would become a new experiment if that decision were revisited.
 
@@ -89,7 +99,6 @@ A new experiment is at least one proposed option (including optional ones) in 24
 | I-18 | Worst-direction / operator-norm error not reported | Abstract wording "at most 0.65% for any geometry" |
 | I-19 | Benefit of training through the correction is confounded | Seeds (new); contribution (ii) and Abstract claim |
 | I-20 | No runtime error control; one-sided bias invites exploitation | New implementation and experiment |
-| I-22 | Supplementary Note S4 / Table ST14 still contains same-GPU exact-factor timings | Keep, remove or re-frame (explicit author decision) |
 | I-23 | Two-grid bound proves only non-expansion; "controllable" claim | Abstract/contribution (i) wording |
 | I-24 | CutFEM reference verification too thin | New (small) experiment |
 | I-28 | Memory units (GiB vs GB) and memory content | Mandatory fix; the Abstract number changes |
@@ -132,7 +141,7 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
 | I-19 | Training through the correction confounded | T6 | 4 | Major | Re-analysis | NEEDS DECISION |
 | I-20 | No runtime error control; surrogate exploitation | T4 | 4 | Major | New exp. | NEEDS DECISION |
 | I-21 | Labels, notation, colour coding | T8 | 4 | Major | Text | (context: NICE name DECIDED) |
-| I-22 | Note S4 / Table ST14 same-GPU exact-factor timings | T1 | 3 | Major | Cut/move | NEEDS DECISION |
+| I-22 | Note S4 / Table ST14 same-GPU exact-factor timings | T1 | 3 | Major | Cut/move | DECIDED (removed, b7dc534) |
 | I-23 | Two-grid bound vacuous; "controllable" claim | T4 | 3 | Major | Re-analysis | NEEDS DECISION |
 | I-24 | CutFEM reference verification too thin | T3 | 3 | Major | New exp. | NEEDS DECISION |
 | I-25 | FD-step statement contradictory; PSD of numerical K,c | T2 | 3 | Major | Text | |
@@ -180,7 +189,8 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
 - **Sources:** R1-06 (part), R2-04 (part), R3-01 (part), R3-15, R4-07 (part), R5-05, R7-05 (part)
 - **Status:**
   - **DECIDED.** The GPU interior factorisation (cuDSS) comparison was deliberately removed from Table 5 and the discussion. The authors consider host MKL PARDISO the conventional practice and the relevant baseline, as in the PIML literature, which compares against full-scale FEM.
-  - **NEEDS AUTHOR DECISION** on how the Abstract, §6.10, §7.4 and §8 cost claims are worded under that decision.
+  - **DECIDED (b7dc534).** The supplementary same-GPU exact-factor timings (Note S4 / ST14 / ST17) have also been removed (I-22).
+  - **NEEDS AUTHOR DECISION** on how the Abstract, §6.10, §7.4 and §8 cost claims are worded under that decision. This concern remains open independently of the removed data: the reviewers' hardware and baseline arguments do not depend on ST14.
 - **Problem:** The main text compares A3 on one RTX 5090 with MKL PARDISO on 16 host cores. The resulting claims are stated without their hardware condition:
   - Abstract: "condenses a cell 9 to 29 times faster, stores 4 to 14 times less, and applies it 2 to 23 times faster";
   - §6.10 and §8: "cheaper for any number of queries".
@@ -189,7 +199,7 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
 - **Proposed actions (under the decision):**
   1. Add one sentence to §6.10 justifying the baseline: host sparse direct condensation is conventional practice, and PIML studies compare against full-scale FEM.
   2. Qualify every cost claim with the hardware, e.g. "on one GPU against a 16-core host direct solver", in the Abstract, §6.10, §7.4 and §8.
-  3. Decide whether "cheaper for any number of queries" survives. Reviewers ask for removal or qualification; offline cost (I-02) and the same-GPU data still present in the supplement (I-22) both bear on it.
+  3. Decide whether "cheaper for any number of queries" survives. Reviewers ask for removal or qualification; offline cost (I-02) bears on it. The same-GPU data in the supplement (I-22) have been removed, but R3 and R7 have seen them.
   4. Consider leading with the memory advantage (after I-28 and I-36).
   5. Prepare a response-letter argument, because R2, R3, R5 and R7 will very likely repeat the request.
 - **Fix type:** Text only (under the decision). It becomes a new experiment (same-GPU timings) if the decision is revisited.
@@ -250,12 +260,12 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
   - by Eq. (18), such residuals can contaminate compliance through Ūᵀρ, and through ω if the fp32 action differs from the energy operator. Neither term is stored (J.6).
 
   The "0.3–0.4%" agreement with β and the smallest compliance errors therefore cannot yet be read as properties of the operator (R1-03). Further inconsistencies and gaps:
-  - Table 1 says the correction runs in fp64, but App. F.3 rounds fields to fp32 between stages and on output. The ST08a fused/sparse action difference is 2.5e-5 (R3-05).
+  - Table 1 says the correction runs in fp64, but App. F.3 rounds fields to fp32 between stages and on output. The ST08a fused/sparse action difference is 2.5e-5 (R3-05). *Note (b7dc534): ST08 has been removed. State which action path (fused or sparse) is deployed and its precision directly in the retained text.*
   - Attributing the floor to the network's fp32 arithmetic is asserted, not shown (R3-05, R5-12).
   - The floor sits uneasily with the 10⁻⁸ consistency figures of §6.2 (R5-12).
   - Iterating past the attainable accuracy inflates the 183/186 application counts used in the cost argument (R3-05).
   - The floor may grow with lattice size (R7-07). It limits how far the correction budget can reduce the error (R7-10) and may set the attainable gradient accuracy in optimisation (R4-12).
-  - The historical 27-cell D run had a recomputed residual of 8.99e-3 and a 1.86% compliance error (ST14d).
+  - The historical 27-cell D run had a recomputed residual of 8.99e-3 and a 1.86% compliance error (ST14d; *removed in b7dc534, so the floor is now evidenced only by the two eight-cell lattices*).
 - **Proposed actions:**
   - Re-run one pair and one lattice with the network, rigid split and retained restoration in fp64, all casts removed. Show whether the stall disappears and whether the errors change.
   - For every assembled result, report the recomputed residual, Ūᵀρ/C and ω/C, or the residual-corrected J(Ū) (J.6).
@@ -447,14 +457,14 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
   - iterations of 114–165 to 1e-6, growing from 4 to 8 cells;
   - a residual floor that grows tenfold;
   - GPU memory that already forces host streaming at 8 cells ("operator state of four cells on the GPU and stream the remainder") (R4-07);
-  - the only 27-cell evidence, predictor D in ST14d/ST17b, has the learned route at 222 s against 94.6 s exact on the same GPU (R3-09).
+  - the only 27-cell evidence, predictor D in ST14d/ST17b, had the learned route at 222 s against 94.6 s exact on the same GPU (R3-09). *Removed in b7dc534: the manuscript now has no evidence beyond eight cells, so the scaling concern remains open and is, if anything, sharper.*
 
   R7-07 extrapolates to 1,000 cells: about 17–26 M retained DOFs, 0.25–1.4 TB of operator state, 1–2 h of front end and several hours of PCG per design iteration. NICE is therefore at a different point on the accuracy/cost curve from PIML-type ROMs (fine-scale accurate analysis of tens of cells), and the positioning should say so.
 - **Proposed actions:**
   - Describe the lattice preconditioner in the main text.
   - Run a scaling study with A3 for 4/8/27/64 (R7: ≥125) cells: iterations, CG-Lanczos condition estimate, setup, K_PP factorisation scaling, time and memory per design iteration, residual floor.
   - State the number of cells beyond which one GPU is impractical.
-  - Discuss the 27-cell D result or remove it (I-22).
+  - ~~Discuss the 27-cell D result or remove it (I-22).~~ Done: removed (b7dc534). Be ready to address it in the response letter.
   - Reframe the positioning in §1 and §7. If a coarse-level model is the eventual aim, say so.
 - **Fix type:** New experiment, plus text.
 - **Related:** I-04, I-11, I-22, I-30, I-52.
@@ -585,7 +595,7 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
 - **Sources:** R1-16, R2-09, R5-08, R6-11
 - **Status:** Context: the method name NICE is DECIDED. The choice between the reviewers' naming schemes is the authors' (not a disagreement).
 - **Problem:**
-  - **Predictor labels.** There are eight (P0, B, C, S8, A2b, B+W, A3, D), plus internal run IDs in the appendices (v2L1, A0_ctrl, B2grid, …). "W" is never tied to 𝒲. S8 has a partial, unspecified training protocol and is "not interpreted", yet it carries Table 4 and Fig. 10 results. P0 appears only in ST01/S01, and D only in the supplement.
+  - **Predictor labels.** There are eight (P0, B, C, S8, A2b, B+W, A3, D), plus internal run IDs in the appendices (v2L1, A0_ctrl, B2grid, …). "W" is never tied to 𝒲. S8 has a partial, unspecified training protocol and is "not interpreted", yet it carries Table 4 and Fig. 10 results. P0 appears only in ST01/S01, and D only in the supplement. *(b7dc534: D has been removed from the main text, Appendix J, the supplement and the predictor key, so this part is resolved.)*
   - **Method name.** NICE is not used in the Results, which say A3. Table 3's "B (learned)" is actually B+W.
   - **Cell labels.** Twelve labels (U1 … L1, G1–G4) are defined only in Supp. R1.
   - **Colour and markers.** An orange square is A3 in Figs. 5 and 9 but S8 in Fig. 10 (R5-08).
@@ -609,31 +619,44 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
 - **Fix type:** Text only (plus re-plot).
 - **Related:** I-37, I-53.
 
-#### I-22: Supplementary Note S4 / Table ST14 still contains same-GPU exact-factor timings
+#### I-22: Same-GPU exact-factor timings in Supplementary Note S4 / Table ST14 (historical predictor-D study)
 - **Theme:** T1 · **Severity:** Major · **Consensus:** 3 (R3, R5, R7)
 - **Sources:** R3-01, R3-09 (part: 27-cell D result), R5-19, R7-05 (part)
-- **Status:** **NEEDS AUTHOR DECISION (keep / remove / re-frame).** This is the open issue that follows from the DECIDED removal of the cuDSS comparison from the main text: the supplement still holds same-GPU exact-factor data, and two reviewers found them.
-- **Problem:** Table ST14 (historical deployment study with the earlier uncorrected predictor D) gives GPU fp64 exact interior-factor timings on the same RTX 5090 and the same cells G1–G4:
+- **Status:** **DECIDED: removed (commit b7dc534).** The authors removed the whole historical deployment study of predictor D from the supplement: Note S4, Figures S04–S05, and Tables ST08, ST09, ST10, ST14 and ST17. They also removed its mentions in the main text (§6.1 predictor paragraph, end of §6.10), Appendix J and the predictor key. Notes S1.1 (lattice preconditioner) and S1.2 (two-cell configuration) are kept, and renumbering is deferred. This corresponds to option (a) below and is consistent with the DECIDED removal of the cuDSS comparison from the main text (I-01).
+- **Problem as reviewed (recorded for the response letter):** Table ST14 gave GPU fp64 exact interior-factor timings on the same RTX 5090 and the same cells G1–G4:
   - factorisation 0.64–8.6 s;
   - application 7.9–73 ms (1 vector), 13–100 ms (16), 35–316 ms (64).
 
-  Table 5 gives A3 as 25–99, 205–1,052 and 388–1,828 ms. On the same device, the exact factor therefore applies about 1.4–3× faster for one vector and 6–12× faster for 16/64 vectors. The learned route wins only in preparation, by about 4–8× (0.16–1.09 s) (R3-01, R7-05).
+  Table 5 gives A3 as 25–99, 205–1,052 and 388–1,828 ms. The reviewers therefore concluded that, on the same device, the exact factor applies about 1.4–3× faster for one vector and 6–12× faster for 16/64 vectors, and that the learned route wins only in preparation, by about 4–8× (0.16–1.09 s) (R3-01, R7-05).
 
-  Consequences:
+  Their further arguments:
   - Break-even is about 90–320 applications per cell, fewer than the 183–234 per design iteration of §6.9 (R7-05).
   - R3-01's G1 estimate is about 9 s exact vs about 40 s learned per design iteration.
-  - S4 itself says "the exact factor is faster for batches of 64 directions".
-  - ST14d/ST17b: the 27-cell D array takes 222 s learned vs 94.6 s exact on the same GPU.
+  - S4 itself said "the exact factor is faster for batches of 64 directions".
+  - ST14d/ST17b: the 27-cell D array took 222 s learned vs 94.6 s exact on the same GPU.
   - Exact-factor timings do not depend on the predictor (R3-01).
-  - §6.10 points to S4 only as "the historical deployment study of an earlier uncorrected predictor".
 
-  Reviewers call this a contradiction of "cheaper for any number of queries". The ST14 figures come from an earlier software stack and benchmark campaign, so the cross-campaign comparison is approximate (R3-01 medium confidence on size; R7-05 "unlikely to reverse"). R5-19 independently says the D study no longer supports any main-text claim and adds a label and about 1,300 supplementary words.
-- **Options for the authors:**
-  - (a) Remove S4, ST08–ST10, ST14, ST17 and Figs. S04–S05 from the supplement to a data/code repository, and delete the §6.1/§6.10 mentions of D (R5-19). Risk: reviewers who saw this version may regard the removal as concealment.
-  - (b) Keep them and re-frame. Acknowledge in §6.10 that on the same GPU an exact factor applies faster for batched queries, and that the learned route's advantages are preparation time and memory (fp64 factor 4.7–5.7 GiB for G1/G3/G4 vs 0.7–1.4 GiB learned state; ST08a). Reword the cost claims accordingly (I-01).
-  - (c) Keep them under a separate "Archive: earlier uncorrected predictor" heading, with an explicit note that the timings come from an earlier stack and are not comparable with Table 5, and with the exact-factor columns removed or caveated.
-- **Fix type:** Cut or move (a, c) or text only (b).
-- **Related:** I-01, I-13, I-51.
+  Reviewers called this a contradiction of "cheaper for any number of queries". The figures came from an earlier software stack and benchmark campaign, so the cross-campaign comparison was approximate (R3-01 medium confidence on size; R7-05 "unlikely to reverse"). R5-19 independently recommended removing the D study, because it no longer supported any main-text claim and added a label and about 1,300 supplementary words.
+- **Options that were considered:**
+  - (a) remove → **chosen**;
+  - (b) keep and re-frame §6.10 around preparation time and memory;
+  - (c) keep under an "Archive" heading with caveats.
+- **Remaining actions after the removal:**
+  1. **Response letter.** R3 and R7 have seen the same-GPU numbers. Be ready to explain the removal: an earlier uncorrected predictor, TF32 convolutions, a different software stack, no bearing on any retained claim; the host PARDISO route is the chosen baseline (I-01). Consider keeping the records in the data/code repository (the evidence files are kept) so that the removal cannot be read as concealment.
+  2. **Open concerns that do not depend on the removed data:**
+     - claim wording "cheaper for any number of queries" (I-01);
+     - offline cost and break-even (I-02);
+     - whole-lattice iterative/AMG baseline (I-11);
+     - scalability beyond eight cells, where no evidence now remains after the 27-cell D run was removed (I-13);
+     - strength of the host baseline: LU vs Cholesky, 16 of 128 threads, sequential solve phase (I-36);
+     - batching efficiency of the learned application (I-51).
+  3. **Stale references left by the removal (clerk's check of the current files):**
+     - SUPPLEMENTARY_EN.md, end of the ST16 block: "Figures S01–S04 provide … and iterative-solve comparisons" still names S04 and the iterative-solve comparisons.
+     - APPENDICES_EN.md J.6: "…which are not stored in those records" now has no antecedent, because the sentence about the D benchmark records was deleted.
+     - Gaps in table/figure numbering (ST08–ST10, ST14, ST17; Figs. S04–S05) remain until renumbering.
+     - Reviewer-cited facts that came from the deleted ST08a now need a source in the retained material or new data. These are K storage vs learned state (I-28), the fused/sparse action difference of 2.5e-5 (I-04), and the fp64 factor sizes.
+- **Fix type:** Cut or move (done); text only for the remaining clean-up.
+- **Related:** I-01, I-02, I-04, I-11, I-13, I-28, I-36, I-51.
 
 #### I-23: The two-grid bound proves only non-expansion; the "controllable" claim is empirical
 - **Theme:** T4 · **Severity:** Major · **Consensus:** 3 (R1, R3, R7)
@@ -744,7 +767,7 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
   - the host factor is factor_kB/10⁶, which is GB only if PARDISO's kB means 1000 B;
   - Supplementary Note S7 treats PARDISO kB as 1024 B and reports GiB (Table 6: 32.1), and the explicit-S column is GiB (4.52 = 24,636²·8/2³⁰).
 
-  In consistent GiB the host factor is 5.30 / 1.05 / 11.76 / 17.67, and the ratio becomes 4.2–12.9 ("4 to 13"). R3-10 adds that it is unclear whether the learned 0.25–1.37 GB includes K, which applying FᵀKF needs. ST08a lists K (1.39–2.71 GiB) separately, and it is larger than the learned state. It is also unclear whether the host figure includes K_IP and K_PP. A Cholesky factor would roughly halve the host memory (I-36).
+  In consistent GiB the host factor is 5.30 / 1.05 / 11.76 / 17.67, and the ratio becomes 4.2–12.9 ("4 to 13"). R3-10 adds that it is unclear whether the learned 0.25–1.37 GB includes K, which applying FᵀKF needs. ST08a listed K (1.39–2.71 GiB) separately, and it is larger than the learned state. *(ST08 removed in b7dc534. The question of what the memory figures contain remains open and must be answered in the Table 5 caption.)* It is also unclear whether the host figure includes K_IP and K_PP. A Cholesky factor would roughly halve the host memory (I-36).
 - **Proposed actions:**
   - Use GiB (as S7 does), labelled explicitly, in Tables 5 and 6.
   - Recompute the ratios in §6.10, the Abstract and §8.
@@ -926,8 +949,9 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
   - Apply the length plan (§3).
   - Condense §7 to about 850 words in three subsections: (a) boundary restriction against interior approximation; (b) what learning and correction each contribute, including NICE-post; (c) limitations and extensions.
   - Move the cost interpretation into §6.10.
+  - Note (b7dc534): the D-study removal already implements R5-19 (about 1,300 supplementary words, plan item 43, and the D mention in item 22).
 - **Fix type:** Cut or move.
-- **Related:** §3, I-54, I-55.
+- **Related:** §3, I-22, I-54, I-55.
 
 ---
 
@@ -1120,7 +1144,7 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
 - **Theme:** T1 · **Severity:** Minor · **Consensus:** 1 (R3)
 - **Sources:** R3-13
 - **Status:** —
-- **Problem:** G1 takes 54 ms for 1 vector, 531 ms for 16 and 923 ms for 64, almost linear in batch size. A memory-bound SpMM with K ≈ 1.4 GiB should amortise across columns: 34 K-actions at about 1.8 TB/s is roughly 25–30 ms up to moderate widths. This points to an implementation limit (per-vector loops or the network transpose). The learned route may be faster than reported, and the stated cause (§7.4) may be wrong. It matters for the batch gap in I-22.
+- **Problem:** G1 takes 54 ms for 1 vector, 531 ms for 16 and 923 ms for 64, almost linear in batch size. A memory-bound SpMM with K ≈ 1.4 GiB should amortise across columns: 34 K-actions at about 1.8 TB/s is roughly 25–30 ms up to moderate widths. This points to an implementation limit (per-vector loops or the network transpose). The learned route may be faster than reported, and the stated cause (§7.4) may be wrong. The reviewers' motivation was partly the batch gap against the same-GPU exact factor (I-22, now removed). The profiling remains useful for the §7.4 statement and for any future matched-hardware discussion.
 - **Proposed actions:** Break an application down by component (network forward/transpose, smoothing SpMVs, coarse solves, K action) for batches of 1, 6 and 64, and compare with a bandwidth estimate.
 - **Fix type:** Re-analysis (profiling).
 - **Related:** I-22.
@@ -1211,8 +1235,8 @@ Order: first the issues with consensus ≥3 (sorted by consensus, then severity)
 - **Problem:**
   - The Fig. 7 layer shares (8%; 13% of elements; 39–43%; 19–22%) cannot be reconstructed: p1_field_M1_small.npz lacks the cut-plane definition, and plausible reconstructions did not reproduce them (R6-17).
   - §6.7 attributes the replacement values 15.6% and 19.3% to the T-y load, but ST05 gives maxima over six loads, and no per-load record exists. The 12.2% is confirmed (R6-18).
-  - R6 also lists sources not archived in evidence/: ST02, ST03, ST04, per-load ST05, ST08–ST10, ST14, ST17, and the R2 element-group shares.
-- **Proposed actions:** Archive the plane or layer mask with the figure data. Give per-load T-y values or write "maxima over the six loads". Archive the sources of the listed tables.
+  - R6 also lists sources not archived in evidence/: ST02, ST03, ST04, per-load ST05, ST08–ST10, ST14, ST17, and the R2 element-group shares. *(ST08–ST10, ST14 and ST17 were removed in b7dc534. The rest remain unarchived.)*
+- **Proposed actions:** Archive the plane or layer mask with the figure data. Give per-load T-y values or write "maxima over the six loads". Archive the sources of the remaining listed tables (ST02–ST04, per-load ST05, R2 element-group shares).
 - **Fix type:** Text only (archiving).
 - **Related:** I-30, I-44.
 
@@ -1277,7 +1301,7 @@ This section merges R1-§4, R2-§4, R4-§4, R5-01 and R7-§4/R7-11, with the rel
 - **Appendices:** about 4,300 words move to the supplement (F, G, I.1–I.2, J.7–J.9), with J.1–J.6 deduplicated into B, C and H. About 4,790 words remain.
 - **Other savings:** about 380 caption words; the Abstract from 370 to 220 words.
 - **Tables and figures:** Tables 4 and 6 move to the supplement; Fig. 6 moves; Fig. 9 is reduced to panels (a,b).
-- **Supplement:** reordered to follow the main text; the legacy D material (S1, S4 and associated items) goes to an archive or repository.
+- **Supplement:** reordered to follow the main text; the legacy D material (S1, S4 and associated items) goes to an archive or repository. *Done in b7dc534: S4, Figs. S04–S05 and ST08–ST10, ST14, ST17 were removed, and S1.1/S1.2 kept. This also completes plan item 43 (the §6.10 legacy sentence) and the D mention in item 22.*
 - **Page count:** about 55–62 pages.
 
 **R5 main-text table (kept verbatim):**
