@@ -408,7 +408,24 @@ Maximum relative compliance and field-based sensitivity-vector errors over the s
 | L1 | x | NICE | 0.00202 | 0.101 | 8 | Pass |
 | L1 | y | NICE | 0.00197 | 0.078 | 8 | Pass |
 
-The comparison contains seven configurations for the base network, eleven for Uncorrected, nine for S8, twelve for Smoothing-trained and fourteen each for NICE-post and NICE. The nine configurations U1/x,y, U2/x,y, M1/x,y, H1/x,y and M2/x are common to Uncorrected, S8, Smoothing-trained, NICE-post and NICE; the base network was evaluated on seven of them (no U2/y, no M1/y). Uncorrected and S8 satisfy both 3% criteria in the same five of these nine configurations, and Uncorrected also on L1/x and L1/y; Smoothing-trained fails the same four configurations as Uncorrected and S8; NICE-post and NICE satisfy both criteria in all fourteen. Missing model/configuration combinations have no row. All cells in this table belong to the 20 validation geometries used for weight selection (Section 6.1). Cut-traction responses of the same configurations are in Table ST10. [PENDING E6: held-out pair configurations of about nine cells not used in weight selection, including the five geometries with NICE's largest single-cell errors.]
+The comparison contains seven configurations for the base network, eleven for Uncorrected, nine for S8, twelve for Smoothing-trained and fourteen each for NICE-post and NICE. The nine configurations U1/x,y, U2/x,y, M1/x,y, H1/x,y and M2/x are common to Uncorrected, S8, Smoothing-trained, NICE-post and NICE; the base network was evaluated on seven of them (no U2/y, no M1/y). Uncorrected and S8 satisfy both 3% criteria in the same five of these nine configurations, and Uncorrected also on L1/x and L1/y; Smoothing-trained fails the same four configurations as Uncorrected and S8; NICE-post and NICE satisfy both criteria in all fourteen. Missing model/configuration combinations have no row. All cells in this table belong to the 20 validation geometries used for weight selection (Section 6.1). Cut-traction responses of the same configurations are in Table ST10. Held-out configurations are in Table ST09b.
+
+#### ST09b. Held-out two-cell configurations (NICE)
+
+Cells outside weight selection, fixed before evaluation: the five validation geometries with NICE's largest single-cell errors and one random cell per stratum. Maximum relative errors (%) over the six face loads (compliance) and over both cells (eight-corner sensitivity); the neighbour is exact and the target learned, as in Table ST09.
+
+| Cell | Selection | Retained volume | x: compliance | x: sensitivity | y: compliance | y: sensitivity |
+| --- | --- | --- | --- | --- | --- | --- |
+| fresh_val_2051 | worst 1 | 0.571 | 0.2706 | 1.485 | 0.2220 | 1.312 |
+| fresh_val_2045 | worst 2 | 0.267 | 0.1982 | 0.815 | 0.1703 | 1.344 |
+| fresh_val_2074 | worst 3 | 0.287 | 0.1587 | 1.329 | 0.2489 | 1.419 |
+| fresh_val_2021 | worst 4 | 0.266 | 0.0827 | 0.526 | 0.0753 | 0.971 |
+| fresh_val_2063 | worst 5 | 0.681 | 0.0967 | 0.434 | 0.0878 | 0.563 |
+| fresh_val_2032 | random, uncut | 1.000 | 0.0010 | 0.181 | 0.0011 | 0.133 |
+| fresh_val_2047 | random, light | 0.779 | 0.0051 | 0.102 | 0.0051 | 0.102 |
+| fresh_val_2078 | random, moderate | 0.661 | 0.0101 | 0.103 | 0.0066 | 0.100 |
+| fresh_val_2053 | random, heavy | 0.078 | 0.0050 | 0.136 | 0.0066 | 0.218 |
+
 
 ## Table ST10. Cut-traction responses outside the six-load criterion
 
