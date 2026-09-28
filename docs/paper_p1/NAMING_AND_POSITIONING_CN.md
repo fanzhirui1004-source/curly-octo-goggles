@@ -48,3 +48,9 @@
 - 定位中提到的 PIML 后续"三次 Bézier 边界描述"工作（CMAME 456 (2026) 118955，见 `docs/PRIOR_ART_SCREEN_20260926_CN.md`）目前**不在**稿件参考文献中。本次未新增该引用（作者与条目未在稿件中核实），正文只以"higher-degree boundary polynomials"和已引用的 PIML-OFEM 过采样基来泛指更丰富的边界描述。若要点名 Bézier 工作，需补引文。
 - 第 3.1 节仍有"This choice connects the learned representation to local shape-function methods [Huang et al. (2023)]"一句，第 6.8 节首句称"the assumption on which boundary-interpolation substructures rest"。二者不在本次可改范围内，措辞尚属公允，是否调整由协调人决定。
 - 标题未改，候选见 (b)。
+
+## 决定（2026-09-28）
+
+- 方法名定为 **NICE**（neural-initialised condensation with equilibrium correction）。已在摘要、引言贡献 (i) 与结论首句引入；预测器标签（A3 等）不变，标题暂不改。
+- 补引 Guo et al. (2026a)，CMAME 456, 118955（三次 Bézier 边界插值）；PIML-OFEM 预印本改标为 Guo et al. (2026b)。
+- 第 3.1 节与第 6.8 节首句改为与边界降维类方法对照的表述，并引用 Huang et al. (2023) 与 Guo et al. (2026a)。
