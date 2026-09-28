@@ -56,7 +56,7 @@ for k in $(seq 1 $NREP); do
 done
 run $H t5_luref $PY -u bench_cpu2.py $H/bench_cpu2_luref.json $G --mode luref --reps 3
 for L in $LATS; do
-  for k in $(seq 1 $NREP); do
+  for k in 1; do   # single run (author decision 2026-09-29, in-place edit)
     run $H t6_${L}_chol_rep$k $PY -u lat_direct_cpu2.py $H/lat2_${L}_chol_rep$k.json $(lay $L) --mtypes 2 --iparm-file $H/iparm_tuned.json --margin-gib 4
   done
   case $L in hlat221a|hlat221b|hlatsmoke1)
@@ -73,7 +73,7 @@ mk R1_CPU_REF_DONE_20260928
 # ---------------- C: route (b)
 for L in hlat222 hlat331; do   # hlat221a/b moved to the 60 GiB machine (in-place edit 2026-09-29)
   REF=$H/lat2_${L}_chol_rep1.json,$H/lat2_${L}_chol_rep2.json,$(ls $O/lat_direct_${L}*.json 2>/dev/null | tr '\n' ',')
-  for k in $(seq 1 $NREP); do
+  for k in 1; do   # single run (author decision 2026-09-29, in-place edit)
     run $HC latcond_${L}_rep$k $PY -u lat_cond_cpu.py $HC/latcond_${L}_rep$k.json $(lay $L) --solver block --iparm-file $H/iparm_tuned.json --margin-gib 4 --ref "$REF"
   done
 done

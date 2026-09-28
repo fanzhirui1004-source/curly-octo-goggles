@@ -3,7 +3,7 @@
 # 58 GiB, 32-CPU quota). Work split with the 120 GiB machine (chain_r1_cpu.sh), same environment and versions, same iparm
 # (iparm_tuned.json copied from the 120 GiB machine), same thread settings; machine name in every JSON (field 'machine').
 #  B  E7 retries (accuracy only): ref_valid2.py --retry-errors --headroom-gib 4, sweeps then studies, 16 threads
-#  C  route (b) block solver x 3 for hlat221a and hlat221b; PARDISO-path route (b) on hlat221b once (memory guard), 16 threads
+#  C  route (b) block solver, single run, for hlat221a and hlat221b; PARDISO-path route (b) on hlat221b once (memory guard), 16 threads
 #  D  single core: 1-thread PARDISO Cholesky (iparm(24)=iparm(25)=0, ordering as tuned, METIS fallback) on hlat221a, hlat221b
 #  S  SciPy SuperLU colamd + mmd on the 2-cell lattice hlatsmoke2, caps RLIMIT_AS 50 GiB, watchdog 50 GiB, wall 2 h
 # Environment capture: lscpu, cgroup, cpu.stat, MKL_VERBOSE (cpu3/host/). Every run records loadavg and cpu.stat throttling.
@@ -42,7 +42,7 @@ mk R1_CPU3_REF_DONE_20260929
 # ---------------- C: route (b), 4-cell lattices
 for L in hlat221a hlat221b; do
   REF=$(ls $O/lat_direct_${L}*.json 2>/dev/null | tr '\n' ',')
-  for k in 1 2 3; do
+  for k in 1; do   # single run (author decision 2026-09-29)
     run $HC latcond_${L}_rep$k $PY -u lat_cond_cpu.py $HC/latcond_${L}_rep$k.json $S4/$L.json --solver block --iparm-file $IPT --margin-gib 4 --ref "$REF"
   done
 done
