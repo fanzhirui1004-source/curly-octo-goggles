@@ -54,7 +54,7 @@ def eig_stats(Mrows, Tm, chunk, ids, vf, corner=None):
     return out
 
 
-def dM_ad(C, rows):
+def dM_ad(C, rows, batch=256):
     """(8, len(rows), 125) exact derivative of the discrete moments (fixed clip topology), forward mode; and the moments."""
     import torch.autograd.forward_ad as fwAD
     MA.CHECKPOINT = False
@@ -63,17 +63,21 @@ def dM_ad(C, rows):
     taus = torch.as_tensor(np.asarray(C.taus, float), dtype=dt, device=dev)[None].expand(E, 8).contiguous()
     nrm, off = MA.plane_rows(C.normal, C.offset, E, dev)
     sf = getattr(C, 'surface', 'P')
-    out, M0 = [], None
+    out = torch.zeros((8, E, 125), dtype=dt, device=dev); M0 = torch.zeros((E, 125), dtype=dt, device=dev)
     for c in range(8):
-        tan = torch.zeros_like(taus); tan[:, c] = 1.0
-        with fwAD.dual_level():
-            td = fwAD.make_dual(taus, tan)
-            Md = MA.moments_rows(cells, C.n, td, nrm, off, s=C.s, levels=C.levels, surface=sf)
-            p, tg = fwAD.unpack_dual(Md)
-            out.append(tg.detach().clone() if tg is not None else torch.zeros_like(p))
-            if M0 is None:
-                M0 = p.detach().clone()
-    return torch.stack(out), M0
+        for b0 in range(0, E, batch):
+            b1 = min(E, b0 + batch)
+            tan = torch.zeros_like(taus[b0:b1]); tan[:, c] = 1.0
+            with fwAD.dual_level():
+                td = fwAD.make_dual(taus[b0:b1], tan)
+                Md = MA.moments_rows(cells[b0:b1], C.n, td, nrm[b0:b1], off[b0:b1], s=C.s, levels=C.levels, surface=sf, batch=b1 - b0)
+                p, tg = fwAD.unpack_dual(Md)
+                if tg is not None:
+                    out[c, b0:b1] = tg.detach()
+                if c == 0:
+                    M0[b0:b1] = p.detach()
+            del Md, p, tg, td
+    return out, M0
 
 
 def dM_ad_reverse(C, rows, batch=512):

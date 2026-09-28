@@ -11,6 +11,11 @@ otherwise the solve raises MemoryError('SKIP_PREDICTED ...'), which ref_valid re
 --retry-errors removes such error entries first (for a later run with less headroom).
 Order: --stage sweep runs only the resolution sweeps (the n = 32 studies are deferred with placeholders), --stage studies then
 runs the studies; --stage all does both, sweeps of every case first.
+Body-load fallback: when ref_valid.pick_faces returns a load face without material (a heavily cut cell whose material touches
+only one box face, e.g. H2 = fresh_val_2010_d0_v0), the clamp is kept on the face with the largest weight and the load
+becomes a unit uniform BODY force in x, y, z with consistent Q2 nodal weights f_i = int N_i dV computed exactly from the
+element moments (C.M, monomials up to degree 2 per axis on the reference cube); recorded as load face [-1, 0.0]. The load
+vector is fixed at the base design, as for the face loads, so s_c = -u^T K_,c u and the direct fd check stay consistent.
 --seed <file> copies a case's existing record (e.g. ref_valid_h1.json) into the output before extending it.
 Every solve is logged (case, n, sizes, phase times, PARDISO memory in GiB, residuals, RSS) to <out>_solves.jsonl.
 Usage: ref_valid2.py <out.json> <case>[,...] [--ns 24,32,40,48,56,64] [--stage all|sweep|studies] [--headroom-gib 25]
@@ -74,6 +79,49 @@ def _log(rec):
 
 
 RV.solve = solve                                                         # respond() and the direct fd check use it
+
+_pick0, _loads0 = RV.pick_faces, RV.loads
+L1D = np.array([[0.0, -0.5, 0.5], [1.0, 0.0, -1.0], [0.0, 0.5, 0.5]])      # Q2 Lagrange at -1, 0, 1: coeffs of 1, xi, xi^2
+
+
+def pick_faces(C):
+    (cl, ld), w = _pick0(C)
+    if w[tuple(ld)] > 0:
+        return (cl, ld), w
+    cl = max(RV.FACES, key=lambda f: w[f])
+    return (cl, (-1, 0.0)), w
+
+
+def body_weights(C):
+    """Consistent nodal weights of a unit body force: f_k = sum_e int_e N_j(e,k) dV (reference-cube moments, common scale)."""
+    dofs = C.dofs.long().numpy()
+    assert np.all(dofs[:, 1::3] == dofs[:, 0::3] + 1) and np.all(dofs[:, 2::3] == dofs[:, 0::3] + 2)
+    k = dofs[:, 0::3] // 3                                                      # E x 27 local node index
+    M1 = 2 * C.n + 1
+    g = np.stack(np.unravel_index(np.asarray(C.nodes)[k], (M1,) * 3), -1)          # E x 27 x 3 grid coordinates
+    xi = g - 2 * np.asarray(C.cells)[:, None, :] - 1
+    assert xi.min() >= -1 and xi.max() <= 1
+    M5 = C.M.numpy().reshape(-1, 5, 5, 5)[:, :3, :3, :3]
+    cx, cy, cz = L1D[xi[..., 0] + 1], L1D[xi[..., 1] + 1], L1D[xi[..., 2] + 1]    # E x 27 x 3 each
+    f = np.einsum('ejp,ejq,ejr,epqr->ej', cx, cy, cz, M5)
+    assert np.allclose(f.sum(1), C.M.numpy()[:, 0], rtol=1e-9, atol=1e-14)
+    w = np.zeros(len(C.nodes))
+    np.add.at(w, k.reshape(-1), f.reshape(-1))
+    return w
+
+
+def loads(C, load=(2, 1.0)):
+    if int(load[0]) != -1:
+        return _loads0(C, load)
+    w = body_weights(C)
+    w = w / w.sum()
+    F = np.zeros((C.nb, 3))
+    for d in range(3):
+        F[d::3, d] = w
+    return F
+
+
+RV.pick_faces, RV.loads = pick_faces, loads
 
 
 def edit(out, fn):
