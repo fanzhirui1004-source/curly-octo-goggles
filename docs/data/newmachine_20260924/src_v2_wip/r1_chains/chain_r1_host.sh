@@ -43,8 +43,7 @@ if [ "$SMOKE" != 1 ]; then
   done
   if [ $Q = 1 ]; then st "QUIET cores=$cores loadavg=$(cut -d' ' -f1-3 /proc/loadavg)"; else st "NOT_QUIET after 3 h: cores=$cores big_python=$big gpu_procs=$gpu; proceeding"; fi
 fi
-st "RESTORED: runs on the 5090 host as originally planned (coordinator 2026-09-29; AMD machine runs a parallel copy)"
-n=0; until grep -qE "^[0-9:]+ R1_EXTRA_DONE_20260928" $ST; do grep -q " R1EXT " $ST || n=$((n+1)); [ $n -ge 6 ] && break; sleep 300; done   # coordinator 2026-09-29: run after E11/E13 (or 30 min without any R1EXT chain)
+st "SKIPPED (author decision 2026-09-29: CPU baselines only on the dedicated AMD machine; the EXIT trap writes the completion line)"; echo "$(date +%T) R1_REF64_DONE_20260928" >> $ST; exit 0
 st "START pid=$$"
 source $R/env_cpu.sh
 export MKL_NUM_THREADS=16 OMP_NUM_THREADS=16 OPL_GP_CACHE=0
