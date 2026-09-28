@@ -825,3 +825,58 @@ The enriched generating functions have a specific coefficient redundancy. The tr
 Thus taking \(a_v=0\) and the same slope matrix \(B_v=B\) at every vertex produces the zero displacement field. Restriction to internal coordinates preserves this identity. Support and diagonal-energy screens do not certify independence of the surviving columns. The archived PU records give column counts and field-error statistics, but no rank-revealing representation or coarse-equation residual. Their values in Table ST04 are therefore retained as numerical observations of those solves, rather than verification of the full-rank projection assumptions. The reported Q1(17) result is the principal coarse-correction result.
 
 Coefficient redundancy does not preclude energy minimisation over the coarse range. Since \(A\succ0\), \(\ker(V^TAV)=\ker V\), and \(V^Tr_I\) is orthogonal to this kernel. An exactly solved compatible coarse equation therefore defines a unique displacement correction even when its coefficient vector is nonunique. Establishing that property for the archived numerical PU solve requires the corresponding representation and solve-accuracy evidence.
+
+## Supplementary Note S7. Whole-lattice direct solution on the host
+
+This note gives the complete records of Table 6. The four-cell lattices are the two layers \(z=0\) and \(z=1\) of the \(2\times2\times2\) block of Section 6.9, taken with their thickness corners unchanged: each layer holds two uncut cells and two cut cells with retained volume fractions 0.616 and 0.252. All lattices are clamped on the face \(y=\min\) and loaded by unit consistent tractions on the face \(y=\max\) in the three Cartesian directions; the direct solution additionally solves three random loads.
+
+The direct solution assembles the full cut-cell stiffness of every cell, retained and interior degrees of freedom, into one global matrix. The retained degrees of freedom are numbered and coupled exactly as in the learned lattice, with the same clamp, free set and load vectors, and the interior degrees of freedom of each cell follow the free retained ones. The matrix is scaled symmetrically by its diagonal and factorised by MKL PARDISO with 16 threads, once as a symmetric positive definite Cholesky factorisation of the upper triangle and once as the unsymmetric LU factorisation that Table 5 uses; each factorisation has its own symbolic analysis, and all six loads are solved at once. Relative residuals \(\|Ku-f\|/\|f\|\) are recomputed with the unscaled matrix. PARDISO memory is the sum of its permanent and factorisation storage reported by the analysis; for the four-cell lattices the values reported after the numerical factorisation agree with the prediction within 0.1%. Peak process memory is the maximum resident set size of the process, which also holds the assembled matrix and load vectors. The value marked † comes from an earlier version of the script that kept the cell objects in memory during the factorisation and is not comparable with the other entries. For the eight-cell lattices the runs skipped any numerical factorisation whose predicted memory exceeded 60 GB, so only the analysis was run. Cholesky and LU give the same compliance to a relative difference of \(10^{-11}\). The host was shared with other jobs during these runs (one-minute load average between 11 and 37 on its 128 logical cores at the start of the direct runs).
+
+The learned route runs one design iteration of the deployed implementation with A3 on one NVIDIA GeForce RTX 5090: front end (cell construction, stiffness and moment assembly, network input and encoding, and a warm-up application that prepares the correction), assembly of the lattice and of \(K_{PP}\), preconditioner setup, conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(8.6\times10^{-7}\) to \(9.8\times10^{-7}\)), and reverse-mode sensitivities for the three loads. Both routes read the same generated cell geometries; geometry generation is not timed in either. The eight-cell runs keep the operator state of four cells on the GPU and stream the remainder from host memory. The compliance errors of the eight-cell lattices differ slightly from those of Section 6.9, which solved six loads to a relative residual of \(10^{-10}\). GPU memory is the peak memory allocated by the process, in units of \(10^9\) bytes; host memory is the resident set size after the front end. PARDISO and peak process memory of the direct solution are given in units of \(2^{30}\) bytes.
+
+**Table ST20. Whole-lattice direct solution and learned route: dimensions, phases, memory and compliance.**
+
+### ST20a. Lattice dimensions
+
+| Lattice | Cells (cut) | Cell DOFs (min–max) | Total DOFs | Free retained DOFs | Interior DOFs | Stored nonzeros, upper triangle |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | 4 (2) | 102,786–328,608 | 957,888 | 77,310 | 880,578 | 132,719,531 |
+| 2×2×1, z=1 | 4 (2) | 97,230–302,772 | 884,940 | 71,046 | 813,894 | 125,748,434 |
+| 2×2×2 | 8 (4) | 97,230–328,608 | 1,833,474 | 139,002 | 1,694,472 | 258,181,146 |
+| 3×3×1 | 8 (3) | 83,220–336,162 | 2,113,611 | 143,685 | 1,969,926 | 296,791,896 |
+
+### ST20b. Direct solution on the host: phases (s) and memory (GB)
+
+| Lattice | Factorisation | Cells: setup + assembly | Global assembly | Analysis | Factorisation | Solution, 6 loads | Total | PARDISO memory | Peak process memory | Max. relative residual | Record |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | Cholesky | 152.5 | 12.3 | 13.3 | 57.3 | 20.6 | 256.0 | 32.1 | (51.0)† | 5.3e-11 | `lat_direct_smoke.json` |
+| 2×2×1, z=0 | LU | 140.0 | 11.6 | 19.2 | 120.5 | 41.6 | 332.8 | 63.6 | 70.0 | 6.1e-11 | `lat_direct_hlat221a_m11.json` |
+| 2×2×1, z=1 | Cholesky | 139.6 | 11.2 | 12.7 | 47.6 | 30.5 | 241.6 | 29.0 | 34.2 | 8.3e-11 | `lat_direct_hlat221b_m2_11.json` |
+| 2×2×1, z=1 | LU | 139.6 | 11.2 | 17.8 | 112.4 | 29.7 | 310.7 | 57.4 | 63.7 | 7.2e-11 | `lat_direct_hlat221b_m2_11.json` |
+| 2×2×2 | Cholesky | 280.5 | 23.6 | 37.8 | not run | not run | > 342.0 | 66.6 (predicted) | – | – | `lat_direct_hlat222.json` |
+| 2×2×2 | LU | 280.5 | 23.6 | 53.7 | not run | not run | > 357.8 | 132.3 (predicted) | – | – | `lat_direct_hlat222.json` |
+| 3×3×1 | Cholesky | 321.4 | 26.9 | 31.8 | not run | not run | > 380.1 | 80.7 (predicted) | – | – | `lat_direct_hlat331.json` |
+| 3×3×1 | LU | 321.4 | 26.9 | 46.9 | not run | not run | > 395.3 | 160.5 (predicted) | – | – | `lat_direct_hlat331.json` |
+
+### ST20c. Learned route: phases of one design iteration (s) and memory (GB)
+
+| Lattice | Front end | Lattice and \(K_{PP}\) assembly | Preconditioner setup | Conjugate-gradient solve, 3 loads | Iterations | Sensitivities | Total | Peak GPU memory | Host memory after front end | Operator state streamed from the host | Record |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | 5.47 | 0.07 | 3.53 | 27.41 | 114 | 1.88 | 38.65 | 6.80 | 2.54 | 0.00 | `learned_hlat221a.json` |
+| 2×2×1, z=1 | 5.14 | 0.11 | 3.45 | 26.96 | 119 | 1.85 | 37.74 | 6.54 | 2.51 | 0.00 | `learned_hlat221b.json` |
+| 2×2×2 | 9.73 | 0.13 | 6.62 | 60.66 | 129 | 3.69 | 81.24 | 9.13 | 4.07 | 1.37 | `d5_off.json` |
+| 3×3×1 | 11.03 | 0.10 | 7.38 | 87.08 | 165 | 4.11 | 110.12 | 9.87 | 4.92 | 2.24 | `learned_hlat331.json` |
+
+### ST20d. Compliance under the three consistent face loads
+
+| Lattice | Reference | Reference compliance, x / y / z | Learned compliance, x / y / z | Learned error (%), x / y / z |
+| --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | direct, Cholesky and LU | 302.1935 / 51.6935 / 635.7739 | 302.1486 / 51.6874 / 635.7085 | −0.0148 / −0.0118 / −0.0103 |
+| 2×2×1, z=1 | direct, Cholesky and LU | 404.8880 / 68.6089 / 833.2975 | 404.7993 / 68.5981 / 833.1795 | −0.0219 / −0.0157 / −0.0142 |
+| 2×2×2 | exact condensation (Section 6.9) | 138.4184 / 24.5936 / 90.9945 | 138.3990 / 24.5908 / 90.9857 | −0.0140 / −0.0112 / −0.0097 |
+| 3×3×1 | exact condensation (Section 6.9) | 254.9993 / 44.3539 / 1393.2987 | 254.9599 / 44.3478 / 1393.0878 | −0.0154 / −0.0137 / −0.0151 |
+
+
+† Earlier version of the script that retained the cell objects during the factorisation; not comparable.
+
+Data: `evidence/lat_direct_smoke.json`, `evidence/lat_direct_hlat221a_m11.json`, `evidence/lat_direct_hlat221b_m2_11.json`, `evidence/lat_direct_hlat222.json`, `evidence/lat_direct_hlat331.json` (direct solution); `evidence/learned_hlat221a.json`, `evidence/learned_hlat221b.json`, `evidence/d5_off.json` (\(2\times2\times2\)), `evidence/learned_hlat331.json` (learned route); `evidence/hlat221a.json`, `evidence/hlat221b.json` (four-cell layouts); `evidence/lat_hetero222_A3.json`, `evidence/lat_hetero331_A3.json` (exact references of Section 6.9). Scripts: `docs/data/newmachine_20260924/src_v2_wip/lat_direct_cpu.py` (direct solution) and `lat_scale.py` (learned route).

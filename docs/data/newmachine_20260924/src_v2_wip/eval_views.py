@@ -5,7 +5,7 @@ Usage: eval_views.py <ckpt> <out.json> [--views 0,5,17,29,38,46] [--val-max 20] 
        (default views: identity and five fixed non-identity elements of oh.ELEMS)
 The output records the checkpoint's step / weights / score (ckpt_step: compare_arms checks it against the EVAL it uses,
 GATE-9) and the convolution precision in force ('conv'; OPL_CONV_FP32=1 -> true fp32, read by models at import)."""
-import sys, json, time, gc, argparse
+import os, sys, json, time, gc, argparse
 from pathlib import Path
 import numpy as np
 import torch
@@ -44,7 +44,10 @@ def main(argv):
             T2.move(g, dev)
         T2.clean_banks(g, case, lambda d_: None)
         if model is None:
-            model = MD.build(cfg['model'], [g], **cfg.get('model_args', {})).to(dev)
+            ma = dict(cfg.get('model_args', {}))
+            if os.environ.get('OPL_MODEL_ARGS_OVERRIDE'):                          # e.g. an untrained wrapper on fixed weights
+                ma.update(json.loads(os.environ['OPL_MODEL_ARGS_OVERRIDE']))
+            model = MD.build(cfg['model'], [g], **ma).to(dev)
             (MD.load_compat(model, ck['model']) if hasattr(MD, 'load_compat') else model.load_state_dict(ck['model'], strict=False))
             model.eval()
         else:

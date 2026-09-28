@@ -1,0 +1,327 @@
+{
+ "args": {
+  "out": "/root/autodl-tmp/OPL/S1/V2/d5_off.json",
+  "layout": "/root/autodl-tmp/OPL/S4/hlat222.json",
+  "body": "/root/autodl-tmp/OPL/S4/body",
+  "model": "/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt",
+  "prec": "bnn:kpp:q1r",
+  "tol": 1e-06,
+  "levels": "1e-2,3e-3,1e-3,1e-4",
+  "maxit": 3000,
+  "iters": 1,
+  "dtau": 0.002,
+  "sens": "ad",
+  "max_cols": 16,
+  "sens_obj": "sum",
+  "resident_gb": 4.0,
+  "sparse_coarse": true,
+  "ad_batch": 2048,
+  "fastidx": true,
+  "reuse_prec": 0,
+  "coarse_tpl": true,
+  "tet_triton": true,
+  "limit": 0
+ },
+ "gpu": "NVIDIA GeForce RTX 5090",
+ "layout": "hlat222",
+ "cells": 8,
+ "iterations": [
+  {
+   "iteration": 0,
+   "phases": {
+    "fe_ctor": 1.7952451705932617,
+    "fe_assemble_deploy": 3.1813958808779716,
+    "fe_netdata": 0.2511948309838772,
+    "fe_encode": 0.8604213185608387,
+    "fe_warmup": 2.882658213376999,
+    "fe_stream_wrap": 0.7571859434247017,
+    "front_end": 9.72810135781765,
+    "lattice_setup": 0.0867404118180275,
+    "kpp_assemble": 0.04420311376452446,
+    "prec_setup": 6.619370698928833,
+    "solve": 60.66179609671235,
+    "sens_ad": 3.4029483534395695,
+    "sens_total": 3.6863051392138004,
+    "iteration_total": 81.23742747306824
+   },
+   "per_cell": [
+    {
+     "case": "hlat222_000",
+     "ctor": 0.490572988986969,
+     "assemble_deploy": 1.0592263638973236,
+     "netdata": 0.08370020240545273,
+     "encode": 0.47315097600221634,
+     "warmup": 0.6183715984225273,
+     "stream_wrap": 0.0011389851570129395,
+     "stream_bytes": 0
+    },
+    {
+     "case": "hlat222_001",
+     "ctor": 0.22596345469355583,
+     "assemble_deploy": 0.36003798618912697,
+     "netdata": 0.029645152390003204,
+     "encode": 0.06587433069944382,
+     "warmup": 0.4342830888926983,
+     "stream_wrap": 0.001123763620853424,
+     "stream_bytes": 0
+    },
+    {
+     "case": "hlat222_010",
+     "ctor": 0.25407448038458824,
+     "assemble_deploy": 0.37547846883535385,
+     "netdata": 0.03075389191508293,
+     "encode": 0.06998318806290627,
+     "warmup": 0.49120084568858147,
+     "stream_wrap": 0.0011474192142486572,
+     "stream_bytes": 0
+    },
+    {
+     "case": "hlat222_011",
+     "ctor": 0.2328358069062233,
+     "assemble_deploy": 0.3686411865055561,
+     "netdata": 0.03323568031191826,
+     "encode": 0.07039236649870872,
+     "warmup": 0.4594397619366646,
+     "stream_wrap": 0.003402136266231537,
+     "stream_bytes": 0
+    },
+    {
+     "case": "hlat222_100",
+     "ctor": 0.19114964082837105,
+     "assemble_deploy": 0.3035406731069088,
+     "netdata": 0.02376582846045494,
+     "encode": 0.05053048953413963,
+     "warmup": 0.3327638581395149,
+     "stream_wrap": 0.2740987651050091,
+     "stream_bytes": 509961324
+    },
+    {
+     "case": "hlat222_101",
+     "ctor": 0.16776695474982262,
+     "assemble_deploy": 0.28982073813676834,
+     "netdata": 0.021332144737243652,
+     "encode": 0.05086050182580948,
+     "warmup": 0.30279334262013435,
+     "stream_wrap": 0.261241614818573,
+     "stream_bytes": 482361288
+    },
+    {
+     "case": "hlat222_110",
+     "ctor": 0.11499813199043274,
+     "assemble_deploy": 0.21067402139306068,
+     "netdata": 0.014793939888477325,
+     "encode": 0.0402209497988224,
+     "warmup": 0.12478222697973251,
+     "stream_wrap": 0.10745389014482498,
+     "stream_bytes": 194004268
+    },
+    {
+     "case": "hlat222_111",
+     "ctor": 0.11788371205329895,
+     "assemble_deploy": 0.2139764428138733,
+     "netdata": 0.01396799087524414,
+     "encode": 0.03940851613879204,
+     "warmup": 0.11902349069714546,
+     "stream_wrap": 0.10757936909794807,
+     "stream_bytes": 188597568
+    }
+   ],
+   "device_GB_after_front_end": 3.890830848,
+   "census_after_front_end": [
+    [
+     0.3442,
+     1,
+     "('torch.float32', (9276, 9276))"
+    ],
+    [
+     0.3433,
+     1,
+     "('torch.float32', (9264, 9264))"
+    ],
+    [
+     0.3001,
+     1,
+     "('torch.float32', (8661, 8661))"
+    ],
+    [
+     0.2951,
+     1,
+     "('torch.float32', (8589, 8589))"
+    ],
+    [
+     0.157,
+     16,
+     "('torch.float32', (22715, 27, 4))"
+    ],
+    [
+     0.1566,
+     16,
+     "('torch.float32', (22653, 27, 4))"
+    ],
+    [
+     0.1539,
+     16,
+     "('torch.float32', (22262, 27, 4))"
+    ],
+    [
+     0.1534,
+     16,
+     "('torch.float32', (22194, 27, 4))"
+    ],
+    [
+     0.0792,
+     16,
+     "('torch.float32', (11463, 27, 4))"
+    ],
+    [
+     0.0792,
+     16,
+     "('torch.float32', (11454, 27, 4))"
+    ],
+    [
+     0.0719,
+     16,
+     "('torch.float32', (10395, 27, 4))"
+    ],
+    [
+     0.0711,
+     16,
+     "('torch.float32', (10286, 27, 4))"
+    ]
+   ],
+   "stream_GB_total": 1.374924448,
+   "host_rss_GB_after_front_end": 4.065068,
+   "resident_cells": 4,
+   "prec": {
+    "kpp_assemble_s": 7.696449756622314e-06,
+    "kpp_factor_s": 1.2511334717273712,
+    "kpp_triplets_s": 0.0,
+    "coarse_basis_s": 0.018863756209611893,
+    "coarse_AZ_s": 5.318977899849415,
+    "coarse_factor_s": 0.029809948056936264,
+    "total_s": 6.618792772293091
+   },
+   "prec_rebuilt": true,
+   "solve": {
+    "iterations": 129,
+    "residual": 9.758364015651915e-07,
+    "warm": false,
+    "levels": [
+     {
+      "level": 0.01,
+      "iterations": 56
+     },
+     {
+      "level": 0.003,
+      "iterations": 67
+     },
+     {
+      "level": 0.001,
+      "iterations": 79
+     },
+     {
+      "level": 0.0001,
+      "iterations": 95
+     }
+    ],
+    "start_residual": 8.231364229921196
+   },
+   "compliance": [
+    138.39895274930885,
+    24.590814248950423,
+    90.98565854410413
+   ],
+   "peak_device_GB": 9.127578624,
+   "stream_copies": 533,
+   "device_GB_end": 5.139256832,
+   "census_end": [
+    [
+     0.3442,
+     1,
+     "('torch.float32', (9276, 9276))"
+    ],
+    [
+     0.3433,
+     1,
+     "('torch.float32', (9264, 9264))"
+    ],
+    [
+     0.3001,
+     1,
+     "('torch.float32', (8661, 8661))"
+    ],
+    [
+     0.2951,
+     1,
+     "('torch.float32', (8589, 8589))"
+    ],
+    [
+     0.157,
+     16,
+     "('torch.float32', (22715, 27, 4))"
+    ],
+    [
+     0.1566,
+     16,
+     "('torch.float32', (22653, 27, 4))"
+    ],
+    [
+     0.1539,
+     16,
+     "('torch.float32', (22262, 27, 4))"
+    ],
+    [
+     0.1534,
+     16,
+     "('torch.float32', (22194, 27, 4))"
+    ],
+    [
+     0.0981,
+     2,
+     "('torch.int64', (1022220, 6))"
+    ],
+    [
+     0.0962,
+     2,
+     "('torch.int64', (1001700, 6))"
+    ],
+    [
+     0.0792,
+     16,
+     "('torch.float32', (11463, 27, 4))"
+    ],
+    [
+     0.0792,
+     16,
+     "('torch.float32', (11454, 27, 4))"
+    ]
+   ]
+  }
+ ],
+ "lattice": {
+  "cells": 8,
+  "glued_dofs": 151716,
+  "free_dofs": 139002,
+  "private_dofs": 69156,
+  "loads": 3,
+  "labels": [
+   "consistent_ymax_x",
+   "consistent_ymax_y",
+   "consistent_ymax_z"
+  ],
+  "clamp": [
+   "y",
+   "min"
+  ],
+  "load_face": [
+   "y",
+   "max"
+  ],
+  "face_load_outside": [
+   0.0,
+   -2.220446049250313e-16,
+   1.0,
+   1.0
+  ]
+ }
+}

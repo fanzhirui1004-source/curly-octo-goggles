@@ -67,6 +67,15 @@ config (train2): split, train_key, val_max, probe_max, body, data, out, slot_cac
         Always (guards): non-finite validation metrics count as +inf in the score (GATE-6, VAL_NONFINITE) and best.pt is only
           taken from finite scores; val_max < len(split val) logs WARN (TRAINER-9); the conv precision (cudnn.allow_tf32)
           is in MODEL / EVAL / checkpoints (INVARIANTS-2); an 'adv' class dropped after ADV_FAIL is logged.
+       (data-free pilot, 2026-09-28; defaults keep the earlier behaviour)
+        select_by ('score'): 'logE' = label-free checkpoint selection. At every eval the val banks of select_classes
+          (default ['macro', 'grf']: prescribed boundary data, no solve needed to make them) also record logE = mean over the
+          samples of log e_hat (e_hat = u^T K u of the fixed direction; stored directions carry a fixed per-direction scale,
+          which only adds a checkpoint-independent constant to the mean, so the ranking equals that of mean log q^T S_hat q);
+          selection score = mean over val families of the mean over their geometries of the mean over select_classes of
+          logE, then the mean over eval_views (eval_views_agg 'max': the worst view). The labelled score is still computed
+          and logged (EVAL 'score', for information only); EVAL adds select_by / select_score / select_views / select_parts;
+          checkpoints carry score = the selection score (resume / best.pt compare on it), score_label and select_by.
 """
 import json, sys, time, gc, threading, random
 from contextlib import contextmanager, nullcontext
@@ -326,18 +335,21 @@ class EMA:
 
 # --------------------------------------------------------------------------------------------------------- validation
 @torch.no_grad()
-def eval_geo(g, hb, model, chunk=8, cert=None, cert_m=8, cert_flag=0.1):
+def eval_geo(g, hb, model, chunk=8, cert=None, cert_m=8, cert_flag=0.1, logE=()):
     """Val banks of one geometry per class: energy excess e_hat - 1 (banks at unit exact energy) mean / p90 / max, sensitivity
     relative error |s_hat - s| / |s| mean / p90, and with a certificate eps_lb (cert.mu_lower; a rigorous lower bound of the
-    excess) mean / max / fraction > cert_flag."""
+    excess) mean / max / fraction > cert_flag. logE (classes; cfg select_by 'logE'): these classes also get logE = mean log e_hat."""
     out = {}
     for c in hb.classes:
         if c not in hb.q.get('val', {}):
             continue
-        e, se, ce = [], [], []
+        e, se, ce, le = [], [], [], []
         for q, s0 in hb.chunks('val', c, chunk):
             u = g.field(model, q)
-            e.append(TL.energy(u, g.C.K) - 1)
+            en = TL.energy(u, g.C.K)
+            e.append(en - 1)
+            if c in logE:
+                le.append(torch.log(en.clamp_min(1e-12)))
             if s0 is not None and hasattr(g, 'dM32'):
                 sh = g.sens_hat(u)
                 se.append((sh - s0).norm(dim=0) / s0.norm(dim=0))
@@ -345,6 +357,8 @@ def eval_geo(g, hb, model, chunk=8, cert=None, cert_m=8, cert_flag=0.1):
                 ce.append(cert.mu_lower(u, cert_m)[1])
         e = torch.cat(e).cpu().numpy()
         r = dict(mean=float(e.mean()), p90=float(np.quantile(e, .9)), max=float(e.max()))
+        if le:
+            r['logE'] = float(torch.cat(le).mean())
         if se:
             se = torch.cat(se).cpu().numpy()
             r.update(sens_mean=float(se.mean()), sens_p90=float(np.quantile(se, .9)))
@@ -432,6 +446,20 @@ def score(fam_agg, classes, val_families=None, sens_p90=False):
             S9 = _sel_mean([d[c]['sens_p90'] for c in classes if c in d])
             parts[f].update(sens_p90=S9, total=parts[f]['total'] + (0.0 if np.isnan(S9) else 0.5 * S9))
     return _sel_mean([p['total'] for p in parts.values()]), parts
+
+
+def lf_score(per_geo, fam, classes, val_families=None):
+    """Label-free selection score (select_by 'logE'): mean over val families of the mean over their geometries of the mean
+    over classes of logE (eval_geo). A non-finite geometry value makes its family and the score +inf (GATE-6).
+    Returns (score, {family: value})."""
+    fams = {}
+    for case, r in per_geo.items():
+        v = [r[c]['logE'] for c in classes if c in r and 'logE' in r[c]]
+        if v:
+            fams.setdefault(fam(case), []).append(float(np.mean(v)) if all(np.isfinite(x) for x in v) else float('inf'))
+    fs = [f for f in (val_families or sorted(fams)) if f in fams] or sorted(fams)
+    parts = {f: _geo_mean(fams[f]) for f in fs}
+    return _sel_mean(list(parts.values())), parts
 
 
 def stratified_probes(cases, n, fam, dofs, seed):
@@ -787,6 +815,15 @@ def main(cfg):
         raise ValueError(f'eval_weights {eval_w!r}')
     score_sens = bool(cfg.get('score_sens', False))
     min_step = int(cfg.get('select_min_step', 0))
+    select_by = cfg.get('select_by', 'score')                                  # 'logE': label-free selection (lf_score)
+    if select_by not in ('score', 'logE'):
+        raise ValueError(f'select_by {select_by!r}')
+    sel_classes = tuple(cfg.get('select_classes', ['macro', 'grf'])) if select_by == 'logE' else ()
+    if [c for c in sel_classes if c not in TL.ALL_CLASSES]:
+        raise ValueError(f'unknown select_classes {sel_classes}')
+    if select_by != 'score':
+        log(dict(event='SELECTION_LF', select_by=select_by, select_classes=list(sel_classes),
+                 msg='best.pt by the label-free score; the labelled score is logged for information only'))
     if min_step > steps:
         log(dict(event='WARN', msg=f'select_min_step {min_step} > steps {steps}: only the last evaluation can become best.pt'))
     log(dict(event='SELECTION', score_classes=score_classes, eval_views=views, eval_views_agg=view_agg, score_sens=score_sens,
@@ -829,7 +866,7 @@ def main(cfg):
             for w, e_ in ws:
                 with (e_.applied(model) if e_ is not None else nullcontext()):
                     res[w][kind][case] = eval_geo(g, s_.banks, model, cfg.get('val_chunk', 8), cer, cfg.get('cert_m', 8),
-                                                  cfg.get('cert_flag', 0.1))
+                                                  cfg.get('cert_flag', 0.1), sel_classes if kind == 'val' else ())
             del cer
             for k in rot:                                                   # M3: rotated views (no certificate / mu: cost)
                 reuse = s_.view is not None and s_.k == k                   # a pool member training on this very view
@@ -837,8 +874,8 @@ def main(cfg):
                 try:
                     for w, e_ in ws:
                         with (e_.applied(model) if e_ is not None else nullcontext()):
-                            r_ = eval_geo(v, s_.banks, model, cfg.get('val_chunk', 8))
-                        res[w]['views'][str(k)][kind][case] = {c: {m: x[m] for m in ('mean', 'p90', 'max', 'sens_mean', 'sens_p90')
+                            r_ = eval_geo(v, s_.banks, model, cfg.get('val_chunk', 8), logE=sel_classes if kind == 'val' else ())
+                        res[w]['views'][str(k)][kind][case] = {c: {m: x[m] for m in ('mean', 'p90', 'max', 'sens_mean', 'sens_p90', 'logE')
                                                                    if m in x} for c, x in r_.items()}
                 finally:
                     if not reuse:
@@ -893,6 +930,14 @@ def main(cfg):
             r['score_worst_view'] = float(vs.max())                            # NaN / inf propagate: not selectable
             if views != [0]:
                 r['score'] = float(vs.mean()) if view_agg == 'mean' else r['score_worst_view']
+            if select_by == 'logE':                                             # label-free selection score, same view rule
+                lfv, lfp = {}, {}
+                for k in views:
+                    lfv[str(k)], lfp[str(k)] = lf_score(r['val'] if k == 0 else r['views'][str(k)]['val'], fam, sel_classes,
+                                                        split.get('val_families'))
+                lv = np.asarray(list(lfv.values()), float)
+                r['select_score'] = float(lv.mean()) if view_agg == 'mean' else float(lv.max())
+                r['select_views'], r['select_parts'] = lfv, lfp
             gone = [c for c in score_classes if c not in r['val_mean']]
             if gone and not score_absent_logged:
                 score_absent_logged.append(True)
@@ -969,19 +1014,23 @@ def main(cfg):
         if step % cfg['eval_every'] == 0 or step == steps:
             te = time.perf_counter()
             res, since = evaluate(step)
-            sc = res[sel]['score']
+            sc = res[sel]['score'] if select_by == 'score' else res[sel]['select_score']
             tstat['eval'] += time.perf_counter() - te
             eligible = step >= min_step or step == steps                       # M4: early (warm-start dominated) evals
             if not np.isfinite(sc):
                 log(dict(event='VAL_NONFINITE', step=step, score=sc, msg='non-finite selection score: never best.pt'))
             vinfo = dict(eval_views=views, score_identity=res[sel]['score_identity'], score_views=res[sel]['score_views'],
                          score_worst_view=res[sel]['score_worst_view'])
-            log(dict(event='EVAL', step=step, select=sel, score=sc, score_parts=res[sel]['score_parts'],
+            lfinfo = {} if select_by == 'score' else dict(select_by=select_by, select_score=sc, select_views=res[sel]['select_views'],
+                                                          select_parts=res[sel]['select_parts'])
+            log(dict(event='EVAL', step=step, select=sel, score=res[sel]['score'], score_parts=res[sel]['score_parts'], **lfinfo,
                      val_mean=res[sel]['val_mean'], train_geo_mean=res[sel]['train_geo_mean'], since_visit=since,
                      weights=res, s=time.perf_counter() - t0, eval_s=tstat['eval'], selectable=eligible, **vinfo,
                      conv_tf32=conv['conv_tf32']))
             rec = dict(model=ema.model_state(model) if ema is not None else model.state_dict(), cfg=cfg, step=step, weights=sel,
                        score=sc, **vinfo, conv=conv)
+            if select_by != 'score':
+                rec.update(select_by=select_by, score_label=res[sel]['score'])
             if ema is not None:
                 rec.update(model_raw=model.state_dict(), score_raw=res['raw']['score'] if 'raw' in res else None,
                            ema_t=ema.t, ema_debias=ema.debias)
