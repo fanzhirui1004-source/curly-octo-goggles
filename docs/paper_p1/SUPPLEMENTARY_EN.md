@@ -536,7 +536,7 @@ Coefficient redundancy does not preclude energy minimisation over the coarse ran
 
 ## Supplementary Note S4. Ablation of the retained representation: Bernstein-restricted box faces
 
-This note gives the complete results of the ablation summarised in Section 6.8. It is an ablation of the present pipeline: every cell operator is the exact Schur complement, and only the representation of the retained box-face displacements is reduced. It is not a model or a reproduction of reduced-boundary substructure methods, which control the boundary error by refining the partition, enriching the boundary interpolation or oversampling overlapping local bases [Guo et al. (2026a)](https://doi.org/10.1016/j.cma.2026.118955), [Guo et al. (2026b)](https://arxiv.org/abs/2607.22019v1); boundary-space reduction is also used by learned shape-function substructures [Huang et al. (2023)](https://doi.org/10.1016/j.eml.2023.102041), [Huang et al. (2024)](https://doi.org/10.1016/j.jmps.2024.105893). The ablation makes no statement about the accuracy of those methods.
+This note gives the complete results of the ablation summarised in Section 6.8. It is an ablation of the present pipeline: every cell operator is the exact Schur complement, and only the representation of the retained box-face displacements is reduced. It is not a model or a reproduction of reduced-boundary learned substructures [Huang et al. (2023)](https://doi.org/10.1016/j.eml.2023.102041), [Huang et al. (2024)](https://doi.org/10.1016/j.jmps.2024.105893), [Guo et al. (2026a)](https://doi.org/10.1016/j.cma.2026.118955), [Guo et al. (2026b)](https://arxiv.org/abs/2607.22019v1), which control the boundary error by refining the partition, enriching the boundary interpolation (cubic Bézier faces with 56 control points per substructure) or oversampling local bases joined by an overlapping partition of unity. The ablation makes no statement about the accuracy of those methods.
 
 ### S4.1. Restricted Galerkin system
 
@@ -566,7 +566,7 @@ Restricting only the shared interface removes most of the compliance error (U1, 
 
 ### Table ST14. Bernstein restriction of the box-face displacements
 
-Each target cell and its continuous-thickness neighbour are assembled in configuration x using exact cell operators. Degree r applies to the restricted box faces; cut-band coefficients retain their identity representation. Controlled DOFs include these unrestricted cut-band coefficients. All errors are maxima in the stated load set (%), relative to the full retained-space solution; sensitivity columns refer to the target-cell vector. Target-face loads are the three unit consistent tractions on the target's loaded face, the six-load set adds the three neighbour-face tractions, and the all-load set adds the three macro-cut tractions.
+Ablation of the present pipeline, not a reproduction of PIML-type substructures (Supplementary Note S4). Each target cell and its continuous-thickness neighbour are assembled in configuration x using exact cell operators. Degree r applies to the restricted box faces; cut-band coefficients retain their identity representation. Controlled DOFs include these unrestricted cut-band coefficients. All errors are maxima in the stated load set (%), relative to the full retained-space solution; sensitivity columns refer to the target-cell vector. Target-face loads are the three unit consistent tractions on the target's loaded face, the six-load set adds the three neighbour-face tractions, and the all-load set adds the three macro-cut tractions.
 
 #### ST14a. Every box face restricted
 
@@ -613,7 +613,7 @@ Each target cell and its continuous-thickness neighbour are assembled in configu
 | M2 | 5 | 35,292 | 0.030 | 1.004 | 0.030 | 3.366 | 0.030 | 3.366 |
 | M2 | 8 | 35,427 | 0.009 | 0.049 | 0.009 | 1.537 | 0.009 | 1.537 |
 
-The supported systems on the full retained space have 28,206 (U1), 39,996 (M1), 39,120 (M2) and 32,991 (H1) free DOFs. U1 has no cut band, so its corner-linear restriction controls only the 24 corner coordinates. Six-load and all-load maxima coincide only when the maximizing load belongs to both sets. The interface-only variant was run for U1, M1 and M2. Data: `evidence/piml4_all_*.json`, `evidence/piml4_interface_*.json` (historical file names).
+The supported systems on the full retained space have 28,206 (U1), 39,996 (M1), 39,120 (M2) and 32,991 (H1) free DOFs. U1 has no cut band, so its corner-linear restriction controls only the 24 corner coordinates. Six-load and all-load maxima coincide only when the maximizing load belongs to both sets. The interface-only variant was run for U1, M1 and M2. Data: `evidence/piml4_all_*.json`, `evidence/piml4_interface_*.json` (historical file names; the records are Bernstein-restriction ablations of the present pipeline, not PIML computations).
 
 ## Supplementary Note S5. Cost records: whole-lattice direct solution and per-cell condensation
 
