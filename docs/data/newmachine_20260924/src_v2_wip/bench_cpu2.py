@@ -308,7 +308,7 @@ def main(argv):
     iparm = PD.tuned_iparm()
     if a.mode == 'main' and a.iparm_file and Path(a.iparm_file).exists():
         iparm = {int(k): int(v) for k, v in json.loads(Path(a.iparm_file).read_text())['iparm'].items()}
-    rec = dict(mode=a.mode, env=PD.env_record(), iparm_requested={str(k): v for k, v in iparm.items()} if a.mode == 'main' else None,
+    rec = dict(mode=a.mode, machine=__import__('platform').node(), env=PD.env_record(), iparm_requested={str(k): v for k, v in iparm.items()} if a.mode == 'main' else None,
                reps_within=a.reps, s_budget=a.s_budget, per_case={})
     if Path(a.out).exists():
         rec = json.loads(Path(a.out).read_text())

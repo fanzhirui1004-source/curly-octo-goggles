@@ -321,7 +321,7 @@ def main(argv):
     if a.iparm_file and Path(a.iparm_file).exists():
         iparm = {int(k): int(v) for k, v in json.loads(Path(a.iparm_file).read_text())['iparm'].items()}
     L = json.loads(Path(a.layout).read_text())
-    rec = dict(layout=L['name'], route='conventional exact condensation (dense S_i by PARDISO Schur option; sparse Cholesky '
+    rec = dict(layout=L['name'], machine=__import__('platform').node(), route='conventional exact condensation (dense S_i by PARDISO Schur option; sparse Cholesky '
                'of the assembled condensed matrix, substructuring order)', env=PD.env_record(),
                iparm={str(k): v for k, v in iparm.items()}, loadavg_start=PD.loadavg(), cpu_stat_start=PD.cpu_stat(), cells={})
     save = lambda: Path(a.out).write_text(json.dumps(rec, indent=1, default=float))

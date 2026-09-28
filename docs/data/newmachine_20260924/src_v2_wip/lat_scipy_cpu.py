@@ -37,7 +37,7 @@ VARIANTS = dict(colamd=dict(permc_spec='COLAMD'),
 
 def child(npz, out, wall_s, watch_gib, variant='colamd'):
     import scipy, scipy.sparse as sp, scipy.sparse.linalg as sla
-    rec = dict(status='started', scipy=scipy.__version__, pid=os.getpid(), rlimit_as=resource.getrlimit(resource.RLIMIT_AS),
+    rec = dict(status='started', machine=__import__('platform').node(), scipy=scipy.__version__, pid=os.getpid(), rlimit_as=resource.getrlimit(resource.RLIMIT_AS),
                variant=variant, splu_kwargs=VARIANTS[variant],
                solver=f'SuperLU bundled with SciPy {scipy.__version__} (scipy.sparse.linalg.splu; sequential, single thread)')
     save = lambda: Path(out).write_text(json.dumps(rec, indent=1, default=float))
@@ -133,7 +133,7 @@ def main(argv):
     BX.dev = TL.dev
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     L = json.loads(Path(a.layout).read_text())
-    rec = dict(layout=L['name'], route='scipy.sparse.linalg.splu (SuperLU), factor once + solve 6 loads, full symmetric unscaled CSC, single thread',
+    rec = dict(layout=L['name'], machine=__import__('platform').node(), route='scipy.sparse.linalg.splu (SuperLU), factor once + solve 6 loads, full symmetric unscaled CSC, single thread',
                threads=dict(OMP=os.environ.get('OMP_NUM_THREADS'), MKL=os.environ.get('MKL_NUM_THREADS')),
                loadavg_start=list(os.getloadavg()), cells={})
     Cs, lay = [], {}

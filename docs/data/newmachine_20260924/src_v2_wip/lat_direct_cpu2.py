@@ -90,7 +90,7 @@ def main(argv):
     if a.iparm_file and Path(a.iparm_file).exists():
         iparm = {int(k): int(v) for k, v in json.loads(Path(a.iparm_file).read_text())['iparm'].items()}
     L = json.loads(Path(a.layout).read_text())
-    rec = dict(layout=L['name'], env=PD.env_record(), loadavg_start=PD.loadavg(), cells={})
+    rec = dict(layout=L['name'], machine=__import__('platform').node(), env=PD.env_record(), loadavg_start=PD.loadavg(), cells={})
     Cs, lay = [], {}
     PD.reset_peak()
     t0 = time.perf_counter()

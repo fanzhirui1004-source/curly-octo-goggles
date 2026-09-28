@@ -71,14 +71,13 @@ mk R1_CPU_E1_DONE_20260928
 st "stage B (E7 retries) moved to the third CPU machine (see chain_cpu3.status there)"
 mk R1_CPU_REF_DONE_20260928
 # ---------------- C: route (b)
-for L in $LATS; do
+for L in hlat222 hlat331; do   # hlat221a/b moved to the 60 GiB machine (in-place edit 2026-09-29)
   REF=$H/lat2_${L}_chol_rep1.json,$H/lat2_${L}_chol_rep2.json,$(ls $O/lat_direct_${L}*.json 2>/dev/null | tr '\n' ',')
   for k in $(seq 1 $NREP); do
     run $HC latcond_${L}_rep$k $PY -u lat_cond_cpu.py $HC/latcond_${L}_rep$k.json $(lay $L) --solver block --iparm-file $H/iparm_tuned.json --margin-gib 4 --ref "$REF"
   done
 done
-PL=hlat221b; [ "$SMOKE" = 1 ] && PL=hlatsmoke1
-run $HC latcond_pardiso_${PL}_rep1 $PY -u lat_cond_cpu.py $HC/latcond_pardiso_${PL}_rep1.json $(lay $PL) --solver pardiso --iparm-file $H/iparm_tuned.json --margin-gib 4 --ref $H/lat2_${PL}_chol_rep1.json
+st "route (b) PARDISO-path run on hlat221b moved to the 60 GiB machine (in-place edit 2026-09-29)"
 run $HC selftest $PY lat_cond_cpu.py --selftest
 run $HC summary $PY r1_cond_summary.py $HC
 mk R1_CPU_COND_DONE_20260928
@@ -91,7 +90,7 @@ json.dump(dict(iparm=ip, derived_from=sys.argv[1], note='single thread: iparm(24
 ip2 = dict(ip); ip2['2'] = 2
 json.dump(dict(iparm=ip2, derived_from=sys.argv[1], note='single thread, fallback ordering iparm(2)=2 (METIS)'), open(sys.argv[2] + '/iparm_1thread_metis.json', 'w'), indent=1)
 PY
-for L in $LATS; do
+for L in hlat222 hlat331; do   # hlat221a/b moved to the 60 GiB machine (in-place edit 2026-09-29)
   run $H1 lat1_${L}_chol $PY -u lat_direct_cpu2.py $H1/lat1_${L}_chol.json $(lay $L) --mtypes 2 --iparm-file $H1/iparm_1thread.json --margin-gib 4
   if ! grep -q '"factor_s"\|"skipped"' $H1/lat1_${L}_chol.json 2>/dev/null; then
     st "lat1 $L: tuned ordering failed single-threaded; retry with iparm(2)=2"

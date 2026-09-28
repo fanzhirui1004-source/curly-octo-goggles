@@ -1,16 +1,18 @@
-"""Revision: summary of lat_cond_cpu.py outputs (route (b)). Usage: r1_cond_summary.py <dir> -> <dir>/hostcond_summary.json"""
+"""Revision: summary of lat_cond_cpu.py outputs (route (b)). Usage: r1_cond_summary.py <dir>[,<dir2>...] [out.json] (default <dir>/hostcond_summary.json; machines merged, "machine" per row)"""
 import json, glob, sys, numpy as np
 from pathlib import Path
 H = sys.argv[1]; out = {}
+OUT = sys.argv[2] if len(sys.argv) > 2 else H.split(',')[0] + '/hostcond_summary.json'
+GG = lambda pat: sorted(f for h in H.split(',') for f in glob.glob(f'{h}/{pat}'))
 agg = lambda v: None if not [x for x in v if x is not None] else dict(median=float(np.median([x for x in v if x is not None])), min=float(min(x for x in v if x is not None)), n=len([x for x in v if x is not None]))
 import re
-keys = sorted({(m.group(1) or '_block', m.group(2)) for f in glob.glob(f'{H}/latcond*_rep*.json')
+keys = sorted({(m.group(1) or '_block', m.group(2)) for f in GG('latcond*_rep*.json')
                for m in [re.match(r'latcond(_pardiso)?_(.+)_rep\d+\.json$', Path(f).name)] if m})
 for sv, L in keys:
     pre = 'latcond_pardiso' if sv == '_pardiso' else 'latcond'
-    rs = [json.loads(Path(f).read_text()) for f in sorted(glob.glob(f'{H}/{pre}_{L}_rep*.json'))]
+    rs = [json.loads(Path(f).read_text()) for f in GG(f'{pre}_{L}_rep*.json')]
     ok = [r for r in rs if 'compliance' in r]
-    o = dict(reps=len(rs), completed=len(ok), skipped=[r.get('skipped') for r in rs if 'skipped' in r],
+    o = dict(machine=sorted({r.get('machine') or (r.get('env') or {}).get('host') for r in rs} - {None}), reps=len(rs), completed=len(ok), skipped=[r.get('skipped') for r in rs if 'skipped' in r],
              free_retained=rs[0].get('free_retained'), nnz_upper=rs[0].get('nnz_upper'), csr_GiB=rs[0].get('csr_GiB'),
              dense_S_total_GiB=rs[0].get('dense_S_total_GiB', rs[0].get('dense_S_total_GiB_predicted')),
              predicted_GiB=rs[0].get('predicted_GiB'), interface=rs[0].get('interface'), solver=rs[0].get('solver'),
@@ -26,4 +28,4 @@ for sv, L in keys:
         o['rel_residual_max'] = max((max(r['rel_residual']) for r in ok if r.get('rel_residual')), default=None)
         o['compliance'] = ok[0]['compliance']; o['reference'] = ok[0].get('reference')
     out[f'{sv.strip("_")}:{L}'] = o
-Path(f'{H}/hostcond_summary.json').write_text(json.dumps(out, indent=1, default=float)); print('ok')
+Path(OUT).write_text(json.dumps(out, indent=1, default=float)); print('ok')
