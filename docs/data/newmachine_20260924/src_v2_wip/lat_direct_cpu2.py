@@ -14,7 +14,8 @@ otherwise the run records 'skipped' with the prediction. Peak RSS per phase (VmH
 Outputs per run: seconds per phase, PARDISO memory (kB and GiB), nnz(L), iparm, peak RSS, compliance F_j^T u_j per load,
 relative residual ||K u - f|| / ||f|| per load (unscaled system), loadavg, container CPU throttling.
 Usage: lat_direct_cpu2.py <out.json> <layout.json> [--body /root/autodl-tmp/OPL/S4/body] [--mtypes 2] [--iparm-file f]
-       [--margin-gib 4] [--n-random 3]
+       [--margin-gib 4] [--n-random 3] [--analysis-only]
+--analysis-only (default off): stop after the analysis phase and record the predicted memory (no factorisation).
 Environment as lat_direct_cpu.py: OPL_DEV=cpu, CUDA_VISIBLE_DEVICES=, MKL_NUM_THREADS=OMP_NUM_THREADS=16, PYPARDISO_MKL_RT."""
 import diag_sens as DS                                                   # noqa: F401  first: CPU environment
 import os, sys, json, time, argparse, gc
@@ -32,7 +33,7 @@ import pardiso_direct as PD
 BX.dev = TL.dev
 
 
-def pardiso_run(A, s, b, F, mtype, iparm, margin, log):
+def pardiso_run(A, s, b, F, mtype, iparm, margin, log, analysis_only=False):
     """A: scaled upper CSR (mtype 2) or scaled full CSR (mtype 11); s: scaling; b: unscaled right-hand sides (n, k)."""
     n = A.shape[0]
     r = dict(mtype=mtype, nnz_stored=int(A.nnz), iparm_requested=None if iparm is None else {str(k): v for k, v in iparm.items()},
@@ -46,6 +47,10 @@ def pardiso_run(A, s, b, F, mtype, iparm, margin, log):
     r['avail_before_factor_GiB'] = av
     r['cgroup_before_factor'] = PD.cgroup()
     log(dict(event='ANALYSIS', **{k: v for k, v in r.items() if k not in ('cpu_stat_start', 'cgroup_before_factor')}))
+    if analysis_only:
+        r['skipped'] = 'analysis only (--analysis-only): predicted memory recorded, no factorisation'
+        P.release()
+        return r
     need = r['predicted_GiB']['total'] + margin
     if need > av:
         r['skipped'] = f"predicted {r['predicted_GiB']['total']:.2f} GiB + margin {margin} GiB > available {av:.2f} GiB"
@@ -78,6 +83,7 @@ def main(argv):
     ap.add_argument('--body', default='/root/autodl-tmp/OPL/S4/body')
     ap.add_argument('--mtypes', default='2'); ap.add_argument('--iparm-file', default=None)
     ap.add_argument('--margin-gib', type=float, default=4.0); ap.add_argument('--n-random', type=int, default=3)
+    ap.add_argument('--analysis-only', action='store_true')                   # default off: predicted memory only
     a = ap.parse_args(argv)
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     iparm = PD.tuned_iparm()
@@ -127,7 +133,7 @@ def main(argv):
         else:
             A, ip = (Us + sp.triu(Us, 1).T).tocsr(), None                   # full matrix, MKL defaults (old configuration)
             A.sort_indices()
-        r = pardiso_run(A, s, b, F, mt, ip, a.margin_gib, log)
+        r = pardiso_run(A, s, b, F, mt, ip, a.margin_gib, log, a.analysis_only)
         if mt != 2:
             del A; gc.collect()
         rec['runs'].append(r)
