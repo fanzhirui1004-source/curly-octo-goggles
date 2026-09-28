@@ -116,11 +116,17 @@ for attempt in 1 2 3; do
 done
 $PY r1x3_e6_replace.py $ACC $ACC/valmeta.json "" "$FAILED" > /dev/null 2>> $R/e6_replace.log      # final record
 ( export OPL_PACKETS_EXTRA=/root/autodl-tmp/OPL/S3/packets; timeout 1800 $PY -u r1_acc_summary.py $ACC $O > $ACC/summary_r1ext.log 2>&1 ); st "E6 summary rc=$?"
+# coordinator 2026-09-29: E3/E4 lattices in separate processes (the combined 3-layout run ran out of GPU memory at hlat221a)
+memwait 50; run lat64_222only 21600 $PY -u r1_lat.py $R/lat64_222only /root/autodl-tmp/OPL/S4/hlat222.json --model A3=$CK --max-cols 16 --park --resident 2 --deriv
+memwait 50; run lat64_221ab 21600 $PY -u r1_lat.py $R/lat64_221ab /root/autodl-tmp/OPL/S4/hlat221a.json,/root/autodl-tmp/OPL/S4/hlat221b.json --model A3=$CK --max-cols 16 --park --resident 2 --deriv
+for f in $R/lat64_222.json $R/lat64_222_killed.json; do [ -f $f ] && mv $f $f.partial; done
+run x3summary_after_latsplit 1800 $PY -u r1x3_summary.py $R
 # ---------------------------------------------------------------- E11 (GPU, while the bodies are built)
 VAL=$(python3 -c "import json;print(','.join(json.load(open('/root/autodl-tmp/OPL/S2/SPLIT_ARMS.json'))['val_s3']))")
 run e11_view17 5400 $PY -u eval_views_pd.py $R/E11 --prefix view17_ --model A3=$CK --views 17 --cases $VAL \
   --body /root/autodl-tmp/OPL/S0 --data /root/autodl-tmp/OPL/S2/data_v2
 run e11_summary 600 $PY -u r1x3_e11_summary.py $R/E11/view17_A3.json $R/E11/E11_SUMMARY.json
+GEND=$(( $(date +%s) + 12600 )); st "E13 budget reset to 12600 s from now (coordinator)"
 # ---------------------------------------------------------------- E13 sweeps (budget shares of the remaining time)
 sweep() { local tag=$1 frac=$2; local now=$(date +%s); local left=$(( GEND - now )); [ $left -lt 120 ] && { st "SKIP $tag (budget)"; return; }
   local dl=$(( now + left * frac / 100 )); [ $dl -gt $GEND ] && dl=$GEND
