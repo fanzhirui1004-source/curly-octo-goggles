@@ -215,7 +215,8 @@
 % Added in revision round 1 (2026-09-28). Every entry below is marked
 % "Verified" (Crossref record or publisher page, with DOI) in
 % review_r1/VERIFY_T5T7_novelty_scope.md. References listed there without a
-% DOI (PMLR/NeurIPS/ICLR papers) or as UNVERIFIED are deliberately not added.
+% DOI (PMLR/NeurIPS/ICLR papers) or as UNVERIFIED were not added in this pass;
+% see the second block at the end of this file.
 % ---------------------------------------------------------------------------
 
 @article{Irons1965Elimination,
@@ -513,4 +514,184 @@
   pages = {179--196},
   doi = {10.1007/BF02238511},
   url = {https://doi.org/10.1007/BF02238511},
+}
+
+% ---------------------------------------------------------------------------
+% Added in revision round 1, second pass (2026-09-28): references without a
+% DOI (PMLR / NeurIPS / JMLR / ICLR) and previously UNVERIFIED items. Each was
+% checked against the official proceedings, journal or publisher page (and
+% Crossref where a DOI exists) on 2026-09-28.
+% ---------------------------------------------------------------------------
+
+@inproceedings{Greenfeld2019LearningMultigrid,
+  title = {{Learning to Optimize Multigrid {PDE} Solvers}},
+  author = {Greenfeld, Daniel and Galun, Meirav and Basri, Ronen and Yavneh, Irad and Kimmel, Ron},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning},
+  editor = {Chaudhuri, Kamalika and Salakhutdinov, Ruslan},
+  series = {Proceedings of Machine Learning Research},
+  volume = {97},
+  pages = {2415--2423},
+  publisher = {PMLR},
+  year = {2019},
+  url = {https://proceedings.mlr.press/v97/greenfeld19a.html},
+  note = {No DOI},
+}
+
+@inproceedings{Luz2020LearningAMG,
+  title = {{Learning Algebraic Multigrid Using Graph Neural Networks}},
+  author = {Luz, Ilay and Galun, Meirav and Maron, Haggai and Basri, Ronen and Yavneh, Irad},
+  booktitle = {Proceedings of the 37th International Conference on Machine Learning},
+  editor = {Daum{\'e} III, Hal and Singh, Aarti},
+  series = {Proceedings of Machine Learning Research},
+  volume = {119},
+  pages = {6489--6499},
+  publisher = {PMLR},
+  year = {2020},
+  url = {https://proceedings.mlr.press/v119/luz20a.html},
+  note = {No DOI},
+}
+
+@inproceedings{Um2020SolverInTheLoop,
+  title = {{Solver-in-the-Loop: Learning from Differentiable Physics to Interact with Iterative {PDE}-Solvers}},
+  author = {Um, Kiwon and Brand, Robert and Fei, Yun (Raymond) and Holl, Philipp and Thuerey, Nils},
+  booktitle = {Advances in Neural Information Processing Systems 33 (NeurIPS 2020)},
+  editor = {Larochelle, H. and Ranzato, M. and Hadsell, R. and Balcan, M. F. and Lin, H.},
+  volume = {33},
+  pages = {6111--6122},
+  publisher = {Curran Associates, Inc.},
+  year = {2020},
+  url = {https://proceedings.neurips.cc/paper/2020/hash/43e4e6a6f341e00671e123714de019a8-Abstract.html},
+  note = {No DOI},
+}
+
+@article{Li2023GeoFNO,
+  title = {{Fourier Neural Operator with Learned Deformations for {PDEs} on General Geometries}},
+  author = {Li, Zongyi and Huang, Daniel Zhengyu and Liu, Burigede and Anandkumar, Anima},
+  journal = {Journal of Machine Learning Research},
+  year = {2023},
+  volume = {24},
+  number = {388},
+  pages = {1--26},
+  url = {https://www.jmlr.org/papers/v24/23-0064.html},
+  note = {No DOI},
+}
+
+@inproceedings{Li2023GINO,
+  title = {{Geometry-Informed Neural Operator for Large-Scale {3D} {PDEs}}},
+  author = {Li, Zongyi and Kovachki, Nikola and Choy, Chris and Li, Boyi and Kossaifi, Jean and Otta, Shourya and Nabian, Mohammad Amin and Stadler, Maximilian and Hundt, Christian and Azizzadenesheli, Kamyar and Anandkumar, Animashree},
+  booktitle = {Advances in Neural Information Processing Systems 36 (NeurIPS 2023)},
+  editor = {Oh, A. and Naumann, T. and Globerson, A. and Saenko, K. and Hardt, M. and Levine, S.},
+  volume = {36},
+  pages = {35836--35854},
+  publisher = {Curran Associates, Inc.},
+  year = {2023},
+  doi = {10.52202/075280-1556},
+  url = {https://doi.org/10.52202/075280-1556},
+}
+
+@inproceedings{Pfaff2021MeshGraphNets,
+  title = {{Learning Mesh-Based Simulation with Graph Networks}},
+  author = {Pfaff, Tobias and Fortunato, Meire and Sanchez-Gonzalez, Alvaro and Battaglia, Peter W.},
+  booktitle = {International Conference on Learning Representations (ICLR 2021)},
+  year = {2021},
+  url = {https://openreview.net/forum?id=roNqYL0_XP},
+  note = {No DOI; arXiv:2010.03409},
+}
+
+@inproceedings{He2024MgNO,
+  title = {{MgNO: Efficient Parameterization of Linear Operators via Multigrid}},
+  author = {He, Juncai and Liu, Xinliang and Xu, Jinchao},
+  booktitle = {International Conference on Learning Representations (ICLR 2024)},
+  editor = {Kim, B. and Yue, Y. and Chaudhuri, S. and Fragkiadaki, K. and Khan, M. and Sun, Y.},
+  pages = {53409--53428},
+  year = {2024},
+  url = {https://proceedings.iclr.cc/paper_files/paper/2024/hash/eb3c8135137c8a60425a0320869ad87e-Abstract-Conference.html},
+  note = {No DOI; OpenReview id 8OxL034uEr},
+}
+
+@incollection{FraeijsdeVeubeke1965DisplacementEquilibrium,
+  title = {{Displacement and equilibrium models in the finite element method}},
+  author = {Fraeijs de Veubeke, B.},
+  booktitle = {Stress Analysis},
+  editor = {Zienkiewicz, O. C. and Holister, G. S.},
+  chapter = {9},
+  pages = {145--197},
+  publisher = {John Wiley \& Sons},
+  year = {1965},
+  url = {https://doi.org/10.1002/nme.339},
+  note = {Reprinted in International Journal for Numerical Methods in Engineering 52(3) (2001) 287--342, doi:10.1002/nme.339 (the DOI is that of the reprint)},
+}
+
+@book{Bendsoe2003TopologyOptimization,
+  title = {{Topology Optimization: Theory, Methods, and Applications}},
+  author = {Bends{\o}e, Martin P. and Sigmund, Ole},
+  publisher = {Springer},
+  address = {Berlin, Heidelberg},
+  edition = {2},
+  year = {2003},
+  isbn = {978-3-540-42992-0},
+  doi = {10.1007/978-3-662-05086-6},
+  url = {https://doi.org/10.1007/978-3-662-05086-6},
+  note = {Year 2003 as catalogued by DTU Orbit (ISBN 3-540-42992-1); the Springer page gives copyright 2004},
+}
+
+@book{Trottenberg2001Multigrid,
+  title = {{Multigrid}},
+  author = {Trottenberg, Ulrich and Oosterlee, Cornelius W. and Sch{\"u}ller, Anton},
+  publisher = {Academic Press},
+  address = {San Diego},
+  year = {2001},
+  isbn = {0-12-701070-X},
+  url = {https://shop.elsevier.com/books/multigrid/trottenberg/978-0-12-701070-0},
+  note = {No DOI. With guest contributions by A. Brandt, P. Oswald and K. St{\"u}ben. Year as on the title page (library catalogue); the Elsevier page gives release date 2000-12-01},
+}
+
+@article{Falgout2005TwoGrid,
+  title = {{On two-grid convergence estimates}},
+  author = {Falgout, Robert D. and Vassilevski, Panayot S. and Zikatanov, Ludmil T.},
+  journal = {Numerical Linear Algebra with Applications},
+  year = {2005},
+  volume = {12},
+  number = {5--6},
+  pages = {471--494},
+  doi = {10.1002/nla.437},
+  url = {https://doi.org/10.1002/nla.437},
+}
+
+@incollection{Falgout2002hypre,
+  title = {{hypre: A Library of High Performance Preconditioners}},
+  author = {Falgout, Robert D. and Yang, Ulrike Meier},
+  booktitle = {Computational Science -- ICCS 2002},
+  series = {Lecture Notes in Computer Science},
+  volume = {2331},
+  pages = {632--641},
+  publisher = {Springer},
+  address = {Berlin, Heidelberg},
+  year = {2002},
+  doi = {10.1007/3-540-47789-6_66},
+  url = {https://doi.org/10.1007/3-540-47789-6_66},
+}
+
+@article{Henson2002BoomerAMG,
+  title = {{BoomerAMG: A parallel algebraic multigrid solver and preconditioner}},
+  author = {Henson, Van Emden and Yang, Ulrike Meier},
+  journal = {Applied Numerical Mathematics},
+  year = {2002},
+  volume = {41},
+  number = {1},
+  pages = {155--177},
+  doi = {10.1016/S0168-9274(01)00115-5},
+  url = {https://doi.org/10.1016/S0168-9274(01)00115-5},
+}
+
+@article{BonillaMoreno2027ROMBDDC,
+  title = {{A ROM-based BDDC solver for unfitted p-FEM level-set-based two-dimensional lattice structures}},
+  author = {Bonilla Moreno, Gonzalo and Guarino, Giuliano and Antolin, Pablo},
+  journal = {Computer Methods in Applied Mechanics and Engineering},
+  year = {2027},
+  volume = {463},
+  pages = {119304},
+  doi = {10.1016/j.cma.2026.119304},
+  url = {https://doi.org/10.1016/j.cma.2026.119304},
+  note = {Crossref lists the first author with family name ``M.''; name as on arXiv:2604.09113},
 }
