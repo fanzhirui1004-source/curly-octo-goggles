@@ -57,7 +57,8 @@
  "new": {
   "Note S4": "Ablation of the retained representation (reduced-boundary material moved from main-text Section 6.8 and from Appendix I; contains Table ST14). Cite from Section 6.8.",
   "Note S7": "Network settings and parameter counts (I-44); contains Table ST16. Cited from Appendix G.1.",
-  "ST16": "Architecture, coefficient bounds, initialisation and parameter counts (in Note S7)."
+  "ST16": "Architecture, coefficient bounds, initialisation and parameter counts (in Note S7).",
+  "ST17": "Per-cell cost of conventional condensation and NICE (content of the former main Table 5 at fbe73f6, compressed; host columns [PENDING E1]); in Note S5, cited from Section 6.10."
  },
  "unchanged": {
   "R1": "R1 (predictor and geometry key, now with former labels)",
@@ -83,5 +84,6 @@
   "Note S6 (App. A.2)",
   "Note S7, ST16 (App. G.1)",
   "Note S8 (App. J.9)"
- ]
+ ],
+ "_comment_followup": "Follow-up after 932ae2c: main Table 6 became Table 5; the former per-cell main Table 5 is now Table ST17 (next free number; no existing item renumbered). The current main text no longer follows strict first-citation order (ST16 cited in Section 6.1, ST04 before ST03, Note S6 before Note S5; ST03c, ST06, ST12, ST13, Figures S02 and S05 not cited in the main text); left as is."
 }
