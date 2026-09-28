@@ -34,6 +34,7 @@ if [ "$SMOKE" != 1 ]; then
   done
   if [ $Q = 1 ]; then st "QUIET cores=$cores loadavg=$(cut -d' ' -f1-3 /proc/loadavg)"; else st "NOT_QUIET after 3 h: cores=$cores big_python=$big gpu_procs=$gpu; proceeding"; fi
 fi
+st "RESTORED: runs on the 5090 host as originally planned (coordinator 2026-09-29; AMD machine runs a parallel copy)"
 st "START pid=$$"
 source $R/env_cpu.sh
 export MKL_NUM_THREADS=$TH OMP_NUM_THREADS=$TH OPL_GP_CACHE=0
