@@ -6,6 +6,9 @@ The Markdown files remain the editing source. This script:
   - turns an image followed by a bold 'Figure N.' paragraph into a figure with that caption (PDF version of the image);
   - turns a bold 'Table N.' paragraph before a pipe table into that table's caption;
   - converts the body with pandoc (tex_math_single_backslash keeps \\( \\) and \\[ \\tag{} \\] as written);
+  - inserts authors.tex (author block) into the front matter and endmatter.tex (declarations) after the main text;
+  - orders the document as main text, declarations, appendices, references (Elsevier convention);
+  - sets Table 5 (cost comparison, nine columns) on a landscape page;
   - sets the reference list as an unnumbered section in author-year form.
 Usage: python3 build_tex.py   (writes main.tex next to this file; compile with pdflatex twice)"""
 import re, subprocess
@@ -74,6 +77,25 @@ def references(md):
             '\\everypar{\\hangindent=1.5em\\hangafter=1}\n' + body + '\n\\endgroup\n')
 
 
+def landscape(tex, caption_start, widths=None, overhang=0.0):
+    """Put the (size-wrapped) longtable whose caption starts with caption_start on a landscape page. Relative widths
+    may sum to more than one: the table then extends into the right-hand margin of the rotated page."""
+    i = tex.index(caption_start)
+    s = tex.rfind('\\begin{longtable}', 0, i)
+    e = tex.index('\\end{longtable}', i) + len('\\end{longtable}')
+    for size in ('{\\scriptsize\n', '{\\footnotesize\n', '{\\small\n'):
+        if tex[s - len(size):s] == size:
+            s -= len(size); e += 1                                          # include the size group and its brace
+            break
+    block = tex[s:e]
+    if overhang:                                                           # shift left into the margin
+        block = block.replace('{\\footnotesize\n', '{\\footnotesize\\setlength{\\LTleft}{-%g\\linewidth}\n' % overhang, 1)
+    if widths:                                                             # relative column widths (sum <= 1)
+        it = iter(widths)
+        block = re.sub(r'\\real\{[0-9.]+\}', lambda m: '\\real{%.3f}' % next(it), block, count=len(widths))
+    return tex[:s] + '\\begin{landscape}\n' + block + '\n\\end{landscape}\n' + tex[e:]
+
+
 def main():
     ms = (SRC / 'MANUSCRIPT_EN.md').read_text()
     ap = (SRC / 'APPENDICES_EN.md').read_text()
@@ -86,16 +108,22 @@ def main():
     conv = lambda t: pandoc(tables(figures(strip_numbers(t))))
     tex = (HERE / 'preamble.tex').read_text()
     tex += '\\begin{document}\n\\begin{frontmatter}\n\\title{' + pandoc(title).strip() + '}\n'
+    if (HERE / 'authors.tex').exists():
+        tex += (HERE / 'authors.tex').read_text() + '\n'
     tex += '\\begin{abstract}\n' + pandoc(abstract) + '\\end{abstract}\n'
     tex += '\\begin{keyword}\n' + ' \\sep '.join(pandoc(k).strip() for k in kw.split(';')) + '\n\\end{keyword}\n'
-    tex += '\\end{frontmatter}\n\n' + conv(body) + '\n' + references(refs)
-    tex += '\n\\appendix\n' + conv(ap) + '\n\\end{document}\n'
+    tex += '\\end{frontmatter}\n\n' + conv(body) + '\n'
+    if (HERE / 'endmatter.tex').exists():
+        tex += (HERE / 'endmatter.tex').read_text() + '\n'
+    tex += '\n\\appendix\n' + conv(ap) + '\n' + references(refs) + '\n\\end{document}\n'
     tex = tex.replace('\\section{', '\\section{', ).replace('\\hypertarget', '%\\hypertarget')
     def shrink(m):                                                         # wide tables: smaller type
         cols = m.group(1).count('p{') + m.group(1).count('l') * 0
         size = '\\scriptsize' if cols >= 8 else ('\\footnotesize' if cols >= 6 else '\\small')
         return '{' + size + '\n' + m.group(0) + '}'
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
+    tex = landscape(tex, 'Cost per cell of the conventional and learned routes',
+                    widths=(.085, .137, .09, .165, .155, .155, .18, .12, .105))
     (HERE / 'main.tex').write_text(tex)
     print('main.tex', len(tex))
 

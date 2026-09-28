@@ -94,58 +94,58 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ## Supplementary material
 
-### Figure S02
+### Figure S01
 
-![Figure S02](figures/S02_distributions.png)
+![Figure S01](figures/S01_distributions.png)
 
-**Figure S02. Distributions of geometry-level directional energy errors.** Each point is one geometry's directional mean in the original orientation; horizontal marks are population medians. The nodal-force, spring-support, single-face-force, polynomial and multiscale classes contain 80 geometries each. The panels show the earlier evaluation used in Table ST01c, in which the consistent-traction, single-face consistent-traction, stiffness-scaled support and neighbour-induced displacement classes contain 20, 20, 19 and 15 geometries, respectively; Table ST01 gives the complete identity-view statistics, with 80 geometries for the two consistent-traction classes and 75 for the other two. P0 has no records in these four enriched classes. Marker shape and colour identify the predictor; deterministic horizontal offsets separate overlapping observations. All panels use the same logarithmic error range.
+**Figure S01. Distributions of geometry-level directional energy errors.** Each point is one validation geometry's directional mean in the identity view; horizontal bars are population medians. The nodal-force, spring-support, single-face-force, polynomial, multiscale, consistent-traction and single-face consistent-traction classes contain 80 geometries, and the stiffness-scaled support and neighbour-induced displacement classes 75, the same populations as Table ST01. P0 was evaluated only on the first five classes (n/a elsewhere). C and S8 use the marker and colour of the main-text figures; deterministic horizontal offsets separate overlapping observations. All panels share the logarithmic error axis. Data: `evidence/newval_c_oh.json` (P0) and `evidence/newval2_<run>.json` (B, C, S8); script `figures_src/fig_s01_distributions.py`.
 
-[PNG](figures/S02_distributions.png) · [PDF](figures/S02_distributions.pdf)
+[PNG](figures/S01_distributions.png) · [PDF](figures/S01_distributions.pdf)
 
-### Figure S03A
+### Figure S02A
 
-![Figure S03A](figures/S03A_smoothing.png)
+![Figure S02A](figures/S02A_smoothing.png)
 
-**Figure S03A. Smoothing from learned and zero internal fields.** (a,b) Mean directional energy excess for consistent-traction and nodal-force responses; (c,d) corresponding field-based sensitivity errors. Both initialisations prescribe the same retained displacement. Solid curves with filled markers start from predictor B; dashed curves with open markers start from zero internal displacement. Zero-start sensitivity is recorded only at 32 steps. All corrections use \(a=b/30\). The step axis is linear between zero and one and logarithmic thereafter.
+**Figure S02A. Smoothing from learned and zero internal fields.** (a,b) Mean directional energy excess for consistent-traction and nodal-force responses; (c,d) corresponding field-based sensitivity errors. Both initialisations prescribe the same retained displacement. Solid curves with filled markers start from predictor B; dashed curves with open markers start from zero internal displacement. Zero-start sensitivity is recorded only at 32 steps. All corrections use \(a=b/30\). The step axis is linear between zero and one and logarithmic thereafter.
 
-[PNG](figures/S03A_smoothing.png) · [PDF](figures/S03A_smoothing.pdf)
+[PNG](figures/S02A_smoothing.png) · [PDF](figures/S02A_smoothing.pdf)
 
-### Figure S03B
+### Figure S02B
 
-![Figure S03B](figures/S03B_coarse_spaces.png)
+![Figure S02B](figures/S02B_coarse_spaces.png)
 
-**Figure S03B. Recorded coarse representations and correction sequences.** Rows correspond to U1, M1 and M2; columns use consistent-traction and nodal-force responses. Six coarse representations are compared under four initialisation and smoothing sequences, with eight steps in each pre- or post-smoothing stage. Dots indicate directional means and caps the 90th percentile. Dashed and dotted references denote B alone and B followed by one smoothing stage. \(Q_1\), \(Q_2\) and PU denote trilinear, quadratic and linearly enriched partition-of-unity generating families. The first label number identifies grid resolution and the lower number counts columns after internal restriction and screening. For the structurally redundant PU family, these counts do not establish an independent-space dimension, and the plotted solve results do not verify exact-projection properties. Appendix F.1 explains the rank and solve conditions; Table ST04 gives all statistics. Coarse updates preserve every retained coordinate.
+**Figure S02B. Recorded coarse representations and correction sequences.** Rows correspond to U1, M1 and M2; columns use consistent-traction and nodal-force responses. Six coarse representations are compared under four initialisation and smoothing sequences, with eight steps in each pre- or post-smoothing stage. Dots indicate directional means and caps the 90th percentile. Dashed and dotted references denote B alone and B followed by one smoothing stage. \(Q_1\), \(Q_2\) and PU denote trilinear, quadratic and linearly enriched partition-of-unity generating families. The first label number identifies grid resolution and the lower number counts columns after internal restriction and screening. For the structurally redundant PU family, these counts do not establish an independent-space dimension, and the plotted solve results do not verify exact-projection properties. Appendix F.1 explains the rank and solve conditions; Table ST04 gives all statistics. Coarse updates preserve every retained coordinate.
 
-[PNG](figures/S03B_coarse_spaces.png) · [PDF](figures/S03B_coarse_spaces.pdf)
+[PNG](figures/S02B_coarse_spaces.png) · [PDF](figures/S02B_coarse_spaces.pdf)
+
+### Figure S03
+
+![Figure S03](figures/S03_sensitivity_diagnostics.png)
+
+**Figure S03. Field-based sensitivity-error diagnostics.** (a) Paired mean energy and sensitivity errors for consistent-traction and nodal-force responses, using six B cells and five C cells. (b) Consistent-traction linear-term norm share \(\|D_1\|_F/(\|D_1\|_F+\|D_2\|_F)\), where \(D_1+D_2\) is the sensitivity-error matrix over all eight design components and evaluated directions. (c,d) Shares of absolute elementwise sensitivity-error contributions and element counts in four mutually exclusive material-volume-fraction groups for B under consistent tractions. Each error group sums absolute contributions over its elements, design components and directions before normalisation by the total. Open markers and hatched bars in (a,b) identify C; its H2 observation is unavailable.
+
+[PNG](figures/S03_sensitivity_diagnostics.png) · [PDF](figures/S03_sensitivity_diagnostics.pdf)
 
 ### Figure S04
 
-![Figure S04](figures/S04_sensitivity_diagnostics.png)
+![Figure S04](figures/S04_iterative_solves.png)
 
-**Figure S04. Field-based sensitivity-error diagnostics.** (a) Paired mean energy and sensitivity errors for consistent-traction and nodal-force responses, using six B cells and five C cells. (b) Consistent-traction linear-term norm share \(\|D_1\|_F/(\|D_1\|_F+\|D_2\|_F)\), where \(D_1+D_2\) is the sensitivity-error matrix over all eight design components and evaluated directions. (c,d) Shares of absolute elementwise sensitivity-error contributions and element counts in four mutually exclusive material-volume-fraction groups for B under consistent tractions. Each error group sums absolute contributions over its elements, design components and directions before normalisation by the total. Open markers and hatched bars in (a,b) identify C; its H2 observation is unavailable.
+**Figure S04. Recorded assembled iterative solves.** Rows show a cell pair and repeated-cell \(2\times2\times2\) and \(3\times3\times3\) arrays; columns show iteration counts, times and relative residuals. Filled markers give recursive residuals and open markers explicitly recomputed residuals using the operator applied in the same run. Crosses identify the 300 s time limit, and the dashed residual reference is \(10^{-8}\). Diag, \(K_{PP}\), Add, Bal and Def denote diagonal, assembled retained-block, additive, balanced two-level and deflated preconditioning, respectively. Here \(K_{PP}\) denotes the fine action \(\mathbb K_{PP}^{-1}\) on the assembled retained system; the precise actions are given in Supplementary Note S1. The learned operator uses predictor D. These historical RTX 5090 runs enabled TF32 convolution. The pair joins G1 and G3, while each array repeats G3.
 
-[PNG](figures/S04_sensitivity_diagnostics.png) · [PDF](figures/S04_sensitivity_diagnostics.pdf)
+[PNG](figures/S04_iterative_solves.png) · [PDF](figures/S04_iterative_solves.pdf)
 
 ### Figure S05
 
-![Figure S05](figures/S05_iterative_solves.png)
+![Figure S05](figures/F07_cost.png)
 
-**Figure S05. Recorded assembled iterative solves.** Rows show a cell pair and repeated-cell \(2\times2\times2\) and \(3\times3\times3\) arrays; columns show iteration counts, times and relative residuals. Filled markers give recursive residuals and open markers explicitly recomputed residuals using the operator applied in the same run. Crosses identify the 300 s time limit, and the dashed residual reference is \(10^{-8}\). Diag, \(K_{PP}\), Add, Bal and Def denote diagonal, assembled retained-block, additive, balanced two-level and deflated preconditioning, respectively. Here \(K_{PP}\) denotes the fine action \(\mathbb K_{PP}^{-1}\) on the assembled retained system; the precise actions are given in Supplementary Note S1. The learned operator uses predictor D. These historical RTX 5090 runs enabled TF32 convolution. The pair joins G1 and G3, while each array repeats G3.
-
-[PNG](figures/S05_iterative_solves.png) · [PDF](figures/S05_iterative_solves.pdf)
-
-### Figure S06
-
-![Figure S06](figures/F07_cost.png)
-
-**Figure S06. Preparation and application cost of predictor D.** (a–c) Time per complete batch of one, 16 and 64 vectors on four cells, comparing exact interior solves with learned sparse-matrix (CSR) and fused implementations. The fp32 factor uses three fp64 iterative-refinement steps (IR). (d) Interior factorisation, network caching and preparation of the reusable learned action. (e) Sparse-stiffness storage and free-memory changes associated with the exact factor and learned state; the allocation measures are not additive. Measurements use an NVIDIA GeForce RTX 5090, with three timed repetitions after one warm-up. Memory is expressed in GiB. The supplementary geometry key identifies G1–G4.
+**Figure S05. Preparation and application cost of predictor D.** (a–c) Time per complete batch of one, 16 and 64 vectors on four cells, comparing exact interior solves with learned sparse-matrix (CSR) and fused implementations. The fp32 factor uses three fp64 iterative-refinement steps (IR). (d) Interior factorisation, network caching and preparation of the reusable learned action. (e) Sparse-stiffness storage and free-memory changes associated with the exact factor and learned state; the allocation measures are not additive. Measurements use an NVIDIA GeForce RTX 5090, with three timed repetitions after one warm-up. Memory is expressed in GiB. The supplementary geometry key identifies G1–G4.
 
 [PNG](figures/F07_cost.png) · [PDF](figures/F07_cost.pdf)
 
-### Figure S07
+### Figure S06
 
-![Figure S07](figures/S07_reference_verification.png)
+![Figure S06](figures/S06_reference_verification.png)
 
-**Figure S07. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
+**Figure S06. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
 
-[PNG](figures/S07_reference_verification.png) · [PDF](figures/S07_reference_verification.pdf)
+[PNG](figures/S06_reference_verification.png) · [PDF](figures/S06_reference_verification.pdf)

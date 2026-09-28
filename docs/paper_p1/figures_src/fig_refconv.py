@@ -1,4 +1,4 @@
-"""Supplementary Figure S07: verification of the CutFEM reference (evidence/ref_valid*.json, script ref_valid.py).
+"""Supplementary Figure S06: verification of the CutFEM reference (evidence/ref_valid*.json, script ref_valid.py).
 (a) background resolution n: largest relative change of compliance (filled) and 8-corner sensitivity (open) against the finest
     resolution (n = 40 for U1, 48 otherwise), over the three consistent face loads; (b) ghost-penalty coefficient relative to the production value
     1e-4; (c) finite-difference step of the moment derivatives, relative to h = 1e-5 tau, and direct compliance differences."""
@@ -52,4 +52,4 @@ h1 = [plt.Line2D([], [], color=c, marker=m, ms=4, label=l) for l, _, _, c, m in 
 h2 = [plt.Line2D([], [], color=FS.MUTED, ls='-', marker='o', ms=4, label='compliance'),
       plt.Line2D([], [], color=FS.MUTED, ls='--', marker='o', mfc='white', ms=4, label='sensitivity')]
 fig.legend(handles=h1 + h2, frameon=False, loc='outside lower center', ncol=6, handlelength=2.2)
-FS.save(fig, 'S07_reference_verification')
+FS.save(fig, 'S06_reference_verification')

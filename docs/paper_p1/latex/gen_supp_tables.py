@@ -6,13 +6,13 @@ Without --write the blocks are printed; with --write they replace the correspond
 in SUPPLEMENTARY_EN.md. Sources:
   newval2_<run>.json   identity-view validation (per-geometry directional means)   -> ST01, ST01b
   newval_v2L1.json     views 0 and 17 of B on the earlier evaluation                -> ST01c
+  newval_c_oh.json     views 0 and 17 of P0 (five original classes only)           -> P0 columns of ST01, ST01b, ST01c
   valmeta.json         geometry strata                                              -> ST01b
   piml4_<mode>_<cell>.json  Bernstein-restricted retained space, x assemblies      -> ST07a, ST07b
-  meta_p1.json         training configuration and checkpoint selection             -> ST12
+  meta_p1.json, meta_c_oh.json  training configuration and checkpoint selection    -> ST12
   gate_<run>_*.json    two-cell continuous-neighbour assemblies                     -> ST13
   MANUSCRIPT_EN.md     Table 2 (training-geometry counts)                           -> ST12
-Entries without an evidence file (the P0 columns of ST01/ST01b/ST01c, the P0/B/C/S8 rows of ST12
-and the B rows of ST13) are carried over unchanged from the current SUPPLEMENTARY_EN.md.
+Every entry now comes from an evidence file (meta_c_oh.json holds P0's archived configuration). gate_v2L1_*.json are the per-configuration splits of the archived gate_cont_v2L1_<cell>.json.
 The H2/y assembly (fresh_val_2010_d0_v0, configuration y) is not part of the reported comparison.
 """
 import json
@@ -35,6 +35,14 @@ EXCLUDED = {('2010_d0_v0', 'y')}
 
 def load(name):
     return json.load(open(EV / name))
+
+
+def p0_geo(view='0'):
+    return {c: g[view] for c, g in load('newval_c_oh.json')['per_geo'].items() if view in g}
+
+
+def stat(v):
+    return f'{v.mean():.3f} / {np.percentile(v, 90):.3f} / {v.max():.3f}' if len(v) else '—'
 
 
 def per_geo(run, view='0'):
@@ -81,17 +89,16 @@ def replace_table(text, heading, new_lines):
 
 
 def st01(text):
-    old = column(table_rows(text, r'## Table ST01\.'), 'P0')
     pgs = {a: per_geo(r) for a, r in ARMS}
+    p0 = p0_geo()
     names = ['P0'] + [a for a, _ in ARMS]
     out = [row(['Class', 'Geometries per evaluated arm'] + names), row(['---'] * (len(names) + 2))]
     for cls in CLASSES:
         n = {len(vals(pg, cls)) for pg in pgs.values()}
         assert len(n) == 1, (cls, n)
-        cells = [cls, str(n.pop()), old[cls]]
+        cells = [cls, str(n.pop()), stat(vals(p0, cls))]
         for a, _ in ARMS:
-            v = vals(pgs[a], cls)
-            cells.append(f'{v.mean():.3f} / {np.percentile(v, 90):.3f} / {v.max():.3f}')
+            cells.append(stat(vals(pgs[a], cls)))
         out.append(row(cells))
     return out
 
@@ -105,14 +112,14 @@ def stratum(c, meta):
 
 def st01b(text):
     meta = load('valmeta.json')
-    old = column(table_rows(text, r'### ST01b\.'), 'P0 force/support')
     pgs = {a: per_geo(r) for a, r in ARMS}
+    p0 = p0_geo()
     out = [row(['Stratum', 'Geometries', 'P0 force/support'] + [f'{a} force/support' for a, _ in ARMS]),
            row(['---'] * (len(ARMS) + 3))]
     for s in ('FULL', 'Light cut (v2)', 'Middle cut (v1)', 'Heavy cut (v0)'):
         keep = lambda c, s=s: c in meta and stratum(c, meta) == s
         n = len(vals(pgs['B'], 'force', keep))
-        cells = [s, str(n), old[s]]
+        cells = [s, str(n), f"{vals(p0, 'force', keep).mean():.3f} / {vals(p0, 'support', keep).mean():.3f}"]
         for a, _ in ARMS:
             cells.append(f"{vals(pgs[a], 'force', keep).mean():.3f} / {vals(pgs[a], 'support', keep).mean():.3f}")
         out.append(row(cells))
@@ -120,15 +127,17 @@ def st01b(text):
 
 
 def st01c(text):
-    old = column(table_rows(text, r'### ST01c\.'), 'P0')
     pg = load('newval_v2L1.json')['per_geo']
+    p0a, p0b = p0_geo('0'), p0_geo('17')
     v0 = {c: g['0'] for c, g in pg.items()}
     v17 = {c: g['17'] for c, g in pg.items() if '17' in g}
     out = [row(['Class', 'Geometries', 'P0', 'B']), row(['---'] * 4)]
     for cls in CLASSES:
         a, b = vals(v0, cls), vals(v17, cls)
         assert len(a) == len(b)
-        out.append(row([cls, str(len(a)), old[cls], f'{a.mean():.3f} / {b.mean():.3f}']))
+        pa, pb = vals(p0a, cls), vals(p0b, cls)
+        p0 = f'{pa.mean():.3f} / {pb.mean():.3f}' if len(pa) else '—'
+        out.append(row([cls, str(len(a)), p0, f'{a.mean():.3f} / {b.mean():.3f}']))
     return out
 
 
@@ -139,28 +148,36 @@ def table2_geometries():
 
 def st12(text):
     old = table_rows(text, r'## Table ST12\.')
-    runs = load('meta_p1.json')['runs']
+    runs = dict(load('meta_p1.json')['runs'], **load('meta_c_oh.json')['runs'])
     geo = table2_geometries()
     nv = {a: load(f'newval2_{r}.json') for a, r in ARMS}
+    nv['P0'] = load('newval_c_oh.json')
+    nv['B'] = load('newval_v2L1.json')                                      # the earlier evaluation carries both views
     fmt = lambda x: f'{x:,}'
 
-    def new_row(arm, train_val, budget, corr):
+    def new_row(arm, train_val, budget, corr, sel=None):
         d = nv[arm]
-        return row([arm, geo[arm], train_val, budget, f"{fmt(d['ckpt_step'])} / {d['ckpt_weights'].upper()}", corr,
+        step, weights = sel if sel else (d['ckpt_step'], d['ckpt_weights'])
+        return row([arm, geo[arm], train_val, budget, f"{fmt(step)} / {weights.upper()}", corr,
                     ', '.join(str(v) for v in d['views']), str(len(d['per_geo']))])
 
-    a3 = runs['A3_2grid']['cfg']
-    b = runs['v2L1']['cfg']
-    added = [
+    cfg = {a: runs[r]['cfg'] for a, r in [('P0', 'c_oh'), ('B', 'v2L1'), ('C', 'A0_ctrl'), ('S8', 'A2_tail8'),
+                                          ('A3', 'A3_2grid')]}
+    p0 = runs['c_oh']
+    b_sel = (nv2 := load('newval2_v2L1.json'))['ckpt_step'], nv2['ckpt_weights']
+    out = [
+        new_row('P0', str(p0['split_event']['val']), fmt(cfg['P0']['steps']), 'None', (p0['step'], p0['weights'])),
+        new_row('B', str(cfg['B']['val_max']), fmt(cfg['B']['steps']), 'None', b_sel),
+        new_row('C', str(cfg['C']['val_max']), fmt(cfg['C']['steps']), 'None'),
+        new_row('S8', str(cfg['S8']['val_max']), fmt(cfg['S8']['steps']), 'Eight-step smoothing'),
         # A2b has no configuration record in meta_p1.json: the 40 training-time validation geometries
         # (Section 6.1) and the 15,000-step budget (Section 6.1, after Table 2) are stated in the main text
         # for all continued predictors; step and weights come from newval2_A2b_tail8.json.
         new_row('A2b', '40', '15,000', 'Eight-step smoothing'),
-        new_row('B+W', str(b['val_max']), '—', '8 / Q1(17) / 8'),
-        new_row('A3', str(a3['val_max']), fmt(a3['steps']), '8 / Q1(17) / 8'),
+        new_row('B+W', str(cfg['B']['val_max']), '—', '8 / Q1(17) / 8', b_sel),
+        new_row('A3', str(cfg['A3']['val_max']), fmt(cfg['A3']['steps']), '8 / Q1(17) / 8'),
     ]
-    keep = [r for r in old[2:] if r[0] not in ('A2b', 'B+W', 'A3')]
-    return [row(old[0]), row(old[1])] + [row(r) for r in keep] + added
+    return [row(old[0]), row(old[1])] + out
 
 
 def gate(run, key, cfg):
@@ -177,8 +194,8 @@ def num(x):
 
 def st13(text):
     old = table_rows(text, r'## Table ST13\.')
-    out = [row(old[0]), row(old[1])] + [row(r) for r in old[2:] if r[2] == 'B']
-    for arm, run in ARMS[1:]:
+    out = [row(old[0]), row(old[1])]
+    for arm, run in ARMS:
         for key, lab in CELLS:
             for cfg in 'xy':
                 t = gate(run, key, cfg)
