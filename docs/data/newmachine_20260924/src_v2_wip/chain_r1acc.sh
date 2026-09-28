@@ -36,9 +36,9 @@ ev() { timeout 18000 $PY -u eval_views_pd.py $R --prefix newval3_ --model A3=$O/
 st "START E5 newval3 (A3,BW,C,CW x 80 geometries, view 0)"
 ev > $R/newval3.log 2>&1; rc=$?
 st "END E5 newval3 rc=$rc"
-if [ $rc -ne 0 ]; then
-  st "RETRY E5 newval3 --resume"; ev --resume >> $R/newval3.log 2>&1; rc=$?; st "END E5 newval3 retry rc=$rc"
-fi
+st "E5 restricted to NICE (author decision 2026-09-28; the 4-model pass was stopped by the coordinator)"
+timeout 18000 $PY -u eval_views_pd.py $R --prefix newval3_ --model A3=$O/A3_2grid/best.pt --views 0 --cases $VAL --body /root/autodl-tmp/OPL/S0 --data /root/autodl-tmp/OPL/S2/data_v2 > $R/newval3_nice.log 2>&1; rc=$?
+st "END E5 NICE-only rc=$rc"
 
 # ---------------------------------------------------------------- pair gates (r1_gate.py = lat_full.py + env / failure record)
 gate() {   # name ckpt case conf [override]
