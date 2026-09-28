@@ -126,22 +126,6 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 [PNG](figures/S03_sensitivity_diagnostics.png) · [PDF](figures/S03_sensitivity_diagnostics.pdf)
 
-### Figure S04
-
-![Figure S04](figures/S04_iterative_solves.png)
-
-**Figure S04. Recorded assembled iterative solves.** Rows show a cell pair and repeated-cell \(2\times2\times2\) and \(3\times3\times3\) arrays; columns show iteration counts, times and relative residuals. Filled markers give recursive residuals and open markers explicitly recomputed residuals using the operator applied in the same run. Crosses identify the 300 s time limit, and the dashed residual reference is \(10^{-8}\). Diag, \(K_{PP}\), Add, Bal and Def denote diagonal, assembled retained-block, additive, balanced two-level and deflated preconditioning, respectively. Here \(K_{PP}\) denotes the fine action \(\mathbb K_{PP}^{-1}\) on the assembled retained system; the precise actions are given in Supplementary Note S1. The learned operator uses predictor D. These historical RTX 5090 runs enabled TF32 convolution. The pair joins G1 and G3, while each array repeats G3.
-
-[PNG](figures/S04_iterative_solves.png) · [PDF](figures/S04_iterative_solves.pdf)
-
-### Figure S05
-
-![Figure S05](figures/F07_cost.png)
-
-**Figure S05. Preparation and application cost of predictor D.** (a–c) Time per complete batch of one, 16 and 64 vectors on four cells, comparing exact interior solves with learned sparse-matrix (CSR) and fused implementations. The fp32 factor uses three fp64 iterative-refinement steps (IR). (d) Interior factorisation, network caching and preparation of the reusable learned action. (e) Sparse-stiffness storage and free-memory changes associated with the exact factor and learned state; the allocation measures are not additive. Measurements use an NVIDIA GeForce RTX 5090, with three timed repetitions after one warm-up. Memory is expressed in GiB. The supplementary geometry key identifies G1–G4.
-
-[PNG](figures/F07_cost.png) · [PDF](figures/F07_cost.pdf)
-
 ### Figure S06
 
 ![Figure S06](figures/S06_reference_verification.png)

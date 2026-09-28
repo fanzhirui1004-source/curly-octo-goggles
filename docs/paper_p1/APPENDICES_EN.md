@@ -794,7 +794,7 @@ with a load- and stiffness-dependent constant.
 
 If an applied action \(y(\bar U)\) is not numerically identical to the variational energy, define
 \(\omega=\bar U^Ty(\bar U)-\sum_m\bar u_m^TK_m\bar u_m\)
-and \(\rho=f-y(\bar U)\). Then the first identity acquires an additional \(+\omega\). This separates solve residual from action/energy inconsistency. A recursive Krylov residual need not equal this applied-action residual. The deployment benchmark for predictor D records both residual norms. Evaluating the terms in Eq. (18) additionally requires the signed residual work and \(\omega\), which are not stored in those records.
+and \(\rho=f-y(\bar U)\). Then the first identity acquires an additional \(+\omega\). This separates solve residual from action/energy inconsistency. A recursive Krylov residual need not equal this applied-action residual. Evaluating the terms in Eq. (18) additionally requires the signed residual work and \(\omega\), which are not stored in those records.
 
 ### J.7. Directional training, coverage, rotations, and spectra
 

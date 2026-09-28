@@ -8,7 +8,6 @@
 | B | Baseline for fixed-weight corrections | v2L1 |
 | C | Continued uncorrected predictor | A0_ctrl |
 | S8 | Separate continued weights with eight smoothing steps | A2_tail8 |
-| D | Earlier predictor for deployment costs | c_ctrl |
 | A2b | Continued weights trained through eight smoothing steps | A2b_tail8 |
 | B+W | B's weights evaluated with A3's correction | B2grid |
 | A3 | Principal predictor, trained through the complete correction | A3_2grid |
@@ -26,7 +25,7 @@ The S8 predictor has its own learned weights. Applying eight steps to B in the f
 | H3 | Heavily cut | fresh_val_2002_d0_v0 |
 | L1 | Lightly cut | fresh_val_2004_d0_v2 |
 
-The x/y suffix identifies the neighbouring-cell configuration. The deployment geometries use the G1–G4 labels in Table 5 and Figures S04–S05. The complete timing tables retain the corresponding abbreviated geometry identifiers for lookup.
+The x/y suffix identifies the neighbouring-cell configuration. The deployment geometries use the G1–G4 labels in Table 5. The complete timing tables retain the corresponding abbreviated geometry identifiers for lookup.
 
 | Benchmark label | Abbreviated geometry | Archived geometry identifier |
 | --- | --- | --- |
@@ -330,83 +329,6 @@ Each target cell and its continuous-thickness neighbour are assembled in configu
 
 The supported systems on the full retained space have 28,206 (U1), 39,996 (M1), 39,120 (M2) and 32,991 (H1) free DOFs. U1 has no cut band, so its corner-linear restriction controls only the 24 corner coordinates. Six-load and all-load maxima coincide only when the maximizing load belongs to both sets. The interface-only variant was run for U1, M1 and M2. Data: `evidence/piml4_all_*.json`, `evidence/piml4_interface_*.json`.
 
-## Table ST08. Additional single-cell deployment measurements
-
-### ST08a. Memory and fused-operator consistency
-
-| Cell | K storage (GiB) | fp64 factor delta (GiB) | fp32 factor delta (GiB) | Learned state delta (GiB) | Sparse freeze allocation (GiB) | Fused freeze allocation (GiB) | Fused/sparse action difference |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 0020-r2 | 1.394 | 4.748 | 0.340 | 0.697 | 0.626 | 0.173 | 2.496e-05 |
-| 0020-r1 | 0.505 | 0.164 | 0.105 | 0.270 | 0.226 | 0.063 | 2.174e-05 |
-| 0020-FULL | 2.324 | 5.711 | 0.555 | 1.127 | 1.039 | 0.285 | 3.596e-05 |
-| 0007-FULL | 2.707 | 5.074 | 0.652 | 1.371 | 1.231 | 0.341 | 3.297e-05 |
-
-
-Factor and state deltas use free-device-memory changes; freeze allocations use PyTorch allocated-memory changes. These measures have distinct allocation definitions.
-
-### ST08b. Action accuracy and residual-estimate cost
-
-| Cell | Mean energy ratio | Minimum energy ratio | Maximum energy ratio | Residual-estimate cost, m=0 (ms) | Residual-estimate cost, m=8 (ms) |
-| --- | --- | --- | --- | --- | --- |
-| 0020-r2 | 1.014780 | 1.007903 | 1.024783 | 15.36 | 95.53 |
-| 0020-r1 | 1.018094 | 1.010527 | 1.027321 | 5.65 | 34.20 |
-| 0020-FULL | 1.014432 | 1.006684 | 1.025316 | 25.58 | 161.48 |
-| 0007-FULL | 1.008199 | 1.003768 | 1.014849 | 30.12 | 195.43 |
-
-
-Energy ratios use 64 benchmark directions; residual-estimate timings use a batch of 16. These are D diagnostics.
-
-## Table ST09. All recorded preconditioned assembly solves
-
-Times are solve times in seconds; the wall-clock cap is 300 s per run. “Recursive tol.” denotes only the original recursive-residual stopping condition. The explicit residual is shown separately and uses the same operator as the run.
-
-| Assembly | Operator | Preconditioner | Iterations | Solve time (s) | Recursive residual | Recomputed residual | Max. compliance error (%) | Stopping status |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Pair | exact | jacobi | 1839 | 300.16 | 7.954e-04 | 7.954e-04 | 1.474e-06 | Time limit |
-| Pair | exact | kpp | 486 | 80.04 | 9.790e-09 | 9.789e-09 | 8.789e-11 | Recursive tol. |
-| Pair | exact | add:jac:q1r | 871 | 142.41 | 9.755e-09 | 9.755e-09 | 3.022e-11 | Recursive tol. |
-| Pair | exact | bnn:kpp:q1r | 169 | 27.94 | 8.430e-09 | 8.430e-09 | 0.000e+00 | Recursive tol. |
-| Pair | exact | defl:kpp:q1r | 169 | 27.90 | 8.460e-09 | 8.460e-09 | 1.101e-10 | Recursive tol. |
-| Pair | learned | jacobi | 2520 | 263.14 | 9.732e-09 | 1.985e-02 | 3.409e+00 | Recursive tol. |
-| Pair | learned | kpp | 742 | 78.65 | 9.647e-09 | 2.035e-02 | 3.409e+00 | Recursive tol. |
-| Pair | learned | add:jac:q1r | 873 | 91.33 | 9.963e-09 | 2.023e-02 | 3.409e+00 | Recursive tol. |
-| Pair | learned | bnn:kpp:q1r | 204 | 21.74 | 9.921e-09 | 2.075e-02 | 3.409e+00 | Recursive tol. |
-| Pair | learned | defl:kpp:q1r | 2821 | 300.06 | 1.683e+04 | 1.683e+04 | 3.171e+03 | Time limit |
-| 2×2×2 | exact | jacobi | 1130 | 210.77 | 9.990e-09 | 9.990e-09 | 1.789e-11 | Recursive tol. |
-| 2×2×2 | exact | kpp | 442 | 82.98 | 9.800e-09 | 9.800e-09 | 0.000e+00 | Recursive tol. |
-| 2×2×2 | exact | add:jac:q1r | 349 | 65.54 | 9.843e-09 | 9.843e-09 | 6.017e-12 | Recursive tol. |
-| 2×2×2 | exact | bnn:kpp:q1r | 119 | 22.71 | 9.997e-09 | 9.997e-09 | 8.518e-11 | Recursive tol. |
-| 2×2×2 | exact | defl:kpp:q1r | 119 | 22.51 | 9.877e-09 | 9.877e-09 | 1.143e-11 | Recursive tol. |
-| 2×2×2 | learned | jacobi | 685 | 300.31 | 5.821e-05 | 7.117e-03 | 1.882e+00 | Time limit |
-| 2×2×2 | learned | kpp | 504 | 221.74 | 9.614e-09 | 7.267e-03 | 1.881e+00 | Recursive tol. |
-| 2×2×2 | learned | add:jac:q1r | 361 | 158.74 | 9.620e-09 | 7.649e-03 | 1.882e+00 | Recursive tol. |
-| 2×2×2 | learned | bnn:kpp:q1r | 135 | 59.76 | 9.449e-09 | 7.893e-03 | 1.882e+00 | Recursive tol. |
-| 2×2×2 | learned | defl:kpp:q1r | 681 | 300.26 | 3.338e+03 | 3.338e+03 | 1.981e+04 | Time limit |
-| 3×3×3 | exact | jacobi | 469 | 300.51 | 1.423e-02 | 1.423e-02 | 7.838e-04 | Time limit |
-| 3×3×3 | exact | kpp | 467 | 300.51 | 2.764e-06 | 2.764e-06 | 2.383e-11 | Time limit |
-| 3×3×3 | exact | add:jac:q1r | 359 | 253.07 | 9.482e-09 | 9.482e-09 | 0.000e+00 | Recursive tol. |
-| 3×3×3 | exact | bnn:kpp:q1r | 122 | 94.63 | 9.866e-09 | 9.866e-09 | 5.850e-11 | Recursive tol. |
-| 3×3×3 | exact | defl:kpp:q1r | 122 | 86.38 | 9.759e-09 | 9.759e-09 | 2.707e-11 | Recursive tol. |
-| 3×3×3 | learned | jacobi | 205 | 301.13 | 1.379e+00 | 1.379e+00 | 9.076e+00 | Time limit |
-| 3×3×3 | learned | kpp | 204 | 300.25 | 2.783e-02 | 2.899e-02 | 1.862e+00 | Time limit |
-| 3×3×3 | learned | add:jac:q1r | 196 | 300.60 | 1.335e-04 | 8.718e-03 | 1.861e+00 | Time limit |
-| 3×3×3 | learned | bnn:kpp:q1r | 138 | 221.51 | 9.588e-09 | 8.990e-03 | 1.861e+00 | Recursive tol. |
-| 3×3×3 | learned | defl:kpp:q1r | 196 | 301.33 | 1.207e+02 | 1.207e+02 | 1.047e+03 | Time limit |
-
-## Table ST10. Legacy two-cell deployment comparison
-
-Both cell operators are learned in this D deployment case. The two cells are 0020-r2 and its FULL parent, with 36,264 free DOFs and nine jointly solved loads. The ideal preconditioner uses the exact assembled factor. Six-load errors refer to the six face loads.
-
-| Operators | Preconditioner | Iterations | Solve time (s) | Recursive residual | Six-load compliance (%) | Six-load sensitivity (%) | All-load compliance for exact operator (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| learned | ideal | 13 | 64.78 | 1.767e-09 | 4.563 | 8.485 | — |
-| learned | none | 3000 | 460.17 | 9.096e-02 | 4.577 | 8.409 | — |
-| learned | jacobi | 2524 | 387.29 | 9.622e-09 | 4.562 | 8.487 | — |
-| exact_dd | ideal | 1 | 0.16 | 4.532e-11 | — | — | 1.355e-09 |
-| exact_dd | none | 3000 | 488.24 | 9.307e-02 | — | — | 2.201e-02 |
-| exact_dd | jacobi | 2149 | 349.78 | 9.933e-09 | — | — | 1.402e-09 |
-
-
 ## Table ST11. Discrete operator and diagnostic definitions
 
 The same retained coordinate convention is used for the learned extension, the variational readout, and assembly. Relative errors are dimensionless and are displayed as percentages unless indicated otherwise.
@@ -549,67 +471,6 @@ Maximum relative compliance and field-based sensitivity-vector errors over the s
 The comparison contains seven B configurations, eleven for C, nine for S8, twelve for A2b and fourteen each for B+W and A3. C and S8 satisfy both 3% criteria in the same five of the nine configurations common to all predictors, and C also on L1/x and L1/y; A2b fails the same four configurations as C and S8; B+W and A3 satisfy both criteria in all fourteen. Missing model/configuration combinations have no row.
 
 
-## Table ST14. Complete deployment dimensions and cost breakdown
-
-All costs in this table refer to D and an NVIDIA GeForce RTX 5090. Local exact and learned routes share the topology, stiffness construction, and mechanical target. Each operator-action time is for the complete B-column batch, averaged over three synchronized repetitions after one warmup.
-
-### ST14a. Single-cell dimensions
-
-| Cell | Active DOFs | Retained DOFs | Interior DOFs |
-| --- | --- | --- | --- |
-| 0020-r2 | 177,507 | 24,636 | 152,871 |
-| 0020-r1 | 67,224 | 18,858 | 48,366 |
-| 0020-FULL | 289,494 | 17,508 | 271,986 |
-| 0007-FULL | 404,148 | 25,920 | 378,228 |
-
-
-### ST14b. Single-cell setup stages
-
-| Cell | Topology/setup (s) | Moment evaluation (s) | Stiffness assembly (s) | Factor fp64 (s) | Factor fp32 (s) | Learned preparation (s) |
-| --- | --- | --- | --- | --- | --- | --- |
-| 0020-r2 | 1.318 | 0.832 | 0.726 | 2.693 | 1.571 | 0.321 |
-| 0020-r1 | 0.419 | 0.237 | 0.398 | 0.644 | 0.470 | 0.065 |
-| 0020-FULL | 1.653 | 0.994 | 1.174 | 5.581 | 2.668 | 0.122 |
-| 0007-FULL | 1.540 | 0.975 | 1.150 | 8.596 | 3.450 | 0.151 |
-
-
-Learned preparation sums network-input preparation, geometry object construction, model cache, and operator freezing. Moment evaluation and stiffness assembly are reported as separately timed calls.
-
-### ST14c. Batch action costs (ms)
-
-| Cell | B | Exact fp64 | Exact fp32 + refinement | Learned sparse | Learned fused |
-| --- | --- | --- | --- | --- | --- |
-| 0020-r2 | 1 | 29.34 | 27.26 | 9.44 | 9.42 |
-| 0020-r2 | 16 | 43.20 | 62.23 | 97.77 | 86.08 |
-| 0020-r2 | 64 | 129.07 | 138.85 | 366.89 | 322.88 |
-| 0020-r1 | 1 | 7.92 | 8.03 | 6.17 | 7.11 |
-| 0020-r1 | 16 | 12.91 | 20.62 | 38.23 | 32.72 |
-| 0020-r1 | 64 | 35.40 | 41.30 | 162.30 | 146.77 |
-| 0020-FULL | 1 | 53.53 | 44.02 | 13.15 | 13.00 |
-| 0020-FULL | 16 | 76.75 | 102.68 | 154.38 | 134.66 |
-| 0020-FULL | 64 | 233.61 | 227.52 | 575.09 | 499.48 |
-| 0007-FULL | 1 | 72.94 | 59.95 | 15.31 | 15.12 |
-| 0007-FULL | 16 | 100.17 | 129.28 | 198.45 | 172.86 |
-| 0007-FULL | 64 | 315.57 | 303.65 | 741.97 | 645.64 |
-
-
-### ST14d. Balanced two-level preconditioned assembly solves
-
-| Assembly | Free DOFs | Operator | Iterations | Solve time (s) | Recursive residual | Recomputed residual | Max. compliance error (%) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Pair | 36,264 | exact | 169 | 27.94 | 8.430e-09 | 8.430e-09 | 0.000e+00 |
-| Pair | 36,264 | learned | 204 | 21.74 | 9.921e-09 | 2.075e-02 | 3.409 |
-| 2×2×2 | 93,696 | exact | 119 | 22.71 | 9.997e-09 | 9.997e-09 | 8.518e-11 |
-| 2×2×2 | 93,696 | learned | 135 | 59.76 | 9.449e-09 | 7.893e-03 | 1.882 |
-| 3×3×3 | 294,516 | exact | 122 | 94.63 | 9.866e-09 | 9.866e-09 | 5.850e-11 |
-| 3×3×3 | 294,516 | learned | 138 | 221.51 | 9.588e-09 | 8.990e-03 | 1.861 |
-
-
-The block assemblies repeat one FULL cell. Six loads are solved: three consistent face loads and three random loads. The residuals use each run’s own operator; compliance is compared with the recorded exact-operator reference. Additional preconditioners and time-limit outcomes are reported in Table ST09. 
-
-The assembly benchmark records TF32-enabled convolutions. A convolution-precision flag is not stored in the historical single-cell benchmark. Exact factorisation precision and residual refinement are identified explicitly in the action-time columns.
-
-
 ## Table ST15. Matched face-load responses for the smoothed variant
 
 Target cell S8, exact neighbour, configuration x. Each row uses one load and reports both cell sensitivity-vector errors. Energy participation refers to the target in the exact assembled solution. Relative quantities are percentages.
@@ -664,13 +525,13 @@ The reported q1r basis multiplies macro-grid trilinear vertex functions by three
 
 The supplied implementation forms \(A_g=Z_g^T\mathbb A Z_g\), records its relative asymmetry, symmetrises it, and scales it by its diagonal. It retains positive scaled eigenvalues exceeding \(10^{-10}\) times the largest eigenvalue and uses the corresponding normalised columns \(W\) so that \(Q_g=WW^T\). The stored product \(\mathbb A W\) supplies the two projections. This spectral selection concerns the preconditioner coarse action and leaves the local fine stiffnesses and condensed targets unchanged. The ideal symmetric formula above describes the algorithm; a finite-precision operator may additionally exhibit the action/energy discrepancy discussed in Appendix J.6.
 
-The additive variant applies \(Q_g+\mathcal B_f\). The deflated variants use a coarse initial solution and a projected fine correction. Table ST09 preserves the original variant identifiers and records their individual stopping outcomes. The reference inequality \(\mathbb K_{PP}\succeq\mathbb K\) holds for exact condensation of the specified positive-semidefinite cell matrices; it does not imply \(\mathbb K_{PP}\succeq\widehat{\mathbb K}\) for an arbitrary learned extension.
+The additive variant applies \(Q_g+\mathcal B_f\). The deflated variants use a coarse initial solution and a projected fine correction. The reference inequality \(\mathbb K_{PP}\succeq\mathbb K\) holds for exact condensation of the specified positive-semidefinite cell matrices; it does not imply \(\mathbb K_{PP}\succeq\widehat{\mathbb K}\) for an arbitrary learned extension.
 
 ### S1.2. Two-cell diagnostic configuration
 
 The target cell occupies \([0,1]^3\). In configuration x, the neighbour is translated by \((-1,0,0)\), its far face \(x=-1\) is clamped, and the six face loads act on the plane \(y=0\). In configuration y, the neighbour is translated by \((0,-1,0)\), its far face \(y=-1\) is clamped, and the face loads act on \(x=0\). The six cases comprise the three Cartesian traction directions applied to the target face and the same three directions applied to the neighbour face. The consistent-load implementation integrates the Q2 surface shape functions, normalizes each nodal load to unit resultant before support elimination, and then eliminates clamped entries. Three similarly normalised consistent tractions on the target cut surface are reported separately when present. Non-box cut-band coordinates remain private free variables. The continuous-thickness neighbour shares the prescribed thickness values on the common face.
 
-The pair accuracy calculation uses the Cholesky factor of the exact assembled reference stiffness as the PCG preconditioner. The supplied implementation uses a relative recursive-residual tolerance of \(10^{-10}\), and the reported runs allow at most 400 iterations. The saved result summaries retain the iteration count but omit the residual returned by the solver. These settings concern the pair accuracy comparison; Table ST09 uses the separately specified deployment preconditioners.
+The pair accuracy calculation uses the Cholesky factor of the exact assembled reference stiffness as the PCG preconditioner. The supplied implementation uses a relative recursive-residual tolerance of \(10^{-10}\), and the reported runs allow at most 400 iterations. The saved result summaries retain the iteration count but omit the residual returned by the solver. These settings concern the pair accuracy comparison.
 
 The implementation also contains a uniform-nodal-force branch. The comparisons identified as consistent face loads use the integrated branch; the two branches must retain distinct load definitions in any reuse of the records.
 
@@ -733,50 +594,9 @@ These entries reproduce the previously saved algebraic check; they are not TPMS 
 
 **Figure S03. Field-based sensitivity-error diagnostics.** (a) Paired mean energy and sensitivity errors for consistent-traction and nodal-force responses, using six B cells and five C cells. (b) Consistent-traction linear-term norm share \(\|D_1\|_F/(\|D_1\|_F+\|D_2\|_F)\), where \(D_1+D_2\) is the sensitivity-error matrix over all eight design components and evaluated directions. (c,d) Shares of absolute elementwise sensitivity-error contributions and element counts in four mutually exclusive material-volume-fraction groups for B under consistent tractions. Each error group sums absolute contributions over its elements, design components and directions before normalisation by the total. Open markers and hatched bars in (a,b) identify C; its H2 observation is unavailable.
 
-![Figure S04](figures/S04_iterative_solves.png)
-
-**Figure S04. Recorded assembled iterative solves.** Rows show a cell pair and repeated-cell \(2\times2\times2\) and \(3\times3\times3\) arrays; columns show iteration counts, times and relative residuals. Filled markers give recursive residuals and open markers explicitly recomputed residuals using the operator applied in the same run. Crosses identify the 300 s time limit, and the dashed residual reference is \(10^{-8}\). Diag, \(K_{PP}\), Add, Bal and Def denote diagonal, assembled retained-block, additive, balanced two-level and deflated preconditioning, respectively. Here \(K_{PP}\) denotes the fine action \(\mathbb K_{PP}^{-1}\) on the assembled retained system; the precise actions are given in Supplementary Note S1. The learned operator uses predictor D. These historical RTX 5090 runs enabled TF32 convolution. The pair joins G1 and G3, while each array repeats G3.
-
 ## Supplementary Note S3. Geometry visualisation
 
 The surfaces in Figure 1 are sampled on a grid with 97 positions per unit-box axis using the eight corner band parameters and cut-plane data of U1, M1, H1 and H2. The displayed percentages describe the retained macro-domain volume, before intersection with the thin-wall material. This surface sampling is used for visualisation; the mechanical discretisation has 32 background elements per axis and continuous Q2 displacement functions.
-
-## Supplementary Note S4. Historical deployment study with the uncorrected predictor D
-
-This note preserves the deployment study of an earlier, uncorrected predictor D (TF32 convolutions, no interior correction). It documents batch-size and solver effects but does not describe the cost of the corrected predictor, which Section 6.10 of the main text reports against the conventional condensation route.
-
-### S4.1. Workload dependence of computational cost (predictor D)
-
-The computational benefit of a reusable substructure depends on both preparation and the subsequent queries. Exact condensation requires an interior factorisation, which can be reused across retained displacement vectors. A learned action requires geometry-dependent preparation followed by extension, stiffness and transpose-extension operations. We examine this trade-off for the uncorrected predictor D on an NVIDIA GeForce RTX 5090. Across four cells, double-precision interior factorisation takes 0.64–8.6 s (Figure S05).
-
-Batch size changes the relative application cost. D is faster for a single direction in every cell, whereas the exact factor is faster for batches of 64 directions (Table ST17a). The benefit of a cheap individual action also depends on the assembled iteration. With the balanced two-level preconditioner of Supplementary Note S1, the learned two-cell pair has a lower elapsed solve time than its exact counterpart, while both learned repeated-cell arrays require more time (Table ST17b). For the 27-cell array, the times are 222 s and 94.6 s, respectively.
-
-The accuracy attained at those stopping points is part of the cost comparison. In the 27-cell learned solve, the recursive residual reaches \(9.59\times10^{-9}\), but recomputation with the same learned operator gives \(8.99\times10^{-3}\), and the maximum compliance error is 1.86%. Both residuals of the exact solve are near \(10^{-8}\). Moreover, every learned deflated solve reaches the 300 s limit with a large residual (Figure S04 and Table ST09). These results show that action cost, solver convergence and response accuracy must be assessed together. Tables ST08, ST10 and ST14 give the other solver choices, memory definitions and setup components. The additional setup and coarse solves used to correct B in Section 6.5 require separate timing to determine their computational benefit.
-
-![Figure S05](figures/F07_cost.png)
-
-**Figure S05. Preparation and application cost of predictor D.** (a–c) Time per complete batch of one, 16 and 64 vectors on four cells, comparing exact interior solves with learned sparse-matrix (CSR) and fused implementations. The fp32 factor uses three fp64 iterative-refinement steps (IR). (d) Interior factorisation, network caching and preparation of the reusable learned action. (e) Sparse-stiffness storage and free-memory changes associated with the exact factor and learned state; the allocation measures are not additive. Measurements use an NVIDIA GeForce RTX 5090, with three timed repetitions after one warm-up. Memory is expressed in GiB. The supplementary geometry key identifies G1–G4.
-
-**Table ST17. Application cost and accuracy attained in assembled solves**
-
-**ST17a. Application time across four cells (ms per complete batch)**
-
-| Directions per batch | Exact double precision | Learned predictor D |
-| --- | --- | --- |
-| 1 | 7.9–73 | 6.2–15 |
-| 64 | 35.4–316 | 162–742 |
-
-Ranges give the minimum and maximum over the same four cells. Table ST14 includes the individual timings, batches of 16 and the fused implementation.
-
-**ST17b. Assembly solves with the balanced two-level preconditioner**
-
-| Assembly | Free DOFs | Exact: iterations / s | Learned: iterations / s | Learned recomputed residual | Max. compliance error (%) |
-| --- | --- | --- | --- | --- | --- |
-| Two-cell pair | 36,264 | 169 / 27.9 | 204 / 21.7 | \(2.07\times10^{-2}\) | 3.41 |
-| \(2\times2\times2\) | 93,696 | 119 / 22.7 | 135 / 59.8 | \(7.89\times10^{-3}\) | 1.88 |
-| \(3\times3\times3\) | 294,516 | 122 / 94.6 | 138 / 222 | \(8.99\times10^{-3}\) | 1.86 |
-
-The learned measurements use D on an NVIDIA GeForce RTX 5090. The arrays repeat one uncut cell; each assembly is subjected to three consistent face loads and three random loads. Residuals are recomputed with the operator used for the solve, and compliance errors use the exact-operator reference. Times correspond to the attained residuals and response errors shown here. Supplementary Note S1 defines the preconditioner, and Tables ST09 and ST14 give the full solver comparison and setup costs.
 
 ## Supplementary Note S5. Local correction records and operator verification
 
