@@ -18,6 +18,7 @@ mkdir -p $R
 st "CHAIN_WAIT DF_PILOT_DONE_20260928 pid=$$"
 until grep -q DF_PILOT_DONE_20260928 $ST; do sleep 300; done
 for i in $(seq 1 30); do pgrep -f chain_dfp.sh > /dev/null || break; sleep 60; done     # pilot chain gone (<= 30 min)
+until grep -qE "^[0-9:]+ DF_PILOT_DONE_20260928" $ST; do sleep 300; done   # anchored wait (fix: CHAIN_WAIT line contains the marker name)
 sleep 60
 st "CHAIN_START pid=$$"
 source /root/autodl-tmp/OPL/S1/env_gpu.sh
