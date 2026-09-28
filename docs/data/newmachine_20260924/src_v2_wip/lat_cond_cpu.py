@@ -10,7 +10,12 @@ Per repetition (one process):
   3 condensed assembly: K_hat = sum_i A_i^T S_i A_i over the free retained DOFs, as an upper-triangle CSR in the
     substructuring order (every cell's private DOFs cell by cell, then the DOFs shared by several cells); built in two
     passes (exact structure, then values cell by cell, each S_i released right after its contribution).
-  4 condensed solve: SPARSE Cholesky of this block-sparse matrix by MKL PARDISO (mtype 2, the tuned iparm) with the
+  4 condensed solve, --solver block (default): exact block Cholesky of the block-sparse condensed matrix in the
+    substructuring order with dense MKL kernels -- per cell the private retained block of S_i is factorised in place
+    (dpotrf), W = L^-1 S_ps (dtrsm), the dense interface matrix over the shared DOFs receives S_ss - W^T W (dsyrk) and the
+    condensed loads; the interface is factorised and solved, then back-substitution per cell. Memory ~ the held S_i plus the
+    dense interface; the condensed matrix is never stored as CSR (step 3 is skipped).
+    --solver pardiso: SPARSE Cholesky of this block-sparse matrix by MKL PARDISO (mtype 2, the tuned iparm) with the
     substructuring order supplied as the fill-reducing ordering (iparm(5) = 1, identity perm on the reordered matrix):
     cell-private blocks are eliminated first (dense supernodes = exact static condensation of each cell's private
     retained DOFs), then the shared interface. METIS is not run on the ~1e9-nonzero condensed graph. The 32-bit PARDISO
@@ -179,6 +184,110 @@ def add_cell(st, i, S, data, ind):
             data[ip[r_] + np.searchsorted(row, N[a:])] += vals
 
 
+# ------------------------------------------------------------------ dense MKL kernels (row-major, in place)
+RM, NT, TR, LO, NU, LE = 101, 111, 112, 122, 131, 141
+
+
+def _mkl():
+    L = PD.lib()
+    L.LAPACKE_dpotrf.argtypes = [ctypes.c_int, ctypes.c_char, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+    L.LAPACKE_dpotrf.restype = ctypes.c_int
+    L.cblas_dtrsm.argtypes = [ctypes.c_int] * 5 + [ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_void_p, ctypes.c_int,
+                                                    ctypes.c_void_p, ctypes.c_int]
+    L.cblas_dsyrk.argtypes = [ctypes.c_int] * 3 + [ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_void_p, ctypes.c_int,
+                                                    ctypes.c_double, ctypes.c_void_p, ctypes.c_int]
+    L.cblas_dgemm.argtypes = [ctypes.c_int] * 3 + [ctypes.c_int] * 3 + [ctypes.c_double, ctypes.c_void_p, ctypes.c_int,
+                                                                        ctypes.c_void_p, ctypes.c_int, ctypes.c_double,
+                                                                        ctypes.c_void_p, ctypes.c_int]
+    return L
+
+
+def potrf(A):
+    """In-place lower Cholesky of a C-contiguous SPD matrix (MKL LAPACKE_dpotrf, row-major)."""
+    n = A.shape[0]
+    info = _mkl().LAPACKE_dpotrf(RM, b'L', n, A.ctypes.data, n)
+    if info != 0:
+        raise np.linalg.LinAlgError(f'dpotrf info {info}')
+
+
+def trsm(L_, B, trans=False):
+    """B <- L^-1 B (trans: L^-T B), L lower n x n, B n x m, both C-contiguous."""
+    n, m = B.shape
+    _mkl().cblas_dtrsm(RM, LE, LO, TR if trans else NT, NU, n, m, 1.0, L_.ctypes.data, n, B.ctypes.data, m)
+
+
+def syrk_sub(W, C):
+    """C <- C - W^T W (lower triangle of C updated; then symmetrised)."""
+    k, n = W.shape
+    _mkl().cblas_dsyrk(RM, LO, TR, n, k, -1.0, W.ctypes.data, n, 1.0, C.ctypes.data, n)
+    iu = np.triu_indices(n, 1)
+    C[iu] = C.T[iu]
+
+
+def gemm_tn_sub(W, Y, Z):
+    """Z <- Z - W^T Y (W k x n, Y k x m, Z n x m)."""
+    k, n = W.shape; m = Y.shape[1]
+    _mkl().cblas_dgemm(RM, TR, NT, n, m, k, -1.0, W.ctypes.data, n, Y.ctypes.data, m, 1.0, Z.ctypes.data, m)
+
+
+def gemm_nn_sub(W, U, Z):
+    """Z <- Z - W U (W k x n, U n x m, Z k x m)."""
+    k, n = W.shape; m = U.shape[1]
+    _mkl().cblas_dgemm(RM, NT, NT, k, m, n, -1.0, W.ctypes.data, n, U.ctypes.data, m, 1.0, Z.ctypes.data, m)
+
+
+def block_solve(gl, S_list, F, rec, margin):
+    """Exact block (substructuring-order) Cholesky of the condensed matrix sum_i A_i^T S_i A_i with dense MKL kernels:
+    per cell, the private block S_pp is factorised in place, W = L_pp^-1 S_ps, the interface receives S_ss - W^T W and the
+    condensed load -W^T L_pp^-1 f_p; the dense interface matrix (shared DOFs) is factorised and solved; back-substitution
+    u_p = L_pp^-T (L_pp^-1 f_p - W u_s). S_list entries are consumed (released) one by one."""
+    nfree = F.shape[0]; k = F.shape[1]
+    mult = np.zeros(nfree, np.int64)
+    for g in gl:
+        mult[g[g >= 0]] += 1
+    shared = np.flatnonzero(mult > 1); n_if = len(shared)
+    spos = np.full(nfree, -1, np.int64); spos[shared] = np.arange(n_if)
+    rec.update(n_shared=int(n_if), n_private=int(nfree - n_if), interface_dense_GiB=8 * n_if * n_if / PD.GIB)
+    av = PD.avail_gib()
+    if 8 * n_if * n_if / PD.GIB + margin > av:
+        rec['skipped'] = f"interface dense {8 * n_if * n_if / PD.GIB:.2f} GiB + margin > available {av:.2f} GiB"
+        return None
+    Kif = np.zeros((n_if, n_if)); Fif = np.ascontiguousarray(F[shared])
+    keep = []
+    PD.reset_peak()
+    t = time.perf_counter()
+    for i, g in enumerate(gl):
+        S = S_list[i]; S_list[i] = None
+        v = np.flatnonzero(g >= 0); gv = g[v]
+        p = v[mult[gv] == 1]; s_ = v[mult[gv] > 1]
+        App = np.ascontiguousarray(S[np.ix_(p, p)]); Aps = np.ascontiguousarray(S[np.ix_(p, s_)])
+        Ass = np.ascontiguousarray(S[np.ix_(s_, s_)])
+        del S; gc.collect()
+        potrf(App)
+        trsm(App, Aps)                                                           # W = L^-1 A_ps
+        syrk_sub(Aps, Ass)                                                       # A_ss - W^T W
+        gs = spos[g[s_]]
+        Kif[np.ix_(gs, gs)] += Ass
+        yp = np.ascontiguousarray(F[g[p]]); trsm(App, yp)                        # y = L^-1 f_p
+        Z = np.zeros((len(s_), k)); gemm_tn_sub(Aps, yp, Z)                      # -W^T y
+        np.add.at(Fif, gs, Z)
+        keep.append((g[p], App, Aps, yp, gs))
+    rec['private_elimination_s'] = time.perf_counter() - t
+    rec['held_factor_GiB'] = sum(8 * (x[1].size + x[2].size) for x in keep) / PD.GIB
+    t = time.perf_counter()
+    potrf(Kif); trsm(Kif, Fif); trsm(Kif, Fif, trans=True)
+    rec['interface_factor_solve_s'] = time.perf_counter() - t
+    U = np.zeros_like(F); U[shared] = Fif
+    t = time.perf_counter()
+    for gp, L_, W, yp, gs in keep:
+        gemm_nn_sub(W, np.ascontiguousarray(Fif[gs]), yp)
+        trsm(L_, yp, trans=True)
+        U[gp] = yp
+    rec['back_substitution_s'] = time.perf_counter() - t
+    rec['block_peak_rss_GiB'] = PD.peak_rss_gib()
+    return U
+
+
 # ------------------------------------------------------------------ main
 def reference(files, nl):
     for f in files:
@@ -205,6 +314,7 @@ def main(argv):
     ap.add_argument('--body', default='/root/autodl-tmp/OPL/S4/body'); ap.add_argument('--iparm-file', default=None)
     ap.add_argument('--margin-gib', type=float, default=4.0); ap.add_argument('--n-random', type=int, default=3)
     ap.add_argument('--ref', default=''); ap.add_argument('--ilp64', action='store_true')
+    ap.add_argument('--solver', default='block', choices=['block', 'pardiso'])
     a = ap.parse_args(argv)
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     iparm = PD.tuned_iparm()
@@ -254,54 +364,69 @@ def main(argv):
     gl = [lat.fmap[lat.idx[i]] for i in range(len(lat.geoms))]
     cases = [G.case for G in lat.geoms]
     rec.update(free_retained=nfree, loads=lat.labels)
-    # 3. condensed assembly
-    t = time.perf_counter(); st = structure(gl, nfree); rec['structure_s'] = time.perf_counter() - t
-    nnz = int(st['indptr'][-1])
-    ilp64 = a.ilp64 or nnz >= 2 ** 31 - 1
-    isz = 8 if ilp64 else 4
-    rec.update(nnz_upper=nnz, n_private=int(st['n_priv']), n_shared=int(st['n_shared']), signatures=st['signatures'],
-               interface='pardiso_64 (int64)' if ilp64 else 'pardiso (int32)',
-               csr_GiB=(nnz * (8 + isz) + (nfree + 1) * 8) / PD.GIB)
-    av = PD.avail_gib(); rec['avail_before_assembly_GiB'] = av
-    if rec['csr_GiB'] + a.margin_gib > av:
-        rec['skipped'] = f"condensed CSR {rec['csr_GiB']:.2f} GiB + margin > available {av:.2f} GiB"
-        save(); return
-    PD.reset_peak()
-    t = time.perf_counter(); ind = fill_indices(st, np.int64 if ilp64 else np.int32); rec['indices_s'] = time.perf_counter() - t
-    data = np.zeros(nnz)
-    t = time.perf_counter()
-    for i, cs in enumerate(cases):
-        add_cell(st, i, S_of.pop(cs), data, ind); gc.collect()
-    rec['values_s'] = time.perf_counter() - t
-    rec['assembly_peak_rss_GiB'] = PD.peak_rss_gib()
-    ip = st['indptr'] if ilp64 else st['indptr'].astype(np.int32)
-    A = sp.csr_matrix((data, ind, ip), shape=(nfree, nfree))
-    newF = np.zeros_like(F); newF[st['new']] = F
-    save()
-    # 4. condensed sparse Cholesky, substructuring order (identity perm on the reordered matrix)
-    ipc = dict(iparm); ipc[5] = 1; ipc[36] = 0
-    perm = np.arange(nfree)
-    H = handle(A, ipc, ilp64, perm=perm)
-    PD.reset_peak()
-    rec['analysis_s'] = H.phase(11)
-    rec['predicted_GiB'] = H.mem_GiB()
-    av = PD.avail_gib(); rec['avail_before_factor_GiB'] = av
-    if rec['predicted_GiB']['total'] + a.margin_gib > av:
-        rec['skipped'] = f"condensed factor: predicted {rec['predicted_GiB']['total']:.2f} GiB + margin > available {av:.2f} GiB"
-        H.release(); save(); return
-    rec['factor_s'] = H.phase(22)
-    b = np.asfortranarray(newF)
-    t = time.perf_counter(); X = H.solve(b); rec['solve_s'] = time.perf_counter() - t
-    rec['pardiso'] = H.info(); rec['factor_solve_peak_rss_GiB'] = PD.peak_rss_gib()
-    H.release()
-    res = PD.sym_upper_matvec(A, X) - b
-    rec['rel_residual'] = [float(np.linalg.norm(res[:, j]) / np.linalg.norm(b[:, j])) for j in range(b.shape[1])]
-    rec['compliance'] = [float(newF[:, j] @ X[:, j]) for j in range(b.shape[1])]
+    rec['solver'] = a.solver
+    if a.solver == 'block':
+        rec['solver_description'] = ('exact block Cholesky of the block-sparse condensed matrix in the substructuring order '
+                                     '(cell-private retained DOFs eliminated per cell, then the dense shared-DOF interface), '
+                                     'dense MKL kernels (dpotrf, dtrsm, dsyrk, dgemm)')
+        S_list = [S_of.pop(c) for c in cases]
+        t = time.perf_counter()
+        U = block_solve(gl, S_list, F, rec, a.margin_gib)
+        if U is None:
+            save(); return
+        rec['condensed_s'] = time.perf_counter() - t
+        rec['compliance'] = [float(F[:, j] @ U[:, j]) for j in range(F.shape[1])]
+        b = F
+    else:
+        # 3. condensed assembly
+        t = time.perf_counter(); st = structure(gl, nfree); rec['structure_s'] = time.perf_counter() - t
+        nnz = int(st['indptr'][-1])
+        ilp64 = a.ilp64 or nnz >= 2 ** 31 - 1
+        isz = 8 if ilp64 else 4
+        rec.update(nnz_upper=nnz, n_private=int(st['n_priv']), n_shared=int(st['n_shared']), signatures=st['signatures'],
+                   interface='pardiso_64 (int64)' if ilp64 else 'pardiso (int32)',
+                   csr_GiB=(nnz * (8 + isz) + (nfree + 1) * 8) / PD.GIB)
+        av = PD.avail_gib(); rec['avail_before_assembly_GiB'] = av
+        if rec['csr_GiB'] + a.margin_gib > av:
+            rec['skipped'] = f"condensed CSR {rec['csr_GiB']:.2f} GiB + margin > available {av:.2f} GiB"
+            save(); return
+        PD.reset_peak()
+        t = time.perf_counter(); ind = fill_indices(st, np.int64 if ilp64 else np.int32); rec['indices_s'] = time.perf_counter() - t
+        data = np.zeros(nnz)
+        t = time.perf_counter()
+        for i, cs in enumerate(cases):
+            add_cell(st, i, S_of.pop(cs), data, ind); gc.collect()
+        rec['values_s'] = time.perf_counter() - t
+        rec['assembly_peak_rss_GiB'] = PD.peak_rss_gib()
+        ip = st['indptr'] if ilp64 else st['indptr'].astype(np.int32)
+        A = sp.csr_matrix((data, ind, ip), shape=(nfree, nfree))
+        newF = np.zeros_like(F); newF[st['new']] = F
+        save()
+        # 4. condensed sparse Cholesky, substructuring order (identity perm on the reordered matrix)
+        ipc = dict(iparm); ipc[5] = 1; ipc[36] = 0
+        perm = np.arange(nfree)
+        H = handle(A, ipc, ilp64, perm=perm)
+        PD.reset_peak()
+        rec['analysis_s'] = H.phase(11)
+        rec['predicted_GiB'] = H.mem_GiB()
+        av = PD.avail_gib(); rec['avail_before_factor_GiB'] = av
+        if rec['predicted_GiB']['total'] + a.margin_gib > av:
+            rec['skipped'] = f"condensed factor: predicted {rec['predicted_GiB']['total']:.2f} GiB + margin > available {av:.2f} GiB"
+            H.release(); save(); return
+        rec['factor_s'] = H.phase(22)
+        b = np.asfortranarray(newF)
+        t = time.perf_counter(); X = H.solve(b); rec['solve_s'] = time.perf_counter() - t
+        rec['pardiso'] = H.info(); rec['factor_solve_peak_rss_GiB'] = PD.peak_rss_gib()
+        H.release()
+        res = PD.sym_upper_matvec(A, X) - b
+        rec['rel_residual'] = [float(np.linalg.norm(res[:, j]) / np.linalg.norm(b[:, j])) for j in range(b.shape[1])]
+        rec['compliance'] = [float(newF[:, j] @ X[:, j]) for j in range(b.shape[1])]
     rf, mt, rc = reference([x for x in a.ref.split(',') if x], b.shape[1])
     if rc is not None:
         rec['reference'] = dict(file=rf, mtype=mt, compliance=rc,
                                 rel_diff=[abs(x / y - 1) for x, y in zip(rec['compliance'], rc)])
-    rec['condensed_s'] = rec['structure_s'] + rec['indices_s'] + rec['values_s'] + rec['analysis_s'] + rec['factor_s'] + rec['solve_s']
+    if a.solver == 'pardiso':
+        rec['condensed_s'] = rec['structure_s'] + rec['indices_s'] + rec['values_s'] + rec['analysis_s'] + rec['factor_s'] + rec['solve_s']
     rec['front_end_s'] = sum(c['setup_s'] + c['assembly_s'] for c in rec['cells'].values())
     rec['schur_s'] = sum(c['schur']['seconds'] for c in rec['cells'].values())
     rec['total_s'] = time.perf_counter() - t_all
@@ -341,6 +466,10 @@ def selftest():
         H = handle(A, ip, ilp64, perm=np.arange(nfree)); H.phase(11); H.phase(22); X = H.solve(np.asfortranarray(fn)); H.release()
         e_sol = float(np.abs(X[st['new']] - np.linalg.solve(K, f)).max() / np.abs(np.linalg.solve(K, f)).max())
         out['ilp64' if ilp64 else 'lp64'] = dict(assembly_err=e_asm, solve_err=e_sol)
+    f = rng.standard_normal((nfree, 3)); r = {}
+    Ub = block_solve(gl, [S.copy() for S in Ss], f, r, 0.0)
+    ref = np.linalg.solve(K, f)
+    out['block'] = dict(solve_err=float(np.abs(Ub - ref).max() / np.abs(ref).max()), n_shared=r['n_shared'])
     print(json.dumps(out))
 
 

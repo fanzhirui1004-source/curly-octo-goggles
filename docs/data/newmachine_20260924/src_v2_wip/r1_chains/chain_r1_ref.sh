@@ -71,3 +71,9 @@ for stage in sweep studies; do for c in $CASES; do
   $PY -u ref_valid2.py $OUT $c --ns $NS --stage $stage --headroom-gib 45 $SEED >> $LOGD/ref_${c}_${stage}.log 2>&1
   rc=$?; [ $rc = 0 ] || RC=$rc; st "$stage $c rc=$rc $(( $(date +%s)-t0 ))s"
 done; done
+# 5. (appended while running) one more pass over guard-refused solves, same 45 GiB headroom, before the marker
+if [ "$SMOKE" != 1 ]; then for c in $CASES; do
+  waitmem 60; t0=$(date +%s)
+  $PY -u ref_valid2.py $OUT $c --ns $NS --stage sweep --headroom-gib 45 --retry-errors >> $LOGD/ref_${c}_retry45.log 2>&1
+  rc=$?; st "retry45 $c rc=$rc $(( $(date +%s)-t0 ))s"
+done; fi
