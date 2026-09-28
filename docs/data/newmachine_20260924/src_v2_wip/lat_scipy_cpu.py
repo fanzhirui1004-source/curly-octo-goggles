@@ -11,7 +11,7 @@ RLIMIT_AS = --as-gib (address-space limit: allocations beyond it fail inside the
 --wall-s enforced by the child itself (signal.alarm; SIGALRM's default action ends the child). A memory watchdog thread in
 the child also ends it (exit code 3, record written first) when its RSS exceeds --watch-gib. The parent records the child's
 return code, the failure mode (ok / MemoryError / other exception / wall limit / watchdog), wall time and the child's peak RSS
-(RUSAGE_CHILDREN); on success compliance per load, relative residual, and the relative compliance difference to --ref.
+(RUSAGE_CHILDREN: the maximum over the children so far; a child that exits normally also records its own); on success compliance per load, relative residual, and the relative compliance difference to --ref.
 Usage: lat_scipy_cpu.py <out.json> <layout.json> [--body /root/autodl-tmp/OPL/S4/body] [--as-gib 70] [--watch-gib 70]
        [--wall-s 7200] [--ref f1.json,...] [--keep-npz-dir d] [--variants colamd,mmd]
        lat_scipy_cpu.py --child <npz> <child_out.json> <wall_s> <watch_gib> <variant>
@@ -133,7 +133,7 @@ def main(argv):
     BX.dev = TL.dev
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     L = json.loads(Path(a.layout).read_text())
-    rec = dict(layout=L['name'], route='scipy.sparse.linalg.spsolve (default), full symmetric unscaled CSC, single thread',
+    rec = dict(layout=L['name'], route='scipy.sparse.linalg.splu (SuperLU), factor once + solve 6 loads, full symmetric unscaled CSC, single thread',
                threads=dict(OMP=os.environ.get('OMP_NUM_THREADS'), MKL=os.environ.get('MKL_NUM_THREADS')),
                loadavg_start=list(os.getloadavg()), cells={})
     Cs, lay = [], {}
