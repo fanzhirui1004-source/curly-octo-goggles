@@ -8,7 +8,7 @@ The Markdown files remain the editing source. This script:
   - converts the body with pandoc (tex_math_single_backslash keeps \\( \\) and \\[ \\tag{} \\] as written);
   - inserts authors.tex (author block) into the front matter and endmatter.tex (declarations) after the main text;
   - orders the document as main text, declarations, appendices, references (Elsevier convention);
-  - sets Table 5 (cost comparison, nine columns) on a landscape page;
+  - sets Table 5 (lattice-level cost comparison, seven columns) on a landscape page;
   - sets the reference list as an unnumbered section in author-year form.
 Usage: python3 build_tex.py   (writes main.tex next to this file; compile with pdflatex twice)"""
 import re, subprocess
@@ -122,8 +122,8 @@ def main():
         size = '\\scriptsize' if cols >= 8 else ('\\footnotesize' if cols >= 6 else '\\small')
         return '{' + size + '\n' + m.group(0) + '}'
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
-    tex = landscape(tex, 'Cost per cell of the conventional and learned routes',
-                    widths=(.09, .15, .11, .13, .13, .16, .19, .12))
+    tex = landscape(tex, 'Cost of one design iteration of the lattices',
+                    widths=(.12, .14, .17, .17, .13, .11, .16))
     (HERE / 'main.tex').write_text(tex)
     print('main.tex', len(tex))
 

@@ -40,7 +40,7 @@
   city={\textcolor{red}{[City]}}, country={\textcolor{red}{[Country]}}}
 
 \begin{abstract}
-Static condensation of cut thin-walled Schwarz-P-type triply periodic minimal surface cells needs one interior solve for each of their tens of thousands of retained coordinates. We approximate the condensed operator on the complete retained space by neural-initialised condensation with equilibrium correction (NICE): a geometry-conditioned network supplies an initial interior field, and a fixed, geometry-specific multilevel correction reduces its equilibrium residual. As for any admissible extension, the matrix-free condensed stiffness is symmetric, positive semidefinite, reproduces rigid motion and is bounded below by the exact Schur complement; the correction cannot increase its error. Following the interior error through energy participation and the stiffness derivative explains why accurate compliance need not imply accurate local thickness sensitivity. Trained through the correction, NICE attains a mean directional energy error of 0.074\% under consistent tractions on 80 validation geometries not used in training (0.077\% on the 60 not used for weight selection; largest geometry mean 0.65\%). In fourteen well-posed two-cell assemblies of development cells, its face-load compliance and eight-corner sensitivity errors stay below 0.06\% and 0.7\% {[}PENDING E6{]}, whereas the uncorrected network exceeds 3\% sensitivity error in four of eleven. In two eight-cell lattices of learned cells, these errors stay within 0.015\% and 0.15\%. On one GPU, NICE condenses a cell about 9 to 29 times faster than sparse direct condensation on 16 host cores, and an eight-cell design iteration needs at most 9.2 GiB of device memory, against 67--81 GiB for the whole-lattice Cholesky factor {[}PENDING E1{]}. {[}Placeholder: quantitative outcome of the Section 6.11 design example.{]}
+Static condensation of cut thin-walled Schwarz-P-type triply periodic minimal surface cells needs one interior solve for each of their tens of thousands of retained coordinates. We approximate the condensed operator on the complete retained space by neural-initialised condensation with equilibrium correction (NICE): a geometry-conditioned network supplies an initial interior field, and a fixed, geometry-specific multilevel correction reduces its equilibrium residual. As for any admissible extension, the matrix-free condensed stiffness is symmetric, positive semidefinite, reproduces rigid motion and is bounded below by the exact Schur complement; the correction cannot increase its error. Following the interior error through energy participation and the stiffness derivative explains why accurate compliance need not imply accurate local thickness sensitivity. Trained through the correction, NICE attains a mean directional energy error of 0.074\% under consistent tractions on 80 validation geometries not used in training (0.077\% on the 60 not used for weight selection; largest geometry mean 0.65\%). In fourteen well-posed two-cell assemblies of development cells, its face-load compliance and eight-corner sensitivity errors stay below 0.06\% and 0.7\% {[}PENDING E6{]}, whereas the uncorrected network exceeds 3\% sensitivity error in four of eleven. In two eight-cell lattices of learned cells, these errors stay within 0.015\% and 0.15\%. An eight-cell design iteration takes 81--110 s and 8.5--9.2 GiB of GPU memory on one RTX 5090, against {[}PENDING E1{]} s and a 67--81 GiB Cholesky factor for the whole-lattice direct solution on 16 CPU cores. {[}Placeholder: quantitative outcome of the Section 6.11 design example.{]}
 \end{abstract}
 \begin{keyword}
 static condensation \sep neural-initialised condensation \sep equilibrium correction \sep cut finite elements \sep TPMS lattices \sep thickness sensitivity \sep thickness optimisation
@@ -61,7 +61,7 @@ Three further lines of work bear on this construction. First, component reduced-
 
 Following the error of this construction to the structural response shows that energy participation can mask the interior error of a weakly participating cell in the compliance while its thickness sensitivity, weighted by the stiffness derivative, remains inaccurate. This is the distinction on which goal-oriented error estimation rests \href{https://doi.org/10.1017/S0962492901000010}{Becker \& Rannacher (2001)}, \href{https://doi.org/10.1016/S0898-1221(00)00317-5}{Oden \& Prudhomme (2001)}, and it has been observed for approximate reanalysis \href{https://doi.org/10.1002/nme.2536}{Amir et al. (2009)}. We quantify it for learned substructures and adopt joint accuracy of compliance and local sensitivity as the design criterion.
 
-Any admissible, rigid-motion-reproducing extension evaluated in the energy form, as in static condensation \href{https://doi.org/10.2514/3.2874}{Guyan (1965)}, multiscale finite elements \href{https://doi.org/10.1006/jcph.1997.5682}{Hou \& Wu (1997)}, component reduced-basis methods \href{https://doi.org/10.1051/m2an/2012022}{Huynh et al. (2013)} and learned shape-function substructures \href{https://doi.org/10.1016/j.eml.2023.102041}{Huang et al. (2023)}, yields a symmetric positive semidefinite condensed stiffness with the rigid kernel, bounded below by the Schur complement with a quadratic excess \href{https://doi.org/10.1007/b137868}{Toselli \& Widlund (2005)}. The correction inherits the energy properties of Chebyshev smoothing and Galerkin coarse projection \href{https://doi.org/10.1007/BF01386013}{Golub \& Varga (1961)}, \href{https://doi.org/10.1137/1034116}{Xu (1992)}, \href{https://doi.org/10.1090/S0894-0347-02-00398-3}{Xu \& Zikatanov (2002)}. The contributions of this work are threefold. (i) NICE: a geometry-conditioned, matrix-free extension, exactly linear in the retained displacement, on the complete retained space of cut cells in a stabilised cut finite element model, including the cut band, composed with a fixed, geometry-specific multilevel correction inside the energy form together with its complete transpose. (ii) Training the network through that correction, so that it supplies the initial field that the correction completes {[}PENDING E2{]}. (iii) An error analysis for learned substructures that follows the interior error to compliance, through a load-specific participation bound, and to the eight-corner sensitivity, through the stiffness derivative and the amplification of displacement error into energy error in thin walls; and evidence that NICE meets the resulting joint criterion on 80 validation geometries, fourteen two-cell configurations and two eight-cell lattices, with an ablation of the retained representation and a cost comparison {[}Placeholder: and a thickness design, Section 6.11{]}.
+Any admissible, rigid-motion-reproducing extension evaluated in the energy form, as in static condensation \href{https://doi.org/10.2514/3.2874}{Guyan (1965)}, multiscale finite elements \href{https://doi.org/10.1006/jcph.1997.5682}{Hou \& Wu (1997)}, component reduced-basis methods \href{https://doi.org/10.1051/m2an/2012022}{Huynh et al. (2013)} and learned shape-function substructures \href{https://doi.org/10.1016/j.eml.2023.102041}{Huang et al. (2023)}, yields a symmetric positive semidefinite condensed stiffness with the rigid kernel, bounded below by the Schur complement with a quadratic excess \href{https://doi.org/10.1007/b137868}{Toselli \& Widlund (2005)}. The correction inherits the energy properties of Chebyshev smoothing and Galerkin coarse projection \href{https://doi.org/10.1007/BF01386013}{Golub \& Varga (1961)}, \href{https://doi.org/10.1137/1034116}{Xu (1992)}, \href{https://doi.org/10.1090/S0894-0347-02-00398-3}{Xu \& Zikatanov (2002)}. The contributions of this work are threefold. (i) NICE: a geometry-conditioned, matrix-free extension, exactly linear in the retained displacement, on the complete retained space of cut cells in a stabilised cut finite element model, including the cut band, composed with a fixed, geometry-specific multilevel correction inside the energy form together with its complete transpose. (ii) Training the network through that correction, so that it supplies the initial field that the correction completes {[}PENDING E2{]}. (iii) An error analysis for learned substructures that follows the interior error to compliance, through a load-specific participation bound, and to the eight-corner sensitivity, through the stiffness derivative and the amplification of displacement error into energy error in thin walls; and evidence that NICE meets the resulting joint criterion on 80 validation geometries, fourteen two-cell configurations and two eight-cell lattices, with an ablation of the retained representation and a lattice-level cost comparison with the whole-lattice direct solution and conventional exact condensation {[}Placeholder: and a thickness design, Section 6.11{]}.
 
 Sections 2--5 develop the method and its error relations, Section 6 reports the numerical examples, and Section 7 discusses them and states the limitations.
 
@@ -158,7 +158,7 @@ Smoothing interval & \([b/30,b]\), with \(b=1.05\widehat\lambda_{\max}\) estimat
 Principal interior coarse space & Trilinear vector functions on a \(17^3\)-vertex grid, restricted to the internal degrees of freedom \\
 Thickness-difference step & \(h_c=10^{-5}\tau_c\), with fixed active coordinates and ghost contribution \\
 Correction of NICE & 8 Chebyshev steps, \(Q_1(17)\) Galerkin solve, 8 Chebyshev steps; same sequence in training and evaluation \\
-Arithmetic & Network, rigid reconstruction and retained entries in single precision (true fp32 convolutions, no TF32); stiffness actions of the condensed product and energies in double precision; correction (smoothing and coarse solve) in double precision in the accuracy studies of Sections 6.2--6.9 and in single precision in the timed route of Table 6, with the corrected field returned to single precision (Appendix F.3) \\
+Arithmetic & Network, rigid reconstruction and retained entries in single precision (true fp32 convolutions, no TF32); stiffness actions of the condensed product and energies in double precision; correction (smoothing and coarse solve) in double precision in the accuracy studies of Sections 6.2--6.9 and in single precision in the timed route of Table 5, with the corrected field returned to single precision (Appendix F.3) \\
 \end{longtable}}
 
 The mesh, material and stabilisation entries apply to all 80 validation geometries; lengths are relative to the unit box and the modulus is normalised. Coarse dimensions and smoothing counts of other correction sequences are reported with their comparisons.
@@ -656,133 +656,70 @@ In the \(2\times2\times2\) block, the lattice compliance errors under the three 
 
 The learned solves reach the prescribed recursive residual, while the recomputed residual \(\|f_g-\widehat{\mathbb K}\bar U\|/\|f_g\|\), at which the errors above are measured, stagnates at \(3.6\times10^{-4}\) (block) and \(3.2\times10^{-3}\) (layer). Repeating the block solve with the correction in single precision changes this residual by less than 1\% and the compliance errors by less than \(3\times10^{-9}\), so the stagnation does not come from the correction arithmetic; it is consistent with rounding in the single-precision network. The solve-independent bound \(\beta\) exceeds the errors by only \(1.5\)--\(4.9\times10^{-7}\) of the compliance on all face loads, which leaves no room for a residual work comparable to them {[}PENDING E4: signed residual work of Eq. (18) and dual-norm bound{]}.
 
-\subsection{Computational cost against conventional condensation}
+\subsection{Computational cost of a lattice design iteration}
 
-The practical alternative is conventional condensation: assemble each cell\textquotesingle s stiffness and condense its interior with a sparse direct solver, applying the condensed operator through the interior factorisation or forming it explicitly. Both routes share the preprocessing, cut-cell integration and stiffness assembly, since NICE also evaluates \(F^TKF\) with the exact stiffness; GPU sparse direct solvers are not included. Table 5 compares the two routes on four deployment cells, two cut and two uncut, with 67,224 to 404,148 degrees of freedom. The conventional route runs MKL PARDISO on the 16 host cores available to the job, on a shared 128-core host {[}PENDING E1: Cholesky factorisation, explicit settings, direct solve phase and Schur-complement option; settings in {[}→ Supp: benchmark-environment table{]}{]}; the learned route runs on one RTX 5090.
+Cost is compared for one design iteration of the lattices of Section 6.9: the two eight-cell lattices and, as four-cell lattices, the two \(2\times2\times1\) layers of the block, each with two uncut cells and two cut cells of 62\% and 25\% retained volume, with the same retained coordinates, clamp and loads. Table 5 compares three routes. (a) The whole-lattice direct solution assembles the full cut finite element model of the lattice, retained and interior degrees of freedom of every cell, and factorises it once by a sparse Cholesky factorisation (MKL PARDISO; host, 16 CPU cores); its recomputed relative residuals are below \(10^{-10}\), so for the four-cell lattices it is also the exact reference. (b) Conventional exact condensation condenses every cell on the host with PARDISO\textquotesingle s Schur-complement option and solves the assembled condensed system {[}PENDING E1{]}. (c) NICE (one RTX 5090) prepares the learned operator of every cell and solves the assembled system by the preconditioned conjugate gradients of Section 6.9 to a relative residual of \(10^{-6}\), with the correction in single precision, including the field-based sensitivities. All routes include cell setup and stiffness assembly, and none includes the one-off cost of data generation and training (Section 6.1).
 
 \begin{landscape}
-{\scriptsize
+{\footnotesize
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.090}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.150}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.110}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.130}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.130}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.160}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.190}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.120}}@{}}
-\caption{Cost per cell of the conventional and learned routes. Front end: geometry preprocessing plus cell setup, moment integration and stiffness assembly, on the host for the conventional route and on the GPU for the learned route. Condensation: interior factorisation for the conventional route; network encoding plus correction setup (smoothing interval and coarse factorisation) for the learned route. Memory, in GiB (\(2^{30}\) bytes): PARDISO\textquotesingle s factorisation storage (kilobytes taken as 1024 bytes), or the device memory held by the learned operator\textquotesingle s network state and correction. Neither includes the cell stiffness \(K\), which both routes hold (1.39, 0.51, 2.32 and 2.71 GiB for G1--G4 in the GPU storage format). Application: \(Sq\) or \(\widehat Sq\) for a batch of 1, 16 or 64 retained vectors. Explicit \(S\): dense condensed matrix by blocked host solves of 256 retained unit vectors each (timed for 300 s and extrapolated linearly in the number of columns where marked *). Host timings are single runs with LU factorisation in a 16-core container without other jobs of ours; other tenants of the host were not controlled. An earlier run agreed within 10\% for G1--G3 except for G1\textquotesingle s 64-vector application (\(-25\)\%) and G3\textquotesingle s explicit \(S\) (+16\%). Ratios quoted in the text are formed from the displayed values. All host columns {[}PENDING E1{]}.}\tabularnewline
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.120}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.140}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.170}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.170}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.130}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.110}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.160}}@{}}
+\caption{Cost of one design iteration of the lattices. (a) Whole-lattice direct solution, Cholesky factorisation by MKL PARDISO: time from cell setup to the solution of six loads (three consistent, three random), memory = permanent and factorisation storage; eight-cell lattices: time up to the symbolic analysis, predicted memory. (b) Every cell condensed with PARDISO\textquotesingle s Schur-complement option, then the condensed lattice system solved: total time, peak memory. (c) Front end, preconditioner setup, conjugate gradients for the three consistent loads to \(10^{-6}\) and field-based sensitivities; peak GPU memory, host memory after the front end; compliance error against (a) for four cells and against the exact condensation of Section 6.9 for eight cells. Memory in GiB. LU factorisations and all phases: Supplementary Note S5 and Table ST15. Columns (a) and (b) {[}PENDING E1{]}.}\tabularnewline
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
-Cell
+Lattice (cut / cells)
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-DOFs / retained
+DOFs: total / free retained
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Front end (s): learned (GPU) / host
+(a) Whole-lattice direct, Cholesky (host, 16 CPU cores): time (s) / memory (GiB)
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Condensation (s): learned / host PARDISO
+(b) Conventional exact condensation (host, 16 CPU cores): time (s) / memory (GiB)
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Memory (GiB): learned state / host factor
+(c) NICE (one RTX 5090): time (s) / iterations
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Application, 1 / 16 / 64 vectors (ms): learned
+(c) NICE memory (GiB): GPU / host
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-host PARDISO
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Explicit \(S\), host (s / GiB)
+(c) NICE compliance error (\%)
 \end{minipage} \\
 \midrule\noalign{}
 \endfirsthead
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
-Cell
+Lattice (cut / cells)
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-DOFs / retained
+DOFs: total / free retained
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Front end (s): learned (GPU) / host
+(a) Whole-lattice direct, Cholesky (host, 16 CPU cores): time (s) / memory (GiB)
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Condensation (s): learned / host PARDISO
+(b) Conventional exact condensation (host, 16 CPU cores): time (s) / memory (GiB)
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Memory (GiB): learned state / host factor
+(c) NICE (one RTX 5090): time (s) / iterations
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Application, 1 / 16 / 64 vectors (ms): learned
+(c) NICE memory (GiB): GPU / host
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-host PARDISO
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Explicit \(S\), host (s / GiB)
+(c) NICE compliance error (\%)
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-G1 (cut) & 177,507 / 24,636 & 5.3 / 18.7 & 0.72 / 7.7 & 0.74 / 5.30 & 54 / 531 / 923 & 826 / 2,589 / 5,811 & 1,192* / 4.5 \\
-G2 (cut) & 67,224 / 18,858 & 3.0 / 8.5 & 0.16 / 1.4 & 0.25 / 1.05 & 25 / 205 / 388 & 184 / 475 / 1,023 & 247 / 2.6 \\
-G3 (uncut) & 289,494 / 17,508 & 6.1 / 30.3 & 0.78 / 19.2 & 1.20 / 11.8 & 84 / 877 / 1,481 & 1,783 / 5,582 / 8,987 & 1,609* / 2.3 \\
-G4 (uncut) & 404,148 / 25,920 & 6.5 / 30.1 & 1.09 / 31.3 & 1.37 / 17.7 & 99 / 1,052 / 1,828 & 2,264 / 7,953 / 12,849 & 3,566* / 5.0 \\
+\(2\times2\times1\), \(z=0\) (2 / 4) & 957,888 / 77,310 & 256 / 32.1 & {[}PENDING E1{]} & 38.6 / 114 & 6.3 / 2.4 & 0.015, 0.012, 0.010 \\
+\(2\times2\times1\), \(z=1\) (2 / 4) & 884,940 / 71,046 & 242 / 29.0 & {[}PENDING E1{]} & 37.7 / 119 & 6.1 / 2.4 & 0.022, 0.016, 0.014 \\
+\(2\times2\times2\) (4 / 8) & 1,833,474 / 139,002 & \textgreater{} 342 / 66.6 & {[}PENDING E1{]} & 81.2 / 129 & 8.5 / 3.9 & 0.014, 0.011, 0.0097 \\
+\(3\times3\times1\) (3 / 8) & 2,113,611 / 143,685 & \textgreater{} 380 / 80.7 & {[}PENDING E1{]} & 110.1 / 165 & 9.2 / 4.7 & 0.015, 0.014, 0.015 \\
 \end{longtable}}
 \end{landscape}
 
 
-NICE condenses a cell 8.8 to 29 times faster than the conventional route. Its stored state is 4.2 to 12.9 times smaller than the interior factor, and including the stiffness matrix that both routes hold, the memory per cell is 2.1 to 5.0 times smaller {[}PENDING E1{]}. Each application is 7.4 to 23 times faster for a single vector and 2.3 to 7.6 times faster for batches of 16 or 64 vectors {[}PENDING E1{]}. Forming the dense condensed matrix by blocked host solves takes 4 to 59 minutes per cell, against an estimated 2 to 12 minutes for evaluating \(\widehat S\) on all retained unit vectors in batches of 64 {[}PENDING E1: Schur-complement option{]}. Including the front end, a cell is ready after 3.2 to 7.6 s on the learned route and 9.9 to 61 s on the conventional route, a difference that comes mostly from running the method-independent front end on different devices; with the GPU front end for both, the conventional route would be ready after 4.4 to 38 s {[}PENDING E1{]}. On this hardware pairing, preparation and every application are cheaper on the learned route; the comparison excludes the one-off cost of data generation and training (Section 6.1) and is specific to the host direct solver used.
+For the four-cell lattices, a NICE design iteration takes 38 s, against 242 to 256 s for the whole-lattice direct solution {[}PENDING E1{]} and {[}PENDING E1{]} s for conventional exact condensation, and the learned compliance agrees with the direct solution within 0.022\%, below the reference in every case. For the eight-cell lattices, the timed errors include the algebraic error of the \(10^{-6}\) solve (Eq. 18) and exceed the operator errors of Section 6.9 by up to 0.005 percentage points. The Cholesky factor grows slightly faster than the number of degrees of freedom, from 29 to 32 GiB for four cells to a predicted 67 to 81 GiB for eight, and the process peak exceeded it by a further 5.2 to 6.4 GiB in the four-cell runs, against a container memory limit of 90 GiB; the eight-cell LU factors (132 to 160 GiB, Table ST15) exceed it {[}PENDING E1: measured eight-cell Cholesky factorisation{]}. NICE needs at most 9.2 GiB of GPU and 4.7 GiB of host memory and 81 and 110 s per design iteration of the eight-cell lattices. Per cell, NICE\textquotesingle s stored state takes 0.25 to 1.37 GiB, against 1.05 to 17.7 GiB for the interior factor of conventional condensation {[}PENDING E1{]} {[}→ Supp: per-cell cost table, formerly Table 5, compressed{]}.
 
-A design iteration changes every cell\textquotesingle s geometry, so each cell\textquotesingle s preparation, interior factorisation or network encoding and correction setup, is repeated; the assembled solve can start from the previous solution, and the conventional route can reuse its symbolic factorisation while the active-element pattern is unchanged. The lattices of Section 6.9 need 183 applications per cell with exact and 186 with learned cells for six loads (226 and 234 in the layer); against the host route of Table 5 this count does not change the comparison, whereas against a baseline with cheaper applications it would set the break-even point.
-
-A further alternative avoids condensation: the full cut finite element model of the lattice is factorised once. Table 6 compares this whole-lattice direct solution, on the same host cores, with one design iteration of the learned route, for the two eight-cell lattices and, as four-cell lattices, the two \(2\times2\times1\) layers of the block (two uncut cells and two cut cells of 62\% and 25\% retained volume each), with the same retained coordinates, clamp and loads. The direct solution, with recomputed relative residuals below \(10^{-10}\), is the exact reference for the four-cell lattices. The learned route is timed as deployed, with the correction in single precision.
-
-{\footnotesize
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1474}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1474}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1368}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1368}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1368}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1263}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1684}}@{}}
-\caption{Whole-lattice direct solution on the host versus the learned route. Direct: every cell\textquotesingle s full cut-cell stiffness in one global matrix, factorised by MKL PARDISO on 16 host cores; time from cell setup and assembly on the host to the solution for six loads (three consistent, three random); memory: PARDISO\textquotesingle s permanent and factorisation storage, in GiB. For the eight-cell lattices the factorisation was not run: time up to the symbolic analysis, memory as predicted by the analysis. Learned: one design iteration of the deployed route on one RTX 5090 (front end, preconditioner setup, conjugate-gradient solve for the three consistent loads to \(10^{-6}\), field-based sensitivities); GPU memory at its peak, host memory after the front end, both in GiB. Compliance error of the timed learned run under the three consistent loads, against the direct solution (four cells) or the exact condensation of Section 6.9 (eight cells); the learned compliance lies below the reference in every case. For the eight-cell lattices these values include the algebraic error of the \(10^{-6}\) solve (Eq. 18) and exceed the operator errors of Section 6.9, obtained at \(10^{-10}\), by up to 0.005 percentage points (\(3\times3\times1\), z-load: 0.015\% against 0.010\%). Supplementary Note S5 and Table ST15 give all phases. Direct columns {[}PENDING E1{]}.}\tabularnewline
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Lattice (cut / cells)
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-DOFs: total / free retained
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Direct, Cholesky: time (s) / memory (GiB)
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Direct, LU: time (s) / memory (GiB)
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Learned: time (s) / iterations
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Learned memory (GiB): GPU / host
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Learned compliance error (\%)
-\end{minipage} \\
-\midrule\noalign{}
-\endfirsthead
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Lattice (cut / cells)
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-DOFs: total / free retained
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Direct, Cholesky: time (s) / memory (GiB)
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Direct, LU: time (s) / memory (GiB)
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Learned: time (s) / iterations
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Learned memory (GiB): GPU / host
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Learned compliance error (\%)
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
-\(2\times2\times1\), \(z=0\) (2 / 4) & 957,888 / 77,310 & 256 / 32.1 & 333 / 63.6 & 38.6 / 114 & 6.3 / 2.4 & 0.015, 0.012, 0.010 \\
-\(2\times2\times1\), \(z=1\) (2 / 4) & 884,940 / 71,046 & 242 / 29.0 & 311 / 57.4 & 37.7 / 119 & 6.1 / 2.4 & 0.022, 0.016, 0.014 \\
-\(2\times2\times2\) (4 / 8) & 1,833,474 / 139,002 & \textgreater{} 342 / 66.6 & \textgreater{} 358 / 132.3 & 81.2 / 129 & 8.5 / 3.9 & 0.014, 0.011, 0.0097 \\
-\(3\times3\times1\) (3 / 8) & 2,113,611 / 143,685 & \textgreater{} 380 / 80.7 & \textgreater{} 395 / 160.5 & 110.1 / 165 & 9.2 / 4.7 & 0.015, 0.014, 0.015 \\
-\end{longtable}}
-
-For four cells, the learned route completes a design iteration in 38 s, against 242 to 256 s for the direct Cholesky solution and 311 to 333 s for LU; the analysis, factorisation and solution take 91 s with Cholesky, against 30 to 31 s for the learned preconditioner setup and solve, and cell setup and assembly add 140 to 152 s on the host and about 5 s on the GPU {[}PENDING E1{]}. The learned compliance agrees with the direct solution within 0.022\%. The factor memory grows slightly faster than the number of degrees of freedom, from 29 to 32 GiB (Cholesky) and 57 to 64 GiB (LU) for four cells to a predicted 67 to 81 GiB and 132 to 160 GiB for eight, and the process peak exceeded it by 5.2 to 6.4 GiB in the four-cell runs; the eight-cell factorisations were not run within the 90 GiB memory limit of the container (16-CPU quota on a shared 128-thread Intel Xeon Gold 6459C host) {[}PENDING E1: measured eight-cell Cholesky factorisation{]}. The learned route needs at most 9.2 GiB of GPU and 4.7 GiB of host memory and 81 and 110 s per design iteration of the eight-cell lattices. Its lattice solve is itself an inexact substructuring iteration; fine-scale iterative solvers of the whole lattice were not compared (Section 7.5).
+A design iteration changes the geometry of every cell, so every cell\textquotesingle s preparation, interior factorisation or network encoding and correction setup, is repeated; the assembled solve can start from the previous solution, and the conventional routes can reuse their symbolic factorisation while the active-element pattern is unchanged. NICE\textquotesingle s lattice solve is itself an inexact substructuring iteration; fine-scale iterative solvers of the whole lattice were not compared (Section 7.5).
 
 \subsection{Design optimisation {[}placeholder{]}}
 
@@ -804,11 +741,11 @@ Design differentiation adds a requirement that the energy error does not control
 
 \subsection{Computational value}
 
-A correction budget adequate for compliance can leave local sensitivity inaccurate, so the relevant cost is the total work needed to reach the prescribed accuracy of both. Against the conventional condensation workflow that it replaces, NICE is cheaper per cell and design iteration on the hardware used here (Section 6.10). Its lattice solve is an inexact substructuring iteration, with approximate interior extensions as in inexact BDDC and FETI-DP methods \href{https://doi.org/10.1016/j.cma.2006.03.011}{Li \& Widlund (2007)}, \href{https://doi.org/10.1002/nme.1758}{Klawonn \& Rheinbach (2007)}. Its distinguishing output is a condensed operator per cell with a quantified and reducible error, not a faster fine-scale solve, and no advantage over iterative solvers of the whole lattice is claimed. In the present implementation an application takes 25 to 99 ms for one vector and 0.39 to 1.83 s for 64 vectors (Table 5); fusing its operations or reducing the smoothing budget would lower this cost, at an accuracy cost that Section 6.5 quantifies.
+A correction budget adequate for compliance can leave local sensitivity inaccurate, so the relevant cost is the total work needed to reach the prescribed accuracy of both. For the lattices examined, a NICE design iteration takes less time and memory than the whole-lattice direct solution and conventional exact condensation (Section 6.10) {[}PENDING E1{]}. Its lattice solve is an inexact substructuring iteration, with approximate interior extensions as in inexact BDDC and FETI-DP methods \href{https://doi.org/10.1016/j.cma.2006.03.011}{Li \& Widlund (2007)}, \href{https://doi.org/10.1002/nme.1758}{Klawonn \& Rheinbach (2007)}. Its distinguishing output is a condensed operator per cell with a quantified and reducible error, not a faster fine-scale solve, and no advantage over iterative solvers of the whole lattice is claimed. Fusing the operations of an application or reducing the smoothing budget would lower its cost, at an accuracy cost that Section 6.5 quantifies.
 
 \subsection{Limitations}
 
-The trained operator applies to the setting in which it was trained and tested: Schwarz-P-type cells defined by Eq. (1), eight trilinear corner parameters in {[}0.175, 0.699{]} with corner span and gradient norm at most 0.47 (Table ST02), at most one planar cut whose normal is a cube-symmetry image of \((\cos\vartheta,\sin\vartheta,0)\), and one discretisation (\(n=32\), \(E_Y=1\), \(\nu=0.3\), \(\gamma=10^{-4}\)), to which the 65/33/17/9 latent hierarchy is tied. Other TPMS families were not tested; they, cells with several cuts or curved boundaries, other resolutions and other materials require new training. The network is not equivariant under the cube symmetries, and NICE was evaluated in the identity orientation only. The variational properties of Section 3.2 hold for any input, but the accuracy does not: no certified error bound is provided, although the residual of Eq. (10) and a label-free lower bound on each cell\textquotesingle s energy error (Appendix I) can be computed at run time. Accuracy is measured against the discrete reference, whose error for heavily cut cells at \(n=32\) is at least about 1\% (Section 6.2). The assembled evidence comprises fourteen two-cell configurations of development cells and two eight-cell lattices; all training comparisons use one seed, and the effect of the sensitivity term in Eq. (8) was not isolated. The reported sensitivities are field-based estimates that omit the design dependence of the extension in Eq. (14). The cost comparison sets one GPU against host cores and excludes data generation and training, and fine-scale iterative solvers of the whole lattice, such as algebraic multigrid \href{https://doi.org/10.1007/BF02238511}{Vaněk et al. (1996)}, \href{https://doi.org/10.1016/S0168-9274(01)00115-5}{Henson \& Yang (2002)}, \href{https://doi.org/10.1007/3-540-47789-6_66}{Falgout \& Yang (2002)} or BDDC and FETI-DP preconditioners \href{https://doi.org/10.1137/S1064827502412887}{Dohrmann (2003)}, \href{https://doi.org/10.1002/nme.76}{Farhat et al. (2001)}, were not compared. An optimiser must keep designs inside the parameter domain above.
+The trained operator applies to the setting in which it was trained and tested: Schwarz-P-type cells defined by Eq. (1), eight trilinear corner parameters in {[}0.175, 0.699{]} with corner span and gradient norm at most 0.47 (Table ST02), at most one planar cut whose normal is a cube-symmetry image of \((\cos\vartheta,\sin\vartheta,0)\), and one discretisation (\(n=32\), \(E_Y=1\), \(\nu=0.3\), \(\gamma=10^{-4}\)), to which the 65/33/17/9 latent hierarchy is tied. Other TPMS families were not tested; they, cells with several cuts or curved boundaries, other resolutions and other materials require new training. The network is not equivariant under the cube symmetries, and NICE was evaluated in the identity orientation only. The variational properties of Section 3.2 hold for any input, but the accuracy does not: no certified error bound is provided, although the residual of Eq. (10) and a label-free lower bound on each cell\textquotesingle s energy error (Appendix I) can be computed at run time. Accuracy is measured against the discrete reference, whose error for heavily cut cells at \(n=32\) is at least about 1\% (Section 6.2). The assembled evidence comprises fourteen two-cell configurations of development cells and two eight-cell lattices; all training comparisons use one seed, and the effect of the sensitivity term in Eq. (8) was not isolated. The reported sensitivities are field-based estimates that omit the design dependence of the extension in Eq. (14). The cost comparison excludes data generation and training, and fine-scale iterative solvers of the whole lattice, such as algebraic multigrid \href{https://doi.org/10.1007/BF02238511}{Vaněk et al. (1996)}, \href{https://doi.org/10.1016/S0168-9274(01)00115-5}{Henson \& Yang (2002)}, \href{https://doi.org/10.1007/3-540-47789-6_66}{Falgout \& Yang (2002)} or BDDC and FETI-DP preconditioners \href{https://doi.org/10.1137/S1064827502412887}{Dohrmann (2003)}, \href{https://doi.org/10.1002/nme.76}{Farhat et al. (2001)}, were not compared. An optimiser must keep designs inside the parameter domain above.
 
 \section{Conclusions}
 
@@ -816,7 +753,7 @@ NICE approximates the static condensation of cut thin-walled Schwarz-P-type TPMS
 
 For learned substructures, the error relations quantify a distinction familiar from goal-oriented error estimation and approximate reanalysis: accurate compliance does not imply accurate local thickness sensitivity. For an uncorrected extension they also explain why: displacement errors of about one percent lie in stiff directions and give energy errors of several percent, and weakly participating cells show accurate compliance but sensitivity errors above 3\%. Chebyshev smoothing and a trilinear coarse solve remove the stiff and the slowly relaxed error components while preserving the variational structure. Trained through this correction, NICE keeps the geometry-mean energy error under consistent tractions at or below 0.65\% on all 80 validation geometries, the largest occurring on a geometry that entered neither training nor weight selection, and keeps the face-load compliance and sensitivity errors below 0.06\% and 0.7\% in the fourteen well-posed two-cell configurations {[}PENDING E6{]}.
 
-The learned field and the correction are complementary: under the same correction, a harmonic start leaves 7 to 290 times and a zero interior 2,400 to 12,000 times the error of the learned field on five detailed cells, and the correction alone brings a network trained without it within the accuracy reference {[}PENDING E2{]}. In lattices of learned cells, the compliance error, at most 0.015\% under consistent face loads, follows the participation-weighted bound of Eq. (12) to within 0.4\% under face loads (about 5\% under random loads), and the thickness sensitivities stay within 0.15\%. On one GPU, against conventional condensation on 16 host cores, NICE condenses a cell about 9 to 29 times faster and applies it 2 to 23 times faster, and an eight-cell design iteration needs at most 9.2 GiB of device memory, whereas the whole-lattice direct factor requires 67 to 81 GiB {[}PENDING E1{]}; these figures exclude the one-off cost of data generation and training.
+The learned field and the correction are complementary: under the same correction, a harmonic start leaves 7 to 290 times and a zero interior 2,400 to 12,000 times the error of the learned field on five detailed cells, and the correction alone brings a network trained without it within the accuracy reference {[}PENDING E2{]}. In lattices of learned cells, the compliance error, at most 0.015\% under consistent face loads, follows the participation-weighted bound of Eq. (12) to within 0.4\% under face loads (about 5\% under random loads), and the thickness sensitivities stay within 0.15\%. For the eight-cell lattices, a NICE design iteration takes 81 to 110 s and at most 9.2 GiB of GPU memory on one RTX 5090, against {[}PENDING E1{]} s for the whole-lattice direct solution on 16 CPU cores, whose Cholesky factor needs 67 to 81 GiB within a container limit of 90 GiB; these figures exclude the one-off cost of data generation and training.
 
 {[}Placeholder: conclusion on the design-optimisation example of Section 6.11.{]}
 
