@@ -67,13 +67,8 @@ for L in $LATS; do   # supplementary: one 32-thread repetition (container quota 
 done
 run $H summary $PY r1_host_summary.py $H $H/host_summary.json
 mk R1_CPU_E1_DONE_20260928
-# ---------------- B: E7 retries
-if [ "$SMOKE" != 1 ]; then
-  for stage in sweep studies; do for c in fresh_val_2010_d0_v0 fresh_val_2005_d1_v0 fresh_val_2074_d0_v0 fresh_val_2051_d1_v1; do
-    [ $stage = studies ] && [ $c = fresh_val_2005_d1_v0 ] && continue
-    run $R/ref_logs ref_${c}_cpu_${stage} $PY -u ref_valid2.py $R/ref_valid_r1.json $c --ns 24,32,40,48,56,64 --stage $stage --headroom-gib 4 --retry-errors
-  done; done
-fi
+# ---------------- B: E7 retries -- MOVED to the third CPU machine (chain_r1_cpu3.sh; in-place edit 2026-09-29)
+st "stage B (E7 retries) moved to the third CPU machine (see chain_cpu3.status there)"
 mk R1_CPU_REF_DONE_20260928
 # ---------------- C: route (b)
 for L in $LATS; do
@@ -109,8 +104,6 @@ slu() {
   run $H1 scipy_${L} $PY -u lat_scipy_cpu.py $H1/scipy_${L}.json $lf --as-gib $ASG --watch-gib $ASG --wall-s $WAL --variants colamd,mmd --ref "$REF" --keep-npz-dir $H1/npz
   st "superlu $L: $($PY -c "import json; d=json.load(open('$H1/scipy_${L}.json')); print(' '.join(v+'='+str(c.get('status')) for v, c in d.get('solves', {}).items()))" 2>/dev/null)"; }
 slu $SLAT
-if [ -n "$SFB" ] && ! grep -q '"status": "ok"' $H1/scipy_$(basename $SLAT .json).json 2>/dev/null; then
-  st "superlu: no variant finished on $(basename $SLAT .json); both variants on the 2-cell lattice"; slu $SFB
-fi
+st "SuperLU 2-cell fallback moved to the third CPU machine (in-place edit 2026-09-29)"
 run $H1 scipy_selftest $PY lat_scipy_cpu.py --selftest $H1
 mk R1_CPU_ONE_DONE_20260928
