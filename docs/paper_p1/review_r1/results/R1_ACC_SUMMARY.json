@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-29 00:53:03",
+ "generated": "2026-09-29 06:55:06",
  "r1_dir": "/root/autodl-tmp/OPL/S1/V2/R1/ACC",
  "v2_dir": "/root/autodl-tmp/OPL/S1/V2",
  "prereg": {
@@ -5380,6 +5380,50 @@
     "nonfinite": 0
    }
   },
+  "fresh_val_2047_d1_v2_x": {
+   "A3": {
+    "file": "/root/autodl-tmp/OPL/S1/V2/R1/ACC/ho_gate_A3_fresh_val_2047_d1_v2_x.json",
+    "status": "ok",
+    "gate_compliance_max": 3.761209105734853e-05,
+    "gate_sens_max": 0.0010181898580275287,
+    "cut_compliance_max": 8.487847703564366e-05,
+    "cut_sens_max": 0.0010151714803977026,
+    "pcg_iterations": 7,
+    "test_energy_share_min": 0.000952659105098715,
+    "nbr_energy_share_min": 0.5630582341018086,
+    "flags": {
+     "pcg_at_cap": false,
+     "negative_energy_share": false,
+     "min_energy_share": 0.000952659105098715,
+     "nonfinite_compliance": false,
+     "n_nonfinite_compliance": 0
+    },
+    "seconds": 318.3067387677729,
+    "nonfinite": 0
+   }
+  },
+  "fresh_val_2047_d1_v2_y": {
+   "A3": {
+    "file": "/root/autodl-tmp/OPL/S1/V2/R1/ACC/ho_gate_A3_fresh_val_2047_d1_v2_y.json",
+    "status": "ok",
+    "gate_compliance_max": 5.101070992419299e-05,
+    "gate_sens_max": 0.0010168346551846948,
+    "cut_compliance_max": 0.00010683256231069915,
+    "cut_sens_max": 0.0007593328127589244,
+    "pcg_iterations": 7,
+    "test_energy_share_min": 0.0009278789598977661,
+    "nbr_energy_share_min": 0.5218813166554549,
+    "flags": {
+     "pcg_at_cap": false,
+     "negative_energy_share": false,
+     "min_energy_share": 0.0009278789598977661,
+     "nonfinite_compliance": false,
+     "n_nonfinite_compliance": 0
+    },
+    "seconds": 321.4799670763314,
+    "nonfinite": 0
+   }
+  },
   "fresh_val_2051_d1_v1_x": {
    "A3": {
     "file": "/root/autodl-tmp/OPL/S1/V2/R1/ACC/ho_gate_A3_fresh_val_2051_d1_v1_x.json",
@@ -5421,6 +5465,50 @@
      "n_nonfinite_compliance": 0
     },
     "seconds": 98.74818952381611,
+    "nonfinite": 0
+   }
+  },
+  "fresh_val_2053_d1_v0_x": {
+   "A3": {
+    "file": "/root/autodl-tmp/OPL/S1/V2/R1/ACC/ho_gate_A3_fresh_val_2053_d1_v0_x.json",
+    "status": "ok",
+    "gate_compliance_max": 5.0319314209623656e-05,
+    "gate_sens_max": 0.0013620474471356182,
+    "cut_compliance_max": 1.8385201974280285e-05,
+    "cut_sens_max": 0.0009230130916772466,
+    "pcg_iterations": 6,
+    "test_energy_share_min": 0.0002798988464213178,
+    "nbr_energy_share_min": 0.36262705317562316,
+    "flags": {
+     "pcg_at_cap": false,
+     "negative_energy_share": false,
+     "min_energy_share": 0.0002798988464213178,
+     "nonfinite_compliance": false,
+     "n_nonfinite_compliance": 0
+    },
+    "seconds": 113.40394681319594,
+    "nonfinite": 0
+   }
+  },
+  "fresh_val_2053_d1_v0_y": {
+   "A3": {
+    "file": "/root/autodl-tmp/OPL/S1/V2/R1/ACC/ho_gate_A3_fresh_val_2053_d1_v0_y.json",
+    "status": "ok",
+    "gate_compliance_max": 6.646295693280013e-05,
+    "gate_sens_max": 0.0021821440913992857,
+    "cut_compliance_max": 2.3975840804268955e-05,
+    "cut_sens_max": 0.002213910712267114,
+    "pcg_iterations": 6,
+    "test_energy_share_min": 0.0003181267737392508,
+    "nbr_energy_share_min": 0.4512973728199229,
+    "flags": {
+     "pcg_at_cap": false,
+     "negative_energy_share": false,
+     "min_energy_share": 0.0003181267737392508,
+     "nonfinite_compliance": false,
+     "n_nonfinite_compliance": 0
+    },
+    "seconds": 102.31323212757707,
     "nonfinite": 0
    }
   },
@@ -5511,11 +5599,55 @@
     "seconds": 80.18632040917873,
     "nonfinite": 0
    }
+  },
+  "fresh_val_2078_d0_v1_x": {
+   "A3": {
+    "file": "/root/autodl-tmp/OPL/S1/V2/R1/ACC/ho_gate_A3_fresh_val_2078_d0_v1_x.json",
+    "status": "ok",
+    "gate_compliance_max": 0.00010086257401586973,
+    "gate_sens_max": 0.001032543058852571,
+    "cut_compliance_max": 0.00012056543899108263,
+    "cut_sens_max": 0.0006845662575133398,
+    "pcg_iterations": 8,
+    "test_energy_share_min": 0.0006813399494351923,
+    "nbr_energy_share_min": 0.5339810910148056,
+    "flags": {
+     "pcg_at_cap": false,
+     "negative_energy_share": false,
+     "min_energy_share": 0.0006813399494351923,
+     "nonfinite_compliance": false,
+     "n_nonfinite_compliance": 0
+    },
+    "seconds": 307.6164801158011,
+    "nonfinite": 0
+   }
+  },
+  "fresh_val_2078_d0_v1_y": {
+   "A3": {
+    "file": "/root/autodl-tmp/OPL/S1/V2/R1/ACC/ho_gate_A3_fresh_val_2078_d0_v1_y.json",
+    "status": "ok",
+    "gate_compliance_max": 6.59107585990748e-05,
+    "gate_sens_max": 0.000995015312545351,
+    "cut_compliance_max": 0.000283119505905427,
+    "cut_sens_max": 0.00038424434010786337,
+    "pcg_iterations": 8,
+    "test_energy_share_min": 0.0008121948217386185,
+    "nbr_energy_share_min": 0.3714230252379196,
+    "flags": {
+     "pcg_at_cap": false,
+     "negative_energy_share": false,
+     "min_energy_share": 0.0008121948217386185,
+     "nonfinite_compliance": false,
+     "n_nonfinite_compliance": 0
+    },
+    "seconds": 303.57647543027997,
+    "nonfinite": 0
+   }
   }
  },
  "E6_aggregate": {
   "A3": {
-   "n_wellposed": 12,
+   "n_wellposed": 18,
    "n_excluded_or_failed": 2,
    "excluded_or_failed": [
     "fresh_val_2026_d0_v0_x",

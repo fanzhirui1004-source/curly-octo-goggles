@@ -33,10 +33,16 @@ E6 held-out pairs (compliance max / sensitivity max, %; flags): cell_conf  A3 | 
   fresh_val_2032_full_y: 0.0011/0.133 | - | -
   fresh_val_2045_d1_v0_x: 0.1982/0.815 | - | -
   fresh_val_2045_d1_v0_y: 0.1703/1.344 | - | -
+  fresh_val_2047_d1_v2_x: 0.0038/0.102 | - | -
+  fresh_val_2047_d1_v2_y: 0.0051/0.102 | - | -
   fresh_val_2051_d1_v1_x: 0.2706/1.485 | - | -
   fresh_val_2051_d1_v1_y: 0.2220/1.312 | - | -
+  fresh_val_2053_d1_v0_x: 0.0050/0.136 | - | -
+  fresh_val_2053_d1_v0_y: 0.0066/0.218 | - | -
   fresh_val_2063_d1_v2_x: 0.0967/0.434 | - | -
   fresh_val_2063_d1_v2_y: 0.0878/0.563 | - | -
   fresh_val_2074_d0_v0_x: 0.1587/1.329 | - | -
   fresh_val_2074_d0_v0_y: 0.2489/1.419 | - | -
-E6 A3: 12 well-posed configs, compliance max 0.2706%, sensitivity max 1.485%, excluded/failed: ['fresh_val_2026_d0_v0_x', 'fresh_val_2026_d0_v0_y']
+  fresh_val_2078_d0_v1_x: 0.0101/0.103 | - | -
+  fresh_val_2078_d0_v1_y: 0.0066/0.100 | - | -
+E6 A3: 18 well-posed configs, compliance max 0.2706%, sensitivity max 1.485%, excluded/failed: ['fresh_val_2026_d0_v0_x', 'fresh_val_2026_d0_v0_y']
