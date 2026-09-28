@@ -1,4 +1,4 @@
-"""Regenerate supplementary table blocks (R1 key, ST01, ST01b, ST01c, ST12, ST13) from evidence/.
+"""Regenerate supplementary table blocks (R1 key, ST01, ST01b, ST01c, ST07a, ST07b, ST12, ST13) from evidence/.
 
 Usage (from docs/paper_p1):  python3 latex/gen_supp_tables.py [--write]
 
@@ -7,6 +7,7 @@ in SUPPLEMENTARY_EN.md. Sources:
   newval2_<run>.json   identity-view validation (per-geometry directional means)   -> ST01, ST01b
   newval_v2L1.json     views 0 and 17 of B on the earlier evaluation                -> ST01c
   valmeta.json         geometry strata                                              -> ST01b
+  piml4_<mode>_<cell>.json  Bernstein-restricted retained space, x assemblies      -> ST07a, ST07b
   meta_p1.json         training configuration and checkpoint selection             -> ST12
   gate_<run>_*.json    two-cell continuous-neighbour assemblies                     -> ST13
   MANUSCRIPT_EN.md     Table 2 (training-geometry counts)                           -> ST12
@@ -197,7 +198,40 @@ def r1(text):
     return [row(r) for r in old[:2] + keep + extra]
 
 
+def piml(mode, heading, text):
+    old = table_rows(text, heading)
+    out = [row(old[0]), row(old[1])]
+    for key, lab in [('2000_full', 'U1'), ('2003_d1_v1', 'M1'), ('2006_d0_v1', 'M2'), ('2005_d1_v0', 'H1')]:
+        f = EV / f'piml4_{mode}_fresh_val_{key}.json'
+        if not f.exists():
+            continue
+        r = json.load(open(f))['results'][0]
+        loads = r['loads']
+        sets = [[i for i, n in enumerate(loads) if n.startswith('test_face')],
+                [i for i, g in enumerate(r['gate']) if g], list(range(len(loads)))]
+        for o in sorted(r['orders'], key=int):
+            v = r['orders'][o]
+            cells = [lab, o, f"{v['ctrl_dofs']:,}"]
+            for k, s in enumerate(sets):
+                if k == 2 and len(s) == len(sets[1]):
+                    cells += ['—', '—']          # no macro-cut loads (uncut cell)
+                    continue
+                cells += [f"{100 * max(v['compliance_rel_err'][i] for i in s):.3f}",
+                          f"{100 * max(v['sens_vec_rel_err_test'][i] for i in s):.3f}"]
+            out.append(row(cells))
+    return out
+
+
+def st07a(text):
+    return piml('all', r'### ST07a\.', text)
+
+
+def st07b(text):
+    return piml('interface', r'### ST07b\.', text)
+
+
 BLOCKS = [(r'## R1\.', r1), (r'## Table ST01\.', st01), (r'### ST01b\.', st01b), (r'### ST01c\.', st01c),
+          (r'### ST07a\.', st07a), (r'### ST07b\.', st07b),
           (r'## Table ST12\.', st12), (r'## Table ST13\.', st13)]
 
 if __name__ == '__main__':

@@ -281,18 +281,54 @@ Maximum relative errors (%) across the three cut-surface traction directions. Se
 
 ## Table ST07. Bernstein restriction of the box-face trace
 
-The target H1 and its continuous-thickness neighbour are assembled in configuration x using exact cell operators. Degree r applies to every box face; cut-band coefficients retain their identity representation. Controlled DOFs include these unrestricted cut-band coefficients. All errors are maxima in the stated load set (%); sensitivity columns refer to the target-cell vector.
+Each target cell and its continuous-thickness neighbour are assembled in configuration x using exact cell operators. Degree r applies to the restricted box faces; cut-band coefficients retain their identity representation. Controlled DOFs include these unrestricted cut-band coefficients. All errors are maxima in the stated load set (%), relative to the full retained-space solution; sensitivity columns refer to the target-cell vector. Target-face loads are the three unit consistent tractions on the target's loaded face, the six-load set adds the three neighbour-face tractions, and the all-load set adds the three macro-cut tractions.
 
-| r | Controlled DOFs | Target-face compliance (3 loads) | Target-face sensitivity (3 loads) | Six-load compliance (6 loads) | Six-load sensitivity (6 loads) | All-load compliance (9 loads) | All-load sensitivity (9 loads) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 12,888 | 81.713 | 87.320 | 81.713 | 333.566 | 81.713 | 333.566 |
-| 2 | 12,939 | 37.528 | 29.960 | 41.962 | 188.527 | 41.962 | 188.527 |
-| 3 | 13,026 | 21.660 | 18.637 | 30.364 | 340.008 | 30.364 | 340.008 |
-| 5 | 13,308 | 2.784 | 2.890 | 3.860 | 171.306 | 3.860 | 171.306 |
-| 8 | 14,001 | 0.609 | 1.520 | 0.735 | 64.041 | 0.778 | 64.041 |
+### ST07a. Every box face restricted
 
+| Cell | r | Controlled DOFs | Target-face compliance (3 loads) | Target-face sensitivity (3 loads) | Six-load compliance (6 loads) | Six-load sensitivity (6 loads) | All-load compliance (9 loads) | All-load sensitivity (9 loads) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| U1 | 1 | 24 | 76.998 | 89.056 | 82.609 | 203.566 | — | — |
+| U1 | 2 | 102 | 56.944 | 62.055 | 56.944 | 317.415 | — | — |
+| U1 | 3 | 240 | 38.907 | 47.849 | 38.907 | 398.644 | — | — |
+| U1 | 5 | 696 | 3.926 | 3.603 | 3.961 | 114.545 | — | — |
+| U1 | 8 | 1,830 | 0.485 | 1.467 | 0.485 | 24.435 | — | — |
+| M1 | 1 | 15,423 | 77.749 | 88.966 | 78.485 | 294.272 | 78.485 | 294.272 |
+| M1 | 2 | 15,498 | 53.133 | 62.622 | 53.133 | 402.365 | 53.133 | 402.365 |
+| M1 | 3 | 15,627 | 33.998 | 45.584 | 33.998 | 421.766 | 33.998 | 421.766 |
+| M1 | 5 | 16,047 | 3.930 | 4.748 | 3.930 | 138.963 | 3.930 | 138.963 |
+| M1 | 8 | 17,082 | 0.521 | 1.295 | 0.611 | 39.320 | 0.611 | 39.320 |
+| M2 | 1 | 15,648 | 76.234 | 84.796 | 85.269 | 244.968 | 85.269 | 244.968 |
+| M2 | 2 | 15,723 | 49.547 | 41.050 | 50.436 | 606.013 | 50.885 | 606.013 |
+| M2 | 3 | 15,852 | 29.124 | 19.138 | 33.554 | 747.730 | 33.649 | 747.730 |
+| M2 | 5 | 16,272 | 3.413 | 4.275 | 3.634 | 334.483 | 4.933 | 334.483 |
+| M2 | 8 | 17,307 | 0.505 | 4.458 | 0.586 | 38.693 | 0.586 | 45.351 |
+| H1 | 1 | 12,888 | 81.713 | 87.320 | 81.713 | 333.566 | 81.713 | 333.566 |
+| H1 | 2 | 12,939 | 37.528 | 29.960 | 41.962 | 188.527 | 41.962 | 188.527 |
+| H1 | 3 | 13,026 | 21.660 | 18.637 | 30.364 | 340.008 | 30.364 | 340.008 |
+| H1 | 5 | 13,308 | 2.784 | 2.890 | 3.860 | 171.306 | 3.860 | 171.306 |
+| H1 | 8 | 14,001 | 0.608 | 1.520 | 0.735 | 64.044 | 0.778 | 64.044 |
 
-The supported system on the full retained space has 32,991 free DOFs. Six-load and all-load maxima coincide only when the maximizing load belongs to both sets.
+### ST07b. Only the shared interface restricted
+
+| Cell | r | Controlled DOFs | Target-face compliance (3 loads) | Target-face sensitivity (3 loads) | Six-load compliance (6 loads) | Six-load sensitivity (6 loads) | All-load compliance (9 loads) | All-load sensitivity (9 loads) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| U1 | 1 | 25,386 | 1.947 | 3.599 | 1.947 | 85.982 | — | — |
+| U1 | 2 | 25,401 | 0.667 | 4.905 | 0.667 | 29.133 | — | — |
+| U1 | 3 | 25,422 | 0.169 | 0.338 | 0.169 | 7.999 | — | — |
+| U1 | 5 | 25,482 | 0.010 | 0.328 | 0.036 | 2.194 | — | — |
+| U1 | 8 | 25,617 | 0.001 | 0.003 | 0.002 | 0.359 | — | — |
+| M1 | 1 | 37,080 | 9.355 | 10.397 | 9.355 | 81.909 | 9.355 | 81.909 |
+| M1 | 2 | 37,095 | 1.915 | 4.529 | 1.915 | 36.640 | 1.915 | 36.640 |
+| M1 | 3 | 37,116 | 0.440 | 1.106 | 0.440 | 9.954 | 0.440 | 9.954 |
+| M1 | 5 | 37,176 | 0.073 | 0.335 | 0.073 | 2.174 | 0.073 | 2.174 |
+| M1 | 8 | 37,311 | 0.011 | 0.031 | 0.011 | 0.615 | 0.011 | 0.615 |
+| M2 | 1 | 35,196 | 4.228 | 8.397 | 4.228 | 88.562 | 4.228 | 88.562 |
+| M2 | 2 | 35,211 | 0.728 | 3.825 | 0.728 | 18.427 | 0.728 | 18.427 |
+| M2 | 3 | 35,232 | 0.261 | 1.058 | 0.261 | 21.216 | 0.261 | 21.216 |
+| M2 | 5 | 35,292 | 0.030 | 1.004 | 0.030 | 3.366 | 0.030 | 3.366 |
+| M2 | 8 | 35,427 | 0.009 | 0.049 | 0.009 | 1.537 | 0.009 | 1.537 |
+
+The supported systems on the full retained space have 28,206 (U1), 39,996 (M1), 39,120 (M2) and 32,991 (H1) free DOFs. U1 has no cut band, so its corner-linear restriction controls only the 24 corner coordinates. Six-load and all-load maxima coincide only when the maximizing load belongs to both sets. The interface-only variant was run for U1, M1 and M2. Data: `evidence/piml4_all_*.json`, `evidence/piml4_interface_*.json`.
 
 ## Table ST08. Additional single-cell deployment measurements
 
