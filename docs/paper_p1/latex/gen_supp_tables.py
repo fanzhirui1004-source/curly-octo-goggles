@@ -1,19 +1,26 @@
-"""Regenerate supplementary table blocks (R1 key, ST01, ST01b, ST01c, ST07a, ST07b, ST12, ST13) from evidence/.
+"""Regenerate supplementary table blocks (R1 key, ST01, ST03, ST03b, ST03c, ST09, ST10, ST14a, ST14b) from evidence/.
+
+Numbering and labels follow revision 1 (review_r1/RENUMBER_MAP.json; decision D6): old ST12 -> ST01, ST01 -> ST03,
+ST13 -> ST09, ST06 -> ST10, ST07 -> ST14. Labels: B -> Base network, C -> Uncorrected, A2b -> Smoothing-trained,
+B+W -> NICE-post, A3 -> NICE; S8 and P0 keep their names (supplement only).
 
 Usage (from docs/paper_p1):  python3 latex/gen_supp_tables.py [--write]
 
 Without --write the blocks are printed; with --write they replace the corresponding pipe tables
 in SUPPLEMENTARY_EN.md. Sources:
-  newval2_<run>.json   identity-view validation (per-geometry directional means)   -> ST01, ST01b
-  newval_v2L1.json     views 0 and 17 of B on the earlier evaluation                -> ST01c
-  newval_c_oh.json     views 0 and 17 of P0 (five original classes only)           -> P0 columns of ST01, ST01b, ST01c
-  valmeta.json         geometry strata                                              -> ST01b
-  piml4_<mode>_<cell>.json  Bernstein-restricted retained space, x assemblies      -> ST07a, ST07b
-  meta_p1.json, meta_c_oh.json  training configuration and checkpoint selection    -> ST12
-  gate_<run>_*.json    two-cell continuous-neighbour assemblies                     -> ST13
-  MANUSCRIPT_EN.md     Table 2 (training-geometry counts)                           -> ST12
-Every entry now comes from an evidence file (meta_c_oh.json holds P0's archived configuration). gate_v2L1_*.json are the per-configuration splits of the archived gate_cont_v2L1_<cell>.json.
-The H2/y assembly (fresh_val_2010_d0_v0, configuration y) is not part of the reported comparison.
+  newval2_<run>.json   identity-view validation (per-geometry directional means)   -> ST03, ST03b
+  newval_v2L1.json     views 0 and 17 of the base network on the earlier evaluation -> ST03c
+  newval_c_oh.json     views 0 and 17 of P0 (five original classes only)           -> P0 columns of ST03, ST03b, ST03c
+  valmeta.json         geometry strata                                              -> ST03b
+  piml4_<mode>_<cell>.json  Bernstein-restricted retained space, x assemblies      -> ST14a, ST14b (file names are historical)
+  meta_p1.json, meta_c_oh.json  training configuration and checkpoint selection    -> ST01
+  gate_<run>_*.json    two-cell continuous-neighbour assemblies                     -> ST09 (face loads), ST10 (cut loads)
+Training-pool counts (ST01): the SPLIT events of the training logs (server logs, read 2026-09-28): v2L1 305, A0_ctrl,
+A2b_tail8 and A3_2grid 591; P0 148 from meta_c_oh.json. They are constants below (POOL) because the logs are not in
+evidence/; meta_p1.json records the split file as regenerated later (591 for every arm) and is not used for this column.
+gate_v2L1_*.json are the per-configuration splits of the archived gate_cont_v2L1_<cell>.json.
+The H2/y assembly (fresh_val_2010_d0_v0, configuration y) is ill-posed (negative exact energy share, PCG at its cap)
+and is excluded for every predictor.
 """
 import json
 import re
@@ -27,6 +34,9 @@ EV = SRC / 'evidence'
 SUPP = SRC / 'SUPPLEMENTARY_EN.md'
 
 ARMS = [('B', 'v2L1'), ('C', 'A0_ctrl'), ('S8', 'A2_tail8'), ('A2b', 'A2b_tail8'), ('B+W', 'B2grid'), ('A3', 'A3_2grid')]
+LABEL = {'P0': 'P0', 'B': 'Base network', 'C': 'Uncorrected', 'S8': 'S8', 'A2b': 'Smoothing-trained', 'B+W': 'NICE-post',
+         'A3': 'NICE'}
+POOL = {'P0': 148, 'B': 305, 'C': 591, 'S8': 591, 'A2b': 591, 'B+W': 305, 'A3': 591}   # SPLIT events (see docstring)
 CLASSES = ['force', 'support', 'face', 'macro', 'grf', 'force_c', 'face_c', 'support_k', 'glued']
 CELLS = [('2000_full', 'U1'), ('2001_full', 'U2'), ('2003_d1_v1', 'M1'), ('2005_d1_v0', 'H1'),
          ('2006_d0_v1', 'M2'), ('2002_d0_v0', 'H3'), ('2004_d0_v2', 'L1')]
@@ -91,7 +101,7 @@ def replace_table(text, heading, new_lines):
 def st01(text):
     pgs = {a: per_geo(r) for a, r in ARMS}
     p0 = p0_geo()
-    names = ['P0'] + [a for a, _ in ARMS]
+    names = [LABEL[a] for a in ['P0'] + [a for a, _ in ARMS]]
     out = [row(['Class', 'Geometries per evaluated arm'] + names), row(['---'] * (len(names) + 2))]
     for cls in CLASSES:
         n = {len(vals(pg, cls)) for pg in pgs.values()}
@@ -114,7 +124,7 @@ def st01b(text):
     meta = load('valmeta.json')
     pgs = {a: per_geo(r) for a, r in ARMS}
     p0 = p0_geo()
-    out = [row(['Stratum', 'Geometries', 'P0 force/support'] + [f'{a} force/support' for a, _ in ARMS]),
+    out = [row(['Stratum', 'Geometries', 'P0 force/support'] + [f'{LABEL[a]} force/support' for a, _ in ARMS]),
            row(['---'] * (len(ARMS) + 3))]
     for s in ('FULL', 'Light cut (v2)', 'Middle cut (v1)', 'Heavy cut (v0)'):
         keep = lambda c, s=s: c in meta and stratum(c, meta) == s
@@ -131,7 +141,7 @@ def st01c(text):
     p0a, p0b = p0_geo('0'), p0_geo('17')
     v0 = {c: g['0'] for c, g in pg.items()}
     v17 = {c: g['17'] for c, g in pg.items() if '17' in g}
-    out = [row(['Class', 'Geometries', 'P0', 'B']), row(['---'] * 4)]
+    out = [row(['Class', 'Geometries', 'P0', 'Base network']), row(['---'] * 4)]
     for cls in CLASSES:
         a, b = vals(v0, cls), vals(v17, cls)
         assert len(a) == len(b)
@@ -141,15 +151,9 @@ def st01c(text):
     return out
 
 
-def table2_geometries():
-    rows = table_rows((SRC / 'MANUSCRIPT_EN.md').read_text(), r'\*\*Table 2\.')[2:]
-    return {r[0].strip('*'): r[2] for r in rows}
-
-
 def st12(text):
-    old = table_rows(text, r'## Table ST12\.')
+    """Table ST01 (old ST12): training and evaluation settings."""
     runs = dict(load('meta_p1.json')['runs'], **load('meta_c_oh.json')['runs'])
-    geo = table2_geometries()
     nv = {a: load(f'newval2_{r}.json') for a, r in ARMS}
     nv['P0'] = load('newval_c_oh.json')
     nv['B'] = load('newval_v2L1.json')                                      # the earlier evaluation carries both views
@@ -158,26 +162,28 @@ def st12(text):
     def new_row(arm, train_val, budget, corr, sel=None):
         d = nv[arm]
         step, weights = sel if sel else (d['ckpt_step'], d['ckpt_weights'])
-        return row([arm, geo[arm], train_val, budget, f"{fmt(step)} / {weights.upper()}", corr,
+        return row([LABEL[arm], fmt(POOL[arm]), train_val, budget, f"{fmt(step)} / {weights.upper()}", corr,
                     ', '.join(str(v) for v in d['views']), str(len(d['per_geo']))])
 
     cfg = {a: runs[r]['cfg'] for a, r in [('P0', 'c_oh'), ('B', 'v2L1'), ('C', 'A0_ctrl'), ('S8', 'A2_tail8'),
                                           ('A3', 'A3_2grid')]}
     p0 = runs['c_oh']
+    assert p0['split_event']['train'] == POOL['P0']
     b_sel = (nv2 := load('newval2_v2L1.json'))['ckpt_step'], nv2['ckpt_weights']
-    out = [
+    head = ['Arm', 'Training pool (geometries)', 'Training-time validation geometries', 'Run budget (updates)',
+            'Evaluated update / weights', 'Evaluation correction', 'New-validation views', 'New-validation geometries']
+    out = [row(head), row(['---'] * len(head)),
         new_row('P0', str(p0['split_event']['val']), fmt(cfg['P0']['steps']), 'None', (p0['step'], p0['weights'])),
         new_row('B', str(cfg['B']['val_max']), fmt(cfg['B']['steps']), 'None', b_sel),
         new_row('C', str(cfg['C']['val_max']), fmt(cfg['C']['steps']), 'None'),
         new_row('S8', str(cfg['S8']['val_max']), fmt(cfg['S8']['steps']), 'Eight-step smoothing'),
-        # A2b has no configuration record in meta_p1.json: the 40 training-time validation geometries
-        # (Section 6.1) and the 15,000-step budget (Section 6.1, after Table 2) are stated in the main text
-        # for all continued predictors; step and weights come from newval2_A2b_tail8.json.
+        # A2b has no configuration record in meta_p1.json; its run configuration (prod/chain_a3r.sh cfg()) sets
+        # val_max 40 and 15,000 steps as for the other continuations; step and weights come from newval2_A2b_tail8.json.
         new_row('A2b', '40', '15,000', 'Eight-step smoothing'),
         new_row('B+W', str(cfg['B']['val_max']), '—', '8 / Q1(17) / 8', b_sel),
         new_row('A3', str(cfg['A3']['val_max']), fmt(cfg['A3']['steps']), '8 / Q1(17) / 8'),
     ]
-    return [row(old[0]), row(old[1])] + out
+    return out
 
 
 def gate(run, key, cfg):
@@ -193,7 +199,7 @@ def num(x):
 
 
 def st13(text):
-    old = table_rows(text, r'## Table ST13\.')
+    old = table_rows(text, r'## Table ST09\.')
     out = [row(old[0]), row(old[1])]
     for arm, run in ARMS:
         for key, lab in CELLS:
@@ -201,18 +207,45 @@ def st13(text):
                 t = gate(run, key, cfg)
                 if t is None:
                     continue
-                out.append(row([lab, cfg, arm, num(t['gate_compliance_max']), num(t['gate_sens_max']),
+                out.append(row([lab, cfg, LABEL[arm], num(t['gate_compliance_max']), num(t['gate_sens_max']),
                                 str(t['pcg_iterations']), 'Pass' if t['gate_pass'] else 'Above criterion']))
     return out
 
 
+def st06(text):
+    """Table ST10 (old ST06): cut-traction maxima for every recorded arm/configuration with a cut target."""
+    head = ['Arm', 'Cell', 'Configuration', 'Compliance error (%)', 'Sensitivity error (%)']
+    out = [row(head), row(['---'] * len(head))]
+    cells = [(k, l) for k, l in CELLS if k in ('2003_d1_v1', '2005_d1_v0', '2006_d0_v1', '2002_d0_v0', '2004_d0_v2')]
+    order = ['M1', 'H1', 'M2', 'H3', 'L1']
+    cells.sort(key=lambda kl: order.index(kl[1]))
+    for arm, run in ARMS:
+        for key, lab in cells:
+            for cfg in 'xy':
+                t = gate(run, key, cfg)
+                if t is None or t.get('cut_compliance_max') is None:
+                    continue
+                c, s_ = num(t['cut_compliance_max']), num(t['cut_sens_max'])
+                if 100 * t['cut_compliance_max'] > 3:
+                    c = f'**{c}**'
+                if 100 * t['cut_sens_max'] > 3:
+                    s_ = f'**{s_}**'
+                out.append(row([LABEL[arm], lab, cfg, c, s_]))
+    return out
+
+
 def r1(text):
-    old = table_rows(text, r'## R1\.')
-    extra = [['A2b', 'Continued weights trained through eight smoothing steps', 'A2b_tail8'],
-             ['B+W', "B's weights evaluated with A3's correction", 'B2grid'],
-             ['A3', 'Principal predictor, trained through the complete correction', 'A3_2grid']]
-    keep = [r for r in old[2:] if r[0] not in ('A2b', 'B+W', 'A3')]
-    return [row(r) for r in old[:2] + keep + extra]
+    head = ['Label', 'Former label', 'Numerical role', 'Archived run identifier']
+    rows = [
+        ['P0 (supplement only)', 'P0', 'Earlier uncorrected predictor; separate training lineage (148 legacy geometries)', 'c_oh'],
+        ['Base network', 'B', 'Baseline predictor; starting weights of every continuation and of the fixed-weight corrections', 'v2L1'],
+        ['Uncorrected', 'C', 'Continued weights, no correction in training or evaluation', 'A0_ctrl'],
+        ['S8 (supplement only)', 'S8', 'Continued weights with eight smoothing steps in training on identity-view samples only (rotated training views bypassed the smoothing); evaluated with eight steps', 'A2_tail8'],
+        ['Smoothing-trained', 'A2b', 'Continued weights trained through eight smoothing steps (all training views)', 'A2b_tail8'],
+        ['NICE-post', 'B+W', "Base network's weights evaluated with NICE's correction; no training through it", 'B2grid'],
+        ['NICE', 'A3', 'Principal predictor, trained through the complete correction (8 / Q1(17) / 8)', 'A3_2grid'],
+    ]
+    return [row(head), row(['---'] * 4)] + [row(r) for r in rows]
 
 
 def piml(mode, heading, text):
@@ -240,16 +273,16 @@ def piml(mode, heading, text):
 
 
 def st07a(text):
-    return piml('all', r'### ST07a\.', text)
+    return piml('all', r'#### ST14a\.', text)
 
 
 def st07b(text):
-    return piml('interface', r'### ST07b\.', text)
+    return piml('interface', r'#### ST14b\.', text)
 
 
-BLOCKS = [(r'## R1\.', r1), (r'## Table ST01\.', st01), (r'### ST01b\.', st01b), (r'### ST01c\.', st01c),
-          (r'### ST07a\.', st07a), (r'### ST07b\.', st07b),
-          (r'## Table ST12\.', st12), (r'## Table ST13\.', st13)]
+BLOCKS = [(r'## R1\.', r1), (r'## Table ST01\.', st12), (r'## Table ST03\.', st01), (r'### ST03b\.', st01b),
+          (r'### ST03c\.', st01c), (r'## Table ST09\.', st13), (r'## Table ST10\.', st06),
+          (r'#### ST14a\.', st07a), (r'#### ST14b\.', st07b)]
 
 if __name__ == '__main__':
     text = SUPP.read_text()

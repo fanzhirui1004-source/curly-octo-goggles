@@ -1,4 +1,4 @@
-"""Figure 5: directional energy error across 80 unseen geometries (identity view). Source: evidence/newval2_<run>.json
+"""Figure 5: directional energy error across the 80 validation geometries (identity view). Source: evidence/newval2_<run>.json
 (eval_views.py --data S2/data_v2, all classes) and evidence/valmeta.json (cut stratum, weight-selection membership)."""
 import json
 from pathlib import Path
@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 from figstyle import MODEL, C, MUTED, GRID, MM, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
-RUNS = [('B', 'v2L1', C['exact'], 'P', 'B (fixed weights)'), ('C', 'A0_ctrl') + MODEL['C'], ('S8', 'A2_tail8') + MODEL['S8'],
-        ('A2b', 'A2b_tail8') + MODEL['A2b'], ('B+W', 'B2grid') + MODEL['B+W'], ('A3', 'A3_2grid') + MODEL['A3']]
+# S8 is reported in the supplement only (Fig. S02, Table ST03); the main-text figure shows the five labelled predictors.
+RUNS = [('B', 'v2L1') + MODEL['B'], ('C', 'A0_ctrl') + MODEL['C'], ('A2b', 'A2b_tail8') + MODEL['A2b'],
+        ('B+W', 'B2grid') + MODEL['B+W'], ('A3', 'A3_2grid') + MODEL['A3']]
 STRATA = ['FULL', 'light', 'moderate', 'heavy']
 
 
@@ -46,9 +47,9 @@ def main():
         ax.set_xscale('log'); ax.set_yscale('log')
         lo, hi = 1e-3, 1e2
         ax.plot([lo, hi], [lo, hi], ':', color=MUTED, lw=.6); ax.set_xlim(.1, 100); ax.set_ylim(.005, 2)
-        ax.set_xlabel('B (%)'); ax.set_ylabel('A3 (%)'); ax.legend(frameon=False, fontsize=6.5, loc='upper left')
+        ax.set_xlabel('Base network (%)'); ax.set_ylabel('NICE (%)'); ax.legend(frameon=False, fontsize=6.5, loc='upper left')
         ax.grid(color=GRID, lw=.4)
-    panel(ax, 'b', 'Per geometry: B vs A3')
+    panel(ax, 'b', 'Per geometry: base network vs NICE')
     classes = [('glued', 'neighbour-induced'), ('support_k', 'spring-supported'), ('face_c', 'single-face traction'), ('force', 'nodal forces*')]
     ax = fig.add_subplot(gs[1, :])
     for k, key in enumerate(keys):

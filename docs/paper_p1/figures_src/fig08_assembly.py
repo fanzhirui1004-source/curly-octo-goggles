@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from figstyle import MODEL, MUTED, GRID, MM, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
-RUNS = {'C': 'A0_ctrl', 'S8': 'A2_tail8', 'B+W': 'B2grid', 'A2b': 'A2b_tail8', 'A3': 'A3_2grid'}
+RUNS = {'C': 'A0_ctrl', 'A2b': 'A2b_tail8', 'B+W': 'B2grid', 'A3': 'A3_2grid'}   # S8: supplement only (Table ST09)
 CASES = [('2000_full', 'U1'), ('2001_full', 'U2'), ('2003_d1_v1', 'M1'), ('2006_d0_v1', 'M2'), ('2005_d1_v0', 'H1'),
          ('2002_d0_v0', 'H3'), ('2004_d0_v2', 'L1')]
 LOADS = ['T/x', 'T/y', 'T/z', 'N/x', 'N/y', 'N/z']

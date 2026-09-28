@@ -7,12 +7,13 @@ import matplotlib.pyplot as plt
 
 TEXT, MUTED, GRID = '#243447', '#657382', '#DFE5E9'
 C = dict(exact='#53616F', uncorrected='#0072B2', corrected='#D55E00', assembly='#009E73', cut='#E69F00', extra='#AA4499')
-MODEL = {  # colour, marker, label
-    'C': (C['uncorrected'], 'o', 'C (uncorrected)'),
-    'S8': (C['extra'], 'D', 'S8 (8 smoothing steps)'),
-    'B+W': (C['assembly'], '^', 'B + correction (untrained)'),
-    'A2b': (C['cut'], 'v', 'A2b (smoothing-trained)'),
-    'A3': (C['corrected'], 's', 'A3 (trained through correction)'),
+MODEL = {  # colour, marker, label (labels as in the revised manuscript, decision D6; S8 and P0 appear in the supplement only)
+    'B': (C['exact'], 'P', 'Base network'),
+    'C': (C['uncorrected'], 'o', 'Uncorrected'),
+    'S8': (C['extra'], 'D', 'S8 (smoothing at evaluation)'),
+    'B+W': (C['assembly'], '^', 'NICE-post'),
+    'A2b': (C['cut'], 'v', 'Smoothing-trained'),
+    'A3': (C['corrected'], 's', 'NICE'),
 }
 MM = 1 / 25.4
 OUT = Path(__file__).resolve().parent.parent / 'figures'

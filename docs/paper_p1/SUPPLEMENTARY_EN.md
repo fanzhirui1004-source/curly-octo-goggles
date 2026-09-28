@@ -1,18 +1,20 @@
-# Supplementary results
+# Supplementary material
+
+Supplementary Notes, Tables and Figures are numbered in the order of their first citation in the article. Predictor labels follow the main text (Table 2); the key below also lists the archived run identifiers and the labels used before the revision. S8 and P0 are reported in this supplement only.
 
 ## R1. Predictor and geometry key
 
-| Scientific label | Numerical role | Archived run identifier |
-| --- | --- | --- |
-| P0 | Earlier uncorrected predictor | c_oh |
-| B | Baseline for fixed-weight corrections | v2L1 |
-| C | Continued uncorrected predictor | A0_ctrl |
-| S8 | Separate continued weights with eight smoothing steps | A2_tail8 |
-| A2b | Continued weights trained through eight smoothing steps | A2b_tail8 |
-| B+W | B's weights evaluated with A3's correction | B2grid |
-| A3 | Principal predictor, trained through the complete correction | A3_2grid |
+| Label | Former label | Numerical role | Archived run identifier |
+| --- | --- | --- | --- |
+| P0 (supplement only) | P0 | Earlier uncorrected predictor; separate training lineage (148 legacy geometries) | c_oh |
+| Base network | B | Baseline predictor; starting weights of every continuation and of the fixed-weight corrections | v2L1 |
+| Uncorrected | C | Continued weights, no correction in training or evaluation | A0_ctrl |
+| S8 (supplement only) | S8 | Continued weights with eight smoothing steps in training on identity-view samples only (rotated training views bypassed the smoothing); evaluated with eight steps | A2_tail8 |
+| Smoothing-trained | A2b | Continued weights trained through eight smoothing steps (all training views) | A2b_tail8 |
+| NICE-post | B+W | Base network's weights evaluated with NICE's correction; no training through it | B2grid |
+| NICE | A3 | Principal predictor, trained through the complete correction (8 / Q1(17) / 8) | A3_2grid |
 
-The S8 predictor has its own learned weights. Applying eight steps to B in the fixed-weight study is a distinct comparison.
+The S8 predictor has its own learned weights. Applying eight smoothing steps to the base network in the fixed-weight study is a distinct comparison.
 
 | Cell label | Geometry stratum | Archived geometry identifier |
 | --- | --- | --- |
@@ -40,17 +42,86 @@ The element-group diagnostic for M1 distributes sensitivity-error contributions 
 
 The role of the initial field is particularly clear in M1: after 32 smoothing steps, the dimensionless mean energy excess is 0.029452 from the learned field and 188.76 from a zero interior field, under identical retained displacements. These values are ratios, not percentages.
 
-For the same cell, coarse correction followed by one eight-step smoothing stage gives 0.22991% mean energy excess with the trilinear space. Adding the pre-smoothing stage gives 0.18643%. With eight steps on each side, the quadratic coarse space gives 0.09001%, and linear partition-of-unity enrichment gives 0.036479%. The enriched representation retains 22,404 coefficient columns; this count is not a certified independent-space dimension (Appendix F.1). Table ST04 includes both loading classes and all recorded spaces.
+For the same cell, coarse correction followed by one eight-step smoothing stage gives 0.22991% mean energy excess with the trilinear space. Adding the pre-smoothing stage gives 0.18643%. With eight steps on each side, the quadratic coarse space gives 0.09001%, and linear partition-of-unity enrichment gives 0.036479%. The enriched representation retains 22,404 coefficient columns; this count is not a certified independent-space dimension (Appendix F.1). Table ST07 includes both loading classes and all recorded spaces.
 
-For the baseline predictor in M1/x under the target-face y load, the retained-displacement error is 14.198% in the exact Schur norm and the energy excess at the exact retained displacement is 14.778%. These values accompany the full, field-only and solution-only sensitivity errors; the latter are separate replacements, not additive scalar contributions.
+For the base network in M1/x, the largest retained-displacement error over the six face loads is 14.198% in the exact Schur norm, and the largest energy excess at the exact retained displacement is 14.778%. These maxima accompany the full, field-only and solution-only sensitivity errors of Table ST11, which are separate replacements, not additive scalar contributions; like them, they are maxima over the six loads and need not occur under the same load.
 
 Geometry counts refer to geometries with an available direction-class mean. The aggregate records do not retain the realised direction count for every geometry and class; reported percentiles summarise their respective recorded direction banks.
 
-## Table ST01. Identity-view energy excess by direction class
+## Table ST01. Training and evaluation settings
 
-Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. An em dash denotes a class absent from that model’s result. B+W denotes B's weights evaluated with A3's correction.
+| Arm | Training pool (geometries) | Training-time validation geometries | Run budget (updates) | Evaluated update / weights | Evaluation correction | New-validation views | New-validation geometries |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| P0 | 148 | 20 | 15,000 | 15,000 / EMA | None | 0, 17 | 80 |
+| Base network | 305 | 40 | 40,000 | 30,000 / EMA | None | 0, 17 | 80 |
+| Uncorrected | 591 | 40 | 15,000 | 15,000 / EMA | None | 0 | 80 |
+| S8 | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
+| Smoothing-trained | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
+| NICE-post | 305 | 40 | — | 30,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
+| NICE | 591 | 40 | 15,000 | 15,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
 
-| Class | Geometries per evaluated arm | P0 | B | C | S8 | A2b | B+W | A3 |
+The training pool is the number of training geometries recorded at the start of each run (the SPLIT event of its training log): 148 for P0, 305 for the base network, and 591 for Uncorrected, Smoothing-trained and NICE. The S8 run used the same split file as the other continuations; its SPLIT event was not extracted. The 591 geometries comprise 148 legacy-family geometries and 443 independent-field cells; the base network's pool of 305 comprised the same 148 legacy-family geometries and 157 independent-field cells generated earlier. With three geometries in the device pool and one replacement every 100 updates (Appendix G.3), a run of \(N\) updates visits at most \(N/100+3\) distinct geometries: at most 303 for the base network up to its selected update 30,000, and at most 153 for each 15,000-update continuation. Uncorrected, S8, Smoothing-trained and NICE use the same seed and split, so they draw their geometries in the same order.
+
+P0 uses its final (15,000-update) weights; the other rows use the selected weights. Uncorrected, S8, Smoothing-trained and NICE are separate continuations initialised from the selected weights of the base network; NICE-post evaluates those same weights with NICE's correction and has no training run of its own. S8 is evaluated with its own weights and an eight-step smoothing tail. The fixed-weight correction experiments use the base network. The new-validation set comprises 20 uncut cells and 20, 20 and 20 cells in the light-, middle- and heavy-cut strata. In the identity view, the five basic direction classes, force_c and face_c cover all 80 geometries, and support_k and glued cover 75. The view-17 comparison in Table ST03c comes from an earlier evaluation of the same geometries, in which force_c, face_c, support_k and glued cover 20, 20, 19 and 15 geometries.
+
+For the base network, Uncorrected, S8, Smoothing-trained and NICE, checkpoint selection uses the bias-corrected EMA weights and both validation views 0 and 17, even where the new-validation table reports only view 0. Within a geometry family and view, let \(E_{fv}\) be the mean energy excess averaged over the selection classes, \(S_{fv}\) the mean relative sensitivity-vector error over classes with labels, and \(P_{fv}\) the class-average 90th percentile of directional energy excess. Each class statistic is first averaged over the available geometries in that family. The selection score is
+
+\[
+J_{\rm sel}=\frac12\sum_{v\in\{0,17\}}\frac1{|\mathcal F|}
+\sum_{f\in\mathcal F}\left(E_{fv}+S_{fv}+\tfrac12P_{fv}\right).
+\]
+
+Families and the two views carry equal weight. The eight selection classes are `force`, `support`, `face`, `macro`, `grf`, `force_c`, `face_c` and `support_k`; absent classes are omitted and an absent sensitivity term contributes zero. The percentile term averages within-geometry percentiles rather than pooling all directions. No additional sensitivity-percentile term is used. Among eligible evaluations, the lowest finite score is selected.
+
+- The base network was scored at 10,000, 20,000, 30,000 and 40,000 updates (\(J_{\rm sel}\) = 0.1057, 0.1065, 0.0905 and 0.0912); the weights of update 30,000 were selected. Every continued predictor starts from these weights.
+- Uncorrected, S8 and NICE were scored at 7,500 and 15,000 updates (0.0944 and 0.0906; 0.0582 and 0.0553; 0.00281 and 0.00237); in each case the final checkpoint scored lower and was retained.
+- Smoothing-trained was run with the same evaluation schedule and views (its run configuration); its selected weights are those of update 15,000. Its per-checkpoint scores are not in the archived records.
+
+This selection criterion differs from the per-batch training loss in Eq. (8) and from the geometry-weighted statistics of the 80-geometry validation set. Twenty of those 80 geometries belong to the selection list (Section 6.1).
+
+## Table ST02. Discrete operator and diagnostic definitions
+
+The same retained coordinate convention is used for the learned extension, the variational readout, and assembly. Relative errors are dimensionless and are displayed as percentages unless indicated otherwise.
+
+| Item | Definition or setting |
+| --- | --- |
+| Geometry | Unit-box P-type thin-wall cells with corner thickness parameters; FULL cells and plane-cut cells in retained-volume strata v0, v1, v2. |
+| Elastic discretisation | Isotropic small-strain elasticity on active tensor-product Q2 hexahedra; body stiffness plus the prescribed ghost-penalty contribution. |
+| Retained coordinates | All active box-face coefficients and the cut-band retained coefficients; node-major Cartesian displacement order. |
+| Internal reference | \(A=K_{II}\); exact interior extension with the retained values prescribed. |
+| Background coordinate convention | 32 background elements and 65 Q2 node positions per axis. |
+| Standard moment evaluator | \(4^3\) initial subcells per active element, one local refinement of partial subcells, and clipped Kuhn tetrahedra with rule parameter 4. |
+| Material and stabilisation parameters | For all validation geometries: \(E_Y=1,\nu=0.3,\gamma=0.0001\). |
+| Learned readout | \(\widehat S=F^TKF\), with \(F=\widehat E\) for the uncorrected network. |
+| Energy excess | \(\varepsilon(q)=q^T(\widehat S-S)q/(q^TSq)\). Geometry means average directions first; population means weight geometries equally. |
+| Compliance error | \(e_C=\lvert\widehat C/C-1\rvert\), with \(C=f_g^TU\). |
+| Sensitivity error | \(e_s=\lVert\widetilde{\boldsymbol s}-\boldsymbol s\rVert_2/\lVert\boldsymbol s\rVert_2\); the field-based estimate has one component for each corner thickness parameter. |
+| Spectrum | \(Av_j=\lambda_j Dv_j\), \(D=\operatorname{diag}(A)\); cumulative fractions of the internal error or exact internal-field energy, with separate denominators. |
+| Fixed correction | Retained values fixed; Chebyshev relaxation and an interior Galerkin coarse correction. Two-sided sequences use k steps before and k steps after the coarse correction. |
+| Assembly diagnostic | Learned target cell joined to its exact continuous-thickness neighbour; x and y denote the adjacent-cell configuration. |
+| Six-load | Maximum compliance and sensitivity errors over the six face loads are each at most 3%; cut-traction loads are tabulated separately. |
+| Iterative residuals | Recursive PCG residual and \(\max_j\lVert f_j-\mathbb K_{\rm run}\widehat U_j\rVert_2/\lVert f_j\rVert_2\), recomputed with the same operator used in that run. |
+
+### Validation geometry domain
+
+The 80 geometries use independently generated thickness fields, with 20 uniform, 30 affine and 30 mixed trilinear fields. The generator constrains every corner parameter to \([0.17520160,0.69933962]\), the corner span to at most 0.47, and the maximum reference-coordinate gradient norm to at most 0.47. In blocks of eight, a uniform-field-equivalent centre volume fraction is stratified between 0.1 and 0.4; nonuniform affine or trilinear shapes are scaled within these constraints. This centre-density parameter is a sampling coordinate, not the material fraction after cutting.
+
+Canonical cut normals are \((\cos\vartheta,\sin\vartheta,0)\). The generator stratifies \(\vartheta\) over the two halves of \((0,\pi/4)\) and the retained macro-box volume \(v_{\mathcal B}\) over thirds of \((0,1)\). Two of every eight validation fields are uncut and the other six occupy the angle–volume strata. Training and validation are drawn from separate random streams; the present table describes the 80-geometry validation set.
+
+| Stratum | Geometries | Generation interval for \(v_{\mathcal B}\) | Observed \(v_{\mathcal B}\) | Observed corner-parameter range |
+| --- | ---: | --- | --- | --- |
+| Uncut | 20 | 1 | 1 | 0.1762–0.6902 |
+| Light cut | 20 | \((2/3,1)\) | 0.6765–0.9996 | 0.1853–0.6972 |
+| Moderate cut | 20 | \((1/3,2/3)\) | 0.3437–0.6605 | 0.1867–0.6983 |
+| Heavy cut | 20 | \((0,1/3)\) | 0.01326–0.3195 | 0.1768–0.6946 |
+
+The cut volumes refer to the box before intersecting it with the TPMS band. Geometry identifiers and cube-orbit identifiers are unique within this validation set. The selected spectral and assembly cases are identified in the benchmark key; they are reported as diagnostic cases rather than a random sample for population inference.
+
+## Table ST03. Identity-view energy excess by direction class
+
+Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. An em dash denotes a class absent from that model's result. NICE-post denotes the base network's weights evaluated with NICE's correction.
+
+| Class | Geometries per evaluated arm | P0 | Base network | Uncorrected | S8 | Smoothing-trained | NICE-post | NICE |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | force | 80 | 7.387 / 19.508 / 109.813 | 5.036 / 12.038 / 70.122 | 4.607 / 10.750 / 62.465 | 0.672 / 1.887 / 4.398 | 0.525 / 1.301 / 3.658 | 0.092 / 0.180 / 0.683 | 0.058 / 0.117 / 0.325 |
 | support | 80 | 8.078 / 13.959 / 153.172 | 5.332 / 9.811 / 99.857 | 4.878 / 9.493 / 90.741 | 0.761 / 1.864 / 3.408 | 0.638 / 1.601 / 3.552 | 0.084 / 0.168 / 0.852 | 0.055 / 0.132 / 0.372 |
@@ -62,22 +133,20 @@ Entries are geometry-equal mean / 90th percentile / maximum of geometry-level di
 | support_k | 75 | — | 4.177 / 9.695 / 28.817 | 3.941 / 8.831 / 26.175 | 1.135 / 3.022 / 6.714 | 0.938 / 2.390 / 5.246 | 0.077 / 0.193 / 0.632 | 0.057 / 0.169 / 0.468 |
 | glued | 75 | — | 4.593 / 11.227 / 38.128 | 4.422 / 10.378 / 42.030 | 1.160 / 3.373 / 5.852 | 0.953 / 2.696 / 4.629 | 0.078 / 0.217 / 0.555 | 0.060 / 0.172 / 0.384 |
 
+### ST03b. Force/support geometry-stratum means (%)
 
-### ST01b. Force/support geometry-stratum means (%)
-
-| Stratum | Geometries | P0 force/support | B force/support | C force/support | S8 force/support | A2b force/support | B+W force/support | A3 force/support |
+| Stratum | Geometries | P0 force/support | Base network force/support | Uncorrected force/support | S8 force/support | Smoothing-trained force/support | NICE-post force/support | NICE force/support |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | FULL | 20 | 1.052 / 1.815 | 0.908 / 1.413 | 0.879 / 1.332 | 0.110 / 0.278 | 0.072 / 0.225 | 0.034 / 0.044 | 0.013 / 0.022 |
 | Light cut (v2) | 20 | 4.593 / 4.142 | 3.239 / 3.049 | 3.021 / 2.832 | 0.665 / 0.777 | 0.523 / 0.661 | 0.088 / 0.072 | 0.059 / 0.050 |
 | Middle cut (v1) | 20 | 6.166 / 5.265 | 4.720 / 3.930 | 4.506 / 3.810 | 0.912 / 0.856 | 0.723 / 0.698 | 0.103 / 0.075 | 0.070 / 0.050 |
 | Heavy cut (v0) | 20 | 17.738 / 21.089 | 11.278 / 12.938 | 10.021 / 11.540 | 0.999 / 1.133 | 0.783 / 0.966 | 0.141 / 0.145 | 0.090 / 0.098 |
 
+### ST03c. View dependence: identity / view 17 means (%)
 
-### ST01c. View dependence: identity / view 17 means (%)
+This comparison uses an earlier evaluation in both views, in which the four enriched classes cover the numbers of geometries given in the second column; their identity-view means therefore differ from those of Table ST03. Views other than the identity were not evaluated for the continued predictors.
 
-This comparison uses an earlier evaluation in both views, in which the four enriched classes cover the numbers of geometries given in the second column; their identity-view means therefore differ from those of Table ST01.
-
-| Class | Geometries | P0 | B |
+| Class | Geometries | P0 | Base network |
 | --- | --- | --- | --- |
 | force | 80 | 7.387 / 8.107 | 5.036 / 5.271 |
 | support | 80 | 8.078 / 8.678 | 5.332 / 5.598 |
@@ -89,39 +158,50 @@ This comparison uses an earlier evaluation in both views, in which the four enri
 | support_k | 19 | — | 3.350 / 3.760 |
 | glued | 15 | — | 6.647 / 7.207 |
 
-## Table ST02. Same-trace sensitivity and spectral diagnostics
+## Table ST04. Operator verification in the deployed arithmetic
 
-### ST02a. Sensitivity estimates
+Columns: \(\lambda_{\max}\) of \(D^{-1}K_{II}\) by Lanczos; the power-iteration estimate \(b\) used by the smoothing; the Gershgorin bound; the maximum relative asymmetry of \(Q^T\widehat SQ\); the maximum relative difference between returned work and field energy; the deployed-versus-training field difference; the maximum rigid-body energy ratio; the ghost-penalty share of the exact field energy (consistent tractions / nodal forces); and the mean \(\delta\) and \(\kappa\) of the base network and of NICE under consistent tractions. Here \(\delta^2=d_I^TDd_I/u_I^TDu_I\) and \(\kappa=(d^TKd/d_I^TDd_I)/(u^TKu/u_I^TDu_I)\) with \(D=\operatorname{diag}(K_{II})\), i.e. the weighting \(W=\operatorname{diag}(0,D)\) of Appendix B.1. The \(b\) values of H2, H1, M2 and M1 come from a host evaluation, whose seeded generator gives a different power-iteration start from the GPU runs; the endpoint used by all GPU runs is the one verified on all 80 validation geometries in Appendix D. U2 is a GPU record. Data: `evidence/p1_checks_cpu.json` (H2, H1, M2, M1) and `evidence/p1_checks_u2.json` (U2); see Supplementary Note S2.
+
+| cell | lambda_max (Lanczos) | b = 1.05 x power | margin | Gershgorin | sym | action-energy | fastnet-trainlib | rigid energy | ghost share force_c / force | δ, κ base network (force_c) | δ, κ NICE (force_c) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| H2 | 3.992 | 4.152 | 4.0% | 43.9 | 6.3e-09 | 4.5e-09 | 4.6e-09 | 1.7e-11 | 0.00048 / 0.49 | 0.71%, 7089 | 0.051%, 582 |
+| H1 | 4.994 | 5.191 | 3.9% | 78.2 | 5.6e-09 | 4.0e-09 | 4.2e-08 | 1.6e-12 | 7.9e-05 / 0.81 | 1.23%, 124 | 0.186%, 33 |
+| M2 | 5.027 | 5.228 | 4.0% | 100 | 8.7e-09 | 3.4e-09 | 9.4e-08 | 2.4e-12 | 3.6e-05 / 0.66 | 1.15%, 294 | 0.156%, 163 |
+| M1 | 4.979 | 5.193 | 4.3% | 99.5 | 7.3e-09 | 4.4e-09 | 9.3e-08 | 1.4e-11 | 0.00012 / 0.58 | 1.26%, 866 | 0.179%, 426 |
+| U2 | 4.897 | 5.106 | 4.3% | 71.7 | 3.5e-09 | 1.8e-09 | 1.1e-07 | 2.9e-13 | 3.6e-05 / 0.79 | 0.74%, 85 | 0.107%, 47 |
+
+## Table ST05. Same-trace sensitivity and spectral diagnostics
+
+### ST05a. Sensitivity estimates
 
 Energy and sensitivity errors are directional means (%). The first-order share is the Frobenius norm of the linear error array divided by the sum of the Frobenius norms of the linear and quadratic arrays (%); each array includes all eight corners and all evaluated directions in that cell and class.
 
 | Arm | Cell | Class | Mean energy excess | Mean sensitivity error | 90th-percentile sensitivity error | First-order share |
 | --- | --- | --- | --- | --- | --- | --- |
-| B | U1 | force_c | 1.270 | 0.664 | 0.778 | 42.887 |
-| B | U1 | force | 0.742 | 1.018 | 1.449 | 55.124 |
-| B | U2 | force_c | 0.402 | 0.588 | 0.693 | 35.658 |
-| B | U2 | force | 0.506 | 1.008 | 1.772 | 71.565 |
-| B | M1 | force_c | 13.512 | 14.128 | 19.184 | 7.164 |
-| B | M1 | force | 7.156 | 4.822 | 10.493 | 23.516 |
-| B | H1 | force_c | 1.814 | 1.909 | 3.221 | 28.403 |
-| B | H1 | force | 1.842 | 0.923 | 1.565 | 35.199 |
-| B | M2 | force_c | 3.643 | 5.159 | 7.351 | 9.339 |
-| B | M2 | force | 2.175 | 1.103 | 2.019 | 41.390 |
-| B | H2 | force_c | 34.954 | 75.072 | 156.803 | 0.786 |
-| B | H2 | force | 19.507 | 13.649 | 38.851 | 36.322 |
-| C | U1 | force_c | 1.165 | 0.937 | 1.138 | 35.750 |
-| C | U1 | force | 0.779 | 0.766 | 0.981 | 59.185 |
-| C | U2 | force_c | 0.397 | 0.560 | 0.658 | 35.988 |
-| C | U2 | force | 0.515 | 1.062 | 1.773 | 72.929 |
-| C | M1 | force_c | 13.009 | 13.275 | 18.119 | 7.456 |
-| C | M1 | force | 6.841 | 4.442 | 9.663 | 26.413 |
-| C | H1 | force_c | 1.699 | 1.894 | 3.223 | 28.046 |
-| C | H1 | force | 1.877 | 1.013 | 1.630 | 34.751 |
-| C | M2 | force_c | 3.988 | 5.432 | 7.485 | 9.548 |
-| C | M2 | force | 2.105 | 1.357 | 2.192 | 49.454 |
+| Base network | U1 | force_c | 1.270 | 0.664 | 0.778 | 42.887 |
+| Base network | U1 | force | 0.742 | 1.018 | 1.449 | 55.124 |
+| Base network | U2 | force_c | 0.402 | 0.588 | 0.693 | 35.658 |
+| Base network | U2 | force | 0.506 | 1.008 | 1.772 | 71.565 |
+| Base network | M1 | force_c | 13.512 | 14.128 | 19.184 | 7.164 |
+| Base network | M1 | force | 7.156 | 4.822 | 10.493 | 23.516 |
+| Base network | H1 | force_c | 1.814 | 1.909 | 3.221 | 28.403 |
+| Base network | H1 | force | 1.842 | 0.923 | 1.565 | 35.199 |
+| Base network | M2 | force_c | 3.643 | 5.159 | 7.351 | 9.339 |
+| Base network | M2 | force | 2.175 | 1.103 | 2.019 | 41.390 |
+| Base network | H2 | force_c | 34.954 | 75.072 | 156.803 | 0.786 |
+| Base network | H2 | force | 19.507 | 13.649 | 38.851 | 36.322 |
+| Uncorrected | U1 | force_c | 1.165 | 0.937 | 1.138 | 35.750 |
+| Uncorrected | U1 | force | 0.779 | 0.766 | 0.981 | 59.185 |
+| Uncorrected | U2 | force_c | 0.397 | 0.560 | 0.658 | 35.988 |
+| Uncorrected | U2 | force | 0.515 | 1.062 | 1.773 | 72.929 |
+| Uncorrected | M1 | force_c | 13.009 | 13.275 | 18.119 | 7.456 |
+| Uncorrected | M1 | force | 6.841 | 4.442 | 9.663 | 26.413 |
+| Uncorrected | H1 | force_c | 1.699 | 1.894 | 3.223 | 28.046 |
+| Uncorrected | H1 | force | 1.877 | 1.013 | 1.630 | 34.751 |
+| Uncorrected | M2 | force_c | 3.988 | 5.432 | 7.485 | 9.548 |
+| Uncorrected | M2 | force | 2.105 | 1.357 | 2.192 | 49.454 |
 
-
-### ST02b. Energy fractions in the lowest 200 generalised interior modes
+### ST05b. Energy fractions in the lowest 200 generalised interior modes
 
 | Cell | Class | Error fraction: mean / p10 / p90 (%) | Exact-field fraction: mean / p10 / p90 (%) |
 | --- | --- | --- | --- |
@@ -134,8 +214,7 @@ Energy and sensitivity errors are directional means (%). The first-order share i
 | H2 | force_c | 15.216 / 12.681 / 19.023 | 4.705 / 1.983 / 6.199 |
 | H2 | force | 21.837 / 13.953 / 34.960 | 4.877 / 2.383 / 6.832 |
 
-
-The two fractions use their respective internal-energy denominators. Their cumulative curves are shown in Figure 6. The archived eigenvalues can also be compared with the interval used in the separate fixed-weight smoothing diagnostic:
+The two fractions use their respective internal-energy denominators. Their cumulative curves are shown in Figure 6. The archived eigenvalues can also be compared with the interval used in the separate fixed-weight smoothing diagnostic of the base network:
 
 | Cell | \(\lambda_1\) | \(\lambda_{200}\) | Diagnostic lower endpoint \(a=b/30\) | Recorded modes below \(a\), out of 200 |
 | --- | --- | --- | --- | --- |
@@ -146,11 +225,11 @@ The two fractions use their respective internal-energy denominators. Their cumul
 
 The spectral and smoothing diagnostics use the same cell identifiers, predictor and specified discrete construction, with matching internal-coordinate counts. The intervals come from the separate smoothing runs: the recorded upper endpoint includes the 1.05 safety factor, and \(a=b/30\). These estimates differ from those of the correction wrapper and are not certified spectral bounds. Individual directional attenuation and stiffness-content hashes were not recorded, so the comparison supports a cell-level spectral interpretation.
 
-## Table ST03. Complete recorded smoothing cases
+## Table ST06. Complete recorded smoothing cases
 
-The retained trace is identical for network and zero interior initialisations. Entries are mean [90th percentile] directional errors (%). A zero interior start sets only the internal displacement to zero. The same five cells and both direction classes are included.
+The network rows use the base network. The retained trace is identical for network and zero interior initialisations. Entries are mean [90th percentile] directional errors (%). A zero interior start sets only the internal displacement to zero. The same five cells and both direction classes are included.
 
-### ST03a. Energy excess
+### ST06a. Energy excess
 
 | Cell | Class | Network, k=0 | Network, k=8 | Network, k=32 | Zero interior, k=32 |
 | --- | --- | --- | --- | --- | --- |
@@ -165,8 +244,7 @@ The retained trace is identical for network and zero interior initialisations. E
 | H2 | force_c | 34.954 [56.196] | 0.20515 [0.32813] | 0.0033313 [0.006318] | 0.42123 [0.57258] |
 | H2 | force | 19.507 [36.537] | 0.22768 [0.34841] | 0.0074193 [0.011726] | 0.20928 [0.34236] |
 
-
-### ST03b. Field-based sensitivity error
+### ST06b. Field-based sensitivity error
 
 | Cell | Class | Network, k=0 | Network, k=8 | Network, k=32 | Zero interior, k=32 |
 | --- | --- | --- | --- | --- | --- |
@@ -181,11 +259,11 @@ The retained trace is identical for network and zero interior initialisations. E
 | H2 | force_c | 75.072 [156.8] | 0.77195 [1.4896] | 0.010708 [0.023337] | 1.9551 [2.8917] |
 | H2 | force | 13.649 [38.851] | 0.75099 [1.4264] | 0.073808 [0.14745] | 0.69083 [1.2398] |
 
-## Table ST04. Interior coarse-space and smoothing comparisons
+## Table ST07. Interior coarse-space and smoothing comparisons
 
-### ST04a. Eight steps per smoothing stage
+### ST07a. Eight steps per smoothing stage
 
-Entries are mean [90th percentile] energy excess (%). C denotes one coarse correction and T one eight-step smoothing stage. All network rows use the same B checkpoint; the zero interior reference uses the same retained values. The size column counts coarse coefficient columns remaining after the support and diagonal-energy screens. For the PU rows, structural dependencies in the generating functions and the absence of an archived rank/solve-accuracy check prevent interpreting this count as an independent-space dimension; see Appendix F.1.
+Entries are mean [90th percentile] energy excess (%). C denotes one coarse correction and T one eight-step smoothing stage. All network rows use the base network's selected weights; the zero interior reference uses the same retained values. The size column counts coarse coefficient columns remaining after the support and diagonal-energy screens. For the PU rows, structural dependencies in the generating functions and the absence of an archived rank/solve-accuracy check prevent interpreting this count as an independent-space dimension; see Appendix F.1.
 
 | Cell | Class | Coarse space | Surviving coarse coefficient columns | Net + C | Net + C + T | Net + T + C + T | Zero + T + C + T |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -226,8 +304,7 @@ Entries are mean [90th percentile] energy excess (%). C denotes one coarse corre
 | M2 | force | PU_17 | 18,228 | 0.71966 [1.0802] | 0.077675 [0.12553] | 0.044293 [0.07325] | 10.536 [17.558] |
 | M2 | force | Q1_33 | 23,199 | 0.61821 [0.89137] | 0.049731 [0.074383] | 0.025119 [0.040226] | 17.939 [28.357] |
 
-
-### ST04b. Shorter two-sided smoothing sequences
+### ST07b. Shorter two-sided smoothing sequences
 
 | Cell | Class | Steps on each side | Q1_9 mean [p90] (%) | Q1_17 mean [p90] (%) | PU_9 mean [p90] (%) |
 | --- | --- | --- | --- | --- | --- |
@@ -240,9 +317,153 @@ Entries are mean [90th percentile] energy excess (%). C denotes one coarse corre
 | M1 | force_c | 4 | 1.328 [1.9919] | 0.42211 [0.61995] | 0.32643 [0.47049] |
 | M1 | force | 4 | 0.68988 [1.0641] | 0.2529 [0.38508] | 0.20707 [0.30643] |
 
-## Table ST05. Assembly sensitivity replacement diagnostics
+## Table ST08. Energy excess of different starting fields under the same correction
 
-Maximum errors (%) over the six face loads defining the joint criterion; maxima in separate columns may occur at different loads. Full, field-only, and solution-only values are separate nonlinear replacement diagnostics. The trace error is the relative exact-Schur norm, not its square.
+Mean directional energy excess (%) of the base network, of NICE and of starting fields under the same correction (fixed retained displacement, 32 validation directions per class). Columns give the starting field and the correction (smoothing steps per stage / coarse space / smoothing steps). Harmonic and zero starting fields receive the exact rigid-body split. Data: `evidence/p1_checks_cpu.json`, `evidence/p1_checks_u2.json`.
+
+| cell | class | Base network | NICE | Base network + 8/Q1/8 (NICE-post) | harmonic + 8/Q1/8 | zero + 8/Q1/8 | Base network + 32/Q1/32 | harmonic + 32/Q1/32 | zero + 32/Q1/32 |
+|---|---|---|---|---|---|---|---|---|---|
+| H2 | force_c | 35 | 0.0148 | 0.0117 | 0.0806 | 28.3 | 0.000182 | 0.000614 | 0.0156 |
+| H2 | force | 19.5 | 0.0145 | 0.0249 | 0.712 | 13.7 | 0.000333 | 0.0246 | 0.0056 |
+| H1 | force_c | 1.81 | 0.0115 | 0.0131 | 1.28 | 39.9 | 0.0013 | 0.199 | 2.92 |
+| H1 | force | 1.84 | 0.0187 | 0.024 | 2.78 | 46.5 | 0.00202 | 0.399 | 3.79 |
+| M2 | force_c | 3.64 | 0.0358 | 0.0273 | 6.72 | 324 | 0.00691 | 1.52 | 38.9 |
+| M2 | force | 2.17 | 0.0404 | 0.0613 | 7.77 | 107 | 0.00939 | 1.33 | 12.4 |
+| M1 | force_c | 13.5 | 0.131 | 0.186 | 17.2 | 1.1e+03 | 0.0727 | 4.11 | 185 |
+| M1 | force | 7.16 | 0.0835 | 0.114 | 13.5 | 558 | 0.0397 | 2.64 | 86.9 |
+| U2 | force_c | 0.402 | 0.00465 | 0.00424 | 1.23 | 47.2 | 0.0009 | 0.38 | 5.51 |
+| U2 | force | 0.506 | 0.00701 | 0.0121 | 6.4 | 11 | 0.00166 | 1.25 | 1.19 |
+
+## Table ST09. Complete continuous-neighbour assembly results
+
+Maximum relative compliance and field-based sensitivity-vector errors over the six face loads defining the joint criterion. Sensitivity maxima include both cells. The target cell uses the specified learned arm and its neighbour is exact. Cell labels abbreviate the validation identifiers (R1). The joint criterion is 3% for both errors.
+
+| Target cell | Configuration | Arm | Max. compliance error (%) | Max. sensitivity error (%) | PCG iterations | Outcome |
+| --- | --- | --- | --- | --- | --- | --- |
+| U1 | x | Base network | 0.465 | 5.830 | 11 | Above criterion |
+| U1 | y | Base network | 0.427 | 5.390 | 11 | Above criterion |
+| U2 | x | Base network | 0.105 | 1.996 | 11 | Pass |
+| M1 | x | Base network | 4.384 | 12.153 | 15 | Above criterion |
+| H1 | x | Base network | 1.180 | 2.512 | 13 | Pass |
+| H1 | y | Base network | 1.379 | 1.820 | 13 | Pass |
+| M2 | x | Base network | 0.571 | 2.539 | 15 | Pass |
+| U1 | x | Uncorrected | 0.401 | 4.885 | 11 | Above criterion |
+| U1 | y | Uncorrected | 0.388 | 4.723 | 11 | Above criterion |
+| U2 | x | Uncorrected | 0.104 | 1.781 | 11 | Pass |
+| U2 | y | Uncorrected | 0.119 | 1.906 | 11 | Pass |
+| M1 | x | Uncorrected | 4.119 | 11.365 | 15 | Above criterion |
+| M1 | y | Uncorrected | 3.458 | 10.929 | 15 | Above criterion |
+| H1 | x | Uncorrected | 1.061 | 2.469 | 13 | Pass |
+| H1 | y | Uncorrected | 1.223 | 1.734 | 13 | Pass |
+| M2 | x | Uncorrected | 0.593 | 2.874 | 15 | Pass |
+| L1 | x | Uncorrected | 0.174 | 1.894 | 16 | Pass |
+| L1 | y | Uncorrected | 0.182 | 1.646 | 16 | Pass |
+| U1 | x | S8 | 0.139 | 3.894 | 7 | Above criterion |
+| U1 | y | S8 | 0.140 | 3.747 | 7 | Above criterion |
+| U2 | x | S8 | 0.031 | 1.115 | 6 | Pass |
+| U2 | y | S8 | 0.038 | 1.106 | 6 | Pass |
+| M1 | x | S8 | 1.677 | 5.829 | 9 | Above criterion |
+| M1 | y | S8 | 1.391 | 5.555 | 9 | Above criterion |
+| H1 | x | S8 | 0.178 | 1.216 | 9 | Pass |
+| H1 | y | S8 | 0.270 | 0.880 | 8 | Pass |
+| M2 | x | S8 | 0.188 | 1.887 | 8 | Pass |
+| U1 | x | Smoothing-trained | 0.112 | 3.155 | 7 | Above criterion |
+| U1 | y | Smoothing-trained | 0.111 | 3.166 | 7 | Above criterion |
+| U2 | x | Smoothing-trained | 0.031 | 0.508 | 6 | Pass |
+| U2 | y | Smoothing-trained | 0.038 | 0.782 | 6 | Pass |
+| M1 | x | Smoothing-trained | 1.363 | 4.432 | 9 | Above criterion |
+| M1 | y | Smoothing-trained | 1.115 | 3.974 | 9 | Above criterion |
+| H1 | x | Smoothing-trained | 0.144 | 0.636 | 8 | Pass |
+| H1 | y | Smoothing-trained | 0.237 | 0.561 | 8 | Pass |
+| M2 | x | Smoothing-trained | 0.189 | 1.428 | 8 | Pass |
+| M2 | y | Smoothing-trained | 0.213 | 2.545 | 9 | Pass |
+| H3 | x | Smoothing-trained | 0.106 | 1.290 | 9 | Pass |
+| H3 | y | Smoothing-trained | 0.132 | 0.678 | 10 | Pass |
+| U1 | x | NICE-post | 0.011 | 0.945 | 5 | Pass |
+| U1 | y | NICE-post | 0.011 | 0.904 | 5 | Pass |
+| U2 | x | NICE-post | 0.00123 | 0.142 | 4 | Pass |
+| U2 | y | NICE-post | 0.0014 | 0.158 | 4 | Pass |
+| M1 | x | NICE-post | 0.079 | 0.350 | 6 | Pass |
+| M1 | y | NICE-post | 0.066 | 0.339 | 6 | Pass |
+| H1 | x | NICE-post | 0.010 | 0.139 | 6 | Pass |
+| H1 | y | NICE-post | 0.013 | 0.105 | 6 | Pass |
+| M2 | x | NICE-post | 0.00492 | 0.083 | 6 | Pass |
+| M2 | y | NICE-post | 0.0034 | 0.075 | 6 | Pass |
+| H3 | x | NICE-post | 0.00609 | 0.132 | 6 | Pass |
+| H3 | y | NICE-post | 0.00894 | 0.202 | 7 | Pass |
+| L1 | x | NICE-post | 0.00193 | 0.065 | 7 | Pass |
+| L1 | y | NICE-post | 0.00181 | 0.087 | 7 | Pass |
+| U1 | x | NICE | 0.00614 | 0.598 | 5 | Pass |
+| U1 | y | NICE | 0.00681 | 0.669 | 5 | Pass |
+| U2 | x | NICE | 0.00121 | 0.082 | 4 | Pass |
+| U2 | y | NICE | 0.00159 | 0.073 | 4 | Pass |
+| M1 | x | NICE | 0.056 | 0.161 | 7 | Pass |
+| M1 | y | NICE | 0.048 | 0.206 | 7 | Pass |
+| H1 | x | NICE | 0.0076 | 0.098 | 6 | Pass |
+| H1 | y | NICE | 0.011 | 0.097 | 6 | Pass |
+| M2 | x | NICE | 0.00595 | 0.136 | 7 | Pass |
+| M2 | y | NICE | 0.00472 | 0.154 | 8 | Pass |
+| H3 | x | NICE | 0.0064 | 0.124 | 7 | Pass |
+| H3 | y | NICE | 0.010 | 0.196 | 7 | Pass |
+| L1 | x | NICE | 0.00202 | 0.101 | 8 | Pass |
+| L1 | y | NICE | 0.00197 | 0.078 | 8 | Pass |
+
+The comparison contains seven configurations for the base network, eleven for Uncorrected, nine for S8, twelve for Smoothing-trained and fourteen each for NICE-post and NICE. The nine configurations U1/x,y, U2/x,y, M1/x,y, H1/x,y and M2/x are common to Uncorrected, S8, Smoothing-trained, NICE-post and NICE; the base network was evaluated on seven of them (no U2/y, no M1/y). Uncorrected and S8 satisfy both 3% criteria in the same five of these nine configurations, and Uncorrected also on L1/x and L1/y; Smoothing-trained fails the same four configurations as Uncorrected and S8; NICE-post and NICE satisfy both criteria in all fourteen. Missing model/configuration combinations have no row. All cells in this table belong to the 20 validation geometries used for weight selection (Section 6.1). H2/y is an ill-posed configuration and is excluded: in every archived record (Uncorrected, S8, Smoothing-trained and NICE) the target's exact energy share is negative for several loads and the preconditioned solve stops at its 400-iteration cap. H2/x was not run. Cut-traction responses of the same configurations are in Table ST10.
+
+## Table ST10. Cut-traction responses outside the six-load criterion
+
+Maximum relative errors (%) over the three cut-surface traction directions, for every recorded arm and configuration with a cut target (H2/y excluded; Table ST09). Sensitivity maxima include both cells. The target is learned and the neighbour exact. The 3% reference is not applied to these loads in the main text; values above it are marked in bold.
+
+| Arm | Cell | Configuration | Compliance error (%) | Sensitivity error (%) |
+| --- | --- | --- | --- | --- |
+| Base network | M1 | x | 2.880 | **9.924** |
+| Base network | H1 | x | 0.445 | 2.066 |
+| Base network | H1 | y | 0.651 | 1.275 |
+| Base network | M2 | x | 0.560 | **3.155** |
+| Uncorrected | M1 | x | 2.768 | **9.827** |
+| Uncorrected | M1 | y | **6.870** | **14.053** |
+| Uncorrected | H1 | x | 0.399 | 1.825 |
+| Uncorrected | H1 | y | 0.613 | 1.200 |
+| Uncorrected | M2 | x | 0.574 | **3.252** |
+| Uncorrected | L1 | x | 0.355 | 1.660 |
+| Uncorrected | L1 | y | 1.141 | **3.702** |
+| S8 | M1 | x | 0.912 | **4.445** |
+| S8 | M1 | y | 2.862 | **6.760** |
+| S8 | H1 | x | 0.078 | 0.839 |
+| S8 | H1 | y | 0.158 | 0.372 |
+| S8 | M2 | x | 0.200 | 2.207 |
+| Smoothing-trained | M1 | x | 0.713 | **3.228** |
+| Smoothing-trained | M1 | y | 2.417 | **5.191** |
+| Smoothing-trained | H1 | x | 0.062 | 0.356 |
+| Smoothing-trained | H1 | y | 0.130 | 0.587 |
+| Smoothing-trained | M2 | x | 0.200 | 1.664 |
+| Smoothing-trained | M2 | y | 1.117 | **3.924** |
+| Smoothing-trained | H3 | x | 0.052 | 0.689 |
+| Smoothing-trained | H3 | y | 0.237 | 1.354 |
+| NICE-post | M1 | x | 0.049 | 0.217 |
+| NICE-post | M1 | y | 0.124 | 0.305 |
+| NICE-post | H1 | x | 0.0044 | 0.096 |
+| NICE-post | H1 | y | 0.00709 | 0.022 |
+| NICE-post | M2 | x | 0.00468 | 0.053 |
+| NICE-post | M2 | y | 0.020 | 0.091 |
+| NICE-post | H3 | x | 0.00391 | 0.038 |
+| NICE-post | H3 | y | 0.011 | 0.042 |
+| NICE-post | L1 | x | 0.00479 | 0.039 |
+| NICE-post | L1 | y | 0.011 | 0.069 |
+| NICE | M1 | x | 0.035 | 0.161 |
+| NICE | M1 | y | 0.101 | 0.158 |
+| NICE | H1 | x | 0.00338 | 0.061 |
+| NICE | H1 | y | 0.00587 | 0.126 |
+| NICE | M2 | x | 0.00603 | 0.072 |
+| NICE | M2 | y | 0.027 | 0.154 |
+| NICE | H3 | x | 0.00313 | 0.125 |
+| NICE | H3 | y | 0.00982 | 0.129 |
+| NICE | L1 | x | 0.00435 | 0.087 |
+| NICE | L1 | y | 0.011 | 0.071 |
+
+## Table ST11. Assembly sensitivity replacement diagnostics
+
+Maximum errors (%) over the six face loads defining the joint criterion; maxima in separate columns may occur at different loads. Full, field-only, and solution-only values are separate nonlinear replacement diagnostics. The trace error is the relative exact-Schur norm, not its square. No per-load record of the field-only and solution-only values is archived.
 
 | Arm | Cell | Configuration | Full sensitivity error | Field-only error | Solution-only error | Trace error | Energy excess at exact trace |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -251,38 +472,103 @@ Maximum errors (%) over the six face loads defining the joint criterion; maxima 
 | S8 | M1 | x | 5.829 | 3.320 | 7.839 | 6.580 | 5.101 |
 | S8 | M1 | y | 5.555 | 3.094 | 7.623 | 6.402 | 4.940 |
 | S8 | M2 | x | 1.887 | 0.727 | 2.421 | 2.706 | 1.137 |
-| B | U1 | x | 5.830 | 2.674 | 3.305 | 2.413 | 2.312 |
-| B | U1 | y | 5.390 | 2.603 | 2.966 | 2.322 | 2.056 |
-| B | M1 | x | 12.153 | 15.602 | 19.269 | 14.198 | 14.778 |
-| B | M1 | y | 11.439 | 15.532 | 18.966 | 14.329 | 14.671 |
-| B | M2 | x | 2.539 | 3.371 | 4.841 | 4.434 | 2.352 |
+| Base network | U1 | x | 5.830 | 2.674 | 3.305 | 2.413 | 2.312 |
+| Base network | U1 | y | 5.390 | 2.603 | 2.966 | 2.322 | 2.056 |
+| Base network | M1 | x | 12.153 | 15.602 | 19.269 | 14.198 | 14.778 |
+| Base network | M1 | y | 11.439 | 15.532 | 18.966 | 14.329 | 14.671 |
+| Base network | M2 | x | 2.539 | 3.371 | 4.841 | 4.434 | 2.352 |
 
-## Table ST06. Cut-traction responses outside the six-load criterion
+## Table ST12. Matched face-load responses for the smoothed variant
 
-Maximum relative errors (%) across the three cut-surface traction directions. Sensitivity maxima include both cells. The target is learned and the neighbour exact.
+S8 on the target cell, exact neighbour, configuration x. Each row uses one load and reports both cell sensitivity-vector errors. Energy participation refers to the target in the exact assembled solution. Relative quantities are percentages.
 
-| Arm | Cell | Configuration | Compliance error (%) | Sensitivity error (%) | Status |
+| Target | Load | Compliance error | Target sensitivity error | Neighbour sensitivity error | Target energy participation |
 | --- | --- | --- | --- | --- | --- |
-| B | M1 | x | 2.8796 | 9.9241 | Recorded |
-| B | H1 | x | 0.44546 | 2.0656 | Recorded |
-| B | H1 | y | 0.65052 | 1.275 | Recorded |
-| B | M2 | x | 0.55957 | 3.1552 | Recorded |
-| C | M1 | x | 2.7679 | 9.8268 | Recorded |
-| C | M1 | y | 6.8704 | 14.053 | Recorded |
-| C | H1 | x | 0.39921 | 1.825 | Recorded |
-| C | H1 | y | 0.61261 | 1.2 | Recorded |
-| C | M2 | x | 0.57448 | 3.2516 | Recorded |
-| S8 | M1 | x | 0.91215 | 4.4449 | Recorded |
-| S8 | M1 | y | 2.8617 | 6.76 | Recorded |
-| S8 | H1 | x | 0.077686 | 0.83947 | Recorded |
-| S8 | H1 | y | 0.15791 | 0.37196 | Recorded |
-| S8 | M2 | x | 0.20034 | 2.2065 | Recorded |
+| H1 | T-x | 0.178113 | 1.21556 | 0.0755185 | 64.2733 |
+| H1 | T-y | 0.0730244 | 0.843527 | 0.0145867 | 40.803 |
+| H1 | T-z | 0.0319646 | 0.502716 | 0.00906095 | 27.3735 |
+| H1 | N-x | 0.000504597 | 0.442032 | 0.000822323 | 0.217835 |
+| H1 | N-y | 0.00082195 | 0.345192 | 0.00205754 | 0.308471 |
+| H1 | N-z | 4.06479e-05 | 0.885999 | 5.96007e-05 | 0.0360864 |
+| U1 | T-x | 0.13928 | 1.18517 | 0.00831909 | 35.0385 |
+| U1 | T-y | 0.0448159 | 1.30571 | 0.00536493 | 11.542 |
+| U1 | T-z | 0.0313817 | 1.10598 | 0.00456525 | 11.6406 |
+| U1 | N-x | 0.00254548 | 2.37052 | 0.00246372 | 0.355414 |
+| U1 | N-y | 0.00351229 | 1.28801 | 0.00481203 | 0.873919 |
+| U1 | N-z | 0.00136724 | 3.89419 | 0.00186976 | 0.127467 |
+| M1 | T-x | 1.6765 | 4.51959 | 1.37179 | 51.2504 |
+| M1 | T-y | 1.41865 | 5.82917 | 0.942721 | 31.068 |
+| M1 | T-z | 0.416357 | 2.99719 | 0.137715 | 21.2573 |
+| M1 | N-x | 0.00212258 | 0.914003 | 0.0056564 | 0.354364 |
+| M1 | N-y | 0.0178155 | 1.05549 | 0.0460078 | 0.742265 |
+| M1 | N-z | 0.000598185 | 1.82925 | 0.000963143 | 0.102043 |
 
-## Table ST07. Bernstein restriction of the box-face trace
+## Table ST13. Load-specific compliance weighting for the base network
+
+U1/x under the neighbour-face z traction. The base network is used on the target and its neighbour is exact. The bound is evaluated from dimensionless ratios before percentage conversion.
+
+| Target participation (%) | Local energy excess (%) | Product bound (%) | Compliance error (%) | Target sensitivity error (%) |
+| --- | --- | --- | --- | --- |
+| 0.1274669 | 2.312168 | 0.002947249 | 0.002827394 | 5.82992 |
+
+## Supplementary Note S1. Geometry visualisation
+
+The surfaces in Figure 1 are sampled on a grid with 97 positions per unit-box axis using the eight corner band parameters and cut-plane data of U1, M1, H1 and H2. The displayed percentages describe the retained macro-domain volume, before intersection with the thin-wall material. This surface sampling is used for visualisation; the mechanical discretisation has 32 background elements per axis and continuous Q2 displacement functions.
+
+## Supplementary Note S2. Local correction records and operator verification
+
+These records support Sections 6.2, 6.4 and 6.5 of the main text. Tables ST04 and ST08 are generated by `evidence/summarize_results.py` from `evidence/p1_checks_cpu.json` and `evidence/p1_checks_u2.json` (script `p1_checks.py`). Table ST04 checks the operator in the deployed arithmetic; Table ST08 compares starting fields under the same correction. Figure S01 verifies the CutFEM reference against background refinement, the ghost-penalty coefficient and the finite-difference step of the moment derivatives.
+
+## Supplementary Note S3. Enriched partition-of-unity coarse spaces as a numerical observation
+
+The enriched spaces of Appendix F.1 (PU_9, PU_17 in Table ST07 and Figure S05) are not used by any reported predictor. Their entries record what the archived solves produced and are not presented as verified Galerkin projections.
+
+The enriched generating functions have a specific coefficient redundancy. The trilinear nodal basis reproduces linear coordinates, so
+
+\[
+\sum_v N_v(x)=1,\qquad \sum_v N_v(x)x_v=x,
+\qquad \sum_v N_v(x)(x_j-x_{v,j})=0.
+\]
+
+Thus taking \(a_v=0\) and the same slope matrix \(B_v=B\) at every vertex produces the zero displacement field. Restriction to internal coordinates preserves this identity. Support and diagonal-energy screens do not certify independence of the surviving columns. The archived PU records give column counts and field-error statistics, but no rank-revealing representation or coarse-equation residual. Their values in Table ST07 are therefore retained as numerical observations of those solves, rather than verification of the full-rank projection assumptions. The reported Q1(17) result is the principal coarse-correction result.
+
+Coefficient redundancy does not preclude energy minimisation over the coarse range. Since \(A\succ0\), \(\ker(V^TAV)=\ker V\), and \(V^Tr_I\) is orthogonal to this kernel. An exactly solved compatible coarse equation therefore defines a unique displacement correction even when its coefficient vector is nonunique. Establishing that property for the archived numerical PU solve requires the corresponding representation and solve-accuracy evidence.
+
+## Supplementary Note S4. Ablation of the retained representation: Bernstein-restricted box faces
+
+This note gives the complete results of the ablation summarised in Section 6.8. It is an ablation of the present pipeline: every cell operator is the exact Schur complement, and only the representation of the retained box-face displacements is reduced. It is not a model or a reproduction of reduced-boundary substructure methods, which control the boundary error by refining the partition, enriching the boundary interpolation or oversampling overlapping local bases [Guo et al. (2026a)](https://doi.org/10.1016/j.cma.2026.118955), [Guo et al. (2026b)](https://arxiv.org/abs/2607.22019v1); boundary-space reduction is also used by learned shape-function substructures [Huang et al. (2023)](https://doi.org/10.1016/j.eml.2023.102041), [Huang et al. (2024)](https://doi.org/10.1016/j.jmps.2024.105893). The ablation makes no statement about the accuracy of those methods.
+
+### S4.1. Restricted Galerkin system
+
+The restricted space uses tensor-product Bernstein polynomials of degree \(r\) on the selected box faces of each cell. Its global map \(G_r\) respects the coordinates shared between cells, while cut-band coordinates outside the box trace retain identity columns. The supported Galerkin system is
+
+\[
+\mathbb K_r=G_r^T\mathbb K G_r,\qquad
+f_r=G_r^Tf_g,\qquad U_r=G_r\mathbb K_r^{-1}f_r.
+\tag{S4.1}
+\]
+
+The comparison evaluates exact local Schur operators within this restricted trace space, so the interior is exact and every error comes from the restricted boundary. Two variants are examined: every box face restricted, as in a lattice built entirely from such substructures, and only the shared interface restricted. Nested boundary spaces give a nondecreasing Ritz compliance (Appendix J.8). The interior correction of Section 5 acts on a different trial space: it leaves every retained coordinate intact.
+
+### S4.2. Conditions
+
+- Pairs in configuration x (Figure 4; Supplementary Note S6), each target with its exact continuous-thickness neighbour, for U1, M1, M2 and H1; the interface-only variant was run for U1, M1 and M2.
+- One cell per substructure, the fine-scale consistent face tractions used throughout, and no oversampling.
+- Loads: the three target-face tractions, the three neighbour-face tractions and, for cut targets, the three cut-surface tractions.
+- The non-box cut-band coordinates remain unrestricted, which favours the restricted model: at \(r=1\) the restricted M1 pair still controls 15,423 coordinates, whereas the uncut U1 pair controls only its 24 corner coordinates, against 28,206 free coordinates of the full retained space.
+- The comparison concerns accuracy, not accuracy at equal cost.
+
+### S4.3. Results
+
+With every box face restricted, degree one gives compliance errors of 76–82% under the three target-face loads alone and 78–85% over the six face loads on U1, M1, M2 and H1. The error decreases with degree to about 4% at \(r=5\) and 0.49–0.74% at \(r=8\), where the restricted problem retains, on H1, 14,001 of 32,991 free coordinates. The local sensitivity converges more slowly: at \(r=8\) the maximum target-cell sensitivity error is 1.3–4.5% over the target-face loads and 24–64% when the neighbour-face loads are included. The loads applied to the neighbour deform the shared face in patterns that a polynomial of degree eight does not resolve.
+
+Restricting only the shared interface removes most of the compliance error (U1, M1 and M2: 1.95–9.4% at \(r=1\), 0.17–0.44% at \(r=3\)), but the sensitivity error under the six face loads remains 8–21% at \(r=3\) and 2.2–3.4% at \(r=5\). A restricted interface is therefore adequate for compliance at low degree, but not for the local sensitivity under neighbour loads. Keeping the complete retained space removes this component of the error, at the cost of a coarse model with tens of thousands of coordinates per cell. The maxima refer to their respective load sets and need not occur under the same load.
+
+### Table ST14. Bernstein restriction of the box-face displacements
 
 Each target cell and its continuous-thickness neighbour are assembled in configuration x using exact cell operators. Degree r applies to the restricted box faces; cut-band coefficients retain their identity representation. Controlled DOFs include these unrestricted cut-band coefficients. All errors are maxima in the stated load set (%), relative to the full retained-space solution; sensitivity columns refer to the target-cell vector. Target-face loads are the three unit consistent tractions on the target's loaded face, the six-load set adds the three neighbour-face tractions, and the all-load set adds the three macro-cut tractions.
 
-### ST07a. Every box face restricted
+#### ST14a. Every box face restricted
 
 | Cell | r | Controlled DOFs | Target-face compliance (3 loads) | Target-face sensitivity (3 loads) | Six-load compliance (6 loads) | Six-load sensitivity (6 loads) | All-load compliance (9 loads) | All-load sensitivity (9 loads) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -307,7 +593,7 @@ Each target cell and its continuous-thickness neighbour are assembled in configu
 | H1 | 5 | 13,308 | 2.784 | 2.890 | 3.860 | 171.306 | 3.860 | 171.306 |
 | H1 | 8 | 14,001 | 0.608 | 1.520 | 0.735 | 64.044 | 0.778 | 64.044 |
 
-### ST07b. Only the shared interface restricted
+#### ST14b. Only the shared interface restricted
 
 | Cell | r | Controlled DOFs | Target-face compliance (3 loads) | Target-face sensitivity (3 loads) | Six-load compliance (6 loads) | Six-load sensitivity (6 loads) | All-load compliance (9 loads) | All-load sensitivity (9 loads) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -329,187 +615,66 @@ Each target cell and its continuous-thickness neighbour are assembled in configu
 
 The supported systems on the full retained space have 28,206 (U1), 39,996 (M1), 39,120 (M2) and 32,991 (H1) free DOFs. U1 has no cut band, so its corner-linear restriction controls only the 24 corner coordinates. Six-load and all-load maxima coincide only when the maximizing load belongs to both sets. The interface-only variant was run for U1, M1 and M2. Data: `evidence/piml4_all_*.json`, `evidence/piml4_interface_*.json`.
 
-## Table ST11. Discrete operator and diagnostic definitions
+## Supplementary Note S5. Whole-lattice direct solution on the host
 
-The same retained coordinate convention is used for the learned extension, the variational readout, and assembly. Relative errors are dimensionless and are displayed as percentages unless indicated otherwise.
+This note gives the complete records of Table 6. The four-cell lattices are the two layers \(z=0\) and \(z=1\) of the \(2\times2\times2\) block of Section 6.9, taken with their thickness corners unchanged: each layer holds two uncut cells and two cut cells with retained volume fractions 0.616 and 0.252. All lattices are clamped on the face \(y=\min\) and loaded by unit consistent tractions on the face \(y=\max\) in the three Cartesian directions; the direct solution additionally solves three random loads.
 
-| Item | Definition or setting |
-| --- | --- |
-| Geometry | Unit-box P-type thin-wall cells with corner thickness parameters; FULL cells and plane-cut cells in retained-volume strata v0, v1, v2. |
-| Elastic discretisation | Isotropic small-strain elasticity on active tensor-product Q2 hexahedra; body stiffness plus the prescribed ghost-penalty contribution. |
-| Retained coordinates | All active box-face coefficients and the cut-band retained coefficients; node-major Cartesian displacement order. |
-| Internal reference | \(A=K_{II}\); exact interior extension with the retained values prescribed. |
-| Background coordinate convention | 32 background elements and 65 Q2 node positions per axis. |
-| Standard moment evaluator | \(4^3\) initial subcells per active element, one local refinement of partial subcells, and clipped Kuhn tetrahedra with rule parameter 4. |
-| Material and stabilisation parameters | For all validation geometries: \(E_Y=1,\nu=0.3,\gamma=0.0001\). |
-| Learned readout | \(\widehat S=F^TKF\), with \(F=\widehat E\) for the uncorrected network. |
-| Energy excess | \(\varepsilon(q)=q^T(\widehat S-S)q/(q^TSq)\). Geometry means average directions first; population means weight geometries equally. |
-| Compliance error | \(e_C=\lvert\widehat C/C-1\rvert\), with \(C=f_g^TU\). |
-| Sensitivity error | \(e_s=\lVert\widetilde{\boldsymbol s}-\boldsymbol s\rVert_2/\lVert\boldsymbol s\rVert_2\); the field-based estimate has one component for each corner thickness parameter. |
-| Spectrum | \(Av_j=\lambda_j Dv_j\), \(D=\operatorname{diag}(A)\); cumulative fractions of the internal error or exact internal-field energy, with separate denominators. |
-| Fixed correction | Retained values fixed; Chebyshev relaxation and an interior Galerkin coarse correction. Two-sided sequences use k steps before and k steps after the coarse correction. |
-| Assembly diagnostic | Learned target cell joined to its exact continuous-thickness neighbour; x and y denote the adjacent-cell configuration. |
-| Six-load | Maximum compliance and sensitivity errors over the six face loads are each at most 3%; cut-traction loads are tabulated separately. |
-| Iterative residuals | Recursive PCG residual and \(\max_j\lVert f_j-\mathbb K_{\rm run}\widehat U_j\rVert_2/\lVert f_j\rVert_2\), recomputed with the same operator used in that run. |
+The direct solution assembles the full cut-cell stiffness of every cell, retained and interior degrees of freedom, into one global matrix. The retained degrees of freedom are numbered and coupled exactly as in the learned lattice, with the same clamp, free set and load vectors, and the interior degrees of freedom of each cell follow the free retained ones. The matrix is scaled symmetrically by its diagonal and factorised by MKL PARDISO with 16 threads, once as a symmetric positive definite Cholesky factorisation of the upper triangle and once as the unsymmetric LU factorisation that Table 5 uses; each factorisation has its own symbolic analysis, and all six loads are solved at once. Relative residuals \(\|Ku-f\|/\|f\|\) are recomputed with the unscaled matrix. PARDISO memory is the sum of its permanent and factorisation storage reported by the analysis; for the four-cell lattices the values reported after the numerical factorisation agree with the prediction within 0.1%. Peak process memory is the maximum resident set size of the process, which also holds the assembled matrix and load vectors. For the eight-cell lattices the runs skipped any numerical factorisation whose predicted memory exceeded the limit of 60 GiB set for these runs, so only the analysis was run. Cholesky and LU give the same compliance to a relative difference of \(10^{-11}\). The host was shared with other jobs during these runs (one-minute load average between 11 and 37 on its 128 logical cores at the start of the direct runs). [PENDING E1: the direct solution is repeated on a quiet host with the Cholesky factorisation (mtype 2), explicitly set iparm values, direct phase calls without the wrapper's matrix hashing, a parallel solve and three repetitions, and the \(2\times2\times2\) Cholesky factorisation is run; Table ST15b and the direct entries of Table 6 will be replaced by those records.]
 
+The learned route runs one design iteration of the deployed implementation with NICE on one NVIDIA GeForce RTX 5090: front end (cell construction, stiffness and moment assembly, network input and encoding, and a warm-up application that prepares the correction), assembly of the lattice and of \(K_{PP}\), preconditioner setup (the balanced two-level action of Supplementary Note S6), conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(8.6\times10^{-7}\) to \(9.8\times10^{-7}\)), and the field-based sensitivities \(\widetilde s_c\) of Eq. (13) for the three loads, obtained by reverse-mode differentiation of the moment integrals at the fixed recovered fields. In this timed route the network, and also the correction's smoothing and coarse solve, run in single precision, while the stiffness products of the condensed action are in double precision; the accuracy results of Sections 6.2–6.9 use a double-precision correction (Appendix F.3). Both routes read the same generated cell geometries; geometry generation is not timed in either. The eight-cell runs keep the operator state of four cells on the GPU and stream the remainder from host memory.
 
-### Validation geometry domain
+The compliance errors in Table ST15d are those of the timed run and include the algebraic error of its \(10^{-6}\) solve (Eq. (18)). For the eight-cell lattices they exceed the operator errors of Section 6.9, which solved six loads to a relative residual of \(10^{-10}\), by 1.4–5% of their value and by 47% for the z-load of the \(3\times3\times1\) layer (0.0151% against 0.0103%); unlike the Section 6.9 values, they exceed the participation-weighted bound of Eq. (12). The single-precision correction itself does not change the operator accuracy: repeating the \(2\times2\times2\) solve of Section 6.9 with the correction in single precision (to \(10^{-10}\)) changes its compliance errors by less than \(3\times10^{-9}\) (record `docs/data/newmachine_20260924/p2/lat_hetero222_stream.json`).
 
-The 80 geometries use independently generated thickness fields, with 20 uniform, 30 affine and 30 mixed trilinear fields. The generator constrains every corner parameter to \([0.17520160,0.69933962]\), the corner span to at most 0.47, and the maximum reference-coordinate gradient norm to at most 0.47. In blocks of eight, a uniform-field-equivalent centre volume fraction is stratified between 0.1 and 0.4; nonuniform affine or trilinear shapes are scaled within these constraints. This centre-density parameter is a sampling coordinate, not the material fraction after cutting.
+All memory values are in GiB (\(2^{30}\) bytes): GPU memory is the peak memory allocated by the process, host memory the resident set size after the front end, and PARDISO memory the reported kilobytes taken as 1024 bytes.
 
-Canonical cut normals are \((\cos\vartheta,\sin\vartheta,0)\). The generator stratifies \(\vartheta\) over the two halves of \((0,\pi/4)\) and the retained macro-box volume \(v_{\mathcal B}\) over thirds of \((0,1)\). Two of every eight validation fields are uncut and the other six occupy the angle–volume strata. Training and validation are drawn from separate random streams; the present table describes the 80-geometry validation set.
+### Table ST15. Whole-lattice direct solution and learned route: dimensions, phases, memory and compliance
 
-| Stratum | Geometries | Generation interval for \(v_{\mathcal B}\) | Observed \(v_{\mathcal B}\) | Observed corner-parameter range |
-| --- | ---: | --- | --- | --- |
-| Uncut | 20 | 1 | 1 | 0.1762–0.6902 |
-| Light cut | 20 | \((2/3,1)\) | 0.6765–0.9996 | 0.1853–0.6972 |
-| Moderate cut | 20 | \((1/3,2/3)\) | 0.3437–0.6605 | 0.1867–0.6983 |
-| Heavy cut | 20 | \((0,1/3)\) | 0.01326–0.3195 | 0.1768–0.6946 |
+#### ST15a. Lattice dimensions
 
-The cut volumes refer to the box before intersecting it with the TPMS band. Geometry identifiers and cube-orbit identifiers are unique within this validation set. The selected spectral and assembly cases are identified in the benchmark key; they are reported as diagnostic cases rather than a random sample for population inference.
-
-## Table ST12. Training and evaluation settings
-
-| Arm | Training geometries | Training-time validation geometries | Run budget (steps) | Evaluated step / weights | Evaluation correction | New-validation views | New-validation geometries |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| P0 | 148 | 20 | 15,000 | 15,000 / EMA | None | 0, 17 | 80 |
-| B | 305 | 40 | 40,000 | 30,000 / EMA | None | 0, 17 | 80 |
-| C | 591 | 40 | 15,000 | 15,000 / EMA | None | 0 | 80 |
-| S8 | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
-| A2b | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
-| B+W | 305 | 40 | — | 30,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
-| A3 | 591 | 40 | 15,000 | 15,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
-
-
-The P0 row uses the final selected-weight snapshot; the other rows use the best selected-weight snapshot. C, S8, A2b and A3 are separate continuation recipes initialized from B; B+W evaluates the selected B checkpoint with A3's correction and has no training run of its own. S8 denotes evaluation of its own checkpoint with an eight-step tail. The fixed-checkpoint correction experiments use B. The new-validation set comprises 20 FULL cells and 20, 20, and 20 cells in the light-, middle-, and heavy-cut strata. In the identity view, the five basic direction classes, force_c and face_c cover all 80 geometries, and support_k and glued cover 75. The view-17 comparison in Table ST01c comes from an earlier evaluation of the same geometries, in which force_c, face_c, support_k and glued cover 20, 20, 19 and 15 geometries.
-
-For B, C, S8 and A3, checkpoint selection uses the bias-corrected EMA weights and both validation views 0 and 17, even where the new-validation table reports only view 0. Within a geometry family and view, let \(E_{fv}\) be the mean energy excess averaged over the selection classes, \(S_{fv}\) the mean relative sensitivity-vector error over classes with labels, and \(P_{fv}\) the class-average 90th percentile of directional energy excess. Each class statistic is first averaged over the available geometries in that family. The selection score is
-
-\[
-J_{\rm sel}=\frac12\sum_{v\in\{0,17\}}\frac1{|\mathcal F|}
-\sum_{f\in\mathcal F}\left(E_{fv}+S_{fv}+\tfrac12P_{fv}\right).
-\]
-
-Families and the two views carry equal weight. The eight selection classes are `force`, `support`, `face`, `macro`, `grf`, `force_c`, `face_c` and `support_k`; absent classes are omitted and an absent sensitivity term contributes zero. The percentile term averages within-geometry percentiles rather than pooling all directions. No additional sensitivity-percentile term is used. B is evaluated every 10,000 updates and becomes eligible at update 10,000; C, S8 and A3 are evaluated every 7,500 updates and become eligible at update 7,500; A2b is evaluated with its EMA weights at update 15,000. Among eligible evaluations, the lowest finite score is selected. This selection criterion differs from the per-batch training loss in Eq. (8) and from the geometry-weighted statistics of the unseen validation set.
-
-
-## Table ST13. Complete continuous-neighbour assembly results
-
-Maximum relative compliance and field-based sensitivity-vector errors over the six face loads defining the joint criterion. Sensitivity maxima include both cells. The target cell uses the specified learned arm and its neighbour is exact. Cell labels abbreviate the validation identifiers. The joint criterion is 3% for both errors.
-
-| Target cell | Configuration | Arm | Max. compliance error (%) | Max. sensitivity error (%) | PCG iterations | Outcome |
+| Lattice | Cells (cut) | Cell DOFs (min–max) | Total DOFs | Free retained DOFs | Interior DOFs | Stored nonzeros, upper triangle |
 | --- | --- | --- | --- | --- | --- | --- |
-| U1 | x | B | 0.465 | 5.830 | 11 | Above criterion |
-| U1 | y | B | 0.427 | 5.390 | 11 | Above criterion |
-| U2 | x | B | 0.105 | 1.996 | 11 | Pass |
-| M1 | x | B | 4.384 | 12.153 | 15 | Above criterion |
-| H1 | x | B | 1.180 | 2.512 | 13 | Pass |
-| H1 | y | B | 1.379 | 1.820 | 13 | Pass |
-| M2 | x | B | 0.571 | 2.539 | 15 | Pass |
-| U1 | x | C | 0.401 | 4.885 | 11 | Above criterion |
-| U1 | y | C | 0.388 | 4.723 | 11 | Above criterion |
-| U2 | x | C | 0.104 | 1.781 | 11 | Pass |
-| U2 | y | C | 0.119 | 1.906 | 11 | Pass |
-| M1 | x | C | 4.119 | 11.365 | 15 | Above criterion |
-| M1 | y | C | 3.458 | 10.929 | 15 | Above criterion |
-| H1 | x | C | 1.061 | 2.469 | 13 | Pass |
-| H1 | y | C | 1.223 | 1.734 | 13 | Pass |
-| M2 | x | C | 0.593 | 2.874 | 15 | Pass |
-| L1 | x | C | 0.174 | 1.894 | 16 | Pass |
-| L1 | y | C | 0.182 | 1.646 | 16 | Pass |
-| U1 | x | S8 | 0.139 | 3.894 | 7 | Above criterion |
-| U1 | y | S8 | 0.140 | 3.747 | 7 | Above criterion |
-| U2 | x | S8 | 0.031 | 1.115 | 6 | Pass |
-| U2 | y | S8 | 0.038 | 1.106 | 6 | Pass |
-| M1 | x | S8 | 1.677 | 5.829 | 9 | Above criterion |
-| M1 | y | S8 | 1.391 | 5.555 | 9 | Above criterion |
-| H1 | x | S8 | 0.178 | 1.216 | 9 | Pass |
-| H1 | y | S8 | 0.270 | 0.880 | 8 | Pass |
-| M2 | x | S8 | 0.188 | 1.887 | 8 | Pass |
-| U1 | x | A2b | 0.112 | 3.155 | 7 | Above criterion |
-| U1 | y | A2b | 0.111 | 3.166 | 7 | Above criterion |
-| U2 | x | A2b | 0.031 | 0.508 | 6 | Pass |
-| U2 | y | A2b | 0.038 | 0.782 | 6 | Pass |
-| M1 | x | A2b | 1.363 | 4.432 | 9 | Above criterion |
-| M1 | y | A2b | 1.115 | 3.974 | 9 | Above criterion |
-| H1 | x | A2b | 0.144 | 0.636 | 8 | Pass |
-| H1 | y | A2b | 0.237 | 0.561 | 8 | Pass |
-| M2 | x | A2b | 0.189 | 1.428 | 8 | Pass |
-| M2 | y | A2b | 0.213 | 2.545 | 9 | Pass |
-| H3 | x | A2b | 0.106 | 1.290 | 9 | Pass |
-| H3 | y | A2b | 0.132 | 0.678 | 10 | Pass |
-| U1 | x | B+W | 0.011 | 0.945 | 5 | Pass |
-| U1 | y | B+W | 0.011 | 0.904 | 5 | Pass |
-| U2 | x | B+W | 0.00123 | 0.142 | 4 | Pass |
-| U2 | y | B+W | 0.0014 | 0.158 | 4 | Pass |
-| M1 | x | B+W | 0.079 | 0.350 | 6 | Pass |
-| M1 | y | B+W | 0.066 | 0.339 | 6 | Pass |
-| H1 | x | B+W | 0.010 | 0.139 | 6 | Pass |
-| H1 | y | B+W | 0.013 | 0.105 | 6 | Pass |
-| M2 | x | B+W | 0.00492 | 0.083 | 6 | Pass |
-| M2 | y | B+W | 0.0034 | 0.075 | 6 | Pass |
-| H3 | x | B+W | 0.00609 | 0.132 | 6 | Pass |
-| H3 | y | B+W | 0.00894 | 0.202 | 7 | Pass |
-| L1 | x | B+W | 0.00193 | 0.065 | 7 | Pass |
-| L1 | y | B+W | 0.00181 | 0.087 | 7 | Pass |
-| U1 | x | A3 | 0.00614 | 0.598 | 5 | Pass |
-| U1 | y | A3 | 0.00681 | 0.669 | 5 | Pass |
-| U2 | x | A3 | 0.00121 | 0.082 | 4 | Pass |
-| U2 | y | A3 | 0.00159 | 0.073 | 4 | Pass |
-| M1 | x | A3 | 0.056 | 0.161 | 7 | Pass |
-| M1 | y | A3 | 0.048 | 0.206 | 7 | Pass |
-| H1 | x | A3 | 0.0076 | 0.098 | 6 | Pass |
-| H1 | y | A3 | 0.011 | 0.097 | 6 | Pass |
-| M2 | x | A3 | 0.00595 | 0.136 | 7 | Pass |
-| M2 | y | A3 | 0.00472 | 0.154 | 8 | Pass |
-| H3 | x | A3 | 0.0064 | 0.124 | 7 | Pass |
-| H3 | y | A3 | 0.010 | 0.196 | 7 | Pass |
-| L1 | x | A3 | 0.00202 | 0.101 | 8 | Pass |
-| L1 | y | A3 | 0.00197 | 0.078 | 8 | Pass |
+| 2×2×1, z=0 | 4 (2) | 102,786–328,608 | 957,888 | 77,310 | 880,578 | 132,719,531 |
+| 2×2×1, z=1 | 4 (2) | 97,230–302,772 | 884,940 | 71,046 | 813,894 | 125,748,434 |
+| 2×2×2 | 8 (4) | 97,230–328,608 | 1,833,474 | 139,002 | 1,694,472 | 258,181,146 |
+| 3×3×1 | 8 (3) | 83,220–336,162 | 2,113,611 | 143,685 | 1,969,926 | 296,791,896 |
 
+#### ST15b. Direct solution on the host: phases (s) and memory (GiB) [PENDING E1]
 
-The comparison contains seven B configurations, eleven for C, nine for S8, twelve for A2b and fourteen each for B+W and A3. C and S8 satisfy both 3% criteria in the same five of the nine configurations common to all predictors, and C also on L1/x and L1/y; A2b fails the same four configurations as C and S8; B+W and A3 satisfy both criteria in all fourteen. Missing model/configuration combinations have no row.
+| Lattice | Factorisation | Cells: setup + assembly | Global assembly | Analysis | Factorisation | Solution, 6 loads | Total | PARDISO memory | Peak process memory | Max. relative residual | Record |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | Cholesky | 152.5 | 12.3 | 13.3 | 57.3 | 20.6 | 256.0 | 32.1 | (51.0)† | 5.3e-11 | `lat_direct_smoke.json` |
+| 2×2×1, z=0 | LU | 140.0 | 11.6 | 19.2 | 120.5 | 41.6 | 332.8 | 63.6 | 70.0 | 6.1e-11 | `lat_direct_hlat221a_m11.json` |
+| 2×2×1, z=1 | Cholesky | 139.6 | 11.2 | 12.7 | 47.6 | 30.5 | 241.6 | 29.0 | 34.2 | 8.3e-11 | `lat_direct_hlat221b_m2_11.json` |
+| 2×2×1, z=1 | LU | 139.6 | 11.2 | 17.8 | 112.4 | 29.7 | 310.7 | 57.4 | 63.7 | 7.2e-11 | `lat_direct_hlat221b_m2_11.json` |
+| 2×2×2 | Cholesky | 280.5 | 23.6 | 37.8 | not run | not run | > 342.0 | 66.6 (predicted) | – | – | `lat_direct_hlat222.json` |
+| 2×2×2 | LU | 280.5 | 23.6 | 53.7 | not run | not run | > 357.8 | 132.3 (predicted) | – | – | `lat_direct_hlat222.json` |
+| 3×3×1 | Cholesky | 321.4 | 26.9 | 31.8 | not run | not run | > 380.1 | 80.7 (predicted) | – | – | `lat_direct_hlat331.json` |
+| 3×3×1 | LU | 321.4 | 26.9 | 46.9 | not run | not run | > 395.3 | 160.5 (predicted) | – | – | `lat_direct_hlat331.json` |
 
+Total: sum of the preceding phases; for the eight-cell lattices, the time up to the analysis. PARDISO memory: permanent plus factorisation storage (iparm(16) + iparm(17)), kilobytes taken as 1024 bytes. These direct-solution records are being re-measured on a quiet host (E1) and will be replaced. The Cholesky and LU rows of a four-cell lattice with the same record share one cell setup and assembly. † Earlier version of the script that kept the cell objects in memory during the factorisation; not comparable with the other entries.
 
-## Table ST15. Matched face-load responses for the smoothed variant
+#### ST15c. Learned route: phases of one design iteration (s) and memory (GiB)
 
-Target cell S8, exact neighbour, configuration x. Each row uses one load and reports both cell sensitivity-vector errors. Energy participation refers to the target in the exact assembled solution. Relative quantities are percentages.
+| Lattice | Front end | Lattice and \(K_{PP}\) assembly | Preconditioner setup | Conjugate-gradient solve, 3 loads | Iterations | Sensitivities | Total | Peak GPU memory | Host memory after front end | Operator state streamed from the host | Record |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | 5.47 | 0.07 | 3.53 | 27.41 | 114 | 1.88 | 38.65 | 6.34 | 2.42 | 0.00 | `learned_hlat221a.json` |
+| 2×2×1, z=1 | 5.14 | 0.11 | 3.45 | 26.96 | 119 | 1.85 | 37.74 | 6.09 | 2.40 | 0.00 | `learned_hlat221b.json` |
+| 2×2×2 | 9.73 | 0.13 | 6.62 | 60.66 | 129 | 3.69 | 81.24 | 8.50 | 3.88 | 1.28 | `d5_off.json` |
+| 3×3×1 | 11.03 | 0.10 | 7.38 | 87.08 | 165 | 4.11 | 110.12 | 9.19 | 4.69 | 2.09 | `learned_hlat331.json` |
 
-| Target | Load | Compliance error | Target sensitivity error | Neighbour sensitivity error | Target energy participation |
-| --- | --- | --- | --- | --- | --- |
-| H1 | T-x | 0.178113 | 1.21556 | 0.0755185 | 64.2733 |
-| H1 | T-y | 0.0730244 | 0.843527 | 0.0145867 | 40.803 |
-| H1 | T-z | 0.0319646 | 0.502716 | 0.00906095 | 27.3735 |
-| H1 | N-x | 0.000504597 | 0.442032 | 0.000822323 | 0.217835 |
-| H1 | N-y | 0.00082195 | 0.345192 | 0.00205754 | 0.308471 |
-| H1 | N-z | 4.06479e-05 | 0.885999 | 5.96007e-05 | 0.0360864 |
-| U1 | T-x | 0.13928 | 1.18517 | 0.00831909 | 35.0385 |
-| U1 | T-y | 0.0448159 | 1.30571 | 0.00536493 | 11.542 |
-| U1 | T-z | 0.0313817 | 1.10598 | 0.00456525 | 11.6406 |
-| U1 | N-x | 0.00254548 | 2.37052 | 0.00246372 | 0.355414 |
-| U1 | N-y | 0.00351229 | 1.28801 | 0.00481203 | 0.873919 |
-| U1 | N-z | 0.00136724 | 3.89419 | 0.00186976 | 0.127467 |
-| M1 | T-x | 1.6765 | 4.51959 | 1.37179 | 51.2504 |
-| M1 | T-y | 1.41865 | 5.82917 | 0.942721 | 31.068 |
-| M1 | T-z | 0.416357 | 2.99719 | 0.137715 | 21.2573 |
-| M1 | N-x | 0.00212258 | 0.914003 | 0.0056564 | 0.354364 |
-| M1 | N-y | 0.0178155 | 1.05549 | 0.0460078 | 0.742265 |
-| M1 | N-z | 0.000598185 | 1.82925 | 0.000963143 | 0.102043 |
+#### ST15d. Compliance under the three consistent face loads
 
-## Table ST16. Load-specific compliance weighting for the baseline predictor
-
-U1/x under the neighbour-face z traction. B is used on the target and its neighbour is exact. The bound is evaluated from dimensionless ratios before percentage conversion.
-
-| Target participation (%) | Local energy excess (%) | Product bound (%) | Compliance error (%) | Target sensitivity error (%) |
+| Lattice | Reference | Reference compliance, x / y / z | Learned compliance, timed run, x / y / z | Learned error of the timed run (%), x / y / z |
 | --- | --- | --- | --- | --- |
-| 0.1274669 | 2.312168 | 0.002947249 | 0.002827394 | 5.82992 |
+| 2×2×1, z=0 | direct, Cholesky and LU | 302.1935 / 51.6935 / 635.7739 | 302.1486 / 51.6874 / 635.7085 | −0.0148 / −0.0118 / −0.0103 |
+| 2×2×1, z=1 | direct, Cholesky and LU | 404.8880 / 68.6089 / 833.2975 | 404.7993 / 68.5981 / 833.1795 | −0.0219 / −0.0157 / −0.0142 |
+| 2×2×2 | exact condensation (Section 6.9) | 138.4184 / 24.5936 / 90.9945 | 138.3990 / 24.5908 / 90.9857 | −0.0140 / −0.0112 / −0.0097 |
+| 3×3×1 | exact condensation (Section 6.9) | 254.9993 / 44.3539 / 1393.2987 | 254.9599 / 44.3478 / 1393.0878 | −0.0154 / −0.0137 / −0.0151 |
 
-Figures S01–S03 provide the complementary distributions, initial-field and coarse-space comparisons, and sensitivity diagnostics.
+Data: `evidence/lat_direct_smoke.json`, `evidence/lat_direct_hlat221a_m11.json`, `evidence/lat_direct_hlat221b_m2_11.json`, `evidence/lat_direct_hlat222.json`, `evidence/lat_direct_hlat331.json` (direct solution); `evidence/learned_hlat221a.json`, `evidence/learned_hlat221b.json`, `evidence/d5_off.json` (\(2\times2\times2\)), `evidence/learned_hlat331.json` (learned route); `evidence/hlat221a.json`, `evidence/hlat221b.json` (four-cell layouts); `evidence/lat_hetero222_A3.json`, `evidence/lat_hetero331_A3.json` (exact references of Section 6.9). Scripts: `docs/data/newmachine_20260924/src_v2_wip/lat_direct_cpu.py` (direct solution) and `lat_scale.py` (learned route).
+## Supplementary Note S6. Global preconditioning and two-cell load configurations
 
-
-## Supplementary Note S1. Global preconditioning and two-cell load configurations
-
-### S1.1. Balanced two-level preconditioner
+### S6.1. Balanced two-level preconditioner
 
 Let \(\mathbb A\) be the supported assembled operator used in a run, either the exact or learned one. This notation is distinct from the local interior stiffness \(A=K_{II}\). Let
 \(\mathbb K_{PP}=\sum_mB_m^TK_{PP,m}B_m\) on the free retained coordinates. The stiffness-block fine action is \(\mathcal B_f=\mathbb K_{PP}^{-1}\); the diagonal alternative uses \(\operatorname{diag}(\mathbb K_{PP})^{-1}\). It does not require local Neumann solves.
@@ -521,22 +686,46 @@ For a global retained-coordinate coarse basis \(Z_g\), the ideal coarse action i
 \mathcal M^{-1}=Q_g+(I-Q_g\mathbb A)\mathcal B_f(I-\mathbb A Q_g).
 \]
 
-The reported q1r basis multiplies macro-grid trilinear vertex functions by three translations and three rotations about each vertex, then restricts the resulting fields to the supported retained coordinates. This global coarse basis differs from the interior basis \(V\) used to correct local extensions.
+The reported q1r basis multiplies macro-grid trilinear vertex functions by three translations and three rotations about each vertex, then restricts the resulting fields to the supported retained coordinates. This global coarse basis differs from the interior basis \(V\) used to correct local extensions. The lattice solves of Sections 6.9 and 6.10, exact and learned, use this balanced action with the stiffness-block fine action and the q1r basis (recorded setting `bnn:kpp:q1r`).
 
 The supplied implementation forms \(A_g=Z_g^T\mathbb A Z_g\), records its relative asymmetry, symmetrises it, and scales it by its diagonal. It retains positive scaled eigenvalues exceeding \(10^{-10}\) times the largest eigenvalue and uses the corresponding normalised columns \(W\) so that \(Q_g=WW^T\). The stored product \(\mathbb A W\) supplies the two projections. This spectral selection concerns the preconditioner coarse action and leaves the local fine stiffnesses and condensed targets unchanged. The ideal symmetric formula above describes the algorithm; a finite-precision operator may additionally exhibit the action/energy discrepancy discussed in Appendix J.6.
 
 The additive variant applies \(Q_g+\mathcal B_f\). The deflated variants use a coarse initial solution and a projected fine correction. The reference inequality \(\mathbb K_{PP}\succeq\mathbb K\) holds for exact condensation of the specified positive-semidefinite cell matrices; it does not imply \(\mathbb K_{PP}\succeq\widehat{\mathbb K}\) for an arbitrary learned extension.
 
-### S1.2. Two-cell diagnostic configuration
+### S6.2. Two-cell diagnostic configuration
 
-The target cell occupies \([0,1]^3\). In configuration x, the neighbour is translated by \((-1,0,0)\), its far face \(x=-1\) is clamped, and the six face loads act on the plane \(y=0\). In configuration y, the neighbour is translated by \((0,-1,0)\), its far face \(y=-1\) is clamped, and the face loads act on \(x=0\). The six cases comprise the three Cartesian traction directions applied to the target face and the same three directions applied to the neighbour face. The consistent-load implementation integrates the Q2 surface shape functions, normalizes each nodal load to unit resultant before support elimination, and then eliminates clamped entries. Three similarly normalised consistent tractions on the target cut surface are reported separately when present. Non-box cut-band coordinates remain private free variables. The continuous-thickness neighbour shares the prescribed thickness values on the common face.
+The target cell occupies \([0,1]^3\). In configuration x, the neighbour is translated by \((-1,0,0)\), its far face \(x=-1\) is clamped, and the six face loads act on the plane \(y=0\). In configuration y, the neighbour is translated by \((0,-1,0)\), its far face \(y=-1\) is clamped, and the face loads act on \(x=0\). The six cases comprise the three Cartesian traction directions applied to the target face and the same three directions applied to the neighbour face. The consistent-load implementation integrates the Q2 surface shape functions, normalizes each nodal load to unit resultant before support elimination, and then eliminates clamped entries. Three similarly normalised consistent tractions on the target cut surface are reported separately when present. Non-box cut-band coordinates remain private free variables. The continuous-thickness neighbour shares the prescribed thickness values on the common face. The neighbour is an uncut cell; where the target's cut plane meets the shared face, the pair is therefore a diagnostic assembly rather than a physically cut specimen. Box-face coordinates of the two cells are identified by their background-grid position and displacement component, and the reference and learned assemblies use the same maps \(B_m\); a face coordinate present in one cell only remains a coordinate of that cell.
 
 The pair accuracy calculation uses the Cholesky factor of the exact assembled reference stiffness as the PCG preconditioner. The supplied implementation uses a relative recursive-residual tolerance of \(10^{-10}\), and the reported runs allow at most 400 iterations. The saved result summaries retain the iteration count but omit the residual returned by the solver. These settings concern the pair accuracy comparison.
 
 The implementation also contains a uniform-nodal-force branch. The comparisons identified as consistent face loads use the integrated branch; the two branches must retain distinct load definitions in any reuse of the records.
 
+## Supplementary Note S7. Network settings and parameter counts
 
-## Supplementary Note S2. Definition of the illustrative matrix example
+This note complements Appendix G with the settings of the learned extension that are needed to rebuild it. Table ST16 lists them; the values were read from the archived run configurations (`evidence/meta_p1.json`, `evidence/meta_c_oh.json`) and from the model definition of the archived source snapshot. The parameter counts were obtained by instantiating that model definition with the recorded settings. P0 differs from the other predictors in the entries marked "not used by P0" and in its class weights.
+
+### Table ST16. Architecture, coefficient bounds, initialisation and parameter counts
+
+| Item | Setting |
+| --- | --- |
+| Latent displacement channels, heads | 32 channels; four gather–mix–scatter heads per local interaction |
+| Local interaction layers | Four element and four ghost-face layers before the latent hierarchy (alternating), four and four after it, then four weak-region element and four weak-region face layers: 8 ordinary element, 4 weak-region element and 12 face layers |
+| Latent hierarchy | Three coarse levels (33, 17 and 9 grid positions per axis); two residual \(3\times3\times3\) convolutions per level on each pass (12 in total); additive skips with a learned scalar \(\sigma_\ell\) per level |
+| Geometry embeddings | 64 components; two element–node message-passing rounds; all encoders and heads are two affine layers separated by GELU, hidden width 64 |
+| Slot embeddings | Two learned tables of \(27\times8\) values: one for the element stencils (ordinary and weak-region layers) and one for the ghost-face stencils. For each incidence, the element or face embedding (64), the node embedding (64) and the slot's 8 values are concatenated (136 inputs) |
+| Coefficient scaling | Raw gather/scatter head outputs are multiplied by 0.2 |
+| Coefficient bounds \(a_{\max}\) | Fixed per group: gather and scatter role of each of the 8 element, 12 face and 4 weak-region layers (48 groups), and restriction and prolongation of each of the 3 levels (6 groups), plus the knee \(k_b\): 55 stored values. Each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass of the geometry branch over training geometries, so with \(k_b=0.5\) the map is the identity up to that recorded maximum. Convolution coefficients are not bounded (\(2\operatorname{sigmoid}\)). The numerical values are part of the stored model state. Not used by P0 |
+| \(k_b\) | 0.5 for the base network, Uncorrected, S8, Smoothing-trained and NICE (and hence NICE-post) |
+| Stiffness-share scattering, Eq. (G.1) | One learned \(\lambda_{\rm mix}\) per element, face and weak-region element layer (24 values), initialised at zero, i.e. at plain incidence averaging. Not used by P0 |
+| Optional five-feature node extension | Disabled for every predictor |
+| Initialisation at the start of the training lineage | Channel maps \(W_{\ell h}\): \(0.5\,\mathcal N(0,1)/\sqrt{32}\); \(W_{\rm in}\): \(\mathcal N(0,1)/\sqrt3\); \(W_{\rm out}\): \(0.1\,\mathcal N(0,1)/\sqrt{32}\); convolution kernels: \(0.5\,\mathcal N(0,1)/\sqrt{27\cdot32}\); slot tables: \(0.1\,\mathcal N(0,1)\); \(\sigma_\ell=1\); affine layers: PyTorch default. The reported predictors are warm-started: the base network from an earlier checkpoint trained on 148 legacy geometries, the continuations from the base network's selected weights |
+| Parameter counts, geometry branch | Element encoder 12,288; node encoder 9,024; message passing 49,664; face encoder 12,608; slot tables 432; element, face and weak-region coefficient heads 12,928, 15,008 and 10,848; restriction/prolongation heads 12,870; convolution-coefficient heads 37,440. Total 173,110 |
+| Parameter counts, displacement branch | Element channel maps 32,768; face channel maps 49,152; weak-region element channel maps 16,384; convolution kernels 331,776; \(W_{\rm in}\) and \(W_{\rm out}\) 96 each; skip scalars 3; \(\lambda_{\rm mix}\) 24. Total 430,299 |
+| Stored values | 603,409 trainable parameters and 55 fixed bound values: 603,464 in total |
+| Training settings | Batches of 16 directions; one geometry per update from a device pool of three, one pool replacement every 100 updates; Adam with a one-cycle schedule (peak \(3\times10^{-4}\), 5% warm-up, cosine decay, final division factor 100); gradient norm clipped at one; EMA decay 0.9997 with bias correction; sensitivity weight 1; eight difficult-direction candidates and four block iterations when a geometry is loaded; class weights as in Appendix G.3 (P0: `force` 0.25, `support` 0.15, `face` 0.20, `macro` 0.10, `grf` 0.15, `adv` 0.15); seed 0 for every run |
+
+Run identifiers, checkpoints and the evaluation records of every table are listed in R1 and in the data lines of the tables.
+## Supplementary Note S8. Definition of the illustrative matrix example
 
 The re-equilibration example (example 1 of Appendix J.9) uses two retained and three internal coordinates. Its matrices are
 
@@ -577,125 +766,25 @@ Eight symmetric derivative matrices are generated once with NumPy's default gene
 
 These entries reproduce the previously saved algebraic check; they are not TPMS observations or new mechanics experiments.
 
+## Supplementary figures
 
-![Figure S01](figures/S01_distributions.png)
+![Figure S01](figures/S06_reference_verification.png)
 
-**Figure S01. Distributions of geometry-level directional energy errors.** Each point is one validation geometry's directional mean in the identity view; horizontal bars are population medians. The nodal-force, spring-support, single-face-force, polynomial, multiscale, consistent-traction and single-face consistent-traction classes contain 80 geometries, and the stiffness-scaled support and neighbour-induced displacement classes 75, the same populations as Table ST01. P0 was evaluated only on the first five classes (n/a elsewhere). C and S8 use the marker and colour of the main-text figures; deterministic horizontal offsets separate overlapping observations. All panels share the logarithmic error axis. Data: `evidence/newval_c_oh.json` (P0) and `evidence/newval2_<run>.json` (B, C, S8); script `figures_src/fig_s01_distributions.py`.
+**Figure S01. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). On H1 the successive compliance increments do not yet decrease between \(n=40\) and 48, so the difference from \(n=48\) is a lower estimate of the \(n=32\) error. (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). The change is at most \(2.6\times10^{-7}\) at \(10^{-3}\tau_c\) and falls a hundredfold per decade of step. [PENDING E7: refinement to \(n=56\) and 64 on H1, H2, geometry 2051 and the thinnest-walled validation cell.] Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
 
-![Figure S02A](figures/S02A_smoothing.png)
+![Figure S02](figures/S01_distributions.png)
 
-**Figure S02A. Smoothing from learned and zero internal fields.** (a,b) Mean directional energy excess for consistent-traction and nodal-force responses; (c,d) corresponding field-based sensitivity errors. Both initialisations prescribe the same retained displacement. Solid curves with filled markers start from predictor B; dashed curves with open markers start from zero internal displacement. Zero-start sensitivity is recorded only at 32 steps. All corrections use \(a=b/30\). The step axis is linear between zero and one and logarithmic thereafter.
-
-![Figure S02B](figures/S02B_coarse_spaces.png)
-
-**Figure S02B. Recorded coarse representations and correction sequences.** Rows correspond to U1, M1 and M2; columns use consistent-traction and nodal-force responses. Six coarse representations are compared under four initialisation and smoothing sequences, with eight steps in each pre- or post-smoothing stage. Dots indicate directional means and caps the 90th percentile. Dashed and dotted references denote B alone and B followed by one smoothing stage. \(Q_1\), \(Q_2\) and PU denote trilinear, quadratic and linearly enriched partition-of-unity generating families. The first label number identifies grid resolution and the lower number counts columns after internal restriction and screening. For the structurally redundant PU family, these counts do not establish an independent-space dimension, and the plotted solve results do not verify exact-projection properties. Appendix F.1 explains the rank and solve conditions; Table ST04 gives all statistics. Coarse updates preserve every retained coordinate.
+**Figure S02. Distributions of geometry-level directional energy errors.** Each point is one validation geometry's directional mean in the identity view; horizontal bars are population medians. The nodal-force, spring-support, single-face-force, polynomial, multiscale, consistent-traction and single-face consistent-traction classes contain 80 geometries, and the stiffness-scaled support and neighbour-induced displacement classes 75, the same populations as Table ST03. P0 was evaluated only on the first five classes (n/a elsewhere). The base network and Uncorrected use the markers and colours of the main-text figures, S8 a purple diamond; deterministic horizontal offsets separate overlapping observations. All panels share the logarithmic error axis. Data: `evidence/newval_c_oh.json` (P0) and `evidence/newval2_<run>.json` (base network, Uncorrected, S8); script `figures_src/fig_s01_distributions.py`.
 
 ![Figure S03](figures/S03_sensitivity_diagnostics.png)
 
-**Figure S03. Field-based sensitivity-error diagnostics.** (a) Paired mean energy and sensitivity errors for consistent-traction and nodal-force responses, using six B cells and five C cells. (b) Consistent-traction linear-term norm share \(\|D_1\|_F/(\|D_1\|_F+\|D_2\|_F)\), where \(D_1+D_2\) is the sensitivity-error matrix over all eight design components and evaluated directions. (c,d) Shares of absolute elementwise sensitivity-error contributions and element counts in four mutually exclusive material-volume-fraction groups for B under consistent tractions. Each error group sums absolute contributions over its elements, design components and directions before normalisation by the total. Open markers and hatched bars in (a,b) identify C; its H2 observation is unavailable.
+**Figure S03. Field-based sensitivity-error diagnostics.** (a) Paired mean energy and sensitivity errors for consistent-traction and nodal-force responses, using six cells of the base network and five of Uncorrected. (b) Consistent-traction linear-term norm share \(\|D_1\|_F/(\|D_1\|_F+\|D_2\|_F)\), where \(D_1+D_2\) is the sensitivity-error matrix over all eight design components and evaluated directions. (c,d) Shares of absolute elementwise sensitivity-error contributions and element counts in four mutually exclusive material-volume-fraction groups for the base network under consistent tractions. Each error group sums absolute contributions over its elements, design components and directions before normalisation by the total. Filled markers identify the base network and open markers and hatched bars in (a,b) Uncorrected (B and C in the figure legend); the H2 observation of Uncorrected is unavailable.
 
-## Supplementary Note S3. Geometry visualisation
+![Figure S04](figures/S02A_smoothing.png)
 
-The surfaces in Figure 1 are sampled on a grid with 97 positions per unit-box axis using the eight corner band parameters and cut-plane data of U1, M1, H1 and H2. The displayed percentages describe the retained macro-domain volume, before intersection with the thin-wall material. This surface sampling is used for visualisation; the mechanical discretisation has 32 background elements per axis and continuous Q2 displacement functions.
+**Figure S04. Smoothing from learned and zero internal fields.** (a,b) Mean directional energy excess for consistent-traction and nodal-force responses; (c,d) corresponding field-based sensitivity errors. Both initialisations prescribe the same retained displacement. Solid curves with filled markers start from the base network; dashed curves with open markers start from zero internal displacement. Zero-start sensitivity is recorded only at 32 steps. All corrections use \(a=b/30\). The step axis is linear between zero and one and logarithmic thereafter.
 
-## Supplementary Note S5. Local correction records and operator verification
+![Figure S05](figures/S02B_coarse_spaces.png)
 
-These records support Sections 6.2, 6.4 and 6.5 of the main text. They are generated by `evidence/summarize_results.py` from `evidence/p1_checks_cpu.json` and `evidence/p1_checks_u2.json` (script `p1_checks.py`).
+**Figure S05. Recorded coarse representations and correction sequences.** Rows correspond to U1, M1 and M2; columns use consistent-traction and nodal-force responses. "Network" denotes the base network. Six coarse representations are compared under four initialisation and smoothing sequences, with eight steps in each pre- or post-smoothing stage. Dots indicate directional means and caps the 90th percentile. Dashed and dotted references denote the base network alone and the base network followed by one smoothing stage. \(Q_1\), \(Q_2\) and PU denote trilinear, quadratic and linearly enriched partition-of-unity generating families. The first label number identifies grid resolution and the lower number counts columns after internal restriction and screening. For the structurally redundant PU family, these counts do not establish an independent-space dimension, and the plotted solve results do not verify exact-projection properties. Appendix F.1 and Supplementary Note S3 explain the rank and solve conditions; Table ST07 gives all statistics. Coarse updates preserve every retained coordinate.
 
-**Table ST18. Mean directional energy excess (%) of B, A3 and of starting fields under the same correction (fixed retained displacement, 32 validation directions per class).** Columns give the starting field and the correction (smoothing steps per stage / coarse space / smoothing steps). Harmonic and zero starting fields receive the exact rigid-body split.
-
-| cell | class | B | A3 | B+8/Q1/8 | harmonic+8/Q1/8 | zero+8/Q1/8 | B+32/Q1/32 | harmonic+32 | zero+32 |
-|---|---|---|---|---|---|---|---|---|---|
-| H2 | force_c | 35 | 0.0148 | 0.0117 | 0.0806 | 28.3 | 0.000182 | 0.000614 | 0.0156 |
-| H2 | force | 19.5 | 0.0145 | 0.0249 | 0.712 | 13.7 | 0.000333 | 0.0246 | 0.0056 |
-| H1 | force_c | 1.81 | 0.0115 | 0.0131 | 1.28 | 39.9 | 0.0013 | 0.199 | 2.92 |
-| H1 | force | 1.84 | 0.0187 | 0.024 | 2.78 | 46.5 | 0.00202 | 0.399 | 3.79 |
-| M2 | force_c | 3.64 | 0.0358 | 0.0273 | 6.72 | 324 | 0.00691 | 1.52 | 38.9 |
-| M2 | force | 2.17 | 0.0404 | 0.0613 | 7.77 | 107 | 0.00939 | 1.33 | 12.4 |
-| M1 | force_c | 13.5 | 0.131 | 0.186 | 17.2 | 1.1e+03 | 0.0727 | 4.11 | 185 |
-| M1 | force | 7.16 | 0.0835 | 0.114 | 13.5 | 558 | 0.0397 | 2.64 | 86.9 |
-| U2 | force_c | 0.402 | 0.00465 | 0.00424 | 1.23 | 47.2 | 0.0009 | 0.38 | 5.51 |
-| U2 | force | 0.506 | 0.00701 | 0.0121 | 6.4 | 11 | 0.00166 | 1.25 | 1.19 |
-
-**Table ST19. Operator verification in the deployed arithmetic.** λmax of D⁻¹K_II by Lanczos, the power-iteration estimate b used by the smoothing, the Gershgorin bound, the maximum relative asymmetry of Q^T Ŝ Q, the maximum relative difference between returned work and field energy, the deployed-versus-training field difference, the maximum rigid-body energy ratio, the ghost-penalty share of the exact field energy (consistent tractions / nodal forces), and the mean δ and κ of B and A3 under consistent tractions.
-
-| cell | lambda_max (Lanczos) | b = 1.05 x power | margin | Gershgorin | sym | action-energy | fastnet-trainlib | rigid energy | ghost share force_c / force | delta,kappa B (force_c) | delta,kappa A3 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| H2 | 3.992 | 4.152 | 4.0% | 43.9 | 6.3e-09 | 4.5e-09 | 4.6e-09 | 1.7e-11 | 0.00048 / 0.49 | 0.71%, 7089 | 0.051%, 582 |
-| H1 | 4.994 | 5.191 | 3.9% | 78.2 | 5.6e-09 | 4.0e-09 | 4.2e-08 | 1.6e-12 | 7.9e-05 / 0.81 | 1.23%, 124 | 0.186%, 33 |
-| M2 | 5.027 | 5.228 | 4.0% | 100 | 8.7e-09 | 3.4e-09 | 9.4e-08 | 2.4e-12 | 3.6e-05 / 0.66 | 1.15%, 294 | 0.156%, 163 |
-| M1 | 4.979 | 5.193 | 4.3% | 99.5 | 7.3e-09 | 4.4e-09 | 9.3e-08 | 1.4e-11 | 0.00012 / 0.58 | 1.26%, 866 | 0.179%, 426 |
-| U2 | 4.897 | 5.106 | 4.3% | 71.7 | 3.5e-09 | 1.8e-09 | 1.1e-07 | 2.9e-13 | 3.6e-05 / 0.79 | 0.74%, 85 | 0.107%, 47 |
-
-![Figure S06](figures/S06_reference_verification.png)
-
-**Figure S06. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
-
-## Supplementary Note S6. Enriched partition-of-unity coarse spaces as a numerical observation
-
-The enriched spaces of Appendix F.1 (PU_9, PU_17 in Table ST04 and Figure S02B) are not used by any reported predictor. Their entries record what the archived solves produced and are not presented as verified Galerkin projections.
-
-The enriched generating functions have a specific coefficient redundancy. The trilinear nodal basis reproduces linear coordinates, so
-
-\[
-\sum_v N_v(x)=1,\qquad \sum_v N_v(x)x_v=x,
-\qquad \sum_v N_v(x)(x_j-x_{v,j})=0.
-\]
-
-Thus taking \(a_v=0\) and the same slope matrix \(B_v=B\) at every vertex produces the zero displacement field. Restriction to internal coordinates preserves this identity. Support and diagonal-energy screens do not certify independence of the surviving columns. The archived PU records give column counts and field-error statistics, but no rank-revealing representation or coarse-equation residual. Their values in Table ST04 are therefore retained as numerical observations of those solves, rather than verification of the full-rank projection assumptions. The reported Q1(17) result is the principal coarse-correction result.
-
-Coefficient redundancy does not preclude energy minimisation over the coarse range. Since \(A\succ0\), \(\ker(V^TAV)=\ker V\), and \(V^Tr_I\) is orthogonal to this kernel. An exactly solved compatible coarse equation therefore defines a unique displacement correction even when its coefficient vector is nonunique. Establishing that property for the archived numerical PU solve requires the corresponding representation and solve-accuracy evidence.
-
-## Supplementary Note S7. Whole-lattice direct solution on the host
-
-This note gives the complete records of Table 6. The four-cell lattices are the two layers \(z=0\) and \(z=1\) of the \(2\times2\times2\) block of Section 6.9, taken with their thickness corners unchanged: each layer holds two uncut cells and two cut cells with retained volume fractions 0.616 and 0.252. All lattices are clamped on the face \(y=\min\) and loaded by unit consistent tractions on the face \(y=\max\) in the three Cartesian directions; the direct solution additionally solves three random loads.
-
-The direct solution assembles the full cut-cell stiffness of every cell, retained and interior degrees of freedom, into one global matrix. The retained degrees of freedom are numbered and coupled exactly as in the learned lattice, with the same clamp, free set and load vectors, and the interior degrees of freedom of each cell follow the free retained ones. The matrix is scaled symmetrically by its diagonal and factorised by MKL PARDISO with 16 threads, once as a symmetric positive definite Cholesky factorisation of the upper triangle and once as the unsymmetric LU factorisation that Table 5 uses; each factorisation has its own symbolic analysis, and all six loads are solved at once. Relative residuals \(\|Ku-f\|/\|f\|\) are recomputed with the unscaled matrix. PARDISO memory is the sum of its permanent and factorisation storage reported by the analysis; for the four-cell lattices the values reported after the numerical factorisation agree with the prediction within 0.1%. Peak process memory is the maximum resident set size of the process, which also holds the assembled matrix and load vectors. For the eight-cell lattices the runs skipped any numerical factorisation whose predicted memory exceeded 60 GB, so only the analysis was run. Cholesky and LU give the same compliance to a relative difference of \(10^{-11}\). The host was shared with other jobs during these runs (one-minute load average between 11 and 37 on its 128 logical cores at the start of the direct runs).
-
-The learned route runs one design iteration of the deployed implementation with A3 on one NVIDIA GeForce RTX 5090: front end (cell construction, stiffness and moment assembly, network input and encoding, and a warm-up application that prepares the correction), assembly of the lattice and of \(K_{PP}\), preconditioner setup, conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(8.6\times10^{-7}\) to \(9.8\times10^{-7}\)), and reverse-mode sensitivities for the three loads. Both routes read the same generated cell geometries; geometry generation is not timed in either. The eight-cell runs keep the operator state of four cells on the GPU and stream the remainder from host memory. The compliance errors of the eight-cell lattices differ slightly from those of Section 6.9, which solved six loads to a relative residual of \(10^{-10}\). GPU memory is the peak memory allocated by the process, in units of \(10^9\) bytes; host memory is the resident set size after the front end. PARDISO and peak process memory of the direct solution are given in units of \(2^{30}\) bytes.
-
-**Table ST20. Whole-lattice direct solution and learned route: dimensions, phases, memory and compliance.**
-
-### ST20a. Lattice dimensions
-
-| Lattice | Cells (cut) | Cell DOFs (min–max) | Total DOFs | Free retained DOFs | Interior DOFs | Stored nonzeros, upper triangle |
-| --- | --- | --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | 4 (2) | 102,786–328,608 | 957,888 | 77,310 | 880,578 | 132,719,531 |
-| 2×2×1, z=1 | 4 (2) | 97,230–302,772 | 884,940 | 71,046 | 813,894 | 125,748,434 |
-| 2×2×2 | 8 (4) | 97,230–328,608 | 1,833,474 | 139,002 | 1,694,472 | 258,181,146 |
-| 3×3×1 | 8 (3) | 83,220–336,162 | 2,113,611 | 143,685 | 1,969,926 | 296,791,896 |
-
-### ST20b. Direct solution on the host: phases (s) and memory (GB)
-
-| Lattice | Factorisation | Cells: setup + assembly | Global assembly | Analysis | Factorisation | Solution, 6 loads | Total | PARDISO memory | Peak process memory | Max. relative residual | Record |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | Cholesky | 152.5 | 12.3 | 13.3 | 57.3 | 20.6 | 256.0 | 32.1 | (51.0)† | 5.3e-11 | `lat_direct_smoke.json` |
-| 2×2×1, z=0 | LU | 140.0 | 11.6 | 19.2 | 120.5 | 41.6 | 332.8 | 63.6 | 70.0 | 6.1e-11 | `lat_direct_hlat221a_m11.json` |
-| 2×2×1, z=1 | Cholesky | 139.6 | 11.2 | 12.7 | 47.6 | 30.5 | 241.6 | 29.0 | 34.2 | 8.3e-11 | `lat_direct_hlat221b_m2_11.json` |
-| 2×2×1, z=1 | LU | 139.6 | 11.2 | 17.8 | 112.4 | 29.7 | 310.7 | 57.4 | 63.7 | 7.2e-11 | `lat_direct_hlat221b_m2_11.json` |
-| 2×2×2 | Cholesky | 280.5 | 23.6 | 37.8 | not run | not run | > 342.0 | 66.6 (predicted) | – | – | `lat_direct_hlat222.json` |
-| 2×2×2 | LU | 280.5 | 23.6 | 53.7 | not run | not run | > 357.8 | 132.3 (predicted) | – | – | `lat_direct_hlat222.json` |
-| 3×3×1 | Cholesky | 321.4 | 26.9 | 31.8 | not run | not run | > 380.1 | 80.7 (predicted) | – | – | `lat_direct_hlat331.json` |
-| 3×3×1 | LU | 321.4 | 26.9 | 46.9 | not run | not run | > 395.3 | 160.5 (predicted) | – | – | `lat_direct_hlat331.json` |
-
-Total: sum of the preceding phases; for the eight-cell lattices, the time up to the analysis. The Cholesky and LU rows of a four-cell lattice with the same record share one cell setup and assembly. † Earlier version of the script that kept the cell objects in memory during the factorisation; not comparable with the other entries.
-
-### ST20c. Learned route: phases of one design iteration (s) and memory (GB)
-
-| Lattice | Front end | Lattice and \(K_{PP}\) assembly | Preconditioner setup | Conjugate-gradient solve, 3 loads | Iterations | Sensitivities | Total | Peak GPU memory | Host memory after front end | Operator state streamed from the host | Record |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | 5.47 | 0.07 | 3.53 | 27.41 | 114 | 1.88 | 38.65 | 6.80 | 2.54 | 0.00 | `learned_hlat221a.json` |
-| 2×2×1, z=1 | 5.14 | 0.11 | 3.45 | 26.96 | 119 | 1.85 | 37.74 | 6.54 | 2.51 | 0.00 | `learned_hlat221b.json` |
-| 2×2×2 | 9.73 | 0.13 | 6.62 | 60.66 | 129 | 3.69 | 81.24 | 9.13 | 4.07 | 1.37 | `d5_off.json` |
-| 3×3×1 | 11.03 | 0.10 | 7.38 | 87.08 | 165 | 4.11 | 110.12 | 9.87 | 4.92 | 2.24 | `learned_hlat331.json` |
-
-### ST20d. Compliance under the three consistent face loads
-
-| Lattice | Reference | Reference compliance, x / y / z | Learned compliance, x / y / z | Learned error (%), x / y / z |
-| --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | direct, Cholesky and LU | 302.1935 / 51.6935 / 635.7739 | 302.1486 / 51.6874 / 635.7085 | −0.0148 / −0.0118 / −0.0103 |
-| 2×2×1, z=1 | direct, Cholesky and LU | 404.8880 / 68.6089 / 833.2975 | 404.7993 / 68.5981 / 833.1795 | −0.0219 / −0.0157 / −0.0142 |
-| 2×2×2 | exact condensation (Section 6.9) | 138.4184 / 24.5936 / 90.9945 | 138.3990 / 24.5908 / 90.9857 | −0.0140 / −0.0112 / −0.0097 |
-| 3×3×1 | exact condensation (Section 6.9) | 254.9993 / 44.3539 / 1393.2987 | 254.9599 / 44.3478 / 1393.0878 | −0.0154 / −0.0137 / −0.0151 |
-
-Data: `evidence/lat_direct_smoke.json`, `evidence/lat_direct_hlat221a_m11.json`, `evidence/lat_direct_hlat221b_m2_11.json`, `evidence/lat_direct_hlat222.json`, `evidence/lat_direct_hlat331.json` (direct solution); `evidence/learned_hlat221a.json`, `evidence/learned_hlat221b.json`, `evidence/d5_off.json` (\(2\times2\times2\)), `evidence/learned_hlat331.json` (learned route); `evidence/hlat221a.json`, `evidence/hlat221b.json` (four-cell layouts); `evidence/lat_hetero222_A3.json`, `evidence/lat_hetero331_A3.json` (exact references of Section 6.9). Scripts: `docs/data/newmachine_20260924/src_v2_wip/lat_direct_cpu.py` (direct solution) and `lat_scale.py` (learned route).

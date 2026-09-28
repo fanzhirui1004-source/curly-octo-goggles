@@ -42,7 +42,7 @@ def main(k=3):
     sc = ax.scatter(*ctr[mask].T, s=1.2, c=E[mask] / tot, norm=LogNorm(1e-7, 1e-2), cmap='cividis', linewidths=0)
     cb = fig.colorbar(sc, ax=ax, shrink=.6, pad=.02); cb.set_label('element energy / total', fontsize=6.5); cb.ax.tick_params(labelsize=6)
     panel(ax, 'b', 'Exact field: element energy')
-    for pos, e, letter, name, share in ((gs[1, 0], eB, 'c', 'B (uncorrected)', eB.sum()), (gs[1, 1], eA, 'd', 'A3 (corrected)', eA.sum())):
+    for pos, e, letter, name, share in ((gs[1, 0], eB, 'c', 'Base network (uncorrected)', eB.sum()), (gs[1, 1], eA, 'd', 'NICE', eA.sum())):
         ax = ax3(fig, pos)
         sc = ax.scatter(*ctr[mask].T, s=1.2, c=np.maximum(e[mask], 1e-12), norm=LogNorm(1e-9, 1e-3), cmap='magma_r', linewidths=0)
         cb = fig.colorbar(sc, ax=ax, shrink=.6, pad=.02); cb.set_label('element error energy / total', fontsize=6.5); cb.ax.tick_params(labelsize=6)

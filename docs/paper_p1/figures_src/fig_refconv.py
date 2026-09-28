@@ -1,4 +1,4 @@
-"""Supplementary Figure S06: verification of the CutFEM reference (evidence/ref_valid*.json, script ref_valid.py).
+"""Supplementary Figure S01 (S06 before the revision-1 renumbering): verification of the CutFEM reference (evidence/ref_valid*.json, script ref_valid.py).
 (a) background resolution n: largest relative change of compliance (filled) and 8-corner sensitivity (open) against the finest
     resolution (n = 40 for U1, 48 otherwise), over the three consistent face loads; (b) ghost-penalty coefficient relative to the production value
     1e-4; (c) finite-difference step of the moment derivatives, relative to h = 1e-5 tau, and direct compliance differences."""
@@ -35,7 +35,7 @@ for lab, f, case, col, mk in CASES:
     axs[2].plot([1e-5], [pct(d['fd']['direct_vs_sens'])], ls='none', color=col, marker=mk, ms=5, mfc='white')
 
 FS.panel(axs[0], 'a', 'Background resolution')
-axs[0].set_xlabel('nodes per cell edge, n'); axs[0].set_ylabel('largest change vs finest n (%)')
+axs[0].set_xlabel('background elements per axis, n'); axs[0].set_ylabel('largest change vs finest n (%)')
 axs[0].set_yscale('log'); axs[0].set_xticks([24, 32, 40]); axs[0].axvline(32, color=FS.GRID, lw=3, zorder=0)
 axs[0].text(32.5, 1.6, 'production', color=FS.MUTED, fontsize=6.5)
 FS.panel(axs[1], 'b', 'Ghost penalty')

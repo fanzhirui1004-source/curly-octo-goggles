@@ -1,4 +1,4 @@
-"""Supplementary Figure S01: geometry-level directional mean energy excess by direction class (identity view).
+"""Supplementary Figure S02 (S01 before the revision-1 renumbering): geometry-level directional mean energy excess by direction class (identity view).
 Sources: evidence/newval_c_oh.json (P0, five original classes), evidence/newval2_<run>.json (B, C, S8; 80 geometries,
 75 for support_k and glued). Each point is one geometry's directional mean; bars are medians."""
 import json
@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 from figstyle import MODEL, C, MUTED, GRID, MM, TEXT, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
-ARMS = [('P0', 'newval_c_oh.json', '#98A3AE', 'v'), ('B', 'newval2_v2L1.json', C['exact'], 'P'),
-        ('C', 'newval2_A0_ctrl.json', MODEL['C'][0], MODEL['C'][1]), ('S8', 'newval2_A2_tail8.json', MODEL['S8'][0], MODEL['S8'][1])]
+ARMS = [('P0', 'newval_c_oh.json', '#98A3AE', 'v'), ('Base\nnetwork', 'newval2_v2L1.json', MODEL['B'][0], MODEL['B'][1]),
+        ('Uncor-\nrected', 'newval2_A0_ctrl.json', MODEL['C'][0], MODEL['C'][1]), ('S8', 'newval2_A2_tail8.json', MODEL['S8'][0], MODEL['S8'][1])]
 CLASSES = [('force', 'Nodal force'), ('support', 'Spring support'), ('face', 'Single-face force'),
            ('macro', 'Polynomial'), ('grf', 'Multiscale'), ('force_c', 'Traction'),
            ('face_c', 'Face traction'), ('support_k', 'Stiffness support'), ('glued', 'Neighbour-induced')]
