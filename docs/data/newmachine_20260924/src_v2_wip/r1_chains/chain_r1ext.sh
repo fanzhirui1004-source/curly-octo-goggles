@@ -50,6 +50,14 @@ cd $S
 { date; nvidia-smi; free -g; md5sum r1_sweep.py r1x3_common.py r1x3_e11_summary.py r1x3_e6_replace.py r1_gate.py r1_acc_summary.py \
   eval_views_pd.py fast_prep4.py make_T_gpu.py make_T_cpu.py lattice3.py lat_multi.py teacher.py trainlib.py fastnet.py models.py $CK \
   $ACC/PREREG_R1ACC.json; env | grep -E "^OPL_|^PYTORCH|^OMP|^MKL" | sort; } > $R/chain_ext_env.txt 2>&1
+# coordinator 2026-09-29: rerun E3/E4 pair runs of the R1X3 chain that ended with rc!=0 (e.g. SIGKILL under host-memory pressure)
+RES=fresh_val_2003_d1_v1:x:auto2,fresh_val_2000_full:y:auto2
+for c in $(grep -E "^[0-9:]+ R1X3 END pair_" $ST | awk '$5!="rc=0"{sub("pair_","",$4); print $4}' | sort -u); do
+  grep -qE "^[0-9:]+ R1X3 END pair_$c rc=0" $ST && continue
+  need=40; [ $c = fresh_val_2004_d0_v2 ] && need=60; memwait $need
+  run pair_$c 7200 env LAT_CPU=1 FUSED_HYPER=1 $PY -u r1_pairs.py $R/pairs $c --ckpt $CK --resolve $RES
+done
+grep -qE "^[0-9:]+ R1EXT END pair_" $ST && run x3summary_after_rerun 1800 $PY -u r1x3_summary.py $R
 # ---------------------------------------------------------------- plan + bodies (CPU, background)
 SPECS="m1x:pair:fresh_val_2003_d1_v1:x:max u1y:pair:fresh_val_2000_full:y:max l221:lattice:hlat221a:/root/autodl-tmp/OPL/S4/hlat221a.json:lat:101:51 m1xm:pair:fresh_val_2003_d1_v1:x:med:101:51 u1ym:pair:fresh_val_2000_full:y:med:101:51"
 $PY -u r1_sweep.py plan $E $SPECS > $E/bodies.txt 2> $R/e13_plan.log; r=$?; st "PLAN rc=$r $(wc -l < $E/bodies.txt) points"; [ $r != 0 ] && RC=$r
