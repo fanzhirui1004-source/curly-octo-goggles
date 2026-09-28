@@ -25,15 +25,31 @@ dt = TL.dt
 BX.dev = TL.dev
 
 
-def free_dofs(C):
+FACES = [(2, 0.0), (2, 1.0), (1, 0.0), (1, 1.0), (0, 0.0), (0, 1.0)]
+
+
+def pick_faces(C):
+    """Clamp / load faces with material: the opposite pair (z, then y, then x) whose smaller face weight is largest; if no
+    opposite pair carries material on both faces (heavy cuts), the two faces with the largest weights. Chosen once at the
+    base cell (n = 32) and kept for every n / gamma / integration variant of that case."""
+    w = {f: float(LT.face_traction_weights(C, *f).sum()) for f in FACES}
+    pairs = [((ax, 0.0), (ax, 1.0)) for ax in (2, 1, 0)]
+    best = max(pairs, key=lambda p: min(w[p[0]], w[p[1]]))
+    if min(w[best[0]], w[best[1]]) > 0:
+        return best, w
+    top = sorted(FACES, key=lambda f: -w[f])[:2]
+    return (top[0], top[1]), w
+
+
+def free_dofs(C, clamp=(2, 0.0)):
     M = 2 * C.n + 1
-    gz = np.asarray(C.nodes) % M
-    fixed = np.repeat(gz == 0, 3)
+    g = np.stack(np.unravel_index(np.asarray(C.nodes), (M,) * 3), 1)[:, clamp[0]]
+    fixed = np.repeat(g == (0 if clamp[1] == 0 else M - 1), 3)
     return np.flatnonzero(~fixed)
 
 
-def loads(C):
-    w = LT.face_traction_weights(C, 2, 1.0)
+def loads(C, load=(2, 1.0)):
+    w = LT.face_traction_weights(C, *load)
     w = w / w.sum()
     F = np.zeros((C.nb, 3))
     for d in range(3):
@@ -86,15 +102,21 @@ def main(argv):
     ap.add_argument('out'); ap.add_argument('cases')
     ap.add_argument('--ns', default='24,32,40,48'); ap.add_argument('--gammas', default='1e-5,1e-4,1e-3')
     ap.add_argument('--hs', default='1e-3,1e-4,1e-5,1e-6'); ap.add_argument('--h-direct', type=float, default=1e-4)
-    ap.add_argument('--integ', default='4:2,6:1')
+    ap.add_argument('--integ', default='4:2,6:1'); ap.add_argument('--redo', action='store_true')
     ap.add_argument('--body32', default='/root/autodl-tmp/OPL/S0'); ap.add_argument('--bodyN', default='/root/autodl-tmp/OPL/S4/body')
     a = ap.parse_args(argv)
-    rec = dict(setup='clamp z=0 box face; unit consistent traction on z=1 (x, y, z); host PARDISO', per_case={})
+    rec = dict(setup='clamp one box face, unit consistent traction (x, y, z) on another (per case: faces); host PARDISO', per_case={})
     if Path(a.out).exists():
         rec = json.loads(Path(a.out).read_text())
     for case in a.cases.split(','):
-        r = rec['per_case'].get(case, {})
+        r = {} if a.redo else rec['per_case'].get(case, {})
         t0 = time.perf_counter()
+        if 'faces' not in r:
+            C0 = TE.Cell(case, a.body32, log=lambda s_: None); C0.assemble()
+            (cl, ld), wf = pick_faces(C0)
+            r['faces'] = dict(clamp=list(cl), load=list(ld), weights={f'{k[0]}:{k[1]}': v for k, v in wf.items()})
+            C0 = None; gc.collect()
+        cl, ld = tuple(r['faces']['clamp']), tuple(r['faces']['load'])
         # resolution sweep
         res = r.get('n', {})
         for n in [int(x) for x in a.ns.split(',')]:
@@ -105,7 +127,7 @@ def main(argv):
                 res[str(n)] = dict(missing=True); continue
             try:
                 C = TE.Cell(cid, body, log=lambda s_: None); C.assemble()
-                fr = free_dofs(C); F = loads(C)
+                fr = free_dofs(C, cl); F = loads(C, ld)
                 res[str(n)], _ = respond(C, F, fr)
                 print(json.dumps(dict(case=case, n=n, compliance=res[str(n)]['compliance'], dofs=C.nb,
                                       ghost=np.round(res[str(n)]['ghost_share'], 6).tolist())), flush=True)
@@ -129,7 +151,7 @@ def main(argv):
         # n = 32 studies
         if 'gamma' not in r or 'fd' not in r or 'integ' not in r:
             C = TE.Cell(case, a.body32, log=lambda s_: None); C.assemble()
-            fr = free_dofs(C); F = loads(C)
+            fr = free_dofs(C, cl); F = loads(C, ld)
             base, u = respond(C, F, fr)
             if 'fd' not in r:
                 fd = {}
@@ -166,7 +188,7 @@ def main(argv):
                 for spec in [x for x in a.integ.split(',') if x]:
                     s_, lv = (int(x) for x in spec.split(':'))
                     Ci = TE.Cell(case, a.body32, s=s_, levels=lv, log=lambda s__: None); Ci.assemble()
-                    o, _ = respond(Ci, loads(Ci), free_dofs(Ci))
+                    o, _ = respond(Ci, loads(Ci, ld), free_dofs(Ci, cl))
                     ig[spec] = dict(o, compliance_rel=[abs(x / y - 1) for x, y in zip(o['compliance'], base['compliance'])],
                                     sens_rel=[rel(np.asarray(o['sens'])[:, j], np.asarray(base['sens'])[:, j]) for j in range(3)])
                     Ci = None; gc.collect()

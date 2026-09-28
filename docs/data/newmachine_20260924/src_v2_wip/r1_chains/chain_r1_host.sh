@@ -26,8 +26,8 @@ st() { echo "$(date +%T) $TAG $*" >> $ST; }
 RC=0; MARKED=""
 mark() { [ -n "$MARKED" ] && return; MARKED=1; if [ "$SMOKE" = 1 ]; then st "SMOKE_END rc=$RC"; else st "END rc=$RC"; echo "$(date +%T) R1_HOST_DONE_20260928" >> $ST; fi; }
 trap mark EXIT
-# completion line = "HH:MM:SS <MARKER>" or "HH:MM:SS <TAG> <MARKER> ...", never a line mentioning "wait"
-has() { grep -E "^[0-9]{2}:[0-9]{2}:[0-9]{2} ([A-Za-z0-9_]+ )?$1( |$)" $ST | grep -viq "wait"; }
+# completion line = "HH:MM:SS <MARKER>", "HH:MM:SS <TAG> <MARKER> ..." or "HH:MM:SS ... <MARKER>" (last token); never a line mentioning "wait"
+has() { grep -E "^[0-9]{2}:[0-9]{2}:[0-9]{2} (([A-Za-z0-9_]+ )?$1( |$)|.* $1[[:space:]]*$)" $ST | grep -viq "wait"; }
 if [ "$SMOKE" != 1 ]; then
   st "QUEUED pid=$$ (waits for the derivative-chain and refinement completion markers)"
   until has R1_DERIV_DONE_20260928 && has R1_REF_DONE_20260928; do sleep 300; done
