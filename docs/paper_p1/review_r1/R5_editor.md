@@ -74,7 +74,7 @@ Line numbers (L…) refer to MANUSCRIPT_EN.md in its current state.
 ### R5-02 — Major — Length far above the CMAME norm
 - **Location:** whole manuscript. The main text is about 14,650 words; the appendices about 9,090; 11 figures and 6 tables; 86 pages.
 - **Issue:** Reviewers are likely to decline, or to ask for a shorter version. The Discussion repeats the Results, and several diagnostic studies (spectral modes, orientation, replacement decomposition, whole-lattice direct solve, reference convergence details) are secondary to the three main claims.
-- **Suggested fix:** Apply the plan in Section 3 of this report. The target is about 9,500 words before §6.11 and about 10,300 with it. Move about 4,200 words of appendices to the supplementary material.
+- **Suggested fix:** Apply the plan in Section 3 of this report. The target is about 9,500 words before §6.11 and about 10,300 with it. Move about 4,300 words of appendices to the supplementary material.
 - **Fix type:** cut or move.
 
 ### R5-03 — Major — The central story is diffuse; abstract, contributions and conclusions do not have one headline
