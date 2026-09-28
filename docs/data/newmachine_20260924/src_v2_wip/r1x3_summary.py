@@ -143,16 +143,20 @@ def lattices(d, pattern):
                         for c in range(8):
                             o[vid[i, c]] += G[i, c]
                     return o
-                steps = sorted([k for k in rec['grad_complete']], key=float, reverse=True)
+                steps = sorted([k[6:] for k in rec['grad_complete'] if k.startswith('D_act_')], key=float, reverse=True)
                 Sv, Stv = agg(S)[:, :nc], agg(St)[:, :nc]
-                Dv = {k: agg(z[f'{LN}__{k}'])[:, :nc] for k in steps}
+                Dv = {k: agg(z[f'{LN}__D_act_{k}'])[:, :nc] for k in steps}
                 hk, ver, info = step_check(Dv, Sv, Stv, steps)
                 e_t, cos_t = gm(Sv, Stv); e_c, cos_c = gm(Sv, Dv[hk])
                 n = np.linalg.norm(Sv, axis=0)
-                row.update(step=hk, verified=ver, step_info=info, e_t=float(e_t.max()), e_c=float(e_c.max()),
+                ext = rel(agg(z[f'{LN}__D_ext_{hk}'])[:, :nc], Dv[hk], n).max()
+                fld = rel(agg(z[f'{LN}__D_fld_{hk}'])[:, :nc], Dv[hk], n).max()
+                row.update(step=hk, verified=bool(ver and ext <= max(0.25 * e_c.max(), 2e-4)), step_info=info,
+                           e_t=float(e_t.max()), e_c=float(e_c.max()), act_vs_ext=float(ext), act_vs_fld=float(fld),
                            d=float(rel(Dv[hk], Stv, n).max()), cos_t=float(cos_t.min()), cos_c=float(cos_c.min()),
                            cellcorner=dict(e_t=float(gm(S.reshape(-1, S.shape[2])[:, :nc], St.reshape(-1, S.shape[2])[:, :nc])[0].max()),
-                                           e_c=float(gm(S.reshape(-1, S.shape[2])[:, :nc], z[f'{LN}__{hk}'].reshape(-1, S.shape[2])[:, :nc])[0].max())))
+                                           e_c=float(gm(S.reshape(-1, S.shape[2])[:, :nc],
+                                                        z[f'{LN}__D_act_{hk}'].reshape(-1, S.shape[2])[:, :nc])[0].max())))
             out[f'{Path(f).stem}/{LN}'] = row
         if 'deriv' in r:
             for case, dv in r['deriv'].items():
