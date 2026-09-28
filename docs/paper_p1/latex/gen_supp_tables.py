@@ -19,8 +19,6 @@ Training-pool counts (ST01): the SPLIT events of the training logs (server logs,
 A2b_tail8 and A3_2grid 591; P0 148 from meta_c_oh.json. They are constants below (POOL) because the logs are not in
 evidence/; meta_p1.json records the split file as regenerated later (591 for every arm) and is not used for this column.
 gate_v2L1_*.json are the per-configuration splits of the archived gate_cont_v2L1_<cell>.json.
-The H2/y assembly (fresh_val_2010_d0_v0, configuration y) is ill-posed (negative exact energy share, PCG at its cap)
-and is excluded for every predictor.
 """
 import json
 import re
@@ -40,7 +38,6 @@ POOL = {'P0': 148, 'B': 305, 'C': 591, 'S8': 591, 'A2b': 591, 'B+W': 305, 'A3': 
 CLASSES = ['force', 'support', 'face', 'macro', 'grf', 'force_c', 'face_c', 'support_k', 'glued']
 CELLS = [('2000_full', 'U1'), ('2001_full', 'U2'), ('2003_d1_v1', 'M1'), ('2005_d1_v0', 'H1'),
          ('2006_d0_v1', 'M2'), ('2002_d0_v0', 'H3'), ('2004_d0_v2', 'L1')]
-EXCLUDED = {('2010_d0_v0', 'y')}
 
 
 def load(name):
@@ -188,7 +185,7 @@ def st12(text):
 
 def gate(run, key, cfg):
     f = EV / f'gate_{run}_fresh_val_{key}_{cfg}.json'
-    if not f.exists() or (key, cfg) in EXCLUDED:
+    if not f.exists():
         return None
     return json.load(open(f))['results'][0]['test']
 

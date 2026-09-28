@@ -236,7 +236,7 @@ def main():
         # ---------------------------------------------------------------- global gradient metrics of s_tilde
         pos = [tuple(lat.positions[i]) for i in range(len(order))]
         taus = [lcell[c]['tau_corners'] for c in order]
-        vid, nv, tv, dmax = RC.vertex_map(pos, taus)
+        vid, nv, tv, dmax, vkeys = RC.vertex_map(pos, taus)
         tmax = max(float(np.max(np.abs(np.asarray(taus[i]) - np.asarray(Cmap[c].taus0)))) for i, c in enumerate(order))
         learned['grad_s_tilde'] = dict(cellcorner=RC.grad_metrics(Ssum.reshape(-1, Ssum.shape[2]), Sti.reshape(-1, Sti.shape[2])),
                                        vertex=RC.grad_metrics(RC.aggregate(Ssum, vid, nv), RC.aggregate(Sti, vid, nv)),
