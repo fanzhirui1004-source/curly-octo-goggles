@@ -22,12 +22,24 @@ from pathlib import Path
 import numpy as np
 import scipy.sparse as sp
 import torch
+import trainlib as TL
 import teacher as TE
+import box_encode as BX
 import lat_multi as LM
+
+BX.dev = TL.dev                                                          # as bench_cpu.py: ghost faces on the host
 
 
 def rss_gb():
+    """Peak resident set size of the process so far (GB)."""
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2 ** 20            # ru_maxrss is in kB on Linux
+
+
+def cur_rss_gb():
+    for line in open('/proc/self/status'):
+        if line.startswith('VmRSS:'):
+            return int(line.split()[1]) / 2 ** 20
+    return float('nan')
 
 
 def global_matrix(Cs, lat):
@@ -60,6 +72,7 @@ def pardiso_run(Ku, F, mtype, mem_gb, log):
     S = sp.diags(s)
     Us = (S @ Ku @ S).tocsr()
     A = Us if mtype == 2 else (Us + sp.triu(Us, 1).T).tocsr()
+    del Us
     A.sort_indices()
     ps = pypardiso.PyPardisoSolver(mtype=mtype)
     r = dict(mtype=mtype, nnz_stored=int(A.nnz))
@@ -86,9 +99,9 @@ def pardiso_run(Ku, F, mtype, mem_gb, log):
     t = time.perf_counter()
     ps.set_phase(33); x = ps._call_pardiso(A, bs)
     r['solve_s'] = time.perf_counter() - t
+    del A; gc.collect()
     u = np.asarray(x).reshape(n, -1) * s[:, None]
-    Kfull = (Ku + sp.triu(Ku, 1).T).tocsr()
-    res = Kfull @ u - b
+    res = Ku @ u + Ku.T @ u - Ku.diagonal()[:, None] * u - b                 # symmetric product from the upper triangle
     r['rel_residual'] = [float(np.linalg.norm(res[:, j]) / np.linalg.norm(b[:, j])) for j in range(b.shape[1])]
     r['compliance'] = [float(F[:, j] @ u[:F.shape[0], j]) for j in range(F.shape[1])]
     r['peak_rss_GB'] = rss_gb()
@@ -127,9 +140,13 @@ def main(argv):
     rec.update(global_dofs=int(n), free_retained=int(lat.nfree), interior=int(n - lat.nfree), nnz_upper=int(Ku.nnz),
                loads=lat.labels, rss_after_assembly_GB=rss_gb())
     log(dict(event='ASSEMBLED', **{k: v for k, v in rec.items() if k != 'cells'}))
-    for C in Cs:
+    labels = lat.labels
+    for C in Cs:                                                            # release the cells: only K, F remain
         C._free()
-    Cs = None; gc.collect()
+    for G in lat.geoms:
+        G.cell, G._kpp, G._kpp_fn, G.face_w_fn = None, None, None, None
+    Cs = lay = lat = None; gc.collect()
+    rec['rss_after_release_GB'] = cur_rss_gb()
     rec['runs'] = []
     for mt in (int(m) for m in a.mtypes.split(',')):
         r = pardiso_run(Ku, F, mt, a.mem_gb, log)
