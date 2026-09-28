@@ -51,9 +51,7 @@ gate() {   # name ckpt case conf [override]
   st "END $n rc=$rc"
 }
 # E2b: C+W on the archived pair configurations (7 development cells x {x, y}, plus H2 = 2010 x / y, ill-posed / empty for every arm)
-for c in fresh_val_2000_full fresh_val_2001_full fresh_val_2005_d1_v0 fresh_val_2006_d0_v1 fresh_val_2003_d1_v1 fresh_val_2004_d0_v2 fresh_val_2002_d0_v0 fresh_val_2010_d0_v0; do
-  for conf in x y; do gate gate_CW_${c}_$conf $O/A0_ctrl/best.pt $c $conf "$W"; done
-done
+st "SKIP E2b C+W pair gates (author decision 2026-09-28: NICE only)"
 st "START summary (after E2)"; $PY -u r1_acc_summary.py $R $O > $R/summary_after_E2.log 2>&1; st "END summary (after E2) rc=$?"
 
 # ---------------------------------------------------------------- E6: held-out pairs (pre-registered cells, PREREG_R1ACC.json)
@@ -71,7 +69,7 @@ if [ -n "$M" ]; then
     timeout 21600 /root/autodl-tmp/gpuenv/bin/python -u make_T_cpu.py $B ${M#,} >> $R/makeT.log 2>&1 )
   st "makeT_cpu ${M#,} rc=$?"
 fi
-for arm in A3 BW; do
+for arm in A3; do   # author decision 2026-09-28: NICE only
   case $arm in A3) ck=$O/A3_2grid/best.pt; ov=;; BW) ck=$O/v2L1/best.pt; ov=$W;; esac
   for c in $HO; do for conf in x y; do gate ho_gate_${arm}_${c}_$conf $ck $c $conf "$ov"; done; done
   st "E6 arm $arm done"
