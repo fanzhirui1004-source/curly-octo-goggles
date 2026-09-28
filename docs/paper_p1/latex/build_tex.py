@@ -123,7 +123,7 @@ def main():
         return '{' + size + '\n' + m.group(0) + '}'
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
     tex = landscape(tex, 'Cost per cell of the conventional and learned routes',
-                    widths=(.085, .137, .09, .165, .155, .155, .18, .12, .105))
+                    widths=(.09, .15, .11, .13, .13, .16, .19, .12))
     (HERE / 'main.tex').write_text(tex)
     print('main.tex', len(tex))
 

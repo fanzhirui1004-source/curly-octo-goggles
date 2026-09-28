@@ -663,21 +663,20 @@ By Eq. (12), the compliance errors of the learned cells add with the same sign, 
 
 The practical alternative to a learned substructure is the conventional route: assemble the cut finite element stiffness of each cell and condense its interior with a sparse direct solver, either forming the dense condensed matrix \(S\) or applying it through the interior factorisation. Both routes share the geometric preprocessing, the cut-cell integration and the stiffness assembly, because the learned operator also evaluates \(F^TKF\) with the exact stiffness. They differ in the condensation: an interior factorisation, and for the explicit variant one solve per retained coordinate, against the network\textquotesingle s geometry encoding, the smoothing-interval estimate and coarse factorisation of the correction, and the forward and transpose actions per query.
 
-Table 5 compares the two routes on the four deployment cells, two cut and two uncut, with 67,224 to 404,148 degrees of freedom. The conventional route runs on the 16 host cores available to the job (MKL PARDISO, 16 threads), as a practitioner would condense a cell; the learned route runs on one RTX 5090. The same interior factorisation on the GPU (cuDSS, double precision) is also given, so that the effect of the hardware can be separated from that of the method. Geometry preprocessing is identical for both routes; cell setup, moment integration and stiffness assembly use the same implementation, on the host cores for the conventional route and on the GPU for the learned route.
+Table 5 compares the two routes on the four deployment cells, two cut and two uncut, with 67,224 to 404,148 degrees of freedom. The conventional route runs on the 16 host cores available to the job (MKL PARDISO, 16 threads), as a practitioner would condense a cell; the learned route runs on one RTX 5090. Geometry preprocessing is identical for both routes; cell setup, moment integration and stiffness assembly use the same implementation, on the host cores for the conventional route and on the GPU for the learned route.
 
 \begin{landscape}
 {\scriptsize
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.085}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.137}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.090}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.165}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.155}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.155}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.180}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.120}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.105}}@{}}
-\caption{Cost per cell of the conventional and learned routes. Front end: geometry preprocessing plus cell setup, moment integration and stiffness assembly. Condensation: interior factorisation for the conventional routes; network encoding plus correction setup (smoothing interval and coarse factorisation) for the learned route. Memory: interior factor, or the learned operator\textquotesingle s stored state. Application: \(Sq\) or \(\widehat Sq\) for a batch of 1, 16 or 64 retained vectors. Explicit \(S\): dense condensed matrix by one host solve per retained coordinate (timed for 300 s and extrapolated linearly in the number of columns where marked *). Host timings on an otherwise idle job; a first run with other jobs sharing the host cores agreed within 10\% for G1--G3.}\tabularnewline
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.090}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.150}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.110}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.130}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.130}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.160}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.190}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.120}}@{}}
+\caption{Cost per cell of the conventional and learned routes. Front end: geometry preprocessing plus cell setup, moment integration and stiffness assembly. Condensation: interior factorisation for the conventional route; network encoding plus correction setup (smoothing interval and coarse factorisation) for the learned route. Memory: interior factor, or the learned operator\textquotesingle s stored state. Application: \(Sq\) or \(\widehat Sq\) for a batch of 1, 16 or 64 retained vectors. Explicit \(S\): dense condensed matrix by one host solve per retained coordinate (timed for 300 s and extrapolated linearly in the number of columns where marked *). Host timings on an otherwise idle job; a first run with other jobs sharing the host cores agreed within 10\% for G1--G3.}\tabularnewline
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Cell
@@ -686,15 +685,13 @@ DOFs / retained
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Front end (s): host / GPU
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Condensation (s): learned / host PARDISO / GPU cuDSS
+Condensation (s): learned / host PARDISO
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Memory (GB): learned / host / GPU
+Memory (GB): learned / host
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Application, 1 / 16 / 64 vectors (ms): learned
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 host PARDISO
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-GPU cuDSS
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Explicit \(S\), host (s / GB)
 \end{minipage} \\
@@ -708,15 +705,13 @@ DOFs / retained
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Front end (s): host / GPU
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Condensation (s): learned / host PARDISO / GPU cuDSS
+Condensation (s): learned / host PARDISO
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Memory (GB): learned / host / GPU
+Memory (GB): learned / host
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Application, 1 / 16 / 64 vectors (ms): learned
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 host PARDISO
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-GPU cuDSS
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Explicit \(S\), host (s / GB)
 \end{minipage} \\
@@ -724,17 +719,17 @@ Explicit \(S\), host (s / GB)
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-G1 (cut) & 177,507 / 24,636 & 18.7 / 5.3 & 0.72 / 7.7 / 2.82 & 0.74 / 5.56 / 4.75 & 54 / 531 / 923 & 826 / 2,589 / 5,811 & 29 / 43 / 129 & 1,192* / 4.5 \\
-G2 (cut) & 67,224 / 18,858 & 8.5 / 3.0 & 0.16 / 1.4 / 0.70 & 0.25 / 1.10 / 0.16 & 25 / 205 / 388 & 184 / 475 / 1,023 & 8 / 13 / 35 & 247 / 2.7 \\
-G3 (uncut) & 289,494 / 17,508 & 30.3 / 6.1 & 0.78 / 19.2 / 5.95 & 1.20 / 12.3 / 5.71 & 84 / 877 / 1,481 & 1,783 / 5,582 / 8,987 & 54 / 77 / 234 & 1,609* / 2.3 \\
-G4 (uncut) & 404,148 / 25,920 & 30.1 / 6.5 & 1.09 / 31.3 / 9.03 & 1.37 / 18.5 / 5.07 & 99 / 1,052 / 1,828 & 2,264 / 7,953 / 12,849 & 73 / 100 / 316 & 3,566* / 5.0 \\
+G1 (cut) & 177,507 / 24,636 & 18.7 / 5.3 & 0.72 / 7.7 & 0.74 / 5.56 & 54 / 531 / 923 & 826 / 2,589 / 5,811 & 1,192* / 4.5 \\
+G2 (cut) & 67,224 / 18,858 & 8.5 / 3.0 & 0.16 / 1.4 & 0.25 / 1.10 & 25 / 205 / 388 & 184 / 475 / 1,023 & 247 / 2.7 \\
+G3 (uncut) & 289,494 / 17,508 & 30.3 / 6.1 & 0.78 / 19.2 & 1.20 / 12.3 & 84 / 877 / 1,481 & 1,783 / 5,582 / 8,987 & 1,609* / 2.3 \\
+G4 (uncut) & 404,148 / 25,920 & 30.1 / 6.5 & 1.09 / 31.3 & 1.37 / 18.5 & 99 / 1,052 / 1,828 & 2,264 / 7,953 / 12,849 & 3,566* / 5.0 \\
 \end{longtable}}
 \end{landscape}
 
 
 Against the conventional route, the learned operator condenses a cell 8.8 to 29 times faster and stores 4.4 to 13.5 times less. Each subsequent application is 7.4 to 23 times faster for a single vector and 2.3 to 7.6 times faster for batches of 16 or 64 vectors: the host solves are limited by reading the factor from memory, and the factor grows faster than the retained dimension. Forming the dense condensed matrix on the host takes 4 to 59 minutes per cell, against an estimated 2 to 12 minutes for evaluating \(\widehat S\) on all retained unit vectors in batches of 64. Including geometry preprocessing and assembly, a cell is ready for queries after 3.2 to 7.6 s on the learned route and 9.9 to 61 s on the conventional route, a factor of 3.1 to 8.1 that grows with cell size. Since both preparation and every application are cheaper, the learned route is cheaper for any number of queries per design iteration.
 
-Part of this advantage is the hardware. The same interior factorisation on the GPU takes 0.70 to 9.0 s. The learned preparation is still 3.9 to 8.3 times faster and, for the three larger cells, holds 3.7 to 6.4 times less memory, but each application costs 1.36 to 3.1 times more for a single vector and 5.8 to 16 times more for batches, because the correction applies the stiffness 32 times in the forward and transpose passes. On the same device, the learned route is therefore cheaper up to about 30 to 340 retained vectors per cell and design iteration, beyond which a GPU factorisation that fits in device memory is cheaper. How many applications a design iteration requires depends on the assembled solver: in the lattices of Section 6.9, the preconditioned iteration needs 183 applications per cell with the exact cells and 186 with the learned cells for a batch of six loads (226 and 234 in the \(3\times3\times1\) layer). Against the conventional host route this count does not change the comparison. Against an interior factorisation on the same GPU, a solve of this length lies beyond the break-even, so there the learned route is preferable when the factorisations of all cells do not fit in device memory, as for the eight cells of Section 6.9, whose exact reference had to be condensed cell by cell.
+How many applications a design iteration requires depends on the assembled solver: in the lattices of Section 6.9, the preconditioned iteration needs 183 applications per cell with the exact cells and 186 with the learned cells for a batch of six loads (226 and 234 in the \(3\times3\times1\) layer). Since every application is cheaper, this count does not change the comparison with the conventional route.
 
 The historical deployment study of an earlier uncorrected predictor, including assembled iterative solves with several preconditioners, is retained in Supplementary Note S4.
 
@@ -770,7 +765,7 @@ The all-direction condition in the operator argument also clarifies what learnin
 
 Computational value depends on the response being predicted and the accuracy it requires. Compliance measures a global energy error, with energy participation weighting the bound on local contributions; local thickness sensitivity also resolves derivative-weighted field information. A correction budget adequate for one output can therefore leave the other inaccurate. The relevant comparison is the total work required to attain the prescribed response accuracy, including geometry-dependent setup, repeated operator actions and the assembled solve.
 
-Reuse and batching determine how those costs are amortised. Conventional condensation factors each cell\textquotesingle s interior once and then applies or forms the condensed operator; the learned route encodes each geometry once, prepares its correction, and applies field operations for every query. In design optimisation every iteration changes the thickness parameters, and with them the geometry of every cell, so neither preparation can be reused across iterations; the relevant comparison is the cost per cell and design iteration, including the number of queries that the assembled solve requires. Against the conventional host route, the learned route is cheaper in preparation, in memory and in every application (Table 5), so this count does not change the comparison; it matters only against an interior factorisation on the same GPU, whose applications are cheaper and which becomes preferable beyond about 30 to 340 retained vectors per cell and iteration, as long as its factor fits in device memory. The learned applications are dominated by the 32 stiffness actions of the correction, not by the network; fewer smoothing steps, a cheaper coarse space or fusing the stiffness actions would reduce this cost, at an accuracy cost that Section 6.5 quantifies for the smoothing budget.
+Reuse and batching determine how those costs are amortised. Conventional condensation factors each cell\textquotesingle s interior once and then applies or forms the condensed operator; the learned route encodes each geometry once, prepares its correction, and applies field operations for every query. In design optimisation every iteration changes the thickness parameters, and with them the geometry of every cell, so neither preparation can be reused across iterations; the relevant comparison is the cost per cell and design iteration, including the number of queries that the assembled solve requires. Against the conventional host route, the learned route is cheaper in preparation, in memory and in every application (Table 5), so this count does not change the comparison. The learned applications are dominated by the 32 stiffness actions of the correction, not by the network; fewer smoothing steps, a cheaper coarse space or fusing the stiffness actions would reduce this cost, at an accuracy cost that Section 6.5 quantifies for the smoothing budget.
 
 Algebraic accuracy belongs to the same assessment. For a common fixed variational operator, Eq. (18) separates reconstructed mechanical error from the signed work of an incomplete assembled solve. An action--energy consistency term is additionally required if the numerical action differs from the stated energy operator. The recomputed applied-operator residual therefore connects the iteration cost to the solution actually obtained. Controlling both the interior approximation and the algebraic error makes the computational comparison meaningful for the intended structural response.
 
@@ -780,7 +775,7 @@ Interior equilibrium provides a common mechanical criterion for learning and cor
 
 These relations explain the behaviour of an uncorrected learned extension. Its displacement errors of about one percent lie in directions that are stiff relative to the exact field, which in thin walls deforms mainly by bending, so that energy errors of several percent result; weakly participating cells then show accurate compliance but sensitivity errors above 3\%. The relations also identify the remedy. Chebyshev smoothing and a trilinear coarse solve at fixed retained displacement remove the stiff error components and the slowly relaxed ones, respectively, and preserve the variational structure of the condensed operator. Trained through this correction, the predictor keeps the mean energy error of every one of 80 unseen geometries at or below 0.65\% and, in all fourteen assembled configurations examined, the compliance and thickness-sensitivity errors below 0.06\% and 0.7\%.
 
-The learned field and the correction are complementary. Under the same correction budget, a harmonic starting field leaves errors 7 to 290 times larger than the learned field and a zero interior 2,400 to 12,000 times larger, and quadrupling the smoothing budget does not close this gap. The correction in turn makes the learned field sufficient: its error, not the network\textquotesingle s accuracy alone, determines the quality of the assembled response. Applying the same correction to an extension trained without it already brings all assembled responses examined within the accuracy reference; training through the correction reduces the largest remaining sensitivity errors by factors of 1.35 to 2.2. When every cell of a heterogeneous lattice is learned, the cells\textquotesingle{} energy errors combine through their shares of the assembled energy: the lattice compliance error, at most 0.015\% under consistent face loads, follows the participation-weighted bound of Eq. (12) to within 0.4\%, and the thickness sensitivities stay within 0.15\%. Against conventional condensation on the host cores, the learned operator condenses a cell 9 to 29 times faster, stores 4 to 14 times less and applies it 2 to 23 times faster, so it is cheaper for any number of queries; against an interior factorisation on the same GPU, it remains cheaper to prepare but costs more per application, with a break-even of about 30 to 340 retained vectors per cell and design iteration.
+The learned field and the correction are complementary. Under the same correction budget, a harmonic starting field leaves errors 7 to 290 times larger than the learned field and a zero interior 2,400 to 12,000 times larger, and quadrupling the smoothing budget does not close this gap. The correction in turn makes the learned field sufficient: its error, not the network\textquotesingle s accuracy alone, determines the quality of the assembled response. Applying the same correction to an extension trained without it already brings all assembled responses examined within the accuracy reference; training through the correction reduces the largest remaining sensitivity errors by factors of 1.35 to 2.2. When every cell of a heterogeneous lattice is learned, the cells\textquotesingle{} energy errors combine through their shares of the assembled energy: the lattice compliance error, at most 0.015\% under consistent face loads, follows the participation-weighted bound of Eq. (12) to within 0.4\%, and the thickness sensitivities stay within 0.15\%. Against conventional condensation on the host cores, the learned operator condenses a cell 9 to 29 times faster, stores 4 to 14 times less and applies it 2 to 23 times faster, so it is cheaper for any number of queries.
 
 % Declarations required by Elsevier / CMAME, set after the main text and before the appendices and references.
 % Placeholders are printed in red; replace them before submission.
