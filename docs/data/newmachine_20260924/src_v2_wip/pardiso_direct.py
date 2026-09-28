@@ -57,19 +57,36 @@ def _read(p):
         return None
 
 
+V1 = os.path.exists('/sys/fs/cgroup/memory/memory.limit_in_bytes')              # cgroup v1 (e.g. the dedicated CPU host)
+V1_SOFT_MARGIN = 2 * GIB          # v1 has no memory.high: the guard ceiling is memory.limit_in_bytes - 2 GiB (as 90 -> 88 GiB)
+
+
 def cgroup():
-    """Container limits and usage (cgroup v2): memory.max / memory.high (bytes and GiB), anonymous memory in use, CPU quota."""
+    """Container limits and usage: memory limit, the guard ceiling (v2: memory.high; v1: limit - 2 GiB), anonymous memory in
+    use (v2: memory.stat anon; v1: memory.stat total_rss), CPU quota (cores)."""
     st = {}
-    for line in (_read('/sys/fs/cgroup/memory.stat') or '').splitlines():
-        k, _, v = line.partition(' ')
-        if k in ('anon', 'file', 'shmem'):
-            st[k] = int(v)
-    cpu = (_read('/sys/fs/cgroup/cpu.max') or 'max 100000').split()
-    mx, hi = _read('/sys/fs/cgroup/memory.max'), _read('/sys/fs/cgroup/memory.high')
-    toint = lambda s: None if s in (None, 'max') else int(s)
-    r = dict(memory_max_bytes=toint(mx), memory_high_bytes=toint(hi), anon_bytes=st.get('anon'), file_bytes=st.get('file'),
-             cpu_quota_cores=None if cpu[0] == 'max' else int(cpu[0]) / int(cpu[1]), nproc=len(os.sched_getaffinity(0)),
-             os_cpu_count=os.cpu_count())
+    if V1:
+        for line in (_read('/sys/fs/cgroup/memory/memory.stat') or '').splitlines():
+            k, _, v = line.partition(' ')
+            if k in ('total_rss', 'total_cache', 'total_shmem'):
+                st[k] = int(v)
+        mx = _read('/sys/fs/cgroup/memory/memory.limit_in_bytes')
+        q, per = _read('/sys/fs/cgroup/cpu/cpu.cfs_quota_us'), _read('/sys/fs/cgroup/cpu/cpu.cfs_period_us')
+        mxb = int(mx) if mx else None
+        r = dict(cgroup='v1', memory_max_bytes=mxb, memory_high_bytes=None if mxb is None else mxb - V1_SOFT_MARGIN,
+                 anon_bytes=st.get('total_rss'), file_bytes=st.get('total_cache'),
+                 cpu_quota_cores=None if (q is None or int(q) < 0) else int(q) / int(per))
+    else:
+        for line in (_read('/sys/fs/cgroup/memory.stat') or '').splitlines():
+            k, _, v = line.partition(' ')
+            if k in ('anon', 'file', 'shmem'):
+                st[k] = int(v)
+        cpu = (_read('/sys/fs/cgroup/cpu.max') or 'max 100000').split()
+        mx, hi = _read('/sys/fs/cgroup/memory.max'), _read('/sys/fs/cgroup/memory.high')
+        toint = lambda s: None if s in (None, 'max') else int(s)
+        r = dict(memory_max_bytes=toint(mx), memory_high_bytes=toint(hi), anon_bytes=st.get('anon'), file_bytes=st.get('file'),
+                 cpu_quota_cores=None if cpu[0] == 'max' else int(cpu[0]) / int(cpu[1]))
+    r.update(nproc=len(os.sched_getaffinity(0)), os_cpu_count=os.cpu_count())
     for k in ('memory_max', 'memory_high', 'anon', 'file'):
         b = r.get(k + '_bytes')
         r[k + '_GiB'] = None if b is None else b / GIB
@@ -77,7 +94,18 @@ def cgroup():
 
 
 def cpu_stat():
+    """Container CPU accounting with v2 key names: usage_usec, nr_periods, nr_throttled, throttled_usec."""
     d = {}
+    if V1:
+        for line in (_read('/sys/fs/cgroup/cpu/cpu.stat') or '').splitlines():
+            k, _, v = line.partition(' ')
+            d[k] = int(v)
+        if 'throttled_time' in d:
+            d['throttled_usec'] = d['throttled_time'] // 1000
+        u = _read('/sys/fs/cgroup/cpuacct/cpuacct.usage') or _read('/sys/fs/cgroup/cpu,cpuacct/cpuacct.usage')
+        if u:
+            d['usage_usec'] = int(u) // 1000
+        return d
     for line in (_read('/sys/fs/cgroup/cpu.stat') or '').splitlines():
         k, _, v = line.partition(' ')
         d[k] = int(v)
@@ -85,8 +113,8 @@ def cpu_stat():
 
 
 def avail_gib():
-    """GiB the container can still allocate before memory.high (or memory.max) counting anonymous memory only (page cache
-    is reclaimable)."""
+    """GiB the container can still allocate before the guard ceiling (v2 memory.high, else memory.max; v1 limit - 2 GiB),
+    counting anonymous memory only (page cache is reclaimable)."""
     c = cgroup()
     lim = c['memory_high_bytes'] or c['memory_max_bytes']
     if lim is None or c['anon_bytes'] is None:
