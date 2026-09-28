@@ -37,6 +37,7 @@ ap.add_argument('--snaps', default='1e-3,1e-4,1e-5,1e-6,1e-7,1e-8,1e-9')
 ap.add_argument('--dual-tol', type=float, default=1e-10)
 ap.add_argument('--deriv', action='store_true'); ap.add_argument('--steps', default='3e-3,1e-3,3e-4')
 ap.add_argument('--deriv-cases', default='', help='comma list (default: every case)')
+ap.add_argument('--deriv-corners', default='0,1,2,3,4,5,6,7')
 ap.add_argument('--tmp', default='/root/autodl-tmp/OPL/S1/V2/R1/X3/tmp')
 A = ap.parse_args()
 if A.deploy:                                                             # as lat_hetero.py --deploy (before any correction)
@@ -273,15 +274,18 @@ def main():
             op0, info0 = rb.build(taus0)
             rb.set_reference(info0)
             e0, u0r = RC.energy_cols(op0, Q)
+            e0b, u0b = RC.energy_cols(op0, Q)
             repro = dict(e_act_rel=float(((e0 - e_base) / e_base).abs().max()), field_rel=float((u0r - U0).norm() / U0.norm()),
-                         build_s=info0['seconds'], tail=info0['tail'], shift=info0['shift'])
+                         build_s=info0['seconds'], tail=info0['tail'], shift=info0['shift'],
+                         determinism=dict(e_act_rel=float(((e0b - e0) / e0).abs().max()), field_rel=float((u0b - u0r).norm() / u0r.norm())))
+            del u0b
             rb.release(op0); del op0, u0r, U0; RC.free()
             log(dict(event='REPRO', case=case, **repro, gpu=RC.gpu_gb()))
             D, sw = {}, []
             for hh in steps:
                 key = f'{hh:g}'
                 Da, Df, De = (np.full((8, Q.shape[1]), np.nan) for _ in range(3))
-                for c in range(8):
+                for c in [int(x) for x in A.deriv_corners.split(',')]:
                     hc = hh * taus0[c]
                     ea, ef, uu = {}, {}, {}
                     for sg in (1, -1):

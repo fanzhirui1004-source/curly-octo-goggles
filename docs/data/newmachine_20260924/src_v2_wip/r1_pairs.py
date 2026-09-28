@@ -136,6 +136,11 @@ def main(argv=None):
     with torch.no_grad():
         e_base = (Q * opt.apply(Q)).sum(0)
         e_fld_base = (U0 * KU0).sum(0)
+        e_again = (Q * opt.apply(Q)).sum(0)                                     # run-to-run determinism of the action
+        u_again = opt.field(Q)
+    determinism = dict(e_act_rel=((e_again - e_base) / e_base).abs().max().item(),
+                       field_rel=((u_again - U0).norm() / U0.norm()).item())
+    del u_again
     rb = RC.Rebuilder(a.case, body, a.tmp, lambda geo: DC.net_for(ck, geo)[0], log=log)
     op0, info0 = rb.build(taus0)
     rb.set_reference(info0)
@@ -143,6 +148,7 @@ def main(argv=None):
     repro = dict(e_act_rel=((e0 - e_base) / e_base).abs().max().item(), field_rel=((u0r - U0).norm() / U0.norm()).item(),
                  build_s=info0['seconds'], tail=info0['tail'], shift=info0['shift'])
     rb.release(op0); del op0, u0r; RC.free()
+    repro['determinism'] = determinism
     log(dict(event='REPRO', case=a.case, **repro, gpu=RC.gpu_gb()))
     steps = [float(s) for s in a.steps.split(',') if s]
     fixb = [float(s) for s in a.fixb_steps.split(',') if s]
