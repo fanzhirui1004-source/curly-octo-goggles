@@ -221,3 +221,6 @@ A clean w_s = 0 arm does **not** exist. The v2 architecture has no component abl
    - Selection text: the final checkpoint always won; A2b's protocol to be checked; pair cells ⊂ selection set.
    - A3 wall time: 2.7 h covers only the post-restart segment; the full run is about 3.5–3.8 h.
    - A3/B+W view 17: 55 min, or state it as a limitation.
+
+---
+**Coordinator addendum (server logs, read-only grep, 2026-09-28):** the SPLIT events settle the I-43 count question: `v2L1.log` (B) `{"event": "SPLIT", "train": 305, "val": 40}`; `A0_ctrl.log` (C), `A2b_tail8.log` (A2b) and `A3_2grid.log` (A3) all `{"event": "SPLIT", "train": 591, "val": 40}`. The pool sizes 305 (B) and 591 (continuations) are therefore confirmed at training time; the "A0 = 305 geos" project note is wrong. Distinct-visited counts (≈153 per continuation) remain a reconstruction.
