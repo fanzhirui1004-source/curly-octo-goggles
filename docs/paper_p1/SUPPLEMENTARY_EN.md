@@ -1,6 +1,6 @@
 # Supplementary material
 
-Supplementary Notes, Tables and Figures are numbered in the order of their first citation in the article. Predictor labels follow the main text (Table 2); the key below also lists the archived run identifiers and the labels used before the revision. S8 and P0 are reported in this supplement only.
+Supplementary Notes, Tables and Figures are numbered in the order in which they appear in this supplement. Predictor labels follow the main text (Table 2); the key below also lists the archived run identifiers and the labels used before the revision. S8 and P0 are reported in this supplement only.
 
 ## R1. Predictor and geometry key
 
@@ -27,7 +27,7 @@ The S8 predictor has its own learned weights. Applying eight smoothing steps to 
 | H3 | Heavily cut | fresh_val_2002_d0_v0 |
 | L1 | Lightly cut | fresh_val_2004_d0_v2 |
 
-The x/y suffix identifies the neighbouring-cell configuration. The deployment geometries use the G1–G4 labels of Table ST18. The complete timing tables retain the corresponding abbreviated geometry identifiers for lookup.
+The x/y suffix identifies the neighbouring-cell configuration. The deployment geometries use the G1–G4 labels of Table ST18; the table below gives their archived identifiers.
 
 | Benchmark label | Abbreviated geometry | Archived geometry identifier |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ Geometry counts refer to geometries with an available direction-class mean. The 
 | S8 | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
 | Smoothing-trained | 591 | 40 | 15,000 | 15,000 / EMA | Eight-step smoothing | 0 | 80 |
 | NICE-post | 305 | 40 | — | 30,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
-| NICE | 591 | 40 | 15,000 | 15,000 / EMA | 8 / Q1(17) / 8 | 0 | 80 |
+| NICE | 591 | 40 | 15,000 | 15,000 / EMA | 8 / Q1(17) / 8 | 0, 17 | 80 |
 
 The training pool is the number of training geometries recorded at the start of each run (the SPLIT event of its training log): 148 for P0, 305 for the base network, and 591 for Uncorrected, Smoothing-trained and NICE. The S8 run used the same split file as the other continuations; its SPLIT event was not extracted. The pool of 591 comprises 304 of the base network's 305 geometries (one cell that behaved as a near-mechanism was removed) and 287 produced later. With three geometries in the device pool and one replacement every 100 updates (Appendix G.3), a run of \(N\) updates visits at most \(N/100+3\) distinct geometries, i.e. at most 153 for each 15,000-update continuation; the base network visited all 305 geometries of its pool over its 40,000 updates. Uncorrected, S8, Smoothing-trained and NICE use the same seed and split, so they draw their geometries in the same order.
 
@@ -481,7 +481,7 @@ Cells outside weight selection, fixed before evaluation: the five validation geo
 | fresh_val_2021 | worst 4 | 0.266 | 0.0827 | 0.526 | 0.0753 | 0.971 |
 | fresh_val_2063 | worst 5 | 0.681 | 0.0967 | 0.434 | 0.0878 | 0.563 |
 | fresh_val_2032 | random, uncut | 1.000 | 0.0010 | 0.181 | 0.0011 | 0.133 |
-| fresh_val_2047 | random, light | 0.779 | 0.0051 | 0.102 | 0.0051 | 0.102 |
+| fresh_val_2047 | random, light | 0.779 | 0.0038 | 0.102 | 0.0051 | 0.102 |
 | fresh_val_2078 | random, moderate | 0.661 | 0.0101 | 0.103 | 0.0066 | 0.100 |
 | fresh_val_2053 | random, heavy | 0.078 | 0.0050 | 0.136 | 0.0066 | 0.218 |
 
@@ -728,7 +728,7 @@ The direct solution assembles the full cut-cell stiffness of every cell, retaine
 
 Conventional exact condensation (route (b) of Table 5) processes the cells one at a time on the same host with 16 threads: cell setup and assembly as in the direct solution, then the dense condensed matrix of the cell on its retained degrees of freedom by PARDISO's Cholesky factorisation with the Schur-complement option (iparm(36)), after which the cell is released. The condensed lattice system is solved exactly by a block Cholesky factorisation in substructuring order: for each cell, its private retained block is factorised and eliminated with dense kernels, the dense interface matrix over the retained coordinates shared by several cells is factorised and solved, and the private coordinates are recovered by back-substitution. The condensed cell matrices are held until their elimination.
 
-SciPy 1.18's default sparse direct solver (SuperLU, one thread, COLAMD and MMD orderings) failed with a memory error while factorising a single cell of 325,000 degrees of freedom, and the two- and four-cell lattices, in each case at 4 to 5 GiB of resident memory, far below the available memory; it is therefore not included in Table 5.
+SciPy 1.18's default sparse direct solver (SuperLU, one thread, COLAMD and MMD orderings) failed with a memory error while factorising a single cell of 325,404 degrees of freedom, and the two- and four-cell lattices, in each case at 4.1 to 5.3 GiB of resident memory, far below the available memory; it is therefore not included in Table 5.
 
 The learned route runs one design iteration of the deployed implementation with NICE on one NVIDIA GeForce RTX 5090: front end (cell construction, stiffness and moment assembly, network input and encoding, and a warm-up application that prepares the correction), assembly of the lattice and of \(K_{PP}\), preconditioner setup (the balanced two-level action of Supplementary Note S6), conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(8.6\times10^{-7}\) to \(9.8\times10^{-7}\)), and the field-based sensitivities \(\widetilde s_c\) of Eq. (13) for the three loads, obtained by reverse-mode differentiation of the moment integrals at the fixed recovered fields. In this timed route the network, and also the correction's smoothing and coarse solve, run in single precision, while the stiffness products of the condensed action are in double precision; the accuracy results of Sections 6.2–6.9 use a double-precision correction (Appendix F.3). Both routes read the same generated cell geometries; geometry generation is not timed in either. The eight-cell runs keep the operator state of four cells on the GPU and stream the remainder from host memory.
 
@@ -745,35 +745,35 @@ All memory values are in GiB (\(2^{30}\) bytes): GPU memory is the peak memory a
 | 2×2×1, z=0 | 4 (2) | 102,786–328,608 | 957,888 | 77,310 | 880,578 | 132,719,531 |
 | 2×2×1, z=1 | 4 (2) | 97,230–302,772 | 884,940 | 71,046 | 813,894 | 125,748,434 |
 | 2×2×2 | 8 (4) | 97,230–328,608 | 1,833,474 | 139,002 | 1,694,472 | 258,181,146 |
-| 3×3×1 | 8 (3) | 83,220–336,162 | 2,113,611 | 143,685 | 1,969,926 | 296,791,896 |
+| 3×3×1 | 8 (3) | 83,220–336,162 | 2,113,611 | 143,685 | 1,969,926 | 296,791,884 |
 
 #### ST17b. Direct solution on the host: phases (s) and memory (GiB)
 
-| Lattice | Factorisation | Threads | Cells: setup + assembly | Global assembly and scaling | Analysis | Factorisation | Solution, 6 loads | Total | PARDISO memory | Peak process memory | Max. relative residual | Record |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | Cholesky | 16 | 229.9 | 21.9 | 26.0 | 193.1 | 13.5 | 484.4 | 32.0 | 35.1 | 3.3e-10 | `lat2_hlat221a_chol_rep1.json` |
-| 2×2×1, z=0 | LU | 16 | 215.0 | 20.3 | 27.8 | 333.3 | 17.3 | 613.6 | 63.6 | 69.9 | 3.2e-11 | `lat2_hlat221a_lu.json` |
-| 2×2×1, z=0 | Cholesky | 1 | 777.3 | 19.8 | 115.8 | 1,500.0 | 12.1 | 2,425.0 | 31.4 | 34.8 | 4.0e-10 | `lat1_hlat221a_chol.json` |
-| 2×2×1, z=1 | Cholesky | 16 | 184.2 | 17.6 | 20.2 | 116.9 | 10.4 | 349.2 | 28.8 | 32.0 | 4.5e-10 | `lat2_hlat221b_chol_rep1.json` |
-| 2×2×1, z=1 | LU | 16 | 191.2 | 19.3 | 25.8 | 240.7 | 31.7 | 508.6 | 57.4 | 63.4 | 3.8e-11 | `lat2_hlat221b_lu.json` |
-| 2×2×1, z=1 | Cholesky | 1 | 685.6 | 18.8 | 106.1 | 1,309.4 | 11.3 | 2,131.3 | 28.3 | 31.6 | 5.2e-10 | `lat1_hlat221b_chol.json` |
-| 2×2×2 | Cholesky | 16 | 379.5 | 36.0 | 53.1 | 368.2 | 31.0 | 867.8 | 66.4 | 71.1 | 1.5e-10 | `lat2_hlat222_chol_rep1.json` |
-| 2×2×2 | Cholesky | 1 | 1,402.1 | 39.3 | 254.5 | 4,140.3 | 27.7 | 5,863.9 | 65.5 | 70.6 | 1.8e-10 | `lat1_hlat222_chol.json` |
-| 3×3×1 | Cholesky | 16 | 431.3 | 42.3 | 50.4 | 481.5 | 36.0 | 1,041.6 | 80.9 | 85.9 | 2.6e-09 | `lat2_hlat331_chol_rep1.json` |
-| 3×3×1 | Cholesky | 1 | 1,669.9 | 45.4 | 324.4 | 6,059.1 | 32.4 | 8,131.0 | 79.8 | 85.2 | 2.8e-09 | `lat1_hlat331_chol.json` |
+| Lattice | Factorisation | Threads | Cells: setup + assembly | Global assembly and scaling | Analysis | Factorisation | Solution, 6 loads | Total | PARDISO memory | Peak process memory | Max. relative residual |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | Cholesky | 16 | 229.9 | 21.9 | 26.0 | 193.1 | 13.5 | 484.4 | 32.0 | 35.1 | 3.3e-10 |
+| 2×2×1, z=0 | LU | 16 | 215.0 | 20.3 | 27.8 | 333.3 | 17.3 | 613.6 | 63.6 | 69.9 | 3.2e-11 |
+| 2×2×1, z=0 | Cholesky | 1 | 777.3 | 19.8 | 115.8 | 1,500.0 | 12.1 | 2,425.0 | 31.4 | 34.8 | 4.0e-10 |
+| 2×2×1, z=1 | Cholesky | 16 | 184.2 | 17.6 | 20.2 | 116.9 | 10.4 | 349.2 | 28.8 | 32.0 | 4.5e-10 |
+| 2×2×1, z=1 | LU | 16 | 191.2 | 19.3 | 25.8 | 240.7 | 31.7 | 508.6 | 57.4 | 63.4 | 3.8e-11 |
+| 2×2×1, z=1 | Cholesky | 1 | 685.6 | 18.8 | 106.1 | 1,309.4 | 11.3 | 2,131.3 | 28.3 | 31.6 | 5.2e-10 |
+| 2×2×2 | Cholesky | 16 | 379.5 | 36.0 | 53.1 | 368.2 | 31.0 | 867.8 | 66.4 | 71.1 | 1.5e-10 |
+| 2×2×2 | Cholesky | 1 | 1,402.1 | 39.3 | 254.5 | 4,140.3 | 27.7 | 5,863.9 | 65.5 | 70.6 | 1.8e-10 |
+| 3×3×1 | Cholesky | 16 | 431.3 | 42.3 | 50.4 | 481.5 | 36.0 | 1,041.6 | 80.9 | 85.9 | 2.6e-09 |
+| 3×3×1 | Cholesky | 1 | 1,669.9 | 45.4 | 324.4 | 6,059.1 | 32.4 | 8,131.0 | 79.8 | 85.2 | 2.8e-09 |
 
-Total: sum of the preceding phases. PARDISO memory: permanent plus factorisation storage (iparm(16) + iparm(17)) reported by the analysis, which agreed with the value after the numerical factorisation within 0.1% where both were recorded. Records in `docs/data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/host` (16 threads) and `.../host1` (one thread).
+Total: sum of the preceding phases. PARDISO memory: permanent plus factorisation storage (iparm(16) + iparm(17)) reported by the analysis, which agreed with the value after the numerical factorisation within 0.1% where both were recorded. Records: `lat2_<lattice>_*.json` in `docs/data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/host` (16 threads) and `lat1_<lattice>_chol.json` in `.../host1` (one thread).
 
 #### ST17c. Conventional exact condensation on the host: phases (s) and memory (GiB)
 
-| Lattice | Cells: front end | Cells: Schur complement | Condensed solve | Total | Condensed cell matrices held (GiB) | Dense interface (GiB) | Shared retained DOFs | Peak process memory (GiB) | Compliance vs. (a) | Record |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | 210.6 | 274.3 | 86.8 | 588.8 | 17.8 | 1.1 | 12,327 | 27.9 | 5e-10 | `latcond_hlat221a_rep1.json` |
-| 2×2×1, z=1 | 263.4 | 279.2 | 71.4 | 631.7 | 14.9 | 0.9 | 11,103 | 24.7 | 4e-10 | `latcond_hlat221b_rep1.json` |
-| 2×2×2 | 393.6 | 392.5 | 133.9 | 949.7 | 32.8 | 8.0 | 32,784 | 40.1 | 2e-10 | `latcond_hlat222_rep1.json` |
-| 3×3×1 | 462.0 | 555.0 | 165.7 | 1,217.9 | 33.4 | 7.6 | 31,845 | 42.2 | 7e-10 | `latcond_hlat331_rep1.json` |
+| Lattice | Cells: front end | Cells: Schur complement | Condensed solve | Total | Condensed cell matrices held (GiB) | Dense interface (GiB) | Shared retained DOFs | Peak process memory (GiB) | Compliance vs. (a) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | 210.6 | 274.3 | 86.8 | 588.8 | 17.8 | 1.1 | 12,327 | 27.9 | 5e-10 |
+| 2×2×1, z=1 | 263.4 | 279.2 | 71.4 | 631.7 | 14.9 | 0.9 | 11,103 | 24.7 | 4e-10 |
+| 2×2×2 | 393.6 | 392.5 | 133.9 | 949.7 | 32.8 | 8.0 | 32,784 | 40.1 | 2e-10 |
+| 3×3×1 | 462.0 | 555.0 | 165.7 | 1,217.9 | 33.4 | 7.6 | 31,845 | 42.2 | 7e-10 |
 
-Condensed solve: private elimination, interface factorisation and solution, and back-substitution for the six loads. Compliance vs. (a): largest relative difference over the six loads from the whole-lattice direct solution. Records in `.../cpu120/R1/cpu/hostcond`.
+Condensed solve: private elimination, interface factorisation and solution, and back-substitution for the six loads. Total also includes the per-cell lattice geometry, the matrix scaling and data movement between phases (17 to 35 s). Compliance vs. (a): largest relative difference over the six loads from the whole-lattice direct solution. Records: `latcond_<lattice>_*.json` in `.../cpu120/R1/cpu/hostcond`.
 
 #### ST17d. Learned route: phases of one design iteration (s) and memory (GiB)
 
@@ -836,9 +836,9 @@ The implementation also contains a uniform-nodal-force branch. The comparisons i
 
 ### S6.3. Instrumented solves and difference quotients of the surrogate
 
-The lattices of Section 6.9 and their two \(2\times2\times1\) layers were re-solved with NICE in double-precision correction arithmetic, to a recursive residual of \(10^{-10}\), recording at the final iterate and at the recursive-residual levels \(10^{-3}\) to \(10^{-7}\): the signed residual work \(\bar U^T\rho\) with \(\rho=f_g-y(\bar U)\) and \(y\) the applied learned action; the action–energy inconsistency \(\omega=\sum_m\omega_m\), \(\omega_m=\widehat q_m^T\widehat S_m\widehat q_m-\bar u_m^TK_m\bar u_m\); the residual of the identity \(C-\bar C=\sum_ma_m+\bar U^T\rho+\omega\) (Eq. 18 and Appendix J.6); and the dual-norm bound \(|\bar U^T\rho|\le\sqrt{\bar U^Ty(\bar U)}\sqrt{\rho^T\mathbb K^{-1}\rho}\), valid because \(\widehat{\mathbb S}\succeq\mathbb S\), with \(\rho^T\mathbb K^{-1}\rho\) computed with the exact assembled operator. All quantities are relative to the exact compliance. Repeating the two eight-cell runs with the correction in single precision changes the compliance errors by less than \(3\times10^{-8}\) and the gradient errors by less than \(10^{-6}\).
+The lattices of Section 6.9 and their two \(2\times2\times1\) layers were re-solved with NICE in double-precision correction arithmetic, to a recursive residual of \(10^{-10}\), recording at the final iterate and at the recursive-residual levels \(10^{-3}\) to \(10^{-9}\): the signed residual work \(\bar U^T\rho\) with \(\rho=f_g-y(\bar U)\) and \(y\) the applied learned action; the action–energy inconsistency \(\omega=\sum_m\omega_m\), \(\omega_m=\widehat q_m^T\widehat S_m\widehat q_m-\bar u_m^TK_m\bar u_m\); the residual of the identity \(C-\bar C=\sum_ma_m+\bar U^T\rho+\omega\) (Eq. 18 and Appendix J.6); and the dual-norm bound \(|\bar U^T\rho|\le\sqrt{\bar U^Ty(\bar U)}\sqrt{\rho^T\mathbb K^{-1}\rho}\), valid because \(\widehat{\mathbb S}\succeq\mathbb S\), with \(\rho^T\mathbb K^{-1}\rho\) computed with the exact assembled operator. All quantities are relative to the exact compliance. Repeating the two eight-cell runs with the correction in single precision changes the compliance errors by less than \(4\times10^{-8}\) and the gradient errors by less than \(10^{-6}\).
 
-The gradient metrics compare the field-based sensitivities with the exact ones after aggregation over the shared lattice vertices (the sum of the cells' corner sensitivities at each vertex), which is the gradient an optimiser with shared thickness variables receives; loads are held fixed. For the complete surrogate derivative, every cell's learned operator was rebuilt at \(\tau\pm h\tau_ce_c\) for each corner and applied to the solved retained displacements at fixed \(\widehat q\) (the action-energy difference quotient \(D_{\mathrm{act}}\)); rebuilding at the unperturbed design reproduces the operator's energies to \(8\times10^{-8}\). A rebuild counts as switched when it changes a binary node feature, a fringe hyperedge, the active element set or the coarse-factor shift relative to the unperturbed build.
+The gradient metrics compare the field-based sensitivities with the exact ones after aggregation over the shared lattice vertices (the sum of the cells' corner sensitivities at each vertex), which is the gradient an optimiser with shared thickness variables receives; loads are held fixed. For the complete surrogate derivative, every cell's learned operator was rebuilt at \(\tau\pm h\tau_ce_c\) for each corner and applied to the solved retained displacements at fixed \(\widehat q\) (the action-energy difference quotient \(D_{\mathrm{act}}\)); rebuilding at the unperturbed design reproduces the operator's energies to \(8\times10^{-8}\) for the lattice cells and \(7\times10^{-7}\) for the pair cells. A rebuild counts as switched when it changes a binary node feature, a fringe hyperedge, the active element set or the coarse-factor shift relative to the unperturbed build.
 
 #### Table ST19. Residual work, dual-norm bound, field-based gradient and difference quotients of the surrogate
 
@@ -923,7 +923,7 @@ These entries reproduce the previously saved algebraic check; they are not TPMS 
 
 ![Figure S01](figures/S06_reference_verification.png)
 
-**Figure S01. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). On H1 the successive compliance increments do not yet decrease between \(n=40\) and 48, so the difference from \(n=48\) is a lower estimate of the \(n=32\) error. (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). The change is at most \(2.6\times10^{-7}\) at \(10^{-3}\tau_c\) and falls a hundredfold per decade of step. Refinement to \(n=64\) of H1, H2 and two further validation cells: Table ST14. Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
+**Figure S01. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and eight-corner sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); production uses \(n=32\). On H1 the successive compliance increments do not yet decrease between \(n=40\) and 48; refinement to \(n=64\) (Table ST14) shows that H1 does not converge monotonically, so the difference from \(n=48\) is not an estimate of the \(n=32\) error. (b) The same quantities when the ghost-penalty coefficient is changed from its production value \(10^{-4}\). (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from its production value \(h=10^{-5}\tau_c\) (filled), and largest relative difference between central compliance differences and the sensitivity at the production step (open). The change is at most \(2.6\times10^{-7}\) at \(10^{-3}\tau_c\) and falls a hundredfold per decade of step. Refinement to \(n=64\) of H1, H2 and two further validation cells: Table ST14. Data: `evidence/ref_valid.json`, `evidence/ref_valid_h1.json`; script `figures_src/fig_refconv.py`.
 
 ![Figure S02](figures/S01_distributions.png)
 

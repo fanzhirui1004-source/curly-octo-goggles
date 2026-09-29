@@ -34,6 +34,7 @@ SUPP = SRC / 'SUPPLEMENTARY_EN.md'
 ARMS = [('B', 'v2L1'), ('C', 'A0_ctrl'), ('S8', 'A2_tail8'), ('A2b', 'A2b_tail8'), ('B+W', 'B2grid'), ('A3', 'A3_2grid')]
 LABEL = {'P0': 'P0', 'B': 'Base network', 'C': 'Uncorrected', 'S8': 'S8', 'A2b': 'Smoothing-trained', 'B+W': 'NICE-post',
          'A3': 'NICE'}
+EXTRA_VIEWS = {'A3': [17]}   # NICE in view 17 on all 80 geometries (revision E11, review_r1/results/X3/E11)
 POOL = {'P0': 148, 'B': 305, 'C': 591, 'S8': 591, 'A2b': 591, 'B+W': 305, 'A3': 591}   # SPLIT events (see docstring)
 CLASSES = ['force', 'support', 'face', 'macro', 'grf', 'force_c', 'face_c', 'support_k', 'glued']
 CELLS = [('2000_full', 'U1'), ('2001_full', 'U2'), ('2003_d1_v1', 'M1'), ('2005_d1_v0', 'H1'),
@@ -178,7 +179,7 @@ def st12(text):
         d = nv[arm]
         step, weights = sel if sel else (d['ckpt_step'], d['ckpt_weights'])
         return row([LABEL[arm], fmt(POOL[arm]), train_val, budget, f"{fmt(step)} / {weights.upper()}", corr,
-                    ', '.join(str(v) for v in d['views']), str(len(d['per_geo']))])
+                    ', '.join(str(v) for v in list(d['views']) + EXTRA_VIEWS.get(arm, [])), str(len(d['per_geo']))])
 
     cfg = {a: runs[r]['cfg'] for a, r in [('P0', 'c_oh'), ('B', 'v2L1'), ('C', 'A0_ctrl'), ('S8', 'A2_tail8'),
                                           ('A3', 'A3_2grid')]}
