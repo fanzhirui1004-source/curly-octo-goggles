@@ -1,0 +1,337 @@
+"""Section 6.11: thickness optimisation of a lattice with NICE, standard MMA and field-based sensitivities. New script.
+
+Design variables: the corner thickness parameters at the lattice vertices (shared by the cells meeting there), except the
+vertices of the load face, which are held fixed so that the consistent face load does not depend on the design (loads
+applied through a non-design layer, review item I-50).  Objective: compliance C_hat = f^T U_bar of one consistent load
+column (--load-dir) of the NICE lattice solve.  Gradient: the field-based sensitivities s_tilde (Eq. 13) of every cell,
+summed over the cells at each vertex (pre-registered rule A of E3).  Constraints (scaled, <= 0):
+  volume      V(tau) / V* - 1, V = sum over cells of the zeroth element moments (material volume of the discrete model),
+              dV/dtau_c from the central-difference moment derivatives; V* = --vfrac x V(initial design)
+  span        (tau_a - tau_b) / --span - 1 for every ordered pair of corners of every cell (training contract <= 0.47)
+  gradient    |grad tau|^2 / --grad^2 - 1 at every corner of every cell (edge differences; trilinear field: the maximum
+              over the cell is attained at a corner; training contract <= 0.47)
+  bounds      --tmin <= tau <= --tmax (training range [0.1752, 0.6993])
+Every iteration regenerates the geometry of every cell: new packets (FRESH_CONTEXT of the base case with the new corners)
+and new bodies by fast_prep4 in the frozen CPU environment (--workers in parallel), then the NICE lattice solve as in
+r1_lat.py (learned branch; --park / --resident / --deploy as there).  One MMA update per iteration (mma.py; no line
+search).  Stopping: max |d tau| < --xtol, or relative objective change < --ftol for three consecutive iterations, or
+--maxit.  Per iteration one JSON line in <root>/history.jsonl: compliance, volume, constraint maxima, PCG iterations,
+recomputed residual and signed residual work, per-cell switch fingerprints (active elements, ghost faces, ports, weak nodes,
+fringe hyperedges, coarse shift, Chebyshev endpoint), phase times and memory; state in <root>/state.npz (resume by rerun).
+Bodies of every iteration are kept (<root>/body) for the exact checks (opt_check.py).
+Usage: opt_design.py <root> <layout.json> --model A3=<ckpt> [--clamp y,min] [--load y,max] [--load-dir y] [--vfrac 0.8]
+       [--move 0.05] [--maxit 60] [--tmin 0.18] [--tmax 0.69] [--span 0.45] [--grad 0.45] [--tol 1e-6]
+       [--workers 16] [--park] [--resident 2] [--deploy] [--max-cols 16] [--stop-after K]
+"""
+import json, time, os, argparse, contextlib, subprocess, shutil, resource
+from pathlib import Path
+import numpy as np
+
+ap = argparse.ArgumentParser()
+ap.add_argument('root'); ap.add_argument('layout'); ap.add_argument('--model', required=True)
+ap.add_argument('--clamp', default='y,min'); ap.add_argument('--load', default='y,max'); ap.add_argument('--load-dir', default='y')
+ap.add_argument('--vfrac', type=float, default=0.8); ap.add_argument('--move', type=float, default=0.05)
+ap.add_argument('--maxit', type=int, default=60); ap.add_argument('--stop-after', type=int, default=0,
+                                                                  help='end this run after K iterations (pilot / scale runs)')
+ap.add_argument('--tmin', type=float, default=0.18); ap.add_argument('--tmax', type=float, default=0.69)
+ap.add_argument('--span', type=float, default=0.45); ap.add_argument('--grad', type=float, default=0.45)
+ap.add_argument('--xtol', type=float, default=1e-3); ap.add_argument('--ftol', type=float, default=1e-4)
+ap.add_argument('--prec', default='bnn:kpp:q1r'); ap.add_argument('--tol', type=float, default=1e-6)
+ap.add_argument('--maxit-pcg', type=int, default=3000); ap.add_argument('--max-cols', type=int, default=16)
+ap.add_argument('--workers', type=int, default=16)
+ap.add_argument('--park', action='store_true'); ap.add_argument('--resident', type=int, default=0)
+ap.add_argument('--deploy', action='store_true'); ap.add_argument('--lean', action='store_true')
+ap.add_argument('--frozen', default='/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/run_frozen_python.sh')
+ap.add_argument('--frozen-cwd', default='/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/COVER_G/src')
+ap.add_argument('--templates', default='/root/autodl-tmp/OPL/S4/body/GP_TEMPLATES_n32.npz')
+A = ap.parse_args()
+if A.deploy:                                                             # as r1_lat.py --deploy (before any correction)
+    os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
+ROOT = Path(A.root); ROOT.mkdir(parents=True, exist_ok=True)
+for d in ('packets', 'body', 'tmp'):
+    (ROOT / d).mkdir(exist_ok=True)
+os.environ['OPL_PACKETS_EXTRA'] = ':'.join([str(ROOT / 'packets')] + [p for p in os.environ.get('OPL_PACKETS_EXTRA', '').split(':') if p])
+
+import torch                                                            # noqa: E402
+import models as MD                                                     # noqa: E402,F401  first: applies OPL_CONV_FP32
+import teacher as TE                                                    # noqa: E402
+import trainlib as TL                                                   # noqa: E402
+import fastnet as FN                                                    # noqa: E402
+import evalnet as EN                                                    # noqa: E402
+import bench_deploy as BD                                               # noqa: E402
+import lat_multi as LM                                                  # noqa: E402
+import lat_precond as PR                                                # noqa: E402
+import lat_hetero as LH                                                 # noqa: E402
+import r1x3_common as RC                                                # noqa: E402
+import mma as MMA                                                       # noqa: E402
+
+dev, dt = TE.dev, TE.dt
+BODY, TMP = ROOT / 'body', ROOT / 'tmp'
+HIST, STATE = ROOT / 'history.jsonl', ROOT / 'state.npz'
+log = lambda d: print(json.dumps(RC.tojson(d), default=float), flush=True)
+AX = {'x': 0, 'y': 1, 'z': 2}
+
+
+def packet_root(case):
+    for r in [p for p in os.environ.get('OPL_PACKETS_EXTRA', '').split(':') if p] + ['/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/packets']:
+        if (Path(r) / case / 'FRESH_CONTEXT.json').exists():
+            return Path(r) / case
+    raise FileNotFoundError(case)
+
+
+# ------------------------------------------------------------------------------------------------ geometry per iteration
+def write_packets(base_cases, corners, k):
+    cases = []
+    for base, tc in zip(base_cases, corners):
+        case = f'{base}_o{k:03d}'
+        d = ROOT / 'packets' / case
+        if not (d / 'FRESH_CONTEXT.json').exists():
+            pk = packet_root(base)
+            cx = json.loads((pk / 'FRESH_CONTEXT.json').read_text())
+            cx['case']['tau_corners'] = [format(float(x), '.12f') for x in tc]
+            cx['case']['case_id'] = case
+            cx.setdefault('provenance', {})['opt_design_of'] = base
+            cx['provenance']['opt_iteration'] = k
+            d.mkdir(parents=True, exist_ok=True)
+            (d / 'FRESH_CONTEXT.json').write_text(json.dumps(cx, indent=1))
+            shutil.copy(pk / 'SAMPLE.json', d / 'SAMPLE.json')
+        cases.append(case)
+    return cases
+
+
+def make_bodies(cases):
+    """fast_prep4 for every case without PREP.json, --workers in parallel; raises on any failure."""
+    if not (BODY / Path(A.templates).name).exists() and Path(A.templates).exists():
+        shutil.copy(A.templates, BODY / Path(A.templates).name)
+    todo = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
+    if todo:
+        src = Path(__file__).resolve().parent / 'fast_prep4.py'
+        one = ROOT / 'body_one.sh'
+        one.write_text('#!/bin/bash\n[ -f $1/$2/PREP.json ] && exit 0\n'
+                       f'cd {A.frozen_cwd} && OMP_NUM_THREADS=1 timeout 1800 {A.frozen} {src} 1 $1 $2 > $1/$2.log 2>&1 || touch $1/$2.failed\n')
+        one.chmod(0o755)
+        (ROOT / 'todo.txt').write_text('\n'.join(todo) + '\n')
+        subprocess.run(['bash', '-c', f'xargs -a {ROOT}/todo.txt -P {A.workers} -I{{}} {one} {BODY} {{}}'], check=False,
+                       env=dict(os.environ))
+    bad = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
+    if bad:
+        raise RuntimeError(f'BODY_FAIL {bad}')
+    return len(todo)
+
+
+# ------------------------------------------------------------------------------------------------ constraints
+def build_constraint_structure(vid):
+    """Unique span pairs (va, vb) and gradient stencils (vc, vx, vy, vz) over all cells (vertex ids)."""
+    pairs, stencils = set(), set()
+    for row in vid:
+        for a in range(8):
+            for b in range(8):
+                if a != b and row[a] != row[b]:
+                    pairs.add((int(row[a]), int(row[b])))
+            stencils.add((int(row[a]), int(row[a ^ 4]), int(row[a ^ 2]), int(row[a ^ 1])))
+    return sorted(pairs), sorted(stencils)
+
+
+def constraints(tv, free, V, dV, Vstar, pairs, stencils):
+    """Scaled constraint values (m,) and gradients (m, n_free) at the vertex field tv."""
+    nv = len(tv); col = np.full(nv, -1); col[free] = np.arange(len(free))
+    f, G = [V / Vstar - 1.0], [dV[free] / Vstar]
+    for va, vb in pairs:
+        g = np.zeros(len(free))
+        if col[va] >= 0:
+            g[col[va]] += 1 / A.span
+        if col[vb] >= 0:
+            g[col[vb]] -= 1 / A.span
+        if not g.any():
+            continue
+        f.append((tv[va] - tv[vb]) / A.span - 1.0); G.append(g)
+    for vc, vx, vy, vz in stencils:
+        dd = np.array([tv[vx] - tv[vc], tv[vy] - tv[vc], tv[vz] - tv[vc]])
+        g = np.zeros(len(free))
+        for vn, di in zip((vx, vy, vz), dd):
+            if col[vn] >= 0:
+                g[col[vn]] += 2 * di / A.grad ** 2
+            if col[vc] >= 0:
+                g[col[vc]] -= 2 * di / A.grad ** 2
+        if not g.any():
+            continue
+        f.append((dd ** 2).sum() / A.grad ** 2 - 1.0); G.append(g)
+    return np.asarray(f), np.asarray(G)
+
+
+# ------------------------------------------------------------------------------------------------ one analysis
+def analyse(cases, positions, h):
+    """NICE lattice solve of the current design: compliance, s_tilde per cell (ncell x 8), cell volumes and dV (ncell x 8),
+    solve scalars and per-cell switch fingerprints."""
+    T = {}
+    t = time.perf_counter()
+    Cs, lay, vol, dvol = [], {}, [], []
+    for case, p in zip(cases, positions):
+        C = TE.Cell(case, str(BODY), log=lambda s_: None); C.assemble()
+        C.dmoments()
+        vol.append(float(C.M[:, 0].sum())); dvol.append(C.dM[:, :, 0].sum(1).cpu().numpy())
+        Cs.append(C); lay[tuple(p)] = LM.from_teacher(C)
+        if A.park:
+            LH._move(C, torch.device('cpu')); RC.free()
+    ca, la = A.clamp.split(','), A.load.split(',')
+    lat = LM.MultiLattice(lay, clamp=(ca[0], ca[1]), load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
+                          max_cols=A.max_cols, log=lambda s_: None)
+    order = [g.case for g in lat.geoms]
+    Cmap = {C.case: C for C in Cs}
+    F = lat.F[:, ['xyz'.index(A.load_dir)]].contiguous()
+    kpp = lat.assemble_kpp() if A.park else None
+    T['setup_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    lops, fps = [], {}
+    for j, c in enumerate(order):
+        C = Cmap[c]
+        if A.park:
+            LH._move(C, dev)
+        BD.netdata(C, str(BODY), TMP / c)
+        geo = TL.Geo(c, str(BODY), TMP, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
+        model = h.add(geo)
+        op = EN.FastOp(FN.FastNet(model, geo))
+        if A.deploy and not getattr(C, '_lean', False):
+            C.lean(deploy=True); RC.free()
+        elif A.lean and not getattr(C, '_lean', False):
+            C.lean(); RC.free()
+        with torch.no_grad():
+            op.apply(torch.zeros((C.np_, 1), dtype=dt, device=dev))
+        cc = model.caches.get(c)
+        faces = np.load(BODY / c / 'GP_FACES.npy')
+        fps[c] = dict(active=int(len(C.cells)), faces=int(len(faces)), ports=int(C.np_), cut_nodes=int(C.is_cut.sum()),
+                      weak=int(geo.nd['weak'].sum()),
+                      el_fringe=int(cc.el_fringe.sum()) if cc is not None and getattr(cc, 'el_fringe', None) is not None else None,
+                      gp_fringe=int(cc.gp_fringe.sum()) if cc is not None and getattr(cc, 'gp_fringe', None) is not None else None,
+                      shift=float(getattr(C, '_c_shift', 0.0) or 0.0),
+                      b=float(C._tail_bounds[2]) if getattr(C, '_tail_bounds', None) else None)
+        if A.park:
+            op = LH.ParkedOp(op, C, resident=j < A.resident)
+            if not op.resident:
+                LH._move(C, torch.device('cpu')); RC.free()
+        lops.append(op)
+    T['prep_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    fac = PR.Factory(lat, lops, shared={} if kpp is None else {'kpp_triplets': kpp, 'kpp_triplets_s': 0.0},
+                     kpp_backend='auto', log=lambda d: None)
+    pc, pst, _ = fac.build(A.prec)
+    T['precond_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    r = PR.pcg(lat, lops, pc, F=F, tol=A.tol, maxit=A.maxit_pcg)
+    fac.free(); del pc
+    X = r['X']
+    with torch.no_grad():
+        rho = F - lat.matvec(lops, X)
+        Chat = float((F * X).sum()); Ur = float((X * rho).sum())
+        tres = float(rho.norm() / F.norm())
+    T['solve_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    S = np.zeros((len(order), 8))
+    for i, c in enumerate(order):
+        C = Cmap[c]
+        ctx = lops[i].active() if A.park else contextlib.nullcontext()
+        with ctx:
+            if A.park:
+                LH._move(C, dev, min_bytes=0)
+            with torch.no_grad():
+                q = lat.gather(X, i)
+                u = lops[i].field(q).to(dt)
+                S[i] = C.sens(u)[:, 0].cpu().numpy()
+                del u
+        if A.park and not lops[i].resident:
+            LH._move(C, torch.device('cpu')); RC.free()
+    T['sens_s'] = time.perf_counter() - t
+    pos_order = [tuple(lat.positions[i]) for i in range(len(order))]
+    idx = [cases.index(c) for c in order]
+    out = dict(C=Chat, S=S, order=order, pos=pos_order, vol=np.asarray(vol)[idx], dvol=np.stack(dvol)[idx],
+               pcg=int(r['iterations']), true_residual=tres, Ut_rho_rel=Ur / Chat, fps=[fps[c] for c in order], times=T)
+    for c in order:
+        h.model.caches.pop(c, None)
+    del lops, lat, X, rho, F
+    for C in Cs:
+        C._free()
+    del Cs, Cmap
+    RC.free()
+    return out
+
+
+# ------------------------------------------------------------------------------------------------ main loop
+def main():
+    L = json.loads(Path(A.layout).read_text())
+    base = [c['case'] for c in L['cells']]
+    positions = [tuple(int(v) for v in c['position']) for c in L['cells']]
+    taus0 = [[float(x) for x in c['tau_corners']] for c in L['cells']]
+    vid, nv, tv0, dmax, vkeys = RC.vertex_map(positions, taus0)
+    if dmax > 1e-9:
+        raise ValueError(f'INCONSISTENT_SHARED_TAU {dmax}')
+    la = A.load.split(',')
+    ax = AX[la[0]]
+    coord = np.asarray(vkeys)[:, ax]
+    plane = coord.max() if la[1] == 'max' else coord.min()
+    fixed = coord == plane
+    free = np.flatnonzero(~fixed)
+    pairs, stencils = build_constraint_structure(vid)
+    name, h = LH.holder_for(A.model)
+    if STATE.exists():
+        z = np.load(STATE, allow_pickle=True)
+        k0, tv, Vstar, C0 = int(z['k']), z['tv'], float(z['Vstar']), float(z['C0'])
+        mstate = z['mstate'].item(); fhist = list(z['fhist'])
+        log(dict(event='RESUME', k=k0))
+    else:
+        k0, tv, Vstar, C0, mstate, fhist = 0, tv0.copy(), None, None, None, []
+    meta = dict(event='START', layout=A.layout, cells=len(base), vertices=nv, free=len(free), fixed=int(fixed.sum()),
+                span_pairs=len(pairs), grad_stencils=len(stencils), args=vars(A), env=RC.env_flags())
+    log(meta)
+    if k0 == 0:
+        (ROOT / 'meta.json').write_text(json.dumps(RC.tojson(dict(meta, vid=vid, vkeys=vkeys, fixed=fixed, tv0=tv0)), default=float))
+    k = k0; nrun = 0
+    while True:
+        t_it = time.perf_counter()
+        corners = [tv[vid[m]] for m in range(len(base))]
+        cases = write_packets(base, corners, k)
+        t = time.perf_counter(); nb = make_bodies(cases); t_body = time.perf_counter() - t
+        torch.cuda.reset_peak_memory_stats()
+        res = analyse(cases, positions, h)
+        # cell arrays are in lattice order; map to the layout order of vid
+        m_of = {c: i for i, c in enumerate(cases)}
+        perm = [m_of[c] for c in res['order']]
+        S = np.zeros((len(base), 8)); Vc = np.zeros(len(base)); dVc = np.zeros((len(base), 8))
+        S[perm] = res['S']; Vc[perm] = res['vol']; dVc[perm] = res['dvol']
+        gv = RC.aggregate(S[:, :, None], vid, nv)[:, 0]
+        dVv = RC.aggregate(dVc[:, :, None], vid, nv)[:, 0]
+        V = float(Vc.sum())
+        if Vstar is None:
+            Vstar, C0 = A.vfrac * V, res['C']
+        fval, dfdx = constraints(tv, free, V, dVv, Vstar, pairs, stencils)
+        f0 = res['C'] / C0
+        fhist.append(f0)
+        t = time.perf_counter()
+        xnew, mstate, info = MMA.mma_update(tv[free], f0, gv[free] / C0, fval, dfdx, A.tmin, A.tmax, mstate, move=A.move)
+        t_mma = time.perf_counter() - t
+        dx = float(np.abs(xnew - tv[free]).max())
+        rec = dict(event='ITER', k=k, C=res['C'], f0=f0, V=V, V_rel=V / Vstar, g_max=float(fval.max()),
+                   span_max=float(max((tv[a] - tv[b] for a, b in pairs), default=0.0)),
+                   grad_max=float(np.sqrt(max(sum((tv[n] - tv[c]) ** 2 for n in (x_, y_, z_)) for c, x_, y_, z_ in stencils))),
+                   tau_min=float(tv.min()), tau_max=float(tv.max()), dx=dx, grad_norm=float(np.linalg.norm(gv[free] / C0)),
+                   pcg=res['pcg'], true_residual=res['true_residual'], Ut_rho_rel=res['Ut_rho_rel'],
+                   bodies_new=nb, times=dict(res['times'], bodies_s=t_body, mma_s=t_mma, iter_s=time.perf_counter() - t_it),
+                   gpu_peak_gb=torch.cuda.max_memory_allocated() / 2 ** 30,
+                   host_peak_gb=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2 ** 20,
+                   mma=dict(newton=info['newton_steps'], y_max=info['y_max'], z=info['z']),
+                   cases=cases, fps=dict(zip(res['order'], res['fps'])))
+        with open(HIST, 'a') as fh:
+            fh.write(json.dumps(RC.tojson(dict(rec, tv=tv, s_vertex=gv, s_cell=S)), default=float) + '\n')
+        log({k_: v for k_, v in rec.items() if k_ not in ('cases', 'fps')})
+        tv = tv.copy(); tv[free] = xnew
+        k += 1; nrun += 1
+        np.savez(STATE, k=k, tv=tv, Vstar=Vstar, C0=C0, mstate=np.array(mstate, dtype=object), fhist=np.asarray(fhist))
+        small_f = len(fhist) >= 4 and all(abs(fhist[-i] - fhist[-i - 1]) / abs(fhist[-i - 1]) < A.ftol for i in (1, 2, 3))
+        if dx < A.xtol or small_f or k >= A.maxit:
+            log(dict(event='CONVERGED' if (dx < A.xtol or small_f) else 'MAXIT', k=k, dx=dx))
+            break
+        if A.stop_after and nrun >= A.stop_after:
+            log(dict(event='STOP_AFTER', k=k)); break
+
+
+if __name__ == '__main__':
+    main()
