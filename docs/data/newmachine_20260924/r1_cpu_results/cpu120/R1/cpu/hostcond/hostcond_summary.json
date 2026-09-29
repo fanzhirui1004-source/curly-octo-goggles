@@ -1,4 +1,226 @@
 {
+ "block:hlat221a": {
+  "machine": [
+   "autodl-container-48244ca5f1-cc078caa"
+  ],
+  "reps": 1,
+  "completed": 1,
+  "skipped": [],
+  "free_retained": 77310,
+  "nnz_upper": null,
+  "csr_GiB": null,
+  "dense_S_total_GiB": 17.849179185926914,
+  "predicted_GiB": null,
+  "interface": null,
+  "solver": "block",
+  "n_shared": 12327,
+  "interface_dense_GiB": 1.132152445614338,
+  "held_factor_GiB": 11.450246885418892,
+  "front_end_s": {
+   "median": 210.59464690089226,
+   "min": 210.59464690089226,
+   "n": 1
+  },
+  "schur_s": {
+   "median": 274.27899020910263,
+   "min": 274.27899020910263,
+   "n": 1
+  },
+  "lattice_s": {
+   "median": 0.02962784469127655,
+   "min": 0.02962784469127655,
+   "n": 1
+  },
+  "structure_s": null,
+  "indices_s": null,
+  "values_s": null,
+  "analysis_s": null,
+  "factor_s": null,
+  "solve_s": null,
+  "condensed_s": {
+   "median": 86.8002817928791,
+   "min": 86.8002817928791,
+   "n": 1
+  },
+  "total_s": {
+   "median": 588.7753179222345,
+   "min": 588.7753179222345,
+   "n": 1
+  },
+  "process_peak_rss_GiB": {
+   "median": 27.85650634765625,
+   "min": 27.85650634765625,
+   "n": 1
+  },
+  "assembly_peak_rss_GiB": null,
+  "factor_solve_peak_rss_GiB": null,
+  "throttled_s": {
+   "median": 0.0,
+   "min": 0.0,
+   "n": 1
+  },
+  "private_elimination_s": {
+   "median": 79.54868859052658,
+   "min": 79.54868859052658,
+   "n": 1
+  },
+  "interface_factor_solve_s": {
+   "median": 2.5658880919218063,
+   "min": 2.5658880919218063,
+   "n": 1
+  },
+  "back_substitution_s": {
+   "median": 3.340919092297554,
+   "min": 3.340919092297554,
+   "n": 1
+  },
+  "block_peak_rss_GiB": {
+   "median": 21.87118148803711,
+   "min": 21.87118148803711,
+   "n": 1
+  },
+  "schur_pardiso_GiB_max": 15.025330543518066,
+  "rel_residual_max": null,
+  "compliance": [
+   302.1934843551455,
+   51.693455233042414,
+   635.773881811865,
+   90846.45315318857,
+   81897.44774451094,
+   85365.45259615332
+  ],
+  "reference": {
+   "file": "/root/autodl-tmp/OPL/S1/V2/R1/cpu/host/lat2_hlat221a_chol_rep1.json",
+   "mtype": 2,
+   "compliance": [
+    302.193484429911,
+    51.693455240919526,
+    635.7738821041308,
+    90846.45315316202,
+    81897.44774450413,
+    85365.45259636131
+   ],
+   "rel_diff": [
+    2.474094262794324e-10,
+    1.5238121875427169e-10,
+    4.597010550000391e-10,
+    2.9243274468626623e-13,
+    8.326672684688674e-14,
+    2.4364954498423685e-12
+   ]
+  }
+ },
+ "block:hlat221b": {
+  "machine": [
+   "autodl-container-48244ca5f1-cc078caa"
+  ],
+  "reps": 1,
+  "completed": 1,
+  "skipped": [],
+  "free_retained": 71046,
+  "nnz_upper": null,
+  "csr_GiB": null,
+  "dense_S_total_GiB": 14.949009843170643,
+  "predicted_GiB": null,
+  "interface": null,
+  "solver": "block",
+  "n_shared": 11103,
+  "interface_dense_GiB": 0.9184823110699654,
+  "held_factor_GiB": 9.698182359337807,
+  "front_end_s": {
+   "median": 263.37932585179806,
+   "min": 263.37932585179806,
+   "n": 1
+  },
+  "schur_s": {
+   "median": 279.2417215704918,
+   "min": 279.2417215704918,
+   "n": 1
+  },
+  "lattice_s": {
+   "median": 0.028695374727249146,
+   "min": 0.028695374727249146,
+   "n": 1
+  },
+  "structure_s": null,
+  "indices_s": null,
+  "values_s": null,
+  "analysis_s": null,
+  "factor_s": null,
+  "solve_s": null,
+  "condensed_s": {
+   "median": 71.36920718848705,
+   "min": 71.36920718848705,
+   "n": 1
+  },
+  "total_s": {
+   "median": 631.7195492684841,
+   "min": 631.7195492684841,
+   "n": 1
+  },
+  "process_peak_rss_GiB": {
+   "median": 24.66952896118164,
+   "min": 24.66952896118164,
+   "n": 1
+  },
+  "assembly_peak_rss_GiB": null,
+  "factor_solve_peak_rss_GiB": null,
+  "throttled_s": {
+   "median": 0.0,
+   "min": 0.0,
+   "n": 1
+  },
+  "private_elimination_s": {
+   "median": 65.11039990186691,
+   "min": 65.11039990186691,
+   "n": 1
+  },
+  "interface_factor_solve_s": {
+   "median": 2.0257119089365005,
+   "min": 2.0257119089365005,
+   "n": 1
+  },
+  "back_substitution_s": {
+   "median": 3.1759027540683746,
+   "min": 3.1759027540683746,
+   "n": 1
+  },
+  "block_peak_rss_GiB": {
+   "median": 18.627838134765625,
+   "min": 18.627838134765625,
+   "n": 1
+  },
+  "schur_pardiso_GiB_max": 13.299086570739746,
+  "rel_residual_max": null,
+  "compliance": [
+   404.88803356081957,
+   68.60892818356774,
+   833.2974705889237,
+   90599.34036612615,
+   87706.59897553196,
+   98044.67367443253
+  ],
+  "reference": {
+   "file": "/root/autodl-tmp/OPL/S1/V2/R1/cpu/host/lat2_hlat221b_chol_rep1.json",
+   "mtype": 2,
+   "compliance": [
+    404.88803365141854,
+    68.60892819309275,
+    833.2974709262764,
+    90599.34036611751,
+    87706.59897562866,
+    98044.67367442744
+   ],
+   "rel_diff": [
+    2.2376300812254613e-10,
+    1.388305026495118e-10,
+    4.0484071650581654e-10,
+    9.547918011776346e-14,
+    1.102562485755243e-12,
+    5.1958437552457326e-14
+   ]
+  }
+ },
  "block:hlat222": {
   "machine": [
    "autodl-container-48244ca5f1-cc078caa"
