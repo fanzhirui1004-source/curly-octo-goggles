@@ -58,6 +58,10 @@ ap.add_argument('--sens', default='fd', choices=['fd', 'ad'],
                 help="--fast: 'fd' central-difference moment derivatives (Cell.dmoments); 'ad' reverse mode through the moment "
                      "integrator (moments_ad.cell_sens, as the timed route of Table 5), one pass for compliance and volume")
 ap.add_argument('--ad-batch', type=int, default=512, help="--sens ad: element rows per reverse pass")
+ap.add_argument('--warm', action='store_true',
+                help='--fast: start PCG from the previous design iteration\'s solution, matched DOF by DOF on (absolute grid '
+                     'position, component, cut-port flag) and scaled by the energy-optimal factor; unmatched DOFs start at 0 '
+                     '(the stopping rule, relative to |f|, is unchanged)')
 ap.add_argument('--check', default='', help='comma list of iterations of an existing run to verify with the exact model')
 ap.add_argument('--exact-tol', type=float, default=1e-10)
 A = ap.parse_args()
@@ -271,6 +275,16 @@ def analyse(cases, positions, h):
     return out
 
 
+_WARM = {}
+
+
+def _dof_keys(lat):
+    """One int64 key per free lattice DOF: absolute grid position, component, private (cut-port) flag."""
+    g = lat.gpos[lat.free].astype(np.int64); c = lat.gcomp[lat.free].astype(np.int64)
+    M = np.int64(1 << 16)
+    return (((g[:, 0] * M + g[:, 1]) * M + g[:, 2]) * 3 + c) * 2 + np.asarray(lat.priv, np.int64)
+
+
 def analyse_fast(cases, positions, h):
     """--fast: the deployment route of Table 5 (lat_scale.py) for the current design; same outputs as analyse()."""
     import gc
@@ -335,9 +349,26 @@ def analyse_fast(cases, positions, h):
     del kpp
     T['precond_s'] = time.perf_counter() - t
     t = time.perf_counter()
-    r = PR.pcg(lat, olist, pc, F=F, tol=A.tol, maxit=A.maxit_pcg)
+    X0 = None
+    if A.warm:
+        keys = _dof_keys(lat)
+        if 'keys' in _WARM:
+            pk, px = _WARM['keys'], _WARM['X']
+            pos = np.clip(np.searchsorted(pk, keys), 0, len(pk) - 1)
+            hit = pk[pos] == keys
+            x0 = np.zeros(len(keys)); x0[hit] = px[pos[hit]]
+            X0 = torch.as_tensor(x0[:, None], dtype=dt, device=dev)
+            with torch.no_grad():
+                den = float((X0 * lat.matvec(olist, X0)).sum())
+                scale = float((F * X0).sum()) / den if den > 0 else 0.0
+            X0 *= scale
+            T['warm_hit'] = float(hit.mean()); T['warm_scale'] = scale
+    r = PR.pcg(lat, olist, pc, F=F, tol=A.tol, maxit=A.maxit_pcg, X0=X0)
     LS._free_prec(fac, pc); del fac, pc
     X = r['X']
+    if A.warm:
+        o_ = np.argsort(keys)
+        _WARM['keys'], _WARM['X'] = keys[o_], X[:, 0].detach().cpu().numpy()[o_]
     with torch.no_grad():
         rho = F - lat.matvec(olist, X)
         Chat = float((F * X).sum()); Ur = float((X * rho).sum())
