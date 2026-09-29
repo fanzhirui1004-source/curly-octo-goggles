@@ -1,0 +1,52 @@
+00:19:20 R1CPU SMOKE START pid=2367
+00:20:02 R1CPU SMOKE tune rc=0 37s load=265.56 thr_ns=0
+00:21:02 R1CPU SMOKE t5_chol_rep1 rc=0 60s load=252.40 thr_ns=0
+00:21:46 R1CPU SMOKE t5_luref rc=0 44s load=250.48 thr_ns=0
+00:23:53 R1CPU SMOKE t6_hlatsmoke1_chol_rep1 rc=0 127s load=257.64 thr_ns=0
+00:26:50 R1CPU SMOKE t6_hlatsmoke1_lu rc=0 177s load=382.97 thr_ns=0
+00:28:58 R1CPU SMOKE t6_hlatsmoke1_chol_t32 rc=0 128s load=294.21 thr_ns=118995961
+00:28:58 R1CPU SMOKE summary rc=0 0s load=294.21 thr_ns=118995961
+00:32:14 R1CPU SMOKE latcond_hlatsmoke1_rep1 rc=0 196s load=304.06 thr_ns=118995961
+00:35:27 R1CPU SMOKE latcond_pardiso_hlatsmoke1_rep1 rc=0 193s load=310.25 thr_ns=118995961
+00:35:28 R1CPU SMOKE selftest rc=0 1s load=310.25 thr_ns=118995961
+00:35:28 R1CPU SMOKE summary rc=0 0s load=310.25 thr_ns=118995961
+00:44:51 R1CPU SMOKE lat1_hlatsmoke1_chol rc=0 563s load=246.58 thr_ns=118995961
+00:50:28 R1CPU SMOKE scipy_hlatsmoke1 rc=0 337s load=267.32 thr_ns=118995961
+00:50:28 R1CPU SMOKE superlu hlatsmoke1: colamd=MemoryError mmd=MemoryError
+00:50:32 R1CPU SMOKE scipy_selftest rc=0 4s load=265.69 thr_ns=118995961
+00:50:32 R1CPU SMOKE END rc=0
+00:51:00 R1CPU START pid=3453
+00:56:56 R1CPU tune rc=0 351s load=237.73 thr_ns=118995961
+01:26:29 R1CPU t5_chol_rep1 rc=0 1773s load=276.95 thr_ns=118995961
+01:56:12 R1CPU t5_chol_rep2 rc=0 1783s load=258.81 thr_ns=118995961
+02:26:03 R1CPU t5_chol_rep3 rc=0 1791s load=281.92 thr_ns=118995961
+02:40:28 R1CPU t5_luref rc=0 865s load=212.90 thr_ns=118995961
+02:48:41 R1CPU t6_hlat221a_chol_rep1 rc=0 493s load=314.64 thr_ns=118995961
+02:59:10 R1CPU t6_hlat221a_lu rc=0 629s load=215.29 thr_ns=118995961
+03:05:06 R1CPU t6_hlat221b_chol_rep1 rc=0 356s load=530.69 thr_ns=118995961
+03:13:49 R1CPU t6_hlat221b_lu rc=0 523s load=347.49 thr_ns=118995961
+03:28:29 R1CPU t6_hlat222_chol_rep1 rc=0 880s load=169.64 thr_ns=118995961
+03:46:05 R1CPU t6_hlat331_chol_rep1 rc=0 1056s load=240.79 thr_ns=118995961
+03:52:31 R1CPU t6_hlat221a_chol_t32 rc=0 386s load=336.49 thr_ns=632943443
+03:58:20 R1CPU t6_hlat221b_chol_t32 rc=0 349s load=150.48 thr_ns=947616345
+04:12:16 R1CPU t6_hlat222_chol_t32 rc=0 836s load=151.80 thr_ns=1973397854
+04:28:26 R1CPU t6_hlat331_chol_t32 rc=0 970s load=144.31 thr_ns=2994939973
+04:28:26 R1CPU summary rc=0 0s load=144.31 thr_ns=2994939973
+04:28:26 R1_CPU_E1_DONE_20260928
+04:28:26 R1CPU stage B (E7 retries) moved to the third CPU machine (see chain_cpu3.status there)
+04:28:26 R1_CPU_REF_DONE_20260928
+04:44:17 R1CPU latcond_hlat222_rep1 rc=0 951s load=177.39 thr_ns=2994939973
+05:04:37 R1CPU latcond_hlat331_rep1 rc=0 1220s load=154.73 thr_ns=2994939973
+05:04:37 R1CPU route (b) PARDISO-path run on hlat221b moved to the 60 GiB machine (in-place edit 2026-09-29)
+05:04:38 R1CPU selftest rc=0 1s load=154.73 thr_ns=2994939973
+05:04:38 R1CPU summary rc=0 0s load=154.73 thr_ns=2994939973
+05:04:38 R1_CPU_COND_DONE_20260928
+06:42:35 R1CPU lat1_hlat222_chol rc=0 5877s load=211.01 thr_ns=2994939973
+08:58:21 R1CPU lat1_hlat331_chol rc=0 8146s load=213.06 thr_ns=2994939973
+09:15:11 R1CPU scipy_hlat221a rc=0 1010s load=185.74 thr_ns=2994939973
+09:15:11 R1CPU superlu hlat221a: colamd=MemoryError mmd=MemoryError
+09:15:11 R1CPU SuperLU 2-cell fallback moved to the third CPU machine (in-place edit 2026-09-29)
+09:15:15 R1CPU scipy_selftest rc=0 4s load=185.74 thr_ns=2994939973
+09:15:15 R1_CPU_ONE_DONE_20260928
+09:15:15 R1CPU END rc=0
+09:15:15 R1_CPU_ALL_DONE_20260928

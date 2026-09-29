@@ -1,0 +1,2 @@
+MKL_VERBOSE oneMKL 2026 Update 1 Product build 20260612 for Intel(R) 64 architecture Intel(R) Architecture processors, Lnx 1.47GHz lp64 intel_thread
+MKL_VERBOSE DGEMM(N,N,64,64,64,0x7ffc67596920,0x2832cf0,64,0x2832cf0,64,0x7ffc67596918,0x2986470,64) 1.60ms CNR:OFF Dyn:1 FastMM:1 TID:0  NThr:16
