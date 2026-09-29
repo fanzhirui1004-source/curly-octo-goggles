@@ -1,4 +1,4 @@
-"""Regenerate supplementary table blocks (R1 key, ST01, ST03, ST03b, ST03c, ST09, ST10, ST14a, ST14b) from evidence/.
+"""Regenerate supplementary table blocks (R1 key, ST01, ST03, ST03b, ST03c, ST03d, ST09, ST10, ST14a, ST14b) from evidence/.
 
 Numbering and labels follow revision 1 (review_r1/RENUMBER_MAP.json; decision D6): old ST12 -> ST01, ST01 -> ST03,
 ST13 -> ST09, ST06 -> ST10, ST07 -> ST14. Labels: B -> Base network, C -> Uncorrected, A2b -> Smoothing-trained,
@@ -106,6 +106,24 @@ def st01(text):
         cells = [cls, str(n.pop()), stat(vals(p0, cls))]
         for a, _ in ARMS:
             cells.append(stat(vals(pgs[a], cls)))
+        out.append(row(cells))
+    return out
+
+
+def st01d(text):
+    """ST03d: Table ST03 restricted to the 60 validation geometries outside weight selection (valmeta sel=False)."""
+    meta = load('valmeta.json')
+    keep = lambda c: c in meta and not meta[c].get('sel', False)
+    pgs = {a: per_geo(r) for a, r in ARMS}
+    p0 = p0_geo()
+    names = [LABEL[a] for a in ['P0'] + [a for a, _ in ARMS]]
+    out = [row(['Class', 'Geometries per evaluated arm'] + names), row(['---'] * (len(names) + 2))]
+    for cls in CLASSES:
+        n = {len(vals(pg, cls, keep)) for pg in pgs.values()}
+        assert len(n) == 1, (cls, n)
+        cells = [cls, str(n.pop()), stat(vals(p0, cls, keep))]
+        for a, _ in ARMS:
+            cells.append(stat(vals(pgs[a], cls, keep)))
         out.append(row(cells))
     return out
 
@@ -278,7 +296,7 @@ def st07b(text):
 
 
 BLOCKS = [(r'## R1\.', r1), (r'## Table ST01\.', st12), (r'## Table ST03\.', st01), (r'### ST03b\.', st01b),
-          (r'### ST03c\.', st01c), (r'## Table ST09\.', st13), (r'## Table ST10\.', st06),
+          (r'### ST03c\.', st01c), (r'### ST03d\.', st01d), (r'## Table ST09\.', st13), (r'## Table ST10\.', st06),
           (r'#### ST14a\.', st07a), (r'#### ST14b\.', st07b)]
 
 if __name__ == '__main__':

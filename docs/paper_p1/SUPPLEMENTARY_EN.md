@@ -144,7 +144,7 @@ Entries are geometry-equal mean / 90th percentile / maximum of geometry-level di
 
 ### ST03c. View dependence: identity / view 17 means (%)
 
-This comparison uses an earlier evaluation in both views, in which the four enriched classes cover the numbers of geometries given in the second column; their identity-view means therefore differ from those of Table ST03. Views other than the identity were not evaluated for the continued predictors.
+This comparison uses an earlier evaluation in both views, in which the four enriched classes cover the numbers of geometries given in the second column; their identity-view means therefore differ from those of Table ST03. Of the continued predictors, only NICE was also evaluated in view 17, on all 80 geometries with the validation directions of Table ST03 (identity / view 17 means, %): force 0.058 / 0.059, support 0.055 / 0.056, face 0.037 / 0.034, macro 0.015 / 0.016, grf 0.025 / 0.026, force_c 0.074 / 0.083, face_c 0.032 / 0.034.
 
 | Class | Geometries | P0 | Base network |
 | --- | --- | --- | --- |
@@ -157,6 +157,22 @@ This comparison uses an earlier evaluation in both views, in which the four enri
 | face_c | 20 | — | 3.838 / 4.249 |
 | support_k | 19 | — | 3.350 / 3.760 |
 | glued | 15 | — | 6.647 / 7.207 |
+
+### ST03d. Geometries outside weight selection
+
+Table ST03 restricted to the 60 validation geometries that entered neither training nor checkpoint selection (the other 20 entered checkpoint selection, Table ST01). Same statistics as Table ST03.
+
+| Class | Geometries per evaluated arm | P0 | Base network | Uncorrected | S8 | Smoothing-trained | NICE-post | NICE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| force | 60 | 7.777 / 19.809 / 109.813 | 5.298 / 12.657 / 70.122 | 4.852 / 12.232 / 62.465 | 0.684 / 1.887 / 4.398 | 0.540 / 1.382 / 3.658 | 0.093 / 0.168 / 0.683 | 0.059 / 0.117 / 0.325 |
+| support | 60 | 9.143 / 20.581 / 153.172 | 5.939 / 15.397 / 99.857 | 5.346 / 12.008 / 90.741 | 0.765 / 1.844 / 3.408 | 0.643 / 1.601 / 3.552 | 0.088 / 0.168 / 0.852 | 0.056 / 0.112 / 0.372 |
+| face | 60 | 2.910 / 4.802 / 29.496 | 2.287 / 3.844 / 21.945 | 2.045 / 3.996 / 15.673 | 0.218 / 0.483 / 2.638 | 0.161 / 0.403 / 1.808 | 0.082 / 0.116 / 1.990 | 0.040 / 0.057 / 0.724 |
+| macro | 60 | 0.939 / 1.533 / 2.669 | 0.846 / 1.448 / 2.636 | 0.831 / 1.446 / 2.584 | 0.255 / 0.477 / 1.148 | 0.203 / 0.382 / 0.935 | 0.022 / 0.061 / 0.165 | 0.015 / 0.034 / 0.118 |
+| grf | 60 | 2.132 / 3.191 / 4.747 | 2.047 / 3.104 / 4.582 | 2.018 / 3.075 / 4.550 | 0.311 / 0.714 / 1.172 | 0.252 / 0.559 / 0.933 | 0.030 / 0.094 / 0.180 | 0.025 / 0.068 / 0.143 |
+| force_c | 60 | — | 6.973 / 18.411 / 48.628 | 6.517 / 18.407 / 41.962 | 1.542 / 4.045 / 9.161 | 1.308 / 3.553 / 7.817 | 0.101 / 0.239 / 0.905 | 0.077 / 0.213 / 0.651 |
+| face_c | 60 | — | 2.920 / 6.761 / 15.615 | 2.688 / 6.645 / 13.653 | 0.589 / 1.403 / 3.059 | 0.499 / 1.226 / 2.326 | 0.045 / 0.114 / 0.319 | 0.033 / 0.078 / 0.210 |
+| support_k | 56 | — | 4.458 / 13.372 / 28.817 | 4.200 / 13.014 / 26.175 | 1.160 / 3.121 / 6.714 | 0.958 / 2.680 / 5.246 | 0.081 / 0.192 / 0.632 | 0.058 / 0.163 / 0.468 |
+| glued | 60 | — | 4.080 / 10.717 / 25.558 | 3.850 / 10.552 / 22.814 | 1.081 / 2.971 / 5.852 | 0.886 / 2.569 / 4.629 | 0.074 / 0.196 / 0.555 | 0.055 / 0.166 / 0.384 |
 
 ## Table ST04. Operator verification in the deployed arithmetic
 
@@ -334,6 +350,49 @@ Mean directional energy excess (%) of the base network, of NICE and of starting 
 | U2 | force_c | 0.402 | 0.00465 | 0.00424 | 1.23 | 47.2 | 0.0009 | 0.38 | 5.51 |
 | U2 | force | 0.506 | 0.00701 | 0.0121 | 6.4 | 11 | 0.00166 | 1.25 | 1.19 |
 
+### ST08b. Smoothing budget: 8, 16, 32 and 64 steps per stage
+
+Mean directional energy excess (%) after the correction with \(k\) smoothing steps before and after the Q1(17) coarse solve, for three starting fields and six detailed cells, including U1 (32 validation directions per class, fixed retained displacement). Data: `evidence/p1_checks_cpu.json`, `evidence/p1_checks_u2.json` and, for U1, `evidence/p1_checks.json`.
+
+| cell | class | starting field | 8 steps | 16 steps | 32 steps | 64 steps |
+|---|---|---|---|---|---|---|
+| H2 | force_c | Base network | 0.0117 | 0.00163 | 0.000182 | 3.65e-06 |
+| H2 | force_c | harmonic | 0.0806 | 0.00482 | 0.000614 | 1.22e-05 |
+| H2 | force_c | zero | 28.3 | 0.284 | 0.0156 | 0.000315 |
+| H2 | force | Base network | 0.0249 | 0.00311 | 0.000333 | 6.23e-06 |
+| H2 | force | harmonic | 0.712 | 0.181 | 0.0246 | 0.000518 |
+| H2 | force | zero | 13.7 | 0.134 | 0.0056 | 0.000109 |
+| H1 | force_c | Base network | 0.0131 | 0.00487 | 0.0013 | 0.000173 |
+| H1 | force_c | harmonic | 1.28 | 0.547 | 0.199 | 0.0345 |
+| H1 | force_c | zero | 39.9 | 10.7 | 2.92 | 0.437 |
+| H1 | force | Base network | 0.024 | 0.00905 | 0.00202 | 0.00022 |
+| H1 | force | harmonic | 2.78 | 1.31 | 0.399 | 0.05 |
+| H1 | force | zero | 46.5 | 13.9 | 3.79 | 0.607 |
+| M2 | force_c | Base network | 0.0273 | 0.0135 | 0.00691 | 0.00351 |
+| M2 | force_c | harmonic | 6.72 | 3.53 | 1.52 | 0.485 |
+| M2 | force_c | zero | 324 | 104 | 38.9 | 14.1 |
+| M2 | force | Base network | 0.0613 | 0.0292 | 0.00939 | 0.00203 |
+| M2 | force | harmonic | 7.77 | 3.99 | 1.33 | 0.229 |
+| M2 | force | zero | 107 | 33.3 | 12.4 | 4.45 |
+| M1 | force_c | Base network | 0.186 | 0.12 | 0.0727 | 0.0393 |
+| M1 | force_c | harmonic | 17.2 | 8.13 | 4.11 | 1.43 |
+| M1 | force_c | zero | 1.1e+03 | 420 | 185 | 81.8 |
+| M1 | force | Base network | 0.114 | 0.0695 | 0.0397 | 0.0212 |
+| M1 | force | harmonic | 13.5 | 6.63 | 2.64 | 0.66 |
+| M1 | force | zero | 558 | 202 | 86.9 | 38.2 |
+| U1 | force_c | Base network | 0.0267 | 0.0176 | 0.0118 | 0.00783 |
+| U1 | force_c | harmonic | 4.19 | 2.65 | 1.87 | 1.33 |
+| U1 | force_c | zero | 133 | 47.7 | 22 | 11.9 |
+| U1 | force | Base network | 0.0279 | 0.014 | 0.005 | 0.00135 |
+| U1 | force | harmonic | 15.6 | 7.48 | 2.13 | 0.306 |
+| U1 | force | zero | 22.5 | 7.91 | 3.26 | 1.52 |
+| U2 | force_c | Base network | 0.00424 | 0.00202 | 0.0009 | 0.000377 |
+| U2 | force_c | harmonic | 1.23 | 0.693 | 0.38 | 0.194 |
+| U2 | force_c | zero | 47.2 | 14 | 5.51 | 2.32 |
+| U2 | force | Base network | 0.0121 | 0.00536 | 0.00166 | 0.000282 |
+| U2 | force | harmonic | 6.4 | 3.53 | 1.25 | 0.204 |
+| U2 | force | zero | 11 | 3.4 | 1.19 | 0.409 |
+
 ## Table ST09. Complete continuous-neighbour assembly results
 
 Maximum relative compliance and field-based sensitivity-vector errors over the six face loads defining the joint criterion. Sensitivity maxima include both cells. The target cell uses the specified learned arm and its neighbour is exact. Cell labels abbreviate the validation identifiers (R1). The joint criterion is 3% for both errors.
@@ -479,6 +538,8 @@ Maximum relative errors (%) over the three cut-surface traction directions, for 
 | NICE | L1 | y | 0.011 | 0.071 |
 
 ## Table ST11. Assembly sensitivity replacement diagnostics
+
+Sensitivity after assembly depends on the interaction between field recovery and the assembled retained displacement. For the base network in M1/x, the largest full sensitivity error over the six face loads is 12.2%; evaluating the learned extension at the exact retained displacement (field-only) gives 15.6%, and evaluating the exact extension at the learned retained displacement (solution-only) gives 19.3%. The full error is smaller than either replacement error. The vector expansion of Eq. (H.2) accounts for this: the extension error, the change of the retained displacement and their mixed term enter the recovered field together, so the replacement norms cannot be added as scalar error contributions (Section 6.7). Tables ST12 and ST13 give the load-specific responses of S8 and of the base network.
 
 Maximum errors (%) over the six face loads defining the joint criterion; maxima in separate columns may occur at different loads. Full, field-only, and solution-only values are separate nonlinear replacement diagnostics. The trace error is the relative exact-Schur norm, not its square. No per-load record of the field-only and solution-only values is archived.
 
