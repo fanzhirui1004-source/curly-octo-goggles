@@ -51,10 +51,13 @@ ap.add_argument('--frozen', default='/root/autodl-tmp/CUTFEM_DEPENDENCIES_202609
 ap.add_argument('--frozen-cwd', default='/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/COVER_G/src')
 ap.add_argument('--templates', default='/root/autodl-tmp/OPL/S4/body/GP_TEMPLATES_n32.npz')
 ap.add_argument('--exact', action='store_true', help='optimise with exact condensation (twin run; no network)')
+ap.add_argument('--fast', action='store_true', help='deployment route of Table 5 (lat_scale.py): deploy cells, fused network, '
+                'single-precision correction, streamed operators; sensitivities by central moment differences')
+ap.add_argument('--resident-gb', type=float, default=12.0, help='--fast: keep cells on the device while allocated memory < this')
 ap.add_argument('--check', default='', help='comma list of iterations of an existing run to verify with the exact model')
 ap.add_argument('--exact-tol', type=float, default=1e-10)
 A = ap.parse_args()
-if A.deploy:                                                             # as r1_lat.py --deploy (before any correction)
+if A.deploy or A.fast:                                                   # as r1_lat.py --deploy / lat_scale.py (before any correction)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
 ROOT = Path(A.root); ROOT.mkdir(parents=True, exist_ok=True)
 for d in ('packets', 'body', 'tmp'):
@@ -264,6 +267,103 @@ def analyse(cases, positions, h):
     return out
 
 
+def analyse_fast(cases, positions, h):
+    """--fast: the deployment route of Table 5 (lat_scale.py) for the current design; same outputs as analyse()."""
+    import gc
+    import stream_ops as SO
+    import lat_scale as LS
+    FN.FUSED = True
+    if not getattr(analyse_fast, '_init', False):
+        SO.init(); analyse_fast._init = True
+    T = {}
+    t = time.perf_counter()
+    Cs, ops, kpp_host, fps = {}, {}, {}, {}
+    for case in cases:
+        C = TE.Cell(case, str(BODY), log=lambda s_: None, deploy=True)
+        C.assemble_deploy(C.taus0)
+        BD.netdata(C, str(BODY), TMP / case)
+        geo = TL.Geo(case, str(BODY), TMP, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
+        if h.model is not None:
+            h.model.caches.pop(case, None)
+        model = h.add(geo)
+        op = EN.FastOp(FN.FastNet(model, geo))
+        with torch.no_grad():
+            op.apply(torch.zeros((C.np_, 1), dtype=dt, device=dev))
+        cc = model.caches.get(case)
+        fps[case] = dict(active=int(len(C.cells)), faces=int(len(np.load(BODY / case / 'GP_FACES.npy'))), ports=int(C.np_),
+                         cut_nodes=int(C.is_cut.sum()), weak=int(geo.nd['weak'].sum()),
+                         el_fringe=int(cc.el_fringe.sum()) if cc is not None and getattr(cc, 'el_fringe', None) is not None else None,
+                         gp_fringe=int(cc.gp_fringe.sum()) if cc is not None and getattr(cc, 'gp_fringe', None) is not None else None,
+                         shift=float(getattr(C, '_c_shift', 0.0) or 0.0),
+                         b=float(C._tail_bounds[2]) if getattr(C, '_tail_bounds', None) else None)
+        kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
+        C._kpp_cache = kpp_host[case]; C.diag3 = None
+        if torch.cuda.memory_allocated() / 2 ** 30 < A.resident_gb:
+            ops[case] = LS._Resident(op)
+        else:
+            ops[case] = SO.StreamedOp(op, C, [op.fast, geo, C])
+        Cs[case] = C
+        del geo, op
+        gc.collect(); torch.cuda.empty_cache()
+    T['prep_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    lay = {}
+    for case, p in zip(cases, positions):
+        g = LM.from_teacher(Cs[case])
+        g._kpp_fn = (lambda cs: (lambda: tuple(x.to(dev) for x in kpp_host[cs])))(case)
+        lay[tuple(p)] = g
+    ca, la = A.clamp.split(','), A.load.split(',')
+    lat = LM.MultiLattice(lay, clamp=(ca[0], ca[1]), load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
+                          max_cols=A.max_cols, log=lambda s_: None)
+    order = [g.case for g in lat.geoms]
+    olist = [ops[c] for c in order]
+    SO.link([o for o in olist if isinstance(o, SO.StreamedOp)])
+    F = lat.F[:, ['xyz'.index(A.load_dir)]].contiguous()
+    for g in lat.geoms:
+        g._kpp = None
+    kpp = lat.assemble_kpp()
+    for g in lat.geoms:
+        g._kpp = None
+    T['setup_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    fac = PR.Factory(lat, olist, shared={'kpp_triplets': kpp, 'kpp_triplets_s': 0.0}, kpp_backend='auto', log=lambda d: None)
+    pc, _, _ = fac.build(A.prec)
+    del kpp
+    T['precond_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    r = PR.pcg(lat, olist, pc, F=F, tol=A.tol, maxit=A.maxit_pcg)
+    LS._free_prec(fac, pc); del fac, pc
+    X = r['X']
+    with torch.no_grad():
+        rho = F - lat.matvec(olist, X)
+        Chat = float((F * X).sum()); Ur = float((X * rho).sum())
+        tres = float(rho.norm() / F.norm())
+    T['solve_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    S = np.zeros((len(order), 8)); vol = np.zeros(len(order)); dvol = np.zeros((len(order), 8))
+    for i, c in enumerate(order):
+        C, o = Cs[c], olist[i]
+        with o.active():
+            with torch.no_grad():
+                u = o.field(lat.gather(X, i)).to(dt)
+                C.dmoments()
+                S[i] = C.sens(u)[:, 0].cpu().numpy()
+                dvol[i] = C.dM[:, :, 0].sum(1).cpu().numpy(); vol[i] = float(C.M[:, 0].sum())
+                C.dM = None
+                del u
+    SO.park_all()
+    T['sens_s'] = time.perf_counter() - t
+    out = dict(C=Chat, S=S, order=order, vol=vol, dvol=dvol, pcg=int(r['iterations']), true_residual=tres, Ut_rho_rel=Ur / Chat,
+               fps=[fps[c] for c in order], times=T, streamed=int(sum(isinstance(o, SO.StreamedOp) for o in olist)))
+    for o in olist:
+        o.release()
+    for c in order:
+        h.model.caches.pop(c, None)
+    del olist, ops, lat, X, rho, F, Cs
+    gc.collect(); torch.cuda.empty_cache()
+    return out
+
+
 def make_T(cases):
     """Dense exact condensed matrix per cell (make_T_gpu.py, one process per cell), cached next to the body."""
     t = time.perf_counter(); n = 0
@@ -408,7 +508,7 @@ def main():
         cases = write_packets(base, corners, k)
         t = time.perf_counter(); nb = make_bodies(cases); t_body = time.perf_counter() - t
         torch.cuda.reset_peak_memory_stats()
-        res = analyse_exact(cases, positions) if A.exact else analyse(cases, positions, h)
+        res = analyse_exact(cases, positions) if A.exact else (analyse_fast(cases, positions, h) if A.fast else analyse(cases, positions, h))
         # cell arrays are in lattice order; map to the layout order of vid
         m_of = {c: i for i, c in enumerate(cases)}
         perm = [m_of[c] for c in res['order']]
