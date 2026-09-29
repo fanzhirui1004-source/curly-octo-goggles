@@ -22,8 +22,14 @@ Bodies of every iteration are kept (<root>/body) for the exact checks (opt_check
 Usage: opt_design.py <root> <layout.json> --model A3=<ckpt> [--clamp y,min] [--load y,max] [--load-dir y] [--vfrac 0.8]
        [--move 0.05] [--maxit 60] [--tmin 0.18] [--tmax 0.69] [--span 0.45] [--grad 0.45] [--tol 1e-6]
        [--workers 16] [--park] [--resident 2] [--deploy] [--max-cols 16] [--stop-after K]
+--exact: the twin run, same MMA, constraints and regeneration, with the exact model: dense exact condensed matrices per cell
+  (make_T_gpu.py, one cell per process, cached as <body>/<case>_portview/T64.npy), the assembled solve by PCG to
+  --exact-tol, and exact sensitivities -u^T K_,c u from the exact field (host interior factor, as the reference of r1_lat.py).
+--check k1,k2,...: verify iterations of an existing run (<root>/history.jsonl) with the exact model; writes
+  <root>/check_<k>.json: exact compliance and the surrogate error, the vertex-gradient error, cosine, per-variable
+  percentiles and sign agreement of s_tilde on the free vertices, and a KKT residual with the exact gradient.
 """
-import json, time, os, argparse, contextlib, subprocess, shutil, resource
+import json, time, os, sys, argparse, contextlib, subprocess, shutil, resource
 from pathlib import Path
 import numpy as np
 
@@ -44,6 +50,9 @@ ap.add_argument('--deploy', action='store_true'); ap.add_argument('--lean', acti
 ap.add_argument('--frozen', default='/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/run_frozen_python.sh')
 ap.add_argument('--frozen-cwd', default='/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/COVER_G/src')
 ap.add_argument('--templates', default='/root/autodl-tmp/OPL/S4/body/GP_TEMPLATES_n32.npz')
+ap.add_argument('--exact', action='store_true', help='optimise with exact condensation (twin run; no network)')
+ap.add_argument('--check', default='', help='comma list of iterations of an existing run to verify with the exact model')
+ap.add_argument('--exact-tol', type=float, default=1e-10)
 A = ap.parse_args()
 if A.deploy:                                                             # as r1_lat.py --deploy (before any correction)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
@@ -255,6 +264,114 @@ def analyse(cases, positions, h):
     return out
 
 
+def make_T(cases):
+    """Dense exact condensed matrix per cell (make_T_gpu.py, one process per cell), cached next to the body."""
+    t = time.perf_counter(); n = 0
+    src = Path(__file__).resolve().parent / 'make_T_gpu.py'
+    for c in cases:
+        if (BODY / f'{c}_portview' / 'T64.npy').exists():
+            continue
+        r = subprocess.run([sys.executable, '-u', str(src), str(BODY), c], capture_output=True, text=True,
+                           cwd=str(src.parent), env=dict(os.environ))
+        if r.returncode or not (BODY / f'{c}_portview' / 'T64.npy').exists():
+            raise RuntimeError(f'MAKE_T_FAIL {c}: {r.stderr[-400:]}')
+        n += 1
+    return n, time.perf_counter() - t
+
+
+def analyse_exact(cases, positions):
+    """Exact counterpart of analyse(): compliance, exact sensitivities per cell, volumes, solve scalars."""
+    T = {}
+    nT, T['make_T_s'] = make_T(cases)
+    t = time.perf_counter()
+    Cs, lay, vol, dvol = [], {}, [], []
+    for case, p in zip(cases, positions):
+        C = TE.Cell(case, str(BODY), log=lambda s_: None); C.assemble()
+        C.dmoments()
+        vol.append(float(C.M[:, 0].sum())); dvol.append(C.dM[:, :, 0].sum(1).cpu().numpy())
+        Cs.append(C); lay[tuple(p)] = LM.from_teacher(C)
+        LH._move(C, torch.device('cpu')); RC.free()
+    ca, la = A.clamp.split(','), A.load.split(',')
+    lat = LM.MultiLattice(lay, clamp=(ca[0], ca[1]), load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
+                          max_cols=A.max_cols, log=lambda s_: None)
+    order = [g.case for g in lat.geoms]
+    Cmap = {C.case: C for C in Cs}
+    F = lat.F[:, ['xyz'.index(A.load_dir)]].contiguous()
+    kpp = lat.assemble_kpp()
+    T['setup_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    ops = [LH.DenseExactOp(Cmap[c], str(BODY)) for c in order]
+    fac = PR.Factory(lat, ops, shared={'kpp_triplets': kpp, 'kpp_triplets_s': 0.0}, kpp_backend='auto', log=lambda d: None)
+    pc, _, _ = fac.build(A.prec)
+    r = PR.pcg(lat, ops, pc, F=F, tol=A.exact_tol, maxit=A.maxit_pcg)
+    fac.free(); del pc
+    X = r['X']
+    with torch.no_grad():
+        rho = F - lat.matvec(ops, X)
+        Cex = float((F * X).sum()); tres = float(rho.norm() / F.norm())
+    del ops; RC.free()
+    T['solve_s'] = time.perf_counter() - t
+    t = time.perf_counter()
+    S = np.zeros((len(order), 8))
+    for i, c in enumerate(order):
+        C = Cmap[c]
+        LH._move(C, dev, min_bytes=0)
+        LH.exact_op_host(C)
+        with torch.no_grad():
+            u = C.extend(lat.gather(X, i).to(dt))
+            S[i] = C.sens(u)[:, 0].cpu().numpy()
+        del u
+        C._free(); LH._move(C, torch.device('cpu')); RC.free()
+    T['sens_s'] = time.perf_counter() - t
+    idx = [cases.index(c) for c in order]
+    out = dict(C=Cex, S=S, order=order, vol=np.asarray(vol)[idx], dvol=np.stack(dvol)[idx], pcg=int(r['iterations']),
+               true_residual=tres, Ut_rho_rel=0.0, fps=[dict(active=int(len(Cmap[c].cells)), ports=int(Cmap[c].np_)) for c in order],
+               times=dict(T, make_T_new=nT))
+    del lat, X, rho, F
+    for C in Cs:
+        C._free()
+    RC.free()
+    return out
+
+
+def check(iters):
+    """Exact verification of iterations of an existing run."""
+    L = json.loads(Path(A.layout).read_text())
+    base = [c['case'] for c in L['cells']]
+    positions = [tuple(int(v) for v in c['position']) for c in L['cells']]
+    meta = json.loads((ROOT / 'meta.json').read_text())
+    vid, fixed = np.asarray(meta['vid']), np.asarray(meta['fixed'], bool)
+    nv = len(fixed); free = np.flatnonzero(~fixed)
+    hist = {}
+    for line in HIST.read_text().splitlines():
+        d = json.loads(line); hist[int(d['k'])] = d
+    for k in iters:
+        d = hist[k]
+        cases = d['cases']
+        res = analyse_exact(cases, positions)
+        m_of = {c: i for i, c in enumerate(cases)}
+        perm = [m_of[c] for c in res['order']]
+        S = np.zeros((len(base), 8)); S[perm] = res['S']
+        dVc = np.zeros((len(base), 8)); dVc[perm] = res['dvol']
+        g_ex = RC.aggregate(S[:, :, None], vid, nv)[:, 0][free]
+        dV = RC.aggregate(dVc[:, :, None], vid, nv)[:, 0][free]
+        g_ti = np.asarray(d['s_vertex'], float)[free]
+        err = np.abs(g_ti - g_ex) / np.abs(g_ex).max()
+        tv = np.asarray(d['tv'], float)[free]
+        inner = (tv > A.tmin + 1e-6) & (tv < A.tmax - 1e-6)
+        gi, vi = g_ex[inner], dV[inner]
+        lam = -float(gi @ vi / (vi @ vi)) if inner.any() else 0.0
+        kkt = float(np.linalg.norm(gi + lam * vi) / np.linalg.norm(gi)) if inner.any() else float('nan')
+        out = dict(k=k, C_exact=res['C'], C_hat=d['C'], surrogate_err=(d['C'] - res['C']) / res['C'],
+                   grad_rel_err=float(np.linalg.norm(g_ti - g_ex) / np.linalg.norm(g_ex)),
+                   grad_cos=float(g_ti @ g_ex / (np.linalg.norm(g_ti) * np.linalg.norm(g_ex))),
+                   comp_err_rel_to_max=dict(median=float(np.median(err)), p95=float(np.percentile(err, 95)), max=float(err.max())),
+                   sign_agreement=float(np.mean(np.sign(g_ti) == np.sign(g_ex))), kkt_exact=kkt, kkt_lambda=lam,
+                   exact_pcg=res['pcg'], exact_true_residual=res['true_residual'], times=res['times'], g_exact=g_ex, g_tilde=g_ti)
+        (ROOT / f'check_{k:03d}.json').write_text(json.dumps(RC.tojson(out), default=float, indent=1))
+        log({k_: v for k_, v in out.items() if k_ not in ('g_exact', 'g_tilde')})
+
+
 # ------------------------------------------------------------------------------------------------ main loop
 def main():
     L = json.loads(Path(A.layout).read_text())
@@ -271,7 +388,7 @@ def main():
     fixed = coord == plane
     free = np.flatnonzero(~fixed)
     pairs, stencils = build_constraint_structure(vid)
-    name, h = LH.holder_for(A.model)
+    name, h = (None, None) if A.exact else LH.holder_for(A.model)
     if STATE.exists():
         z = np.load(STATE, allow_pickle=True)
         k0, tv, Vstar, C0 = int(z['k']), z['tv'], float(z['Vstar']), float(z['C0'])
@@ -291,7 +408,7 @@ def main():
         cases = write_packets(base, corners, k)
         t = time.perf_counter(); nb = make_bodies(cases); t_body = time.perf_counter() - t
         torch.cuda.reset_peak_memory_stats()
-        res = analyse(cases, positions, h)
+        res = analyse_exact(cases, positions) if A.exact else analyse(cases, positions, h)
         # cell arrays are in lattice order; map to the layout order of vid
         m_of = {c: i for i, c in enumerate(cases)}
         perm = [m_of[c] for c in res['order']]
@@ -334,4 +451,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if A.check:
+        check([int(x) for x in A.check.split(',') if x])
+    else:
+        main()
