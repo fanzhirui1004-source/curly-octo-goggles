@@ -58,6 +58,10 @@ ap.add_argument('--sens', default='fd', choices=['fd', 'ad'],
                 help="--fast: 'fd' central-difference moment derivatives (Cell.dmoments); 'ad' reverse mode through the moment "
                      "integrator (moments_ad.cell_sens, as the timed route of Table 5), one pass for compliance and volume")
 ap.add_argument('--ad-batch', type=int, default=512, help="--sens ad: element rows per reverse pass")
+ap.add_argument('--body-retry', type=int, default=0,
+                help='N > 0: a cell whose body generation fails (e.g. an unresolved exact local-support certificate at a '
+                     'near-tangent configuration) is regenerated with all eight corner parameters scaled by (1 + eps), eps = '
+                     '1e-9, -1e-9, 1e-8, ... (first N); the packet records the scaled values and the unscaled ones')
 ap.add_argument('--warm', action='store_true',
                 help='--fast: start PCG from the previous design iteration\'s solution, matched DOF by DOF on (absolute grid '
                      'position, component, cut-port flag) and scaled by the energy-optimal factor; unmatched DOFs start at 0 '
@@ -133,6 +137,25 @@ def make_bodies(cases):
         (ROOT / 'todo.txt').write_text('\n'.join(todo) + '\n')
         subprocess.run(['bash', '-c', f'xargs -a {ROOT}/todo.txt -P {A.workers} -I{{}} {one} {BODY} {{}}'], check=False,
                        env=dict(os.environ))
+    bad = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
+    for c in bad:
+        f = ROOT / 'packets' / c / 'FRESH_CONTEXT.json'
+        cx = json.loads(f.read_text())
+        t0 = cx.setdefault('provenance', {}).setdefault('tau_corners_unperturbed', cx['case']['tau_corners'])
+        for eps in [1e-9, -1e-9, 1e-8, -1e-8, 1e-7, -1e-7][:A.body_retry]:
+            cx['case']['tau_corners'] = [format(float(x) * (1 + eps), '.15f') for x in t0]
+            cx['provenance']['tau_scale_eps'] = eps
+            f.write_text(json.dumps(cx, indent=1))
+            if (BODY / f'{c}.log').exists():
+                (BODY / f'{c}.log').rename(BODY / f'{c}.log.before_eps{eps:g}')
+            if (BODY / f'{c}.failed').exists():
+                (BODY / f'{c}.failed').unlink()
+            if (BODY / c).exists():
+                shutil.rmtree(BODY / c)
+            subprocess.run(['bash', str(ROOT / 'body_one.sh'), str(BODY), c], check=False, env=dict(os.environ))
+            print(json.dumps(dict(event='BODY_RETRY', case=c, eps=eps, ok=(BODY / c / 'PREP.json').exists())), flush=True)
+            if (BODY / c / 'PREP.json').exists():
+                break
     bad = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
     if bad:
         raise RuntimeError(f'BODY_FAIL {bad}')
