@@ -54,6 +54,10 @@ ap.add_argument('--exact', action='store_true', help='optimise with exact conden
 ap.add_argument('--fast', action='store_true', help='deployment route of Table 5 (lat_scale.py): deploy cells, fused network, '
                 'single-precision correction, streamed operators; sensitivities by central moment differences')
 ap.add_argument('--resident-gb', type=float, default=12.0, help='--fast: keep cells on the device while allocated memory < this')
+ap.add_argument('--sens', default='fd', choices=['fd', 'ad'],
+                help="--fast: 'fd' central-difference moment derivatives (Cell.dmoments); 'ad' reverse mode through the moment "
+                     "integrator (moments_ad.cell_sens, as the timed route of Table 5), one pass for compliance and volume")
+ap.add_argument('--ad-batch', type=int, default=512, help="--sens ad: element rows per reverse pass")
 ap.add_argument('--check', default='', help='comma list of iterations of an existing run to verify with the exact model')
 ap.add_argument('--exact-tol', type=float, default=1e-10)
 A = ap.parse_args()
@@ -346,11 +350,23 @@ def analyse_fast(cases, positions, h):
         with o.active():
             with torch.no_grad():
                 u = o.field(lat.gather(X, i)).to(dt)
-                C.dmoments()
-                S[i] = C.sens(u)[:, 0].cpu().numpy()
-                dvol[i] = C.dM[:, :, 0].sum(1).cpu().numpy(); vol[i] = float(C.M[:, 0].sum())
-                C.dM = None
-                del u
+            vol[i] = float(C.M[:, 0].sum())
+            if A.sens == 'ad':
+                import moments_ad as MA
+                with torch.no_grad():
+                    g = C.energy_density(u)
+                    e0 = torch.zeros((g.shape[0], g.shape[1], 1), dtype=g.dtype, device=g.device); e0[:, 0, 0] = 1.0
+                    g = torch.cat([g, e0], 2); del e0
+                r_ = MA.cell_sens(C, g, batch=A.ad_batch, skip_full=True).detach().cpu().numpy()   # (8, 2): -u^T dK u, -dV
+                S[i] = r_[:, 0]; dvol[i] = -r_[:, 1]
+                del g
+            else:
+                with torch.no_grad():
+                    C.dmoments()
+                    S[i] = C.sens(u)[:, 0].cpu().numpy()
+                    dvol[i] = C.dM[:, :, 0].sum(1).cpu().numpy()
+                    C.dM = None
+            del u
     SO.park_all()
     T['sens_s'] = time.perf_counter() - t
     out = dict(C=Chat, S=S, order=order, vol=vol, dvol=dvol, pcg=int(r['iterations']), true_residual=tres, Ut_rho_rel=Ur / Chat,
