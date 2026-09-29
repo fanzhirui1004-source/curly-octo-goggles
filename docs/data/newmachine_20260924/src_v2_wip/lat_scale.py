@@ -91,6 +91,7 @@ def main(argv=None):
     ap.add_argument('--coarse-tpl', action='store_true', help='OPL_COARSE_ELEM=1: cell coarse Galerkin matrix by element/face templates (trainlib.coarse_galerkin_tpl)')
     ap.add_argument('--tet-triton', action='store_true', help='OPL_TET_TRITON=1: fused per-tetrahedron moment kernels (forward and written-out VJP)')
     ap.add_argument('--limit', type=int, default=0, help='first N cells of the layout only (smoke tests)')
+    ap.add_argument('--save-sens', default='', help='write the per-cell sensitivities and compliances of every iteration to this .npz')
     a = ap.parse_args(argv)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
     if a.coarse_tpl:
@@ -156,8 +157,10 @@ def main(argv=None):
                 ops[case] = SO.StreamedOp(op, C, [op.fast, geo, C])
             pc['stream_wrap'] = T() - t
             pc['stream_bytes'] = ops[case].bytes
+            if hasattr(ops[case], 'bytes_by_dtype'):
+                pc['stream_bytes_by_dtype'] = ops[case].bytes_by_dtype
             for k, v in pc.items():
-                if k != 'stream_bytes':
+                if not k.startswith('stream_bytes'):
                     add('fe_' + k, v)
             rec['per_cell'].append(dict(case=case, **pc))
             del geo, op
@@ -166,6 +169,7 @@ def main(argv=None):
         rec['device_GB_after_front_end'] = torch.cuda.memory_allocated() / 1e9
         rec['census_after_front_end'] = SO.cuda_census()
         rec['stream_GB_total'] = sum(o.bytes for o in ops.values()) / 1e9
+        rec['stream_store_fp32'] = SO.STORE_FP32
         rec['host_rss_GB_after_front_end'] = rss()
         log(dict(event='FRONT_END', iteration=it, host_rss_GB=rec['host_rss_GB_after_front_end'], seconds=ph['front_end'], stream_GB=rec['stream_GB_total'],
                  device_GB=rec['device_GB_after_front_end'], peak_GB=torch.cuda.max_memory_allocated() / 1e9))
@@ -243,6 +247,13 @@ def main(argv=None):
         ph['sens_total'] = T() - t
         del C, o
         SO.park_all()
+        if a.save_sens:
+            saved = getattr(main, '_saved', {})
+            for kk, vv in S.items():
+                saved[f'sens_{kk}_it{it}'] = torch.stack(vv).numpy()
+            saved[f'compliance_it{it}'] = np.asarray(rec['compliance']); saved['order'] = np.asarray(order)
+            main._saved = saved
+            np.savez(a.save_sens, **saved)
         if 'fd' in S and 'ad' in S:
             fd, ad = torch.stack(S['fd']), torch.stack(S['ad'])
             rec['sens_ad_vs_fd_rel'] = float(((ad - fd).norm(dim=1) / fd.norm(dim=1)).max())

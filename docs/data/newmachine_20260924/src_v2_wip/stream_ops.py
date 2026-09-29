@@ -11,12 +11,19 @@ it is copied to the device on a side stream, one cell ahead of the computation (
 Collected: every CUDA tensor of at least MIN_BYTES reachable from the given roots through attributes of plain objects,
 lists, tuples and dicts (torch modules, python modules, callables and foreign library objects are not entered: module
 parameters are shared by all cells). A slot already owned by another StreamedOp stays resident. Sparse CSR / COO tensors
-are stored as pinned components (shared components, e.g. index arrays of two CSR matrices, once) and rebuilt on the device."""
+are stored as pinned components (shared components, e.g. index arrays of two CSR matrices, once) and rebuilt on the device.
+
+OPL_STREAM_FP32=1 (default off; scale demonstration only): float64 parts are STORED in the host buffer as float32 and
+converted back to float64 on the device after each copy, so the arithmetic precision of every operation is unchanged
+but the stored state is rounded to single precision (halves the host memory and copy volume of the float64 parts;
+its effect on the solution must be checked against the float64 store).  bytes_by_dtype reports the stored layout."""
+import os
 import types
 import contextlib
 import torch
 
 MIN_BYTES = 1 << 20
+STORE_FP32 = os.environ.get('OPL_STREAM_FP32', '0') == '1'
 REGISTER = True                                                         # page-lock the host buffer (async copies)
 dev = torch.device('cuda')
 _STREAM = [None]
@@ -115,10 +122,13 @@ class StreamedOp:
         self.slots = slots
         # one exact-size host buffer per op, page-locked by cudaHostRegister (the caching pinned allocator rounds every
         # block up to a power of two); every part is a 512-byte aligned view of it; one copy per prefetch
-        self.layout, off = {}, 0
+        self.layout, self.orig, off = {}, {}, 0
         for key, x in src.items():
-            nb = x.numel() * x.element_size()
-            self.layout[key] = (off, nb, x.dtype, tuple(x.shape))
+            sdt = torch.float32 if (STORE_FP32 and x.dtype == torch.float64) else x.dtype
+            if sdt != x.dtype:
+                self.orig[key] = x.dtype
+            nb = x.numel() * torch.empty((), dtype=sdt).element_size()
+            self.layout[key] = (off, nb, sdt, tuple(x.shape))
             off += (nb + 511) // 512 * 512
         self.total = max(off, 512)
         self.buf = torch.empty(self.total, dtype=torch.uint8)
@@ -131,6 +141,10 @@ class StreamedOp:
         self.pinned = {key: self._view(self.buf, key) for key in src}
         del src
         self.bytes = sum(v[1] for v in self.layout.values())
+        self.bytes_by_dtype = {}
+        for v in self.layout.values():
+            self.bytes_by_dtype[str(v[2])] = self.bytes_by_dtype.get(str(v[2]), 0) + v[1]
+        self.bytes_rounded = sum(self.layout[k][1] for k in self.orig)
         self.n_tensors = len(byid)
         self.nxt, self.loaded, self.ev, self.depth = None, None, None, 0
         self.copies = 0
@@ -166,6 +180,8 @@ class StreamedOp:
             dbuf = torch.empty(self.total, dtype=torch.uint8, device=dev)
             dbuf.copy_(self.buf, non_blocking=self.registered)
             p = {k: self._view(dbuf, k) for k in self.layout}
+            for k, odt in self.orig.items():                            # stored float32 -> working float64
+                p[k] = p[k].to(odt)
             ev = torch.cuda.Event(); ev.record(stream)
         self.loaded, self.ev, self.dbuf = p, ev, dbuf
         self.copies += 1
@@ -175,6 +191,8 @@ class StreamedOp:
         cur = torch.cuda.current_stream()
         cur.wait_event(self.ev)
         self.dbuf.record_stream(cur)
+        for k in self.orig:
+            self.loaded[k].record_stream(cur)
         built = {}
         for o, k, s in self.slots:
             if id(s) not in built:
@@ -218,7 +236,8 @@ class StreamedOp:
         the op."""
         if self.depth:
             raise RuntimeError('release inside active()')
-        host = {k: (x.clone() if to is None else x.to(to)) for k, x in self.pinned.items()}
+        host = {k: (x.to(dtype=self.orig.get(k, x.dtype), copy=True) if to is None else x.to(to, dtype=self.orig.get(k, x.dtype)))
+                for k, x in self.pinned.items()}
         built = {}
         for o, k, s in self.slots:
             if id(s) not in built:
