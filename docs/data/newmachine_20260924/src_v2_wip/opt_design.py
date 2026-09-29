@@ -59,9 +59,10 @@ ap.add_argument('--sens', default='fd', choices=['fd', 'ad'],
                      "integrator (moments_ad.cell_sens, as the timed route of Table 5), one pass for compliance and volume")
 ap.add_argument('--ad-batch', type=int, default=512, help="--sens ad: element rows per reverse pass")
 ap.add_argument('--body-retry', type=int, default=0,
-                help='N > 0: a cell whose body generation fails (e.g. an unresolved exact local-support certificate at a '
-                     'near-tangent configuration) is regenerated with all eight corner parameters scaled by (1 + eps), eps = '
-                     '1e-9, -1e-9, 1e-8, ... (first N); the packet records the scaled values and the unscaled ones')
+                help='N > 0: if body generation fails for some cells (e.g. an exact local-support certificate left unresolved '
+                     'where the cut plane and the sheet surface nearly touch), the free design vertices of those cells are '
+                     'scaled by (1 + eps), eps = 1e-4, -1e-4, 1e-3, -1e-3, 3e-3, -3e-3 (first N), all cells sharing them are '
+                     'regenerated, and the perturbed design is analysed and continued from (recorded as body_perturb)')
 ap.add_argument('--warm', action='store_true',
                 help='--fast: start PCG from the previous design iteration\'s solution, matched DOF by DOF on (absolute grid '
                      'position, component, cut-port flag) and scaled by the energy-optimal factor; unmatched DOFs start at 0 '
@@ -123,6 +124,11 @@ def write_packets(base_cases, corners, k):
     return cases
 
 
+class BodyFail(RuntimeError):
+    def __init__(self, bad):
+        super().__init__(f'BODY_FAIL {bad}'); self.bad = bad
+
+
 def make_bodies(cases):
     """fast_prep4 for every case without PREP.json, --workers in parallel; raises on any failure."""
     if not (BODY / Path(A.templates).name).exists() and Path(A.templates).exists():
@@ -138,27 +144,8 @@ def make_bodies(cases):
         subprocess.run(['bash', '-c', f'xargs -a {ROOT}/todo.txt -P {A.workers} -I{{}} {one} {BODY} {{}}'], check=False,
                        env=dict(os.environ))
     bad = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
-    for c in bad:
-        f = ROOT / 'packets' / c / 'FRESH_CONTEXT.json'
-        cx = json.loads(f.read_text())
-        t0 = cx.setdefault('provenance', {}).setdefault('tau_corners_unperturbed', cx['case']['tau_corners'])
-        for eps in [1e-9, -1e-9, 1e-8, -1e-8, 1e-7, -1e-7][:A.body_retry]:
-            cx['case']['tau_corners'] = [format(float(x) * (1 + eps), '.15f') for x in t0]
-            cx['provenance']['tau_scale_eps'] = eps
-            f.write_text(json.dumps(cx, indent=1))
-            if (BODY / f'{c}.log').exists():
-                (BODY / f'{c}.log').rename(BODY / f'{c}.log.before_eps{eps:g}')
-            if (BODY / f'{c}.failed').exists():
-                (BODY / f'{c}.failed').unlink()
-            if (BODY / c).exists():
-                shutil.rmtree(BODY / c)
-            subprocess.run(['bash', str(ROOT / 'body_one.sh'), str(BODY), c], check=False, env=dict(os.environ))
-            print(json.dumps(dict(event='BODY_RETRY', case=c, eps=eps, ok=(BODY / c / 'PREP.json').exists())), flush=True)
-            if (BODY / c / 'PREP.json').exists():
-                break
-    bad = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
     if bad:
-        raise RuntimeError(f'BODY_FAIL {bad}')
+        raise BodyFail(bad)
     return len(todo)
 
 
@@ -576,7 +563,29 @@ def main():
         t_it = time.perf_counter()
         corners = [tv[vid[m]] for m in range(len(base))]
         cases = write_packets(base, corners, k)
-        t = time.perf_counter(); nb = make_bodies(cases); t_body = time.perf_counter() - t
+        t = time.perf_counter(); tv_mma, perturb = tv.copy(), []
+        for attempt in range(A.body_retry + 1):
+            try:
+                nb = make_bodies(cases); break
+            except BodyFail as e:
+                if attempt == A.body_retry:
+                    raise
+                eps = [1e-4, -1e-4, 1e-3, -1e-3, 3e-3, -3e-3][attempt]
+                vs = sorted({int(v) for c in e.bad for v in vid[cases.index(c)] if not fixed[v]})
+                tv = tv_mma.copy(); tv[vs] = np.clip(tv_mma[vs] * (1 + eps), A.tmin, A.tmax)
+                aff = [m for m in range(len(base)) if set(int(v) for v in vid[m]) & set(vs)]
+                for m in aff:
+                    c = cases[m]
+                    shutil.rmtree(ROOT / 'packets' / c, ignore_errors=True); shutil.rmtree(BODY / c, ignore_errors=True)
+                    if (BODY / f'{c}.log').exists():
+                        (BODY / f'{c}.log').rename(BODY / f'{c}.log.attempt{attempt}')
+                    if (BODY / f'{c}.failed').exists():
+                        (BODY / f'{c}.failed').unlink()
+                corners = [tv[vid[m]] for m in range(len(base))]
+                cases = write_packets(base, corners, k)
+                perturb.append(dict(attempt=attempt, eps=eps, failed=e.bad, vertices=vs, regenerated=[cases[m] for m in aff]))
+                log(dict(event='BODY_PERTURB', k=k, **perturb[-1]))
+        t_body = time.perf_counter() - t
         torch.cuda.reset_peak_memory_stats()
         res = analyse_exact(cases, positions) if A.exact else (analyse_fast(cases, positions, h) if A.fast else analyse(cases, positions, h))
         # cell arrays are in lattice order; map to the layout order of vid
@@ -605,7 +614,7 @@ def main():
                    gpu_peak_gb=torch.cuda.max_memory_allocated() / 2 ** 30,
                    host_peak_gb=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2 ** 20,
                    mma=dict(newton=info['newton_steps'], y_max=info['y_max'], z=info['z']),
-                   cases=cases, fps=dict(zip(res['order'], res['fps'])))
+                   cases=cases, fps=dict(zip(res['order'], res['fps'])), body_perturb=perturb)
         with open(HIST, 'a') as fh:
             fh.write(json.dumps(RC.tojson(dict(rec, tv=tv, s_vertex=gv, s_cell=S)), default=float) + '\n')
         log({k_: v for k_, v in rec.items() if k_ not in ('cases', 'fps')})
