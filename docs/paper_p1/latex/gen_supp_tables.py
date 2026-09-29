@@ -1,7 +1,7 @@
-"""Regenerate supplementary table blocks (R1 key, ST01, ST03, ST03b, ST03c, ST03d, ST09, ST10, ST14a, ST14b) from evidence/.
+"""Regenerate supplementary table blocks (R1 key, ST01, ST03, ST03b, ST03c, ST03d, ST09, ST10, ST16a, ST16b) from evidence/.
 
 Numbering and labels follow revision 1 (review_r1/RENUMBER_MAP.json; decision D6): old ST12 -> ST01, ST01 -> ST03,
-ST13 -> ST09, ST06 -> ST10, ST07 -> ST14. Labels: B -> Base network, C -> Uncorrected, A2b -> Smoothing-trained,
+ST13 -> ST09, ST06 -> ST10, ST07 -> ST16. Labels: B -> Base network, C -> Uncorrected, A2b -> Smoothing-trained,
 B+W -> NICE-post, A3 -> NICE; S8 and P0 keep their names (supplement only).
 
 Usage (from docs/paper_p1):  python3 latex/gen_supp_tables.py [--write]
@@ -12,7 +12,7 @@ in SUPPLEMENTARY_EN.md. Sources:
   newval_v2L1.json     views 0 and 17 of the base network on the earlier evaluation -> ST03c
   newval_c_oh.json     views 0 and 17 of P0 (five original classes only)           -> P0 columns of ST03, ST03b, ST03c
   valmeta.json         geometry strata                                              -> ST03b
-  piml4_<mode>_<cell>.json  Bernstein-restricted retained space, x assemblies      -> ST14a, ST14b (file names are historical)
+  piml4_<mode>_<cell>.json  Bernstein-restricted retained space, x assemblies      -> ST16a, ST16b (file names are historical)
   meta_p1.json, meta_c_oh.json  training configuration and checkpoint selection    -> ST01
   gate_<run>_*.json    two-cell continuous-neighbour assemblies                     -> ST09 (face loads), ST10 (cut loads)
 Training-pool counts (ST01): the SPLIT events of the training logs (server logs, read 2026-09-28): v2L1 305, A0_ctrl,
@@ -288,16 +288,16 @@ def piml(mode, heading, text):
 
 
 def st07a(text):
-    return piml('all', r'#### ST14a\.', text)
+    return piml('all', r'#### ST16a\.', text)
 
 
 def st07b(text):
-    return piml('interface', r'#### ST14b\.', text)
+    return piml('interface', r'#### ST16b\.', text)
 
 
 BLOCKS = [(r'## R1\.', r1), (r'## Table ST01\.', st12), (r'## Table ST03\.', st01), (r'### ST03b\.', st01b),
           (r'### ST03c\.', st01c), (r'### ST03d\.', st01d), (r'## Table ST09\.', st13), (r'## Table ST10\.', st06),
-          (r'#### ST14a\.', st07a), (r'#### ST14b\.', st07b)]
+          (r'#### ST16a\.', st07a), (r'#### ST16b\.', st07b)]
 
 if __name__ == '__main__':
     text = SUPP.read_text()
