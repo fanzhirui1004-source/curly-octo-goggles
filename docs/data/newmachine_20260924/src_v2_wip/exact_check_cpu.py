@@ -1636,11 +1636,8 @@ def self_test():
         outside = {m_: d_ for m_, d_ in where.items() if Path(d_).resolve() != HERE}
         ok('worker_imports', modules=len(where), outside_script_dir=outside)
     else:
-        try:
-            import torch                                                                # noqa: F401
-            have_torch = True
-        except Exception:                                                               # noqa: BLE001
-            have_torch = False
+        import importlib.util
+        have_torch = importlib.util.find_spec('torch') is not None
         msg = (r.stderr or r.stdout).strip().splitlines()[-3:]
         if have_torch:
             raise AssertionError(f'WORKER_IMPORTS_FAILED rc={r.returncode}: {msg}')

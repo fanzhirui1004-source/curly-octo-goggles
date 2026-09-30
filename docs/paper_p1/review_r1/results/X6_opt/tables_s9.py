@@ -444,7 +444,7 @@ out()
 L = F['homog_law']
 rows = [(f"{t:.2f}", f"{r:.4f}", f"{c11:.5f}", f"{c12:.5f}", f"{c44:.5f}", f"{n:,}") for t, r, c11, c12, c44, n in
         zip(L['taus'], L['rho'], L['C11'], L['C12'], L['C44'], L['dofs'])]
-out(table(['\\(\\tau\\)', '\\(\\rho\\)', '\\(C^H_{11}\\)', '\\(C^H_{12}\\)', '\\(C^H_{44}\\)', 'DOFs'], rows))
+out(table(['\\(\\tau\\)', '\\(V^H\\)', '\\(C^H_{11}\\)', '\\(C^H_{12}\\)', '\\(C^H_{44}\\)', 'DOFs'], rows))
 out()
 s = L['symmetry_max']
 out(f"\\(E_Y=1\\), \\(\\nu=0.3\\), unit cell of volume 1, Voigt notation with engineering shear strains; \\(C^H_{{11}}\\), \\(C^H_{{12}}\\), \\(C^H_{{44}}\\) are the entry values of the computed tensor "

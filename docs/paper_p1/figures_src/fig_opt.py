@@ -6,10 +6,10 @@ Main Figure 12 -> figures/F13_optimisation.{svg,pdf,png}   (the prefix F12_ belo
       design iteration (line; the designs of the two runs differ) and to the exact compliance of the same design (circles);
       the perturbed designs of the geometry-generation fallback (iterations 16 and 19) are marked.
   (b) plates, B1 (in-plane load, left) and B2 (bending, right): compliance divided by C0, the initial NICE compliance of B1 /
-      B2 at the uniform start; the homogenisation design (H_y / H_z) evaluated with NICE and the NICE continuation from it
-      (XH_y / XH_z) are divided by the same C0 and drawn over their own design iterations; shading: design iterations with
+      B2 at the uniform start; the homogenisation design (Hom-y / Hom-z) evaluated with NICE and the NICE continuation from it
+      (X-y / X-z) are divided by the same C0 and drawn over their own design iterations; shading: design iterations with
       V > V* of the run from the uniform start; the bracket in the upper plots marks the range enlarged in the lower strips.
-  (c,d) final corner thickness parameters of B2 and XH_z on the plate, drawn in the original orientation (long side
+  (c,d) final corner thickness parameters of B2 and X-z on the plate, drawn in the original orientation (long side
       horizontal): internal y horizontal, internal x vertical; layer z = 0 (the z = 1 difference is printed); vertices in
       the removed region are corners of cut cells.
   (e) visible placeholder for the scale demonstration.
@@ -47,7 +47,7 @@ HOM, HOM_MK, XH_MK = FS.C['extra'], '*', 'h'                            # homoge
 SHADE = '#EEF1F4'
 TAU_LO, TAU_HI = 0.18, 0.69
 CMAP = 'cividis'
-NAME = {'H_y': r'H$_y$', 'H_z': r'H$_z$', 'XH_y': r'XH$_y$', 'XH_z': r'XH$_z$'}
+NAME = {'H_y': r'Hom-$y$', 'H_z': r'Hom-$z$', 'XH_y': r'X-$y$', 'XH_z': r'X-$z$'}   # display names (H_y etc. are record keys)
 
 
 def hist(p):
