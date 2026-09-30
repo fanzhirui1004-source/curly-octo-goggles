@@ -63,6 +63,8 @@ ap.add_argument('--body-retry', type=int, default=0,
                      'where the cut plane and the sheet surface nearly touch), the free design vertices of those cells are '
                      'scaled by (1 + eps), eps = 1e-4, -1e-4, 1e-3, -1e-3, 3e-3, -3e-3 (first N), all cells sharing them are '
                      'regenerated, and the perturbed design is analysed and continued from (recorded as body_perturb)')
+ap.add_argument('--t-cpu-fallback', action='store_true',
+                help='--exact: if the GPU dense condensation of a cell fails, build it on the host (make_T_cpu.py, PARDISO)')
 ap.add_argument('--vstar', type=float, default=0.0,
                 help='> 0: absolute volume bound V* (material volume of the discrete model) instead of --vfrac x V(initial design), '
                      'e.g. to continue from another design under the bound of an earlier run')
@@ -434,7 +436,16 @@ def make_T(cases):
         r = subprocess.run([sys.executable, '-u', str(src), str(BODY), c], capture_output=True, text=True,
                            cwd=str(src.parent), env=dict(os.environ))
         if r.returncode or not (BODY / f'{c}_portview' / 'T64.npy').exists():
-            raise RuntimeError(f'MAKE_T_FAIL {c}: {r.stderr[-400:]}')
+            (BODY / f'{c}.make_T_gpu.err').write_text(r.stdout + '\n' + r.stderr)
+            if not A.t_cpu_fallback:
+                raise RuntimeError(f'MAKE_T_FAIL {c}: {r.stderr[-400:]}')
+            cpu = Path(__file__).resolve().parent / 'make_T_cpu.py'
+            r = subprocess.run([sys.executable, '-u', str(cpu), str(BODY), c], capture_output=True, text=True,
+                               cwd=str(cpu.parent), env=dict(os.environ, OPL_DEV='cpu'))
+            print(json.dumps(dict(event='MAKE_T_CPU_FALLBACK', case=c, rc=r.returncode,
+                                  ok=(BODY / f'{c}_portview' / 'T64.npy').exists())), flush=True)
+            if r.returncode or not (BODY / f'{c}_portview' / 'T64.npy').exists():
+                raise RuntimeError(f'MAKE_T_FAIL {c} (gpu and cpu): {r.stderr[-400:]}')
         n += 1
     return n, time.perf_counter() - t
 
