@@ -172,7 +172,7 @@
 | U2 | force_c | 0.402 | 0.00465 | 0.00424 | 1.23 | 47.2 | 0.0009 | 0.38 | 5.51 |
 | U2 | force | 0.506 | 0.00701 | 0.0121 | 6.4 | 11 | 0.00166 | 1.25 | 1.19 |
 
-| cell | lambda_max (Lanczos) | b = 1.05 x power | margin | Gershgorin | sym | action-energy | fastnet-trainlib | rigid energy | ghost share force_c / force | delta,kappa B (force_c) | delta,kappa A3 |
+| cell | lambda_max (Lanczos) | b = 1.05 x power | margin | Gershgorin | sym | action-energy | deployed vs training | rigid energy | ghost share force_c / force | delta,kappa B (force_c) | delta,kappa A3 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | H2 | 3.992 | 4.152 | 4.0% | 43.9 | 6.3e-09 | 4.5e-09 | 4.6e-09 | 1.7e-11 | 0.00048 / 0.49 | 0.71%, 7089 | 0.051%, 582 |
 | H1 | 4.994 | 5.191 | 3.9% | 78.2 | 5.6e-09 | 4.0e-09 | 4.2e-08 | 1.6e-12 | 7.9e-05 / 0.81 | 1.23%, 124 | 0.186%, 33 |

@@ -38,7 +38,7 @@ for c, r in pc.items():
         if cls not in r: continue
         e = r[cls]['eps']; m = lambda k: P(e[k]['mean']) if k in e else '—'
         out.append(f"| {inv.get(c,c)} | {cls} | {m('B')} | {m('A3')} | {m('B+tail8+Q1_17+tail8')} | {m('harmonic+tail8+Q1_17+tail8')} | {m('zero+tail8+Q1_17+tail8')} | {m('B+tail32+Q1_17+tail32')} | {m('harmonic+tail32+Q1_17+tail32')} | {m('zero+tail32+Q1_17+tail32')} |")
-out.append('\n| cell | lambda_max (Lanczos) | b = 1.05 x power | margin | Gershgorin | sym | action-energy | fastnet-trainlib | rigid energy | ghost share force_c / force | delta,kappa B (force_c) | delta,kappa A3 |\n|---|---|---|---|---|---|---|---|---|---|---|---|')
+out.append('\n| cell | lambda_max (Lanczos) | b = 1.05 x power | margin | Gershgorin | sym | action-energy | deployed vs training | rigid energy | ghost share force_c / force | delta,kappa B (force_c) | delta,kappa A3 |\n|---|---|---|---|---|---|---|---|---|---|---|---|')
 for c, r in pc.items():
     L = r['lam']; o = r['force_c']['ops']; dk = r['force_c']['delta_kappa']
     gs = lambda cls: f"{r[cls]['ghost']['ghost_share']['mean']:.2g}" if cls in r else '—'
