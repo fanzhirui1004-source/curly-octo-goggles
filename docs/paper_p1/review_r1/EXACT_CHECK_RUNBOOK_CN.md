@@ -122,14 +122,24 @@ bash $T/pack_exact_inputs.sh --out /root/autodl-tmp/exact_pack --name plates_exa
 ```
 
 - `--dry-run` 已在服务器上实跑过（只读）。10 个设计每个 264 个文件，约 143–169 MiB；加上 src_v2/*.py，全包 2,878 个文件，1.463 GiB。
-- 包的结构是 `plates_exact/runs/<run>/{history.jsonl, meta.json, layout.json, body/GP_TEMPLATES_n32.npz, body/<case>/, packets/<case>/}`，再加 `plates_exact/src_v2/*.py`（与运行所用代码逐字节相同）、`extra/`、`MANIFEST.tsv`（字节数、md5、路径）和 `SPECS.json`（每个 k 对应的 case 列表、NICE 柔度、载荷设置）。
+- 打包脚本在写任何文件之前（`--dry-run` 时也一样）做以下检查，任一项不通过就停止：
+  - 每个 case 目录都有 `teacher.Cell` 要读的文件：body 下的 NODES、CELL_INDICES、dofs、GP_FACES、BOX_NODES、CUT_NODES（.npy）和 PREP.json，packets 下的 FRESH_CONTEXT.json 和 SAMPLE.json。缺文件报 `INCOMPLETE`。
+  - case 目录里的符号链接按其目标打包（包里是普通文件）。悬空的链接报 `DANGLING`。
+  - 核对程序要用的模块（teacher、box_encode、encode_r1、element_moments 等 22 个）都在 `--src` 里，否则报 `MISSING_MODULES`。
+  - 从 `exact_check_cpu.py` 和这些模块出发做静态 import 闭包。每个模块必须在 `--src`、标准库或已安装的包里；在别处找到的零散模块报 `IMPORT_OUTSIDE_SRC`，因为新机器上会缺这个模块。
+  - 两个 `--extra` 文件同名但内容不同，报 `DEST_CLASH`。
+- 服务器上按上面的命令做过一次只读 dry-run（当时服务器上还没有 exact_check_cpu.py，所以闭包只从 22 个模块出发）：闭包含 42 个文件，全部在 src_v2 里，没有 src_v2 以外的零散模块。输出里 "IMPORTS not found here" 一行列出 scipy、pypardiso、cuda、nvmath、sksparse、threadpoolctl、fixture，这是正常的：
+  - scipy、pypardiso：服务器默认的 python3 里没有，新机器按第 3 节安装。
+  - cuda、nvmath：只在 GPU 路径里用。
+  - sksparse、threadpoolctl、fixture：可选导入，或只在 CPU 路线用不到的函数里导入。
+- 包的结构是 `plates_exact/runs/<run>/{history.jsonl, meta.json, layout.json, body/GP_TEMPLATES_n32.npz, body/<case>/, packets/<case>/}`，再加 `plates_exact/src_v2/*.py`（服务器 src_v2 目录下全部 .py，即运行所用代码）、`extra/`、`MANIFEST.tsv`（字节数、md5、路径）和 `SPECS.json`（每个 k 对应的 case 列表、NICE 柔度、载荷设置、import 检查结果）。
 - 输出文件只有 `--out` 下的 `plates_exact.tar`、`.MANIFEST.tsv`、`.SPECS.json`、`.tar.md5`，打包时的符号链接临时目录结束后自动删除。`--out` 不能放在任何运行目录之内，脚本会拒绝这种设置。
 
 ### 4.2 传到新机器并校验
 
 ```bash
-W=/root/autodl-tmp/xc                                  # 新机器上的数据盘目录
-mkdir -p $W && cd $W
+source /root/autodl-tmp/xc/xc_env.sh                  # 第 3 节写的文件；$W 为新机器上的数据盘目录
+cd $W
 # 用 scp / rsync 把 plates_exact.tar 与 plates_exact.tar.md5 传到 $W
 md5sum -c plates_exact.tar.md5
 tar -xf plates_exact.tar
