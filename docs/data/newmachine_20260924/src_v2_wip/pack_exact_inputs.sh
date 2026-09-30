@@ -30,7 +30,7 @@ while [ $# -gt 0 ]; do
     --extra) EXTRA+=("$2"); shift 2 ;;
     --no-md5) MD5=0; shift ;;
     --dry-run) DRY=1; shift ;;
-    -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     -*) echo "unknown option $1" >&2; exit 2 ;;
     *) SPECS+=("$1"); shift ;;
   esac
@@ -44,7 +44,7 @@ if [ "$DRY" = 0 ]; then
 fi
 
 # ---------------------------------------------------------------- plan (python; reads only)
-"$PYBIN" - "$PLAN" "$OUT" "$NAME" "$SRC" "$MD5" "$DRY" "${#EXTRA[@]}" "${EXTRA[@]}" "${SPECS[@]}" <<'PY'
+"$PYBIN" - "$PLAN" "$OUT" "$NAME" "$SRC" "$MD5" "$DRY" "${#EXTRA[@]}" ${EXTRA[@]+"${EXTRA[@]}"} "${SPECS[@]}" <<'PY'
 import sys, os, json, re, hashlib
 from pathlib import Path
 plan, out, name, src, md5, dry, nextra = sys.argv[1:8]

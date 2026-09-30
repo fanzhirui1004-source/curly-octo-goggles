@@ -8,9 +8,10 @@ Per requested design (iteration k of a run directory written by opt_design.py: h
             tmin / tmax and max_cols from the run's arguments); one fingerprint per cell: sha1 of the body arrays that
             teacher.Cell reads (NODES, CELL_INDICES, dofs, GP_FACES, BOX_NODES, CUT_NODES), the ghost templates, and the
             packet quantities that enter K (n, E, nu, surface, tau corners, plane, gamma). Equal fingerprints = byte-identical
-            inputs = the same K and T (the 16 uncut cells and the four pairs of cut cells of the uniform plate start; B1 and
-            B2 at k = 0): T is built and held once, and those cells share ONE operator object, which lat_multi applies to all
-            of them in one call. --no-dedupe: one T per cell.
+            inputs = the same K and T (at the uniform plate start: the 16 uncut cells and two of the four pairs of cut cells,
+            7 distinct cells in all, the other two pairs differing in the last digits of the plane offset; B1 and B2 at
+            k = 0): T is built and held once, and those cells share ONE operator object, which lat_multi applies to all of
+            them in one call. --no-dedupe: one T per cell.
   cellinfo  per distinct cell, a worker process (the CPU environment of make_T_cpu.py): teacher.Cell + assemble() ->
             port node ids / flags, the upper K_PP triplets (lat_multi.from_teacher) and the consistent face-load weights of
             all six box faces (lattice3.face_traction_weights through from_teacher) -> <work>/cellinfo/<fp>.npz
@@ -886,7 +887,11 @@ class Runner:
         (D / 'q').mkdir(exist_ok=True)
         for c, q in zip(out['order'], out['Q']):
             np.save(D / 'q' / f'{c}.npy', q)
-        rec = dict(out['rec'], order=out['order'], energy_T=dict(zip(out['order'], out['energy'])))
+        rec = dict(out['rec'], order=out['order'], energy_T=dict(zip(out['order'], out['energy'])),
+                   converged=bool(out['rec']['residual_recursive'] < self.a.tol))
+        if not rec['converged']:
+            log(dict(event='PCG_NOT_CONVERGED', design=P['tag'], pcg=rec['pcg'], residual=rec['residual_recursive'],
+                     tol=self.a.tol, maxit=self.a.maxit))
         write_json(D / 'solve.json', rec)
         log(dict(event='SOLVED', design=P['tag'], C_exact=rec['C'], C_hat=R['hist'][P['k']]['C'], pcg=rec['pcg'],
                  true_residual=rec['true_residual'], energy_sum_rel=rec['energy_sum_rel'], times=rec['times']))
@@ -1006,7 +1011,8 @@ class Runner:
             script='exact_check_cpu.py', run=str(R['run']), design=P['tag'], cases=P['cases'], layout=str(R['layout_path']),
             cfg=R['cfg'], tol=a.tol, prec=a.prec or R['cfg']['prec'], fine=a.fine, t_route=a.t_route, sens=None if a.no_sens else a.sens,
             distinct_cells=len(P['groups']), groups={f: [P['cases'][i] for i in m] for f, m in P['groups'].items()},
-            pcg_residual_recursive=solve_rec['residual_recursive'], energy_sum_rel=solve_rec['energy_sum_rel'],
+            pcg_residual_recursive=solve_rec['residual_recursive'], pcg_converged=solve_rec.get('converged'),
+            energy_sum_rel=solve_rec['energy_sum_rel'],
             energy_T_vs_K_rel_max=emax if not a.no_sens else None, lattice=solve_rec['lattice'],
             V_exact_cells=float(np.nansum(vol)) if not a.no_sens else None, V_nice=d.get('V'),
             s_cell_exact=S_lay, s_cell_nice=s_cell_nice, cells=cells, phases=phases, solve_fine=solve_rec.get('fine'),
