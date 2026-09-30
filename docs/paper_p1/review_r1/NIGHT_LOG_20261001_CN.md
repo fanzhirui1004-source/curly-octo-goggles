@@ -61,3 +61,4 @@
 - 03:47：B1:22 柔度已核对，正在算梯度。GPU 机同步仍在进行（数据盘 2.6T），src_v2 仍为空。
 - 04:52：B1:22 完成，梯度误差 0.22%，与算例 A 终点的 0.33% 同量级，所有分量符号正确。kkt_exact = 0.40 只含体积乘子，按 runbook §7 不写入论文。
 - 07:08：B2:29 完成。代理误差 −0.037%，比算例 A 终点的 −0.028% 略大，但同量级；梯度误差 0.32%，与算例 A 终点的 0.33% 相当，符号全对。第 3 步（Hom-z、X-z，只算柔度）已开始，预计每个设计约 45–60 min。
+- 07:19：GPU 机的 src_v2（237 个文件）和 S4 已同步到位，数据盘已用 4.0T。已只读比对核对路线用到的模块：teacher、box_encode、encode_r1、element_moments、make_T_cpu、bench_cpu2、moments_ad、lat_precond、lattice3、opt_design，与 CPU 机上拼合的代码逐字节相同，说明核对用的代码就是原运行所用的代码。有差异的只有与核对无关的文件（p1_checks.py、piml_gate.py、几个测试脚本）和服务器上较旧的 exact_check_cpu.py；核对用的是仓库版本。
