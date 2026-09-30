@@ -63,6 +63,9 @@ ap.add_argument('--body-retry', type=int, default=0,
                      'where the cut plane and the sheet surface nearly touch), the free design vertices of those cells are '
                      'scaled by (1 + eps), eps = 1e-4, -1e-4, 1e-3, -1e-3, 3e-3, -3e-3 (first N), all cells sharing them are '
                      'regenerated, and the perturbed design is analysed and continued from (recorded as body_perturb)')
+ap.add_argument('--vstar', type=float, default=0.0,
+                help='> 0: absolute volume bound V* (material volume of the discrete model) instead of --vfrac x V(initial design), '
+                     'e.g. to continue from another design under the bound of an earlier run')
 ap.add_argument('--warm', action='store_true',
                 help='--fast: start PCG from the previous design iteration\'s solution, matched DOF by DOF on (absolute grid '
                      'position, component, cut-port flag) and scaled by the energy-optimal factor; unmatched DOFs start at 0 '
@@ -597,7 +600,7 @@ def main():
         dVv = RC.aggregate(dVc[:, :, None], vid, nv)[:, 0]
         V = float(Vc.sum())
         if Vstar is None:
-            Vstar, C0 = A.vfrac * V, res['C']
+            Vstar, C0 = (A.vstar if A.vstar > 0 else A.vfrac * V), res['C']
         fval, dfdx = constraints(tv, free, V, dVv, Vstar, pairs, stencils)
         f0 = res['C'] / C0
         fhist.append(f0)
