@@ -12,7 +12,8 @@ Main Figure 12 -> figures/F13_optimisation.{svg,pdf,png}   (the prefix F12_ belo
   (c,d) final corner thickness parameters of B2 and X-z on the plate, drawn in the original orientation (long side
       horizontal): internal y horizontal, internal x vertical; layer z = 0 (the z = 1 difference is printed); vertices in
       the removed region are corners of cut cells.
-  (e) visible placeholder for the scale demonstration.
+  (e) scale demonstration (scale/scale_summary.json): time per design iteration (mean, range bars), peak host memory of
+      the main process and peak device memory in use (nvidia-smi, includes the cuDSS factor) against the number of cells, for plates of 24, 51, 88 and 110 cells; 135 cells failed (K_PP factor on the GPU).
 Supplementary Figure S06 -> figures/S06_homogenised_law.{svg,pdf,png}
   C11, C12, C44 and the material volume fraction (symbol V^H; rho is the recomputed residual of Eq. (18)) of the
   uniform-thickness cell against tau, with the cubic splines of homog_macro.Material.
@@ -303,17 +304,39 @@ def fig_main():
     cb_.set_label(r'corner thickness parameter $\tau$, layer $z=0$ (circles: free, squares: fixed)', fontsize=7)
     cb_.ax.tick_params(labelsize=6.5); cb_.outline.set_linewidth(.5)
 
-    # ---------------- (e) placeholder (visible, greppable)
+    # ---------------- (e) scale demonstration: time and host memory per design iteration against the number of cells
     axe = fig.add_subplot(bot[0, 2])
-    axe.set_xticks([]); axe.set_yticks([])
-    for s in axe.spines.values():
-        s.set_visible(True); s.set_linestyle('--'); s.set_color(FS.GRID)
-    axe.text(.5, .5, '[TBD-SCALE: time and\nmemory per design\niteration against the\nnumber of cells]', ha='center',
-             va='center', fontsize=7, color=FS.MUTED, transform=axe.transAxes, linespacing=1.3)
+    S = json.loads((D / 'scale' / 'scale_summary.json').read_text())
+    runs = ['plateS24r4', 'plateS51r4', 'plateS88', 'plateS110']
+    n = np.array([S[r]['cells'] for r in runs])
+    t = [np.array(S[r]['iter_s']) / 60 for r in runs]
+    tm = np.array([x.mean() for x in t])
+    err = np.array([[m - x.min() for m, x in zip(tm, t)], [x.max() - m for m, x in zip(tm, t)]])
+    axe.errorbar(n, tm, yerr=err, color=NICE, marker=NICE_MK, ms=3.2, lw=.9, capsize=1.5, elinewidth=.6, zorder=4)
+    axe.set_xlabel('cells'); axe.set_ylabel('time per iteration (min)', color=NICE, fontsize=7)
+    axe.tick_params(axis='y', colors=NICE)
+    axe.set_xlim(0, 150); axe.set_ylim(0, 55); axe.set_xticks([0, 24, 51, 88, 110, 135])
+    axe.tick_params(axis='x', labelsize=6)
+    axm = axe.twinx()
+    hp = np.array([S[r]['host_peak_gb'] for r in runs])                  # GiB (ru_maxrss / 2**20, main process)
+    gp = np.array([S[r]['sampler_gpu_used_max_gib'] for r in runs])     # GiB in use on the device (nvidia-smi, 30-s samples)
+    axm.plot(n, hp, '--', color=EXACT, lw=.8, marker='o', ms=3.0, mfc='white', mew=.8, zorder=3)
+    axm.plot(n, gp, ':', color=EXACT, lw=.9, marker='^', ms=3.0, mfc=EXACT, mew=.6, zorder=3)
+    axm.axhline(32607 / 1024, color=EXACT, lw=.5, ls='-', alpha=.5)
+    axm.text(62, 32607 / 1024 + 1.2, 'GPU capacity', fontsize=5.6, color=EXACT, va='bottom')
+    axm.text(n[-1] + 3, hp[-1], 'host', fontsize=5.8, color=EXACT, ha='left', va='center')
+    axm.text(n[-1] + 3, gp[-1] - 1, 'GPU', fontsize=5.8, color=EXACT, ha='left', va='top')
+    axm.set_ylim(0, 110); axm.set_ylabel('peak memory (GiB)', color=EXACT, fontsize=7)
+    axm.tick_params(axis='y', colors=EXACT, labelsize=6.5)
+    axe.axvline(135, color=FS.MUTED, lw=.6, ls=':')
+    axe.text(142.5, 27.5, '135 cells: out of GPU memory', ha='center', va='center', rotation=90, fontsize=5.6,
+             color=FS.MUTED)
+    axe.grid(True, color=FS.GRID, lw=.4)
+    print('scale: cells', n.tolist(), 'time/iter (min)', np.round(tm, 2).tolist(), 'host peak GiB', np.round(hp, 1).tolist(), 'GPU in use GiB', np.round(gp, 1).tolist())
     FS.panel(axe, 'e', 'Scale demonstration')
     fig.canvas.draw()                                                   # align (e) with the aspect-constrained plates
     pc, pe = axc.get_position(), axe.get_position()
-    axe.set_position([pe.x0, pc.y0, pe.width, pc.height])
+    axe.set_position([pe.x0 + .035, pc.y0, pe.width - .06, pc.height])
     FS.save(fig, 'F13_optimisation')
 
 

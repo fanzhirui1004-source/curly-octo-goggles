@@ -61,7 +61,10 @@
    [],
    [],
    []
-  ]
+  ],
+  "sampler_rss_max_gib": 13.48,
+  "sampler_gpu_used_max_gib": 18.2,
+  "sampler_samples": 141
  },
  "plateS51r4": {
   "cells": 51,
@@ -113,7 +116,10 @@
   "body_perturb": [
    [],
    []
-  ]
+  ],
+  "sampler_rss_max_gib": 32.69,
+  "sampler_gpu_used_max_gib": 20.02,
+  "sampler_samples": 226
  },
  "plateS88": {
   "cells": 88,
@@ -177,7 +183,10 @@
    [],
    [],
    []
-  ]
+  ],
+  "sampler_rss_max_gib": 58.62,
+  "sampler_gpu_used_max_gib": 28.9,
+  "sampler_samples": 594
  },
  "plateS110": {
   "cells": 110,
@@ -241,7 +250,10 @@
    [],
    [],
    []
-  ]
+  ],
+  "sampler_rss_max_gib": 77.02,
+  "sampler_gpu_used_max_gib": 31.35,
+  "sampler_samples": 732
  },
  "plateS24": {
   "cells": 24,
@@ -317,7 +329,10 @@
   "errors": [
    "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 846.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 427.06 MiB is free. Including non-PyTorch memory, this process has 30.80 GiB memory in use. Of the allocated memory 29.72 GiB is allocated by PyTorch, and 363.28 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
    "cuDSSError: ALLOC_FAILED (2)"
-  ]
+  ],
+  "sampler_rss_max_gib": 83.84,
+  "sampler_gpu_used_max_gib": 24.09,
+  "sampler_samples": 74
  },
  "plateS51_fail": {
   "cells": 51,
@@ -327,6 +342,9 @@
   ],
   "errors": [
    "cuDSSError: ALLOC_FAILED (2)"
-  ]
+  ],
+  "sampler_rss_max_gib": 19.68,
+  "sampler_gpu_used_max_gib": 28.82,
+  "sampler_samples": 20
  }
 }

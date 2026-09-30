@@ -5,6 +5,18 @@ the analysis phase of the K_PP factor). plateS24 (18 GB resident budget) and pla
 import json, re, os
 H = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'runs')
 out = {}
+
+
+def sampler(run):
+    """30-s samples of rss_<run>.tsv (runs/rss_sampler_scripts.txt): RSS of the opt_design process in GiB (ru of ps, KiB/2**20)
+    and device memory used on the GPU in MiB (nvidia-smi, whole device, only this process running) - unlike gpu_peak_gb
+    (torch.cuda.max_memory_allocated) it includes the memory of the cuDSS factor of K_PP."""
+    f = f'{H}/rss_{run}.tsv'
+    if not os.path.exists(f):
+        return {}
+    R = [l.split() for l in open(f) if l.strip()]
+    return dict(sampler_rss_max_gib=round(max(float(r[1]) for r in R), 2),
+                sampler_gpu_used_max_gib=round(max(int(r[2]) for r in R) / 1024, 2), sampler_samples=len(R))
 for run in ['plateS24r4', 'plateS51r4', 'plateS88', 'plateS110', 'plateS24']:
     L = [json.loads(l) for l in open(f'{H}/{run}/history.jsonl')]
     starts = [json.loads(l) for l in open(f'{H}/{run}.log') if l.startswith('{') and '"event": "START"' in l]
@@ -16,12 +28,13 @@ for run in ['plateS24r4', 'plateS51r4', 'plateS88', 'plateS110', 'plateS24']:
                     pcg=[x['pcg'] for x in L], true_residual=[x['true_residual'] for x in L], Ut_rho_rel=[x['Ut_rho_rel'] for x in L],
                     C=[x['C'] for x in L], gpu_peak_gb=round(max(x['gpu_peak_gb'] for x in L), 2),
                     host_peak_gb=round(max(x['host_peak_gb'] for x in L), 2), body_perturb=[x['body_perturb'] for x in L])
+    out[run].update(sampler(run))
 for run in ['plateS135', 'plateS51']:
     s = open(f'{H}/{run}.log').read()
     m = re.findall(r'(cuDSSError: [A-Z_]+ \(\d+\)|torch\.OutOfMemoryError[^\n]*|CUDA out of memory[^\n]{0,120})', s)
     starts = [json.loads(l) for l in s.splitlines() if l.startswith('{') and '"event": "START"' in l]
     out[run + '_fail'] = dict(cells=starts[-1]['cells'] if starts else None, attempts=len(starts),
-                              resident_gb=[st['args']['resident_gb'] for st in starts], errors=m)
+                              resident_gb=[st['args']['resident_gb'] for st in starts], errors=m, **sampler(run))
 json.dump(out, open(os.path.join(os.path.dirname(H), 'scale_summary.json'), 'w'), indent=1)
 for k, v in out.items():
     print(k, {kk: v[kk] for kk in v if kk not in ('env', 'C', 'true_residual', 'Ut_rho_rel', 'body_perturb')})
