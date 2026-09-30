@@ -159,6 +159,8 @@ def main(argv=None):
             pc['stream_bytes'] = ops[case].bytes
             if hasattr(ops[case], 'bytes_by_dtype'):
                 pc['stream_bytes_by_dtype'] = ops[case].bytes_by_dtype
+                pc['stream_bytes_enc_counts'] = ops[case].enc_counts
+                pc['stream_bytes_encoded_unpacked'] = ops[case].bytes_unpacked
             for k, v in pc.items():
                 if not k.startswith('stream_bytes'):
                     add('fe_' + k, v)
@@ -169,7 +171,7 @@ def main(argv=None):
         rec['device_GB_after_front_end'] = torch.cuda.memory_allocated() / 1e9
         rec['census_after_front_end'] = SO.cuda_census()
         rec['stream_GB_total'] = sum(o.bytes for o in ops.values()) / 1e9
-        rec['stream_store_fp32'] = SO.STORE_FP32
+        rec['stream_store_fp32'] = SO.STORE_FP32; rec['stream_store_pack'] = SO.STORE_PACK
         rec['host_rss_GB_after_front_end'] = rss()
         log(dict(event='FRONT_END', iteration=it, host_rss_GB=rec['host_rss_GB_after_front_end'], seconds=ph['front_end'], stream_GB=rec['stream_GB_total'],
                  device_GB=rec['device_GB_after_front_end'], peak_GB=torch.cuda.max_memory_allocated() / 1e9))

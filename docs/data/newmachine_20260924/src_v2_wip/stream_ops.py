@@ -19,11 +19,60 @@ but the stored state is rounded to single precision (halves the host memory and 
 its effect on the solution must be checked against the float64 store).  bytes_by_dtype reports the stored layout."""
 import os
 import types
+import numpy as np
 import contextlib
 import torch
 
 MIN_BYTES = 1 << 20
 STORE_FP32 = os.environ.get('OPL_STREAM_FP32', '0') == '1'
+STORE_PACK = os.environ.get('OPL_STREAM_PACK', '0') == '1'
+PACK_MIN = 1 << 24                                                      # square matrices of at least 16 MB
+_PB = 512                                                               # rows per (un)packing block
+
+
+def _tril_blocks(n):
+    for r0 in range(0, n, _PB):
+        r1 = min(n, r0 + _PB)
+        yield r0, r1, (r1 * (r1 + 1) - r0 * (r0 + 1)) // 2
+
+
+def _pack_tril(x, out):
+    """Row-major lower triangle (incl. diagonal) of the square x into the 1-D out."""
+    n, pos = x.shape[0], 0
+    for r0, r1, cnt in _tril_blocks(n):
+        m = torch.arange(r1, device=x.device)[None, :] <= torch.arange(r0, r1, device=x.device)[:, None]
+        out[pos:pos + cnt].copy_(x[r0:r1, :r1][m])
+        pos += cnt
+
+
+def _unpack_tril(seg, n, sym):
+    """Inverse of _pack_tril on seg's device; sym: mirror the strict lower triangle (symmetric matrix)."""
+    y = torch.zeros((n, n), dtype=seg.dtype, device=seg.device)
+    pos = 0
+    for r0, r1, cnt in _tril_blocks(n):
+        m = torch.arange(r1, device=seg.device)[None, :] <= torch.arange(r0, r1, device=seg.device)[:, None]
+        y[r0:r1, :r1][m] = seg[pos:pos + cnt]
+        pos += cnt
+    if sym:
+        y += torch.tril(y, -1).T
+    return y
+
+
+def _encoding(x):
+    """Storage mode of one part: None (as is), 'f32' (OPL_STREAM_FP32: float64 stored as float32, rounding), and with
+    OPL_STREAM_PACK (exact): 'tril' / 'sym' (lower-triangular / symmetric square matrix: lower triangle only), 'i32'
+    (int64 whose values fit in int32)."""
+    if STORE_PACK and x.dim() == 2 and x.shape[0] == x.shape[1] and x.is_floating_point() and x.layout == torch.strided \
+            and x.numel() * x.element_size() >= PACK_MIN:
+        if torch.equal(x, torch.tril(x)):
+            return 'tril'
+        if torch.equal(x, x.T):
+            return 'sym'
+    if STORE_PACK and x.dtype == torch.int64 and x.numel() and int(x.min()) >= -2 ** 31 and int(x.max()) < 2 ** 31:
+        return 'i32'
+    if STORE_FP32 and x.dtype == torch.float64:
+        return 'f32'
+    return None
 REGISTER = True                                                         # page-lock the host buffer (async copies)
 dev = torch.device('cuda')
 _STREAM = [None]
@@ -122,18 +171,28 @@ class StreamedOp:
         self.slots = slots
         # one exact-size host buffer per op, page-locked by cudaHostRegister (the caching pinned allocator rounds every
         # block up to a power of two); every part is a 512-byte aligned view of it; one copy per prefetch
-        self.layout, self.orig, off = {}, {}, 0
+        self.layout, self.orig, self.enc, off = {}, {}, {}, 0
         for key, x in src.items():
-            sdt = torch.float32 if (STORE_FP32 and x.dtype == torch.float64) else x.dtype
-            if sdt != x.dtype:
+            mode, sdt, shp = _encoding(x), x.dtype, tuple(x.shape)
+            if mode == 'f32':
+                sdt = torch.float32
+            elif mode == 'i32':
+                sdt = torch.int32
+            elif mode in ('tril', 'sym'):
+                shp = (x.shape[0] * (x.shape[0] + 1) // 2,)
+            if mode:
+                self.enc[key] = (mode, x.dtype, tuple(x.shape))
                 self.orig[key] = x.dtype
-            nb = x.numel() * torch.empty((), dtype=sdt).element_size()
-            self.layout[key] = (off, nb, sdt, tuple(x.shape))
+            nb = int(np.prod(shp)) * torch.empty((), dtype=sdt).element_size()
+            self.layout[key] = (off, nb, sdt, shp)
             off += (nb + 511) // 512 * 512
         self.total = max(off, 512)
         self.buf = torch.empty(self.total, dtype=torch.uint8)
         for key, x in src.items():
-            self._view(self.buf, key).copy_(x.contiguous())
+            if self.enc.get(key, (None,))[0] in ('tril', 'sym'):
+                _pack_tril(x, self._view(self.buf, key))
+            else:
+                self._view(self.buf, key).copy_(x.contiguous())
         self.registered = False
         if self.total and REGISTER:
             err = torch.cuda.cudart().cudaHostRegister(self.buf.data_ptr(), self.total, 0)
@@ -144,7 +203,9 @@ class StreamedOp:
         self.bytes_by_dtype = {}
         for v in self.layout.values():
             self.bytes_by_dtype[str(v[2])] = self.bytes_by_dtype.get(str(v[2]), 0) + v[1]
-        self.bytes_rounded = sum(self.layout[k][1] for k in self.orig)
+        self.bytes_rounded = sum(self.layout[k][1] for k, e in self.enc.items() if e[0] == 'f32')
+        self.bytes_unpacked = sum(int(np.prod(e[2])) * torch.empty((), dtype=e[1]).element_size() for e in self.enc.values())
+        self.enc_counts = {m: sum(e[0] == m for e in self.enc.values()) for m in ('f32', 'i32', 'tril', 'sym')}
         self.n_tensors = len(byid)
         self.nxt, self.loaded, self.ev, self.depth = None, None, None, 0
         self.copies = 0
@@ -180,8 +241,8 @@ class StreamedOp:
             dbuf = torch.empty(self.total, dtype=torch.uint8, device=dev)
             dbuf.copy_(self.buf, non_blocking=self.registered)
             p = {k: self._view(dbuf, k) for k in self.layout}
-            for k, odt in self.orig.items():                            # stored float32 -> working float64
-                p[k] = p[k].to(odt)
+            for k, (mode, odt, shp) in self.enc.items():                # stored form -> working tensor
+                p[k] = _unpack_tril(p[k], shp[0], mode == 'sym') if mode in ('tril', 'sym') else p[k].to(odt)
             ev = torch.cuda.Event(); ev.record(stream)
         self.loaded, self.ev, self.dbuf = p, ev, dbuf
         self.copies += 1
@@ -236,8 +297,13 @@ class StreamedOp:
         the op."""
         if self.depth:
             raise RuntimeError('release inside active()')
-        host = {k: (x.to(dtype=self.orig.get(k, x.dtype), copy=True) if to is None else x.to(to, dtype=self.orig.get(k, x.dtype)))
-                for k, x in self.pinned.items()}
+        host = {}
+        for k, x in self.pinned.items():
+            mode, odt, shp = self.enc.get(k, (None, x.dtype, None))
+            if mode in ('tril', 'sym'):
+                host[k] = _unpack_tril(x if to is None else x.to(to), shp[0], mode == 'sym')
+            else:
+                host[k] = x.to(dtype=odt, copy=True) if to is None else x.to(to, dtype=odt)
         built = {}
         for o, k, s in self.slots:
             if id(s) not in built:
