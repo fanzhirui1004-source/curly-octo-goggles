@@ -76,12 +76,24 @@ ls $M/libmkl_rt.so.3
 # 方案 B：若 120 GiB 主机还在，整体拷贝 /root/miniconda3、/root/autodl-tmp/mklenv、/root/autodl-tmp/pylib_cpu，再照 env_cpu_westb.sh 设置
 ```
 
-每次登录后设置的环境变量（相当于 `env_cpu_westb.sh`）：
+环境变量和后面命令用到的变量全部写进一个文件 `/root/autodl-tmp/xc/xc_env.sh`（相当于 `env_cpu_westb.sh`），每个新 shell 都先 `source` 它。tmux 或 nohup 新开的 shell 不继承当前 shell 里未 export 的变量；已经在运行的 tmux 服务器保留它启动时的环境，之后的 export 不会进入新的 tmux 窗口。所以不要依赖手工 export，一律在 tmux 窗口里 source 这个文件。
 
 ```bash
+mkdir -p /root/autodl-tmp/xc
+cat > /root/autodl-tmp/xc/xc_env.sh <<'EOF'
+# source /root/autodl-tmp/xc/xc_env.sh    （每个新 shell、每个 tmux 窗口里先执行一次）
+export W=/root/autodl-tmp/xc                                  # 数据盘目录
+[ -f /root/xenv/bin/activate ] && source /root/xenv/bin/activate   # 方案 A 的 venv
+export M=/root/xenv/lib                                       # 方案 A；方案 B 为 /root/autodl-tmp/mklenv/lib
 export LD_LIBRARY_PATH=$M PYPARDISO_MKL_RT=$M/libmkl_rt.so.3
-export OPL_DEV=cpu CUDA_VISIBLE_DEVICES= OPL_GP_CACHE=0      # 脚本对自身和子进程也会强制这三项
-export PYTHONPATH=                                           # 方案 B 时设为 /root/autodl-tmp/pylib_cpu
+export OPL_DEV=cpu CUDA_VISIBLE_DEVICES= OPL_GP_CACHE=0       # 脚本对自身和子进程也会强制这三项
+export PYTHONPATH=                                            # 方案 B 时设为 /root/autodl-tmp/pylib_cpu
+export R=$W/plates_exact/runs WK=$W/plates_exact/exact_cpu IP=$W/plates_exact/extra/iparm_tuned.json
+# 64 核、256 GB（其他机器见 4.4 节的表）：
+export COMMON="--work $WK --t-route schur --iparm-file $IP --threads 64 --t-jobs 3 --t-threads 21 \
+  --cell-jobs 8 --cell-threads 8 --sens-jobs 4 --sens-threads 16 --min-free-gib 64 --delete-T"
+EOF
+source /root/autodl-tmp/xc/xc_env.sh && echo "$COMMON"
 ```
 
 - 线程数不用手工设置：主进程的线程数由 `--threads` 决定，各子进程的 `MKL_NUM_THREADS`/`OMP_NUM_THREADS` 由 `--t-threads`、`--cell-threads`、`--sens-threads` 决定。
@@ -92,7 +104,13 @@ export PYTHONPATH=                                           # 方案 B 时设�
 
 ### 4.1 在 5090 服务器上打包（只读原始数据）
 
-先把仓库中的 `pack_exact_inputs.sh` 放到服务器任一目录（例如 /root/autodl-tmp/exact_tools/）。`exact_check_cpu.py` 和 `iparm_tuned.json`（仓库路径 `docs/data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/host/iparm_tuned.json`）用 `--extra` 一起打进包里；这两个文件也可以另行拷到新机器。
+先从仓库把下面三个文件拷到服务器上的同一个目录 $T（例如 /root/autodl-tmp/exact_tools/）。后两个文件下面用 `--extra` 打进包里，所以必须事先放在 $T；否则打包会在 dry-run 之后报 `MISSING`。
+
+| 仓库路径 | 拷到 |
+| --- | --- |
+| `docs/data/newmachine_20260924/src_v2_wip/pack_exact_inputs.sh` | `$T/pack_exact_inputs.sh` |
+| `docs/data/newmachine_20260924/src_v2_wip/exact_check_cpu.py` | `$T/exact_check_cpu.py` |
+| `docs/data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/host/iparm_tuned.json` | `$T/iparm_tuned.json` |
 
 ```bash
 O=/root/autodl-tmp/OPL/S1/V2/R1/OPT
