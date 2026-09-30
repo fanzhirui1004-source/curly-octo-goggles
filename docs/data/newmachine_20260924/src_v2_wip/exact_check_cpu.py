@@ -24,7 +24,10 @@ Per requested design (iteration k of a run directory written by opt_design.py: h
                 cell matrix with the retained DOFs marked in perm (bench_cpu2.explicit_schur, the explicit-S column of
                 Table ST18: 11-166 s per cell there, columns equal to C.apply to 1e-14), unscaled and symmetrised; before
                 T64.npy is written, --verify-cols columns are compared with C.apply (diag_sens.cpu_factor, as
-                make_T_cpu.py --check) and T is refused above --verify-tol. Same files as make_T_cpu.py.
+                make_T_cpu.py --check) and T is refused above --verify-tol, and also (independently of --verify-cols)
+                when the returned Schur complement is not symmetric to --asym-tol (max |S - S^T| / max |S|, 1e-8; a
+                half-filled S would give ~1). PARDISO failures: the variants iparm, iparm(24)=0, iparm(24)=0 and
+                iparm(2)=2 (as bench_cpu2), duplicates removed. Same files as make_T_cpu.py.
   solve     (this process) the lattice of the run (lat_multi.MultiLattice: same clamp, load face, consistent load column),
             one host operator per distinct cell, q -> T q in fp64 (the product of lat_hetero.DenseExactOp), PCG
             (lat_precond.pcg) from zero with the run's preconditioner (--prec, default: the run's, bnn:kpp:q1r) to the
@@ -41,15 +44,29 @@ Per requested design (iteration k of a run directory written by opt_design.py: h
             times and peak memory per phase, consistency checks, per-cell values). --no-sens: compliance only (the
             gradient keys are null).
 Phases are resumable: cellinfo, T, the solve (<work>/<run>_k<k>/solve.json + q/), the sensitivities (sens/<fp>.json)
-and the check are skipped when their outputs exist (--force: redo the solve, sensitivities and check).
---delete-T removes each T64.npy after the last solve of this invocation that needs it (bounds the disk to one design).
+and the check are skipped when their outputs exist. cellinfo and T are only run while the solve of the design is still
+pending (or when the solve is not among --phases, e.g. --phases cellinfo,T to pre-build T): a rerun after a failure in
+the sens or check phase does not rebuild T that --delete-T removed. A design whose check_exact_KKK.json exists is
+skipped as a whole unless --force, or unless that record has no gradients (an earlier --no-sens run) and gradients are
+now requested: then only sens and check run, on the stored solve (solve.json, q/). --force redoes the solve (and thus
+cellinfo / T where missing), the sensitivities and the check; --phases check --force only rewrites the JSON.
+--delete-T removes each T64.npy after the last solve of this invocation that needs it (bounds the disk to one design);
+designs that will be skipped, or whose solve is already stored, do not keep T alive.
+Guards: the packet tau corners of every cell must equal the history's tv[vid] (--tau-tol, 1e-11; the packets store 12
+decimals), and the ports and active elements of every cell (cellinfo) must equal those the run recorded in history
+'fps'; otherwise the design is refused (a wrong or regenerated body or packet).
 Memory: the solve holds every distinct T of a design (65-93 GB for the plates), refused if MemAvailable is smaller than
-that plus --solve-margin-gib; workers start only while MemAvailable >= --min-free-gib (and at most --*-jobs at a time);
-a worker that fails (e.g. killed for memory) is retried once alone.
+that plus --solve-margin-gib. Workers: at most --*-jobs at a time and at most one start per poll; after the first, a
+worker starts only when --*-settle-s have passed since the previous start and MemAvailable minus what the running
+workers may still take (--*-est-gib each, less their current RSS) is >= --min-free-gib. MemAvailable is read before a
+new worker allocates anything, so this is an estimate-based guard; the backstop is the retry: a worker that fails
+(e.g. killed for memory) or runs past --*-timeout-h (killed, rc -9) is retried once alone.
 Usage: exact_check_cpu.py <run_dir>:<iters> [<run_dir>:<iters> ...] [--work DIR] [--t-route make_T_cpu|schur]
          [--threads N] [--t-jobs N] [--t-threads N] [--cell-jobs N] [--cell-threads N] [--sens-jobs N] [--sens-threads N]
          [--tol 1e-10] [--maxit 3000] [--prec SPEC] [--fine pardiso|factory] [--sens fd|ad] [--no-sens] [--delete-T]
          [--phases cellinfo,T,solve,sens,check] [--iparm-file iparm_tuned.json] [--dry-run] [--force]
+         [--min-free-gib G] [--{t,sens,cell}-est-gib G] [--{t,sens,cell}-settle-s S] [--{t,sens,cell}-timeout-h H]
+         [--asym-tol 1e-8] [--tau-tol 1e-11]
        <iters>: comma list of iteration numbers, 'last' (last recorded k) and 'mid' (last // 2)
        exact_check_cpu.py --self-test
 Environment as the CPU scripts (env_cpu.sh): PYPARDISO_MKL_RT and LD_LIBRARY_PATH for libmkl_rt, PYTHONPATH with pypardiso;
@@ -296,9 +313,9 @@ def cell_key(packets, case):
                 offset=None if normal is None else float(Fraction(cs['offset'])), gamma=float(smp['gp']['gamma']))
 
 
-def fingerprint(body, packets, case):
+def fingerprint(body, packets, case, key=None):
     """sha1 over everything teacher.Cell reads for K and the port set (see module docstring); 20 hex digits."""
-    key = cell_key(packets, case)
+    key = cell_key(packets, case) if key is None else key
     h = hashlib.sha1(json.dumps(key, sort_keys=True).encode())
     for fn in FP_FILES:
         h.update(fn.encode()); h.update(_file_sha1(Path(body) / case / fn).encode())
@@ -306,7 +323,14 @@ def fingerprint(body, packets, case):
     return h.hexdigest()[:20]
 
 
-def make_plan(R, k, dedupe=True):
+def tau_deviation(keys, cases, tv, vid):
+    """Per cell max |packet tau corner - history tv[vid]| (layout order: cases[i] <-> vid[i], corners in the order of
+    opt_design.write_packets, tv[vid[m]])."""
+    tv = np.asarray(tv, float)
+    return np.asarray([float(np.max(np.abs(np.asarray(keys[c]['tau'], float) - tv[vid[i]]))) for i, c in enumerate(cases)])
+
+
+def make_plan(R, k, dedupe=True, tau_tol=1e-11):
     d = R['hist'][k]
     cases = list(d['cases'])
     if len(cases) != len(R['positions']):
@@ -314,14 +338,22 @@ def make_plan(R, k, dedupe=True):
     if len(set(cases)) != len(cases):
         raise ValueError('DUPLICATE_CASE_NAMES')
     body, packets = R['run'] / 'body', R['run'] / 'packets'
-    fps = [fingerprint(body, packets, c) if dedupe else f'{R["name"]}.{c}' for c in cases]
+    keys = {c: cell_key(packets, c) for c in cases}
+    dev = tau_deviation(keys, cases, d['tv'], R['vid'])
+    if not dev.max() <= tau_tol:
+        i = int(np.argmax(dev))
+        raise ValueError(f'PACKET_TAU_VS_HISTORY {R["name"]}:{k} cell {cases[i]}: max |tau_packet - tv[vid]| '
+                         f'{dev[i]:.3e} > --tau-tol {tau_tol:g} (packets or history of another design?)')
+    fps = [fingerprint(body, packets, c, keys[c]) if dedupe else f'{R["name"]}.{c}' for c in cases]
     groups = {}
     for i, f in enumerate(fps):
         groups.setdefault(f, []).append(i)
-    ports = {c: int(v['ports']) for c, v in d.get('fps', {}).items()}
+    rec_fps = d.get('fps') or {}
+    ports = {c: int(v['ports']) for c, v in rec_fps.items() if v.get('ports') is not None}
+    active = {c: int(v['active']) for c, v in rec_fps.items() if v.get('active') is not None}
     return dict(run=R['run'], name=R['name'], k=k, cases=cases, positions=R['positions'], fps=fps, groups=groups,
                 rep={f: cases[m[0]] for f, m in groups.items()}, body=body, packets=packets, ports_recorded=ports,
-                tag=f'{R["name"]}_k{k:03d}')
+                active_recorded=active, tau_dev_max=float(dev.max()), tag=f'{R["name"]}_k{k:03d}')
 
 
 # ================================================================================================ worker processes
@@ -336,19 +368,49 @@ def worker_env(threads, packets=None):
     return env
 
 
-def run_pool(jobs, parallel, min_free_gib, tag, retry=True, poll=2.0):
-    """jobs: list of dict(name, cmd, env, log). At most `parallel` at a time; a job starts only while MemAvailable >=
-    min_free_gib (unless nothing else runs). Per job: exit code, wall seconds, peak RSS of the child (wait4 rusage).
-    Failed jobs are retried once, one at a time. Returns {name: record}."""
-    pending, running, res = list(jobs), {}, {}
+def proc_rss_gib(pid):
+    """Current resident memory of a process (VmRSS), 0 when it is gone."""
+    try:
+        for line in open(f'/proc/{pid}/status'):
+            if line.startswith('VmRSS:'):
+                return int(line.split()[1]) / 2 ** 20
+    except OSError:
+        pass
+    return 0.0
+
+
+def run_pool(jobs, parallel, min_free_gib, tag, retry=True, poll=2.0, est_gib=0.0, settle_s=0.0, timeout_s=None):
+    """jobs: list of dict(name, cmd, env, log). At most `parallel` at a time and at most one start per poll. The first job
+    starts at once; another starts only when (i) settle_s have passed since the previous start and (ii) MemAvailable minus
+    the memory the running jobs may still take (est_gib - current RSS, >= 0, each) is >= min_free_gib. MemAvailable is
+    read before a new job allocates anything, so (ii) is only as good as est_gib; the retry is the backstop. A job running
+    longer than timeout_s (None / 0: no limit) is killed (SIGKILL, rc -9, timeout=True). Per job: exit code, start
+    offset and wall seconds, peak RSS of the child (wait4 rusage). Failed jobs are retried once, one at a time.
+    Returns {name: record}."""
+    pending, running, res, killed = list(jobs), {}, {}, set()
+    t_pool, last_start = time.perf_counter(), -float('inf')
     while pending or running:
-        while pending and len(running) < max(1, parallel) and (not running or avail_gib() >= min_free_gib):
-            j = pending.pop(0)
-            fh = open(j['log'], 'ab')
-            p = subprocess.Popen(j['cmd'], env=j['env'], cwd=str(HERE), stdout=fh, stderr=subprocess.STDOUT)
-            running[p.pid] = (j, p, fh, time.perf_counter())
-            log(dict(event='JOB_START', phase=tag, job=j['name'], running=len(running), pending=len(pending),
-                     mem_available_gib=round(avail_gib(), 1)))
+        now = time.perf_counter()
+        if pending and len(running) < max(1, parallel):
+            reserve = sum(max(0.0, est_gib - proc_rss_gib(pid_)) for pid_ in running) if running else 0.0
+            free = avail_gib() if running else float('inf')
+            if not running or (now - last_start >= settle_s and free - reserve >= min_free_gib):
+                j = pending.pop(0)
+                fh = open(j['log'], 'ab')
+                p = subprocess.Popen(j['cmd'], env=j['env'], cwd=str(HERE), stdout=fh, stderr=subprocess.STDOUT)
+                last_start = time.perf_counter()
+                running[p.pid] = (j, p, fh, last_start)
+                log(dict(event='JOB_START', phase=tag, job=j['name'], running=len(running), pending=len(pending),
+                         mem_available_gib=round(avail_gib(), 1), reserved_gib=round(reserve, 1)))
+        if timeout_s:
+            for pid_, (j, p, fh, t0) in list(running.items()):
+                if pid_ not in killed and now - t0 > timeout_s:
+                    try:
+                        os.kill(pid_, 9)
+                    except OSError:
+                        pass
+                    killed.add(pid_)
+                    log(dict(event='JOB_TIMEOUT', phase=tag, job=j['name'], seconds=now - t0, timeout_s=timeout_s))
         pid, status, ru = os.wait4(-1, os.WNOHANG)
         if pid == 0:
             time.sleep(poll)
@@ -358,12 +420,14 @@ def run_pool(jobs, parallel, min_free_gib, tag, retry=True, poll=2.0):
         j, p, fh, t0 = running.pop(pid)
         fh.close()
         p.returncode = rc = os.waitstatus_to_exitcode(status)
-        res[j['name']] = dict(rc=rc, seconds=time.perf_counter() - t0, peak_rss_gib=ru.ru_maxrss / 2 ** 20)
+        res[j['name']] = dict(rc=rc, start_s=t0 - t_pool, seconds=time.perf_counter() - t0, peak_rss_gib=ru.ru_maxrss / 2 ** 20,
+                              timeout=pid in killed)
+        killed.discard(pid)
         log(dict(event='JOB_END', phase=tag, job=j['name'], **res[j['name']]))
     bad = [j for j in jobs if res[j['name']]['rc'] != 0]
     if bad and retry:
         log(dict(event='JOB_RETRY', phase=tag, jobs=[j['name'] for j in bad]))
-        again = run_pool(bad, 1, 0.0, tag + '_retry', retry=False, poll=poll)
+        again = run_pool(bad, 1, 0.0, tag + '_retry', retry=False, poll=poll, est_gib=est_gib, timeout_s=timeout_s)
         for n_, r_ in again.items():
             res[n_] = dict(r_, retried=True, first=res[n_])
     return res
@@ -448,6 +512,17 @@ def symmetrise_inplace(S, block=4096):
     return dmax / amax if amax > 0 else 0.0
 
 
+def schur_variants(ip):
+    """PARDISO settings tried in turn for the Schur complement (bench_cpu2.explicit_schur): the given ones, classic
+    factorisation (iparm(24) = 0), and in addition sequential METIS (iparm(2) = 2); duplicates removed (iparm_tuned.json
+    already has iparm(24) = 0)."""
+    out = []
+    for v in (dict(ip), {**ip, 24: 0}, {**ip, 24: 0, 2: 2}):
+        if v not in out:
+            out.append(v)
+    return out
+
+
 def worker_schur(job):
     """Dense exact condensed matrix by PARDISO's Schur-complement option (bench_cpu2.explicit_schur), verified, saved as
     make_T_cpu.py saves it."""
@@ -468,7 +543,7 @@ def worker_schur(job):
         if job.get('iparm_file') else PD.tuned_iparm()
     ip[36] = 1
     x, tried = None, []
-    for variant in (ip, {**ip, 24: 0}, {**ip, 24: 0, 2: 2}):
+    for variant in schur_variants(ip):
         H = PD.Pardiso(U, 2, variant, perm=perm)
         x = np.zeros(max(C.nb, ns * ns))
         try:
@@ -492,6 +567,8 @@ def worker_schur(job):
     rec['symmetrise_s'] = time.perf_counter() - t
     if not np.isfinite(S).all():
         raise RuntimeError(f'SCHUR_NOT_FINITE {job["case"]}')
+    if not rec['asym_rel'] <= float(job.get('asym_tol', 1e-8)):                          # e.g. one triangle only
+        raise RuntimeError(f'SCHUR_ASYMMETRIC {job["case"]} max|S-S^T|/max|S| {rec["asym_rel"]:.3e}')
     nver = min(int(job.get('verify_cols', 16)), ns)
     if nver > 0:
         t = time.perf_counter()
@@ -796,6 +873,29 @@ def check_record(k, rec_nice, S_lay, dV_lay, vid, nv, free, tmin, tmax, C_exact,
 
 
 # ================================================================================================ orchestration
+def design_status(a, work, R, P):
+    """skip: check_exact_KKK.json exists (and --force not given) and holds what is asked for (a record with gradients
+    satisfies both modes; a compliance-only record satisfies only --no-sens). solve_pending / sens_pending: the solve
+    or some sensitivities of the design will be computed in this invocation. t_needed: cellinfo / T are needed
+    (solve pending, or the solve not among --phases: explicit pre-build)."""
+    D = Path(work) / P['tag']
+    out_path = R['run'] / f'check_exact_{P["k"]:03d}.json'
+    skip, old_mode = False, None
+    if out_path.exists() and 'check' in a.phases and not a.force:
+        try:
+            old_mode = 'sens' if json.loads(out_path.read_text()).get('grad_rel_err') is not None else 'no_sens'
+        except (OSError, ValueError):
+            old_mode = 'unreadable'
+        skip = old_mode == 'sens' or (old_mode == 'no_sens' and a.no_sens)
+    solve_pending = 'solve' in a.phases and (a.force or not (D / 'solve.json').exists())
+    sens_pending = ('sens' in a.phases and not a.no_sens
+                    and (a.force or any(not (D / 'sens' / f'{f}.json').exists() for f in P['groups'])))
+    t_needed = 'T' in a.phases and (solve_pending or 'solve' not in a.phases)
+    ci_needed = t_needed or solve_pending or ('cellinfo' in a.phases and 'T' not in a.phases and 'solve' not in a.phases)
+    return dict(skip=skip, old_mode=old_mode, out_path=out_path, D=D, solve_pending=solve_pending,
+                sens_pending=sens_pending, t_needed=t_needed, ci_needed=ci_needed)
+
+
 class Runner:
     def __init__(self, a):
         self.a = a
@@ -817,7 +917,7 @@ class Runner:
             jobs.append(dict(name=f'cellinfo_{f}', cmd=self_cmd('cellinfo', jp), env=worker_env(self.a.cell_threads, P['packets']),
                              log=self.work / 'logs' / f'cellinfo_{f}_{rep}.log'))
             todo.append(f)
-        res = run_pool(jobs, self.a.cell_jobs, self.a.min_free_gib, 'cellinfo') if jobs else {}
+        res = self.pool(jobs, 'cellinfo') if jobs else {}
         bad = [n_ for n_, r_ in res.items() if r_['rc'] != 0]
         if bad:
             raise RuntimeError(f'CELLINFO_FAILED {bad} (logs in {self.work / "logs"})')
@@ -825,7 +925,34 @@ class Runner:
             if f not in self.infos:
                 z = np.load(self.work / 'cellinfo' / f'{f}.npz')
                 self.infos[f] = ({k_: z[k_] for k_ in z.files}, json.loads((self.work / 'cellinfo' / f'{f}.json').read_text()))
-        return dict(new=len(todo), jobs=res)
+        return dict(new=len(todo), jobs=res, body_guard=self.body_guard(P))
+
+    def pool(self, jobs, kind):
+        """run_pool with the settings of one worker kind (cellinfo, T, sens)."""
+        a, key = self.a, {'cellinfo': 'cell', 'T': 't', 'sens': 'sens'}[kind]
+        h = getattr(a, f'{key}_timeout_h')
+        return run_pool(jobs, getattr(a, f'{key}_jobs'), a.min_free_gib, kind, est_gib=getattr(a, f'{key}_est_gib'),
+                        settle_s=getattr(a, f'{key}_settle_s'), timeout_s=h * 3600 if h and h > 0 else None)
+
+    def body_guard(self, P, strict=True):
+        """Ports and active elements of every cell (cellinfo of its fingerprint) against the values the run recorded in
+        history 'fps' (teacher.Cell np_ and len(cells) of the analysed body). Cells without a record or without cellinfo
+        are counted as unchecked. strict: raise on a mismatch."""
+        bad, checked, unchecked = [], 0, 0
+        for i, c in enumerate(P['cases']):
+            jf = self.work / 'cellinfo' / f'{P["fps"][i]}.json'
+            if not jf.exists() or (c not in P['ports_recorded'] and c not in P['active_recorded']):
+                unchecked += 1
+                continue
+            ci = json.loads(jf.read_text())
+            for key, rec in (('ports', P['ports_recorded']), ('elements', P['active_recorded'])):
+                if c in rec and int(ci[key]) != rec[c]:
+                    bad.append(dict(case=c, quantity=key, cellinfo=int(ci[key]), history=rec[c]))
+            checked += 1
+        out = dict(checked=checked, unchecked=unchecked, mismatches=bad)
+        if bad and strict:
+            raise ValueError(f'BODY_VS_HISTORY {P["tag"]}: {bad[:4]} (wrong or regenerated body?)')
+        return out
 
     # ---------------------------------------------------------------- T
     def t_candidates(self, P, f):
@@ -839,13 +966,14 @@ class Runner:
                 continue
             out = self.work / 'jobs' / f'T_{f}.out.json'
             job = dict(case=rep, body=str(P['body']), out=str(out), block=self.a.block, verify_cols=self.a.verify_cols,
-                       verify_tol=self.a.verify_tol, iparm_file=str(Path(self.a.iparm_file).resolve()) if self.a.iparm_file else None)
+                       verify_tol=self.a.verify_tol, asym_tol=self.a.asym_tol,
+                       iparm_file=str(Path(self.a.iparm_file).resolve()) if self.a.iparm_file else None)
             jp = self.work / 'jobs' / f'T_{f}.json'; write_json(jp, job)
             kind = 'schur' if self.a.t_route == 'schur' else 'maket'
             jobs.append(dict(name=f'T_{f}', cmd=self_cmd(kind, jp), env=worker_env(self.a.t_threads, P['packets']),
                              log=self.work / 'logs' / f'T_{f}_{rep}.log'))
             built[f'T_{f}'] = (f, P['body'] / (rep + '_portview'), out)
-        res = run_pool(jobs, self.a.t_jobs, self.a.min_free_gib, 'T') if jobs else {}
+        res = self.pool(jobs, 'T') if jobs else {}
         for name, (f, pd, out) in built.items():
             ports = self.infos[f][0]['port_node_ids']
             if res[name]['rc'] != 0 or not t_valid(pd, ports):
@@ -912,43 +1040,63 @@ class Runner:
             jp = D / 'sens' / f'job_{f}.json'; write_json(jp, job)
             jobs.append(dict(name=f'sens_{f}', cmd=self_cmd('sens', jp), env=worker_env(self.a.sens_threads, P['packets']),
                              log=self.work / 'logs' / f'sens_{P["tag"]}_{f}.log'))
-        res = run_pool(jobs, self.a.sens_jobs, self.a.min_free_gib, 'sens') if jobs else {}
+        res = self.pool(jobs, 'sens') if jobs else {}
         bad = [n_ for n_, r_ in res.items() if r_['rc'] != 0]
         if bad:
             raise RuntimeError(f'SENS_FAILED {bad}')
         return dict(new=len(jobs), jobs=res, seconds=sum(r_['seconds'] for r_ in res.values()))
 
+    # ---------------------------------------------------------------- what a design still needs
+    def status(self, R, P):
+        return design_status(self.a, self.work, R, P)
+
+    def later_needs(self, rest):
+        """Fingerprints whose T (solve pending) or dM/dtau cache (sensitivities pending) the designs in `rest` still use."""
+        need_T, need_dm = set(), set()
+        for R2, P2 in rest:
+            st = self.status(R2, P2)
+            if st['skip']:
+                continue
+            if st['solve_pending']:
+                need_T |= set(P2['groups'])
+            if st['sens_pending']:
+                need_dm |= set(P2['groups'])
+        return need_T, need_dm
+
     # ---------------------------------------------------------------- one design
-    def design(self, R, P, later_fps):
+    def design(self, R, P, later_T, later_dm=None):
         a = self.a
-        D = self.work / P['tag']
+        later_dm = later_T if later_dm is None else later_dm
+        st = self.status(R, P)
+        D, out_path = st['D'], st['out_path']
+        if st['skip']:
+            log(dict(event='SKIP_DONE', design=P['tag'], out=out_path, record=st['old_mode']))
+            return st
         D.mkdir(exist_ok=True)
-        out_path = R['run'] / f'check_exact_{P["k"]:03d}.json'
-        if out_path.exists() and not a.force and 'check' in a.phases:
-            log(dict(event='SKIP_DONE', design=P['tag'], out=out_path))
-            return
         write_json(D / 'plan.json', dict(run=P['run'], k=P['k'], cases=P['cases'], positions=P['positions'], fps=P['fps'],
-                                         groups=P['groups'], rep=P['rep'], layout=R['layout_path'], cfg=R['cfg']))
+                                         groups=P['groups'], rep=P['rep'], layout=R['layout_path'], cfg=R['cfg'],
+                                         tau_dev_max=P.get('tau_dev_max')))
         pf = D / 'phases.json'
         phases = json.loads(pf.read_text()) if pf.exists() else {}
-        log(dict(event='DESIGN', design=P['tag'], cells=len(P['cases']), distinct=len(P['groups']), cfg=R['cfg']))
-        if 'cellinfo' in a.phases or 'T' in a.phases or 'solve' in a.phases or 'sens' in a.phases:
+        log(dict(event='DESIGN', design=P['tag'], cells=len(P['cases']), distinct=len(P['groups']), cfg=R['cfg'],
+                 **{k_: st[k_] for k_ in ('old_mode', 'solve_pending', 'sens_pending', 't_needed', 'ci_needed')}))
+        if st['ci_needed']:
             with Phase('cellinfo', phases):
                 phases['cellinfo_jobs'] = self.ensure_cellinfo(P)
-        if 'T' in a.phases:
+        if st['t_needed']:
             with Phase('T', phases):
                 phases['T_jobs'] = self.ensure_T(P)
             write_json(pf, phases)
         solve_rec = None
         if 'solve' in a.phases:
-            if (D / 'solve.json').exists() and not a.force:
+            if not st['solve_pending']:
                 solve_rec = json.loads((D / 'solve.json').read_text())
             else:
                 solve_rec = self.solve(P, R, D, phases)
             write_json(pf, phases)
             if a.delete_T:
                 for f in P['rep']:
-                    if f in later_fps:
+                    if f in later_T:
                         continue
                     e = self.tcache.drop(f)
                     pds = {Path(e['portview'])} if e else set()
@@ -972,12 +1120,13 @@ class Runner:
             if a.delete_T:
                 for f in P['groups']:
                     dmc = self.work / 'dmoments' / f'{f}.npy'
-                    if f not in later_fps and dmc.exists():
+                    if f not in later_dm and dmc.exists():
                         dmc.unlink()
         if 'check' in a.phases:
             if solve_rec is None:
                 raise RuntimeError(f'CHECK_NEEDS_SOLVE {P["tag"]}')
             self.check(R, P, D, solve_rec, phases, out_path)
+        return st
 
     def check(self, R, P, D, solve_rec, phases, out_path):
         a = self.a
@@ -986,6 +1135,7 @@ class Runner:
         nv = len(fixed); free = np.flatnonzero(~fixed)
         if sorted(solve_rec['order']) != sorted(P['cases']):
             raise ValueError(f'SOLVE_CASES_DIFFER {P["tag"]}')
+        guard = self.body_guard(P)
         S_lay = dV_lay = None                                                           # layout order (rows of vid)
         vol = np.full(len(P['cases']), np.nan)
         cells, emax = {}, 0.0
@@ -1016,7 +1166,8 @@ class Runner:
             energy_T_vs_K_rel_max=emax if not a.no_sens else None, lattice=solve_rec['lattice'],
             V_exact_cells=float(np.nansum(vol)) if not a.no_sens else None, V_nice=d.get('V'),
             s_cell_exact=S_lay, s_cell_nice=s_cell_nice, cells=cells, phases=phases, solve_fine=solve_rec.get('fine'),
-            precond=solve_rec.get('precond'))
+            precond=solve_rec.get('precond'), tau_packet_vs_history_max=P.get('tau_dev_max'), tau_tol=a.tau_tol,
+            body_vs_history=guard)
         write_json(out_path, out)
         write_json(D / out_path.name, out)
         log({k_: v for k_, v in out.items() if k_ not in ('g_exact', 'g_tilde', 'cpu')})
@@ -1030,7 +1181,12 @@ def plan_all(a):
             runs[key] = load_run(run, a.layout if len(a.specs) == 1 else None)
         R = runs[key]
         for k in resolve_iters(toks, R['hist'].keys()):
-            designs.append((R, make_plan(R, k, dedupe=not a.no_dedupe)))
+            if any(R2 is R and P2['k'] == k for R2, P2 in designs):
+                continue                                                                # same run:k given twice
+            designs.append((R, make_plan(R, k, dedupe=not a.no_dedupe, tau_tol=a.tau_tol)))
+    tags = [P['tag'] for _, P in designs]
+    if len(set(tags)) != len(tags):
+        raise ValueError(f'DESIGN_TAG_CLASH {tags} (two run directories with the same name)')
     return designs
 
 
@@ -1074,13 +1230,24 @@ def build_parser():
     ap.add_argument('--block', type=int, default=256, help='make_T_cpu.py --block (columns per interior solve)')
     ap.add_argument('--verify-cols', type=int, default=16, help='schur route: columns checked against C.apply (0: none)')
     ap.add_argument('--verify-tol', type=float, default=1e-8)
+    ap.add_argument('--asym-tol', type=float, default=1e-8,
+                    help='schur route: refuse T when max|S - S^T| / max|S| of the returned Schur complement exceeds this')
+    ap.add_argument('--tau-tol', type=float, default=1e-11,
+                    help='refuse a design whose packet tau corners differ from the history tv[vid] by more (packets: 12 decimals)')
     ap.add_argument('--iparm-file', default=None, help='PARDISO settings {"iparm": {...}} (e.g. iparm_tuned.json of the CPU '
                     'runs); default pardiso_direct.tuned_iparm()')
     ap.add_argument('--threads', type=int, default=n, help='torch / MKL threads of this process (solve)')
     ap.add_argument('--t-jobs', type=int, default=1); ap.add_argument('--t-threads', type=int, default=min(n, 16))
     ap.add_argument('--cell-jobs', type=int, default=4); ap.add_argument('--cell-threads', type=int, default=max(1, min(8, n // 4)))
     ap.add_argument('--sens-jobs', type=int, default=4); ap.add_argument('--sens-threads', type=int, default=max(1, min(16, n // 4)))
-    ap.add_argument('--min-free-gib', type=float, default=48.0, help='start another worker only while MemAvailable >= this')
+    ap.add_argument('--min-free-gib', type=float, default=48.0,
+                    help='start another worker only while MemAvailable minus the reserve of the running ones is >= this')
+    for key, est, settle, hours in (('t', 48.0, 60.0, 6.0), ('sens', 16.0, 20.0, 3.0), ('cell', 6.0, 5.0, 1.0)):
+        ap.add_argument(f'--{key}-est-gib', type=float, default=est,
+                        help=f'estimated peak GiB of one {key} worker: a running worker reserves this minus its current RSS')
+        ap.add_argument(f'--{key}-settle-s', type=float, default=settle, help=f'seconds between two {key} worker starts')
+        ap.add_argument(f'--{key}-timeout-h', type=float, default=hours,
+                        help=f'kill a {key} worker after this many hours (then retried once alone; 0: no limit)')
     ap.add_argument('--solve-margin-gib', type=float, default=24.0, help='MemAvailable needed beyond the T of a design')
     ap.add_argument('--no-mem-check', action='store_true')
     ap.add_argument('--tol', type=float, default=1e-10); ap.add_argument('--maxit', type=int, default=3000)
@@ -1135,19 +1302,20 @@ def main(argv=None):
                                  T_present=have, shared_with_earlier=f in seen))
             seen |= set(P['groups'])
             tot = sum(r_['T_gib'] or 0 for r_ in rows)
+            st = design_status(a, a.work, R, P)
             log(dict(event='DRY', design=P['tag'], cells=len(P['cases']), distinct=len(rows), T_distinct_gib=tot,
-                     T_to_build=sum(1 for r_ in rows if not r_['T_present'] and not r_['shared_with_earlier']),
-                     C_hat=R['hist'][P['k']]['C'], cfg=R['cfg'], groups=rows))
+                     T_to_build=0 if st['skip'] or not st['t_needed'] else
+                     sum(1 for r_ in rows if not r_['T_present'] and not r_['shared_with_earlier']),
+                     C_hat=R['hist'][P['k']]['C'], cfg=R['cfg'], tau_packet_vs_history_max=P['tau_dev_max'],
+                     **{k_: st[k_] for k_ in ('skip', 'old_mode', 'solve_pending', 'sens_pending')}, groups=rows))
         return 0
     Path(a.work).mkdir(parents=True, exist_ok=True)
     write_json(Path(a.work) / f'env_{time.strftime("%Y%m%d_%H%M%S")}.json', dict(env_record(), argv=sys.argv))
     rn = Runner(a)
     for j, (R, P) in enumerate(designs):
-        later = set()
-        for _, P2 in designs[j + 1:]:
-            later |= set(P2['groups'])
+        later_T, later_dm = rn.later_needs(designs[j + 1:])                              # only designs that will run
         t = time.perf_counter()
-        rn.design(R, P, later)
+        rn.design(R, P, later_T, later_dm)
         log(dict(event='DESIGN_DONE', design=P['tag'], seconds=time.perf_counter() - t))
     return 0
 
@@ -1331,12 +1499,160 @@ def self_test():
         assert res['bad']['rc'] == 3 and res['bad'].get('retried') and res['bad']['first']['rc'] == 3
         assert res['big']['peak_rss_gib'] > 0.25 > res['ok1']['peak_rss_gib']
         ok('run_pool', big_peak_gib=res['big']['peak_rss_gib'], small_peak_gib=res['ok1']['peak_rss_gib'])
+        sl = 'import time; time.sleep(0.3)'
+        res = run_pool([mk('s1', 'import time; time.sleep(1.2)'), mk('s2', sl)], 2, 0.0, 'selftest_settle', poll=0.02,
+                       settle_s=0.5)
+        assert 0.5 <= res['s2']['start_s'] - res['s1']['start_s'] < 1.0, res            # after the settle time, s1 running
+        res = run_pool([mk('r1', sl), mk('r2', sl)], 2, 0.0, 'selftest_reserve', poll=0.02, est_gib=1e7)
+        assert res['r2']['start_s'] >= res['r1']['start_s'] + 0.3, res                  # reserve of r1 blocks r2
+        res = run_pool([mk('hang', 'import time; time.sleep(60)'), mk('fast', 'pass')], 2, 0.0, 'selftest_timeout',
+                       poll=0.05, timeout_s=0.5)
+        assert res['hang']['rc'] == -9 and res['hang']['timeout'] and res['hang']['retried'] and res['hang']['first']['timeout']
+        assert res['fast']['rc'] == 0 and not res['fast']['timeout'] and res['hang']['seconds'] < 5
+        ok('run_pool_settle_reserve_timeout', hang=res['hang'])
+    # ------------------------------------------------------------ Schur variants
+    ip_t = {1: 1, 2: 3, 24: 0, 25: 0, 36: 1}
+    assert schur_variants(ip_t) == [ip_t, {**ip_t, 2: 2}]                               # iparm_tuned: (24)=0 already
+    assert len(schur_variants({1: 1, 2: 3, 24: 1, 36: 1})) == 3
+    ok('schur_variants')
+    # ------------------------------------------------------------ packet tau vs history, body vs history
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        toy = _toy_run(root, rng)
+        R = load_run(root)
+        tv = np.asarray(toy.rec['tv'])
+        for i, c in enumerate(toy.cases):
+            (root / 'packets' / c).mkdir(parents=True)
+            cx = dict(n=4, material=dict(E=1.0, nu=0.3), case=dict(tau_corners=[format(float(x), '.12f') for x in tv[toy.vid[i]]],
+                                                                    normal=None, offset=None, case_id=c))
+            (root / 'packets' / c / 'FRESH_CONTEXT.json').write_text(json.dumps(cx))
+            (root / 'packets' / c / 'SAMPLE.json').write_text(json.dumps(dict(gp=dict(gamma=1e-4))))
+        P = make_plan(R, toy.k, dedupe=False)
+        assert P['tau_dev_max'] <= 5e-13, P['tau_dev_max']
+        c3 = toy.cases[3]
+        orig = (root / 'packets' / c3 / 'FRESH_CONTEXT.json').read_text()
+        cx = json.loads(orig)
+        cx['case']['tau_corners'][5] = format(float(cx['case']['tau_corners'][5]) + 1e-9, '.12f')
+        (root / 'packets' / c3 / 'FRESH_CONTEXT.json').write_text(json.dumps(cx))
+        try:
+            make_plan(R, toy.k, dedupe=False); raise AssertionError('tau mismatch accepted')
+        except ValueError as e:
+            assert 'PACKET_TAU_VS_HISTORY' in str(e) and c3 in str(e), e
+        (root / 'packets' / c3 / 'FRESH_CONTEXT.json').write_text(orig)
+        ok('tau_guard', tau_dev_max=P['tau_dev_max'])
+        # ------------------------------------------------------------ design flow (phases, skip, T rebuild, later sets)
+        a0 = ['x:0', '--work', str(root / 'wk'), '--delete-T']
+        calls = []
+
+        class Mock(Runner):
+            def ensure_cellinfo(self, P_):
+                calls.append('cellinfo')
+                for i_, c_ in enumerate(P_['cases']):
+                    write_json(self.work / 'cellinfo' / f'{P_["fps"][i_]}.json', dict(ports=100 + i_, elements=10 + i_))
+                return dict(body_guard=self.body_guard(P_))
+
+            def ensure_T(self, P_):
+                calls.append('T')
+                for c_ in P_['cases']:
+                    (P_['body'] / f'{c_}_portview').mkdir(parents=True, exist_ok=True)
+                    np.save(P_['body'] / f'{c_}_portview' / 'T64.npy', np.eye(2))
+                return {}
+
+            def solve(self, P_, R_, D_, phases_):
+                calls.append('solve')
+                write_json(D_ / 'solve.json', dict(order=P_['cases']))
+                return dict(order=P_['cases'])
+
+            def ensure_sens(self, P_, D_, solve_rec_):
+                calls.append('sens')
+                (D_ / 'sens').mkdir(exist_ok=True)
+                for f_ in P_['groups']:
+                    write_json(D_ / 'sens' / f'{f_}.json', {})
+                return {}
+
+            def check(self, R_, P_, D_, solve_rec_, phases_, out_path_):
+                calls.append('check')
+                self.body_guard(P_)
+                write_json(out_path_, dict(grad_rel_err=None if self.a.no_sens else 0.01))
+
+        P = make_plan(R, toy.k, dedupe=False)
+        P['ports_recorded'] = {c_: 100 + i_ for i_, c_ in enumerate(P['cases'])}
+        P['active_recorded'] = {c_: 10 + i_ for i_, c_ in enumerate(P['cases'])}
+        out_path = R['run'] / f'check_exact_{toy.k:03d}.json'
+        tfiles = [P['body'] / f'{c_}_portview' / 'T64.npy' for c_ in P['cases']]
+
+        def run(*extra):
+            calls.clear()
+            m = Mock(build_parser().parse_args(a0 + list(extra)))
+            st_ = m.design(R, P, set(), set())
+            return list(calls), st_
+
+        seq, _ = run()
+        assert seq == ['cellinfo', 'T', 'solve', 'sens', 'check'] and not any(p_.exists() for p_ in tfiles), seq
+        out_path.unlink()
+        for p_ in (root / 'wk' / P['tag'] / 'sens').glob('*.json'):
+            p_.unlink()                                                                  # a failure in the sens phase
+        seq, _ = run()
+        assert seq == ['sens', 'check'] and not any(p_.exists() for p_ in tfiles), seq    # no T rebuild (fix of review)
+        seq, st_ = run()
+        assert seq == [] and st_['skip'] and st_['old_mode'] == 'sens', seq
+        seq, st_ = run('--no-sens')
+        assert seq == [] and st_['skip'], seq                                             # full record kept
+        seq, _ = run('--phases', 'check', '--force')
+        assert seq == ['check'], seq
+        seq, _ = run('--force')
+        assert seq == ['cellinfo', 'T', 'solve', 'sens', 'check'], seq
+        m = Mock(build_parser().parse_args(a0))
+        assert m.later_needs([(R, P)]) == (set(), set())                                  # a design that will be skipped
+        import shutil
+        shutil.rmtree(root / 'wk' / P['tag']); out_path.unlink()
+        seq, _ = run('--no-sens')
+        assert seq == ['cellinfo', 'T', 'solve', 'check'] and json.loads(out_path.read_text())['grad_rel_err'] is None, seq
+        assert m.later_needs([(R, P)]) == (set(), set(P['groups']))                       # upgrade: sens only, no T
+        seq, _ = run()
+        assert seq == ['sens', 'check'] and json.loads(out_path.read_text())['grad_rel_err'] is not None, seq
+        shutil.rmtree(root / 'wk' / P['tag']); out_path.unlink()
+        seq, _ = run('--phases', 'cellinfo,T')
+        assert seq == ['cellinfo', 'T'] and all(p_.exists() for p_ in tfiles), seq       # explicit pre-build kept
+        assert m.later_needs([(R, P)]) == (set(P['groups']), set(P['groups']))
+        P['ports_recorded'][P['cases'][2]] += 3
+        try:
+            m.body_guard(P); raise AssertionError('body mismatch accepted')
+        except ValueError as e:
+            assert 'BODY_VS_HISTORY' in str(e), e
+        ok('design_flow_and_guards')
+    # ------------------------------------------------------------ worker imports (the CPU environment of the workers)
+    skipped = []
+    code = ('import os, json, importlib; import exact_check_cpu as X; X._cpu_prologue(); '
+            'mods = ["teacher", "box_encode", "encode_r1", "element_moments", "lattice3", "make_T_cpu", "bench_cpu2", '
+            '"moments_ad", "lat_multi", "lat_precond", "pardiso_direct", "diag_sens", "trainlib"]; '
+            'print("IMPORT_OK " + json.dumps({m: os.path.dirname(os.path.abspath(importlib.import_module(m).__file__)) '
+            'for m in mods}))')
+    r = subprocess.run([sys.executable, '-c', code], env=worker_env(1), cwd=str(HERE), capture_output=True, text=True,
+                       timeout=900)
+    line = next((ln for ln in r.stdout.splitlines() if ln.startswith('IMPORT_OK ')), None)
+    if r.returncode == 0 and line:
+        where = json.loads(line[len('IMPORT_OK '):])
+        outside = {m_: d_ for m_, d_ in where.items() if Path(d_).resolve() != HERE}
+        ok('worker_imports', modules=len(where), outside_script_dir=outside)
+    else:
+        try:
+            import torch                                                                # noqa: F401
+            have_torch = True
+        except Exception:                                                               # noqa: BLE001
+            have_torch = False
+        msg = (r.stderr or r.stdout).strip().splitlines()[-3:]
+        if have_torch:
+            raise AssertionError(f'WORKER_IMPORTS_FAILED rc={r.returncode}: {msg}')
+        print(f'SKIP worker imports (torch not importable here): {msg}', flush=True)
+        skipped.append('worker_imports')
     # ------------------------------------------------------------ host lattice solve on synthetic cells
     try:
         import torch
         import t_lat_precond as TP
     except Exception as e:                                                              # noqa: BLE001
         print(f'SKIP synthetic lattice solve (torch / lat_multi / lat_precond not importable: {e!r})', flush=True)
+        print(f'PASS WITH SKIPS {skipped + ["synthetic_lattice_solve"]} in {time.perf_counter() - t00:.1f}s', flush=True)
         return 0
     kinds = [TP.synth_cell(4, s, 1.0, n_priv=2, n_box_cut=3) for s in (0, 1)]
     infos, cases, positions, fps = {}, [], [], []
@@ -1394,7 +1710,10 @@ def self_test():
            apply_calls={f: o.calls for f, o in ops_fp.items()})
     if len(results['pcg']) == 2:
         assert abs(results['pcg']['factory'] - results['pcg']['pardiso']) <= 2, results['pcg']
-    print(f'ALL PASS in {time.perf_counter() - t00:.1f}s', flush=True)
+    if skipped:
+        print(f'PASS WITH SKIPS {skipped} in {time.perf_counter() - t00:.1f}s', flush=True)
+    else:
+        print(f'ALL PASS in {time.perf_counter() - t00:.1f}s', flush=True)
     return 0
 
 
