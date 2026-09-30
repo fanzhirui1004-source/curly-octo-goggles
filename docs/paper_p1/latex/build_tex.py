@@ -45,7 +45,7 @@ def figures(md):
             path = m.group(2)
         cap = pandoc('**' + m.group(4).strip() + '**' + m.group(5)).strip()
         label = 'fig:' + m.group(3).split()[1]
-        return ('\n```{=latex}\n\\begin{figure}[!htbp]\n\\centering\n\\includegraphics[width=\\textwidth]{../' + path + '}\n'
+        return ('\n```{=latex}\n\\begin{figure}[!htbp]\n\\centering\n\\includegraphics[width=\\textwidth,height=0.62\\textheight,keepaspectratio]{../' + path + '}\n'
                 '\\caption{' + cap + '}\\label{' + label + '}\n\\end{figure}\n```\n')
     return pat.sub(rep, md)
 

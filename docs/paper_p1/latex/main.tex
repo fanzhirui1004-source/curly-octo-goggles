@@ -86,7 +86,7 @@ The elastic problem uses continuous tensor-product \(Q_2\) displacement function
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F08_geometry.png}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F08_geometry.png}
 \caption{\textbf{Representative validation geometries.} The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and orange the macro-cut section. Percentages indicate the retained macro-domain volume relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).}\label{fig:1}
 \end{figure}
 
@@ -169,7 +169,7 @@ Figure 2 shows how the learned extension and the internal equilibrium correction
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F01_method_overview.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F01_method_overview.pdf}
 \caption{\textbf{Learned displacement extension, equilibrium correction and variational assembly.} (a) Rigid motion is separated from the retained displacement before the deformation is extended by the network. The rigid field is reconstructed and the prescribed retained values are restored; correction then reduces internal imbalance at fixed retained displacement. (b) Applying the local stiffness and the complete extension transpose gives the work-conjugate retained force. The assembled solution supplies the inputs for local field recovery. The neural extension is detailed in Figure 3; Section 5 defines the internal correction.}\label{fig:2}
 \end{figure}
 
@@ -205,7 +205,7 @@ Consequently, \(J_P\widehat E=I_p\) and \(\widehat ER_P=R\): admissibility and r
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F11_network_architecture.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F11_network_architecture.pdf}
 \caption{\textbf{Geometry-conditioned neural displacement architecture.} (a) Element and node encoders produce 64-channel geometry embeddings, followed by two rounds of residual exchange; coefficient heads condition the local interactions, grid transfers and convolutions. (b) The displacement branch propagates the nonrigid retained input through four local interaction pairs, the multilevel block, four further local pairs and four pairs on weakly supported stencils; linear maps connect the three displacement components to 32 latent channels, and deterministic bypasses reconstruct rigid motion and restore the retained values. (c) Restriction and prolongation connect grids with 65, 33, 17 and 9 background positions per axis; each coarse level has two residual convolutions on each pass. (d) A local interaction uses geometry-weighted gathering, four channel-mixing heads and scattering, followed by residual addition and retained-value restoration. E and G denote element and ghost-face interactions. Blue dashed arrows carry geometry-dependent coefficients; solid arrows carry features or displacement states. For fixed geometry, the complete displacement path is linear.}\label{fig:3}
 \end{figure}
 
@@ -456,7 +456,7 @@ The assembly examples join a learned target to an exact, uncut neighbouring cell
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F09_assembly_loads.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F09_assembly_loads.pdf}
 \caption{\textbf{Supports and loading of the two-cell examples.} (a) Configuration x: the neighbour is translated by \((-1,0,0)\), the face \(x=-1\) is clamped, and face tractions act at \(y=0\). (b) Configuration y: the translation is \((0,-1,0)\), the face \(y=-1\) is clamped, and tractions act at \(x=0\). Each target (T) and neighbour (N) face carries separate x-, y- and z-directed consistent-traction loads. Coincident box-node coordinates are shared across the interface; non-box cut-band coordinates remain local. Cut targets also receive three macro-cut tractions, analysed separately.}\label{fig:4}
 \end{figure}
 
@@ -476,7 +476,7 @@ The intermediate predictors locate this improvement. Continuing the base network
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F02_validation_A3.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F02_validation_A3.pdf}
 \caption{\textbf{Directional energy error of the learned substructures on the 80 validation geometries.} Each observation is a geometry\textquotesingle s mean directional energy excess \(q^T(\widehat S-S)q/(q^TSq)\) over the validation directions of a loading class. (a) Consistent tractions, 20 geometries per cut stratum: markers give the mean over geometries and bars the range from the 10th percentile to the maximum. (b) Geometry means of the base network and of NICE under consistent tractions, open markers for uncut and filled markers for cut geometries; the dotted line denotes equality. (c) Neighbour-induced retained displacements, stiffness-scaled spring supports, single-face consistent tractions and equal nodal forces (75 geometries for the first two classes, 80 for the others); the asterisk marks the nodal-force stress test. Twenty geometries (6 uncut, 14 cut) entered weight selection. Predictors as in Table 2.}\label{fig:5}
 \end{figure}
 
@@ -486,7 +486,7 @@ The base network\textquotesingle s error occupies different parts of the Jacobi-
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F03_spectrum.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F03_spectrum.pdf}
 \caption{\textbf{Spectral distribution of the uncorrected extension error.} Panels show U1, M1, M2 and H2 for the base network. Modes solve \(Av=\lambda Dv\), with \(D=\operatorname{diag}(A)\), ordered by increasing eigenvalue. Filled orange markers represent the extension error and open grey markers the exact internal field; solid circles correspond to consistent tractions and dashed triangles to nodal forces. Curves are directional means; bands give the 10th--90th directional percentiles under consistent tractions. Each cumulative fraction uses the total internal energy of its own field or error.}\label{fig:6}
 \end{figure}
 
@@ -494,7 +494,7 @@ Spatially (Figure 7), the exact field of M1 under one consistent-traction direct
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F12_field_error_M1.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F12_field_error_M1.pdf}
 \caption{\textbf{Retained coordinates and spatial distribution of the extension error in M1.} (a) Retained box-face coordinates, retained cut-band coordinates and internal coordinates. (b) Bulk element energies of the exact field under one consistent-traction direction, relative to its total. (c,d) Bulk element energies of the error of the base network and of NICE for the same retained displacement, on a common colour scale. Cut-band elements carry no error because their coefficients are retained.}\label{fig:7}
 \end{figure}
 
@@ -562,7 +562,7 @@ The first column gives the base network\textquotesingle s error without correcti
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F04_correction.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F04_correction.pdf}
 \caption{\textbf{Accuracy gained by correcting the base network at fixed weights.} (a,b) Mean directional energy excess and field-based sensitivity error during Chebyshev smoothing on five cells. (c) M1 with no correction, eight smoothing steps, coarse correction followed by eight steps, and eight steps on each side of the coarse correction; dots show means and caps the 90th percentile. (d) Mean energy excess versus steps per smoothing stage. All panels use consistent tractions, fixed retained displacements and \(a=b/30\); in (a,b) the step axis is linear from zero to one and logarithmic thereafter.}\label{fig:8}
 \end{figure}
 
@@ -574,7 +574,7 @@ Table 4 shows why both quantities are needed. Without the complete correction, a
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F05_assembly_A3.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F05_assembly_A3.pdf}
 \caption{\textbf{Compliance and thickness sensitivity in assembled cell pairs.} The target cell uses a learned operator and the neighbour exact condensation. (a,b) Maximum errors over the six face loads in each configuration; the sensitivity error is also maximised over both cells. (c,d) Compliance and target-cell sensitivity errors of the individual face loads on M1/x and U1/x; filled markers denote target-face loads and open markers neighbour-face loads. Dashed lines mark the 3\% reference. H3 is a further heavily cut cell evaluated for Smoothing-trained, NICE-post and NICE only; L1 is a lightly cut cell evaluated for Uncorrected, NICE-post and NICE. Predictors as in Table 2.}\label{fig:9}
 \end{figure}
 
@@ -634,7 +634,7 @@ Energy participation explains how a local stiffness error can have little effect
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F10_energy_participation_r1.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F10_energy_participation_r1.pdf}
 \caption{\textbf{Participation-weighted compliance error and local sensitivity.} Each point is one load for one predictor--configuration combination: 411 observations from 52 combinations of the base network, Uncorrected, Smoothing-trained, NICE-post and NICE in Table ST09, excluding L1. Filled markers denote face loads and open markers cut-surface loads. (a) Compliance error against \(\beta=\sum_mw_m\varepsilon_m\), with \(w_m=q_m^TS_mq_m/C\) and \(\varepsilon_m=q_m^T(\widehat S_m-S_m)q_m/(q_m^TS_mq_m)\), evaluated at the exact assembled retained displacement; only the learned target contributes to \(\beta\). (b) Compliance and target-cell sensitivity errors under the same loads; the annotation identifies the base network on U1/x under the neighbour-z load. Dashed lines denote equality. (c,d) The two response errors versus the target\textquotesingle s exact energy participation.}\label{fig:10}
 \end{figure}
 
@@ -644,7 +644,7 @@ To isolate the role of the complete retained space, pairs in configuration x are
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/F06_bernstein.pdf}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{../figures/F06_bernstein.pdf}
 \caption{\textbf{Response errors caused by restricting box-face displacements.} Both cells of H1/x use exact operators and Bernstein degree \(r\) on every box face, with unrestricted non-box cut-band coordinates. (a) Reduced coordinate count; the dashed line denotes the 32,991-coordinate full representation. (b,c) Maximum compliance and target-cell sensitivity errors over the three target-face loads or all six target- and neighbour-face loads; macro-cut tractions are excluded. Errors are relative to the full retained-space solution; horizontal lines mark 3\%.}\label{fig:11}
 \end{figure}
 
