@@ -1,0 +1,332 @@
+{
+ "plateS24r4": {
+  "cells": 24,
+  "vertices": 74,
+  "free": 64,
+  "resident_gb": 4.0,
+  "analyses": 4,
+  "env": {
+   "OPL_COARSE_FP32": "1",
+   "OPL_COARSE_SPARSE": "1",
+   "OPL_CONV_FP32": "1",
+   "OPL_GP_CACHE": "0",
+   "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plateS24r4/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+   "OPL_STREAM_PACK": "1",
+   "OPL_TAILT_FUSED": "1"
+  },
+  "iter_s": [
+   566.5,
+   505.3,
+   530.3,
+   532.4
+  ],
+  "phases_mean": {
+   "prep_s": 78.3,
+   "setup_s": 0.3,
+   "precond_s": 23.9,
+   "solve_s": 247.1,
+   "sens_s": 160.0,
+   "bodies_s": 22.2,
+   "mma_s": 0.0,
+   "iter_s": 533.6
+  },
+  "pcg": [
+   169,
+   138,
+   159,
+   168
+  ],
+  "true_residual": [
+   0.00025863208975832335,
+   0.00033293908019316556,
+   0.0003625454022785603,
+   0.00038111589211831093
+  ],
+  "Ut_rho_rel": [
+   2.7104632361403328e-08,
+   -9.225685845757094e-09,
+   2.8946558322749248e-08,
+   1.8093977850902454e-08
+  ],
+  "C": [
+   94.34066073026287,
+   104.1626177037437,
+   115.78149662725573,
+   129.68890438664948
+  ],
+  "gpu_peak_gb": 13.29,
+  "host_peak_gb": 14.7,
+  "body_perturb": [
+   [],
+   [],
+   [],
+   []
+  ]
+ },
+ "plateS51r4": {
+  "cells": 51,
+  "vertices": 140,
+  "free": 128,
+  "resident_gb": 4.0,
+  "analyses": 2,
+  "env": {
+   "OPL_COARSE_FP32": "1",
+   "OPL_COARSE_SPARSE": "1",
+   "OPL_CONV_FP32": "1",
+   "OPL_GP_CACHE": "0",
+   "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plateS51r4/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+   "OPL_STREAM_PACK": "1",
+   "OPL_TAILT_FUSED": "1"
+  },
+  "iter_s": [
+   1253.7,
+   1176.9
+  ],
+  "phases_mean": {
+   "prep_s": 182.0,
+   "setup_s": 0.6,
+   "precond_s": 54.0,
+   "solve_s": 574.4,
+   "sens_s": 357.8,
+   "bodies_s": 41.4,
+   "mma_s": 0.1,
+   "iter_s": 1215.3
+  },
+  "pcg": [
+   168,
+   156
+  ],
+  "true_residual": [
+   0.00045300015100026254,
+   0.0005818730546012173
+  ],
+  "Ut_rho_rel": [
+   -2.2188033032713346e-08,
+   -4.657537793303109e-09
+  ],
+  "C": [
+   89.11892981471141,
+   98.60512122889827
+  ],
+  "gpu_peak_gb": 13.8,
+  "host_peak_gb": 32.74,
+  "body_perturb": [
+   [],
+   []
+  ]
+ },
+ "plateS88": {
+  "cells": 88,
+  "vertices": 226,
+  "free": 212,
+  "resident_gb": 4.0,
+  "analyses": 4,
+  "env": {
+   "OPL_COARSE_FP32": "1",
+   "OPL_COARSE_SPARSE": "1",
+   "OPL_CONV_FP32": "1",
+   "OPL_GP_CACHE": "0",
+   "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plateS88/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+   "OPL_STREAM_PACK": "1",
+   "OPL_TAILT_FUSED": "1"
+  },
+  "iter_s": [
+   2177.8,
+   2096.6,
+   2105.8,
+   2123.9
+  ],
+  "phases_mean": {
+   "prep_s": 318.7,
+   "setup_s": 1.0,
+   "precond_s": 91.5,
+   "solve_s": 1021.6,
+   "sens_s": 633.4,
+   "bodies_s": 51.6,
+   "mma_s": 0.3,
+   "iter_s": 2126.0
+  },
+  "pcg": [
+   172,
+   158,
+   165,
+   174
+  ],
+  "true_residual": [
+   0.0006576356539883558,
+   0.0008338290635329458,
+   0.00088496033326775,
+   0.0009648990598592966
+  ],
+  "Ut_rho_rel": [
+   5.150540585290802e-08,
+   -3.053428048323076e-09,
+   3.110715916175169e-08,
+   3.7143041066569994e-08
+  ],
+  "C": [
+   86.74555995575584,
+   96.10296692608134,
+   107.15555772309476,
+   120.35298515568658
+  ],
+  "gpu_peak_gb": 17.13,
+  "host_peak_gb": 62.45,
+  "body_perturb": [
+   [],
+   [],
+   [],
+   []
+  ]
+ },
+ "plateS110": {
+  "cells": 110,
+  "vertices": 276,
+  "free": 262,
+  "resident_gb": 4.0,
+  "analyses": 4,
+  "env": {
+   "OPL_COARSE_FP32": "1",
+   "OPL_COARSE_SPARSE": "1",
+   "OPL_CONV_FP32": "1",
+   "OPL_GP_CACHE": "0",
+   "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plateS110/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+   "OPL_STREAM_PACK": "1",
+   "OPL_TAILT_FUSED": "1"
+  },
+  "iter_s": [
+   2744.6,
+   2524.1,
+   2562.6,
+   2591.4
+  ],
+  "phases_mean": {
+   "prep_s": 407.2,
+   "setup_s": 1.2,
+   "precond_s": 115.7,
+   "solve_s": 1210.3,
+   "sens_s": 800.2,
+   "bodies_s": 59.4,
+   "mma_s": 0.5,
+   "iter_s": 2605.7
+  },
+  "pcg": [
+   172,
+   142,
+   152,
+   161
+  ],
+  "true_residual": [
+   0.0007730282759778443,
+   0.0010023866253902089,
+   0.001085225235709231,
+   0.001152982528034794
+  ],
+  "Ut_rho_rel": [
+   -1.786367121068234e-08,
+   1.3527337066400491e-09,
+   1.443622391666234e-08,
+   2.1807380862236577e-08
+  ],
+  "C": [
+   85.38240983902793,
+   94.59052504439109,
+   105.45752733881149,
+   118.41961289297011
+  ],
+  "gpu_peak_gb": 20.14,
+  "host_peak_gb": 78.39,
+  "body_perturb": [
+   [],
+   [],
+   [],
+   []
+  ]
+ },
+ "plateS24": {
+  "cells": 24,
+  "vertices": 74,
+  "free": 64,
+  "resident_gb": 18.0,
+  "analyses": 4,
+  "env": {
+   "OPL_COARSE_FP32": "1",
+   "OPL_COARSE_SPARSE": "1",
+   "OPL_CONV_FP32": "1",
+   "OPL_GP_CACHE": "0",
+   "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plateS24/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+   "OPL_STREAM_PACK": "1",
+   "OPL_TAILT_FUSED": "1"
+  },
+  "iter_s": [
+   550.7,
+   490.4,
+   516.8,
+   518.7
+  ],
+  "phases_mean": {
+   "prep_s": 74.4,
+   "setup_s": 0.3,
+   "precond_s": 23.8,
+   "solve_s": 237.9,
+   "sens_s": 159.7,
+   "bodies_s": 22.8,
+   "mma_s": 0.0,
+   "iter_s": 519.2
+  },
+  "pcg": [
+   169,
+   138,
+   160,
+   168
+  ],
+  "true_residual": [
+   0.00025478387027242174,
+   0.0003370082273890996,
+   0.00035803724300769417,
+   0.00038590804533954025
+  ],
+  "Ut_rho_rel": [
+   7.588245476688673e-09,
+   9.074375957764216e-09,
+   6.204343076571961e-09,
+   1.5189949593695788e-08
+  ],
+  "C": [
+   94.34066161521731,
+   104.16261663044517,
+   115.78149852425408,
+   129.6889044982596
+  ],
+  "gpu_peak_gb": 24.33,
+  "host_peak_gb": 5.03,
+  "body_perturb": [
+   [],
+   [],
+   [],
+   []
+  ]
+ },
+ "plateS135_fail": {
+  "cells": 135,
+  "attempts": 2,
+  "resident_gb": [
+   18.0,
+   4.0
+  ],
+  "errors": [
+   "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 846.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 427.06 MiB is free. Including non-PyTorch memory, this process has 30.80 GiB memory in use. Of the allocated memory 29.72 GiB is allocated by PyTorch, and 363.28 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+   "cuDSSError: ALLOC_FAILED (2)"
+  ]
+ },
+ "plateS51_fail": {
+  "cells": 51,
+  "attempts": 1,
+  "resident_gb": [
+   18.0
+  ],
+  "errors": [
+   "cuDSSError: ALLOC_FAILED (2)"
+  ]
+ }
+}
