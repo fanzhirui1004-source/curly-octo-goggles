@@ -6,7 +6,8 @@ The Markdown files remain the editing source. This script:
   - turns an image followed by a bold 'Figure N.' paragraph into a figure with that caption (PDF version of the image);
   - turns a bold 'Table N.' paragraph before a pipe table into that table's caption;
   - converts the body with pandoc (tex_math_single_backslash keeps \\( \\) and \\[ \\tag{} \\] as written);
-  - inserts authors.tex (author block) into the front matter and endmatter.tex (declarations) after the main text;
+  - inserts authors.tex (author block) into the front matter and endmatter.tex (declarations) after the main text; the
+    manuscript's 'Code and data availability' section is set unnumbered and serves as the data-availability statement;
   - orders the document as main text, declarations, appendices, references (Elsevier convention);
   - sets Table 5 (lattice-level cost comparison, eight columns) on a landscape page;
   - sets the reference list as an unnumbered section in author-year form.
@@ -117,6 +118,7 @@ def main():
         tex += (HERE / 'endmatter.tex').read_text() + '\n'
     tex += '\n\\appendix\n' + conv(ap) + '\n' + references(refs) + '\n\\end{document}\n'
     tex = tex.replace('\\section{', '\\section{', ).replace('\\hypertarget', '%\\hypertarget')
+    tex = tex.replace('\\section{Code and data availability}', '\\section*{Code and data availability}')  # unnumbered, before the declarations
     def shrink(m):                                                         # wide tables: smaller type
         cols = m.group(1).count('p{') + m.group(1).count('l') * 0
         size = '\\scriptsize' if cols >= 8 else ('\\footnotesize' if cols >= 6 else '\\small')

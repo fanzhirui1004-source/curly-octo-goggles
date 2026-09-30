@@ -880,6 +880,7 @@ This note complements Appendix G with the settings of the learned extension that
 | Training settings | Batches of 16 directions; one geometry per update from a device pool of three, one pool replacement every 100 updates; Adam with a one-cycle schedule (peak \(3\times10^{-4}\), 5% warm-up, cosine decay, final division factor 100); gradient norm clipped at one; EMA decay 0.9997 with bias correction; sensitivity weight 1; eight difficult-direction candidates and four block iterations when a geometry is loaded; class weights as in Appendix G.3 (P0: `force` 0.25, `support` 0.15, `face` 0.20, `macro` 0.10, `grf` 0.15, `adv` 0.15); seed 0 for every run |
 
 Run identifiers, checkpoints and the evaluation records of every table are listed in R1 and in the data lines of the tables.
+
 ## Supplementary Note S8. Definition of the illustrative matrix example
 
 The re-equilibration example (example 1 of Appendix J.9) uses two retained and three internal coordinates. Its matrices are
