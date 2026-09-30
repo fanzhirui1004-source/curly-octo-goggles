@@ -72,7 +72,6 @@ HERE = Path(__file__).resolve().parent
 GIB = 2 ** 30
 FP_FILES = ('NODES.npy', 'CELL_INDICES.npy', 'dofs.npy', 'GP_FACES.npy', 'BOX_NODES.npy', 'CUT_NODES.npy')
 PHASES = ('cellinfo', 'T', 'solve', 'sens', 'check')
-AXES = {'x': 0, 'y': 1, 'z': 2}
 CPU_ENV = dict(OPL_DEV='cpu', CUDA_VISIBLE_DEVICES='', OPL_GP_CACHE='0')
 
 
@@ -1010,7 +1009,7 @@ class Runner:
             pcg_residual_recursive=solve_rec['residual_recursive'], energy_sum_rel=solve_rec['energy_sum_rel'],
             energy_T_vs_K_rel_max=emax if not a.no_sens else None, lattice=solve_rec['lattice'],
             V_exact_cells=float(np.nansum(vol)) if not a.no_sens else None, V_nice=d.get('V'),
-            s_cell_exact=S_lay, s_cell_nice=s_cell_nice, phases=phases, solve_fine=solve_rec.get('fine'),
+            s_cell_exact=S_lay, s_cell_nice=s_cell_nice, cells=cells, phases=phases, solve_fine=solve_rec.get('fine'),
             precond=solve_rec.get('precond'))
         write_json(out_path, out)
         write_json(D / out_path.name, out)
