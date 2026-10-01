@@ -20,6 +20,7 @@ import trainlib as TL
 import a0_eval as AE
 import mapped_cell as MC
 import corot_smooth as CR
+import a_ucond as AU
 
 dev, dt = AE.dev, AE.dt
 
@@ -50,6 +51,7 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument('out'); ap.add_argument('ckpt'); ap.add_argument('body'); ap.add_argument('data'); ap.add_argument('cases')
     ap.add_argument('mapsjson'); ap.add_argument('--maps', default='id')
+    ap.add_argument('--uckpt', default='')                                   # trainA checkpoint (stretch inputs)
     ap.add_argument('--corot', type=int, default=1); ap.add_argument('--fields', default='net,c1,c2,c4,z1,z4')
     ap.add_argument('--classes', default='force_c,face_c,grf')
     a = ap.parse_args(argv)
@@ -68,7 +70,7 @@ def main(argv):
         for case in [c for c in a.cases.split(',') if c]:
             if (case, mname) in done:
                 continue
-            rec = dict(case=case, map=mname, corot=a.corot, fields={})
+            rec = dict(case=case, map=mname, uckpt=a.uckpt, corot=a.corot, fields={})
             t0 = time.perf_counter(); C = g = None
             try:
                 C = MC.MappedCell(case, a.body, specs[mname], log=lambda s_: None); C.assemble()
@@ -78,8 +80,15 @@ def main(argv):
                 if model is None:
                     model = MD.build(cfg['model'], [g], **dict(cfg.get('model_args', {}))).to(dev)
                     MD.load_compat(model, ck['model']); model.eval()
+                    if a.uckpt:
+                        AU.attach(model); model.load_state_dict(torch.load(a.uckpt, map_location=dev, weights_only=False)['model'])
+                        model.caches.pop(g.case, None); AU.prepare(g, C); model.add_geo(g); AU.set_ufeat(model, g, C)
                 else:
+                    if a.uckpt:
+                        AU.prepare(g, C)
                     model.add_geo(g)
+                    if a.uckpt:
+                        AU.set_ufeat(model, g, C)
                 wrap = AE._Wrap(model)
                 if a.corot:
                     CR.set_corot(C, AE.nodal_rotations(C))
