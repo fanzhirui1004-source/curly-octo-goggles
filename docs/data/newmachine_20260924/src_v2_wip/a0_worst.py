@@ -28,6 +28,7 @@ import a0_eval as AE
 import mapped_cell as MC
 import corot_smooth as CR
 import a_ucond as AU
+import weak_patch as WP
 
 dev, dt = AE.dev, AE.dt
 
@@ -137,6 +138,7 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument('out'); ap.add_argument('ckpt'); ap.add_argument('body'); ap.add_argument('data'); ap.add_argument('cases')
     ap.add_argument('mapsjson'); ap.add_argument('--maps', default='id')
+    ap.add_argument('--weakpatch', type=int, default=0); ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutport')
     ap.add_argument('--uckpt', default='')                                   # trainA checkpoint (stretch inputs)
     ap.add_argument('--corot', type=int, default=1); ap.add_argument('--k', type=int, default=8)
     ap.add_argument('--maxit', type=int, default=40); ap.add_argument('--tol', type=float, default=1e-2)
@@ -159,7 +161,7 @@ def main(argv):
         for case in [c for c in a.cases.split(',') if c]:
             if (case, mname) in done:
                 continue
-            rec = dict(case=case, map=mname, uckpt=a.uckpt, corot=a.corot, k=a.k, tol=a.tol)
+            rec = dict(case=case, map=mname, weakpatch=a.weakpatch, wp_dil=a.wp_dil, uckpt=a.uckpt, corot=a.corot, k=a.k, tol=a.tol)
             t0 = time.perf_counter(); C = g = None
             try:
                 torch.cuda.reset_peak_memory_stats()
@@ -182,6 +184,8 @@ def main(argv):
                 g.set_variant('V0R', wrap)
                 if a.corot:
                     CR.set_corot(C, AE.nodal_rotations(C))
+                if a.weakpatch:
+                    rec['weakpatch'] = WP.setup(C, g.nd, dil=a.wp_dil, seed=a.wp_seed); WP.wrap_geo(g)
                 if a.means:
                     with torch.no_grad():
                         rec['means'] = {c: v for c, v in AE.evaluate(g, model, 'V0R').items() if c in ('force_c', 'face_c', 'grf')}
@@ -208,12 +212,17 @@ def main(argv):
                     eb = exact_rr(rb['V'], rb['HV'], exact_apply(C, rb['V']), a.k)
                     rec['box'].update(mu=eb['mu'], min_ritz=eb['min_ritz'], rank=eb['rank'])
                     del rb
+                else:
+                    eb = None
                 if case in detail_cases:
                     d = np.load(Path(a.data) / mname / case / 'NETDATA.npz')
                     with torch.no_grad():
                         rec['detail'] = detail(g, model, C, ef['X'][:, :4], ef['SX'][:, :4], d, g.banks['val']['force_c'])
+                        if a.box:
+                            rec['detail_box'] = detail(g, model, C, eb['X'][:, :4], eb['SX'][:, :4], d, g.banks['val']['force_c'])
+                            np.save(out / f'XB_{case}_{mname}.npy', eb['X'][:, :4].cpu().numpy())
                     np.save(out / f'X_{case}_{mname}.npy', ef['X'][:, :4].cpu().numpy())
-                del rf, ef
+                del rf, ef, eb
                 C._free()
                 model.caches.pop(g.case, None)
                 rec['gpu_peak_gb'] = torch.cuda.max_memory_allocated() / 2 ** 30

@@ -21,6 +21,7 @@ import a0_eval as AE
 import mapped_cell as MC
 import corot_smooth as CR
 import a_ucond as AU
+import weak_patch as WP
 
 dev, dt = AE.dev, AE.dt
 
@@ -32,25 +33,29 @@ class _NoCorr:
 class BudgetGeo(AE.MappedGeo):
     """MappedGeo whose field applies the correction cycle `cycles` times to the uncorrected extension (fp64 between cycles)."""
 
-    def set_budget(self, base, cycles, wrap):
+    def set_budget(self, base, cycles, wrap, wp=False):
         self.set_variant(base, _NoCorr())
-        self.cycles, self.cyc_wrap = cycles, wrap
+        self.cycles, self.cyc_wrap, self.wp = cycles, wrap, wp
 
     def field(self, model, q):
         u = super().field(model, q).to(dt)                                  # rigid split, (co-rotated) network, no correction
         for _ in range(self.cycles):
             u = TL.wrap(self.C, u, self.cyc_wrap)
+        if self.wp:
+            u = WP.apply(self.C, u)
         return u
 
 
 FIELDS = {'net': ('V0R', 0), 'c1': ('V0R', 1), 'c2': ('V0R', 2), 'c4': ('V0R', 4), 'c8': ('V0R', 8),
           'z1': ('Conly', 1), 'z4': ('Conly', 4)}
+FIELDS.update({k + 'w': v for k, v in FIELDS.items()})                          # + weak-node patch correction
 
 
 def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument('out'); ap.add_argument('ckpt'); ap.add_argument('body'); ap.add_argument('data'); ap.add_argument('cases')
     ap.add_argument('mapsjson'); ap.add_argument('--maps', default='id')
+    ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutport')
     ap.add_argument('--uckpt', default='')                                   # trainA checkpoint (stretch inputs)
     ap.add_argument('--corot', type=int, default=1); ap.add_argument('--fields', default='net,c1,c2,c4,z1,z4')
     ap.add_argument('--classes', default='force_c,face_c,grf')
@@ -95,7 +100,9 @@ def main(argv):
                 for fname in a.fields.split(','):
                     base, cyc = FIELDS[fname]
                     t = time.perf_counter()
-                    g.set_budget(base, cyc, wrap)
+                    if fname.endswith('w') and getattr(C, '_wp', 'unset') == 'unset':
+                        rec['weakpatch'] = WP.setup(C, g.nd, dil=a.wp_dil, seed=a.wp_seed)
+                    g.set_budget(base, cyc, wrap, wp=fname.endswith('w'))
                     r = {}
                     with torch.no_grad():
                         for cls in classes:
