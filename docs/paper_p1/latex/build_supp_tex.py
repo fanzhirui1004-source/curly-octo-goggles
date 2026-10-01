@@ -18,8 +18,7 @@ def main():
     sp = (B.SRC / 'SUPPLEMENTARY_EN.md').read_text()
     sp = re.sub(r'^# Supplementary material\s*\n', '', sp, count=1, flags=re.M)
     tex = (HERE / 'preamble.tex').read_text()
-    tex += ('\\newunicodechar{δ}{\\ensuremath{\\delta}}\\newunicodechar{κ}{\\ensuremath{\\kappa}}'
-            '\\newunicodechar{−}{\\ensuremath{-}}\n')
+    tex += ('\\newunicodechar{δ}{\\ensuremath{\\delta}}\\newunicodechar{κ}{\\ensuremath{\\kappa}}\n')
     tex += ('\\setcounter{secnumdepth}{0}\n\\renewcommand{\\thefigure}{S\\ifnum\\value{figure}<10 0\\fi\\arabic{figure}}\n'
             '\\begin{document}\n\\begin{center}{\\Large Supplementary material for}\\\\[4pt]{\\Large\\bfseries '
             + B.pandoc(title).strip() + '}\\end{center}\n\n')

@@ -1,0 +1,21 @@
+{
+ "case": "plate841_110_o000",
+ "n": 32,
+ "normal": [
+  1.0,
+  0.0,
+  0.0
+ ],
+ "offset": 1.0,
+ "dofs": 358842,
+ "ports": 22932,
+ "interior": 335910,
+ "elements": 12704,
+ "kpp_nnz_upper": 661584,
+ "setup_s": 50.48799560777843,
+ "assemble_s": 33.273218696936965,
+ "kpp_s": 0.4480790551751852,
+ "face_s": 0.14972841553390026,
+ "peak_rss_gib": 17.772377014160156,
+ "host": "autodl-container-njs91uz010-f381f69a"
+}

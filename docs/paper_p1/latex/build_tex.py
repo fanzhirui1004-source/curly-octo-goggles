@@ -9,7 +9,7 @@ The Markdown files remain the editing source. This script:
   - inserts authors.tex (author block) into the front matter and endmatter.tex (declarations) after the main text; the
     manuscript's 'Code and data availability' section is set unnumbered and serves as the data-availability statement;
   - orders the document as main text, declarations, appendices, references (Elsevier convention);
-  - sets Table 5 (lattice-level cost comparison, eight columns) on a landscape page;
+  - sets Table 5 (lattice-level cost comparison) and Table 6 (thickness optimisation cases), eight columns each, on landscape pages;
   - sets the reference list as an unnumbered section in author-year form.
 Usage: python3 build_tex.py   (writes main.tex next to this file; compile with pdflatex twice)"""
 import re, subprocess
@@ -45,8 +45,10 @@ def figures(md):
             path = m.group(2)
         cap = pandoc('**' + m.group(4).strip() + '**' + m.group(5)).strip()
         label = 'fig:' + m.group(3).split()[1]
-        return ('\n```{=latex}\n\\begin{figure}[!htbp]\n\\centering\n\\includegraphics[width=\\textwidth,height=0.62\\textheight,keepaspectratio]{../' + path + '}\n'
-                '\\caption{' + cap + '}\\label{' + label + '}\n\\end{figure}\n```\n')
+        long = len(cap) > 1500                                             # very long captions: smaller image and type
+        h, size = ('0.44', '\\footnotesize ') if long else ('0.55', '')
+        return ('\n```{=latex}\n\\begin{figure}[!htbp]\n\\centering\n\\includegraphics[width=\\textwidth,height=' + h + '\\textheight,keepaspectratio]{../' + path + '}\n'
+                '\\caption{' + size + cap + '}\\label{' + label + '}\n\\end{figure}\n```\n')
     return pat.sub(rep, md)
 
 
@@ -126,6 +128,8 @@ def main():
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
     tex = landscape(tex, 'Cost of one design iteration of the lattices',
                     widths=(.11, .13, .15, .09, .15, .12, .10, .15))
+    tex = landscape(tex, 'Thickness optimisation cases',
+                    widths=(.12, .08, .16, .08, .13, .13, .20, .10))
     (HERE / 'main.tex').write_text(tex)
     print('main.tex', len(tex))
 

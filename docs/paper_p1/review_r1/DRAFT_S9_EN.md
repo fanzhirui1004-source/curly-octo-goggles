@@ -1,3 +1,4 @@
+<!-- MERGED 2026-10-01: this draft was merged into MANUSCRIPT_EN.md (Section 6.11) and SUPPLEMENTARY_EN.md (Note S9, Figure S06); edit those files from now on. -->
 <!-- Draft of Supplementary Note S9 for Section 6.11 (review round 1). Tables ST21 to ST25 are the output of
 docs/paper_p1/review_r1/results/X6_opt/tables_s9.py, pasted unchanged; every number in the text comes from
 FACTS_6_11.json or from that script (internal list of sources in the comment at the end). Visible placeholders:
@@ -180,7 +181,7 @@ B1, B2: NICE optimisation from the uniform design, in-plane (B1) and out-of-plan
 | \(y\) (B1) | 69.177 / 94.341 | −26.7 | 87.089 / 88.019 / 87.141 | 0.99999 / 1.00040 / 0.99998 | 1.07 | −1.00 | 0.060 | 0.906 | 0.074 |
 | \(z\) (B2) | 930.693 / 1,467.743 | −36.6 | 1,346.354 / 1,341.784 / 1,334.697 | 1.00000 / 0.99955 / 1.00000 | −0.34 | −0.53 | −0.866 | 0.969 | 0.045 |
 
-Prediction error: \((C_{\rm macro}-\widehat C)/\widehat C\) at the uniform design \(\tau=0.40\). B: B1 or B2; Hom: Hom-\(y\) or Hom-\(z\); X: X-\(y\) or X-\(z\). Relative differences of the final compliances as stated, e.g. Hom vs B \((\widehat C_{\rm Hom}-\widehat C_B)/\widehat C_B\). Corner correlation and RMS difference over the 24\(\times\)8 cell-corner parameters. The macroscale volume of the uniform design, 4.569075, agrees with the fine-scale material volume 4.569074 to 1.2e-07.
+Prediction error: \((C_{\rm macro}-\widehat C)/\widehat C\) at the uniform design \(\tau=0.40\). B: B1 or B2; Hom: Hom-\(y\) or Hom-\(z\); X: X-\(y\) or X-\(z\). Relative differences of the final compliances as stated, e.g. Hom vs B \((\widehat C_{\rm Hom}-\widehat C_B)/\widehat C_B\). Corner correlation and RMS difference over the \(24\times8\) cell-corner parameters. The macroscale volume of the uniform design, 4.569075, agrees with the fine-scale material volume 4.569074 to 1.2e-07.
 
 ### S9.4. Geometry-generation perturbations and discrete switches
 

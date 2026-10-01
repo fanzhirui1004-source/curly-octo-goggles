@@ -20,3 +20,5 @@
 | `evidence/host_condensed/latcond_hlat222.json` | `data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/hostcond/latcond_hlat222_rep1.json` |
 | `evidence/host_condensed/latcond_hlat331.json` | `data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/hostcond/latcond_hlat331_rep1.json` |
 | `evidence/host_condensed/hostcond_summary.json` | `data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/hostcond/hostcond_summary.json` |
+| `evidence/host_direct_32threads/lat2t32_<lattice>_chol.json` | `data/newmachine_20260924/r1_cpu_results/cpu120/R1/cpu/host/lat2t32_<lattice>_chol.json` |
+| `evidence/opt/` | `paper_p1/review_r1/results/X6_opt/`（2026-10-01 副本） |

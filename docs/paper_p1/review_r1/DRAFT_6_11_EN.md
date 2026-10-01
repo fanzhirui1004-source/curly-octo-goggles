@@ -1,3 +1,4 @@
+<!-- MERGED 2026-10-01: this draft was merged into MANUSCRIPT_EN.md (Section 6.11) and SUPPLEMENTARY_EN.md (Note S9, Figure S06); edit those files from now on. -->
 # Draft of Section 6.11 (for insertion into MANUSCRIPT_EN.md)
 
 <!-- Draft of 2026-09-30, revised after review. Every number is taken from results/X6_opt/FACTS_6_11.json / FACTS_6_11.md
