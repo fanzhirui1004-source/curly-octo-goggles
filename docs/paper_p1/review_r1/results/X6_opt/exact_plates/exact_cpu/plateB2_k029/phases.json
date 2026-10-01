@@ -1,0 +1,567 @@
+{
+ "cellinfo_jobs": {
+  "new": 24,
+  "jobs": {
+   "cellinfo_8255c64ad520dc5ba4e2": {
+    "rc": 0,
+    "start_s": 0.0008261185139417648,
+    "seconds": 84.02814817428589,
+    "peak_rss_gib": 17.428955078125,
+    "timeout": false
+   },
+   "cellinfo_9c3b57312000ce86bb1c": {
+    "rc": 0,
+    "start_s": 6.006692696362734,
+    "seconds": 86.02788049727678,
+    "peak_rss_gib": 17.831451416015625,
+    "timeout": false
+   },
+   "cellinfo_c68a889de55ceee03399": {
+    "rc": 0,
+    "start_s": 18.02200025692582,
+    "seconds": 74.01691258698702,
+    "peak_rss_gib": 12.311054229736328,
+    "timeout": false
+   },
+   "cellinfo_0eeab7848924d956b558": {
+    "rc": 0,
+    "start_s": 12.014460671693087,
+    "seconds": 86.03424892015755,
+    "peak_rss_gib": 16.031444549560547,
+    "timeout": false
+   },
+   "cellinfo_6b031d6b4e4f5346c3c5": {
+    "rc": 0,
+    "start_s": 104.05819022655487,
+    "seconds": 30.003703091293573,
+    "peak_rss_gib": 6.52294921875,
+    "timeout": false
+   },
+   "cellinfo_51b2740837a409a93470": {
+    "rc": 0,
+    "start_s": 84.03251837566495,
+    "seconds": 74.03631351143122,
+    "peak_rss_gib": 12.311824798583984,
+    "timeout": false
+   },
+   "cellinfo_c17ac362411acfcbdf99": {
+    "rc": 0,
+    "start_s": 98.04770083166659,
+    "seconds": 68.02602704428136,
+    "peak_rss_gib": 12.174854278564453,
+    "timeout": false
+   },
+   "cellinfo_0b6b7b1a010daaeb2127": {
+    "rc": 0,
+    "start_s": 92.03794826753438,
+    "seconds": 76.04117486812174,
+    "peak_rss_gib": 12.311180114746094,
+    "timeout": false
+   },
+   "cellinfo_a105fbb0dadb60a2d2b2": {
+    "rc": 0,
+    "start_s": 134.06542367115617,
+    "seconds": 88.02475802414119,
+    "peak_rss_gib": 17.404518127441406,
+    "timeout": false
+   },
+   "cellinfo_889f5c099bfd5c320c59": {
+    "rc": 0,
+    "start_s": 158.0720937680453,
+    "seconds": 88.02299027703702,
+    "peak_rss_gib": 17.581562042236328,
+    "timeout": false
+   },
+   "cellinfo_42d16232702f34a5391d": {
+    "rc": 0,
+    "start_s": 166.0777925029397,
+    "seconds": 80.02173134498298,
+    "peak_rss_gib": 14.449699401855469,
+    "timeout": false
+   },
+   "cellinfo_37fd5b47d0827d388431": {
+    "rc": 0,
+    "start_s": 172.08468442223966,
+    "seconds": 80.02411522902548,
+    "peak_rss_gib": 12.311481475830078,
+    "timeout": false
+   },
+   "cellinfo_5a6486b2af17b34b5790": {
+    "rc": 0,
+    "start_s": 252.10794083215296,
+    "seconds": 10.009105322882533,
+    "peak_rss_gib": 3.3540992736816406,
+    "timeout": false
+   },
+   "cellinfo_47e15ff61dd90faab655": {
+    "rc": 0,
+    "start_s": 246.098577497527,
+    "seconds": 46.02698801457882,
+    "peak_rss_gib": 8.455158233642578,
+    "timeout": false
+   },
+   "cellinfo_f4b134e0b128dda5ab40": {
+    "rc": 0,
+    "start_s": 222.09242524392903,
+    "seconds": 76.038105385378,
+    "peak_rss_gib": 12.311912536621094,
+    "timeout": false
+   },
+   "cellinfo_028ea952b4baa39ac7c9": {
+    "rc": 0,
+    "start_s": 258.11565434746444,
+    "seconds": 86.02370883151889,
+    "peak_rss_gib": 17.905555725097656,
+    "timeout": false
+   },
+   "cellinfo_dd2bf4d96fd96bbcdcfa": {
+    "rc": 0,
+    "start_s": 264.1219940520823,
+    "seconds": 88.0235576312989,
+    "peak_rss_gib": 15.99911117553711,
+    "timeout": false
+   },
+   "cellinfo_2ef40040ed05e0b24c3a": {
+    "rc": 0,
+    "start_s": 292.12905880995095,
+    "seconds": 82.022928789258,
+    "peak_rss_gib": 13.077957153320312,
+    "timeout": false
+   },
+   "cellinfo_a9b30136629b65ad18e8": {
+    "rc": 0,
+    "start_s": 344.14289030991495,
+    "seconds": 32.0138390250504,
+    "peak_rss_gib": 7.248096466064453,
+    "timeout": false
+   },
+   "cellinfo_982b1a806f4417acca41": {
+    "rc": 0,
+    "start_s": 298.13409448973835,
+    "seconds": 80.02636509016156,
+    "peak_rss_gib": 13.36941909790039,
+    "timeout": false
+   },
+   "cellinfo_1005c7032115dfcbea7c": {
+    "rc": 0,
+    "start_s": 386.1729475837201,
+    "seconds": 10.002517476677895,
+    "peak_rss_gib": 3.4108810424804688,
+    "timeout": false
+   },
+   "cellinfo_083bd7fa7efab6eefbea": {
+    "rc": 0,
+    "start_s": 380.1646800953895,
+    "seconds": 54.01417024247348,
+    "peak_rss_gib": 10.27694320678711,
+    "timeout": false
+   },
+   "cellinfo_8be436c89f6a85161203": {
+    "rc": 0,
+    "start_s": 352.1490532979369,
+    "seconds": 86.030516481027,
+    "peak_rss_gib": 17.475215911865234,
+    "timeout": false
+   },
+   "cellinfo_1bf6eb5fcce4d2a3b5e0": {
+    "rc": 0,
+    "start_s": 374.1556100640446,
+    "seconds": 84.02600670792162,
+    "peak_rss_gib": 16.017345428466797,
+    "timeout": false
+   }
+  },
+  "body_guard": {
+   "checked": 24,
+   "unchecked": 0,
+   "mismatches": []
+  }
+ },
+ "cellinfo": {
+  "seconds": 458.6299561560154,
+  "peak_rss_gib": 2.293365478515625,
+  "peak_is_lifetime": false,
+  "rss_gib": 2.293365478515625,
+  "mem_available_gib": 235.54303359985352
+ },
+ "T_jobs": {
+  "new": 24,
+  "jobs": {
+   "T_8255c64ad520dc5ba4e2": {
+    "rc": 0,
+    "start_s": 0.0006012450903654099,
+    "seconds": 262.0829612389207,
+    "peak_rss_gib": 40.0035285949707,
+    "timeout": false
+   },
+   "T_9c3b57312000ce86bb1c": {
+    "rc": 0,
+    "start_s": 60.061629097908735,
+    "seconds": 244.03145423531532,
+    "peak_rss_gib": 36.09659957885742,
+    "timeout": false
+   },
+   "T_0eeab7848924d956b558": {
+    "rc": 0,
+    "start_s": 262.08796354942024,
+    "seconds": 168.02933858707547,
+    "peak_rss_gib": 25.135269165039062,
+    "timeout": false
+   },
+   "T_c68a889de55ceee03399": {
+    "rc": 0,
+    "start_s": 322.10703182034194,
+    "seconds": 114.01401844061911,
+    "peak_rss_gib": 17.224395751953125,
+    "timeout": false
+   },
+   "T_51b2740837a409a93470": {
+    "rc": 0,
+    "start_s": 430.11970688030124,
+    "seconds": 108.05209036171436,
+    "peak_rss_gib": 17.316497802734375,
+    "timeout": false
+   },
+   "T_0b6b7b1a010daaeb2127": {
+    "rc": 0,
+    "start_s": 490.16649865731597,
+    "seconds": 112.0248819515109,
+    "peak_rss_gib": 17.143238067626953,
+    "timeout": false
+   },
+   "T_c17ac362411acfcbdf99": {
+    "rc": 0,
+    "start_s": 550.1858003456146,
+    "seconds": 104.0196711588651,
+    "peak_rss_gib": 16.605899810791016,
+    "timeout": false
+   },
+   "T_6b031d6b4e4f5346c3c5": {
+    "rc": 0,
+    "start_s": 610.2004722245038,
+    "seconds": 46.008832605555654,
+    "peak_rss_gib": 7.362239837646484,
+    "timeout": false
+   },
+   "T_a105fbb0dadb60a2d2b2": {
+    "rc": 0,
+    "start_s": 656.2107011005282,
+    "seconds": 258.07400632090867,
+    "peak_rss_gib": 39.216285705566406,
+    "timeout": false
+   },
+   "T_889f5c099bfd5c320c59": {
+    "rc": 0,
+    "start_s": 716.2653937488794,
+    "seconds": 202.02294965088367,
+    "peak_rss_gib": 31.609832763671875,
+    "timeout": false
+   },
+   "T_42d16232702f34a5391d": {
+    "rc": 0,
+    "start_s": 914.2871302869171,
+    "seconds": 130.06446584686637,
+    "peak_rss_gib": 21.30483627319336,
+    "timeout": false
+   },
+   "T_37fd5b47d0827d388431": {
+    "rc": 0,
+    "start_s": 974.3441803492606,
+    "seconds": 112.01595523394644,
+    "peak_rss_gib": 17.249736785888672,
+    "timeout": false
+   },
+   "T_f4b134e0b128dda5ab40": {
+    "rc": 0,
+    "start_s": 1044.35509092547,
+    "seconds": 110.02715173922479,
+    "peak_rss_gib": 17.316059112548828,
+    "timeout": false
+   },
+   "T_47e15ff61dd90faab655": {
+    "rc": 0,
+    "start_s": 1104.3770318068564,
+    "seconds": 74.0202667415142,
+    "peak_rss_gib": 12.399654388427734,
+    "timeout": false
+   },
+   "T_5a6486b2af17b34b5790": {
+    "rc": 0,
+    "start_s": 1164.395167272538,
+    "seconds": 14.00398918054998,
+    "peak_rss_gib": 3.359508514404297,
+    "timeout": false
+   },
+   "T_028ea952b4baa39ac7c9": {
+    "rc": 0,
+    "start_s": 1178.4005121923983,
+    "seconds": 212.06857829354703,
+    "peak_rss_gib": 34.531890869140625,
+    "timeout": false
+   },
+   "T_dd2bf4d96fd96bbcdcfa": {
+    "rc": 0,
+    "start_s": 1238.4541338849813,
+    "seconds": 164.02036757953465,
+    "peak_rss_gib": 25.411876678466797,
+    "timeout": false
+   },
+   "T_2ef40040ed05e0b24c3a": {
+    "rc": 0,
+    "start_s": 1390.47239471972,
+    "seconds": 118.05387884937227,
+    "peak_rss_gib": 18.47723388671875,
+    "timeout": false
+   },
+   "T_a9b30136629b65ad18e8": {
+    "rc": 0,
+    "start_s": 1510.5313635580242,
+    "seconds": 52.00563599541783,
+    "peak_rss_gib": 8.813079833984375,
+    "timeout": false
+   },
+   "T_982b1a806f4417acca41": {
+    "rc": 0,
+    "start_s": 1450.519929099828,
+    "seconds": 132.031069945544,
+    "peak_rss_gib": 20.519466400146484,
+    "timeout": false
+   },
+   "T_8be436c89f6a85161203": {
+    "rc": 0,
+    "start_s": 1570.5490370579064,
+    "seconds": 188.05638621933758,
+    "peak_rss_gib": 29.943191528320312,
+    "timeout": false
+   },
+   "T_1bf6eb5fcce4d2a3b5e0": {
+    "rc": 0,
+    "start_s": 1630.592033246532,
+    "seconds": 164.0202893447131,
+    "peak_rss_gib": 24.944129943847656,
+    "timeout": false
+   },
+   "T_1005c7032115dfcbea7c": {
+    "rc": 0,
+    "start_s": 1818.6415306124836,
+    "seconds": 16.00256028212607,
+    "peak_rss_gib": 3.3923492431640625,
+    "timeout": false
+   },
+   "T_083bd7fa7efab6eefbea": {
+    "rc": 0,
+    "start_s": 1758.6081532239914,
+    "seconds": 100.03828817792237,
+    "peak_rss_gib": 16.627212524414062,
+    "timeout": false
+   }
+  },
+  "seconds": 3204.7890879809856
+ },
+ "T": {
+  "seconds": 1858.726897245273,
+  "peak_rss_gib": 2.2936248779296875,
+  "peak_is_lifetime": false,
+  "rss_gib": 2.2936248779296875,
+  "mem_available_gib": 235.54275512695312
+ },
+ "solve_mem_plan": {
+  "T_distinct_gib": 63.01785472780466,
+  "mem_available_gib": 235.54275512695312
+ },
+ "load_T": {
+  "seconds": 27.90875575505197,
+  "peak_rss_gib": 65.31145095825195,
+  "peak_is_lifetime": false,
+  "rss_gib": 65.31153106689453,
+  "mem_available_gib": 172.52484512329102
+ },
+ "lattice_solve": {
+  "seconds": 179.5062950477004,
+  "peak_rss_gib": 71.49910354614258,
+  "peak_is_lifetime": false,
+  "rss_gib": 65.84181594848633,
+  "mem_available_gib": 171.99454498291016
+ },
+ "sens_jobs": {
+  "new": 24,
+  "jobs": {
+   "sens_8255c64ad520dc5ba4e2": {
+    "rc": 0,
+    "start_s": 0.0006857048720121384,
+    "seconds": 538.0673584714532,
+    "peak_rss_gib": 32.60682678222656,
+    "timeout": false
+   },
+   "sens_9c3b57312000ce86bb1c": {
+    "rc": 0,
+    "start_s": 20.022045509889722,
+    "seconds": 586.0568654723465,
+    "peak_rss_gib": 30.336292266845703,
+    "timeout": false
+   },
+   "sens_0eeab7848924d956b558": {
+    "rc": 0,
+    "start_s": 538.0715528316796,
+    "seconds": 554.0552132092416,
+    "peak_rss_gib": 22.402713775634766,
+    "timeout": false
+   },
+   "sens_c68a889de55ceee03399": {
+    "rc": 0,
+    "start_s": 606.0820965841413,
+    "seconds": 570.0581132993102,
+    "peak_rss_gib": 15.676326751708984,
+    "timeout": false
+   },
+   "sens_51b2740837a409a93470": {
+    "rc": 0,
+    "start_s": 1092.130772439763,
+    "seconds": 554.0598976109177,
+    "peak_rss_gib": 15.745296478271484,
+    "timeout": false
+   },
+   "sens_0b6b7b1a010daaeb2127": {
+    "rc": 0,
+    "start_s": 1176.143646389246,
+    "seconds": 520.0560337677598,
+    "peak_rss_gib": 15.764358520507812,
+    "timeout": false
+   },
+   "sens_6b031d6b4e4f5346c3c5": {
+    "rc": 0,
+    "start_s": 1696.204651227221,
+    "seconds": 204.02019544318318,
+    "peak_rss_gib": 6.5231170654296875,
+    "timeout": false
+   },
+   "sens_c17ac362411acfcbdf99": {
+    "rc": 0,
+    "start_s": 1646.1941827498376,
+    "seconds": 500.05847504362464,
+    "peak_rss_gib": 14.02463150024414,
+    "timeout": false
+   },
+   "sens_a105fbb0dadb60a2d2b2": {
+    "rc": 0,
+    "start_s": 1900.228274481371,
+    "seconds": 514.0531747248024,
+    "peak_rss_gib": 32.02650833129883,
+    "timeout": false
+   },
+   "sens_889f5c099bfd5c320c59": {
+    "rc": 0,
+    "start_s": 2146.2554663736373,
+    "seconds": 560.0561841074377,
+    "peak_rss_gib": 27.01197052001953,
+    "timeout": false
+   },
+   "sens_42d16232702f34a5391d": {
+    "rc": 0,
+    "start_s": 2414.284806197509,
+    "seconds": 518.0542342290282,
+    "peak_rss_gib": 19.14120101928711,
+    "timeout": false
+   },
+   "sens_37fd5b47d0827d388431": {
+    "rc": 0,
+    "start_s": 2706.316661087796,
+    "seconds": 572.0567724779248,
+    "peak_rss_gib": 15.657127380371094,
+    "timeout": false
+   },
+   "sens_f4b134e0b128dda5ab40": {
+    "rc": 0,
+    "start_s": 2932.342295968905,
+    "seconds": 492.04910714551806,
+    "peak_rss_gib": 15.770477294921875,
+    "timeout": false
+   },
+   "sens_5a6486b2af17b34b5790": {
+    "rc": 0,
+    "start_s": 3424.394349642098,
+    "seconds": 52.00559487566352,
+    "peak_rss_gib": 3.5368995666503906,
+    "timeout": false
+   },
+   "sens_47e15ff61dd90faab655": {
+    "rc": 0,
+    "start_s": 3278.377093888819,
+    "seconds": 366.04123098403215,
+    "peak_rss_gib": 9.745655059814453,
+    "timeout": false
+   },
+   "sens_028ea952b4baa39ac7c9": {
+    "rc": 0,
+    "start_s": 3476.4025318920612,
+    "seconds": 568.0525582898408,
+    "peak_rss_gib": 29.213150024414062,
+    "timeout": false
+   },
+   "sens_dd2bf4d96fd96bbcdcfa": {
+    "rc": 0,
+    "start_s": 3644.4208423234522,
+    "seconds": 556.0510589629412,
+    "peak_rss_gib": 22.818939208984375,
+    "timeout": false
+   },
+   "sens_2ef40040ed05e0b24c3a": {
+    "rc": 0,
+    "start_s": 4044.4575126469135,
+    "seconds": 566.0534481797367,
+    "peak_rss_gib": 16.94029998779297,
+    "timeout": false
+   },
+   "sens_982b1a806f4417acca41": {
+    "rc": 0,
+    "start_s": 4200.475465932861,
+    "seconds": 510.04882101900876,
+    "peak_rss_gib": 16.191226959228516,
+    "timeout": false
+   },
+   "sens_a9b30136629b65ad18e8": {
+    "rc": 0,
+    "start_s": 4610.514711566269,
+    "seconds": 214.0217821225524,
+    "peak_rss_gib": 7.242877960205078,
+    "timeout": false
+   },
+   "sens_8be436c89f6a85161203": {
+    "rc": 0,
+    "start_s": 4710.526665078476,
+    "seconds": 564.0558887124062,
+    "peak_rss_gib": 26.008792877197266,
+    "timeout": false
+   },
+   "sens_1bf6eb5fcce4d2a3b5e0": {
+    "rc": 0,
+    "start_s": 4824.538576543331,
+    "seconds": 500.0526591222733,
+    "peak_rss_gib": 22.27178955078125,
+    "timeout": false
+   },
+   "sens_1005c7032115dfcbea7c": {
+    "rc": 0,
+    "start_s": 5324.594706147909,
+    "seconds": 52.005371887236834,
+    "peak_rss_gib": 3.640972137451172,
+    "timeout": false
+   },
+   "sens_083bd7fa7efab6eefbea": {
+    "rc": 0,
+    "start_s": 5274.585473680869,
+    "seconds": 364.0373181346804,
+    "peak_rss_gib": 12.241931915283203,
+    "timeout": false
+   }
+  },
+  "seconds": 10995.12735729292
+ },
+ "sens": {
+  "seconds": 5638.629917256534,
+  "peak_rss_gib": 2.8239097595214844,
+  "peak_is_lifetime": false,
+  "rss_gib": 2.8239097595214844,
+  "mem_available_gib": 235.01068115234375
+ }
+}
