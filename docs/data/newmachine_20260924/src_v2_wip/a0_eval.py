@@ -23,7 +23,9 @@ Per (cell, map):
        Conly  no network: rigid part plus zero, then the same correction (what the correction alone achieves)
      Every variant is a linear extension read out in energy form with K~, so S_hat >= S~ (checked: min energy excess).
   5. Metrics: per class mean / p90 / max / min of e = u^T K~ u - 1; worst direction mu = top Ritz value of (S_hat, S~)
-     (Geo.worst_ratio) for V0 and V0R; map statistics (min det J, max cond J); rigid checks; timings.
+     (block power iteration, worst()) for V0 and V0R; energy of the extended physical rigid modes (rigid_energy); map
+     statistics (min det J, max cond J); rigid checks; timings. (V0 and V0ref coincide on rigid-free banks when the network
+     reproduces reference rigid motions; they differ on the physical rigid modes, which rigid_energy measures.)
 Usage: a0_eval.py <out_dir> <ckpt> <body_dir> <cases (comma)> <maps.json> [--val 64] [--worst 1] [--variants V0,V0R,V0ref,Conly]
 maps.json: list of {"name": ..., "spec": {...}} (mapped_cell.make_map)."""
 import argparse, gc, hashlib, json, os, sys, time
@@ -56,7 +58,7 @@ def _face_factor(C, P, normal_ref):
     xa = torch.as_tensor(C.xyz[loc], dtype=dt, device=dev)                       # (m, 27, 3)
     N, dN = MC.q2_basis(t, o - 1)
     Jx = torch.einsum('mai,maj->mij', xa, dN) * (2 * n)                          # dx/dX
-    nr = torch.as_tensor(np.broadcast_to(normal_ref, P.shape), dtype=dt, device=dev)
+    nr = torch.as_tensor(np.array(np.broadcast_to(normal_ref, P.shape)), dtype=dt, device=dev)
     v = torch.linalg.solve(Jx.transpose(1, 2), nr[..., None]).squeeze(-1)        # J^-T n
     fac = torch.linalg.det(Jx) * v.norm(dim=1)
     x = torch.einsum('ma,mai->mi', N, xa)
@@ -215,6 +217,33 @@ class _Wrap:                                                                   #
         self.smooth_alpha = getattr(m, 'smooth_alpha', 30.0)
 
 
+def worst(g, model, k=8, max_iters=25, rtol=1e-2, seed=0):
+    """Top Ritz value mu of (S_hat, S~) by block power iteration with S~-orthonormalisation (Geo.adversarial, one step per
+    call), stopped when mu - 1 changes by less than rtol relative (Geo.worst_ratio tests mu itself, which stops at once when
+    mu - 1 is ~1e-4)."""
+    gen = torch.Generator(device=dev).manual_seed(seed)
+    X, prev, mu, it = None, None, float('nan'), 0
+    for it in range(1, max_iters + 1):
+        X, ritz = g.adversarial(model, k=k, iters=1, gen=gen, start=X)
+        mu = float(ritz[0])
+        if prev is not None and abs(mu - prev) <= rtol * abs(mu - 1):
+            break
+        prev = mu
+    return mu, it
+
+
+def rigid_energy(g, model):
+    """Energy of the extensions of the six orthonormal PHYSICAL port rigid modes (exactly zero for an extension that
+    reproduces the mapped rigid motions), relative to the mean exact energy of unit-norm force_c / force bank directions."""
+    C = g.C
+    u = g.field(model, C.Q)
+    e = TL.energy(u, C.K)
+    cls = 'force_c' if 'force_c' in g.classes else g.classes[0]
+    Q = g.banks['val'][cls].to(dt)
+    scale = float((1.0 / (Q * Q).sum(0)).mean())                                # banks at unit energy: q^T S q / |q|^2
+    return float(e.max()) / scale
+
+
 def evaluate(g, model, variant, chunk=16):
     out = {}
     for cls in g.classes:
@@ -273,8 +302,9 @@ def main(argv):
                     g.set_variant(v, wrap)
                     with torch.no_grad():
                         r = evaluate(g, model, v)
+                        r['rigid_energy_rel'] = rigid_energy(g, model)
                     if a.worst and v in ('V0', 'V0R'):
-                        mu, it, _ = g.worst_ratio(model, k=8, tol=1e-3, max_iters=20, gen=torch.Generator(device=dev).manual_seed(0))
+                        mu, it = worst(g, model)
                         r['worst_mu'] = mu; r['worst_iters'] = it
                     r['seconds'] = time.perf_counter() - t
                     rec['variants'][v] = r
