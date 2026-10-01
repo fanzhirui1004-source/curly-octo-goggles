@@ -1,5 +1,6 @@
-"""Figure 8: compliance and eight-corner sensitivity in assembled two-cell configurations (learned target, exact
-neighbour). Source: evidence/gate_<run>_fresh_val_<case>_<config>.json (lat_full.py, --sets test)."""
+"""Figure 9: compliance and thickness sensitivity (eight-component vector) in assembled two-cell configurations
+(learned target, exact neighbour), four variants (legend labels from figstyle.MODEL).
+Source: evidence/gate_<run>_fresh_val_<case>_<config>.json (lat_full.py, --sets test)."""
 import json
 from pathlib import Path
 import numpy as np
@@ -7,7 +8,7 @@ import matplotlib.pyplot as plt
 from figstyle import MODEL, MUTED, GRID, MM, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
-RUNS = {'C': 'A0_ctrl', 'A2b': 'A2b_tail8', 'B+W': 'B2grid', 'A3': 'A3_2grid'}   # S8: supplement only (Table ST09)
+RUNS = {'C': 'A0_ctrl', 'A2b': 'A2b_tail8', 'B+W': 'B2grid', 'A3': 'A3_2grid'}
 CASES = [('2000_full', 'U1'), ('2001_full', 'U2'), ('2003_d1_v1', 'M1'), ('2006_d0_v1', 'M2'), ('2005_d1_v0', 'H1'),
          ('2002_d0_v0', 'H3'), ('2004_d0_v2', 'L1')]
 LOADS = ['T/x', 'T/y', 'T/z', 'N/x', 'N/y', 'N/z']
@@ -57,7 +58,7 @@ def main():
         ax.set_xlabel('Compliance error (%)'); ax.set_ylabel('Target-cell sensitivity error (%)')
         ax.grid(color=GRID, lw=.4); panel(ax, 'cd'[j], f'{lab}: individual face loads')
     fig.text(.5, .005, 'Filled: target-face loads; open: neighbour-face loads. Dashed lines: 3%.', ha='center', fontsize=6.5, color=MUTED)
-    save(fig, 'F05_assembly_A3')
+    save(fig, 'F05_assembly')
 
 
 if __name__ == '__main__':

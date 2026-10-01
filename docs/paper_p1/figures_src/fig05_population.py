@@ -1,5 +1,6 @@
-"""Figure 5: directional energy error across the 80 validation geometries (identity view). Source: evidence/newval2_<run>.json
-(eval_views.py --data S2/data_v2, all classes) and evidence/valmeta.json (cut stratum, weight-selection membership)."""
+"""Figure 5: directional energy error across the 80 validation geometries (identity view), five variants. Source:
+evidence/newval2_<run>.json (eval_views.py --data S2/data_v2, all classes) and evidence/valmeta.json (cut stratum,
+model-selection membership)."""
 import json
 from pathlib import Path
 import numpy as np
@@ -7,7 +8,7 @@ import matplotlib.pyplot as plt
 from figstyle import MODEL, C, MUTED, GRID, MM, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
-# S8 is reported in the supplement only (Fig. S02, Table ST03); the main-text figure shows the five labelled predictors.
+# The five variants (colours, markers and legend labels from figstyle.MODEL).
 RUNS = [('B', 'v2L1') + MODEL['B'], ('C', 'A0_ctrl') + MODEL['C'], ('A2b', 'A2b_tail8') + MODEL['A2b'],
         ('B+W', 'B2grid') + MODEL['B+W'], ('A3', 'A3_2grid') + MODEL['A3']]
 STRATA = ['FULL', 'light', 'moderate', 'heavy']
@@ -33,7 +34,7 @@ def main():
             ax.plot(x, v.mean(), mk, color=col, ms=5, label=lab if j == 0 else None)
             ax.plot([x, x], [np.quantile(v, .1), v.max()], color=col, lw=.8, alpha=.7)
     ax.set_yscale('log'); ax.set_xticks(range(4), ['uncut', 'lightly cut', 'moderately cut', 'heavily cut'])
-    ax.set_ylabel('Energy excess (%)'); ax.grid(axis='y', color=GRID, lw=.4)
+    ax.set_ylabel('Energy error (%)'); ax.grid(axis='y', color=GRID, lw=.4)
     ax.legend(frameon=False, ncol=3, fontsize=6.5, loc='upper left', bbox_to_anchor=(0, -0.12))
     panel(ax, 'a', 'Consistent tractions, by cut stratum')
     ax = fig.add_subplot(gs[0, 2])
@@ -59,10 +60,10 @@ def main():
             x = j + (k - (len(keys) - 1) / 2) * .13
             ax.plot(x, v.mean(), mk, color=col, ms=5)
             ax.plot([x, x], [np.quantile(v, .1), v.max()], color=col, lw=.8, alpha=.7)
-    ax.set_yscale('log'); ax.set_xticks(range(len(classes)), [l for _, l in classes]); ax.set_ylabel('Energy excess (%)')
+    ax.set_yscale('log'); ax.set_xticks(range(len(classes)), [l for _, l in classes]); ax.set_ylabel('Energy error (%)')
     ax.grid(axis='y', color=GRID, lw=.4)
     panel(ax, 'c', 'Other loading classes, all geometries')
-    save(fig, 'F02_validation_A3')
+    save(fig, 'F02_validation')
 
 
 if __name__ == '__main__':
