@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# scratch by-products of figure scripts (previews, stray TeX logs)
+docs/paper_p1/figures_src/_preview_*.png
+docs/paper_p1/figures_src/texput.log
