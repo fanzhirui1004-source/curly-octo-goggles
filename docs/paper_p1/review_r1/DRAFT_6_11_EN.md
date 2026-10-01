@@ -56,7 +56,7 @@ On one RTX 5090 with 90 GiB of host memory, the design iteration was timed on pl
 
 **Abstract, final sentence** (replaces "[Placeholder: quantitative outcome of the Section 6.11 design example.]"). The Abstract has 253 words without the placeholder, above the 150–250 words typical of the journal (CONSOLIDATED.md, I-55); the sentence below adds 51 words plus the placeholders, the short variant 25. Either needs a matching cut elsewhere in the Abstract if the limit is enforced.
 
-> In thickness optimisation by the method of moving asymptotes, NICE reaches the eight-cell design of exact condensation to within 0.0051 in every corner parameter, with lattice-gradient errors below 0.33%; on cut 24-cell plates, a homogenised model where exact checks confirm compliance errors below 0.04% and gradient errors below 0.32%, a homogenised model underestimates the compliance of the initial design by 27% and 37%, and a design iteration of a 110-cell plate takes 43 min on one RTX 5090.
+> In thickness optimisation by the method of moving asymptotes, NICE reaches the eight-cell design of exact condensation to within 0.0051 in every corner parameter, with lattice-gradient errors below 0.33%; on cut 24-cell plates, where exact checks confirm compliance errors below 0.04% and gradient errors below 0.32%, a homogenised model underestimates the compliance of the initial design by 27% and 37%, and a design iteration of a 110-cell plate takes 43 min on one RTX 5090.
 
 Short variant:
 
