@@ -1,0 +1,382 @@
+-- moved residual-work identity (old Eq. 18): 652 chars
+-- inserted residual-work identity at the end of 3.2 after "Small participation can thus attenuate a substructure's effe"
+-- retitle 5.6
+-- drop heading 5.7
+-- heading 5.8 -> 5.7
+-- heading 5.9 -> 5.8
+-- heading 5.10 -> 5.9
+-- heading 5.11 -> 5.10
+-- drop r2 marker
+-- moved Appendix J: 29085 chars
+-- B.1 assumptions (J.1) and B.2 heading
+-- old B.1 -> B.3
+-- inserted J.7 last paragraph at the end of B.3 before '## Appendix C. Assembly and compliance ordering'
+-- inserted C.1 (J.3), C.2 (J.6) before '## Appendix D. Polynomial smoothing and coarse projections'
+-- inserted D.1 (J.8) before '## Appendix E. Transpose of the complete extension'
+-- inserted G.4 (J.7) before '## Appendix H. Sensitivity identities and design intervals'
+-- inserted H.1 (J.4), H.2 (J.5) before '## Appendix I. Residual lower diagnostics'
+-- retitle I
+-- drop last paragraph of I
+-- moved supplement R2 (deleted): 1979 chars
+-- Note S8 = J.9 examples + definition of example 1 (S8.1)
+=== MANUSCRIPT_EN.md: 672 -> 668 lines
+=== APPENDICES_EN.md: 875 -> 828 lines
+=== SUPPLEMENTARY_EN.md: 1206 -> 1231 lines
+M11:  that a single layer of cut cells does not offer (Section 5.10). Static condensation provide
+M17:  of each cell and provides a computable residual (Eq. (5)) rather than a certified bou
+M19: to 110 cells and 32.7 million degrees of freedom (Section 5.10).
+M21: Section 2 states the discrete cut-cell 
+M21: quirements on an approximate condensed stiffness; Section 3 derives the error relations t
+M21: hat hold for any admissible extension; Section 4 constructs NICE; Section 5 re
+M21: ports the numerical examples; Section 6 discusses them and states the
+M21:  limitations; Section 7 concludes.
+M25: The error relations of Section 3 and the construction of Secti
+M25: fy interior displacement error into energy error (Section 5.4).
+M37: \tag{1}
+M42: ve geometries and Table 1 the principal settings; Appendix A gives the integration and ass
+M46: in-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).
+M61: \tag{2}
+M64: odes to a relative energy of \(2\times10^{-11}\) (Section 5.2).
+M75: \tag{3}
+M78: t S_m\) is the approximate condensed stiffness of Section 4. Local condensation commutes w
+M80: ured by the relative directional energy excess of Section 3.1. Thickness sensitivities use t
+M80: he eight-component vector of Section 3.3, with relative Euclidean erro
+M82: ss \(\widehat S_m\) that is to replace \(S_m\) in Eq. (3) for analysis and design must
+M82: oyment, for a given geometry, without retraining. Section 3 derives what any admissible e
+M82: n gives towards the first and third requirements; Section 4 constructs an operator that m
+M99: e) in double precision in the accuracy studies of Sections 5.2–5.8 and in single precision i
+M99: the corrected field returned to single precision (Appendix F.3) |
+M105: structure and apply to every cell of an assembly. Appendix B.1 collects the assumptions. Sev
+M105: y of the discrete harmonic extension and the Ritz identity (4) [Fraeijs de Veubeke (1965)](
+M105: )](https://doi.org/10.1007/b137868); the residual form (5) and the residual-corrected f
+M105: 962492901000010); the energy orthogonality behind Eq. (6); the self-adjoint compliance
+M105: tps://doi.org/10.1007/978-3-662-05086-6); and, in Sections 4.2 and 4.3, Chebyshev semi-itera
+M105: ximate extensions are the participation bounds of Eq. (7) and Appendix C.1, the sensit
+M105: ivity bound of Appendix H.1, the order of the complete su
+M105: rrogate derivative in Appendix H.2 and the identity \(\varepsilo
+M105: n=\delta^2\kappa\) used in Section 5.4.
+M113: \tag{4}
+M121: \tag{5}
+M124: e extension, is thus the stiffness-error measure; Appendix B gives the all-direction norm,
+M128:  exact equilibria of the two supported systems in Eq. (3), with the same local matrice
+M128:  equilibrium and local energy orthogonality give (Appendix C)
+M135: \tag{6}
+M144: \tag{7}
+M147: nce even when its local field remains inaccurate (Appendix C.1).
+M153: \tag{8}
+M156: plete solution affects the compliance comparison. Appendix C.2 gives the residual-corrected 
+M167: \tag{9}
+M170: tion the exact integral gives \(K_{,c}\succeq0\) (Eq. H.10); a numerical derivative inh
+M170: e moments used here violate it in a few elements (Appendix H.2, Supplementary Table ST15). E
+M170: ven then the cross term can have either sign (Appendix H.1).
+M180: \tag{10}
+M183: y alone does not control the complete derivative (Appendix H.2, Section 6.2); Appendix H spe
+M185:  \(0\le C-\widehat C\le\beta C\) at every design (Eq. 7), any jump that the surrogate
+M187: ctions that the assembled solution selects, which Eq. (5) measures by a computable res
+M187: deployment must not increase that energy, so that Eq. (4) orders the corrected operato
+M187: e uncorrected one and the exact Schur complement; Section 4.3 gives such a correction. And 
+M187: y error does not control the sensitivity error of Eq. (9), the sensitivity must be ver
+M187: ified independently of the compliance, which Sections 5.6 and 5.10 do. Section 4 constr
+M191: rned extension supplies the trial interior field (Section 4.4); the energy form, applied wi
+M191: ete transpose, supplies the mechanical structure (Section 4.1); and a fixed multilevel corr
+M191: ection supplies the improvability (Sections 4.2 and 4.3). Figure 2 shows how 
+M195:  The neural extension is detailed in Figure 3 and Section 4.4; Sections 4.2 and 4.3 define 
+M199:  \(\widehat ER_P=R\) for the rigid modes \(R\) of Section 2.2; Section 4.4 constructs it wi
+M199: th a geometry-conditioned network (Eq. (17)). The field becomes a mecha
+M206: \tag{11}
+M213: \tag{12}
+M216: ansfer maps. Under the rigid-kernel assumption of Section 2.2 and \(FR_P=R\), the only null
+M216: \(\widehat S\) are the retained rigid-body modes (Appendix B); Appendix E derives the comp
+M216: lete transpose, and Appendix B.2 shows why it makes the operat
+M216: or error quadratic. By Eq. (4), \(\widehat S-S=H^TAH\) with
+M216: is the energy of the interior error of \(F\), and Sections 4.2 and 4.3 choose \(\mathcal W\)
+M220: Equations (5) and (6) suggest reducing the
+M227: \tag{13}
+M234: k=p_k(D^{-1}A)\), multiplying each coefficient in Eq. (13) by \(p_k(\lambda_j)\). The 
+M234: with \(b\) from a power estimate increased by 5%; Section 5.2 reports its verification, and
+M234:  Appendix D gives the polynomial, recurre
+M244: \tag{14}
+M247: )-vertex grid restricted to internal coordinates (Appendix F); all coarse spaces preserve 
+M254: \tag{15}
+M257: crease the error in the \(A\)-energy norm, and by Eq. (6) it moves exact assembled com
+M257: though it does not order the sensitivity error in Eq. (9) (Appendix D.1; Supplementary
+M257:  Note S8 gives a matrix example in whi
+M257:  of the detailed cells the polynomial estimate of Appendix D guarantees little more than n
+M257: f the coarse space, so the reductions reported in Section 5.5 are empirical; repeating the 
+M274: \tag{16}
+M277: near 32-to-3 map reconstructs nodal displacement. Appendix G gives the complete order of o
+M284: \tag{17}
+M301: \tag{18}
+M304: admissible extension, the variational identity of Section 3.1 makes its minimum correspond 
+M304: eometry augmentation uses the 48 cube symmetries (Appendix G). For NICE the objective is e
+M306: NICE is trained on the operator that is deployed: Eq. (18) is evaluated on the correct
+M306: hat E\), with the 8 / \(Q_1(17)\) / 8 sequence of Section 4.3. Because \(\mathcal W\) is lin
+M317: 3. Assemble these actions through Eq. (3); after the global solve, rec
+M319: orresponding reverse operations in the transpose (Appendices E–F).
+M323: rection, to the assembled response and to design. Sections 5.1 and 5.2 define the geometries
+M323: the discrete reference and the deployed operator. Sections 5.3–5.5 examine the operator of a
+M323:  the correction removes at fixed network weights. Sections 5.6–5.7 examine the assembled res
+M323: , and an ablation of the retained representation. Sections 5.8 and 5.9 assemble lattices in 
+M323: solution and conventional exact condensation, and Section 5.10 optimises thickness fields wi
+M323: ed against equilibrium of the discrete problem of Section 2.
+M329: r 15,000 updates: with the complete correction of Sections 4.2 and 4.3 inside the training l
+M329: oop (NICE, Section 4.5), with eight smoothing steps 
+M341: All predictors share the architecture of Section 4 (603,409 trainable parameters
+M343: r cells outside weight selection are assembled in Section 5.6 as an independent check. Popu
+M343:  and loading class and weight geometries equally (Appendix A.2), so the population maximum i
+M355:  a typical deformation energy. The contraction of Section 4.2 requires \(b\ge\lambda_{\max}
+M355: alue by 2.1–5.0% on all 80 validation geometries (Appendix D), whereas the Gershgorin boun
+M371: ). This is consistent with the smoothing rates of Section 5.5 (Table ST05b).
+M383: h the weighting \(W=\operatorname{diag}(0,D)\) of Appendix B.3, admissible because \(d\) van
+M385: 4.1%, and H2 of 35% and 75.1%; the linear term of Eq. (9) contributes only 7.2% and 0.
+M429: r the sensitivity at fixed retained displacement, Appendix H.1 gives \(\|\widetilde{\boldsym
+M429: ot add to the full sensitivity error (Table ST11, Appendix H).
+M445: ed at the evaluated design for the sensitivities (Appendix H), and by three random load ve
+M447: f the assembled energy rather than accumulate. By Eq. (7), the lattice compliance erro
+M449: 19): the signed residual work \(\bar U^T\rho\) of Eq. (8) at the final iterate is at m
+M449: nd at most \(1.4\times10^{-5}\), and the terms of Eq. (8) balance to \(9\times10^{-9}\
+M453: pared for one design iteration of the lattices of Section 5.8: the two eight-cell lattices 
+M453: stem by the preconditioned conjugate gradients of Section 5.8 to a relative residual of \(1
+M453: the one-off cost of data generation and training (Section 5.1).
+M455:  four cells and against the exact condensation of Section 5.8 for eight cells. Memory in Gi
+M464: ude the algebraic error of the \(10^{-6}\) solve (Eq. 8) and exceed the operator erro
+M464: rs of Section 5.8 by up to 0.005 percentage poi
+M466: e solvers of the whole lattice were not compared (Section 6.4).
+M470:  load-derivative term \(2f_{g,c}^T\widehat U\) of Appendix H. The optimiser receives the fi
+M470: eld-based estimates of Eq. (9) summed over the cells at eac
+M470:  s}_m\), not the complete surrogate derivative of Eq. (10). The bounds \(0.18\le\tau\l
+M470: the trained domain ([0.175, 0.699], at most 0.47; Section 6.4). Each design iteration regen
+M470: tice by the preconditioned conjugate gradients of Section 5.8 from the previous solution an
+M472: Case A, the \(2\times2\times2\) block of Section 5.8 loaded normal to the face opp
+M472: and 0.028% below the exact one, the sign given by Eq. (7), and the lattice gradient ha
+M474: NICE was mainly evaluated (\(0<\vartheta<\pi/4\), Sections 5.1 and 6.4). Clamped along one l
+M476: ete model, which also defines the design problem (Section 5.2); its discretisation error is
+M480: itched between all consecutive design iterations (Section 3.3): active elements, ghost face
+M480: .3\times10^{-5}\) and \(6.7\times10^{-3}\), as in Section 5.8, while the signed residual wo
+M480: rk of Eq. (8) stayed below \(3.1\times10^{
+M480: f an element's local material support unresolved (Appendix A.1), the free parameters of the 
+M512: correction alter only the second. The ablation of Section 5.7 shows the role of the first: 
+M512: r errors than the interior approximation of NICE (Sections 5.6 and 5.7, for single cells at 
+M514: e reductions by one to two orders of magnitude in Section 5.5 are empirical, and it imposes
+M514:  percent into an energy error of several percent (Section 5.4); the coarse solve removes th
+M514: ugh the correction adds a further factor of 1.31 (Section 5.3).
+M518: e spectrum the smoothing interval contains, which Section 5.2 verifies per geometry rather 
+M518: At a fixed retained displacement, with \(H=F-E\), Eqs. (9) and (10) give \(\widetilde s
+M518: }q)^TA\,Hq-(Hq)^TK_{,c}Hq\): the residual term of Eq. (10) removes the linear field-er
+M518: n pair configurations and on the four lattices of Sections 5.8 and 5.9 could not resolve \(\
+M518: ge at least one of the discrete choices listed in Section 3.3, and the difference quotient 
+M518: d retained coordinates change with the thickness (Section 3.3), and at fixed geometry the n
+M518: titative coverage of the nonrigid retained space (Appendix G.4).
+M522: ect solution and conventional exact condensation (Section 5.9). Its lattice solve is an ine
+M522: . Against the offline cost of about 60 GPU-hours (Section 5.1), each eight-cell design iter
+M522:  about ten optimisations of the size of case A in Section 5.10, if GPU and host time are cou
+M522: e cell family and discretisation of its training (Section 6.4). Fusing the operations of an
+M522: et would lower its cost, at an accuracy cost that Section 5.5 quantifies.
+M526: ained and tested: Schwarz-P-type cells defined by Eq. (1), eight trilinear corner para
+M526: ire new training data and weights, at the cost of Section 5.1. The network is not equivarian
+M526: ntary Table ST03c). The variational properties of Section 4.1 hold for any input, but the a
+M526: error bound is provided, although the residual of Eq. (5) and a label-free lower bound
+M526:  on each cell's energy error (Appendix I) can be computed at run time.
+M526: in compliance and several percent in sensitivity (Section 5.2). The assembled evidence comp
+M526: ttices and six designs of two cut 24-cell plates (Section 5.10); all training comparisons us
+M526: e seed, and the effect of the sensitivity term in Eq. (18) was not isolated. The repor
+M526: at omit the design dependence of the extension in Eq. (10). The cost comparison exclud
+M526: rameter domain above, as the bounds and limits of Section 5.10 do; the optimisations there a
+A1: ## Appendix A. Discrete construction and met
+A14: \tag{A.1}
+A26: of the two-element patch. Thus the second term in Eq. (A.1) is the matrix representation
+A28: ahedra using the tetrahedral rule parameter four. Appendix F.4 gives the full integration se
+A43: \tag{A.2}
+A50: ## Appendix B. Variational identity, rigid k
+A66: =I_{n_a}\), and assume the symmetric stiffness in Eq. (2) has \(A\succ0\). For any fie
+A70: \tag{B.1}
+A73: linear admissible extension \(F=E+J_I^TH\) yields Eq. (4). Moreover, \(r_I=J_IKFq=AHq\
+A73: ), proving both expressions in Eq. (5). These identities require tr
+A79: \tag{B.2}
+A87: \tag{B.3}
+A94: \tag{B.4}
+A97: For the construction in Eq. (17), \(C_RR_P=I_6\) and \(\Pi_P
+A97: ons establish the two-sided rigid annihilation in Eq. (B.4) without altering any stiffne
+A105: \tag{B.5}
+A114: \tag{B.6}
+A117: Taking the supremum proves Eq. (B.5). The basis \(Z\) is used for
+A131: \tag{B.7}
+A136: nk of \(R_P\), and rigid reproduction \(FR_P=R\), Eqs. (B.2) and (B.4) give \(\ker\wideha
+A138: c error is the sum of nonnegative local errors in Eq. (C.1). Consequently \(\widehat{\ma
+A148: \tag{B.8}
+A155: \tag{B.9}
+A158: Section 5.4 and Table ST04 use \(W=\opera
+A166: \tag{B.10}
+A169: The identity \(\varepsilon=\delta^2\kappa\) in Eq. (B.9) uses the same displacement w
+A171: ## Appendix C. Assembly and compliance order
+A173: es separates into the individual minimisations in Eq. (B.1). The minimised quadratic for
+A173: ssembled system under the coupling assumptions in Section 2.3.
+A175: \(\mathbb D=\widehat{\mathbb K}-\mathbb K\). From Eq. (4),
+A179: \tag{C.1}
+A187: \tag{C.2}
+A196: \tag{C.3}
+A205: \tag{C.4}
+A212: _m^TH_m^TA_mH_mB_m\), the matrix \(\mathbb D\) of Eq. (C.1).
+A258: ound \(e_C\le\varepsilon_*/(1+\varepsilon_*)\) of Eq. (C.3). Rigid reproduction extends 
+A271: \tag{C.5}
+A274:  \(O(t)\), and the retained-error contribution in Eq. (6) is \(O(t^4)\). If \(\mathbb 
+A298:  applied-action residual. Evaluating the terms in Eq. (8) additionally requires the si
+A300: ## Appendix D. Polynomial smoothing and coar
+A306: \tag{D.1}
+A313: \tag{D.2}
+A318: _j)_I\). A recurrence producing the polynomial in Eq. (D.1) is
+A328: \tag{D.3}
+A339: \tag{D.4}
+A342: This proves Eq. (D.2). If \(a\le\lambda\le b\), th
+A344: e used to set the polynomial, while the result in Eq. (D.2) is conditional on its actual
+A344: on every geometry, so the containment required by Eq. (D.2) holds for all evaluated cell
+A351: \tag{D.5}
+A354: This proves Eq. (14). Applying Eq. (D.2) before and after this projec
+A354: y contraction and yields the operator ordering in Eq. (15). For the spectra of U1, M1 
+A354: e reductions by one to two orders of magnitude in Section 5.5 are empirical. Repeating the 
+A364: increases monotonically toward the reference, and Eq. (6)'s total reconstructed energy
+A366: Appendix D establishes the two component
+A366: Chebyshev smoothing satisfies the energy bound of Eq. (D.2), with \(\rho_k\le1\) when th
+A366: _c=V^TAV\), is the \(A\)-orthogonal projection of Eq. (D.5). For a symmetric approximate
+A371: \tag{D.6}
+A376: atisfies the \(\rho_k^4\) energy bound derived in Appendix D. At the operator-application l
+A376: ed forcing, is transposed in reverse order, as in Eqs. (E.3)–(E.4). Geometry-fixed coeffi
+A382: ## Appendix E. Transpose of the complete ext
+A384:  coordinates. Write \(M_I=J_I^TJ_I\). Transposing Eq. (17) gives
+A389: \tag{E.1}
+A407: \tag{E.2}
+A410: butes a retained force through the upper block in Eq. (E.2).
+A418: \tag{E.3}
+A425: \tag{E.4}
+A430: ## Appendix F. Coarse spaces, factorisation,
+A436: plicit diagonal shift. The projection formulas in Eqs. (14)–(15) apply to linearly inde
+A444: plicit \(Q_2\) study uses the CPU construction in Appendix F.1.
+A451: \tag{F.1}
+A454: Expanding the squared norms, as in Eq. (D.6) with basis \(V_s\), \(G=B_c\
+A458: loat64 in training and in the accuracy studies of Sections 5.2–5.8, and returns to the input
+A473: \tag{F.2}
+A480: \tag{F.3}
+A489: ## Appendix G. Network coefficients and dire
+A508: catter contributions on the same fixed incidence. Equation (16) adds their update to the in
+A519: \tag{G.1}
+A532: e symmetry on the raw extension; the transpose in Eq. (11) is obtained from the comple
+A555:  retained coordinates. The Galerkin correction of Section 4.3 instead uses the internal sti
+A570: ction and retained-value restoration then produce Eq. (17). The energy action Eq. (11)
+A576: \tag{G.2}
+A588: \tag{G.3}
+A605: nd normalizes the resulting retained direction by Eq. (G.3). Glued responses therefore s
+A611: lection settings for each arm. The energy term in Eq. (18) uses a \(10^{-12}\) lower c
+A613: only in the correction used in the forward map of Eq. (18): none for the uncorrected p
+A613: wer iteration, coarse matrix by coloured probing, Appendix F.2) and is treated as a fixed li
+A613: near map of the network output. Gradients of Eq. (18) are propagated through the 
+A613: ble precision; the transposes used at evaluation (Appendix E) are the explicit adjoints of
+A613: ,500 and 15,000 updates on the validation list of Section 5.1 (views 0 and 17); the 15,000-
+A619: With \(Z\) and \(S_*=Z^TSZ\succ0\) as in Eq. (B.5), let
+A621: S_*^{1/2}Z^Tq_j\) has unit Euclidean norm and, by Eq. (B.6), \(\varepsilon_j=x_j^TT_*x_j
+A628: \tag{G.4}
+A635: signed-permutation action, the transformations in Eq. (G.2) together with \(q'=T_Pq\) an
+A637: ## Appendix H. Sensitivity identities and de
+A645: \tag{H.1}
+A652: \tag{H.2}
+A655: ish. Differentiating \(S=E^TKE\) therefore proves Eq. (H.1).
+A657: ,c}=-U^T\mathbb K_{,c}U\). With fixed gathers and Eq. (H.1), this becomes the sum of \(-
+A659:  field-based quadratic estimate at \(u+d\) proves Eq. (9). In the Euclidean norm, it i
+A664: \tag{H.3}
+A667: For the corner-thickness band in Eq. (1), the nonnegative trilinear s
+A667: d nonpositive equilibrium compliance derivatives; Eq. (H.10) of Appendix H.2 proves the 
+A667: oments of this study do not do in a few elements (Appendix H.2). The linear cross term in Eq
+A667:  is specified below. In an assembly, substituting Eq. (H.2) into the same quadratic expa
+A673: \tag{H.4}
+A676: rms become \(2(F_{I,c}\widehat q)^Tr_I\), proving Eq. (10). Its magnitude is bounded b
+A681: \tag{H.5}
+A692: \tag{H.6}
+A695: ters. Computing the complete design derivative in Eq. (10) additionally differentiates
+A699: -u^TD_cu\), and assume \(\|\boldsymbol s\|_2>0\). Eq. (9) then reads
+A719: \tag{H.7}
+A724: ut \(d_m\) now includes a changed retained trace. Eq. (C.5) gives, componentwise,
+A744: \(e_C=(C-\widehat C)/C\). The field expansion and Eq. (6) yield
+A749: \tag{H.8}
+A754: ma_m\), \(\chi_m\), or the local error energy, so Eq. (H.8) is a quantitative theoretica
+A756: sitivity decomposition. Denote the three terms of Eq. (H.2) by \(a=(F-E)q\), \(b=E(\wide
+A768: the condensed derivative \(S_{,c}=E^TK_{,c}E\) is Eq. (H.1). Appendix H also derives the
+A768: ,c}U\) and, from the surrogate's own equilibrium, Eq. (10): \(\widehat C_{,c}\) is the
+A775: \tag{H.9}
+A795: \tag{H.10}
+A797: alone does not verify its numerical preservation. Section 5.2 and Figure S01(c) report a st
+A797:  exact discrete derivative to \(2\times10^{-8}\). Eq. (H.10), and the bound (H.11) that 
+A804: \tag{H.11}
+A808: sembly maps add the chain-rule terms stated after Eq. (H.5). These changes are different
+A808:  derivative problems rather than modifications of Eq. (H.9).
+A810: ## Appendix I. A computable lower bound on t
+A817: \tag{I.1}
+A825: \tag{I.2}
+S51: evice pool and one replacement every 100 updates (Appendix G.3), a run of \(N\) updates visi
+S68: erion differs from the per-batch training loss in Eq. (18) and from the geometry-weigh
+S68: those 80 geometries belong to the selection list (Section 5.1).
+S167: . the weighting \(W=\operatorname{diag}(0,D)\) of Appendix B.3. The \(b\) values of H2, H1, M
+S167: e one verified on all 80 validation geometries in Appendix D. U2 is a GPU record. Data: `ev
+S270: this count as an independent-space dimension; see Appendix F.1.
+S458:  validation geometries used for weight selection (Section 5.1). Cut-traction responses of t
+S530: either replacement error. The vector expansion of Eq. (H.2) accounts for this: the exten
+S530: ms cannot be added as scalar error contributions (Section 5.6). Tables ST12 and ST13 give t
+S586: These records support Sections 5.2, 5.4 and 5.5 of the main text
+S617: The enriched spaces of Appendix F.1 (PU_9, PU_17 in Table ST07 an
+S632: he complete results of the ablation summarised in Section 5.7. It is an ablation of the pres
+S641: \tag{S4.1}
+S644: dary spaces give a nondecreasing Ritz compliance (Appendix D.1). The interior correction of 
+S644: Sections 4.2 and 4.3 acts on a different t
+S713: ) and \(z=1\) of the \(2\times2\times2\) block of Section 5.8, taken with their thickness c
+S721: e field-based sensitivities \(\widetilde s_c\) of Eq. (9) for the three loads, obtaine
+S721:  are in double precision; the accuracy results of Sections 5.2–5.8 use a double-precision co
+S721: rrection (Appendix F.3). Both routes read the same g
+S723: ude the algebraic error of its \(10^{-6}\) solve (Eq. (8)). For the eight-cell lattice
+S723: s they exceed the operator errors of Section 5.8, which solved six loads to a 
+S723: es1\) layer (0.0151% against 0.0103%); unlike the Section 5.8 values, they exceed the parti
+S723: cipation-weighted bound of Eq. (7). The single-precision correc
+S723: uracy: repeating the \(2\times2\times2\) solve of Section 5.8 with the correction in single
+S781: | 2×2×2 | exact condensation (Section 5.8) | 138.4184 / 24.5936 / 90.99
+S782: | 3×3×1 | exact condensation (Section 5.8) | 254.9993 / 44.3539 / 1393.
+S784: dence/lat_hetero331_A3.json` (exact references of Section 5.8). Scripts: `lat_direct_cpu.py
+S811: o correct local extensions. The lattice solves of Sections 5.8 and 5.9, exact and learned, u
+S813: xhibit the action/energy discrepancy discussed in Appendix C.2.
+S827: The lattices of Section 5.8 and their two \(2\times2\time
+S827: ntity \(C-\bar C=\sum_ma_m+\bar U^T\rho+\omega\) (Eq. 8 and Appendix C.2); and the du
+S842: n the fourteen development pair configurations of Section 5.6, the same instrumentation giv
+S848: This note complements Appendix G with the settings of the lear
+S862: | Stiffness-share scattering, Eq. (G.1) | One learned \(\lambda_{\rm
+S868: ns when a geometry is loaded; class weights as in Appendix G.3 (P0: `force` 0.25, `support` 
+S872: ## Supplementary Note S8. Illustrative matrix examples
+S876:  values of \(t\) verify the variational identity, Eq. (6), Eq. (7) and the sensitivity
+S876: nsitivity, and 4 for the retained-error energy in Eq. (6). Section S8.1 gives the matr
+S901: tes \(q+b\), then splitting the term \(d^TKd\) in Eq. (F.2), with \(b_P=b\), gives, rela
+S905: \tag{S8.1}
+S952: omplete records of the thickness optimisations of Section 5.10: the optimiser and its constr
+S952: .1, Table ST21); the \(2\times2\times2\) block of Section 5.8, optimised with NICE and, fro
+S952: one RTX 5090. Compliance is given in the units of Section 5.1 (\(E_Y=1\), unit cell), memor
+S956: {\boldsymbol s}_m\), with \(\widetilde s_c\) from Eq. (9) for every corner of every ce
+S956:  complete derivative of the surrogate compliance (Eq. (10), Section 6.2). The vertices
+S956: -derivative term \(2f_{g,c}^T\widehat U\) arises (Appendix H).
+S960: h direction, where the inconsistency discussed in Section 6.2 would matter. In the runs fro
+S962: with those from the central moment differences of Eq. (H.6) to \(4.6\times10^{-7}\) (Tab
+S964: d not certify the material patches of an element (Appendix A.1). The fallback of Table ST21 
+S971: sistent nodal load do not change with the design (Appendix H: no load-derivative term) |
+S973: tilde{\boldsymbol s}_m\), \(\widetilde s_c\) from Eq. (9) of every cell; reverse-mode 
+S973: vered field. The complete surrogate derivative of Eq. (10) is not used. Exact twin: ex
+S973: om the exact field with the moment derivatives of Eq. (H.6) |
+S974: erivative from the same reverse pass (exact twin: Eq. (H.6)). \(V^*=0.8\,V(\boldsymbol\t
+S992: Case A is the \(2\times2\times2\) block of Section 5.8, with its graded initial corn
+S992: xact sensitivities with the moment derivatives of Eq. (H.6), and a cold start. The NICE 
+S992: , 12 and 23. At iteration 0 the design is that of Section 5.8, and the compliances, 24.5908
+S996: ost \(2.7\times10^{-8}\) of the compliance, as in Section 5.8. Table ST22b also lists a KKT 
+S998: arison of the exact and learned routes is that of Section 5.9.
+S1061: 0<\vartheta<\pi/4\) of the validation geometries (Section 5.1), rather than at its image, 5
+S1061: ork is not equivariant under the cube symmetries (Section 6.4). The plate is clamped along 
+S1127:  different discrete model, and the derivatives of Section 3.3 hold only within each model. 
+S1127: d the surrogate adds at most its own error level (Section 3.3, Supplementary Note S6.3). In
+S1143: d not certify the material patches of an element (Appendix A.1). Earlier cell-local attempts
+S1160: e implementation used for the accuracy results of Sections 5.2–5.8, with the correction in d
+S1160: t obtained from the central moment differences of Eq. (H.6) to \(4.6\times10^{-7}\), in 
+S1174: t, sensitivities from central moment differences (Eq. (H.6)) unless stated; the warm-sta
+S1174: te: the implementation of the accuracy results of Sections 5.2–5.8, with the correction in d
+S1194: xact vertex gradient (central moment differences, Eq. (H.6)), and the bending designs Ho
+S1227: esults do not verify exact-projection properties. Appendix F.1 and Supplementary Note S3 exp
