@@ -144,7 +144,10 @@ def finish_banks(C, raw, info):
     return out
 
 
-def write_data(C, d, banks, splits, body_dir):
+def write_data(C, d, banks, splits, body_dir, det_norm=False):
+    """det_norm (default off): divide each nodal diag3 block by det(dx/dX)^(1/3) at the node, so that the network inputs
+    (node_feats_v2 rho / s compare ||diag3|| with the full-solid reference diagonal) are invariant under uniform scaling
+    (K~ = s K for x = s X); with V0Rc the zero-shot operator is then invariant under every similarity map."""
     d.mkdir(parents=True, exist_ok=True)
     for cls, q in banks.items():
         lo = 0
@@ -159,6 +162,8 @@ def write_data(C, d, banks, splits, body_dir):
     diag3.index_put_((r // 3, r % 3, c % 3), v, accumulate=True)
     off = r != c
     diag3.index_put_((c[off] // 3, c[off] % 3, r[off] % 3), v[off], accumulate=True)
+    if det_norm:
+        diag3 = diag3 / torch.linalg.det(nodal_J(C)).clamp_min(1e-300).pow(1 / 3)[:, None, None]
     nrm = diag3.reshape(N, 9).norm(dim=1)
     weak = (nrm < 0.01 * nrm.median()).cpu().numpy()
     np.savez(d / 'NETDATA.npz', node_ids=C.nodes, grid=np.stack(np.unravel_index(C.nodes, (2 * C.n + 1,) * 3), 1).astype(np.int16),
@@ -171,8 +176,8 @@ def write_data(C, d, banks, splits, body_dir):
 
 
 # ------------------------------------------------------------------------------------------------------ variants
-def nodal_rotations(C):
-    """Polar factor R (N, 3, 3) of dx/dX at every node (averaged over the elements sharing the node)."""
+def nodal_J(C):
+    """dx/dX (N, 3, 3) at every node, averaged over the elements sharing the node."""
     xi = torch.as_tensor(C.xi_nodes, dtype=dt, device=dev)
     _, dN = MC.q2_basis(xi, C.xi_nodes)                                          # (27 points, 27, 3)
     N = len(C.nodes)
@@ -182,8 +187,12 @@ def nodal_rotations(C):
         J = torch.einsum('eai,paj->epij', C.xe[lo:lo + 8192], dN) * (2 * C.n)   # J at the element's own nodes
         ne = nodes_e[lo:lo + 8192]
         acc.index_add_(0, ne.reshape(-1), J.reshape(-1, 3, 3)); cnt.index_add_(0, ne.reshape(-1), torch.ones(ne.numel(), dtype=dt, device=dev))
-    J = acc / cnt[:, None, None]
-    U, _, Vh = torch.linalg.svd(J)
+    return acc / cnt[:, None, None]
+
+
+def nodal_rotations(C):
+    """Polar factor R (N, 3, 3) of dx/dX at every node (averaged over the elements sharing the node)."""
+    U, _, Vh = torch.linalg.svd(nodal_J(C))
     return U @ Vh
 
 
@@ -273,11 +282,13 @@ def main(argv):
     ap.add_argument('--val', type=int, default=64); ap.add_argument('--worst', type=int, default=1)
     ap.add_argument('--variants', default='V0,V0R,V0ref,Conly')
     ap.add_argument('--classes', default='force,macro,grf,force_c,face_c')
+    ap.add_argument('--ntrain', type=int, default=8)                           # train split size per class
+    ap.add_argument('--detnorm', type=int, default=0)                          # write_data(det_norm=...) (default off)
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     maps = json.loads(Path(a.maps).read_text())
-    variants = a.variants.split(','); classes = a.classes.split(',')
-    splits = (('train', 8), ('val', a.val), ('test', 8)); total = sum(m for _, m in splits)
+    variants = [v for v in a.variants.split(',') if v]; classes = a.classes.split(',')   # --variants '' : data only
+    splits = (('train', a.ntrain), ('val', a.val), ('test', 8)); total = sum(m for _, m in splits)
     ck = torch.load(a.ckpt, map_location=dev, weights_only=False); cfg = ck['cfg']
     model = None
     res_path = out / 'RESULTS.jsonl'
@@ -306,7 +317,7 @@ def main(argv):
                 banks = finish_banks(C, raw, rec['banks']); del raw
                 rec['banks_s'] = time.perf_counter() - t
                 d = out / 'data' / m['name'] / case
-                rec['netdata'] = write_data(C, d, banks, splits, a.body); del banks
+                rec['netdata'] = write_data(C, d, banks, splits, a.body, det_norm=bool(a.detnorm)); del banks
                 g = MappedGeo(case, a.body, out / 'data' / m['name'], neumann=False, log=lambda s_: None, cell=C)
                 g.case = f'{case}@{m["name"]}'                                  # own network cache per map
                 if model is None:
