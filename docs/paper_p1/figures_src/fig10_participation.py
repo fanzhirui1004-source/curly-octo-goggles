@@ -70,10 +70,10 @@ def main():
     axes[1].annotate('U1/x, base network, N-z', (b['ce'], b['se']), (b['ce'] * 3e-2, b['se'] * 2.5), fontsize=6.5, color=TEXT,
                      arrowprops=dict(arrowstyle='-', color=MUTED, lw=.6))
     h = [plt.Line2D([], [], ls='none', marker=MODEL[m][1], color=MODEL[m][0], ms=4, label=MODEL[m][2]) for m, _ in RUNS]
-    h += [plt.Line2D([], [], ls='none', marker='o', color=TEXT, ms=4, label='face load (filled)'),
-          plt.Line2D([], [], ls='none', marker='o', color=TEXT, mfc='white', ms=4, label='cut load (open)')]
-    fig.legend(handles=h, loc='upper center', ncol=7, frameon=False, bbox_to_anchor=(.5, 1.0), fontsize=6.5,
-               handletextpad=.3, columnspacing=1.0)
+    fig.legend(handles=h, loc='upper center', ncol=len(h), frameon=False, bbox_to_anchor=(.5, 1.0), fontsize=6.5,
+               handletextpad=.3, columnspacing=1.4)                     # predictors only; marker fill convention below
+    fig.text(.5, .005, 'Filled markers: face loads; open markers: cut-surface loads. Dashed lines: equality.',
+             ha='center', fontsize=6.5, color=MUTED)
     save(fig, 'F10_energy_participation_r1')
 
 
