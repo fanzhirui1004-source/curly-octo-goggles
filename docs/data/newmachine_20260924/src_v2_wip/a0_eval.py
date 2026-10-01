@@ -21,6 +21,8 @@ Per (cell, map):
               (R = polar factor of dx/dX at each node), the network extends them, the field is rotated back
        V0ref  network with the reference-coordinate rigid split of P1 (diagnostic: what an unaware deployment does)
        Conly  no network: rigid part plus zero, then the same correction (what the correction alone achieves)
+       V0Rc   (not in the default list) V0R with the co-rotated Jacobi preconditioner in the correction (corot_smooth.py):
+              exactly equivariant under rigid rotations, identical to V0R on the identity map
      Every variant is a linear extension read out in energy form with K~, so S_hat >= S~ (checked: min energy excess).
   5. Metrics: per class mean / p90 / max / min of e = u^T K~ u - 1; worst direction mu = top Ritz value of (S_hat, S~)
      (the Neumann and interior factors are held one at a time, which bounds the GPU memory of full cells)
@@ -40,6 +42,7 @@ import teacher as TE
 import prep_data as PD
 import prep_geo2 as PG2
 import mapped_cell as MC
+import corot_smooth as CR                                                 # V0Rc only (default off)
 
 dev, dt = TE.dev, TE.dt
 
@@ -199,7 +202,7 @@ class MappedGeo(TL.Geo):
             ctr = C.xyz[onport].mean(0)
             self.RP = MC.rigid_raw_xyz(C.xyz[onport], ctr); self.RA = MC.rigid_raw_xyz(C.xyz, ctr)
         self.RPpinv = torch.linalg.pinv(self.RP)
-        if variant == 'V0R':
+        if variant in ('V0R', 'V0Rc'):
             R = nodal_rotations(C).to(torch.float32)
             self.Rall = R; self.Rport = R[torch.as_tensor(onport, device=dev)]
 
@@ -209,7 +212,7 @@ class MappedGeo(TL.Geo):
         qd = q32 - self.RP.to(torch.float32) @ c
         if self.variant == 'Conly':
             u = torch.zeros((self.nb, q.shape[1]), dtype=torch.float32, device=dev)
-        elif self.variant == 'V0R':
+        elif self.variant in ('V0R', 'V0Rc'):
             k = qd.shape[1]
             ql = torch.einsum('nji,njk->nik', self.Rport, qd.reshape(-1, 3, k)).reshape(-1, k)     # R^T q
             ul = model(self, ql)
@@ -316,6 +319,10 @@ def main(argv):
                 for v in variants:                                             # energies: no factor needed
                     t = time.perf_counter()
                     g.set_variant(v, wrap)
+                    if v == 'V0Rc':
+                        CR.install(); CR.set_corot(C, nodal_rotations(C))
+                    elif getattr(C, '_cr_Minv', None) is not None:
+                        CR.clear_corot(C)
                     with torch.no_grad():
                         r = evaluate(g, model, v)
                         r['rigid_energy_rel'] = rigid_energy(g, model)
@@ -324,9 +331,13 @@ def main(argv):
                 C._free()
                 if a.worst:                                                    # worst direction: Neumann factor only
                     t = time.perf_counter(); C.factor(neumann=True, interior=False); rec['factor_neumann2_s'] = time.perf_counter() - t
-                    for v in ('V0', 'V0R'):
+                    for v in ('V0', 'V0R', 'V0Rc'):
                         if v in rec['variants']:
                             t = time.perf_counter(); g.set_variant(v, wrap)
+                            if v == 'V0Rc':
+                                CR.set_corot(C, nodal_rotations(C))
+                            elif getattr(C, '_cr_Minv', None) is not None:
+                                CR.clear_corot(C)
                             mu, it = worst(g, model)
                             rec['variants'][v].update(worst_mu=mu, worst_iters=it, worst_seconds=time.perf_counter() - t)
                     C._free()
