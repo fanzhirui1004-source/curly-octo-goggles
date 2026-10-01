@@ -281,7 +281,7 @@ def mapped_moments(cells, n, taus, normal, offset, s, levels, surface, xe, xi_no
     """Mt (E, 45, 125): sum over quadrature points of w A_c(t) t^m (t-measure; A includes det J of x_h(t)).
     xe (E, 27, 3) physical node coordinates of every element (torch, dev). geometric=True also returns the plain moments
     M (E, 125) of the same rule times (1/(2n))^3 (the physical-measure convention of cell_moments). stats (dict) collects
-    min det J, max condition number of J and the number of points."""
+    min det J (all points), max condition number of J (first point of every piece) and the number of points."""
     E = len(cells)
     Mt = torch.zeros((E, 45 * 125), dtype=dt, device=dev)
     M = torch.zeros((E, 125), dtype=dt, device=dev) if geometric else None
@@ -295,7 +295,7 @@ def mapped_moments(cells, n, taus, normal, offset, s, levels, surface, xe, xi_no
                 J = torch.einsum('tai,tqaj->tqij', xe[o], dN)                    # J_ij = dx_i / dt_j
                 A, det = a_tensor(J, lam, mu)
                 dmin = min(dmin, float(det.min()))
-                sv = torch.linalg.svdvals(J)
+                sv = torch.linalg.svdvals(J[:, 0])                               # first point of every piece (cost)
                 kmax = max(kmax, float((sv[..., 0] / sv[..., -1]).max()))
                 npts += p.shape[0] * p.shape[1]
                 Ac = A[..., pi, qi] * w[..., None]                               # (T, q, 45)
