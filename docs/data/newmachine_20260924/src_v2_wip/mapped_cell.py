@@ -161,6 +161,35 @@ def q2_basis(t, xi_nodes, second=False):
     return N, dN, H
 
 
+def _adj3(J):
+    """Adjugate (adj = det J * J^-1) and determinant of 3 x 3 matrices (..., 3, 3), closed form."""
+    a, b, c = J[..., 0, 0], J[..., 0, 1], J[..., 0, 2]
+    d, e, f = J[..., 1, 0], J[..., 1, 1], J[..., 1, 2]
+    g, h, i = J[..., 2, 0], J[..., 2, 1], J[..., 2, 2]
+    adj = torch.stack([torch.stack([e * i - f * h, c * h - b * i, b * f - c * e], -1),
+                       torch.stack([f * g - d * i, a * i - c * g, c * d - a * f], -1),
+                       torch.stack([d * h - e * g, b * g - a * h, a * e - b * d], -1)], -2)
+    det = a * adj[..., 0, 0] + b * adj[..., 1, 0] + c * adj[..., 2, 0]
+    return adj, det
+
+
+_IDX = {}
+
+
+def a_pairs(J, lam, mu):
+    """The 45 entries (PAIRS) of A = det J (J^-1)_Jj C_ijkl (J^-1)_Ll for isotropic C, and det J; closed form through the
+    adjugate: A_iJkL = (lam adj_Ji adj_Lk + mu delta_ik (adj adj^T)_JL + mu adj_Jk adj_Li) / det."""
+    key = J.device
+    if key not in _IDX:
+        p = torch.tensor([p for p, _ in PAIRS], device=J.device); q = torch.tensor([q for _, q in PAIRS], device=J.device)
+        _IDX[key] = (p // 3, p % 3, q // 3, q % 3)
+    i, Jj, k, L = _IDX[key]
+    adj, det = _adj3(J)
+    G = adj @ adj.transpose(-1, -2)
+    A = lam * adj[..., Jj, i] * adj[..., L, k] + mu * adj[..., Jj, k] * adj[..., L, i] + mu * (i == k) * G[..., Jj, L]
+    return A / det[..., None], det
+
+
 def a_tensor(J, lam, mu):
     """A[..., p, q] (9 x 9, p = 3 i + J, q = 3 k + L) = det J (J^-1)_Jj C_ijkl (J^-1)_Ll for isotropic C; and det J."""
     det = torch.linalg.det(J)
@@ -293,12 +322,12 @@ def mapped_moments(cells, n, taus, normal, offset, s, levels, surface, xe, xi_no
                 o, p, w = own[lo:lo + piece_chunk], P[lo:lo + piece_chunk], W[lo:lo + piece_chunk]
                 _, dN = q2_basis(p, xi_nodes)                                   # (T, q, 27, 3)
                 J = torch.einsum('tai,tqaj->tqij', xe[o], dN)                    # J_ij = dx_i / dt_j
-                A, det = a_tensor(J, lam, mu)
+                A, det = a_pairs(J, lam, mu)
                 dmin = min(dmin, float(det.min()))
                 sv = torch.linalg.svdvals(J[:, 0])                               # first point of every piece (cost)
                 kmax = max(kmax, float((sv[..., 0] / sv[..., -1]).max()))
                 npts += p.shape[0] * p.shape[1]
-                Ac = A[..., pi, qi] * w[..., None]                               # (T, q, 45)
+                Ac = A * w[..., None]                                            # (T, q, 45)
                 pw = [torch.stack([torch.ones_like(p[..., d]), p[..., d], p[..., d] ** 2, p[..., d] ** 3, p[..., d] ** 4], -1)
                       for d in range(3)]                                        # (T, q, 5) each
                 X = (Ac[..., :, None] * pw[0][..., None, :]).reshape(p.shape[0], p.shape[1], 45 * 5)
