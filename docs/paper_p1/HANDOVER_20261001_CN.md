@@ -4,12 +4,12 @@
 
 ## 1. 一句话现状
 
-论文 P1（NICE：neural-initialised static condensation with equilibrium correction，目标期刊 CMAME）的科学内容已全部完成并写入正文。R1 内审修订已完成，§6.11 厚度优化（含板设计的精确核对和规模展示）已并入正文和补充材料。正文与补充材料的 PDF 都能编译通过，无错误。
+论文 P1（NICE：neural-initialised static condensation with equilibrium correction，目标期刊 CMAME）的科学内容已全部完成并写入正文。R1 内审修订已完成，厚度优化（含板设计的精确核对和规模展示）已并入正文和补充材料。**R2（10-01）按作者决定改为 L2 主线**（学习型构件模型的力学结构、可改进性与设计级精度；TPMS 切割胞为实例）：章节重排为 1 引言、2 离散模型、3 误差关系、4 NICE、5 算例、6 讨论、7 结论，公式与引用全部重新编号；摘要、引言、§2 末、§3 末、§4 开头、§5 路线图、§6、§7 重写；图 1、2、4、7、10 重画，图 12 拆为 12 和 13。记录见 review_r1/R2_LOG_20261001_CN.md。正文与补充材料的 PDF 都能编译通过，无错误。
 
 剩下的主要是作者本人的事项（作者信息、声明、通读）和发布前的归档清理，见第 6 节。
 
 - **标题**：Neural-initialised static condensation with equilibrium correction for the analysis and thickness design of cut thin-walled TPMS lattices
-- **摘要**：246 词（CMAME 上限 250）。
+- **摘要**：358 词。作者决定以讲清科学问题为先，不卡 CMAME 指南的 250 词；投稿系统若硬限，届时再压（250 词版本在 git 历史 4e1d1a0 之前的提交中可找回）。
 - **分支**：仓库 `fanzhirui1004-source/curly-octo-goggles`，分支 `claude/wizardly-euler-3m9cwx`。
 
 ## 2. 文件地图（`docs/paper_p1/`）
@@ -20,13 +20,13 @@
 | `APPENDICES_EN.md` | 附录 A–J |
 | `SUPPLEMENTARY_EN.md` | 补充材料：R1/R2、表 ST01–ST27、Note S1–S9、图 S01–S06 |
 | `references_verified.bib` | 已核实的参考文献库（正文用作者-年份链接，构建脚本自带参考文献列表） |
-| `figures/` | 全部图（主图 1–12，补充图 S01–S06）。**注意文件名与图号不一致**：`F13_optimisation.*` 是图 12，`F12_*` 是图 7，`S06_reference_verification` 是图 S01 |
-| `figures_src/` | 部分图的生成脚本，如 `fig_opt.py`（图 12、图 S06）；`figstyle.py` 是统一样式 |
+| `figures/` | 全部图（主图 1–13，补充图 S01–S06）。**注意文件名与图号不一致**：`F08_geometry` 是图 1，`F01_method_overview` 是图 2，`F12_field_error_M1` 是图 7，`F13_optimisation` 是图 12，`F14_designs_scale` 是图 13，`S06_reference_verification` 是图 S01；投稿打包时按图号重命名 |
+| `figures_src/` | 图的生成脚本：`fig01_geometry.py`（图 1）、`fig02_overview.py`（图 2）、`fig04_loads.py`（图 4）、`fig05_population.py`（图 5）、`fig_field_error.py`（图 7）、`fig08_assembly.py`（图 9）、`fig10_participation.py`（图 10）、`fig_opt.py`（图 12、13、S06）、`fig_refconv.py`（S01）、`fig_s01_distributions.py`；`figstyle.py` 是统一样式。图 3、6、8、11、S02–S05 仍无脚本 |
 | `FIGURES.md` | 图目录，由 `latex/gen_figures_md.py` 生成 |
 | `latex/` | elsarticle 构建：`build_tex.py`（正文+附录 → `main.tex`）、`build_supp_tex.py`（补充材料 → `supp.tex`）、`preamble.tex`、`authors.tex`（作者占位）、`endmatter.tex`（CRediT、利益冲突、致谢、AI 声明占位）、`gen_supp_tables.py`（部分补充表的生成） |
 | `evidence/` | 论文引用的结果记录（发布时随代码归档）。`evidence/opt/` 是 §6.11 全部记录：算例 A、板、均匀化、规模（`scale/`）、精确核对（`exact_plates/`） |
 | `submission/` | `HIGHLIGHTS.md`（候选 8 条，推荐 1、2、4、5、7）、`COVER_LETTER_DRAFT.md`（初稿） |
-| `review_r1/` | 内审过程文件，**不随论文发布**，见下表 |
+| `review_r1/` | 内审过程文件，**不随论文发布**，见下表；R2 的记录 `R2_LOG_20261001_CN.md`、主线讨论 `MAINLINE_SKELETON_20261001_CN.md`、G 胞迁移草稿 `DRAFT_S10_GCELL_EN.md`（未并入） |
 
 `review_r1/` 中常用的文件：
 
@@ -53,7 +53,9 @@
 
 ```bash
 cd docs/paper_p1
-python3 figures_src/fig_opt.py                 # 图 12 与图 S06（读 review_r1/results/X6_opt）
+python3 figures_src/fig_opt.py                 # 图 12、13 与图 S06（读 review_r1/results/X6_opt）
+python3 figures_src/fig01_geometry.py          # 图 1（marching cubes，需 scikit-image，约 80 s）
+python3 figures_src/fig02_overview.py          # 图 2
 python3 latex/gen_figures_md.py                # FIGURES.md
 cd latex
 python3 build_tex.py && pdflatex main.tex && pdflatex main.tex          # 正文 PDF（当前 93 页）
@@ -100,7 +102,8 @@ python3 build_supp_tex.py && pdflatex supp.tex && pdflatex supp.tex     # 补充
 **作者本人：**
 1. `latex/authors.tex`：作者、单位、通讯作者。
 2. `latex/endmatter.tex`：CRediT、利益冲突、致谢与基金、生成式 AI 声明（Elsevier 要求写工具名称和用途，作者自行撰写）。
-3. 通读正文与补充材料；在 Highlights 中选 5 条；定稿 cover letter。
+3. 通读正文与补充材料，尤其 R2 新写的摘要、引言、§2 末段、§3 末段、§4 开头、§6、§7；在 Highlights 中选 5 条；定稿 cover letter。
+4. 决定是否把 G 胞迁移（review_r1/DRAFT_S10_GCELL_EN.md）并入补充材料。
 
 **发布或录用前（SUBMISSION_READINESS_CN.md 的 S16）：**
 - evidence/ 中的 JSON 含服务器绝对路径和机器名，`evidence/opt/` 的 meta 和日志含旧目录名，需要清理；

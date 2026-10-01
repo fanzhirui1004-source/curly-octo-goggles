@@ -9,10 +9,12 @@ Main Figure 12 -> figures/F13_optimisation.{svg,pdf,png}   (the prefix F12_ belo
       B2 at the uniform start; the homogenisation design (Hom-y / Hom-z) evaluated with NICE and the NICE continuation from it
       (X-y / X-z) are divided by the same C0 and drawn over their own design iterations; shading: design iterations with
       V > V* of the run from the uniform start; the bracket in the upper plots marks the range enlarged in the lower strips.
-  (c,d) final corner thickness parameters of B2 and X-z on the plate, drawn in the original orientation (long side
+  The legends sit inside the panels: the entries of (a) in panel (a), those of (b) in the B1 panel.
+Main Figure 13 -> figures/F14_designs_scale.{svg,pdf,png}   (formerly panels (c), (d), (e) of Figure 12, same data)
+  (a,b) final corner thickness parameters of B2 and X-z on the plate, drawn in the original orientation (long side
       horizontal): internal y horizontal, internal x vertical; layer z = 0 (the z = 1 difference is printed); vertices in
       the removed region are corners of cut cells.
-  (e) scale demonstration (scale/scale_summary.json): time per design iteration (mean, range bars), peak host memory of
+  (c) scale demonstration (scale/scale_summary.json): time per design iteration (mean, range bars), peak host memory of
       the main process and peak device memory in use (nvidia-smi, includes the cuDSS factor) against the number of cells, for plates of 24, 51, 88 and 110 cells; 135 cells failed (K_PP factor on the GPU).
 Supplementary Figure S06 -> figures/S06_homogenised_law.{svg,pdf,png}
   C11, C12, C44 and the material volume fraction (symbol V^H; rho is the recomputed residual of Eq. (18)) of the
@@ -25,7 +27,8 @@ used in the main text) with markers no predictor uses ('*', 'h'); the load face 
 Data only from review_r1/results/X6_opt: optA/optA, optA/optAx (histories, check_*.json), plates/* (histories, meta.json
 'vkeys' and 'fixed'), homog/plate841.json ('shape', 'normal', 'b_global', 'cells'), homog/homog_cells.json ('cells'),
 FACTS_6_11.json (cross-checked against the histories below).
-Usage: python3 fig_opt.py
+Usage: python3 fig_opt.py            Figures 12, 13 and S06
+       python3 fig_opt.py --single   additionally the pre-split five-panel figure -> figures/F13_optimisation_single.*
 """
 import json
 import sys
@@ -195,15 +198,25 @@ def zoom_bracket(ax, lo, hi):
             solid_joinstyle='miter', zorder=6)
 
 
-# ------------------------------------------------------------------------------------------------ Figure 12
-def fig_main():
-    fig = plt.figure(figsize=(178 * FS.MM, 142 * FS.MM))
-    outer = fig.add_gridspec(2, 1, height_ratios=[1.3, 1], hspace=.25, top=.885, bottom=.04, left=.08, right=.975)
-    top = outer[0].subgridspec(2, 3, height_ratios=[2.3, 1], hspace=.10, wspace=.42)
-    bot = outer[1].subgridspec(2, 3, height_ratios=[1, .06], width_ratios=[1, 1, .78], hspace=.05, wspace=.10)
+# ------------------------------------------------------------------------------------------------ panel drawing
+def legend_handles():
+    """Legend entries of the histories; 'a' belongs to case A, 'b' to the plates (in-panel legends of the split figure)."""
+    L2 = plt.Line2D
+    a = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE'),
+         L2([], [], color=EXACT, ls='--', marker=EXACT_MK, ms=4, mew=.8, lw=.8, label='exact condensation (twin)'),
+         L2([], [], ls='none', marker='o', ms=6, mfc='none', mec=EXACT, mew=1.0, label='exact $C$, NICE design')]
+    b = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE, uniform start'),
+         L2([], [], ls='none', marker=HOM_MK, ms=7.5, mfc=HOM, mec='white', mew=.5, label='Hom-$y$, Hom-$z$ with NICE'),
+         L2([], [], color=HOM, marker=XH_MK, ms=3.2, lw=1.0, label='X-$y$, X-$z$ from Hom'),
+         L2([], [], color=NICE, ls=':', lw=.8, label='final, uniform start'),
+         Patch(fc=SHADE, ec='none', label=r'$V>V^*$, uniform start'),
+         L2([], [], ls='none', marker=r'$]$', ms=6, color=FS.TEXT, label='range enlarged below')]
+    return a, b
 
-    # ---------------- (a) case A
-    ax, axs = fig.add_subplot(top[0, 0]), fig.add_subplot(top[1, 0])
+
+def draw_caseA(fig, gs_up, gs_lo, legend=False):
+    """(a) case A: NICE and exact-twin compliance histories with the relative-difference strip."""
+    ax, axs = fig.add_subplot(gs_up), fig.add_subplot(gs_lo)
     kA, kX = np.array([h['k'] for h in A]), np.array([h['k'] for h in AX])
     CA, CX = ctrace(A), ctrace(AX)
     vA = np.array([h['V_rel'] for h in A])
@@ -216,8 +229,11 @@ def fig_main():
     ax.plot(kA, CA, '-', color=NICE, lw=.9, marker=NICE_MK, ms=2.1, zorder=4)
     kc = sorted(CHK)
     ax.plot(kc, [CHK[k]['C_exact'] for k in kc], ls='none', marker='o', ms=6.5, mfc='none', mec=EXACT, mew=1.0, zorder=5)
-    ax.set_ylabel('compliance $C$'); ax.set_ylim(23, 39.5)
+    ax.set_ylabel('compliance $C$'); ax.set_ylim(23, 42.5 if legend else 39.5)
     FS.panel(ax, 'a', 'Case A: 2×2×2 block')
+    if legend:
+        ax.legend(handles=legend_handles()[0], loc='upper right', bbox_to_anchor=(1.03, 1.0), frameon=False, fontsize=6,
+                  handlelength=1.8, handletextpad=.5, labelspacing=.35, borderaxespad=.1)
     n = min(len(CA), len(CX))
     rel_twin = 100 * (CA[:n] / CX[:n] - 1)
     rel_chk = [100 * (CHK[k]['C_hat'] / CHK[k]['C_exact'] - 1) for k in kc]
@@ -238,13 +254,16 @@ def fig_main():
     print(f"A: NICE/twin rel diff (%) {np.round(rel_twin, 4).tolist()}; checks {np.round(rel_chk, 4).tolist()}; volume phase k < {k_on}")
     for kp in pert:
         print(f"A: perturbed design k={kp}: NICE vs twin {rel_twin[kp]:.4f}%; V_rel NICE/twin {A[kp]['V_rel']:.6f}/{AX[kp]['V_rel']:.6f}")
+    return ax, axs
 
-    # ---------------- (b) plates: one letter for both columns, each column with its own C0 and y-label
+
+def draw_plates(fig, cells, legend=False):
+    """(b) plates B1 and B2: one letter for both columns, each column (gs_up, gs_lo) with its own C0 and y-label."""
     specs = [('B1', 'XH_y', 'H_y', 'B1: in-plane load', (.9195, .9375)),
              ('B2', 'XH_z', 'H_z', 'B2: bending', (.9055, .9325))]
     b_axes = []
-    for col, (rb, rx, rh, title, zoom) in enumerate(specs, start=1):
-        ax, axz = fig.add_subplot(top[0, col]), fig.add_subplot(top[1, col])
+    for (gs_up, gs_lo), (rb, rx, rh, title, zoom) in zip(cells, specs):
+        ax, axz = fig.add_subplot(gs_up), fig.add_subplot(gs_lo)
         b_axes.append(ax)
         C0 = PL[rb][0]['C']
         cb, cx, ch = ctrace(PL[rb]) / C0, ctrace(PL[rx]) / C0, PL[rh][0]['C'] / C0
@@ -266,23 +285,18 @@ def fig_main():
         axz.set_xlabel('design iteration')
         plt.setp(ax.get_xticklabels(), visible=False)
         ax.text(.97, .95, title, ha='right', va='top', fontsize=7.5, color=FS.TEXT, transform=ax.transAxes)
+        if legend and rb == 'B1':
+            ax.set_ylim(top=1.5)                                            # headroom for the in-panel legend
+            ax.legend(handles=legend_handles()[1], loc='upper right', bbox_to_anchor=(1.03, .89), frameon=False,
+                      fontsize=5.8, handlelength=1.9, handletextpad=.5, labelspacing=.3, borderaxespad=.1)
         print(f"{rb}: C0 {C0:.4f}; final {cb[-1]:.5f}, {rh} {ch:.5f}, {rx} final {cx[-1]:.5f}; V_rel of {rx} "
               f"{vx[0]:.5f} at its start, range {vx.min():.5f}-{vx.max():.5f}; volume phase of {rb} k < {kon}")
     FS.panel(b_axes[0], 'b', 'Plates B1 and B2')
+    return b_axes
 
-    L2 = plt.Line2D
-    hl = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE (a), NICE from the uniform start (b)'),
-          L2([], [], color=EXACT, ls='--', marker=EXACT_MK, ms=4, mew=.8, lw=.8, label='twin run, exact condensation (a)'),
-          L2([], [], ls='none', marker='o', ms=6, mfc='none', mec=EXACT, mew=1.0, label='exact compliance of the NICE design (a)'),
-          L2([], [], ls='none', marker=HOM_MK, ms=7.5, mfc=HOM, mec='white', mew=.5, label='homogenisation design, NICE (b)'),
-          L2([], [], color=HOM, marker=XH_MK, ms=3.2, lw=1.0, label='NICE from the homogenisation design (b)'),
-          L2([], [], color=NICE, ls=':', lw=.8, label='final NICE value from the uniform start (b)'),
-          Patch(fc=SHADE, ec='none', label=r'$V>V^*$ (b: run from the uniform start)'),
-          L2([], [], ls='none', marker=r'$]$', ms=6, color=FS.TEXT, label='range enlarged in the lower strip (b)')]
-    fig.legend(handles=hl, loc='lower center', bbox_to_anchor=(.5, .917), ncol=3, frameon=False, fontsize=6.5,
-               handlelength=2.2, columnspacing=1.3, handletextpad=.5)
 
-    # ---------------- (c, d) thickness fields
+def draw_fields(fig, gs_c, gs_d, gs_cbar, letters=('c', 'd')):
+    """Final corner thickness parameters of B2 and X-z on the plate with a shared horizontal colour bar."""
     G = plate_geometry()
     fields = {}
     for run in ('plateB2', 'xstartH_z'):
@@ -291,21 +305,25 @@ def fig_main():
         print(f"{run}: z=0/z=1 max |diff| {dz:.2e}, final C {C:.3f}, tau range {np.nanmin(T):.4f}-{np.nanmax(T):.4f}; "
               f"vertices in the removed region (X, Y, tau, fixed): {removed_vertices(G, T, FX)}")
     assert np.isclose(fields['plateB2'][3], F['B2']['C_final']) and np.isclose(fields['xstartH_z'][3], F['XH_z']['C_final'])
-    axc, axd = fig.add_subplot(bot[0, 0]), fig.add_subplot(bot[0, 1])
+    axc, axd = fig.add_subplot(gs_c), fig.add_subplot(gs_d)
     T, FX, _, C = fields['plateB2']
     im = draw_plate(axc, G, T, FX, f'NICE $C$ = {fmt_thousands(C, 1)}')
-    FS.panel(axc, 'c', 'Final design B2')
+    FS.panel(axc, letters[0], 'Final design B2')
     T, FX, _, C = fields['xstartH_z']
     draw_plate(axd, G, T, FX, f'NICE $C$ = {fmt_thousands(C, 1)}')
-    FS.panel(axd, 'd', f"Final design {NAME['XH_z']}")
-    cax = fig.add_subplot(bot[1, 0:2])
+    FS.panel(axd, letters[1], f"Final design {NAME['XH_z']}")
+    cax = fig.add_subplot(gs_cbar)
     pos = cax.get_position(); cax.set_position([pos.x0 + .18 * pos.width, pos.y0, .64 * pos.width, pos.height])
     cb_ = fig.colorbar(im, cax=cax, orientation='horizontal', ticks=[.18, .3, .4, .5, .6, .69])
     cb_.set_label(r'corner thickness parameter $\tau$, layer $z=0$ (circles: free, squares: fixed)', fontsize=7)
     cb_.ax.tick_params(labelsize=6.5); cb_.outline.set_linewidth(.5)
+    return axc, axd
 
-    # ---------------- (e) scale demonstration: time and host memory per design iteration against the number of cells
-    axe = fig.add_subplot(bot[0, 2])
+
+def draw_scale(fig, gs_e, letter='e', wide=False):
+    """Scale demonstration: time and host/GPU memory per design iteration against the number of cells.  `wide`: the
+    panel of the split figure (labels placed where nothing else is drawn)."""
+    axe = fig.add_subplot(gs_e)
     S = json.loads((D / 'scale' / 'scale_summary.json').read_text())
     runs = ['plateS24r4', 'plateS51r4', 'plateS88', 'plateS110']
     n = np.array([S[r]['cells'] for r in runs])
@@ -322,22 +340,79 @@ def fig_main():
     gp = np.array([S[r]['sampler_gpu_used_max_gib'] for r in runs])     # GiB in use on the device (nvidia-smi, 30-s samples)
     axm.plot(n, hp, '--', color=EXACT, lw=.8, marker='o', ms=3.0, mfc='white', mew=.8, zorder=3)
     axm.plot(n, gp, ':', color=EXACT, lw=.9, marker='^', ms=3.0, mfc=EXACT, mew=.6, zorder=3)
-    axm.axhline(32607 / 1024, color=EXACT, lw=.5, ls='-', alpha=.5)
-    axm.text(62, 32607 / 1024 + 1.2, 'GPU capacity', fontsize=5.6, color=EXACT, va='bottom')
-    axm.text(n[-1] + 3, hp[-1], 'host', fontsize=5.8, color=EXACT, ha='left', va='center')
-    axm.text(n[-1] + 3, gp[-1] - 1, 'GPU', fontsize=5.8, color=EXACT, ha='left', va='top')
+    cap = 32607 / 1024
+    axm.axhline(cap, color=EXACT, lw=.5, ls='-', alpha=.5)
     axm.set_ylim(0, 110); axm.set_ylabel('peak memory (GiB)', color=EXACT, fontsize=7)
     axm.tick_params(axis='y', colors=EXACT, labelsize=6.5)
     axe.axvline(135, color=FS.MUTED, lw=.6, ls=':')
-    axe.text(142.5, 27.5, '135 cells: out of GPU memory', ha='center', va='center', rotation=90, fontsize=5.6,
-             color=FS.MUTED)
+    if wide:
+        axm.text(132.5, cap + 1.2, 'GPU capacity', fontsize=5.8, color=EXACT, ha='right', va='bottom')
+        axm.text(n[-1] + 3.5, hp[-1], 'host', fontsize=6, color=EXACT, ha='left', va='center')
+        axm.text(n[-1] + 3.5, gp[-1] - .5, 'GPU', fontsize=6, color=EXACT, ha='left', va='top')
+        axe.text(132.5, 11.0, 'out of GPU\nmemory at\n135 cells', ha='right', va='top', fontsize=5.8, color=FS.MUTED,
+                 linespacing=1.05)
+    else:
+        axm.text(62, cap + 1.2, 'GPU capacity', fontsize=5.6, color=EXACT, va='bottom')
+        axm.text(n[-1] + 3, hp[-1], 'host', fontsize=5.8, color=EXACT, ha='left', va='center')
+        axm.text(n[-1] + 3, gp[-1] - 1, 'GPU', fontsize=5.8, color=EXACT, ha='left', va='top')
+        axe.text(142.5, 27.5, '135 cells: out of GPU memory', ha='center', va='center', rotation=90, fontsize=5.6,
+                 color=FS.MUTED)
     axe.grid(True, color=FS.GRID, lw=.4)
     print('scale: cells', n.tolist(), 'time/iter (min)', np.round(tm, 2).tolist(), 'host peak GiB', np.round(hp, 1).tolist(), 'GPU in use GiB', np.round(gp, 1).tolist())
-    FS.panel(axe, 'e', 'Scale demonstration')
+    FS.panel(axe, letter, 'Scale demonstration')
+    return axe
+
+
+# ------------------------------------------------------------------------------------------------ Figure 12 (split)
+def fig_main():
+    """Figure 12: (a) case A and (b) plates B1 / B2 with their lower strips, legends inside the panels."""
+    fig = plt.figure(figsize=(178 * FS.MM, 84 * FS.MM))
+    top = fig.add_gridspec(2, 3, height_ratios=[2.3, 1], hspace=.10, wspace=.40, top=.925, bottom=.105, left=.075, right=.98)
+    draw_caseA(fig, top[0, 0], top[1, 0], legend=True)
+    draw_plates(fig, [(top[0, 1], top[1, 1]), (top[0, 2], top[1, 2])], legend=True)
+    FS.save(fig, 'F13_optimisation')
+
+
+# ------------------------------------------------------------------------------------------------ Figure 13 (new)
+def fig_designs():
+    """Figure 13: (a, b) final designs B2 and X-z with the colour bar, (c) scale demonstration (formerly Figure 12c-e)."""
+    fig = plt.figure(figsize=(178 * FS.MM, 64 * FS.MM))
+    bot = fig.add_gridspec(2, 3, height_ratios=[1, .06], width_ratios=[1, 1, .78], hspace=.05, wspace=.10, top=.90,
+                           bottom=.15, left=.02, right=.975)
+    axc, _ = draw_fields(fig, bot[0, 0], bot[0, 1], bot[1, 0:2], letters=('a', 'b'))
+    axe = draw_scale(fig, bot[0, 2], letter='c', wide=True)
+    fig.canvas.draw()                                                   # align (c) with the aspect-constrained plates
+    pc, pe = axc.get_position(), axe.get_position()
+    axe.set_position([pe.x0 + .04, pc.y0, pe.width - .07, pc.height])
+    FS.save(fig, 'F14_designs_scale')
+
+
+# ------------------------------------------------------------------------------------------------ Figure 12 (pre-split)
+def fig_main_single():
+    """The five-panel figure before the split (a-e with the three-column legend on top) -> F13_optimisation_single."""
+    fig = plt.figure(figsize=(178 * FS.MM, 142 * FS.MM))
+    outer = fig.add_gridspec(2, 1, height_ratios=[1.3, 1], hspace=.25, top=.885, bottom=.04, left=.08, right=.975)
+    top = outer[0].subgridspec(2, 3, height_ratios=[2.3, 1], hspace=.10, wspace=.42)
+    bot = outer[1].subgridspec(2, 3, height_ratios=[1, .06], width_ratios=[1, 1, .78], hspace=.05, wspace=.10)
+    draw_caseA(fig, top[0, 0], top[1, 0])
+    draw_plates(fig, [(top[0, 1], top[1, 1]), (top[0, 2], top[1, 2])])
+    L2 = plt.Line2D
+    hl = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE (a), NICE from the uniform start (b)'),
+          L2([], [], color=EXACT, ls='--', marker=EXACT_MK, ms=4, mew=.8, lw=.8, label='twin run, exact condensation (a)'),
+          L2([], [], ls='none', marker='o', ms=6, mfc='none', mec=EXACT, mew=1.0, label='exact compliance of the NICE design (a)'),
+          L2([], [], ls='none', marker=HOM_MK, ms=7.5, mfc=HOM, mec='white', mew=.5, label='homogenisation design, NICE (b)'),
+          L2([], [], color=HOM, marker=XH_MK, ms=3.2, lw=1.0, label='NICE from the homogenisation design (b)'),
+          L2([], [], color=NICE, ls=':', lw=.8, label='final NICE value from the uniform start (b)'),
+          Patch(fc=SHADE, ec='none', label=r'$V>V^*$ (b: run from the uniform start)'),
+          L2([], [], ls='none', marker=r'$]$', ms=6, color=FS.TEXT, label='range enlarged in the lower strip (b)')]
+    fig.legend(handles=hl, loc='lower center', bbox_to_anchor=(.5, .917), ncol=3, frameon=False, fontsize=6.5,
+               handlelength=2.2, columnspacing=1.3, handletextpad=.5)
+    axc, _ = draw_fields(fig, bot[0, 0], bot[0, 1], bot[1, 0:2])
+    axe = draw_scale(fig, bot[0, 2])
     fig.canvas.draw()                                                   # align (e) with the aspect-constrained plates
     pc, pe = axc.get_position(), axe.get_position()
     axe.set_position([pe.x0 + .035, pc.y0, pe.width - .06, pc.height])
-    FS.save(fig, 'F13_optimisation')
+    FS.save(fig, 'F13_optimisation_single')
 
 
 # ------------------------------------------------------------------------------------------------ Figure S06
@@ -378,7 +453,9 @@ def fig_law():
     print(f"law: {len(t)} thicknesses {t.min()}-{t.max()}; C11 {pts['C11'][0]:.5f}-{pts['C11'][-1]:.5f}, "
           f"C12 {pts['C12'][-1]:.5f}, C44 {pts['C44'][-1]:.5f} at the thickest; V^H {pts['rho'][0]:.4f}-{pts['rho'][-1]:.4f}")
 
-
 if __name__ == '__main__':
     fig_main()
+    fig_designs()
     fig_law()
+    if '--single' in sys.argv[1:]:
+        fig_main_single()

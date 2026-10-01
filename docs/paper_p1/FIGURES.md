@@ -10,13 +10,13 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 **Figure 1. Representative validation geometries.** The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and orange the macro-cut section. Percentages indicate the retained macro-domain volume relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).
 
-[PNG](figures/F08_geometry.png)
+[PNG](figures/F08_geometry.png) · [PDF](figures/F08_geometry.pdf)
 
 ### Figure 2
 
 ![Figure 2](figures/F01_method_overview.png)
 
-**Figure 2. Learned displacement extension, equilibrium correction and variational assembly.** (a) Rigid motion is separated from the retained displacement before the deformation is extended by the network. The rigid field is reconstructed and the prescribed retained values are restored; correction then reduces internal imbalance at fixed retained displacement. (b) Applying the local stiffness and the complete extension transpose gives the work-conjugate retained force. The assembled solution supplies the inputs for local field recovery. The neural extension is detailed in Figure 3; Section 5 defines the internal correction.
+**Figure 2. Learned displacement extension, equilibrium correction and variational assembly.** (a) Rigid motion is separated from the retained displacement before the deformation is extended by the network. The rigid field is reconstructed and the prescribed retained values are restored; correction then reduces internal imbalance at fixed retained displacement. (b) Applying the local stiffness and the complete extension transpose gives the work-conjugate retained force. The assembled solution supplies the inputs for local field recovery. The neural extension is detailed in Figure 3 and Section 4.4; Sections 4.2 and 4.3 define the internal correction.
 
 [PNG](figures/F01_method_overview.png) · [PDF](figures/F01_method_overview.pdf)
 
@@ -96,9 +96,17 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ![Figure 12](figures/F13_optimisation.png)
 
-**Figure 12. Thickness optimisation with NICE.** (a) Case A: compliance histories of the NICE optimisation and of the twin optimisation with exact condensation, with the exact compliance of the NICE designs at iterations 0, 12 and 23 (open circles); the compliance first rises while the volume is reduced from \(1.25V^*\) to \(V^*\) (shading, iterations 0–3). Lower strip: NICE compliance relative to the twin run at the same design iteration (line; the designs of the two runs differ) and to the exact compliance of the same design (circles: −0.011%, −0.018%, −0.028%); at iterations 16 and 19 the NICE design had been perturbed by the geometry-generation fallback (Table ST24), and at iteration 19 its volume lay 0.036% above \(V^*\). (b) Plates B1 (in-plane load, left) and B2 (bending, right): compliance divided by \(C_0\), the initial NICE compliance of B1 or B2 at the uniform start (94.34 and 1,467.7). The homogenisation designs Hom-\(y\) and Hom-\(z\) evaluated with NICE (stars) and the NICE continuations X-\(y\) and X-\(z\) started from them are divided by the same \(C_0\) and drawn over their own design iterations. Shading: design iterations with \(V>V^*\) of the runs from the uniform start; the continuations start within 0.05% of \(V^*\). Lower strips: the range marked by the bracket, enlarged. (c,d) Corner thickness parameters of the final designs B2 and X-\(z\), drawn with the long side horizontal, layer \(z=0\) (layer \(z=1\) differs by at most \(7.0\times10^{-4}\) in B2 and \(2.0\times10^{-4}\) in X-\(z\)); circles: design variables; squares: vertices in the plane of the loaded face, held fixed; vertices drawn in the removed region are corners of cut cells. ⊗: load face, traction normal to the plate. (e) Scale demonstration on plates with the geometry and load of B1: time per design iteration (mean; bars: range over the timed iterations), peak host memory of the main process and peak GPU memory in use, against the number of cells; at 135 cells the factorisation of \(K_{PP}\) on the GPU ran out of device memory. Plate compliances are NICE values; exact checks of the plate designs in Table 6 and Table ST27.
+**Figure 12. Thickness optimisation with NICE.** (a) Case A: compliance histories of the NICE optimisation and of the twin optimisation with exact condensation, with the exact compliance of the NICE designs at iterations 0, 12 and 23 (open circles); the compliance first rises while the volume is reduced from \(1.25V^*\) to \(V^*\) (shading, iterations 0–3). Lower strip: NICE compliance relative to the twin run at the same design iteration (line; the designs of the two runs differ) and to the exact compliance of the same design (circles: −0.011%, −0.018%, −0.028%); at iterations 16 and 19 the NICE design had been perturbed by the geometry-generation fallback (Table ST24), and at iteration 19 its volume lay 0.036% above \(V^*\). (b) Plates B1 (in-plane load, left) and B2 (bending, right): compliance divided by \(C_0\), the initial NICE compliance of B1 or B2 at the uniform start (94.34 and 1,467.7). The homogenisation designs Hom-\(y\) and Hom-\(z\) evaluated with NICE (stars) and the NICE continuations X-\(y\) and X-\(z\) started from them are divided by the same \(C_0\) and drawn over their own design iterations. Shading: design iterations with \(V>V^*\) of the runs from the uniform start; the continuations start within 0.05% of \(V^*\). Lower strips: the range marked by the bracket, enlarged.
 
 [PNG](figures/F13_optimisation.png) · [PDF](figures/F13_optimisation.pdf)
+
+### Figure 13
+
+![Figure 13](figures/F14_designs_scale.png)
+
+**Figure 13. Final plate designs and scale demonstration.** (a,b) Corner thickness parameters of the final designs B2 and X-\(z\), drawn with the long side horizontal, layer \(z=0\) (layer \(z=1\) differs by at most \(7.0\times10^{-4}\) in B2 and \(2.0\times10^{-4}\) in X-\(z\)); circles: design variables; squares: vertices in the plane of the loaded face, held fixed; vertices drawn in the removed region are corners of cut cells. ⊗: load face, traction normal to the plate. (c) Scale demonstration on plates with the geometry and load of B1: time per design iteration (mean; bars: range over the timed iterations), peak host memory of the main process and peak GPU memory in use, against the number of cells; at 135 cells the factorisation of \(K_{PP}\) on the GPU ran out of device memory. Plate compliances are NICE values; exact checks of the plate designs in Table 6 and Table ST27.
+
+[PNG](figures/F14_designs_scale.png) · [PDF](figures/F14_designs_scale.pdf)
 
 ## Supplementary material
 
