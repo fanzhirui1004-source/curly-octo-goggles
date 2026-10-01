@@ -1,4 +1,4 @@
-"""Figure 7: retained / internal partition and the spatial distribution of the extension error on M1 (fresh_val_2003_d1_v1)
+"""Figure 7: retained / interior partition and the spatial distribution of the extension error on M1 (fresh_val_2003_d1_v1)
 under one consistent-traction direction. Source: evidence/p1_field_M1_small.npz, reduced from p1_checks.py --dump
 (bulk element energies x_e^T K_e x_e of the exact field and of the errors of B and A3, 32 validation directions' first 4).
 
@@ -50,17 +50,17 @@ def main(k=3):
     fig = plt.figure(figsize=(178 * MM, 150 * MM))
     gs = fig.add_gridspec(2, 3, width_ratios=[1, 1, .04], hspace=.36, wspace=.02, left=.01, right=.93, top=.95, bottom=.02)
 
-    ax = ax3(fig, gs[0, 0])                                             # (a) partition of the coordinates
+    ax = ax3(fig, gs[0, 0])                                             # (a) partition of the DOFs
     P, box = z['port_xyz'], z['port_is_box']
     I = z['int_xyz']
-    ax.scatter(*I.T, s=.15, c='#B8C2CC', alpha=.35, linewidths=0, label='internal (I)', rasterized=True)
+    ax.scatter(*I.T, s=.15, c='#B8C2CC', alpha=.35, linewidths=0, label='interior (I)', rasterized=True)
     ax.scatter(*P[box].T, s=.5, c=C['exact'], linewidths=0, label='retained: box face', rasterized=True)
     ax.scatter(*P[~box].T, s=.6, c=C['cut'], marker='s', linewidths=0, alpha=.8, label='retained: cut band', rasterized=True)
     handles = [plt.Line2D([], [], ls='none', marker=mk, color=col, ms=4, label=lab) for col, mk, lab in
-               (('#B8C2CC', 'o', 'internal (I)'), (C['exact'], 'o', 'retained: box face'), (C['cut'], 's', 'retained: cut band'))]
+               (('#B8C2CC', 'o', 'interior (I)'), (C['exact'], 'o', 'retained: box face'), (C['cut'], 's', 'retained: cut band'))]
     ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(.5, -.12), ncol=3, frameon=False, fontsize=6.5,
               handletextpad=.3, columnspacing=1.2, borderaxespad=0)      # below the panel (3D axes draw their labels inside)
-    panel(ax, 'a', 'Retained and internal coordinates')
+    panel(ax, 'a', 'Retained and interior DOFs')
 
     ax = ax3(fig, gs[0, 1])                                             # (b) exact field
     sc = ax.scatter(*ctr[mask].T, c=E[mask] / tot, norm=LogNorm(1e-7, 1e-2), cmap=CMAP, **PT)

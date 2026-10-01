@@ -1,6 +1,6 @@
 """Supplementary Figure S01 (S06 before the revision-1 renumbering): verification of the CutFEM reference (evidence/ref_valid*.json, script ref_valid.py).
 (a) background resolution n: largest relative change of compliance (filled) and 8-corner sensitivity (open) against the finest
-    resolution (n = 40 for U1, 48 otherwise), over the three consistent face loads; (b) ghost-penalty coefficient relative to the production value
+    resolution (n = 40 for U1, 48 otherwise), over the three consistent face loads; (b) ghost-penalty coefficient relative to the value used
     1e-4; (c) finite-difference step of the moment derivatives, relative to h = 1e-5 tau, and direct compliance differences."""
 import json
 from pathlib import Path
@@ -37,12 +37,12 @@ for lab, f, case, col, mk in CASES:
 FS.panel(axs[0], 'a', 'Background resolution')
 axs[0].set_xlabel('background elements per axis, n'); axs[0].set_ylabel('largest change vs finest n (%)')
 axs[0].set_yscale('log'); axs[0].set_xticks([24, 32, 40]); axs[0].axvline(32, color=FS.GRID, lw=3, zorder=0)
-axs[0].text(32.5, 1.6, 'production', color=FS.MUTED, fontsize=6.5)
+axs[0].text(32.5, 1.6, 'used', color=FS.MUTED, fontsize=6.5)
 FS.panel(axs[1], 'b', 'Ghost penalty')
-axs[1].set_xscale('log'); axs[1].set_yscale('log'); axs[1].set_xlabel(r'$\gamma$ (production $10^{-4}$)')
+axs[1].set_xscale('log'); axs[1].set_yscale('log'); axs[1].set_xlabel(r'$\gamma$ (used: $10^{-4}$)')
 axs[1].set_ylabel(r'largest change vs $\gamma=10^{-4}$ (%)')
 FS.panel(axs[2], 'c', 'Derivative step')
-axs[2].set_xscale('log'); axs[2].set_yscale('log'); axs[2].set_xlabel(r'step $h/\tau_c$ (production $10^{-5}$)')
+axs[2].set_xscale('log'); axs[2].set_yscale('log'); axs[2].set_xlabel(r'step $h/\tau_c$ (used: $10^{-5}$)')
 axs[2].set_ylabel(r'sensitivity change (%)')
 axs[2].annotate('open: direct compliance\ndifference vs sensitivity', (1e-5, 5e-6), (1.5e-6, 1.5e-5), color=FS.MUTED, fontsize=6,
                 ha='center', arrowprops=dict(arrowstyle='-', color=FS.MUTED, lw=.5))

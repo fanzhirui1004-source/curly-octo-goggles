@@ -1,6 +1,6 @@
 """Figure 1 -> figures/F08_geometry.{svg,pdf,png}: the validation cells U1, M1, H1 and H2 of Eq. (1), rendered by marching
 cubes on a 129^3 grid of the implicit material function g(x) = max(|phi(x)| - tau(x), n.x - b_cut) (material: g <= 0),
-light-shaded, with the macro-cut section (where n.x = b_cut is active) in orange; the same orthographic view for all cells.
+light-shaded, with the cut-plane section (where n.x = b_cut is active) in orange; the same orthographic view for all cells.
 
 Parameters.  The eight corner thickness parameters tau_c (corner index 4x + 2y + z) are archived in this repository:
 docs/data/newmachine_20260924/gcell/gval.json, key 'tau_corners_P' of the P-twin of every G cell (U1 = fresh_val_2000_full,
@@ -10,7 +10,7 @@ are the keys 'normal' and 'offset' of <packets>/<case>/FRESH_CONTEXT.json ('case
 Fill CUT below with these values (normal as three floats, offset as a float).  While any cut is missing the script does not
 touch figures/F08_geometry.*: `--test-planes` renders a PREVIEW with placeholder planes (approximate, for layout only) to
 figures_src/_preview_F08_geometry.png.
-Checks printed: the retained macro-box volume of every cut against the figure percentages (valmeta.json: 0.6478, 0.08604,
+Checks printed: the remaining box volume of every cut against the figure percentages (valmeta.json: 0.6478, 0.08604,
 0.02666) and the material fraction of the box face x = 0 of H2 against the archived face weight 0.1552463.
 Usage: python3 fig01_geometry.py [--test-planes]
 """
@@ -33,7 +33,7 @@ CUT = {'U1': None,                                                      # uncut
        'M1': ([0.8136594653387408, 0.5813417879910875, 0.0], 0.8177872088372765),   # FRESH_CONTEXT.json of fresh_val_2003_d1_v1
        'H1': ([0.74637223045224, 0.6655287323697966, 0.0], 0.292372729558999),      # fresh_val_2005_d1_v0
        'H2': ([0.9984316431248911, 0.05598440860570193, 0.0], 0.05459404962921295)} # fresh_val_2010_d0_v0
-PCT = {'U1': '100%', 'M1': '64.8%', 'H1': '8.6%', 'H2': '2.67%'}       # retained macro volume, as in the current figure
+PCT = {'U1': '100%', 'M1': '64.8%', 'H1': '8.6%', 'H2': '2.67%'}       # remaining box volume, as in the figure
 VOL = {'M1': 0.6478160496334634, 'H1': 0.08604416938804589, 'H2': 0.026660923780561247}   # evidence/valmeta.json 'vol'
 BAND, SECTION, BOX = '#7FA6C4', FS.C['cut'], '#9AA5B1'
 
@@ -68,7 +68,7 @@ def tau_field(X, Y, Z, t):
 
 
 def surface(t, cut):
-    """Marching-cubes surface of the material domain; per-face flag of the macro-cut section."""
+    """Marching-cubes surface of the material domain; per-face flag of the cut-plane section."""
     g = np.linspace(0, 1, N)
     X, Y, Z = np.meshgrid(g, g, g, indexing='ij')
     g1 = np.abs(np.cos(2 * np.pi * X) + np.cos(2 * np.pi * Y) + np.cos(2 * np.pi * Z)) - tau_field(X, Y, Z, t)
@@ -148,8 +148,8 @@ def main():
         print(f"{c}: {len(faces)} triangles, {int(is_cut.sum())} on the cut section")
         draw(ax, verts, faces, is_cut)
         ax.text2D(.02, .97, f'({"abcd"[i]}) {c}', transform=ax.transAxes, fontweight='bold', fontsize=8.5, va='top')
-        ax.text2D(.02, .02, f'retained macro volume: {PCT[c]}', transform=ax.transAxes, fontsize=7.5, va='bottom')
-    fig.legend(handles=[Patch(fc=BAND, ec='none', label='material surface'), Patch(fc=SECTION, ec='none', label='macro-cut section')],
+        ax.text2D(.02, .02, f'remaining box volume: {PCT[c]}', transform=ax.transAxes, fontsize=7.5, va='bottom')
+    fig.legend(handles=[Patch(fc=BAND, ec='none', label='material surface'), Patch(fc=SECTION, ec='none', label='cut-plane section')],
                loc='upper center', bbox_to_anchor=(.5, .995), ncol=2, frameon=False, fontsize=7.5, columnspacing=2.5)
     fig.subplots_adjust(left=.01, right=.99, bottom=.01, top=.955, wspace=.04, hspace=.06)
     if test:

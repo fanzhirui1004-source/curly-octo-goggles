@@ -47,11 +47,11 @@ def main():
         ax.plot(xb[~full], ya[~full], 's', color=C['corrected'], ms=3.5, label='cut')
         ax.set_xscale('log'); ax.set_yscale('log')
         lo, hi = 1e-3, 1e2
-        ax.plot([lo, hi], [lo, hi], ':', color=MUTED, lw=.6); ax.set_xlim(.1, 100); ax.set_ylim(.005, 2)
-        ax.set_xlabel('Base network (%)'); ax.set_ylabel('NICE (%)'); ax.legend(frameon=False, fontsize=6.5, loc='upper left')
+        ax.plot([lo, hi], [lo, hi], ':', color=MUTED, lw=.6); ax.set_xlim(.1, 100); ax.set_ylim(2e-5, 2)
+        ax.set_xlabel('Base network (%)'); ax.set_ylabel('NICE (%)'); ax.legend(frameon=False, fontsize=6.5, loc='lower right')
         ax.grid(color=GRID, lw=.4)
     panel(ax, 'b', 'Per geometry: base network vs NICE')
-    classes = [('glued', 'neighbour-induced'), ('support_k', 'spring-supported'), ('face_c', 'single-face traction'), ('force', 'nodal forces*')]
+    classes = [('glued', 'neighbour-induced'), ('support_k', 'stiffness-scaled springs'), ('face_c', 'single-face traction'), ('force', 'nodal forces*')]
     ax = fig.add_subplot(gs[1, :])
     for k, key in enumerate(keys):
         d, col, mk, lab = data[key]
@@ -62,7 +62,7 @@ def main():
             ax.plot([x, x], [np.quantile(v, .1), v.max()], color=col, lw=.8, alpha=.7)
     ax.set_yscale('log'); ax.set_xticks(range(len(classes)), [l for _, l in classes]); ax.set_ylabel('Energy error (%)')
     ax.grid(axis='y', color=GRID, lw=.4)
-    panel(ax, 'c', 'Other loading classes, all geometries')
+    panel(ax, 'c', 'Other loading classes, all strata')
     save(fig, 'F02_validation')
 
 

@@ -3,7 +3,7 @@ the neighbour cell N (exact condensation, grey) and the target cell T (learned, 
 (a) configuration x: N translated by (-1,0,0), face x=-1 clamped, face tractions on the y=0 faces of both cells;
 (b) configuration y: N translated by (0,-1,0), face y=-1 clamped, face tractions on the x=0 faces of both cells.
 Each loaded face carries separate x-, y- and z-directed consistent tractions (three arrows); the shared box face
-(dashed) carries the coincident box-node coordinates shared across the interface. Writes F09_assembly_loads.*"""
+(dashed) carries the coincident box-node DOFs shared across the interface. Writes F09_assembly_loads.*"""
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -63,7 +63,7 @@ def shared_face(ax, pts):
 def shared_label(ax, xy, anchor, ha):
     x, y = xy
     ax.text(x, y, 'shared box face', fontsize=7, color=SHARED, ha=ha, va='bottom', zorder=8)
-    ax.text(x, y + .14, 'coincident box-node\ncoordinates shared', fontsize=6, color=MUTED, ha=ha, va='bottom',
+    ax.text(x, y + .14, 'coincident box-node\nDOFs shared', fontsize=6, color=MUTED, ha=ha, va='bottom',
             linespacing=1.1, zorder=8)
     ax.plot([anchor[0], x if ha == 'left' else x], [anchor[1], y - .02], color=SHARED, lw=.6, zorder=5)
 
