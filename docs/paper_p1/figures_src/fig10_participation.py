@@ -1,11 +1,10 @@
-"""Figure 10 (revision 1): participation-weighted compliance error and local sensitivity for the five main-text
-predictors (Base network, Uncorrected, Smoothing-trained, NICE-post, NICE). Writes F10_energy_participation_r1.*;
-the original F10_energy_participation.* (B, C and S8 only) is left untouched.
+"""Figure 10: share-weighted compliance error and local sensitivity for the five variants (Base network, Uncorrected,
+Smoothing-trained, Base network, corrected, NICE). Writes F10_energy_share.*.
 
 Source: evidence/gate_<run>_fresh_val_<case>_<config>.json (lat_full.py --sets test). Per load: compliance_rel_err,
 sens_vec_rel_err[0] (target cell), bound (beta = sum_m w_m eps_m at the exact assembled trace) and energy_share[0]
-(target participation w). Face loads are the six loads of the joint criterion (gate flag), cut loads the three
-macro-cut tractions. Excluded: L1 (as in the original figure).
+(target energy share w). Face loads are the six loads of the joint criterion (gate flag), cut loads the three
+cut-surface tractions. Excluded: L1.
 The observation and combination counts are printed and must match the caption."""
 import json
 from pathlib import Path
@@ -47,10 +46,10 @@ def main():
     fig = plt.figure(figsize=(178 * MM, 140 * MM))
     gs = fig.add_gridspec(2, 2, hspace=.5, wspace=.32)
     axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(2)]
-    spec = [('beta', 'ce', r'$\beta=\sum_m w_m\varepsilon_m$ (%)', 'Compliance error (%)', 'a', 'Weighted local error'),
+    spec = [('beta', 'ce', r'$\beta=\sum_m w_m\varepsilon_m$ (%)', 'Compliance error (%)', 'a', 'Share-weighted local error'),
             ('ce', 'se', 'Compliance error (%)', 'Target sensitivity error (%)', 'b', 'Global and local response'),
-            ('w', 'ce', 'Target energy participation (%)', 'Compliance error (%)', 'c', 'Participation and compliance'),
-            ('w', 'se', 'Target energy participation (%)', 'Target sensitivity error (%)', 'd', 'Participation and sensitivity')]
+            ('w', 'ce', 'Target energy share (%)', 'Compliance error (%)', 'c', 'Energy share and compliance'),
+            ('w', 'se', 'Target energy share (%)', 'Target sensitivity error (%)', 'd', 'Energy share and sensitivity')]
     for ax, (kx, ky, lx, ly, letter, title) in zip(axes, spec):
         for m, (o, _) in data.items():
             col, mk, lab = MODEL[m]
@@ -71,10 +70,10 @@ def main():
                      arrowprops=dict(arrowstyle='-', color=MUTED, lw=.6))
     h = [plt.Line2D([], [], ls='none', marker=MODEL[m][1], color=MODEL[m][0], ms=4, label=MODEL[m][2]) for m, _ in RUNS]
     fig.legend(handles=h, loc='upper center', ncol=len(h), frameon=False, bbox_to_anchor=(.5, 1.0), fontsize=6.5,
-               handletextpad=.3, columnspacing=1.4)                     # predictors only; marker fill convention below
+               handletextpad=.3, columnspacing=1.4)                     # variants only; marker fill convention below
     fig.text(.5, .005, 'Filled markers: face loads; open markers: cut-surface loads. Dashed lines: equality.',
              ha='center', fontsize=6.5, color=MUTED)
-    save(fig, 'F10_energy_participation_r1')
+    save(fig, 'F10_energy_share')
 
 
 if __name__ == '__main__':

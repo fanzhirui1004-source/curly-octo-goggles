@@ -21,8 +21,8 @@ Supplementary Figure S06 -> figures/S06_homogenised_law.{svg,pdf,png}
   uniform-thickness cell against tau, with the cubic splines of homog_macro.Material.
 
 Colours and markers: NICE keeps its house identity (figstyle.MODEL['A3']: orange, squares). The exact-condensation twin is
-grey without the Base-network plus marker ('x'); the homogenisation series use C['extra'] (supplement-only S8 colour, not
-used in the main text) with markers no predictor uses ('*', 'h'); the load face and Figure S06 are drawn in neutral colours.
+grey without the Base-network plus marker ('x'); the homogenisation series use C['extra'] (a colour no variant uses)
+with markers no variant uses ('*', 'h'); the load face and Figure S06 are drawn in neutral colours.
 
 Data only from review_r1/results/X6_opt: optA/optA, optA/optAx (histories, check_*.json), plates/* (histories, meta.json
 'vkeys' and 'fixed'), homog/plate841.json ('shape', 'normal', 'b_global', 'cells'), homog/homog_cells.json ('cells'),
@@ -46,7 +46,7 @@ SRC = HERE.parents[1] / 'data' / 'newmachine_20260924' / 'src_v2_wip'   # homog_
 F = json.loads((D / 'FACTS_6_11.json').read_text())
 
 NICE, NICE_MK = FS.MODEL['A3'][0], FS.MODEL['A3'][1]                    # NICE: orange squares, as in Figures 5-10
-EXACT, EXACT_MK = FS.C['exact'], 'x'                                    # exact condensation: grey, no predictor marker
+EXACT, EXACT_MK = FS.C['exact'], 'x'                                    # exact condensation: grey, no variant marker
 HOM, HOM_MK, XH_MK = FS.C['extra'], '*', 'h'                            # homogenisation design / continuation from it
 SHADE = '#EEF1F4'
 TAU_LO, TAU_HI = 0.18, 0.69
