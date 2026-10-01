@@ -186,7 +186,8 @@ def a_pairs(J, lam, mu):
     i, Jj, k, L = _IDX[key]
     adj, det = _adj3(J)
     G = adj @ adj.transpose(-1, -2)
-    A = lam * adj[..., Jj, i] * adj[..., L, k] + mu * adj[..., Jj, k] * adj[..., L, i] + mu * (i == k) * G[..., Jj, L]
+    dik = (i == k).to(J.dtype)                                                 # float64 mask (a bool times a Python float is float32)
+    A = lam * adj[..., Jj, i] * adj[..., L, k] + mu * adj[..., Jj, k] * adj[..., L, i] + mu * dik * G[..., Jj, L]
     return A / det[..., None], det
 
 
