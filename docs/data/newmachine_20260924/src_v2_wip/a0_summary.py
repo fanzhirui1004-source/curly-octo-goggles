@@ -9,6 +9,10 @@ import numpy as np
 src, out = sys.argv[1], sys.argv[2]
 md = sys.argv[3] if len(sys.argv) > 3 else None
 R = [json.loads(l) for l in open(src) if l.strip()]
+last = {}                                                                      # resumed runs: last record per (cell, map)
+for r in R:
+    last[(r['case'], r['map'])] = r
+R = list(last.values())
 errors = [dict(case=r['case'], map=r['map'], error=r['error']) for r in R if 'error' in r]
 R = [r for r in R if 'error' not in r]
 maps = list(dict.fromkeys(r['map'] for r in R))

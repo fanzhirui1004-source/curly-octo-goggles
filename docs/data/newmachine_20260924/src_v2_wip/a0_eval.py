@@ -23,6 +23,7 @@ Per (cell, map):
        Conly  no network: rigid part plus zero, then the same correction (what the correction alone achieves)
      Every variant is a linear extension read out in energy form with K~, so S_hat >= S~ (checked: min energy excess).
   5. Metrics: per class mean / p90 / max / min of e = u^T K~ u - 1; worst direction mu = top Ritz value of (S_hat, S~)
+     (the Neumann and interior factors are held one at a time, which bounds the GPU memory of full cells)
      (block power iteration, worst()) for V0 and V0R; energy of the extended physical rigid modes (rigid_energy); map
      statistics (min det J, max cond J); rigid checks; timings. (V0 and V0ref coincide on rigid-free banks when the network
      reproduces reference rigid motions; they differ on the physical rigid modes, which rigid_energy measures.)
@@ -98,7 +99,8 @@ def finish(C, q):
     return q / torch.sqrt(e)[None, :], e
 
 
-def make_banks(C, case, mname, total, classes):
+def raw_banks(C, case, mname, total, classes):
+    """Direction banks before normalisation; the force classes need the Neumann factor only."""
     onport = np.isin(C.nodes, C.port_node_ids)
     X = torch.as_tensor(C.xyz[onport], dtype=dt, device=dev)
     isbox = torch.as_tensor(C.port_is_box, device=dev)
@@ -124,10 +126,19 @@ def make_banks(C, case, mname, total, classes):
             q, _ = PG2.face_c(C, PG2.box_tractions(C), total, gen)
         else:
             raise ValueError(cls)
+        out[cls] = q
+        info[cls] = dict(seconds=time.perf_counter() - t)
+    return out, info
+
+
+def finish_banks(C, raw, info):
+    """Unit exact energy of K~ (needs the interior factor only)."""
+    out = {}
+    for cls, q in raw.items():
         q, e = finish(C, q)
         out[cls] = q
-        info[cls] = dict(seconds=time.perf_counter() - t, energy_raw_quantiles=np.quantile(e.cpu().numpy(), [0, .5, 1]).tolist())
-    return out, info
+        info[cls]['energy_raw_quantiles'] = np.quantile(e.cpu().numpy(), [0, .5, 1]).tolist()
+    return out
 
 
 def write_data(C, d, banks, splits, body_dir):
@@ -281,10 +292,15 @@ def main(argv):
                 C = MC.MappedCell(case, a.body, m['spec'], log=lambda s_: None)
                 t = time.perf_counter(); C.assemble(); rec['assemble_s'] = time.perf_counter() - t
                 rec['map_stats'] = C.map_stats
-                t = time.perf_counter(); C.factor(neumann=True); rec['factor_s'] = time.perf_counter() - t
                 X = torch.linalg.qr(torch.randn((C.nb, 6), dtype=dt, device=dev, generator=torch.Generator(device=dev).manual_seed(0)))[0]
                 rec['rigid_phys_over_random'] = float((C.K @ C.Qall).norm() / (C.K @ X).norm())
-                t = time.perf_counter(); banks, rec['banks'] = make_banks(C, case, m['name'], total, classes)
+                del X
+                # one sparse factor on the GPU at a time: Neumann (force banks, worst direction) and interior (energies)
+                t = time.perf_counter(); C.factor(neumann=True, interior=False); rec['factor_neumann_s'] = time.perf_counter() - t
+                t = time.perf_counter(); raw, rec['banks'] = raw_banks(C, case, m['name'], total, classes)
+                C._free()
+                t2 = time.perf_counter(); C.factor(neumann=False); rec['factor_interior_s'] = time.perf_counter() - t2
+                banks = finish_banks(C, raw, rec['banks']); del raw
                 rec['banks_s'] = time.perf_counter() - t
                 d = out / 'data' / m['name'] / case
                 rec['netdata'] = write_data(C, d, banks, splits, a.body); del banks
@@ -297,17 +313,23 @@ def main(argv):
                     model.add_geo(g)
                 wrap = _Wrap(model)
                 rec['variants'] = {}
-                for v in variants:
+                for v in variants:                                             # energies: no factor needed
                     t = time.perf_counter()
                     g.set_variant(v, wrap)
                     with torch.no_grad():
                         r = evaluate(g, model, v)
                         r['rigid_energy_rel'] = rigid_energy(g, model)
-                    if a.worst and v in ('V0', 'V0R'):
-                        mu, it = worst(g, model)
-                        r['worst_mu'] = mu; r['worst_iters'] = it
                     r['seconds'] = time.perf_counter() - t
                     rec['variants'][v] = r
+                C._free()
+                if a.worst:                                                    # worst direction: Neumann factor only
+                    t = time.perf_counter(); C.factor(neumann=True, interior=False); rec['factor_neumann2_s'] = time.perf_counter() - t
+                    for v in ('V0', 'V0R'):
+                        if v in rec['variants']:
+                            t = time.perf_counter(); g.set_variant(v, wrap)
+                            mu, it = worst(g, model)
+                            rec['variants'][v].update(worst_mu=mu, worst_iters=it, worst_seconds=time.perf_counter() - t)
+                    C._free()
                 rec['tail_bounds'] = list(getattr(C, '_tail_bounds', ()) or ())
                 model.caches.pop(g.case, None)
                 rec['gpu_peak_gb'] = torch.cuda.max_memory_allocated() / 2 ** 30
@@ -315,6 +337,10 @@ def main(argv):
             except Exception as e:                                               # record and continue with the next map
                 import traceback
                 rec['error'] = repr(e)[:400]; rec['trace'] = traceback.format_exc()[-1500:]
+                try:                                                           # release the sparse factors on every path
+                    C._free(); model.caches.pop(g.case, None); del g, C
+                except Exception:
+                    pass
             rec['seconds'] = time.perf_counter() - t0
             rec['conv'] = TL.conv_precision()
             with open(res_path, 'a') as f:
