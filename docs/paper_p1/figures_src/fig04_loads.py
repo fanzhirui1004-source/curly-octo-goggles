@@ -90,7 +90,7 @@ def config_x(ax):
     cell_label(ax, (.42, .5, 1), 'T', 'learned')
     ax.text(-1 - A - .08, .5 + B / 2, 'clamped\nx = −1', fontsize=7, ha='right', va='center', color=TEXT)
     ax.text(0, -.1, 'loaded faces, y = 0', fontsize=7, ha='center', va='top', color=TEXT)
-    ax.text(0, -.27, 'separate x-, y-, z-tractions', fontsize=6, ha='center', va='top', color=MUTED)
+    ax.text(0, -.27, 'separate x-, y-, z-tractions', fontsize=6.5, ha='center', va='top', color=MUTED)
     shared_label(ax, (-A, 1 + B + .17), P(0, 1, 1), 'center')
     triad(ax, (1.5, 0, .05))
 
@@ -112,7 +112,7 @@ def config_y(ax):
     cell_label(ax, (.25, .5, 1), 'T', 'learned')
     ax.text(.5 + A, -B - .1, 'clamped, y = −1', fontsize=7, ha='center', va='top', color=TEXT)
     ax.text(-A - .1, .62, 'loaded faces, x = 0', fontsize=7, ha='right', va='center', color=TEXT)
-    ax.text(-A - .1, .45, 'separate x-, y-, z-tractions', fontsize=6, ha='right', va='center', color=MUTED)
+    ax.text(-A - .1, .45, 'separate x-, y-, z-tractions', fontsize=6.5, ha='right', va='center', color=MUTED)
     shared_label(ax, (1.42, 1.1), P(1, 0, 1), 'left')
     triad(ax, (1.85, 0, -.3))
 

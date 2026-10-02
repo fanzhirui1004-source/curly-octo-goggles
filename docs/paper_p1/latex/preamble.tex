@@ -1,4 +1,5 @@
 \documentclass[preprint,12pt,authoryear]{elsarticle}
+\usepackage[letterpaper,margin=1in]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -27,6 +28,6 @@
   \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}\else\usebox{\pandoc@box}\fi}
 \makeatother
 \def\LTcaptype{table}
-\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}
+\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}\setlength{\LTcapwidth}{\linewidth}
 \setlength{\emergencystretch}{3em}
 \journal{Computer Methods in Applied Mechanics and Engineering}

@@ -1,4 +1,5 @@
 \documentclass[preprint,12pt,authoryear]{elsarticle}
+\usepackage[letterpaper,margin=1in]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -27,7 +28,7 @@
   \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}\else\usebox{\pandoc@box}\fi}
 \makeatother
 \def\LTcaptype{table}
-\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}
+\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}\setlength{\LTcapwidth}{\linewidth}
 \setlength{\emergencystretch}{3em}
 \journal{Computer Methods in Applied Mechanics and Engineering}
 \begin{document}
@@ -93,7 +94,7 @@ The elastic problem uses continuous tensor-product \(Q_2\) displacement function
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F08_geometry.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F08_geometry.pdf}
 \caption{\textbf{Representative validation geometries.} The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and sand the section on the cut plane. Percentages indicate the box volume remaining after the cut, relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).}\label{fig:1}
 \end{figure}
 
@@ -225,7 +226,7 @@ The construction has three parts. A learned extension supplies the trial interio
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F01_method_overview.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F01_method_overview.pdf}
 \caption{\textbf{Learned displacement extension, equilibrium correction and variational assembly.} (a) Rigid-body motion is separated from the retained displacement before the deformation is extended by the network. The rigid field is reconstructed and the prescribed retained values are restored; the correction \(\mathcal W\) then reduces interior imbalance at fixed retained displacement, and applying the local stiffness and the transpose \(F^T\) of the complete extension gives the work-conjugate retained force. The ordering in (a) assumes an exact coarse-grid correction and a smoothing interval whose upper end bounds the spectrum; it orders the energy error, not the sensitivity error. (b) The cell operators are assembled on the shared box-face DOFs and the assembled system is solved; the assembled solution supplies the inputs for local field recovery, the compliance and the field-based thickness sensitivity. A design iteration updates the corner thickness parameters and so regenerates every cell\textquotesingle s geometry; the network parameters stay the same and the coefficients of \(\mathcal W\) are recomputed. The neural extension is detailed in Figure 3 and Section 4.4; Sections 4.2 and 4.3 define the correction \(\mathcal W\).}\label{fig:2}
 \end{figure}
 
@@ -323,7 +324,7 @@ Consequently, \(J_P\widehat E=I_p\) and \(\widehat ER_P=R\): admissibility and r
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F11_network_architecture.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F11_network_architecture.pdf}
 \caption{\textbf{Geometry-conditioned neural displacement architecture.} (a) Element and node encoders produce 64-channel geometry feature vectors, followed by two rounds of residual exchange; coefficient heads condition the local interactions, grid transfers and convolutions. (b) The displacement branch propagates the nonrigid retained input through four local interaction pairs, the multilevel block, four further local pairs and four pairs on weakly supported stencils; linear maps connect the three displacement components to 32 latent channels, and deterministic bypasses reconstruct rigid-body motion and restore the retained values. (c) Restriction and prolongation connect grids with 65, 33, 17 and 9 background positions per axis; each coarse level has two residual convolutions on each pass. (d) A local interaction uses geometry-weighted gathering, four channel-mixing heads and scattering, followed by residual addition and retained-value restoration. E and G denote element and ghost-face interactions. Blue dashed arrows carry geometry-dependent coefficients; solid arrows carry features or displacement states. For fixed geometry, the complete displacement path is linear.}\label{fig:3}
 \end{figure}
 
@@ -464,7 +465,7 @@ The assembly examples join a learned target to an exact, uncut neighbouring cell
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F09_assembly_loads.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F09_assembly_loads.pdf}
 \caption{\textbf{Supports and loading of the two-cell examples.} (a) Configuration x: the neighbour is translated by \((-1,0,0)\), the face \(x=-1\) is clamped, and face tractions act at \(y=0\). (b) Configuration y: the translation is \((0,-1,0)\), the face \(y=-1\) is clamped, and tractions act at \(x=0\). Each target (T) and neighbour (N) face carries separate x-, y- and z-directed consistent-traction loads. Coincident box-node DOFs are shared across the interface; non-box cut-band DOFs remain local. Cut targets also receive three cut-surface tractions, analysed separately.}\label{fig:4}
 \end{figure}
 
@@ -486,7 +487,7 @@ The intermediate variants locate this improvement. Continuing the base network w
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F02_validation.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F02_validation.pdf}
 \caption{\textbf{Directional energy error of the learned substructures on the 80 validation geometries.} Each observation is a geometry\textquotesingle s mean directional energy error \(q^T(\widehat S-S)q/(q^TSq)\) over the validation directions of a loading class. (a) Consistent tractions, 20 geometries per cut stratum: markers give the mean over geometries and bars the range from the 10th percentile to the maximum. (b) Geometry means of the base network and of NICE under consistent tractions, open markers for uncut and filled markers for cut geometries; the dotted line denotes equality. (c) Neighbour-induced retained displacements, stiffness-scaled spring supports, single-face consistent tractions and equal nodal forces (75 geometries for the first two classes, 80 for the others); the asterisk marks the nodal-force stress test. Twenty geometries (6 uncut, 14 cut) were used for checkpoint selection. Variants as in Table 2; \textquotesingle Base network, corrected\textquotesingle{} is the base network with the correction applied at deployment.}\label{fig:5}
 \end{figure}
 
@@ -496,7 +497,7 @@ The base network\textquotesingle s error occupies different parts of the Jacobi-
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F03_spectrum.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F03_spectrum.pdf}
 \caption{\textbf{Spectral distribution of the base network\textquotesingle s extension error.} Panels show U1, M1, M2 and H2 for the base network. Modes solve \(Av=\lambda Dv\), with \(D=\operatorname{diag}(A)\), ordered by increasing eigenvalue. Filled dark markers represent the extension error and open light-grey markers the exact interior field; solid circles correspond to consistent tractions and dashed triangles to nodal forces. Curves are directional means; bands give the 10th--90th directional percentiles under consistent tractions. Each cumulative fraction uses the total interior energy of its own field or error.}\label{fig:6}
 \end{figure}
 
@@ -504,7 +505,7 @@ Spatially (Figure 7), for the plotted consistent-traction direction the exact fi
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F12_field_error_M1.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F12_field_error_M1.pdf}
 \caption{\textbf{Retained DOFs and spatial distribution of the extension error in M1.} (a) Retained box-face DOFs, retained cut-band DOFs and interior DOFs. (b) Bulk element energies of the exact field under one consistent-traction direction, relative to its total. (c,d) Bulk element energies of the error of the base network and of NICE for the same retained displacement, relative to the total energy of the exact field in (b), on a common colour scale. Cut-band elements carry no error because their DOFs are retained.}\label{fig:7}
 \end{figure}
 
@@ -574,7 +575,7 @@ The first column gives the base network\textquotesingle s error without correcti
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F04_correction.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F04_correction.pdf}
 \caption{\textbf{Accuracy gained by correcting the base network at fixed network parameters.} (a,b) Mean directional energy error and field-based sensitivity error during Chebyshev smoothing on five cells. (c) M1 with no correction, eight smoothing steps, coarse-grid correction followed by eight steps, and eight steps on each side of the coarse-grid correction; dots show means and caps the 90th percentile. (d) M1: mean energy error against the number \(k\) of steps per smoothing stage, for one smoothing stage alone and for \(k\) pre-smoothing steps, the \(Q_1(17)\) coarse-grid correction and \(k\) post-smoothing steps. All panels use consistent tractions, fixed retained displacements and \(a=b/30\); in (a,b) the step axis is linear from zero to one and logarithmic thereafter.}\label{fig:8}
 \end{figure}
 
@@ -588,7 +589,7 @@ Table 4 shows why both quantities are needed. Without the complete correction, a
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F05_assembly.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F05_assembly.pdf}
 \caption{\textbf{Compliance and thickness sensitivity in assembled cell pairs.} The target cell is represented by a learned substructure and the neighbour by exact condensation. (a,b) Maximum errors over the six face loads in each configuration; the sensitivity error is also maximised over both cells. (c,d) Compliance and target-cell sensitivity errors of the individual face loads on M1/x and U1/x; filled markers denote target-face loads and open markers neighbour-face loads. Dashed lines mark the 3\% lines. The base network is not shown, and not every variant was evaluated on every configuration; all results are in Table ST09. Variants as in Table 2; \textquotesingle Base network, corrected\textquotesingle{} is the base network with the correction applied at deployment, without retraining.}\label{fig:9}
 \end{figure}
 
@@ -646,7 +647,7 @@ The target\textquotesingle s energy share (Table 4) explains how a local stiffne
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F10_energy_share.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F10_energy_share.pdf}
 \caption{\textbf{Share-weighted compliance error and local sensitivity.} Each point is one load of one variant--configuration combination of Tables ST09 (face loads) and ST10 (cut-surface loads). Filled markers denote face loads and open markers cut-surface loads. (a) Compliance error against \(\beta=\sum_mw_m\varepsilon_m\), with the energy shares \(w_m=q_m^TS_mq_m/C\) and energy errors \(\varepsilon_m=q_m^T(\widehat S_m-S_m)q_m/(q_m^TS_mq_m)\), evaluated at the exact assembled retained displacement; only the learned target contributes to \(\beta\). (b) Compliance and target-cell sensitivity errors under the same loads; the annotation identifies the base network on U1/x under the neighbour-z load. Dashed lines denote equality. (c,d) The two response errors versus the target\textquotesingle s exact energy share. Variants as in Table 2 and Figure 9.}\label{fig:10}
 \end{figure}
 
@@ -656,7 +657,7 @@ To isolate the role of the complete retained space, pairs in configuration x are
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F06_bernstein.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F06_bernstein.pdf}
 \caption{\textbf{Response errors caused by restricting box-face displacements.} Both cells of H1/x use exact operators and Bernstein degree \(r\) on every box face, with unrestricted non-box cut-band DOFs. (a) Number of retained DOFs; the dashed line denotes the 32,991 DOFs of the full representation. (b,c) Maximum compliance and target-cell sensitivity errors over the three target-face loads or all six target- and neighbour-face loads; cut-surface tractions are excluded. Errors are relative to the full retained-space solution; horizontal lines mark 3\%.}\label{fig:11}
 \end{figure}
 
@@ -680,16 +681,15 @@ Route (c), NICE on the GPU, prepares the learned substructure of every cell and 
 
 All routes include cell setup and stiffness assembly, and none includes the one-off cost of data generation and training (Section 5.1). The routes run on different processors, one GPU against 16 CPU threads; the comparison is between the routes as each is deployed, not between hardware-equivalent amounts of work.
 
-\begin{landscape}
 {\footnotesize
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.110}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.130}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.150}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.090}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.150}}
   >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.120}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.100}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.170}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.160}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.160}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.130}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.120}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.140}}@{}}
 \caption{Cost of one design iteration of the lattices. (a) Whole-lattice direct solution by sparse Cholesky factorisation (MKL PARDISO, 16 threads on the CPU): time from cell setup to the solution of six loads (three consistent, three random); peak process memory. (b) Every cell condensed with PARDISO\textquotesingle s Schur-complement option, then the condensed lattice system solved by block Cholesky factorisation, 16 threads: total time, peak process memory. (c) Cell preparation, preconditioner setup, conjugate gradients for the three consistent loads to \(10^{-6}\) and field-based sensitivities; peak GPU memory, CPU memory after cell preparation; compliance error against (a) for four cells and against the exact condensation of Section 5.8 for eight cells. Memory in GiB. All phases: Supplementary Note S5 and Table ST17.}\tabularnewline
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
@@ -734,8 +734,6 @@ DOFs: total / free retained
 \(2\times2\times2\) (4 / 8) & 1,833,474 / 139,002 & 868 / 71.1 & 950 / 40.1 & 81.2 / 129 & 8.5 / 3.9 & 0.014, 0.011, 0.0097 \\
 \(3\times3\times1\) (3 / 8) & 2,113,611 / 143,685 & 1,042 / 85.9 & 1,218 / 42.2 & 110.1 / 165 & 9.2 / 4.7 & 0.015, 0.014, 0.015 \\
 \end{longtable}}
-\end{landscape}
-
 
 For the four-cell lattices, a NICE design iteration takes 38 to 39 s, against 349 to 484 s for the whole-lattice direct solution with 16 threads and 589 to 632 s for conventional exact condensation, and the learned compliance agrees with the direct solution within 0.022\%. For the two eight-cell lattices, NICE takes 81 and 110 s per design iteration; the whole-lattice direct solution takes 868 and 1,042 s, about ten times as long, and conventional exact condensation 950 and 1,218 s. With 32 threads the direct solution takes 341 to 956 s, because cell setup and assembly do not speed up (Supplementary Table ST17b). Cell setup and stiffness assembly, on the CPU in route (a) and on the GPU in route (c), take 41 to 53\% of the direct solution\textquotesingle s time. Without them the direct solution takes 165 to 610 s, and NICE without its whole cell preparation, which also contains the network encoding and the correction setup, takes 33 to 99 s, five to eight times less. For the eight-cell lattices, the timed errors include the algebraic error of the \(10^{-6}\) solve (Eq. 8) and exceed the operator errors of Section 5.8 by up to 0.005 percentage points. The Cholesky factor grows slightly faster than the number of degrees of freedom, from 29 to 32 GiB for four cells to 66 and 81 GiB for eight, and the process peak of the direct solution reaches 71 and 86 GiB; conventional condensation needs 40 and 42 GiB, most of it for the condensed cell matrices held until their elimination (Supplementary Table ST17). NICE peaks at 9.2 GiB of GPU memory and keeps 4.7 GiB of CPU memory after cell preparation. Per cell, NICE\textquotesingle s stored state takes 0.25 to 1.37 GiB, against 0.60 to 9.4 GiB for the interior Cholesky factor of conventional condensation (Supplementary Note S5, Table ST18).
 
@@ -828,13 +826,13 @@ Scale: plates of 24, 51, 88, 110 cells & 24--110 (8--18) & As B1 & Up to 4 timed
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F13_optimisation.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F13_optimisation.pdf}
 \caption{\textbf{Thickness optimisation with NICE.} (a) Case A: compliance histories of the NICE optimisation and of the twin optimisation with exact condensation, with the exact compliance of the NICE designs at iterations 0, 12 and 23 (open circles); the compliance first rises while the volume is reduced from \(1.25V^*\) to \(V^*\) (shading, iterations 0--3). Lower strip: NICE compliance relative to the twin run at the same design iteration (line; the designs of the two runs coincide at iterations 0--4 and differ afterwards) and to the exact compliance of the same design (circles: −0.011\%, −0.018\%, −0.028\%); at iterations 16 and 19 (labelled \textquotesingle perturbed designs\textquotesingle) the geometry-generation fallback had perturbed the NICE design (Supplementary Note S9.4, Table ST24a). (b) Plates B1 (in-plane load, left) and B2 (bending, right): compliance divided by \(C_0\), the initial NICE compliance of B1 or B2 at the uniform start (94.34 and 1,467.7). The homogenisation designs Hom-\(y\) and Hom-\(z\) evaluated with NICE (stars) and the NICE continuations X-\(y\) and X-\(z\) started from them are divided by the same \(C_0\) and drawn over their own design iterations. Shading: design iterations with \(V>V^*\) of the runs from the uniform start; the continuations start within 0.05\% of \(V^*\). Lower strips: the range marked by the bracket, enlarged.}\label{fig:12}
 \end{figure}
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../figures/F14_designs_scale.pdf}
+\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../figures/F14_designs_scale.pdf}
 \caption{\textbf{Final plate designs and scale demonstration.} (a,b) Corner thickness parameters of the final designs B2 and X-\(z\), drawn with the long side horizontal, layer \(z=0\); circles: design variables; squares: vertices in the plane of the loaded face, held fixed; vertices drawn in the removed region are corners of cut cells. ⊗: load face, traction normal to the plate. (c) Scale demonstration on plates with the geometry and load of B1: time per design iteration (mean; bars: range over the timed iterations), peak CPU memory of the main process and peak GPU memory in use, against the number of cells. Plate compliances are NICE values; exact checks of the plate designs in Table 6 and Table ST27.}\label{fig:13}
 \end{figure}
 

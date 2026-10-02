@@ -46,7 +46,7 @@ def figures(md):
         cap = pandoc('**' + m.group(4).strip() + '**' + m.group(5)).strip()
         label = 'fig:' + m.group(3).split()[1]
         long = len(cap) > 1500                                             # very long captions: smaller image and type
-        h, size = ('0.44', '\\footnotesize ') if long else ('0.55', '')
+        h, size = ('0.62', '\\footnotesize ') if long else ('0.8', '')
         return ('\n```{=latex}\n\\begin{figure}[!htbp]\n\\centering\n\\includegraphics[width=\\textwidth,height=' + h + '\\textheight,keepaspectratio]{../' + path + '}\n'
                 '\\caption{' + size + cap + '}\\label{' + label + '}\n\\end{figure}\n```\n')
     return pat.sub(rep, md)
@@ -100,6 +100,16 @@ def landscape(tex, caption_start, widths=None, overhang=0.0):
     return tex[:s] + '\\begin{landscape}\n' + block + '\n\\end{landscape}\n' + tex[e:]
 
 
+def set_widths(tex, caption_start, widths):
+    """Relative column widths of the longtable whose caption starts with caption_start (portrait, sum <= 1)."""
+    i = tex.index(caption_start)
+    s = tex.rfind('\\begin{longtable}', 0, i)
+    e = tex.index('\\end{longtable}', i)
+    it = iter(widths)
+    block = re.sub(r'\\real\{[0-9.]+\}', lambda m: '\\real{%.3f}' % next(it), tex[s:e], count=len(widths))
+    return tex[:s] + block + tex[e:]
+
+
 def main():
     ms = (SRC / 'MANUSCRIPT_EN.md').read_text()
     ap = (SRC / 'APPENDICES_EN.md').read_text()
@@ -133,8 +143,7 @@ def main():
             block = '{\\def\\LTcaptype{} % do not increment counter\n' + block + '\n}'
         return block
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
-    tex = landscape(tex, 'Cost of one design iteration of the lattices',
-                    widths=(.11, .13, .15, .09, .15, .12, .10, .15))
+    tex = set_widths(tex, 'Cost of one design iteration of the lattices', (.12, .17, .16, .16, .13, .12, .14))
     tex = landscape(tex, 'Thickness optimisation cases',
                     widths=(.12, .08, .16, .08, .13, .13, .20, .10))
     (HERE / 'main.tex').write_text(tex)
