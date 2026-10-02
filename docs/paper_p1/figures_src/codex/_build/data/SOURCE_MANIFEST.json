@@ -1,0 +1,25 @@
+{
+  "table_hashes": {
+    "05_spectrum": "cfabafdbe292daf99c5ef06fff9493fd4753f4cca2cb5d4407f16388ac7e5db1",
+    "03_smoothing": "7c81c3a93462051f371f18a63d47b3e56e709c1d5e9571e6d0076249d61f0060",
+    "04_coarse_correction": "f9c006eb85cf00bcbcfe5517eb9e775bc30b8a29b45256e6e1f5ef911a3fd257",
+    "06_sensitivity_diagnostic": "702b05aac7386b1de96bc5469a576135d244f879356d6647ca39bf57e862e922"
+  },
+  "source_hashes_from_table_rows": {
+    "evidence/remote/S1/V2/spectrum_v2L1.json": "1a2a70863bcfd726e7ded81d2bef09ed1be807de3ea4985f0f3ff587d9213b2e",
+    "evidence/remote/S1/V2/smooth_v2L1.json": "ea843a5891df7182599b2072874f85d1c05d23881c20469e3d9f03dee946bcc7",
+    "evidence/remote/S1/V2/e3_v2L1.json": "f1e59e78432eb1c88e7e8ad39a382d933ef0d69c22cd8b93a02c17819da95420",
+    "evidence/remote/S1/V2/e3k2_v2L1.json": "d48c7c63e291e7507696a4fd2c636b77b3b5a324468586a309522c0aefa41a38",
+    "evidence/remote/S1/V2/e3k4_v2L1.json": "539e0715d6af127e82676d047e7a5edbc21fa1ec91a77f7e48d675f1ca9a6726",
+    "evidence/remote/S1/V2/diag_sens_v2L1_cpu.json": "218bccc6fb7f4756a159786b80e321697b4276e800e59cf34024dfa65939cd2c",
+    "evidence/remote/S1/V2/diag_sens_A0.json": "20c43c6e53041b02fef7ef2547aaa554cd3e7036c0585ca0749c8630cabfe37c"
+  },
+  "figure_ids": [
+    "F03_spectrum",
+    "F04_correction",
+    "S02A_smoothing",
+    "S02B_coarse_spaces",
+    "S03_sensitivity_diagnostics"
+  ],
+  "origin": "04_figures/audit2/scripts/build_publication.py"
+}

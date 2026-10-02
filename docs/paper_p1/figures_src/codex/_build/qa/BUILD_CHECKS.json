@@ -1,0 +1,63 @@
+{
+  "figures": {
+    "F03_spectrum": {
+      "width_mm": 180.0,
+      "height_mm": 122.0,
+      "svg_text_nodes": 52,
+      "svg_raster_images": 0,
+      "bound_rows": 288,
+      "bound_series": 32,
+      "text_outside_canvas": [],
+      "checked_numeric_vertices": 312,
+      "numeric_outside_axes": []
+    },
+    "F04_correction": {
+      "width_mm": 180.0,
+      "height_mm": 131.0,
+      "svg_text_nodes": 69,
+      "svg_raster_images": 0,
+      "bound_rows": 82,
+      "bound_series": 16,
+      "text_outside_canvas": [],
+      "checked_numeric_vertices": 92,
+      "numeric_outside_axes": []
+    },
+    "S02A_smoothing": {
+      "width_mm": 180.0,
+      "height_mm": 129.0,
+      "svg_text_nodes": 63,
+      "svg_raster_images": 0,
+      "bound_rows": 280,
+      "bound_series": 50,
+      "text_outside_canvas": [],
+      "checked_numeric_vertices": 220,
+      "numeric_outside_axes": []
+    },
+    "S02B_coarse_spaces": {
+      "width_mm": 180.0,
+      "height_mm": 193.0,
+      "svg_text_nodes": 126,
+      "svg_raster_images": 0,
+      "bound_rows": 300,
+      "bound_series": 156,
+      "text_outside_canvas": [],
+      "checked_numeric_vertices": 600,
+      "numeric_outside_axes": []
+    },
+    "S03_sensitivity_diagnostics": {
+      "width_mm": 180.0,
+      "height_mm": 129.0,
+      "svg_text_nodes": 63,
+      "svg_raster_images": 0,
+      "bound_rows": 103,
+      "bound_series": 27,
+      "text_outside_canvas": [],
+      "checked_numeric_vertices": 140,
+      "numeric_outside_axes": []
+    }
+  },
+  "matplotlib": "3.11.2",
+  "numpy": "2.4.6",
+  "tables_verified": 4,
+  "new_mechanics_computation": false
+}

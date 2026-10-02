@@ -1,0 +1,12 @@
+{
+  "F11_network_architecture": {
+    "width_mm": 180,
+    "height_mm": 220,
+    "minimum_font_pt": 7.5,
+    "text_outside_canvas": [],
+    "text_overflow_boxes": [],
+    "svg_text_nodes": 89,
+    "svg_raster_images": 0,
+    "no_mechanics_imports_or_execution": true
+  }
+}
