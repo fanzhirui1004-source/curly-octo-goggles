@@ -121,10 +121,16 @@ def main():
     tex += '\n\\appendix\n' + conv(ap) + '\n' + references(refs) + '\n\\end{document}\n'
     tex = tex.replace('\\section{', '\\section{', ).replace('\\hypertarget', '%\\hypertarget')
     tex = tex.replace('\\section{Code and data availability}', '\\section*{Code and data availability}')  # unnumbered, before the declarations
+    # Normalise Pandoc's optional unnumbered-table wrapper before applying our own.
+    tex = re.sub(r'\{\\def\\LTcaptype\{(?:none)?\} % do not increment counter\n'
+                 r'(\\begin\{longtable\}.*?\\end\{longtable\})\n\}', r'\1', tex, flags=re.S)
     def shrink(m):                                                         # wide tables: smaller type
         cols = m.group(1).count('p{') + m.group(1).count('l') * 0
         size = '\\scriptsize' if cols >= 8 else ('\\footnotesize' if cols >= 6 else '\\small')
-        return '{' + size + '\n' + m.group(0) + '}'
+        block = '{' + size + '\n' + m.group(0) + '}'
+        if '\\caption' not in m.group(0):
+            block = '{\\def\\LTcaptype{} % do not increment counter\n' + block + '\n}'
+        return block
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
     tex = landscape(tex, 'Cost of one design iteration of the lattices',
                     widths=(.11, .13, .15, .09, .15, .12, .10, .15))
