@@ -4,7 +4,7 @@ Smoothing-trained, Base network, corrected, NICE). Writes F10_energy_share.*.
 Source: evidence/gate_<run>_fresh_val_<case>_<config>.json (lat_full.py --sets test). Per load: compliance_rel_err,
 sens_vec_rel_err[0] (target cell), bound (beta = sum_m w_m eps_m at the exact assembled trace) and energy_share[0]
 (target energy share w). Face loads are the six loads of the joint criterion (gate flag), cut loads the three
-cut-surface tractions. Excluded: L1.
+cut-surface tractions. All seven cells of Table ST09 are included.
 The observation and combination counts are printed and must match the caption."""
 import json
 from pathlib import Path
@@ -14,7 +14,7 @@ from figstyle import MODEL, MUTED, GRID, TEXT, MM, panel, save, plt
 EV = Path(__file__).resolve().parent.parent / 'evidence'
 RUNS = [('B', 'v2L1'), ('C', 'A0_ctrl'), ('A2b', 'A2b_tail8'), ('B+W', 'B2grid'), ('A3', 'A3_2grid')]
 CASES = [('2000_full', 'U1'), ('2001_full', 'U2'), ('2003_d1_v1', 'M1'), ('2005_d1_v0', 'H1'), ('2006_d0_v1', 'M2'),
-         ('2002_d0_v0', 'H3')]                                    # L1 (2004_d0_v2) excluded
+         ('2002_d0_v0', 'H3'), ('2004_d0_v2', 'L1')]
 
 
 def load(run):
