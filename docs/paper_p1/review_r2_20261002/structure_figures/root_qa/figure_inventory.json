@@ -1,0 +1,173 @@
+[
+  {
+    "label": "Figure 1",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 50,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F08_geometry.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 52
+  },
+  {
+    "label": "Figure 2",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 180,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F01_method_overview.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 182
+  },
+  {
+    "label": "Figure 3",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 276,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F11_network_architecture.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 278
+  },
+  {
+    "label": "Figure 4",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 354,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F09_assembly_loads.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 356
+  },
+  {
+    "label": "Figure 5",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 372,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F02_validation.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 374
+  },
+  {
+    "label": "Figure 6",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 380,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F03_spectrum.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 382
+  },
+  {
+    "label": "Figure 7",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 386,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F12_field_error_M1.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 388
+  },
+  {
+    "label": "Figure 8",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 414,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F04_correction.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 416
+  },
+  {
+    "label": "Figure 9",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 426,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F05_assembly.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 428
+  },
+  {
+    "label": "Figure 10",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 442,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F10_energy_share.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 444
+  },
+  {
+    "label": "Figure 11",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 450,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F06_bernstein.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 452
+  },
+  {
+    "label": "Figure 12",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 519,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F13_optimisation.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 521
+  },
+  {
+    "label": "Figure 13",
+    "source": "MANUSCRIPT_EN.md",
+    "line": 523,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F14_designs_scale.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 525
+  },
+  {
+    "label": "Figure S01",
+    "source": "SUPPLEMENTARY_EN.md",
+    "line": 1183,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S06_reference_verification.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 1185
+  },
+  {
+    "label": "Figure S02",
+    "source": "SUPPLEMENTARY_EN.md",
+    "line": 1187,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S01_distributions.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 1189
+  },
+  {
+    "label": "Figure S03",
+    "source": "SUPPLEMENTARY_EN.md",
+    "line": 1191,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S03_sensitivity_diagnostics.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 1193
+  },
+  {
+    "label": "Figure S04",
+    "source": "SUPPLEMENTARY_EN.md",
+    "line": 1195,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S02A_smoothing.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 1197
+  },
+  {
+    "label": "Figure S05",
+    "source": "SUPPLEMENTARY_EN.md",
+    "line": 1199,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S02B_coarse_spaces.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 1201
+  },
+  {
+    "label": "Figure S06",
+    "source": "SUPPLEMENTARY_EN.md",
+    "line": 1203,
+    "png": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S06_homogenised_law.png",
+    "png_exists": true,
+    "pdf_exists": true,
+    "caption_line": 1205
+  }
+]

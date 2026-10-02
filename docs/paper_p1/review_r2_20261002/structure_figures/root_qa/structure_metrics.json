@@ -1,0 +1,709 @@
+{
+  "MANUSCRIPT_EN": [
+    {
+      "heading": "## Abstract",
+      "start": 3,
+      "end": 8,
+      "words": 265
+    },
+    {
+      "heading": "## 1. Introduction",
+      "start": 9,
+      "end": 28,
+      "words": 2204
+    },
+    {
+      "heading": "## 2. Discrete substructures and static condensation",
+      "start": 29,
+      "end": 89,
+      "words": 1026
+    },
+    {
+      "heading": "## 3. Error of an approximate extension in analysis and design",
+      "start": 90,
+      "end": 175,
+      "words": 1065
+    },
+    {
+      "heading": "## 4. Neural-initialised condensation with equilibrium correction",
+      "start": 176,
+      "end": 305,
+      "words": 2060
+    },
+    {
+      "heading": "## 5. Numerical examples",
+      "start": 306,
+      "end": 526,
+      "words": 7868
+    },
+    {
+      "heading": "## 6. Discussion",
+      "start": 527,
+      "end": 546,
+      "words": 1313
+    },
+    {
+      "heading": "## 7. Conclusions",
+      "start": 547,
+      "end": 554,
+      "words": 535
+    },
+    {
+      "heading": "## Code and data availability",
+      "start": 555,
+      "end": 558,
+      "words": 88
+    },
+    {
+      "heading": "## References",
+      "start": 559,
+      "end": 696,
+      "words": 1796
+    },
+    {
+      "heading": "## Supplementary material",
+      "start": 697,
+      "end": 699,
+      "words": 12
+    }
+  ],
+  "main_subsections": [
+    {
+      "heading": "### 2.1. Geometry and discrete elastic problem",
+      "start": 33,
+      "words": 351
+    },
+    {
+      "heading": "### 2.2. Retained degrees of freedom and equilibrium extension",
+      "start": 54,
+      "words": 257
+    },
+    {
+      "heading": "### 2.3. Assembly and response measures",
+      "start": 72,
+      "words": 341
+    },
+    {
+      "heading": "### 3.1. Variational energy error",
+      "start": 94,
+      "words": 196
+    },
+    {
+      "heading": "### 3.2. Assembled compliance and energy share",
+      "start": 113,
+      "words": 223
+    },
+    {
+      "heading": "### 3.3. Field-based sensitivity and the complete design derivative",
+      "start": 145,
+      "words": 486
+    },
+    {
+      "heading": "### 4.1. Variational condensed stiffness",
+      "start": 184,
+      "words": 332
+    },
+    {
+      "heading": "### 4.2. Error spectrum and Chebyshev smoothing",
+      "start": 205,
+      "words": 225
+    },
+    {
+      "heading": "### 4.3. Coarse-grid correction",
+      "start": 223,
+      "words": 242
+    },
+    {
+      "heading": "### 4.4. Geometry-conditioned multilevel displacement extension",
+      "start": 246,
+      "words": 621
+    },
+    {
+      "heading": "### 4.5. Training directions and objective",
+      "start": 280,
+      "words": 272
+    },
+    {
+      "heading": "### 4.6. Application of the condensed operator",
+      "start": 296,
+      "words": 127
+    },
+    {
+      "heading": "### 5.1. Geometries, variants and loading conditions",
+      "start": 310,
+      "words": 1013
+    },
+    {
+      "heading": "### 5.2. Verification of the discrete reference and of the corrected operator",
+      "start": 358,
+      "words": 319
+    },
+    {
+      "heading": "### 5.3. Dependence on geometry and loading",
+      "start": 364,
+      "words": 513
+    },
+    {
+      "heading": "### 5.4. Components of the extension error",
+      "start": 376,
+      "words": 645
+    },
+    {
+      "heading": "### 5.5. Reducing interior error with fixed network parameters",
+      "start": 394,
+      "words": 578
+    },
+    {
+      "heading": "### 5.6. Compliance, local sensitivity and energy share after assembly",
+      "start": 418,
+      "words": 1013
+    },
+    {
+      "heading": "### 5.7. Ablation: restricting the retained box-face representation",
+      "start": 446,
+      "words": 330
+    },
+    {
+      "heading": "### 5.8. Heterogeneous lattices with every cell learned",
+      "start": 454,
+      "words": 557
+    },
+    {
+      "heading": "### 5.9. Computational cost of a lattice design iteration",
+      "start": 462,
+      "words": 909
+    },
+    {
+      "heading": "### 5.10. Thickness design optimisation",
+      "start": 487,
+      "words": 1833
+    },
+    {
+      "heading": "### 6.1. What is retained, what is learned and what is corrected",
+      "start": 529,
+      "words": 371
+    },
+    {
+      "heading": "### 6.2. What the guarantees cover",
+      "start": 535,
+      "words": 231
+    },
+    {
+      "heading": "### 6.3. Computational value",
+      "start": 539,
+      "words": 222
+    },
+    {
+      "heading": "### 6.4. Limitations",
+      "start": 543,
+      "words": 487
+    }
+  ],
+  "abstract_words": 248,
+  "intro_paragraphs": [
+    {
+      "line": 11,
+      "words": 371
+    },
+    {
+      "line": 13,
+      "words": 202
+    },
+    {
+      "line": 15,
+      "words": 99
+    },
+    {
+      "line": 17,
+      "words": 270
+    },
+    {
+      "line": 19,
+      "words": 404
+    },
+    {
+      "line": 21,
+      "words": 285
+    },
+    {
+      "line": 23,
+      "words": 190
+    },
+    {
+      "line": 25,
+      "words": 331
+    },
+    {
+      "line": 27,
+      "words": 50
+    }
+  ],
+  "paragraph_545_words": 484,
+  "APPENDICES_EN": [
+    {
+      "heading": "## Appendix A. Discrete construction and metric definitions",
+      "start": 1,
+      "end": 49,
+      "words": 696
+    },
+    {
+      "heading": "## Appendix B. Variational identity, rigid-body kernel, and directional norms",
+      "start": 50,
+      "end": 166,
+      "words": 1008
+    },
+    {
+      "heading": "## Appendix C. Assembly and compliance ordering",
+      "start": 167,
+      "end": 295,
+      "words": 701
+    },
+    {
+      "heading": "## Appendix D. Polynomial smoothing and coarse projections",
+      "start": 296,
+      "end": 377,
+      "words": 895
+    },
+    {
+      "heading": "## Appendix E. Transpose of the complete extension",
+      "start": 378,
+      "end": 425,
+      "words": 202
+    },
+    {
+      "heading": "## Appendix F. Coarse spaces, factorisation, and arithmetic",
+      "start": 426,
+      "end": 484,
+      "words": 1086
+    },
+    {
+      "heading": "## Appendix G. Network coefficients and directional training",
+      "start": 485,
+      "end": 633,
+      "words": 2422
+    },
+    {
+      "heading": "## Appendix H. Sensitivity identities and design intervals",
+      "start": 634,
+      "end": 807,
+      "words": 1634
+    },
+    {
+      "heading": "## Appendix I. A computable lower bound on the energy error",
+      "start": 808,
+      "end": 826,
+      "words": 116
+    }
+  ],
+  "SUPPLEMENTARY_EN": [
+    {
+      "heading": "## R1. Variant and geometry key",
+      "start": 5,
+      "end": 43,
+      "words": 367
+    },
+    {
+      "heading": "## Table ST01. Training and evaluation settings",
+      "start": 44,
+      "end": 73,
+      "words": 665
+    },
+    {
+      "heading": "## Table ST02. Discrete operator and diagnostic definitions",
+      "start": 74,
+      "end": 111,
+      "words": 553
+    },
+    {
+      "heading": "## Table ST03. Energy error by direction class (identity orientation)",
+      "start": 112,
+      "end": 168,
+      "words": 1169
+    },
+    {
+      "heading": "## Table ST04. Operator verification in the deployed arithmetic",
+      "start": 169,
+      "end": 180,
+      "words": 331
+    },
+    {
+      "heading": "## Table ST05. Sensitivity and spectral diagnostics at fixed retained displacement",
+      "start": 181,
+      "end": 235,
+      "words": 598
+    },
+    {
+      "heading": "## Table ST06. Chebyshev smoothing from the base network and from a zero interior field",
+      "start": 236,
+      "end": 269,
+      "words": 461
+    },
+    {
+      "heading": "## Table ST07. Interior coarse-space and smoothing comparisons",
+      "start": 270,
+      "end": 327,
+      "words": 1063
+    },
+    {
+      "heading": "## Table ST08. Energy error of different starting fields under the same correction",
+      "start": 328,
+      "end": 387,
+      "words": 752
+    },
+    {
+      "heading": "## Table ST09. Complete continuous-neighbour assembly results",
+      "start": 388,
+      "end": 471,
+      "words": 916
+    },
+    {
+      "heading": "## Table ST10. Responses under cut-surface tractions",
+      "start": 472,
+      "end": 517,
+      "words": 364
+    },
+    {
+      "heading": "## Table ST11. Assembly sensitivity under field and solution replacement",
+      "start": 518,
+      "end": 531,
+      "words": 274
+    },
+    {
+      "heading": "## Table ST12. Matched face-load responses of the Smoothing-trained variant",
+      "start": 532,
+      "end": 556,
+      "words": 247
+    },
+    {
+      "heading": "## Table ST13. Load-specific compliance weighting for the base network",
+      "start": 557,
+      "end": 564,
+      "words": 70
+    },
+    {
+      "heading": "## Supplementary Note S1. Geometry visualisation",
+      "start": 565,
+      "end": 568,
+      "words": 57
+    },
+    {
+      "heading": "## Supplementary Note S2. Verification of the reference and of the thickness derivative",
+      "start": 569,
+      "end": 601,
+      "words": 662
+    },
+    {
+      "heading": "## Supplementary Note S3. Enriched partition-of-unity coarse spaces",
+      "start": 602,
+      "end": 616,
+      "words": 168
+    },
+    {
+      "heading": "## Supplementary Note S4. Ablation of the retained representation: Bernstein-restricted box faces",
+      "start": 617,
+      "end": 695,
+      "words": 1176
+    },
+    {
+      "heading": "## Supplementary Note S5. Cost records: whole-lattice direct solution and per-cell condensation",
+      "start": 696,
+      "end": 777,
+      "words": 2070
+    },
+    {
+      "heading": "## Supplementary Note S6. Global preconditioning and two-cell load configurations",
+      "start": 778,
+      "end": 824,
+      "words": 1429
+    },
+    {
+      "heading": "## Supplementary Note S7. Network settings and parameter counts",
+      "start": 825,
+      "end": 847,
+      "words": 518
+    },
+    {
+      "heading": "## Supplementary Note S8. Illustrative matrix examples",
+      "start": 848,
+      "end": 923,
+      "words": 599
+    },
+    {
+      "heading": "## Supplementary Note S9. Design optimisation records",
+      "start": 924,
+      "end": 1180,
+      "words": 8048
+    },
+    {
+      "heading": "## Supplementary figures",
+      "start": 1181,
+      "end": 1205,
+      "words": 697
+    }
+  ],
+  "main_pdf": {
+    "pages": 91,
+    "figure_caption_pages": [
+      {
+        "page": 15,
+        "captions": [
+          "Figure 2:Learned displacement extension, equilibrium correction and varia-"
+        ]
+      },
+      {
+        "page": 20,
+        "captions": [
+          "Figure 3:Geometry-conditioned neural displacement architecture.(a) Element"
+        ]
+      },
+      {
+        "page": 26,
+        "captions": [
+          "Figure 4:Supports and loading of the two-cell examples.(a) Configuration x: the"
+        ]
+      },
+      {
+        "page": 28,
+        "captions": [
+          "Figure 5:Directional energy error of the learned substructures on the 80 val-"
+        ]
+      },
+      {
+        "page": 29,
+        "captions": [
+          "Figure 6:Spectral distribution of the base network's extension error.Panels show"
+        ]
+      },
+      {
+        "page": 30,
+        "captions": [
+          "Figure 7:Retained DOFs and spatial distribution of the extension error in M1."
+        ]
+      },
+      {
+        "page": 32,
+        "captions": [
+          "Figure\n4. NICE stays below both 3% lines in all fourteen configurations of the"
+        ]
+      },
+      {
+        "page": 33,
+        "captions": [
+          "Figure 8:Accuracy gained by correcting the base network at fixed network"
+        ]
+      },
+      {
+        "page": 35,
+        "captions": [
+          "Figure 9:Compliance and thickness sensitivity in assembled cell pairs.The target"
+        ]
+      },
+      {
+        "page": 37,
+        "captions": [
+          "Figure 10:Share-weighted compliance error and local sensitivity.Each point",
+          "Figure 9.\n37"
+        ]
+      },
+      {
+        "page": 38,
+        "captions": [
+          "Figure 11:Response errors caused by restricting box-face displacements.Both"
+        ]
+      },
+      {
+        "page": 48,
+        "captions": [
+          "Figure 12:Thickness optimisation with NICE.(a) Case A: compliance histories of the"
+        ]
+      },
+      {
+        "page": 49,
+        "captions": [
+          "Figure 13:Final plate designs and scale demonstration.(a,b) Corner thickness"
+        ]
+      }
+    ],
+    "section_pages": [
+      {
+        "page": 2,
+        "text": "reproduces the exact-condensation design.\nKeywords:learned substructures, static condensation, Schur complement,\nRitz approximation, cut finite elements, TPMS lattices, thickness\no"
+      },
+      {
+        "page": 7,
+        "text": "how interior displacement errors of about one percent become energy errors\nof 1.8–35% in the cut cells examined (Section 5.4). (iii) A realisation for\ncut thin-walled Schwarz-P cel"
+      },
+      {
+        "page": 11,
+        "text": "directional energy error of Section 3.1. Thickness sensitivities use the eight-\ncomponent vector of Section 3.3, with relative Euclidean errores =∥ ˜︁s−\ns∥2/∥s∥2.\nAn approximate co"
+      },
+      {
+        "page": 14,
+        "text": "and ghost contribution (Eq. (H.10)); the quadratic term of Eq. (9) is then\nnonpositive, but the cross term can have either sign (Appendix H.1). A nu-\nmerical derivative inheritsK,c"
+      },
+      {
+        "page": 15,
+        "text": "4. Neural-initialised condensation with equilibrium correction\nThe construction has three parts. A learned extension supplies the trial\ninterior field (Section 4.4); the energy for"
+      },
+      {
+        "page": 22,
+        "text": "1. Extendqwith ˆ︁Eand apply the prescribed pre-smoothing, coarse-grid\ncorrection and post-smoothing sequence at fixed retained values to ob-\ntain ˆ︁u=Fq.\n2. Formy=K ˆ︁uand returnF "
+      },
+      {
+        "page": 32,
+        "text": "rigid-body split), the base network's field and NICE. A zero interior leaves\n28–1100% energy error and the harmonic start 0.08–17%, whereas the base\nnetwork's field ends at 0.004–0"
+      },
+      {
+        "page": 48,
+        "text": "a Exact compliance.b Homogenised macroscale model; in parentheses the\nNICE compliance of the same design on the cut geometry.\n25.0\n27.5\n30.0\n32.5\n35.0\n37.5\n40.0\n42.5\ncompliance C\nV"
+      },
+      {
+        "page": 51,
+        "text": "al. (2024), which use approximate subdomain and coarse solves only inside\nthe preconditioner and therefore converge to the exact discrete solution, its\nlattice solve iterates on th"
+      },
+      {
+        "page": 52,
+        "text": "discrete reference, whose error for heavily cut cells atn= 32is of order one\npercent in compliance and several percent in sensitivity (Section 5.2). The\nassembled evidence comprise"
+      },
+      {
+        "page": 54,
+        "text": "CRediT authorship contribution statement\n[Author contributions (CRediT taxonomy).]\nDeclaration of competing interest\n[Competing-interest statement.]\nAcknowledgements\n[Funding and a"
+      },
+      {
+        "page": 56,
+        "text": "it. Training populations are identified in Table ST01.\nAppendix A.2. Response metrics and aggregation\nWithK ,c =∂K/∂τ c on the stated design interval with fixed DOF sets,\nthe metri"
+      },
+      {
+        "page": 57,
+        "text": "entire extension and correction. Interior body loads are zero; equivalently,\nthe load functional factors through the retained DOFs. Consistent boundary\nloads have this property whe"
+      },
+      {
+        "page": 59,
+        "text": "Taking the supremum proves Eq. (B.5). The basisZis used for analysis;\nthe operator application does not construct these whitened coordinates.\nThe retained block of the unbalanced d"
+      },
+      {
+        "page": 60,
+        "text": "a largeκ W, making even a small relative displacement error mechanically\nsignificant. Thus an energy targetεtar requiresδ W≤\n√︂\nεtar/κW. Correction\nmust address this energy content"
+      },
+      {
+        "page": 61,
+        "text": "For completeness, the order reversal follows by settingQ=\nK−1/2ˆ︁KK−1/2 ⪰I. Its eigenvalues are at least one, soQ −1 ⪯I; a\ncongruence gives the inverse inequality. If every substru"
+      },
+      {
+        "page": 63,
+        "text": "of geometries require uniform coercivity and bounded maps; fixed-geometry\nbig-O constants do not supply those estimates automatically, nor do they\ndetermine which contribution domi"
+      },
+      {
+        "page": 65,
+        "text": "the base network uses its own random start. The estimates are used to set the\npolynomial, while the result in Eq. (D.2) is conditional on its actual spectral\nvalues: a finite power"
+      },
+      {
+        "page": 67,
+        "text": "Appendix E. Transpose of the complete extension\nAll transposes below use the Euclidean pairing of the stored displacement\nand nodal-force vectors. WriteMI =J T\nI JI. Transposing Eq"
+      },
+      {
+        "page": 68,
+        "text": "Appendix F. Coarse spaces, factorisation, and arithmetic\nAppendix F.1. Explicit coarse-space study\nCoarse tensor-product shape functions are evaluated at the active\nbackground-node"
+      },
+      {
+        "page": 69,
+        "text": "assumes the resulting colour separation resolves every interacting coarse pair.\nThis setup supports theQ1 and enrichedQ 1 spaces. The explicitQ 2 study\nuses the CPU construction in"
+      },
+      {
+        "page": 71,
+        "text": "Using the actual trace instead gives the nonnegative variational difference\nvTKv−q ′TSq′. In exact arithmetic applied to those actual vectors, with\nrI = (Kv)I,\nvTKv−1 =r T\nIA−1rI +"
+      },
+      {
+        "page": 76,
+        "text": "displacement is returned to the original frame for mechanical evaluation.\nThese relations describe the transformed target and the frame-consistency\ncondition. Sampling the cube vie"
+      },
+      {
+        "page": 77,
+        "text": "Class\nConstruction before rigid removal and\nenergy normalisation\nmacroEqual sampling of uniform strain,\nquadratic, and cubic imposed\ndisplacement fields.\ngrfMultiscale displacement"
+      },
+      {
+        "page": 78,
+        "text": "Table ST01 gives the training and model-selection settings of each. The\nenergy term in Eq. (18) uses a10−12 lower clamp inside the logarithm, and\nthe sensitivity term, the squared "
+      },
+      {
+        "page": 79,
+        "text": "ε= tr(T∗MNq), M Nq⪰αI,α>0 =⇒ε ∗≤tr(T∗)≤ ε/α.(G.4)\nIf the directions do not span the complement, choose a unitvorthogonal\nto them andT∗ = Θvv T withΘ>0. Every sampled error is zero "
+      },
+      {
+        "page": 81,
+        "text": "corresponding assumption on that derivative. If the load depends on de-\nsign, the full compliance derivative also contains2fT\ng,c\nˆ︁U, and correspondingly\n2fT\ng,cUfor the exact ass"
+      },
+      {
+        "page": 83,
+        "text": "Eq. (H.8) is a quantitative theoretical explanation, not a fitted attribution\nof a reported percentage.\nThe field-only and solution-only replacements of Table ST11 do not form\nan a"
+      },
+      {
+        "page": 85,
+        "text": "filled elements (of 762 to 6,033) have a uniform-thickening derivative whose\nmost negative eigenvalue exceeds10−6 of its largest in magnitude, some of\nthem negative semidefinite. T"
+      },
+      {
+        "page": 86,
+        "text": "ε(q)≥ Lz\neh−Lz\n, µ ∗≥1 + Lz\neh−Lz\n.(I.2)\nIf the exact reference energy is known,Lz/(qTSq)gives a sharper lower\nestimate. A large value detects an inaccurate direction; a small valu"
+      }
+    ]
+  },
+  "supp_pdf": {
+    "pages": 78,
+    "figure_caption_pages": [
+      {
+        "page": 2,
+        "captions": [
+          "Figure 4.\nThe deployment geometries use the G1–G4 labels of Table ST18; the table"
+        ]
+      },
+      {
+        "page": 13,
+        "captions": [
+          "Figure 6. The eigenvalues can be"
+        ]
+      },
+      {
+        "page": 73,
+        "captions": [
+          "Figure S01:Verification of the CutFEM reference.Single cells U1, M1, M2 and H1,"
+        ]
+      },
+      {
+        "page": 74,
+        "captions": [
+          "Figure S02:Distributions of geometry-level directional energy errors.Each point"
+        ]
+      },
+      {
+        "page": 75,
+        "captions": [
+          "Figure S03:Field-based sensitivity-error diagnostics.(a) Paired mean energy and"
+        ]
+      },
+      {
+        "page": 76,
+        "captions": [
+          "Figure S04:Smoothing from learned and zero interior fields.(a,b) Mean directional"
+        ]
+      },
+      {
+        "page": 77,
+        "captions": [
+          "Figure S05:Coarse representations and correction sequences.Rows correspond to"
+        ]
+      },
+      {
+        "page": 78,
+        "captions": [
+          "Figure S06:Homogenised law of the uniform-thickness cell.(a) Effective elasticity"
+        ]
+      }
+    ],
+    "section_pages": [
+      {
+        "page": 49,
+        "text": "S9.1. Optimiser and constraints\nThe design variables are the corner thickness parameters at the lattice\nvertices,τ g. Every cell meeting at a vertex takes its value,τm =τ m(τg), so"
+      }
+    ]
+  }
+}

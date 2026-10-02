@@ -1,0 +1,158 @@
+{
+  "baseline": "700af856f2b9f152ab2c263406c54132a11255bf",
+  "ST03_ST03d": {
+    "checked_entries_including_counts": 360,
+    "mismatches": [],
+    "level": "reaggregated stored geometry means, not individual directions"
+  },
+  "ST09_ST10": {
+    "checked_numeric_entries": 252,
+    "mismatches": [],
+    "level": "reaggregated per-load recorded errors"
+  },
+  "F10": {
+    "points_by_variant": {
+      "Base network": 54,
+      "Uncorrected": 87,
+      "Smoothing-trained": 96,
+      "Base network, corrected": 114,
+      "NICE": 114
+    },
+    "combinations_by_variant": {
+      "Base network": 7,
+      "Uncorrected": 11,
+      "Smoothing-trained": 12,
+      "Base network, corrected": 14,
+      "NICE": 14
+    },
+    "total_points": 465,
+    "total_combinations": 58,
+    "L1_included": true
+  },
+  "ST14": {
+    "fresh_val_2010_d0_v0": {
+      "load": [
+        -1,
+        0.0
+      ],
+      "computed": {
+        "24": [
+          -1.582578376595234,
+          5.604752655238034
+        ],
+        "32": [
+          -0.932314502919096,
+          3.594959559773043
+        ],
+        "40": [
+          -0.5179362307606739,
+          2.159034472564087
+        ],
+        "48": [
+          -0.2705620971624412,
+          1.237338507866581
+        ]
+      }
+    },
+    "fresh_val_2005_d1_v0": {
+      "load": [
+        1,
+        0.0
+      ],
+      "computed": {
+        "24": [
+          -1.0545837834342264,
+          1.0644605271189123
+        ],
+        "32": [
+          0.07317210139661245,
+          0.0794371932648649
+        ],
+        "40": [
+          0.4600285486801692,
+          0.43919321757981705
+        ],
+        "48": [
+          1.0765139032891557,
+          1.0572845152275325
+        ],
+        "56": [
+          1.395022683333802,
+          1.3723773959029142
+        ]
+      }
+    },
+    "fresh_val_2074_d0_v0": {
+      "load": [
+        2,
+        1.0
+      ],
+      "computed": {
+        "24": [
+          -0.6564797139751999,
+          1.015452599512943
+        ],
+        "32": [
+          -0.2846266922653884,
+          0.443226841629619
+        ],
+        "40": [
+          -0.1563137727239372,
+          0.23602458577820948
+        ],
+        "48": [
+          -0.0886321746685792,
+          0.1981341599727473
+        ],
+        "56": [
+          0.16762124707649928,
+          0.1594393442995951
+        ]
+      }
+    },
+    "fresh_val_2051_d1_v1": {
+      "load": [
+        2,
+        1.0
+      ],
+      "computed": {
+        "24": [
+          -0.3208375235286387,
+          0.5651601687536972
+        ],
+        "32": [
+          -0.13692191107522733,
+          0.23291378725603124
+        ],
+        "40": [
+          0.07817883275123005,
+          0.0871807966323505
+        ],
+        "48": [
+          -0.13774449348010753,
+          0.152784039922867
+        ],
+        "56": [
+          -0.01987544542336739,
+          0.030486147476017373
+        ]
+      }
+    }
+  },
+  "ST05a": {
+    "numeric_entries": 88,
+    "mismatches": [],
+    "level": "table binding records, not directional reaggregation"
+  },
+  "ST06": {
+    "numeric_entries": 160,
+    "mismatches": [],
+    "level": "table binding records, not directional reaggregation"
+  },
+  "ST07a": {
+    "numeric_entries": 288,
+    "coarse_column_counts": 36,
+    "mismatches": [],
+    "level": "table binding records, not directional reaggregation"
+  }
+}

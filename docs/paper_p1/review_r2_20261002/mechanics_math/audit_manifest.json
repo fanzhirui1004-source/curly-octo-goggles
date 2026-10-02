@@ -1,0 +1,27 @@
+{
+  "baseline": "700af856f2b9f152ab2c263406c54132a11255bf",
+  "branch": "claude/wizardly-euler-3m9cwx",
+  "git_status_short": "",
+  "sources": {
+    "MANUSCRIPT_EN.md": "74e0db7e5f6773c8fed9e987a800c4e9657ea12a1b4a21af2b40fb7a7286b421",
+    "APPENDICES_EN.md": "1af27edbb30f94a1472778717ec098e1ca0c49aca263074c79d7d80ebafb8e67",
+    "SUPPLEMENTARY_EN.md": "81d2a02a2ff7fe7f2c5acc7b478598c8e1eb33404ed3323b250d849a8e00c600"
+  },
+  "issue_ids": [
+    "M01",
+    "M02",
+    "M03",
+    "M04",
+    "M05",
+    "M06",
+    "M07",
+    "M08",
+    "M09",
+    "M10",
+    "M11",
+    "M12"
+  ],
+  "current_figure_count": 19,
+  "actual_notes": "S1-S9",
+  "scope": "Read-only repository audit; no FE/training/server experiment; cache reports only"
+}

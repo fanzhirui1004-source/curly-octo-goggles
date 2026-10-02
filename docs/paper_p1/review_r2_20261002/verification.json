@@ -1,0 +1,249 @@
+{
+  "date": "2026-10-02",
+  "baseline_commit": "700af856f2b9f152ab2c263406c54132a11255bf",
+  "branch": "claude/wizardly-euler-3m9cwx",
+  "scope": "Read-only manuscript review; report publication only",
+  "independent_reviews_completed": 6,
+  "coverage": {
+    "main_sections": "1-7",
+    "appendices": "A-I",
+    "supplementary_tables": "ST01-ST27 including subtables",
+    "actual_notes": "S1-S9",
+    "current_figures": 19,
+    "main_pdf_visual_pages": 22,
+    "main_pdf_total_pages": 91,
+    "supp_pdf_visual_pages": 14,
+    "supp_pdf_total_pages": 78
+  },
+  "evidence_boundary": {
+    "reaggregated_saved_results": true,
+    "illustrative_small_matrices": true,
+    "new_fe_experiments": false,
+    "training": false,
+    "server_access": false,
+    "manuscript_edits": false,
+    "figure_edits": false,
+    "build_edits": false,
+    "all_reference_full_texts_read": false,
+    "all_pdf_pages_visually_verified": false
+  },
+  "sources": {
+    "docs/paper_p1/MANUSCRIPT_EN.md": {
+      "sha256": "74e0db7e5f6773c8fed9e987a800c4e9657ea12a1b4a21af2b40fb7a7286b421",
+      "matches_baseline": true
+    },
+    "docs/paper_p1/APPENDICES_EN.md": {
+      "sha256": "1af27edbb30f94a1472778717ec098e1ca0c49aca263074c79d7d80ebafb8e67",
+      "matches_baseline": true
+    },
+    "docs/paper_p1/SUPPLEMENTARY_EN.md": {
+      "sha256": "81d2a02a2ff7fe7f2c5acc7b478598c8e1eb33404ed3323b250d849a8e00c600",
+      "matches_baseline": true
+    },
+    "docs/paper_p1/FIGURES.md": {
+      "sha256": "e0d86b11b96bbe77e3952d20a6eef8d29efc0518c135c089592caf4bb5111fc0",
+      "matches_baseline": true
+    }
+  },
+  "repository_clean_before_publication": true,
+  "published_files_excluding_this_manifest": [
+    {
+      "path": "01_scientific_narrative_expanded_CN.md",
+      "bytes": 58384,
+      "sha256": "1c92c097fd581fae49add611cbb334e81e0072e5dac5ecacb9f426883368f5d2"
+    },
+    {
+      "path": "02_mechanics_math_expanded_CN.md",
+      "bytes": 47782,
+      "sha256": "790ea928a35598f72736b6d80cfdc0791b75964ca725f2bcafe3777787f98506"
+    },
+    {
+      "path": "03_evidence_results_expanded_CN.md",
+      "bytes": 51292,
+      "sha256": "d320fd75e96d52cc4a205a21eb5a391478598f605417fede640576a5474e9c0c"
+    },
+    {
+      "path": "04_literature_review_CN.md",
+      "bytes": 51362,
+      "sha256": "004ab1d7f409f7a56863a1ccc69e4f9b1c9ccf5514280c95122a87984606371b"
+    },
+    {
+      "path": "05_language_author_voice_CN.md",
+      "bytes": 64480,
+      "sha256": "c743fcb4578d3edd2c457426ff31dd306d0bf652cad57c615d66c8ce8e7c7cce"
+    },
+    {
+      "path": "06_structure_figures_CN.md",
+      "bytes": 52996,
+      "sha256": "beb761f2dfce2786bd03fe89edf5d1aae9de9afc0069c6d746944efcef557575"
+    },
+    {
+      "path": "REVIEW_DISCUSSION_CN.md",
+      "bytes": 23932,
+      "sha256": "1e777675031b619b655a49284686403a5d0b2eb5e232ad2d14eb92d0be1eb2d4"
+    },
+    {
+      "path": "baseline.json",
+      "bytes": 704,
+      "sha256": "1e09714c1e2d79403e1ceea52092d0338fde188befed9fe0d950de48ab13f208"
+    },
+    {
+      "path": "derivative_counterexample.json",
+      "bytes": 282,
+      "sha256": "b8ac157fa6dc0836c754d3fa2ca4f0ad925fac8de1fabe67293f43736891862c"
+    },
+    {
+      "path": "evidence_results/additional_reaggregation.json",
+      "bytes": 11382,
+      "sha256": "28e2a890f2e801eab0cb3c17314e9ab3199cc54a815f396c3fed2cf35bc627bb"
+    },
+    {
+      "path": "evidence_results/cost_optimisation_CN.md",
+      "bytes": 21153,
+      "sha256": "81568b54104e487d69ea78c56a048b0cd05940b4817725d3392e6aee4c23d9ce"
+    },
+    {
+      "path": "evidence_results/population_accuracy_CN.md",
+      "bytes": 20784,
+      "sha256": "17c6fe6e9f7528695293142d3bac3fc1ca09bcf1193584c5ec85a2f335d1f792"
+    },
+    {
+      "path": "evidence_results/population_accuracy_audit.json",
+      "bytes": 36803,
+      "sha256": "67f0e51793b016c46cfc7d26610207444eb8c087b6677ef83c7580b4ef116e72"
+    },
+    {
+      "path": "evidence_results/suppfig_numerical_checks.json",
+      "bytes": 3354,
+      "sha256": "a4f1a0b4c0bdab34ee301f371d9506b06a72fb150aa383409d486e78a943dba0"
+    },
+    {
+      "path": "evidence_results/supplement_figures_CN.md",
+      "bytes": 23440,
+      "sha256": "90c0e42631e78c6d1dc01772e149547e47f4789d65235d0905d75690e0990daf"
+    },
+    {
+      "path": "language_author_voice/appendix_language.md",
+      "bytes": 28617,
+      "sha256": "e6df945e2f223009a414d6ef852491b881bc7c0d0ecad9c3ec4ed4106a2629bf"
+    },
+    {
+      "path": "language_author_voice/figure_language.md",
+      "bytes": 18178,
+      "sha256": "5e68caaf886bdc7b37faa5cea63b664ac33c98718cc36387f6c04193468677e8"
+    },
+    {
+      "path": "language_author_voice/supplement_language.md",
+      "bytes": 29558,
+      "sha256": "4110a4e3a84dec1e8da4ddc08d5307e686c4024eff0abb3b3d71a1cbeedacb69"
+    },
+    {
+      "path": "link_and_caption_checks.json",
+      "bytes": 220,
+      "sha256": "666ec0f760506b196db800b4cc527ba9795e4bcb550c40f3dc6567a88ebd31c6"
+    },
+    {
+      "path": "literature/components/evidence.md",
+      "bytes": 20341,
+      "sha256": "875afba320d13dc1e05c72270c8e06aeba9fad7bf6039dd924bc1feb8c16f8f1"
+    },
+    {
+      "path": "literature/energy/evidence.md",
+      "bytes": 11783,
+      "sha256": "640b1cdd2eff7c1e9a3a84a1ca5cade462cd44ae8e9b3c49257e8696f6b141d0"
+    },
+    {
+      "path": "literature/piml/evidence.md",
+      "bytes": 18617,
+      "sha256": "067602d843c2011c13cec4d0ab7c7ae3a364d9e3f441725febbbd79cace9cbe8"
+    },
+    {
+      "path": "literature/root/reference_audit.json",
+      "bytes": 204503,
+      "sha256": "e2db06c5ac0db4d0c407c18674de793d7da2b3ef827b396144017ec1ad129025"
+    },
+    {
+      "path": "literature/root/source_inventory.json",
+      "bytes": 36636,
+      "sha256": "6c64feed4eb7d7caaadc297aea0859b12e4ac2707ebb462b499a2986e18abcec"
+    },
+    {
+      "path": "mechanics_math/algebra_checks.json",
+      "bytes": 3540,
+      "sha256": "262e4407f1e5a1e704458f8b363da6007bf28c129ae61d0911dab03ac06b42ad"
+    },
+    {
+      "path": "mechanics_math/audit_manifest.json",
+      "bytes": 733,
+      "sha256": "463d7000a678f822e6dff58594120fd414f4f6b259411f1f99c61d441d373ca6"
+    },
+    {
+      "path": "mechanics_math/core_proof_CN.md",
+      "bytes": 21614,
+      "sha256": "7e76c040d2f5d560d28a15f0a4471acc650fa42e5ad7a17a211be515b610829b"
+    },
+    {
+      "path": "mechanics_math/derivatives_assembly_CN.md",
+      "bytes": 22649,
+      "sha256": "afc10578a58730dbdca4a20019360f1e3a9317824e1170a65f32c4648b359ee1"
+    },
+    {
+      "path": "mechanics_math/spectral_arithmetic_CN.md",
+      "bytes": 21404,
+      "sha256": "faa7f9798e9b4853eb1b0d998606d86dce3962d3b4d16f4ff341eba9ee5a9ad4"
+    },
+    {
+      "path": "narrative/appendices_figures_CN.md",
+      "bytes": 25412,
+      "sha256": "c37e76640eccb2ddf15676ccca3ab0ad0f58e31d370950c0db7d34a406ffe56a"
+    },
+    {
+      "path": "narrative/main_1_4_CN.md",
+      "bytes": 15492,
+      "sha256": "aefd45d64f8e57cf7f98601b95918e4471ae6ccb21814e1afdb03123d01cf39f"
+    },
+    {
+      "path": "narrative/results_supp_CN.md",
+      "bytes": 25845,
+      "sha256": "e12f71c8dee50fc4e25e4eae13c44e6eaacfb0c5ffc34f60589f72f1024a4f0d"
+    },
+    {
+      "path": "structure_figures/appendix_supp_structure_CN.md",
+      "bytes": 26276,
+      "sha256": "c7a88b56067290122d9f4f08ed3c97bc41998c3b893904b0e5b65df607944edd"
+    },
+    {
+      "path": "structure_figures/main_figures_01_10_CN.md",
+      "bytes": 17852,
+      "sha256": "ea3fb714ccd328cae9f31785bdefe09712e433cf97b45ca5ffa11c2bd5190eb6"
+    },
+    {
+      "path": "structure_figures/root_qa/figure_inventory.json",
+      "bytes": 4989,
+      "sha256": "353fea72933673963ab1beeded7c4fa6eabaa91562bb11f564ffbdab9aeaf959"
+    },
+    {
+      "path": "structure_figures/root_qa/structure_metrics.json",
+      "bytes": 21317,
+      "sha256": "c1be9bcdaccf0b4d6b653a7bb86858c751858c393df0fb1d4b1d0e0750dbd107"
+    },
+    {
+      "path": "structure_figures/tail_figures_11_13_S01_S06_CN.md",
+      "bytes": 19063,
+      "sha256": "b41e1b46570fcceda71a543b487706f0272b41111fce28a88211f5ff9fb3cfa0"
+    }
+  ],
+  "excluded": [
+    "external full-text PDFs",
+    "rendered page images",
+    "task configuration",
+    "superseded initial reports",
+    "discussion draft"
+  ],
+  "transformations": [
+    "Local source links use fixed-commit repository URLs",
+    "Included auxiliary report links are relative",
+    "Unpublished visual/source cache links are marked local",
+    "Conversation-only memory metadata removed"
+  ]
+}

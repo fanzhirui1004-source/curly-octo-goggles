@@ -1,0 +1,1178 @@
+{
+  "figures": [
+    {
+      "label": "Figure 1",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 50,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F08_geometry.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 2",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 180,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F01_method_overview.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 3",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 276,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F11_network_architecture.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 4",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 354,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F09_assembly_loads.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 5",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 372,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F02_validation.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 6",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 380,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F03_spectrum.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 7",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 386,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F12_field_error_M1.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 8",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 414,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F04_correction.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 9",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 426,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F05_assembly.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 10",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 442,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F10_energy_share.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 11",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 450,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F06_bernstein.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 12",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 519,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F13_optimisation.png",
+      "exists": true
+    },
+    {
+      "label": "Figure 13",
+      "file": "MANUSCRIPT_EN.md",
+      "line": 523,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/F14_designs_scale.png",
+      "exists": true
+    },
+    {
+      "label": "Figure S01",
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 1183,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S06_reference_verification.png",
+      "exists": true
+    },
+    {
+      "label": "Figure S02",
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 1187,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S01_distributions.png",
+      "exists": true
+    },
+    {
+      "label": "Figure S03",
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 1191,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S03_sensitivity_diagnostics.png",
+      "exists": true
+    },
+    {
+      "label": "Figure S04",
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 1195,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S02A_smoothing.png",
+      "exists": true
+    },
+    {
+      "label": "Figure S05",
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 1199,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S02B_coarse_spaces.png",
+      "exists": true
+    },
+    {
+      "label": "Figure S06",
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 1203,
+      "path": "/Users/fffffreeze/Desktop/curly-octo-goggles/docs/paper_p1/figures/S06_homogenised_law.png",
+      "exists": true
+    }
+  ],
+  "links": [
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Yu et al. (2019)",
+      "url": "https://doi.org/10.1016/j.matdes.2019.108021"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Li et al. (2018)",
+      "url": "https://doi.org/10.1016/j.cad.2018.06.003"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Guyan (1965)",
+      "url": "https://doi.org/10.2514/3.2874"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Irons (1965)",
+      "url": "https://doi.org/10.2514/3.3027"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Capuano & Rimoli (2019)",
+      "url": "https://doi.org/10.1016/j.cma.2018.10.046"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Huang et al. (2023)",
+      "url": "https://doi.org/10.1016/j.eml.2023.102041"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Guo et al. (2026a)",
+      "url": "https://doi.org/10.1016/j.cma.2026.118955"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 11,
+      "label": "Huynh et al. (2013)",
+      "url": "https://doi.org/10.1051/m2an/2012022"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 13,
+      "label": "Eftang & Patera (2013)",
+      "url": "https://doi.org/10.1002/nme.4543"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 13,
+      "label": "Smetana & Patera (2016)",
+      "url": "https://doi.org/10.1137/15m1009603"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 13,
+      "label": "Ballani et al. (2018)",
+      "url": "https://doi.org/10.1016/j.cma.2017.09.014"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 13,
+      "label": "Huynh et al. (2013)",
+      "url": "https://doi.org/10.1051/m2an/2012022"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 13,
+      "label": "Dohrmann (2007)",
+      "url": "https://doi.org/10.1002/nla.514"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 13,
+      "label": "Li & Widlund (2007)",
+      "url": "https://doi.org/10.1016/j.cma.2006.03.011"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 13,
+      "label": "Klawonn & Rheinbach (2007)",
+      "url": "https://doi.org/10.1002/nme.1758"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 15,
+      "label": "Becker & Rannacher (2001)",
+      "url": "https://doi.org/10.1017/S0962492901000010"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 15,
+      "label": "Amir et al. (2009)",
+      "url": "https://doi.org/10.1002/nme.2536"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 15,
+      "label": "Amir et al. (2010)",
+      "url": "https://doi.org/10.1007/s00158-009-0463-4"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 15,
+      "label": "Gogu (2015)",
+      "url": "https://doi.org/10.1002/nme.4797"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Toselli & Widlund (2005)",
+      "url": "https://doi.org/10.1007/b137868"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Hou & Wu (1997)",
+      "url": "https://doi.org/10.1006/jcph.1997.5682"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Huynh et al. (2013)",
+      "url": "https://doi.org/10.1051/m2an/2012022"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Huang et al. (2023)",
+      "url": "https://doi.org/10.1016/j.eml.2023.102041"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Xu (1992)",
+      "url": "https://doi.org/10.1137/1034116"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Vaněk et al. (1996)",
+      "url": "https://doi.org/10.1007/BF02238511"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Golub & Varga (1961)",
+      "url": "https://doi.org/10.1007/BF01386013"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 17,
+      "label": "Xu & Zikatanov (2002)",
+      "url": "https://doi.org/10.1090/S0894-0347-02-00398-3"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Huang et al. (2022)",
+      "url": "https://doi.org/10.1016/j.eml.2022.101887"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Huang et al. (2023)",
+      "url": "https://doi.org/10.1016/j.eml.2023.102041"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Huang et al. (2024)",
+      "url": "https://doi.org/10.1016/j.jmps.2024.105893"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Guo et al. (2026a)",
+      "url": "https://doi.org/10.1016/j.cma.2026.118955"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Guo et al. (2026b)",
+      "url": "https://arxiv.org/abs/2607.22019v1"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Jiang, C. et al. (2026)",
+      "url": "https://doi.org/10.1016/j.compstruct.2026.120865"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Zhang, L. et al. (2024)",
+      "url": "https://doi.org/10.1016/j.eml.2024.102237"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Zhang et al. (2026)",
+      "url": "https://doi.org/10.1016/j.ijmecsci.2026.112007"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 19,
+      "label": "Xu et al. (2025)",
+      "url": "https://doi.org/10.1016/j.compstruct.2025.119330"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Parish et al. (2024)",
+      "url": "https://doi.org/10.1007/s00466-024-02481-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Jiang, H. et al. (2026)",
+      "url": "https://arxiv.org/abs/2608.02036v1"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Huynh et al. (2013)",
+      "url": "https://doi.org/10.1051/m2an/2012022"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Chen & Li (2026)",
+      "url": "https://doi.org/10.1016/j.cad.2026.104038"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Wu et al. (2019)",
+      "url": "https://doi.org/10.1016/j.cma.2018.11.003"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Hirschler et al. (2024)",
+      "url": "https://doi.org/10.1002/nme.7419"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Bonilla Moreno et al. (2027)",
+      "url": "https://doi.org/10.1016/j.cma.2026.119304"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Wu et al. (2019)",
+      "url": "https://doi.org/10.1016/j.cma.2018.11.003"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Hirschler et al. (2024)",
+      "url": "https://doi.org/10.1002/nme.7419"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 21,
+      "label": "Bonilla Moreno et al. (2027)",
+      "url": "https://doi.org/10.1016/j.cma.2026.119304"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Greenfeld et al. (2019)",
+      "url": "https://proceedings.mlr.press/v97/greenfeld19a.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Luz et al. (2020)",
+      "url": "https://proceedings.mlr.press/v119/luz20a.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Heinlein et al. (2021)",
+      "url": "https://doi.org/10.1137/20M1344913"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Zhang, E. et al. (2024)",
+      "url": "https://doi.org/10.1038/s42256-024-00910-x"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Kopaničáková & Karniadakis (2025)",
+      "url": "https://doi.org/10.1137/24m162861x"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Xing et al. (2026)",
+      "url": "https://doi.org/10.1145/3811333"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Um et al. (2020)",
+      "url": "https://proceedings.neurips.cc/paper/2020/hash/43e4e6a6f341e00671e123714de019a8-Abstract.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Li et al. (2023a)",
+      "url": "https://www.jmlr.org/papers/v24/23-0064.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Li et al. (2023b)",
+      "url": "https://doi.org/10.52202/075280-1556"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Pfaff et al. (2021)",
+      "url": "https://openreview.net/forum?id=roNqYL0_XP"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "He et al. (2024)",
+      "url": "https://proceedings.iclr.cc/paper_files/paper/2024/hash/eb3c8135137c8a60425a0320869ad87e-Abstract-Conference.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Boullé & Townsend (2023)",
+      "url": "https://doi.org/10.1007/s10208-022-09556-w"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "E & Yu (2018)",
+      "url": "https://doi.org/10.1007/s40304-018-0127-z"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Efendiev et al. (2013)",
+      "url": "https://doi.org/10.1016/j.jcp.2013.04.045"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 23,
+      "label": "Alexandersen & Lazarov (2015)",
+      "url": "https://doi.org/10.1016/j.cma.2015.02.028"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 48,
+      "label": "Burman (2010)",
+      "url": "https://doi.org/10.1016/j.crma.2010.10.006"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 48,
+      "label": "Burman et al. (2015)",
+      "url": "https://doi.org/10.1002/nme.4823"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 92,
+      "label": "Fraeijs de Veubeke (1965)",
+      "url": "https://doi.org/10.1002/nme.339"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 92,
+      "label": "Toselli & Widlund (2005)",
+      "url": "https://doi.org/10.1007/b137868"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 92,
+      "label": "Becker & Rannacher (2001)",
+      "url": "https://doi.org/10.1017/S0962492901000010"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 92,
+      "label": "Haftka & Gürdal (1992)",
+      "url": "https://doi.org/10.1007/978-94-011-2550-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 92,
+      "label": "Bendsøe & Sigmund (2004)",
+      "url": "https://doi.org/10.1007/978-3-662-05086-6"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 147,
+      "label": "Giles & Pierce (2000)",
+      "url": "https://doi.org/10.1023/a:1011430410075"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 147,
+      "label": "Haftka & Gürdal (1992)",
+      "url": "https://doi.org/10.1007/978-94-011-2550-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 207,
+      "label": "Adams et al. (2003)",
+      "url": "https://doi.org/10.1016/s0021-9991(03)00194-3"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 219,
+      "label": "Golub & Varga (1961)",
+      "url": "https://doi.org/10.1007/BF01386013"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 219,
+      "label": "Vaněk et al. (1996)",
+      "url": "https://doi.org/10.1007/BF02238511"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 219,
+      "label": "Zhang, E. et al. (2024)",
+      "url": "https://doi.org/10.1038/s42256-024-00910-x"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 234,
+      "label": "Xu (1992)",
+      "url": "https://doi.org/10.1137/1034116"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 236,
+      "label": "Hackbusch (1985)",
+      "url": "https://doi.org/10.1007/978-3-662-02427-0"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 236,
+      "label": "Trottenberg et al. (2001)",
+      "url": "https://shop.elsevier.com/books/multigrid/trottenberg/978-0-12-701070-0"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 236,
+      "label": "Xu & Zikatanov (2002)",
+      "url": "https://doi.org/10.1090/S0894-0347-02-00398-3"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 236,
+      "label": "Falgout et al. (2005)",
+      "url": "https://doi.org/10.1002/nla.437"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 293,
+      "label": "Um et al. (2020)",
+      "url": "https://proceedings.neurips.cc/paper/2020/hash/43e4e6a6f341e00671e123714de019a8-Abstract.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 448,
+      "label": "Huang et al. (2024)",
+      "url": "https://doi.org/10.1016/j.jmps.2024.105893"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 448,
+      "label": "Guo et al. (2026a)",
+      "url": "https://doi.org/10.1016/j.cma.2026.118955"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 448,
+      "label": "Guo et al. (2026b)",
+      "url": "https://arxiv.org/abs/2607.22019v1"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 489,
+      "label": "Svanberg (1987)",
+      "url": "https://doi.org/10.1002/nme.1620240207"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 495,
+      "label": "Li et al. (2018)",
+      "url": "https://doi.org/10.1016/j.cad.2018.06.003"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 541,
+      "label": "Li & Widlund (2007)",
+      "url": "https://doi.org/10.1016/j.cma.2006.03.011"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 541,
+      "label": "Klawonn & Rheinbach (2007)",
+      "url": "https://doi.org/10.1002/nme.1758"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 541,
+      "label": "Hirschler et al. (2024)",
+      "url": "https://doi.org/10.1002/nme.7419"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 545,
+      "label": "Jiang, C. et al. (2026)",
+      "url": "https://doi.org/10.1016/j.compstruct.2026.120865"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 545,
+      "label": "Vaněk et al. (1996)",
+      "url": "https://doi.org/10.1007/BF02238511"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 545,
+      "label": "Henson & Yang (2002)",
+      "url": "https://doi.org/10.1016/S0168-9274(01)00115-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 545,
+      "label": "Falgout & Yang (2002)",
+      "url": "https://doi.org/10.1007/3-540-47789-6_66"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 545,
+      "label": "Dohrmann (2003)",
+      "url": "https://doi.org/10.1137/S1064827502412887"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 545,
+      "label": "Farhat et al. (2001)",
+      "url": "https://doi.org/10.1002/nme.76"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 561,
+      "label": "Parallel multigrid smoothing: polynomial versus Gauss–Seidel",
+      "url": "https://doi.org/10.1016/s0021-9991(03)00194-3"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 563,
+      "label": "Topology optimisation of manufacturable microstructural details without length scale separation using a spectral coarse basis preconditioner",
+      "url": "https://doi.org/10.1016/j.cma.2015.02.028"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 565,
+      "label": "Approximate reanalysis in topology optimization",
+      "url": "https://doi.org/10.1002/nme.2536"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 567,
+      "label": "Efficient use of iterative solvers in nested topology optimization",
+      "url": "https://doi.org/10.1007/s00158-009-0463-4"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 569,
+      "label": "A component-based hybrid reduced basis/finite element method for solid mechanics with local nonlinearities",
+      "url": "https://doi.org/10.1016/j.cma.2017.09.014"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 571,
+      "label": "An optimal control approach to a posteriori error estimation in finite element methods",
+      "url": "https://doi.org/10.1017/S0962492901000010"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 573,
+      "label": "*Topology Optimization: Theory, Methods, and Applications*",
+      "url": "https://doi.org/10.1007/978-3-662-05086-6"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 575,
+      "label": "A ROM-based BDDC solver for unfitted p-FEM level-set-based two-dimensional lattice structures",
+      "url": "https://doi.org/10.1016/j.cma.2026.119304"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 577,
+      "label": "Learning elliptic partial differential equations with randomized linear algebra",
+      "url": "https://doi.org/10.1007/s10208-022-09556-w"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 579,
+      "label": "Ghost penalty",
+      "url": "https://doi.org/10.1016/j.crma.2010.10.006"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 581,
+      "label": "CutFEM: Discretizing geometry and partial differential equations",
+      "url": "https://doi.org/10.1002/nme.4823"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 583,
+      "label": "Smart finite elements: A novel machine learning application",
+      "url": "https://doi.org/10.1016/j.cma.2018.10.046"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 585,
+      "label": "Conditioned numerical shape functions on unfitted reduced coarse elements for robust analysis of complex solid structures",
+      "url": "https://doi.org/10.1016/j.cad.2026.104038"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 587,
+      "label": "A preconditioner for substructuring based on constrained energy minimization",
+      "url": "https://doi.org/10.1137/S1064827502412887"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 589,
+      "label": "An approximate BDDC preconditioner",
+      "url": "https://doi.org/10.1002/nla.514"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 591,
+      "label": "The Deep Ritz method: a deep learning-based numerical algorithm for solving variational problems",
+      "url": "https://doi.org/10.1007/s40304-018-0127-z"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 593,
+      "label": "Generalized multiscale finite element methods (GMsFEM)",
+      "url": "https://doi.org/10.1016/j.jcp.2013.04.045"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 595,
+      "label": "Port reduction in parametrized component static condensation: approximation and a posteriori error estimation",
+      "url": "https://doi.org/10.1002/nme.4543"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 597,
+      "label": "On two-grid convergence estimates",
+      "url": "https://doi.org/10.1002/nla.437"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 599,
+      "label": "hypre: A library of high performance preconditioners",
+      "url": "https://doi.org/10.1007/3-540-47789-6_66"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 601,
+      "label": "FETI-DP: a dual–primal unified FETI method—part I: A faster alternative to the two-level FETI method",
+      "url": "https://doi.org/10.1002/nme.76"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 603,
+      "label": "doi:10.1002/nme.339",
+      "url": "https://doi.org/10.1002/nme.339"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 605,
+      "label": "An Introduction to the Adjoint Approach to Design",
+      "url": "https://doi.org/10.1023/a:1011430410075"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 607,
+      "label": "Improving the efficiency of large scale topology optimization through on-the-fly reduced order model construction",
+      "url": "https://doi.org/10.1002/nme.4797"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 609,
+      "label": "Chebyshev semi-iterative methods, successive overrelaxation iterative methods, and second order Richardson iterative methods. Part I",
+      "url": "https://doi.org/10.1007/BF01386013"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 611,
+      "label": "Learning to optimize multigrid PDE solvers",
+      "url": "https://proceedings.mlr.press/v97/greenfeld19a.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 613,
+      "label": "High-Generalization AI-Enhanced Mechanical Analysis and Topology Optimization via Cubic Bézier Interpolation of Substructure Boundary Displacements",
+      "url": "https://doi.org/10.1016/j.cma.2026.118955"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 615,
+      "label": "PIML-OFEM: A New Large-Scale Structural Analysis Method Based on Problem-Independent Machine Learning and Overlapping Finite Element Technique",
+      "url": "https://arxiv.org/abs/2607.22019v1"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 617,
+      "label": "Reduction of stiffness and mass matrices",
+      "url": "https://doi.org/10.2514/3.2874"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 619,
+      "label": "*Multi-Grid Methods and Applications*",
+      "url": "https://doi.org/10.1007/978-3-662-02427-0"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 621,
+      "label": "*Elements of Structural Optimization*",
+      "url": "https://doi.org/10.1007/978-94-011-2550-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 623,
+      "label": "MgNO: Efficient parameterization of linear operators via multigrid",
+      "url": "https://proceedings.iclr.cc/paper_files/paper/2024/hash/eb3c8135137c8a60425a0320869ad87e-Abstract-Conference.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 623,
+      "label": "8OxL034uEr",
+      "url": "https://openreview.net/forum?id=8OxL034uEr"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 625,
+      "label": "Combining machine learning and adaptive coarse spaces—a hybrid approach for robust FETI-DP methods in three dimensions",
+      "url": "https://doi.org/10.1137/20M1344913"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 627,
+      "label": "BoomerAMG: A parallel algebraic multigrid solver and preconditioner",
+      "url": "https://doi.org/10.1016/S0168-9274(01)00115-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 629,
+      "label": "Reduced order modeling based inexact FETI-DP solver for lattice structures",
+      "url": "https://doi.org/10.1002/nme.7419"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 631,
+      "label": "A Multiscale Finite Element Method for Elliptic Problems in Composite Materials and Porous Media",
+      "url": "https://doi.org/10.1006/jcph.1997.5682"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 633,
+      "label": "Problem-independent machine learning (PIML)-based topology optimization—A universal approach",
+      "url": "https://doi.org/10.1016/j.eml.2022.101887"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 635,
+      "label": "A Problem-Independent Machine Learning (PIML) enhanced substructure-based approach for large-scale structural analysis and topology optimization of linear elastic structures",
+      "url": "https://doi.org/10.1016/j.eml.2023.102041"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 637,
+      "label": "A mechanics-based data-free Problem Independent Machine Learning (PIML) model for large-scale structural analysis and design optimization",
+      "url": "https://doi.org/10.1016/j.jmps.2024.105893"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 639,
+      "label": "A static condensation reduced basis element method: approximation and a posteriori error estimation",
+      "url": "https://doi.org/10.1051/m2an/2012022"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 641,
+      "label": "Structural eigenvalue problems—elimination of unwanted variables",
+      "url": "https://doi.org/10.2514/3.3027"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 643,
+      "label": "Mechanically consistent equivariant machine learning for substructural analysis",
+      "url": "https://doi.org/10.1016/j.compstruct.2026.120865"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 645,
+      "label": "Convex Neural Energy Elements: Monolithic Finite-Element Assembly of Geometry-Parameterized Neural Operators with Stability and Error Guarantees",
+      "url": "https://arxiv.org/abs/2608.02036v1"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 647,
+      "label": "Inexact FETI-DP methods",
+      "url": "https://doi.org/10.1002/nme.1758"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 649,
+      "label": "DeepONet Based Preconditioning Strategies for Solving Parametric Linear Systems of Equations",
+      "url": "https://doi.org/10.1137/24m162861x"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 651,
+      "label": "Optimal design and modeling of gyroid-based functionally graded cellular structures for additive manufacturing",
+      "url": "https://doi.org/10.1016/j.cad.2018.06.003"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 653,
+      "label": "On the use of inexact subdomain solvers for BDDC algorithms",
+      "url": "https://doi.org/10.1016/j.cma.2006.03.011"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 655,
+      "label": "Fourier neural operator with learned deformations for PDEs on general geometries",
+      "url": "https://www.jmlr.org/papers/v24/23-0064.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 657,
+      "label": "Geometry-informed neural operator for large-scale 3D PDEs",
+      "url": "https://doi.org/10.52202/075280-1556"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 659,
+      "label": "Learning algebraic multigrid using graph neural networks",
+      "url": "https://proceedings.mlr.press/v119/luz20a.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 661,
+      "label": "Goal-oriented error estimation and adaptivity for the finite element method",
+      "url": "https://doi.org/10.1016/S0898-1221(00)00317-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 663,
+      "label": "Embedded symmetric positive semi-definite machine-learned elements for reduced-order modeling in finite-element simulations with application to threaded fasteners",
+      "url": "https://doi.org/10.1007/s00466-024-02481-5"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 665,
+      "label": "Learning mesh-based simulation with graph networks",
+      "url": "https://openreview.net/forum?id=roNqYL0_XP"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 667,
+      "label": "Optimal Local Approximation Spaces for Component-Based Static Condensation Procedures",
+      "url": "https://doi.org/10.1137/15m1009603"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 669,
+      "label": "The method of moving asymptotes—a new method for structural optimization",
+      "url": "https://doi.org/10.1002/nme.1620240207"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 671,
+      "label": "*Domain Decomposition Methods — Algorithms and Theory*",
+      "url": "https://doi.org/10.1007/b137868"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 673,
+      "label": "*Multigrid*",
+      "url": "https://shop.elsevier.com/books/multigrid/trottenberg/978-0-12-701070-0"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 675,
+      "label": "Solver-in-the-loop: learning from differentiable physics to interact with iterative PDE-solvers",
+      "url": "https://proceedings.neurips.cc/paper/2020/hash/43e4e6a6f341e00671e123714de019a8-Abstract.html"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 677,
+      "label": "Algebraic multigrid by smoothed aggregation for second and fourth order elliptic problems",
+      "url": "https://doi.org/10.1007/BF02238511"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 679,
+      "label": "Topology optimization of hierarchical lattice structures with substructuring",
+      "url": "https://doi.org/10.1016/j.cma.2018.11.003"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 681,
+      "label": "GMT: A Geometric Multigrid Transformer Solver for Microstructure Homogenization",
+      "url": "https://doi.org/10.1145/3811333"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 683,
+      "label": "Iterative Methods by Space Decomposition and Subspace Correction",
+      "url": "https://doi.org/10.1137/1034116"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 685,
+      "label": "The method of alternating projections and the method of subspace corrections in Hilbert space",
+      "url": "https://doi.org/10.1090/S0894-0347-02-00398-3"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 687,
+      "label": "Problem-Independent Machine Learning (PIML) enhanced 3D lattice composite structures optimization via moving morphable components approach",
+      "url": "https://doi.org/10.1016/j.compstruct.2025.119330"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 689,
+      "label": "Investigation of functionally graded TPMS structures fabricated by additive manufacturing",
+      "url": "https://doi.org/10.1016/j.matdes.2019.108021"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 691,
+      "label": "Blending neural operators and relaxation methods in PDE numerical solvers",
+      "url": "https://doi.org/10.1038/s42256-024-00910-x"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 693,
+      "label": "Problem-independent machine learning-enhanced structural topology optimization of complex design domains based on isoparametric elements",
+      "url": "https://doi.org/10.1016/j.eml.2024.102237"
+    },
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 695,
+      "label": "Problem-independent transfer learning for complex-domain 3D topology optimization",
+      "url": "https://doi.org/10.1016/j.ijmecsci.2026.112007"
+    },
+    {
+      "file": "APPENDICES_EN.md",
+      "line": 350,
+      "label": "Xu & Zikatanov (2002)",
+      "url": "https://doi.org/10.1090/S0894-0347-02-00398-3"
+    },
+    {
+      "file": "APPENDICES_EN.md",
+      "line": 350,
+      "label": "Xu (1992)",
+      "url": "https://doi.org/10.1137/1034116"
+    },
+    {
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 619,
+      "label": "Huang et al. (2023)",
+      "url": "https://doi.org/10.1016/j.eml.2023.102041"
+    },
+    {
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 619,
+      "label": "Huang et al. (2024)",
+      "url": "https://doi.org/10.1016/j.jmps.2024.105893"
+    },
+    {
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 619,
+      "label": "Guo et al. (2026a)",
+      "url": "https://doi.org/10.1016/j.cma.2026.118955"
+    },
+    {
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 619,
+      "label": "Guo et al. (2026b)",
+      "url": "https://arxiv.org/abs/2607.22019v1"
+    },
+    {
+      "file": "SUPPLEMENTARY_EN.md",
+      "line": 934,
+      "label": "Svanberg (1987)",
+      "url": "https://doi.org/10.1002/nme.1620240207"
+    }
+  ],
+  "malformed": [
+    {
+      "file": "MANUSCRIPT_EN.md",
+      "line": 15,
+      "label": "Oden & Prudhomme (2001)",
+      "suffix": "https://doi.org/10.1016/S0898-1221(00); it has been observed for approximate reanalysis and inexact solves in topology optimisation [Amir et al. (2009)](https://doi.org/10.1002/nme.2536), [Amir et al. (2010)](https://doi.org/10.1007/s00158-009-0463-4), [Gogu (2015)](https://doi.org/10.1002/nme.4797). We quantify it for learned substructures and adopt joint accuracy of compliance and local sensitivity as the criterion for design use."
+    }
+  ],
+  "pdf_oden_links": [
+    {
+      "page": 90,
+      "uri": "https://doi.org/10.1016/S0898-1221(00)00317-5"
+    },
+    {
+      "page": 90,
+      "uri": "https://doi.org/10.1016/S0898-1221(00)00317-5"
+    }
+  ],
+  "pdf_pages": 91
+}

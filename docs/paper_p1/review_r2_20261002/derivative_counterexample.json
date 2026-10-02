@@ -1,0 +1,9 @@
+{
+  "K(t)": "[[2+t,-1],[-1,1]]",
+  "F(t)": "[1,1+0.2+t]^T",
+  "load": 1,
+  "actual_derivative_difference": -0.29437869822485174,
+  "same_trace_H_formula": -0.36982248520710054,
+  "assembled_trace_term": 0.07544378698224874,
+  "difference_identity_residual": 5.551115123125783e-17
+}
