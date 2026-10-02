@@ -75,7 +75,7 @@ def krylov(g, model, C, k=8, maxit=40, box=None, seed=0, log=None):
     return dict(V=V, HV=HV, it=it)
 
 
-def exact_rr(V, HV, SVe, k, drop=1e-12):
+def exact_rr(V, HV, SVe, k, drop=1e-9):
     """Phase B: Rayleigh-Ritz of (S_hat, S~) on span V with the exact S~V (interior factor). Ritz values are lower bounds
     of the top eigenvalues (Courant-Fischer) whatever the quality of V. Returns mu (k), X, SX (S~-normalised), min_ritz."""
     G = V.T @ SVe; G = 0.5 * (G + G.T)
@@ -86,7 +86,10 @@ def exact_rr(V, HV, SVe, k, drop=1e-12):
     lam, Z = torch.linalg.eigh(H)
     o = torch.argsort(lam, descending=True); lam, Z = lam[o], Z[:, o]
     C_ = W @ Z[:, :k]
-    return dict(mu=[float(x) for x in lam[:k]], X=V @ C_, SX=SVe @ C_, min_ritz=float(lam[-1]), rank=int(keep.sum()))
+    # valid: no Ritz value below 1 (S_hat >= S~); a value far below 1 means near-null directions of S~ were kept and the
+    # fp32 noise of S_hat was amplified (seen with drop=1e-12 under strong stretch: min Ritz - 1 ~ -1e3)
+    return dict(mu=[float(x) for x in lam[:k]], X=V @ C_, SX=SVe @ C_, min_ritz=float(lam[-1]), rank=int(keep.sum()),
+                valid=bool(float(lam[-1]) >= 1 - 1e-4))
 
 
 def exact_apply(C, V, chunk=64):
@@ -205,12 +208,12 @@ def main(argv):
                 ef = exact_rr(rf['V'], rf['HV'], SVe, a.k)
                 half = rf['V'].shape[1] // 2 // a.k * a.k                       # convergence check: first half of the basis
                 eh = exact_rr(rf['V'][:, :half], rf['HV'][:, :half], SVe[:, :half], 1) if half >= a.k else None
-                rec['full'].update(mu=ef['mu'], min_ritz=ef['min_ritz'], rank=ef['rank'],
-                                   mu_half_basis=eh['mu'][0] if eh else None, seconds_B=time.perf_counter() - t)
+                rec['full'].update(mu=ef['mu'], min_ritz=ef['min_ritz'], rank=ef['rank'], valid=ef['valid'],
+                                   mu_half_basis=eh['mu'][0] if eh else None, half_valid=eh['valid'] if eh else None, seconds_B=time.perf_counter() - t)
                 del SVe
                 if a.box:
                     eb = exact_rr(rb['V'], rb['HV'], exact_apply(C, rb['V']), a.k)
-                    rec['box'].update(mu=eb['mu'], min_ritz=eb['min_ritz'], rank=eb['rank'])
+                    rec['box'].update(mu=eb['mu'], min_ritz=eb['min_ritz'], rank=eb['rank'], valid=eb['valid'])
                     del rb
                 else:
                     eb = None

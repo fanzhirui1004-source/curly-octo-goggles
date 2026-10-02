@@ -5,7 +5,8 @@ displacements of about a dozen weakly supported cut-band nodes; ~80% of their er
 Jacobi-Chebyshev tail cannot reach (tiny diagonal, poor conditioning) and the Q1 coarse space does not resolve.
 Correction: Galerkin minimisation of the energy over the interior DOFs W within `dil` grid steps of the weakly supported
 RETAINED nodes (seed 'weakport'), of all retained cut-band nodes (seed 'cutport': diag_wp.py finds 100% of the worst-direction
-error energy within 2 grid steps of them, 90% on 10-21 nodes), or of all weak nodes ('weak', a large part of a thin-walled cell):
+error energy within 2 grid steps of them, 90% on 10-21 nodes), of those plus the weak box-face retained nodes (seed
+'cutweakbox': the box-load worst directions of full cells sit on < 10 weak box nodes), or of all weak nodes ('weak', a large part of a thin-walled cell):
 
     x_W <- x_W + A_WW^-1 r_W,   r = -(K x)_I,   W = interior DOFs of the patch,
 
@@ -26,7 +27,9 @@ def setup(C, nd, dil=2, seed='cutport', max_dofs=24000):
     grid = np.stack(np.unravel_index(C.nodes, (M,) * 3), 1)
     weak_nodes = np.asarray(nd['weak'], bool)
     port = np.asarray(nd['is_port'], bool)
-    sel = {'weakport': weak_nodes & port, 'cutport': np.asarray(nd['is_cut'], bool) & port, 'weak': weak_nodes.copy()}[seed]
+    cutp = np.asarray(nd['is_cut'], bool) & port
+    sel = {'weakport': weak_nodes & port, 'cutport': cutp, 'weak': weak_nodes.copy(),
+           'cutweakbox': cutp | (weak_nodes & port & np.asarray(nd['is_box'], bool))}[seed]   # + weak box-face ports
     seed_nodes = int(sel.sum())
     if dil > 0 and sel.any():
         vol = torch.zeros((1, 1, M, M, M), dtype=torch.float32, device=dev)
