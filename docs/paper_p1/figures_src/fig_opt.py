@@ -5,17 +5,17 @@ Main Figure 12 -> figures/F13_optimisation.{svg,pdf,png}   (the prefix F12_ belo
       NICE designs at iterations 0, 12, 23 (open circles); lower strip: NICE compliance relative to the twin run at the same
       design iteration (line; the designs of the two runs differ) and to the exact compliance of the same design (circles);
       the perturbed designs of the geometry-generation fallback (iterations 16 and 19) are marked.
-  (b) plates, B1 (in-plane load, left) and B2 (bending, right): compliance divided by C0, the initial NICE compliance of B1 /
-      B2 at the uniform start; the homogenisation design (Hom-y / Hom-z) evaluated with NICE and the NICE continuation from it
-      (X-y / X-z) are divided by the same C0 and drawn over their own design iterations; shading: design iterations with
-      V > V* of the run from the uniform start; the bracket in the upper plots marks the range enlarged in the lower strips.
-  The legends sit inside the panels: the entries of (a) in panel (a), those of (b) in the B1 panel.
-Main Figure 13 -> figures/F14_designs_scale.{svg,pdf,png}   (formerly panels (c), (d), (e) of Figure 12, same data)
-  (a,b) final corner thickness parameters of B2 and X-z on the plate, drawn in the original orientation (long side
-      horizontal): internal y horizontal, internal x vertical; layer z = 0 (the z = 1 difference is printed); vertices in
-      the removed region are corners of cut cells.
-  (c) scale demonstration (scale/scale_summary.json): time per design iteration (mean, range bars), peak CPU memory of
-      the main process and peak device memory in use (nvidia-smi, includes the cuDSS factor) against the number of cells, for plates of 24, 51, 88 and 110 cells; 135 cells failed (K_PP factor on the GPU).
+  (b) plate supported on its cut: NICE compliance per design iteration from the uniform start, the compliance of the
+      homogenised macroscale model along its own optimisation, the homogenisation design evaluated with NICE, and the exact
+      compliance of the checked designs (open circles); shading: V > V*; lower strip: the range marked by the bracket,
+      enlarged.  The legends sit inside the panels.
+Main Figure 13 -> figures/F14_designs_scale.{svg,pdf,png}
+  (a,b) corner thickness parameters of the final NICE design and of the homogenisation design on the plate, drawn with the
+      long side horizontal: internal y horizontal, internal x vertical; layer z = 0 (the z = 1 difference is printed);
+      vertices in the removed region are corners of cut cells; clamp along the cut, in-plane traction on the end face.
+  (c) scale demonstration (X6_opt/scale/scale_summary.json): time per design iteration (mean, range bars), peak CPU memory
+      of the main process and peak device memory in use (nvidia-smi, includes the cuDSS factor) against the number of
+      cells, for plates of 24, 51, 88 and 110 cells; 135 cells failed (K_PP factor on the GPU).
 Supplementary Figure S06 -> figures/S06_homogenised_law.{svg,pdf,png}
   C11, C12, C44 and the material volume fraction (symbol V^H; rho is the recomputed residual of Eq. (18)) of the
   uniform-thickness cell against tau, with the cubic splines of homog_macro.Material.
@@ -25,11 +25,12 @@ twin is ink (figstyle.C['exact']) with marker 'x'; the homogenisation series use
 uses) with markers no variant uses ('*', 'h'); the resource curves of the scale demonstration are neutral greys
 (figstyle.GREY); the load face and Figure S06 are drawn in neutral colours.
 
-Data only from review_r1/results/X6_opt: optA/optA, optA/optAx (histories, check_*.json), plates/* (histories, meta.json
-'vkeys' and 'fixed'), homog/plate841.json ('shape', 'normal', 'b_global', 'cells'), homog/homog_cells.json ('cells'),
-FACTS_6_11.json (cross-checked against the histories below).
+Data only from review_r1/results: X6_opt/optA/optA, X6_opt/optA/optAx (histories, check_*.json), X6_opt/scale,
+X6_opt/homog/homog_cells.json ('cells'), X6_opt/FACTS_6_11.json (case A, cross-checked against the histories); and
+X6_cplate: cplateN (NICE run: history, meta 'vkeys'/'fixed', check_exact_*.json), HC_x (homogenised macroscale run),
+hevalHC (homogenisation design evaluated with NICE, check_exact_*.json), plate841.json ('shape', 'normal', 'b_global',
+'cells').
 Usage: python3 fig_opt.py            Figures 12, 13 and S06
-       python3 fig_opt.py --single   additionally the pre-split five-panel figure -> figures/F13_optimisation_single.*
 """
 import json
 import sys
@@ -43,41 +44,49 @@ plt = FS.plt
 
 HERE = Path(__file__).resolve().parent
 D = HERE.parent / 'review_r1' / 'results' / 'X6_opt'
+DC = HERE.parent / 'review_r1' / 'results' / 'X6_cplate'
 SRC = HERE.parents[1] / 'data' / 'newmachine_20260924' / 'src_v2_wip'   # homog_macro.py (spline of the material law)
 F = json.loads((D / 'FACTS_6_11.json').read_text())
 
 NICE, NICE_MK = FS.MODEL['A3'][0], FS.MODEL['A3'][1]                    # NICE: vermillion squares, as in Figures 5-10
 EXACT, EXACT_MK = FS.C['exact'], 'x'                                    # exact condensation: ink, no variant marker
-HOM, HOM_MK, XH_MK = FS.C['extra'], '*', 'h'                            # homogenisation design / continuation from it
+HOM, HOM_MK, HMAC_MK = FS.C['extra'], '*', 'h'                          # homogenisation design / macroscale model
 SHADE = '#EEF1F4'
 TAU_LO, TAU_HI = 0.18, 0.69
 CMAP = 'cividis'
-NAME = {'H_y': r'Hom-$y$', 'H_z': r'Hom-$z$', 'XH_y': r'X-$y$', 'XH_z': r'X-$z$'}   # display names (H_y etc. are record keys)
 
 
-def hist(p):
-    return [json.loads(l) for l in open(D / p)]
+def hist(p, root=D):
+    return [json.loads(l) for l in open(root / p)]
 
 
 def ctrace(H):
     return np.array([h['C'] for h in H])
 
 
+def check(run, k):
+    f = DC / run / f'check_exact_{k:03d}.json'
+    return json.loads(f.read_text()) if f.exists() else None
+
+
 # ------------------------------------------------------------------------------------------------ data
 A, AX = hist('optA/optA/history.jsonl'), hist('optA/optAx/history.jsonl')
 CHK = {k: json.loads((D / f'optA/optA/check_{k:03d}.json').read_text()) for k in (0, 12, 23)}
-PL = {t: hist(f'plates/{r}/history.jsonl') for t, r in
-      (('B1', 'plateB1'), ('B2', 'plateB2'), ('XH_y', 'xstartH_y'), ('XH_z', 'xstartH_z'), ('H_y', 'hevalH_y'), ('H_z', 'hevalH_z'))}
-LAY = json.loads((D / 'homog' / 'plate841.json').read_text())
+CN, CH, CE = hist('cplateN/history.jsonl', DC), hist('HC_x/history.jsonl', DC), hist('hevalHC/history.jsonl', DC)
+LAY = json.loads((DC / 'plate841.json').read_text())
+CHN = {k: c for k in (0, len(CN) - 1) if (c := check('cplateN', k)) is not None}   # exact checks of the NICE run
+CHH = check('hevalHC', 0)                                                          # exact check of the homogenisation design
 
-# consistency with the fact sheet (the single source of numbers)
+# consistency with the fact sheet (the single source of numbers for case A) and with the records of the plate
 assert np.allclose(ctrace(A), F['A']['C_trace']) and np.allclose(ctrace(AX), F['A_exact_twin']['C_trace'])
 for k, c in CHK.items():
     assert np.isclose(c['C_exact'], F['A_checks'][str(k)]['C_exact'])
-for t in ('B1', 'B2', 'XH_y', 'XH_z'):
-    assert np.allclose(ctrace(PL[t]), F[t]['C_trace'])
-assert np.isclose(PL['H_y'][0]['C'], F['Hfine_y']['C_fine']) and np.isclose(PL['H_z'][0]['C'], F['Hfine_z']['C_fine'])
-assert [h['k'] for h in A] == list(range(len(A)))                      # history index = design iteration
+assert [h['k'] for h in A] == list(range(len(A))) and [h['k'] for h in CN] == list(range(len(CN)))
+for k, c in CHN.items():
+    assert np.isclose(c['C_hat'], CN[k]['C'], rtol=1e-12), k
+if CHH is not None:
+    assert np.isclose(CHH['C_hat'], CE[0]['C'], rtol=1e-12)
+assert np.allclose(np.load(DC / 'HC_x' / 'final_tv.npy'), CE[0]['tv'])           # the evaluated design is the macroscale result
 
 
 # ------------------------------------------------------------------------------------------------ plate geometry
@@ -114,11 +123,10 @@ def plate_geometry():
     return dict(W=ny, Hh=nx, kept=kept, removed=removed, cut=cut, cells=cells, a=a, b=b)
 
 
-def vertex_field(run):
-    """Final corner parameters of a plate run on the (x, y) vertex grid, layer z = 0; also the z = 0/1 difference."""
-    meta = json.loads((D / 'plates' / run / 'meta.json').read_text())
-    H = hist(f'plates/{run}/history.jsonl')
-    vk, tv, fixed = np.array(meta['vkeys']), np.array(H[-1]['tv']), np.array(meta['fixed'])
+def vertex_field(tv, C):
+    """Corner parameters of a plate design on the (x, y) vertex grid, layer z = 0; also the z = 0/1 difference."""
+    meta = json.loads((DC / 'cplateN' / 'meta.json').read_text())
+    vk, tv, fixed = np.array(meta['vkeys']), np.asarray(tv), np.array(meta['fixed'])
     nx, ny, _ = LAY['shape']
     T = np.full((nx + 1, ny + 1), np.nan)
     FX = np.zeros((nx + 1, ny + 1), bool)
@@ -127,7 +135,7 @@ def vertex_field(run):
         if k == 0:
             T[i, j] = v; FX[i, j] = f
     dz = max(abs(d[(i, j, 0)] - d[(i, j, 1)]) for (i, j, k) in d if k == 0)
-    return T, FX, dz, H[-1]['C']
+    return T, FX, dz, C
 
 
 def draw_plate(ax, G, T, FX, note):
@@ -146,38 +154,33 @@ def draw_plate(ax, G, T, FX, note):
     kept = Polygon(G['kept'], closed=True, fc='none', ec='none')
     ax.add_patch(kept); im.set_clip_path(kept)
     ax.add_patch(Polygon(G['removed'], closed=True, fc='#F3F5F7', ec='none', zorder=0.5))
-    ax.add_patch(Polygon(G['removed'], closed=True, fc='none', ec=FS.GRID, hatch='////', lw=0, zorder=0.6))
     for X0, Y0, kind, ret in G['cells']:
         ax.add_patch(Rectangle((X0, Y0), 1, 1, fc='none', ec='white' if kind == 'FULL' else '#B8C2CC', lw=.35, zorder=2))
     ax.add_patch(Polygon(G['kept'], closed=True, fc='none', ec=FS.TEXT, lw=.8, zorder=3))
-    (x1, y1), (x2, y2) = G['cut']
-    ax.plot([x1, x2], [y1, y2], color=FS.TEXT, lw=1.3, zorder=3.5, solid_capstyle='butt')
     # vertices coloured by tau; fixed load-face vertices as squares
     I, J = np.nonzero(np.isfinite(T))
     for mk, sel in (('o', ~FX[I, J]), ('s', FX[I, J])):
         ax.scatter(J[sel], I[sel], c=T[I[sel], J[sel]], cmap=CMAP, norm=norm, s=15 if mk == 'o' else 13, marker=mk,
                    edgecolors=FS.TEXT, linewidths=.45, zorder=5, clip_on=False)
-    # clamp along the lower long edge
-    ax.plot([0, W], [0, 0], color=FS.TEXT, lw=1.4, zorder=4, solid_capstyle='butt')
-    for xh in np.linspace(0.1, W, 33):
-        ax.plot([xh, xh - .16], [0, -.2], color=FS.MUTED, lw=.5, zorder=4)
-    ax.text(W / 2, -.34, 'clamped', ha='center', va='top', fontsize=6.3, color=FS.MUTED)
-    # load face: material part of the upper face (internal x = max).  The traction is +z; the plot axes (internal y, x)
-    # are a mirror image of the view from +z, so +z points into the page: circled crosses.
-    top = [p for p in G['kept'] if abs(p[1] - Hh) < 1e-9]
-    xa, xb = min(p[0] for p in top), max(p[0] for p in top)
-    ax.plot([xa, xb], [Hh, Hh], color=FS.TEXT, lw=2.4, zorder=4, solid_capstyle='butt')
-    ys = Hh + .33
-    for xs in np.arange(xa + .5, xb, 1.0):
-        ax.plot([xs], [ys], ls='none', marker='o', ms=5.2, mfc='white', mec=FS.TEXT, mew=.7, zorder=6, clip_on=False)
-        ax.plot([xs], [ys], ls='none', marker='x', ms=3.0, mec=FS.TEXT, mew=.7, zorder=7, clip_on=False)
-    ax.text(xb + .15, ys, 'load face, out-of-plane traction', ha='left', va='center', fontsize=6.3,
+    # clamp along the cut: every cut-band DOF fixed; hatching on the removed side of the cut line
+    (x1, y1), (x2, y2) = G['cut']
+    ax.plot([x1, x2], [y1, y2], color=FS.TEXT, lw=1.4, zorder=4, solid_capstyle='butt')
+    a = np.asarray(G['a']); t_ = np.array([x2 - x1, y2 - y1]); L = np.hypot(*t_); t_ /= L
+    for s_ in np.linspace(.12, L - .05, 30):
+        p0 = np.array([x1, y1]) + s_ * t_
+        p1 = p0 + .2 * a - .14 * t_
+        ax.plot([p0[0], p1[0]], [p0[1], p1[1]], color=FS.MUTED, lw=.5, zorder=4)
+    ax.text(W - .15, Hh - .3, 'clamped\ncut band', ha='right', va='top', fontsize=6.5, color=FS.MUTED, zorder=6,
+            linespacing=1.0)
+    # load face: the end face internal y = min (plot X = 0); in-plane traction in internal +x (plot +Y)
+    ax.plot([0, 0], [0, Hh], color=FS.TEXT, lw=2.4, zorder=4, solid_capstyle='butt')
+    for ys in np.arange(.5, Hh, 1.0):
+        ax.annotate('', (-.28, ys + .36), (-.28, ys - .36), arrowprops=dict(arrowstyle='-|>', color=FS.TEXT, lw=.8,
+                    mutation_scale=6, shrinkA=0, shrinkB=0), annotation_clip=False)
+    ax.text(-.55, Hh / 2, 'load face, in-plane traction', ha='center', va='center', rotation=90, fontsize=6.5,
             color=FS.TEXT)
-    ax.text(W - .1, Hh - .5, note, ha='right', va='center', fontsize=6.3, color=FS.TEXT, zorder=6,
-            bbox=dict(fc='#F3F5F7', ec='none', pad=.6))
-    ax.text(W - .15, Hh - 1.5, 'removed', ha='right', va='center', fontsize=6.3, color=FS.MUTED, zorder=6,
-            bbox=dict(fc='#F3F5F7', ec='none', pad=.6))
-    ax.set_xlim(-.15, W + .15); ax.set_ylim(-1.0, Hh + .75); ax.set_aspect('equal'); ax.axis('off')
+    ax.text(W / 2, -.3, note, ha='center', va='top', fontsize=6.5, color=FS.TEXT)
+    ax.set_xlim(-.85, W + .15); ax.set_ylim(-.85, Hh + .25); ax.set_aspect('equal'); ax.axis('off')
     return im
 
 
@@ -206,11 +209,11 @@ def legend_handles():
     a = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE'),
          L2([], [], color=EXACT, ls='--', marker=EXACT_MK, ms=4, mew=.8, lw=.8, label='exact condensation (twin)'),
          L2([], [], ls='none', marker='o', ms=6, mfc='none', mec=EXACT, mew=1.0, label='exact $C$, NICE design')]
-    b = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE, uniform start'),
-         L2([], [], ls='none', marker=HOM_MK, ms=7.5, mfc=HOM, mec='white', mew=.5, label='Hom-$y$, Hom-$z$ with NICE'),
-         L2([], [], color=HOM, marker=XH_MK, ms=3.2, lw=1.0, label='X-$y$, X-$z$ from Hom'),
-         L2([], [], color=NICE, ls=':', lw=.8, label='final, uniform start'),
-         Patch(fc=SHADE, ec='none', label=r'$V>V^*$, uniform start'),
+    b = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE'),
+         L2([], [], color=HOM, ls='--', marker=HMAC_MK, ms=3, lw=.8, label='homogenised model'),
+         L2([], [], ls='none', marker=HOM_MK, ms=7.5, mfc=HOM, mec='white', mew=.5, label='homogenisation design, NICE'),
+         L2([], [], ls='none', marker='o', ms=6, mfc='none', mec=EXACT, mew=1.0, label='exact $C$ of the design'),
+         Patch(fc=SHADE, ec='none', label=r'$V>V^*$'),
          L2([], [], ls='none', marker=r'$]$', ms=6, color=FS.TEXT, label='range enlarged below')]
     return a, b
 
@@ -258,61 +261,57 @@ def draw_caseA(fig, gs_up, gs_lo, legend=False):
     return ax, axs
 
 
-def draw_plates(fig, cells, legend=False):
-    """(b) plates B1 and B2: one letter for both columns, each column (gs_up, gs_lo) with its own C0 and y-label."""
-    specs = [('B1', 'XH_y', 'H_y', 'B1: in-plane load', (.9195, .9375)),
-             ('B2', 'XH_z', 'H_z', 'B2: bending', (.9055, .9325))]
-    b_axes = []
-    for (gs_up, gs_lo), (rb, rx, rh, title, zoom) in zip(cells, specs):
-        ax, axz = fig.add_subplot(gs_up), fig.add_subplot(gs_lo)
-        b_axes.append(ax)
-        C0 = PL[rb][0]['C']
-        cb, cx, ch = ctrace(PL[rb]) / C0, ctrace(PL[rx]) / C0, PL[rh][0]['C'] / C0
-        kb, kx = np.arange(len(cb)), np.arange(len(cx))
-        vb = np.array([h['V_rel'] for h in PL[rb]])
-        vx = np.array([h['V_rel'] for h in PL[rx]])
-        kon = int(np.argmax(vb <= 1.0 + 1e-2))
-        for a_ in (ax, axz):
-            a_.axvspan(0, kon, color=SHADE, lw=0, zorder=0)
-            a_.axhline(cb[-1], color=NICE, lw=.6, ls=':', zorder=1)
-            a_.plot(kb, cb, '-', color=NICE, lw=1.0, marker=NICE_MK, ms=2.4, zorder=3)
-            a_.plot(kx, cx, '-', color=HOM, lw=1.0, marker=XH_MK, ms=2.8, zorder=3)
-            a_.plot([0], [ch], ls='none', marker=HOM_MK, ms=8, mfc=HOM, mec='white', mew=.5, zorder=5)
-            a_.grid(True, color=FS.GRID, lw=.4); a_.set_xlim(-.8, len(cb) - .2)
-            a_.set_ylabel(r'$C\,/\,C_0$', fontsize=7 if a_ is axz else 8)
-        zoom_bracket(ax, *zoom)
-        axz.set_ylim(*zoom)
-        axz.yaxis.set_major_locator(plt.MultipleLocator(.01))
-        axz.set_xlabel('design iteration')
-        plt.setp(ax.get_xticklabels(), visible=False)
-        ax.text(.97, .95, title, ha='right', va='top', fontsize=7.5, color=FS.TEXT, transform=ax.transAxes)
-        if legend and rb == 'B1':
-            ax.set_ylim(top=1.5)                                            # headroom for the in-panel legend
-            ax.legend(handles=legend_handles()[1], loc='upper right', bbox_to_anchor=(1.03, .89), frameon=False,
-                      fontsize=5.8, handlelength=1.9, handletextpad=.5, labelspacing=.3, borderaxespad=.1)
-        print(f"{rb}: C0 {C0:.4f}; final {cb[-1]:.5f}, {rh} {ch:.5f}, {rx} final {cx[-1]:.5f}; V_rel of {rx} "
-              f"{vx[0]:.5f} at its start, range {vx.min():.5f}-{vx.max():.5f}; volume phase of {rb} k < {kon}")
-    FS.panel(b_axes[0], 'b', 'Plates B1 and B2')
-    return b_axes
+def draw_cplate(fig, gs_up, gs_lo, legend=False, zoom=(77.4, 81.4)):
+    """(b) plate supported on its cut: NICE history, homogenised-model history, homogenisation design evaluated with NICE,
+    exact compliance of the checked designs; lower strip: the bracketed range enlarged."""
+    ax, axz = fig.add_subplot(gs_up), fig.add_subplot(gs_lo)
+    cn, ch = ctrace(CN), ctrace(CH)
+    kn, kh = np.arange(len(cn)), np.arange(len(ch))
+    vn = np.array([h['V_rel'] for h in CN])
+    kon = int(np.argmax(vn <= 1.0 + 1e-2))
+    k_h = kh[-1]                                                         # the homogenisation design: last macroscale iterate
+    tail = kn >= 15                                                       # the lower strip shows the approach to the end
+    for a_, sel in ((ax, slice(None)), (axz, tail)):
+        a_.axvspan(0, kon, color=SHADE, lw=0, zorder=0)
+        a_.plot(kh, ch, '--', color=HOM, lw=.8, marker=HMAC_MK, ms=2.6, zorder=2)
+        a_.plot(kn[sel], cn[sel], '-', color=NICE, lw=1.0, marker=NICE_MK, ms=2.4, zorder=3)
+        a_.plot([k_h], [CE[0]['C']], ls='none', marker=HOM_MK, ms=8, mfc=HOM, mec='white', mew=.5, zorder=5)
+        ex = [(k, c['C_exact']) for k, c in CHN.items()] + ([(k_h, CHH['C_exact'])] if CHH is not None else [])
+        a_.plot([e[0] for e in ex], [e[1] for e in ex], ls='none', marker='o', ms=6.5, mfc='none', mec=EXACT, mew=1.0,
+                zorder=6)
+        a_.grid(True, color=FS.GRID, lw=.4); a_.set_xlim(-.8, len(cn) - .2)
+    ax.set_ylabel('compliance $C$'); ax.set_ylim(48, 128 if legend else 116)
+    axz.set_ylabel('$C$ (enlarged)', fontsize=7); axz.set_ylim(*zoom)
+    axz.yaxis.set_major_locator(plt.MultipleLocator(1))
+    axz.set_xlabel('design iteration')
+    zoom_bracket(ax, *zoom)
+    plt.setp(ax.get_xticklabels(), visible=False)
+    FS.panel(ax, 'b', 'Plate supported on its cut')
+    if legend:
+        ax.legend(handles=legend_handles()[1], loc='upper right', bbox_to_anchor=(1.03, 1.0), frameon=False,
+                  fontsize=6, handlelength=1.9, handletextpad=.5, labelspacing=.3, borderaxespad=.1)
+    print(f"plate: NICE C0 {cn[0]:.4f} -> {cn[-1]:.4f} (k={kn[-1]}), peak {cn.max():.3f} at k={int(cn.argmax())}; "
+          f"macroscale {ch[0]:.4f} -> {ch[-1]:.4f} (k={kh[-1]}); Hom design with NICE {CE[0]['C']:.4f}, V/V* {CE[0]['V'] / CN[-1]['V'] * CN[-1]['V_rel']:.5f}; "
+          f"exact NICE run {dict((k, round(c['C_exact'], 5)) for k, c in CHN.items())}; exact Hom "
+          f"{None if CHH is None else round(CHH['C_exact'], 5)}; volume phase k < {kon}")
+    return ax, axz
 
 
-def draw_fields(fig, gs_c, gs_d, gs_cbar, letters=('c', 'd')):
-    """Final corner thickness parameters of B2 and X-z on the plate with a shared horizontal colour bar."""
+def draw_fields(fig, gs_c, gs_d, gs_cbar, letters=('a', 'b')):
+    """Final NICE design and homogenisation design on the plate with a shared horizontal colour bar."""
     G = plate_geometry()
-    fields = {}
-    for run in ('plateB2', 'xstartH_z'):
-        fields[run] = vertex_field(run)
-        T, FX, dz, C = fields[run]
-        print(f"{run}: z=0/z=1 max |diff| {dz:.2e}, final C {C:.3f}, tau range {np.nanmin(T):.4f}-{np.nanmax(T):.4f}; "
+    runs = {'NICE': vertex_field(CN[-1]['tv'], CN[-1]['C']), 'Hom': vertex_field(CE[0]['tv'], CE[0]['C'])}
+    for run, (T, FX, dz, C) in runs.items():
+        print(f"{run}: z=0/z=1 max |diff| {dz:.2e}, NICE C {C:.3f}, tau range {np.nanmin(T):.4f}-{np.nanmax(T):.4f}; "
               f"vertices in the removed region (X, Y, tau, fixed): {removed_vertices(G, T, FX)}")
-    assert np.isclose(fields['plateB2'][3], F['B2']['C_final']) and np.isclose(fields['xstartH_z'][3], F['XH_z']['C_final'])
     axc, axd = fig.add_subplot(gs_c), fig.add_subplot(gs_d)
-    T, FX, _, C = fields['plateB2']
-    im = draw_plate(axc, G, T, FX, f'NICE $C$ = {fmt_thousands(C, 1)}')
-    FS.panel(axc, letters[0], 'Final design B2')
-    T, FX, _, C = fields['xstartH_z']
-    draw_plate(axd, G, T, FX, f'NICE $C$ = {fmt_thousands(C, 1)}')
-    FS.panel(axd, letters[1], f"Final design {NAME['XH_z']}")
+    T, FX, _, C = runs['NICE']
+    ex = CHN.get(len(CN) - 1)
+    im = draw_plate(axc, G, T, FX, f'NICE $C$ = {C:.2f}' + ('' if ex is None else f", exact $C$ = {ex['C_exact']:.2f}"))
+    FS.panel(axc, letters[0], 'Final NICE design')
+    T, FX, _, C = runs['Hom']
+    draw_plate(axd, G, T, FX, f'NICE $C$ = {C:.2f}' + ('' if CHH is None else f", exact $C$ = {CHH['C_exact']:.2f}"))
+    FS.panel(axd, letters[1], 'Homogenisation design')
     cax = fig.add_subplot(gs_cbar)
     pos = cax.get_position(); cax.set_position([pos.x0 + .18 * pos.width, pos.y0, .64 * pos.width, pos.height])
     cb_ = fig.colorbar(im, cax=cax, orientation='horizontal', ticks=[.18, .3, .4, .5, .6, .69])
@@ -365,19 +364,19 @@ def draw_scale(fig, gs_e, letter='e', wide=False):
     return axe
 
 
-# ------------------------------------------------------------------------------------------------ Figure 12 (split)
+# ------------------------------------------------------------------------------------------------ Figure 12
 def fig_main():
-    """Figure 12: (a) case A and (b) plates B1 / B2 with their lower strips, legends inside the panels."""
+    """Figure 12: (a) case A and (b) the plate supported on its cut, each with its lower strip, legends inside."""
     fig = plt.figure(figsize=(178 * FS.MM, 84 * FS.MM))
-    top = fig.add_gridspec(2, 3, height_ratios=[2.3, 1], hspace=.10, wspace=.40, top=.925, bottom=.105, left=.075, right=.98)
+    top = fig.add_gridspec(2, 2, height_ratios=[2.3, 1], hspace=.10, wspace=.22, top=.925, bottom=.105, left=.065, right=.975)
     draw_caseA(fig, top[0, 0], top[1, 0], legend=True)
-    draw_plates(fig, [(top[0, 1], top[1, 1]), (top[0, 2], top[1, 2])], legend=True)
+    draw_cplate(fig, top[0, 1], top[1, 1], legend=True)
     FS.save(fig, 'F13_optimisation')
 
 
-# ------------------------------------------------------------------------------------------------ Figure 13 (new)
+# ------------------------------------------------------------------------------------------------ Figure 13
 def fig_designs():
-    """Figure 13: (a, b) final designs B2 and X-z with the colour bar, (c) scale demonstration (formerly Figure 12c-e)."""
+    """Figure 13: (a, b) final NICE design and homogenisation design with the colour bar, (c) scale demonstration."""
     fig = plt.figure(figsize=(178 * FS.MM, 64 * FS.MM))
     bot = fig.add_gridspec(2, 3, height_ratios=[1, .06], width_ratios=[1, 1, .78], hspace=.05, wspace=.10, top=.90,
                            bottom=.15, left=.02, right=.975)
@@ -387,34 +386,6 @@ def fig_designs():
     pc, pe = axc.get_position(), axe.get_position()
     axe.set_position([pe.x0 + .04, pc.y0, pe.width - .07, pc.height])
     FS.save(fig, 'F14_designs_scale')
-
-
-# ------------------------------------------------------------------------------------------------ Figure 12 (pre-split)
-def fig_main_single():
-    """The five-panel figure before the split (a-e with the three-column legend on top) -> F13_optimisation_single."""
-    fig = plt.figure(figsize=(178 * FS.MM, 142 * FS.MM))
-    outer = fig.add_gridspec(2, 1, height_ratios=[1.3, 1], hspace=.25, top=.885, bottom=.04, left=.08, right=.975)
-    top = outer[0].subgridspec(2, 3, height_ratios=[2.3, 1], hspace=.10, wspace=.42)
-    bot = outer[1].subgridspec(2, 3, height_ratios=[1, .06], width_ratios=[1, 1, .78], hspace=.05, wspace=.10)
-    draw_caseA(fig, top[0, 0], top[1, 0])
-    draw_plates(fig, [(top[0, 1], top[1, 1]), (top[0, 2], top[1, 2])])
-    L2 = plt.Line2D
-    hl = [L2([], [], color=NICE, marker=NICE_MK, ms=3, lw=1.0, label='NICE (a), NICE from the uniform start (b)'),
-          L2([], [], color=EXACT, ls='--', marker=EXACT_MK, ms=4, mew=.8, lw=.8, label='twin run, exact condensation (a)'),
-          L2([], [], ls='none', marker='o', ms=6, mfc='none', mec=EXACT, mew=1.0, label='exact compliance of the NICE design (a)'),
-          L2([], [], ls='none', marker=HOM_MK, ms=7.5, mfc=HOM, mec='white', mew=.5, label='homogenisation design, NICE (b)'),
-          L2([], [], color=HOM, marker=XH_MK, ms=3.2, lw=1.0, label='NICE from the homogenisation design (b)'),
-          L2([], [], color=NICE, ls=':', lw=.8, label='final NICE value from the uniform start (b)'),
-          Patch(fc=SHADE, ec='none', label=r'$V>V^*$ (b: run from the uniform start)'),
-          L2([], [], ls='none', marker=r'$]$', ms=6, color=FS.TEXT, label='range enlarged in the lower strip (b)')]
-    fig.legend(handles=hl, loc='lower center', bbox_to_anchor=(.5, .917), ncol=3, frameon=False, fontsize=6.5,
-               handlelength=2.2, columnspacing=1.3, handletextpad=.5)
-    axc, _ = draw_fields(fig, bot[0, 0], bot[0, 1], bot[1, 0:2])
-    axe = draw_scale(fig, bot[0, 2])
-    fig.canvas.draw()                                                   # align (e) with the aspect-constrained plates
-    pc, pe = axc.get_position(), axe.get_position()
-    axe.set_position([pe.x0 + .035, pc.y0, pe.width - .06, pc.height])
-    FS.save(fig, 'F13_optimisation_single')
 
 
 # ------------------------------------------------------------------------------------------------ Figure S06
@@ -459,5 +430,4 @@ if __name__ == '__main__':
     fig_main()
     fig_designs()
     fig_law()
-    if '--single' in sys.argv[1:]:
-        fig_main_single()
+
