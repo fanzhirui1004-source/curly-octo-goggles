@@ -7,14 +7,16 @@ corner parameters (the lattice vertex field), and C^H(tau(x)), rho(tau(x)) are e
 homogenisation).  Geometry: the lattice box of the layout (cell units), a Q1 hexahedral mesh with --m elements per cell and
 axis; the planar cut n . X <= b of the layout is integrated with a finite-cell indicator (4^3 sub-points per element that
 the plane intersects, 2^3 Gauss points otherwise); void parts carry --eps x C^H(0.4) to keep the matrix regular.
-Supports and loads as opt_design.py: the clamp face fully fixed; the load face carries a uniform unit traction in
+Supports and loads as opt_design.py: the clamp face fully fixed (opt-in --clamp cut: the lattice bonded to a wall along
+the cut plane, u = 0 imposed by a penalty --pen x C11(0.4) / h on the plane section n . X = b of the lattice box, 7-point
+triangle rule on each element's section polygon; the counterpart of opt_design.py --clamp cut); the load face carries a uniform unit traction in
 --load-dir over its material part (face quadrature with the same indicator), normalised to unit total force.
 Compliance C = f^T u; adjoint sensitivity dC/dtau_v = -sum_q w_q phi_q eps_q^T dC^H/dtau(tau_q) eps_q N_v(x_q);
 volume V = sum_q w_q phi_q rho(tau_q), dV/dtau_v likewise.  Design variables, fixed load-face vertices, constraints
 (volume V/V* - 1, span, gradient norm, bounds) and the MMA settings are those of opt_design.py.
 Outputs in <root>: history.jsonl (per iteration C, V, constraint maxima, dx), final_tv.npy, final_layout.json (the layout
 with the final corner parameters, for the fine-scale evaluation with the exact model), meta.json.
-Usage: homog_macro.py <root> <layout.json> <homog_cells.json> [--m 6] [--clamp x,min] [--load x,max] [--load-dir y]
+Usage: homog_macro.py <root> <layout.json> <homog_cells.json> [--m 6] [--clamp x,min | --clamp cut] [--pen 1e6] [--load x,max] [--load-dir y]
        [--vfrac 0.8] [--move 0.05] [--maxit 60] [--tmin 0.18] [--tmax 0.69] [--span 0.45] [--grad 0.45]
        homog_macro.py --selftest     (finite-difference check of the adjoint gradient on a small synthetic problem)
 """
@@ -91,7 +93,7 @@ def bmat(dNdx):
 class Macro:
     """Q1 mesh of the lattice box, finite-cell cut, graded C^H; compliance, adjoint gradient and volume per vertex field."""
 
-    def __init__(self, shape, cells, normal, b, m, clamp, load, load_dir, mat, eps=1e-6):
+    def __init__(self, shape, cells, normal, b, m, clamp, load, load_dir, mat, eps=1e-6, pen=1e6):
         self.shape, self.m, self.mat, self.eps = tuple(shape), m, mat, eps
         nx, ny, nz = shape
         self.h = 1.0 / m
@@ -145,10 +147,16 @@ class Macro:
                 keys.setdefault(v, len(keys)); vid[n, a] = keys[v]
         self.vid, self.vkeys, self.nv = vid, np.array(list(keys)), len(keys)
         # supports
-        ca, la = AX[clamp[0]], AX[load[0]]
-        cplane = 0.0 if clamp[1] == 'min' else shape[ca]
-        fixed_nodes = np.flatnonzero(np.isclose(Xu[:, ca], cplane))
-        self.fixed_dofs = (3 * fixed_nodes[:, None] + np.arange(3)).reshape(-1)
+        la = AX[load[0]]
+        self.Kpen = None
+        if clamp[0] == 'cut':
+            self.Kpen, self.pen_area, self.pen_missed = self._plane_penalty(pen * mat.tensor(np.array([0.4]))[0, 0, 0] / self.h)
+            self.fixed_dofs = np.zeros(0, np.int64)
+        else:
+            ca = AX[clamp[0]]
+            cplane = 0.0 if clamp[1] == 'min' else shape[ca]
+            fixed_nodes = np.flatnonzero(np.isclose(Xu[:, ca], cplane))
+            self.fixed_dofs = (3 * fixed_nodes[:, None] + np.arange(3)).reshape(-1)
         self.free_dofs = np.setdiff1d(np.arange(3 * self.nnode), self.fixed_dofs)
         # load: uniform traction on the material part of the load face, unit total force in load_dir
         lplane = 0.0 if load[1] == 'min' else shape[la]
@@ -173,6 +181,65 @@ class Macro:
             raise ValueError('EMPTY_LOAD')
         self.f = f / f.sum()
         self.Xu = Xu
+
+    def _plane_penalty(self, alpha):
+        """alpha * int_G N^T N dG (each component) over the plane section G = {n . X = b} of the meshed elements; G is cut
+        into one polygon per element (edge intersections, convex), fanned from its centroid, 7-point degree-5 rule.
+        Returns the sparse penalty matrix, the section area and the section area in elements not meshed (no material
+        sub-point; those parts of G are not clamped)."""
+        a1, b1 = 0.0597158717, 0.4701420641; a2, b2 = 0.7974269853, 0.1012865073
+        TB = np.array([[1 / 3, 1 / 3], [a1, b1], [b1, a1], [b1, b1], [a2, b2], [b2, a2], [b2, b2]])
+        TW = np.array([0.225] + [0.1323941527] * 3 + [0.1259391805] * 3)               # sum 1 (area-normalised)
+        edges = [(a, a ^ (1 << d)) for a in range(8) for d in range(3) if not a & (1 << d)]
+        n = self.normal[:3] / np.linalg.norm(self.normal[:3]); bb = self.b / np.linalg.norm(self.normal[:3])
+        t1 = np.cross(n, [0.0, 0.0, 1.0] if abs(n[2]) < 0.9 else [1.0, 0.0, 0.0]); t1 /= np.linalg.norm(t1); t2 = np.cross(n, t1)
+
+        def polygon(i, j, k):
+            xc = (np.array([i, j, k]) + CUBE) * self.h
+            s = xc @ n - bb
+            if s.min() >= 0 or s.max() <= 0:
+                return None
+            pts = [xc[a] + s[a] / (s[a] - s[c]) * (xc[c] - xc[a]) for a, c in edges if s[a] * s[c] < 0]
+            pts += [xc[a] for a in range(8) if s[a] == 0]
+            P = np.array(pts); c0 = P.mean(0)
+            ang = np.arctan2((P - c0) @ t2, (P - c0) @ t1)
+            return P[np.argsort(ang)], c0
+
+        rows, cols, vals, area = [], [], [], 0.0
+        for e, (i, j, k, cell) in enumerate(self.els):
+            pg = polygon(i, j, k)
+            if pg is None:
+                continue
+            P, c0 = pg
+            M = np.zeros((8, 8))
+            for q in range(len(P)):
+                A_, B_ = P[q], P[(q + 1) % len(P)]
+                ar = 0.5 * np.linalg.norm(np.cross(A_ - c0, B_ - c0))
+                if ar == 0:
+                    continue
+                X = c0 + TB[:, :1] * (A_ - c0) + TB[:, 1:] * (B_ - c0)
+                N, _ = shape_q1(X / self.h - np.array([i, j, k]))
+                M += ar * np.einsum('q,qa,qb->ab', TW, N, N); area += ar * TW.sum()
+            for d in range(3):
+                dd = self.dof[e][d::3]
+                rows.append(np.repeat(dd, 8)); cols.append(np.tile(dd, 8)); vals.append(alpha * M.reshape(-1))
+        meshed = {e[:3] for e in self.els}
+        missed = 0.0
+        nx, ny, nz = (s_ * self.m for s_ in self.shape)
+        present = {e[3] for e in self.els}
+        for i in range(nx):
+            for j in range(ny):
+                for k in range(nz):
+                    if (i, j, k) in meshed or (i // self.m, j // self.m, k // self.m) not in present:
+                        continue
+                    pg = polygon(i, j, k)
+                    if pg is not None:
+                        P, c0 = pg
+                        missed += sum(0.5 * np.linalg.norm(np.cross(P[q] - c0, P[(q + 1) % len(P)] - c0)) for q in range(len(P)))
+        if not rows:
+            raise ValueError('EMPTY_CUT_SECTION')
+        K = sp.csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(3 * self.nnode,) * 2)
+        return K, area, missed
 
     def _tau_at(self, tv, e, xi):
         i, j, k, cell = self.els[e]
@@ -205,6 +272,8 @@ class Macro:
             np.add.at(dV, self.vid[n], (mat.rho(tau, 1) * wv) @ Nc)
             cache.append((B, tau, Nc, n, wv))
         K = sp.csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(3 * self.nnode,) * 2)
+        if self.Kpen is not None:                                           # design-independent: the adjoint is unchanged
+            K = K + self.Kpen
         fr = self.free_dofs
         u = np.zeros(3 * self.nnode)
         u[fr] = spla.spsolve(K[fr][:, fr].tocsc(), self.f[fr])
@@ -260,7 +329,8 @@ def optimise(A):
     root = Path(A.root); root.mkdir(parents=True, exist_ok=True)
     L = json.loads(Path(A.layout).read_text())
     mat = Material.from_json(A.cells)
-    M = Macro(L['shape'], L['cells'], L['normal'], L['b_global'], A.m, A.clamp.split(','), A.load.split(','), A.load_dir, mat)
+    M = Macro(L['shape'], L['cells'], L['normal'], L['b_global'], A.m, (A.clamp + ',').split(',')[:2], A.load.split(','),
+              A.load_dir, mat, pen=A.pen)
     tv = np.zeros(M.nv)
     for n, c in enumerate(L['cells']):
         tv[M.vid[n]] = c['tau_corners']
@@ -270,7 +340,9 @@ def optimise(A):
     free = np.flatnonzero(~fixed)
     pairs, stencils = structure(M.vid)
     (root / 'meta.json').write_text(json.dumps(dict(args=vars(A), elements=len(M.els), nodes=M.nnode, vertices=M.nv,
-                                                    free=len(free), material_range=[mat.tmin, mat.tmax]), indent=1))
+                                                    free=len(free), material_range=[mat.tmin, mat.tmax],
+                                                    cut_section=dict(area=M.pen_area, unmeshed_area=M.pen_missed)
+                                                    if M.Kpen is not None else None), indent=1))
     hist = open(root / 'history.jsonl', 'a')
     state, Vstar, C0, fh = None, None, None, []
     for k in range(A.maxit):
@@ -306,8 +378,8 @@ def selftest():
     cells = [dict(position=[i, j, 0]) for i in range(2) for j in range(2)]
     n = np.array([np.cos(0.5), np.sin(0.5), 0.0]); b = 2.2
     ok = True
-    for ld in ('y', 'z'):
-        M = Macro((2, 2, 1), cells, n, b, 3, ('x', 'min'), ('x', 'max'), ld, mat)
+    for ld, cl, lo in (('y', ('x', 'min'), ('x', 'max')), ('z', ('x', 'min'), ('x', 'max')), ('x', ('cut', ''), ('y', 'min'))):
+        M = Macro((2, 2, 1), cells, n, b, 3, cl, lo, ld, mat)
         rng = np.random.default_rng(1)
         tv = 0.35 + 0.1 * rng.uniform(-1, 1, M.nv)
         C, g, V, dV, _ = M.solve(tv)
@@ -320,7 +392,7 @@ def selftest():
             verrs.append(abs((Vp - Vm) / (2 * hstep) - dV[v]) / np.abs(dV).max())
         e, ev = max(errs), max(verrs)
         ok &= e < 1e-5 and ev < 1e-6
-        print(f'load {ld}: elements {len(M.els)}, C = {C:.6g}, V = {V:.6g}, adjoint vs FD {e:.1e}, volume gradient {ev:.1e}')
+        print(f'clamp {cl[0]}, load {ld}: elements {len(M.els)}, C = {C:.6g}, V = {V:.6g}, adjoint vs FD {e:.1e}, volume gradient {ev:.1e}')
     print('SELFTEST', 'PASS' if ok else 'FAIL')
     return ok
 
@@ -337,4 +409,5 @@ if __name__ == '__main__':
     ap.add_argument('--tmin', type=float, default=0.18); ap.add_argument('--tmax', type=float, default=0.69)
     ap.add_argument('--span', type=float, default=0.45); ap.add_argument('--grad', type=float, default=0.45)
     ap.add_argument('--xtol', type=float, default=1e-3); ap.add_argument('--ftol', type=float, default=1e-4)
+    ap.add_argument('--pen', type=float, default=1e6, help='--clamp cut: penalty factor (x C11(0.4) / h)')
     optimise(ap.parse_args())

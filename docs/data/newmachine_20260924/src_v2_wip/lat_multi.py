@@ -6,7 +6,8 @@ coordinates g + 2n p. Port DOFs are glued by absolute node key (gx, gy, gz, comp
 face's port nodes (the union of both cells' node sets: a node present in one cell only is that cell's unknown, a free
 boundary for the other, as in lattice3). Cut-band DOFs (port_is_cut & ~port_is_box) are private to their cell. Numbering
 = first appearance (cell order, then the cell's port DOF order), so the pair lattice reproduces lattice3's numbering.
-Lattice unknowns = all glued DOFs minus the clamped ones (the non-private DOFs on one lattice face, default x = min).
+Lattice unknowns = all glued DOFs minus the clamped ones (the non-private DOFs on one lattice face, default x = min;
+opt-in clamp=('cut', ''): every cut-band DOF of every cell, i.e. the lattice bonded to a wall along the cut plane).
 Loads (columns of F on the free DOFs): 'consistent' = the traction-consistent nodal weights of a unit uniform traction
 x / y / z on the load face (lattice3.face_traction_weights per cell, summed over the cells on the face, each normalised to
 unit total force), 'uniform' = equal nodal forces on the non-private DOFs on the load face; plus n_random iid Gaussian
@@ -45,6 +46,7 @@ class CellGeom:
         self.port_node_ids = np.asarray(port_node_ids, dtype=np.int64)
         self.grid = np.stack(np.unravel_index(self.port_node_ids, (2 * self.n + 1,) * 3), 1).astype(np.int64)
         self.priv = np.asarray(port_is_cut, bool) & ~np.asarray(port_is_box, bool)
+        self.cut = np.asarray(port_is_cut, bool)                                   # cut band (incl. its box-face nodes)
         self.nport = 3 * len(self.port_node_ids)
         self._kpp_fn, self._kpp = kpp_fn, None
         self.face_w_fn = face_w_fn
@@ -122,9 +124,17 @@ class MultiLattice:
         mult = np.bincount(glob, minlength=N)
         self.gpos, self.gcomp = gpos, comp                                      # grid position / component per DOF
         # ------------------------------------------------ clamp
-        ca = AXES[clamp[0]]
-        cplane, _ = _plane(offs, ca, clamp[1], P)
-        clamped = (gpos[:, ca] == cplane) & ~priv
+        if clamp[0] == 'cut':                          # opt-in: all cut-band DOFs (a DOF is clamped if any cell holds it in its band)
+            clamped = np.zeros(N, bool)
+            for i, G in enumerate(self.geoms):
+                clamped[self.idx[i]] |= np.repeat(np.asarray(getattr(G, 'cut', G.priv), bool), 3)
+            if not clamped.any():
+                raise ValueError('NO_CUT_BAND')
+        else:
+            ca = AXES[clamp[0]]
+            cplane, _ = _plane(offs, ca, clamp[1], P)
+            clamped = (gpos[:, ca] == cplane) & ~priv
+        self.n_clamped = int(clamped.sum())
         self.clamp, self.load_face = clamp, load
         self.free = np.flatnonzero(~clamped)
         self.nfree = len(self.free)

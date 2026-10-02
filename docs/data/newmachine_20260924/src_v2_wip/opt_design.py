@@ -25,6 +25,11 @@ Usage: opt_design.py <root> <layout.json> --model A3=<ckpt> [--clamp y,min] [--l
 --exact: the twin run, same MMA, constraints and regeneration, with the exact model: dense exact condensed matrices per cell
   (make_T_gpu.py, one cell per process, cached as <body>/<case>_portview/T64.npy), the assembled solve by PCG to
   --exact-tol, and exact sensitivities -u^T K_,c u from the exact field (host interior factor, as the reference of r1_lat.py).
+--clamp cut: (opt-in) clamp every cut-band DOF of every cell instead of a lattice face (the lattice bonded to a wall
+  along the cut plane; lat_multi.MultiLattice clamp=('cut', '')); applies to the NICE, --exact and --check analyses alike.
+--table5 (with --fast): the four implementation options of the timed route of Table 5 (lat_scale.py --coarse-tpl
+  --tet-triton --sparse-coarse --fastidx): coarse Galerkin matrix by element/face templates, fused per-tetrahedron moment
+  kernels, sparse coarse space, element gathers.
 --check k1,k2,...: verify iterations of an existing run (<root>/history.jsonl) with the exact model; writes
   <root>/check_<k>.json: exact compliance and the surrogate error, the vertex-gradient error, cosine, per-variable
   percentiles and sign agreement of s_tilde on the free vertices, and a KKT residual with the exact gradient.
@@ -72,11 +77,18 @@ ap.add_argument('--warm', action='store_true',
                 help='--fast: start PCG from the previous design iteration\'s solution, matched DOF by DOF on (absolute grid '
                      'position, component, cut-port flag) and scaled by the energy-optimal factor; unmatched DOFs start at 0 '
                      '(the stopping rule, relative to |f|, is unchanged)')
+ap.add_argument('--table5', action='store_true', help='--fast: OPL_COARSE_ELEM, OPL_TET_TRITON, OPL_COARSE_SPARSE, fastidx.ON '
+                '(the implementation options of the timed route of Table 5, as lat_scale.py)')
 ap.add_argument('--check', default='', help='comma list of iterations of an existing run to verify with the exact model')
 ap.add_argument('--exact-tol', type=float, default=1e-10)
 A = ap.parse_args()
 if A.deploy or A.fast:                                                   # as r1_lat.py --deploy / lat_scale.py (before any correction)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
+if A.table5:
+    if not A.fast or A.exact or A.check:
+        raise SystemExit('--table5 applies to the --fast NICE route only')
+    os.environ['OPL_COARSE_ELEM'] = '1'; os.environ['OPL_TET_TRITON'] = '1'; os.environ['OPL_COARSE_SPARSE'] = '1'
+CLAMP = tuple((A.clamp + ',').split(',')[:2])                            # 'y,min' -> ('y', 'min'); 'cut' -> ('cut', '')
 ROOT = Path(A.root); ROOT.mkdir(parents=True, exist_ok=True)
 for d in ('packets', 'body', 'tmp'):
     (ROOT / d).mkdir(exist_ok=True)
@@ -94,6 +106,9 @@ import lat_precond as PR                                                # noqa: 
 import lat_hetero as LH                                                 # noqa: E402
 import r1x3_common as RC                                                # noqa: E402
 import mma as MMA                                                       # noqa: E402
+if A.table5:
+    import fastidx as FI                                                # noqa: E402
+    FI.ON = True
 
 dev, dt = TE.dev, TE.dt
 BODY, TMP = ROOT / 'body', ROOT / 'tmp'
@@ -208,8 +223,8 @@ def analyse(cases, positions, h):
         Cs.append(C); lay[tuple(p)] = LM.from_teacher(C)
         if A.park:
             LH._move(C, torch.device('cpu')); RC.free()
-    ca, la = A.clamp.split(','), A.load.split(',')
-    lat = LM.MultiLattice(lay, clamp=(ca[0], ca[1]), load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
+    la = A.load.split(',')
+    lat = LM.MultiLattice(lay, clamp=CLAMP, load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
                           max_cols=A.max_cols, log=lambda s_: None)
     order = [g.case for g in lat.geoms]
     Cmap = {C.case: C for C in Cs}
@@ -345,8 +360,8 @@ def analyse_fast(cases, positions, h):
         g = LM.from_teacher(Cs[case])
         g._kpp_fn = (lambda cs: (lambda: tuple(x.to(dev) for x in kpp_host[cs])))(case)
         lay[tuple(p)] = g
-    ca, la = A.clamp.split(','), A.load.split(',')
-    lat = LM.MultiLattice(lay, clamp=(ca[0], ca[1]), load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
+    la = A.load.split(',')
+    lat = LM.MultiLattice(lay, clamp=CLAMP, load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
                           max_cols=A.max_cols, log=lambda s_: None)
     order = [g.case for g in lat.geoms]
     olist = [ops[c] for c in order]
@@ -462,8 +477,8 @@ def analyse_exact(cases, positions):
         vol.append(float(C.M[:, 0].sum())); dvol.append(C.dM[:, :, 0].sum(1).cpu().numpy())
         Cs.append(C); lay[tuple(p)] = LM.from_teacher(C)
         LH._move(C, torch.device('cpu')); RC.free()
-    ca, la = A.clamp.split(','), A.load.split(',')
-    lat = LM.MultiLattice(lay, clamp=(ca[0], ca[1]), load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
+    la = A.load.split(',')
+    lat = LM.MultiLattice(lay, clamp=CLAMP, load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
                           max_cols=A.max_cols, log=lambda s_: None)
     order = [g.case for g in lat.geoms]
     Cmap = {C.case: C for C in Cs}
