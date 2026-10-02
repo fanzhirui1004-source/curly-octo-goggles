@@ -181,3 +181,9 @@ c 随 κ 增大（比 (ln κ)² 增长略快）；压缩比拉伸差，一般方
 - trainA4（队列 080）：gen1 + gen2，12000 步，lr 2e-5（拉伸输入层 1e-3），30% 恒等，L2-SP 1e-2，EMA 0.999，池 1、每 20 步换胞，每 3000 步评测。
 - evalA4（队列 090）：最优检查点在 16 个验证胞上，映射 id、x×2、x×0.5、扭转 30°、剪切 0.3、x×1.5、x×0.667、z×0.5、一般方向 ×2，校正 1 / 2 循环。
 - 不加租机器；数据与训练串行在现有 5090 上。
+
+## 6. 暂停（作者要求，P1 要用 GPU 约一天）
+- 先放 `queue/STOP` 并把 080、090 移到 `A0/queue_hold/`，只终止了 gen2 的循环脚本；随后按作者要求也终止了正在算的 `a0_eval.py`（PID 115722）。之后 `nvidia-smi` 无计算进程（2 MiB），方向 A 无任何进程。
+- 停止点：gen2 第 52 / 96 个胞 `fresh_train_2241_full`（`src/a0_maps_gen2/CASES.json` 下标 51），已完成 id、st1、st2、st3；st4 计算中被中断，st4、bz 无记录。前 51 个胞全部完成。gen2 有效 310 / 576 对。
+- 记录：`A0/runs/gen2/RESULTS.jsonl`（每对一行）；数据：`A0/runs/gen2/data/<map>/<case>/`（2241 的 st4 目录可能不完整，续跑时会重写）。
+- 续跑：删除 `queue/STOP`；把 `queue/done/070_gen2.sh` 和 `queue_hold/080_trainA4.sh`、`queue_hold/090_evalA4.sh` 放回 `queue/`；启动 `setsid nohup bash queue_runner.sh`（它等的 night1 ALLDONE 早已满足）。a0_eval 跳过已成功的 (胞, 映射)，从 2241 的 st4 接着算。须等作者通知。
