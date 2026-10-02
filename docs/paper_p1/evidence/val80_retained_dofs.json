@@ -1,0 +1,402 @@
+{
+"fresh_val_2000_full": {
+"ports": 16608,
+"box": 16608,
+"dofs": 273816
+},
+"fresh_val_2001_full": {
+"ports": 22464,
+"box": 22464,
+"dofs": 351876
+},
+"fresh_val_2002_d0_v0": {
+"ports": 27960,
+"box": 6126,
+"dofs": 96678
+},
+"fresh_val_2003_d1_v1": {
+"ports": 25968,
+"box": 10569,
+"dofs": 191895
+},
+"fresh_val_2004_d0_v2": {
+"ports": 42012,
+"box": 20844,
+"dofs": 322548
+},
+"fresh_val_2005_d1_v0": {
+"ports": 15786,
+"box": 2916,
+"dofs": 32121
+},
+"fresh_val_2006_d0_v1": {
+"ports": 26118,
+"box": 10494,
+"dofs": 169680
+},
+"fresh_val_2007_d1_v2": {
+"ports": 23592,
+"box": 11982,
+"dofs": 222159
+},
+"fresh_val_2008_full": {
+"ports": 25920,
+"box": 25920,
+"dofs": 404556
+},
+"fresh_val_2009_full": {
+"ports": 25920,
+"box": 25920,
+"dofs": 404148
+},
+"fresh_val_2010_d0_v0": {
+"ports": 10449,
+"box": 3024,
+"dofs": 11574
+},
+"fresh_val_2011_d1_v1": {
+"ports": 35406,
+"box": 12471,
+"dofs": 186132
+},
+"fresh_val_2012_d0_v2": {
+"ports": 21111,
+"box": 10419,
+"dofs": 206196
+},
+"fresh_val_2013_d1_v0": {
+"ports": 23445,
+"box": 5307,
+"dofs": 78330
+},
+"fresh_val_2014_d0_v1": {
+"ports": 24330,
+"box": 8508,
+"dofs": 144312
+},
+"fresh_val_2015_d1_v2": {
+"ports": 24336,
+"box": 12690,
+"dofs": 233919
+},
+"fresh_val_2016_full": {
+"ports": 22884,
+"box": 22884,
+"dofs": 355992
+},
+"fresh_val_2017_full": {
+"ports": 17100,
+"box": 17100,
+"dofs": 280872
+},
+"fresh_val_2018_d0_v0": {
+"ports": 17286,
+"box": 4884,
+"dofs": 92382
+},
+"fresh_val_2019_d1_v1": {
+"ports": 39237,
+"box": 14874,
+"dofs": 220725
+},
+"fresh_val_2020_d0_v2": {
+"ports": 38043,
+"box": 17919,
+"dofs": 277197
+},
+"fresh_val_2021_d1_v0": {
+"ports": 19449,
+"box": 5613,
+"dofs": 85134
+},
+"fresh_val_2022_d0_v1": {
+"ports": 22872,
+"box": 9948,
+"dofs": 165132
+},
+"fresh_val_2023_d1_v2": {
+"ports": 39840,
+"box": 17223,
+"dofs": 281505
+},
+"fresh_val_2024_full": {
+"ports": 14400,
+"box": 14400,
+"dofs": 248484
+},
+"fresh_val_2025_full": {
+"ports": 20046,
+"box": 20046,
+"dofs": 325158
+},
+"fresh_val_2026_d0_v0": {
+"ports": 13398,
+"box": 3117,
+"dofs": 18321
+},
+"fresh_val_2027_d1_v1": {
+"ports": 35301,
+"box": 12936,
+"dofs": 188871
+},
+"fresh_val_2028_d0_v2": {
+"ports": 37692,
+"box": 18900,
+"dofs": 290184
+},
+"fresh_val_2029_d1_v0": {
+"ports": 22131,
+"box": 5181,
+"dofs": 76974
+},
+"fresh_val_2030_d0_v1": {
+"ports": 32343,
+"box": 16359,
+"dofs": 242757
+},
+"fresh_val_2031_d1_v2": {
+"ports": 28128,
+"box": 16446,
+"dofs": 285201
+},
+"fresh_val_2032_full": {
+"ports": 23616,
+"box": 23616,
+"dofs": 370020
+},
+"fresh_val_2033_full": {
+"ports": 13098,
+"box": 13098,
+"dofs": 238224
+},
+"fresh_val_2034_d0_v0": {
+"ports": 15075,
+"box": 2835,
+"dofs": 30714
+},
+"fresh_val_2035_d1_v1": {
+"ports": 30387,
+"box": 11514,
+"dofs": 172617
+},
+"fresh_val_2036_d0_v2": {
+"ports": 41700,
+"box": 21234,
+"dofs": 304182
+},
+"fresh_val_2037_d1_v0": {
+"ports": 28164,
+"box": 9030,
+"dofs": 128103
+},
+"fresh_val_2038_d0_v1": {
+"ports": 28800,
+"box": 10044,
+"dofs": 165594
+},
+"fresh_val_2039_d1_v2": {
+"ports": 21504,
+"box": 12846,
+"dofs": 235467
+},
+"fresh_val_2040_full": {
+"ports": 26214,
+"box": 26214,
+"dofs": 407268
+},
+"fresh_val_2041_full": {
+"ports": 16416,
+"box": 16416,
+"dofs": 272676
+},
+"fresh_val_2042_d0_v0": {
+"ports": 9624,
+"box": 1947,
+"dofs": 13461
+},
+"fresh_val_2043_d1_v1": {
+"ports": 22500,
+"box": 8460,
+"dofs": 143730
+},
+"fresh_val_2044_d0_v2": {
+"ports": 37713,
+"box": 19326,
+"dofs": 320478
+},
+"fresh_val_2045_d1_v0": {
+"ports": 16845,
+"box": 4731,
+"dofs": 75594
+},
+"fresh_val_2046_d0_v1": {
+"ports": 28314,
+"box": 12258,
+"dofs": 188190
+},
+"fresh_val_2047_d1_v2": {
+"ports": 42468,
+"box": 17655,
+"dofs": 294993
+},
+"fresh_val_2048_full": {
+"ports": 29376,
+"box": 29376,
+"dofs": 439092
+},
+"fresh_val_2049_full": {
+"ports": 21030,
+"box": 21030,
+"dofs": 338136
+},
+"fresh_val_2050_d0_v0": {
+"ports": 18528,
+"box": 4497,
+"dofs": 80844
+},
+"fresh_val_2051_d1_v1": {
+"ports": 17580,
+"box": 7347,
+"dofs": 132225
+},
+"fresh_val_2052_d0_v2": {
+"ports": 35607,
+"box": 18660,
+"dofs": 302646
+},
+"fresh_val_2053_d1_v0": {
+"ports": 18060,
+"box": 3150,
+"dofs": 33171
+},
+"fresh_val_2054_d0_v1": {
+"ports": 19194,
+"box": 9294,
+"dofs": 151248
+},
+"fresh_val_2055_d1_v2": {
+"ports": 45900,
+"box": 20223,
+"dofs": 330765
+},
+"fresh_val_2056_full": {
+"ports": 25326,
+"box": 25326,
+"dofs": 392856
+},
+"fresh_val_2057_full": {
+"ports": 12528,
+"box": 12528,
+"dofs": 223188
+},
+"fresh_val_2058_d0_v0": {
+"ports": 12162,
+"box": 2739,
+"dofs": 16335
+},
+"fresh_val_2059_d1_v1": {
+"ports": 29058,
+"box": 12255,
+"dofs": 209493
+},
+"fresh_val_2060_d0_v2": {
+"ports": 37890,
+"box": 21744,
+"dofs": 384414
+},
+"fresh_val_2061_d1_v0": {
+"ports": 21480,
+"box": 6645,
+"dofs": 110796
+},
+"fresh_val_2062_d0_v1": {
+"ports": 35034,
+"box": 11460,
+"dofs": 172842
+},
+"fresh_val_2063_d1_v2": {
+"ports": 23586,
+"box": 11013,
+"dofs": 185559
+},
+"fresh_val_2064_full": {
+"ports": 13170,
+"box": 13170,
+"dofs": 232692
+},
+"fresh_val_2065_full": {
+"ports": 21612,
+"box": 21612,
+"dofs": 344016
+},
+"fresh_val_2066_d0_v0": {
+"ports": 2679,
+"box": 753,
+"dofs": 2757
+},
+"fresh_val_2067_d1_v1": {
+"ports": 18570,
+"box": 6561,
+"dofs": 107856
+},
+"fresh_val_2068_d0_v2": {
+"ports": 29940,
+"box": 14028,
+"dofs": 226752
+},
+"fresh_val_2069_d1_v0": {
+"ports": 22356,
+"box": 4296,
+"dofs": 52761
+},
+"fresh_val_2070_d0_v1": {
+"ports": 27786,
+"box": 11748,
+"dofs": 185460
+},
+"fresh_val_2071_d1_v2": {
+"ports": 35562,
+"box": 14610,
+"dofs": 249777
+},
+"fresh_val_2072_full": {
+"ports": 25356,
+"box": 25356,
+"dofs": 390780
+},
+"fresh_val_2073_full": {
+"ports": 16896,
+"box": 16896,
+"dofs": 278724
+},
+"fresh_val_2074_d0_v0": {
+"ports": 14340,
+"box": 3999,
+"dofs": 73728
+},
+"fresh_val_2075_d1_v1": {
+"ports": 31353,
+"box": 12030,
+"dofs": 190161
+},
+"fresh_val_2076_d0_v2": {
+"ports": 28899,
+"box": 15480,
+"dofs": 271098
+},
+"fresh_val_2077_d1_v0": {
+"ports": 38247,
+"box": 10719,
+"dofs": 140094
+},
+"fresh_val_2078_d0_v1": {
+"ports": 39027,
+"box": 18147,
+"dofs": 276159
+},
+"fresh_val_2079_d1_v2": {
+"ports": 21240,
+"box": 21240,
+"dofs": 340404
+}
+}
