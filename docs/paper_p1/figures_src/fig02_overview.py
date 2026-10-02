@@ -114,7 +114,7 @@ box(11.0, YC, 73.0, HC, [('by construction (Eq. 17)', 6.3, FS.MUTED),
     kind='note', lw=.6)
 box(92.0, YC, 82.0, HC, [(r'$\widehat{S}=F^{T}KF$: symmetric, $\succeq0$, rigid-body kernel', 6.3),
                          (r'$\widehat{S}-S=H^{T}AH\succeq0$ (error quadratic in the field error $H$)', 6.3),
-                         (r'$S\preceq\widehat{S}_{\rm tg}\preceq\widehat{S}_0$ (correction cannot increase the error)', 6.3)],
+                         (r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$ (exact coarse solve, spectrum in $(0,b]$)', 6.3)],
     kind='note', lw=.6)
 ax.plot([171.5, 171.5], [ym - 2.4, YC + HC], color=FS.MUTED, lw=.6, zorder=1)
 ax.plot([171.5], [YC + HC], marker='o', ms=2.2, color=FS.MUTED, zorder=1)

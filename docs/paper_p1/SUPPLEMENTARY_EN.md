@@ -55,7 +55,7 @@ All variants are evaluated on the 80 validation geometries of Table ST02. Orient
 
 Measured to the last training step, the base network's training took 4.6 h and NICE's continuation 3.5 h on the GPU (Section 5.1), or 5.0 h and 4.8 h including all selection evaluations; peak GPU memory during training was 29.6 GiB. The base network was initialised from parameters obtained in three preceding training stages (7.5 GPU-hours together). Together with these stages, the two runs including their selection evaluations and the generation of the direction sets and exact sensitivities (about 42 GPU-hours, Section 5.1) make up the offline cost of NICE, about 60 GPU-hours.
 
-For the base network, Uncorrected, Smoothing-trained and NICE, model selection uses the bias-corrected EMA parameters and both the identity orientation (\(v=0\)) and orientation 17 (\(v=17\)), although Table ST03 reports only the identity orientation. Within a geometry family \(f\) (the geometries of the training-time validation list generated from one thickness field; an independently generated validation cell forms a family of its own) and orientation \(v\), let \(\bar\varepsilon_{fv}\) be the mean energy error averaged over the selection classes, \(\bar e_{s,fv}\) the mean relative sensitivity-vector error over classes with labels, and \(\varepsilon^{(90)}_{fv}\) the class-average 90th percentile of directional energy error. Each class statistic is first averaged over the available geometries in that family. The selection score is
+For the base network, Uncorrected, Smoothing-trained and NICE, checkpoint selection uses the bias-corrected EMA parameters and both the identity orientation (\(v=0\)) and orientation 17 (\(v=17\)), although Table ST03 reports only the identity orientation. Within a geometry family \(f\) (the geometries of the training-time validation list generated from one thickness field; an independently generated validation cell forms a family of its own) and orientation \(v\), let \(\bar\varepsilon_{fv}\) be the mean energy error averaged over the selection classes, \(\bar e_{s,fv}\) the mean relative sensitivity-vector error over classes with labels, and \(\varepsilon^{(90)}_{fv}\) the class-average 90th percentile of directional energy error. Each class statistic is first averaged over the available geometries in that family. The selection score is
 
 \[
 J_{\rm sel}=\frac12\sum_{v\in\{0,17\}}\frac1{|\mathcal F|}
@@ -111,7 +111,7 @@ The cut volumes refer to the box before intersecting it with the TPMS band. No t
 
 ## Table ST03. Energy error by direction class (identity orientation)
 
-Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. "Base network, corrected" denotes the base network with NICE's correction applied at deployment, without retraining. For NICE under consistent tractions, the 5,120 individual sampled directions of the 80 geometries have a 95th percentile of 0.331%, a 99th percentile of 0.693% and a maximum of 1.24% (3,840 directions of the 60 geometries outside model selection: 0.355%, 0.734%, 1.24%). Under consistent tractions the mean of the corrected base network is 0.0965% and that of NICE 0.0737%, a ratio of 1.31; resampling the 80 geometries with replacement (paired, ratio of geometry-equal means, percentile interval) gives a 95% interval of 1.20–1.40.
+Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. "Base network, corrected" denotes the base network with NICE's correction applied at deployment, without retraining. For NICE under consistent tractions, the 5,120 individual sampled directions of the 80 geometries have a 95th percentile of 0.331%, a 99th percentile of 0.693% and a maximum of 1.24% (3,840 directions of the 60 geometries outside checkpoint selection: 0.355%, 0.734%, 1.24%). Under consistent tractions the mean of the corrected base network is 0.0965% and that of NICE 0.0737%, a ratio of 1.31; resampling the 80 geometries with replacement (paired, ratio of geometry-equal means, percentile interval) gives a 95% interval of 1.20–1.40.
 
 | Class | Geometries per variant | Base network | Uncorrected | Smoothing-trained | Base network, corrected | NICE |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -150,9 +150,9 @@ This comparison uses a separate evaluation in both orientations, in which the cl
 | support_k | 19 | 3.350 / 3.760 |
 | glued | 15 | 6.647 / 7.207 |
 
-### ST03d. Geometries outside model selection
+### ST03d. Geometries outside checkpoint selection
 
-Table ST03 restricted to the 60 validation geometries that entered neither training nor model selection (the other 20 entered model selection, Table ST01). Same statistics as Table ST03. Under consistent tractions, NICE's stratum means on these 60 geometries are 0.020% (uncut), 0.054% (light), 0.105% (moderate) and 0.126% (heavy), and the five largest geometry means of the 80 (0.651%, 0.540%, 0.487%, 0.303%, 0.287%) all belong to them.
+Table ST03 restricted to the 60 validation geometries that entered neither training nor checkpoint selection (the other 20 entered checkpoint selection, Table ST01). Same statistics as Table ST03. Under consistent tractions, NICE's stratum means on these 60 geometries are 0.020% (uncut), 0.054% (light), 0.105% (moderate) and 0.126% (heavy), and the five largest geometry means of the 80 (0.651%, 0.540%, 0.487%, 0.303%, 0.287%) all belong to them.
 
 | Class | Geometries per variant | Base network | Uncorrected | Smoothing-trained | Base network, corrected | NICE |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -450,11 +450,11 @@ Maximum relative compliance and field-based sensitivity-vector errors over the s
 | L1 | x | NICE | 0.00202 | 0.101 | 8 | Within reference |
 | L1 | y | NICE | 0.00197 | 0.078 | 8 | Within reference |
 
-Combinations without a row were not evaluated. All cells in this table belong to the 20 validation geometries used for model selection (Section 5.1). Cut-traction responses of the same configurations are in Table ST10. Held-out configurations are in Table ST09b.
+Combinations without a row were not evaluated. All cells in this table belong to the 20 validation geometries used for checkpoint selection (Section 5.1). Cut-traction responses of the same configurations are in Table ST10. Held-out configurations are in Table ST09b.
 
 #### ST09b. Held-out two-cell configurations (NICE)
 
-Cells outside model selection, fixed before evaluation: the five validation geometries with NICE's largest single-cell errors and one random cell per stratum. Maximum relative errors (%) over the six face loads (compliance) and over both cells (thickness sensitivity); the neighbour is exact and the target learned, as in Table ST09. Cell labels are defined in R1.
+Cells outside checkpoint selection: the five validation geometries with NICE's largest single-cell errors and one random evaluable cell per stratum. Maximum relative errors (%) over the six face loads (compliance) and over both cells (thickness sensitivity); the neighbour is exact and the target learned, as in Table ST09. Cell labels are defined in R1.
 
 | Cell | Selection | Retained volume | x: compliance | x: sensitivity | y: compliance | y: sensitivity |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -809,7 +809,7 @@ The gradient metrics compare the field-based sensitivities with the exact ones a
 
 #### Table ST19. Residual work, dual-norm bound, field-based gradient and difference quotients of the surrogate compliance
 
-Face = the three consistent face loads; random = the three random loads. Gradient error: \(\|\widetilde{\boldsymbol s}_g-\boldsymbol s_g\|/\|\boldsymbol s_g\|\) over the shared vertex parameters, in percent; cosine and largest component error over all six loads. \(D_{\mathrm{act}}\): relative error against the exact vertex gradient under the face loads at step \(h\) (in units of \(\tau_c\)), in percent. Switched rebuilds: number of the 49 rebuilds per cell (three steps, both signs and eight corners, plus one unperturbed) that change a discrete choice, range over cells.
+Face = the three consistent face loads; random = the three random loads. Gradient error: \(\|\widetilde{\boldsymbol s}_g-\boldsymbol s_g\|/\|\boldsymbol s_g\|\) over the shared vertex parameters, in percent; cosine and largest component error over all six loads, the latter \(\max_i|\widetilde s_{g,i}-s_{g,i}|/\max(|s_{g,i}|,10^{-3}\max_j|s_{g,j}|)\). \(D_{\mathrm{act}}\): relative error against the exact vertex gradient under the face loads at step \(h\) (in units of \(\tau_c\)), in percent. Switched rebuilds: number of the 49 rebuilds per cell (three steps, both signs and eight corners, plus one unperturbed) that change a discrete choice, range over cells.
 
 | Lattice | Compliance error, face (%) | \(\max\lvert\bar U^T\rho\rvert/C\) | Dual-norm bound / \(C\) | \(\max\lvert\omega\rvert/C\) | Identity residual / \(C\) | Gradient error, face / random (%) | Smallest cosine | Largest component error (%) | \(D_{\mathrm{act}}\) at \(h=3\times10^{-3}\) / \(10^{-3}\) / \(3\times10^{-4}\) (%) | Switched rebuilds per cell |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1198,7 +1198,7 @@ Each comparison runs the case A optimisation for up to three iterations with bot
 
 ![Figure S05](figures/S02B_coarse_spaces.png)
 
-**Figure S05. Coarse representations and correction sequences.** Rows correspond to U1, M1 and M2; columns use consistent-traction and nodal-force responses. "Network" denotes the base network. Six coarse representations are compared under four initialisation and smoothing sequences, with eight steps in each pre- or post-smoothing stage. Dots indicate directional means and caps the 90th percentile. Dashed and dotted references denote the base network alone and the base network followed by one smoothing stage. \(Q_1\), \(Q_2\) and PU denote trilinear, quadratic and linearly enriched partition-of-unity generating families. The first label number identifies grid resolution and the lower number is the number of coarse DOFs after restriction to the interior DOFs and screening. Appendix F.1 and Supplementary Note S3 explain the rank and solve conditions; Table ST07 gives all statistics. Coarse-grid corrections preserve every retained DOF.
+**Figure S05. Coarse representations and correction sequences.** Rows correspond to U1, M1 and M2; columns use consistent-traction and nodal-force responses. "Network" denotes the base network. Six coarse representations are compared under four initialisation and smoothing sequences, with eight steps in each pre- or post-smoothing stage. Dots indicate directional means and caps the 90th percentile. Dashed and dotted references denote the base network alone and the base network followed by one smoothing stage. \(Q_1\), \(Q_2\) and PU denote trilinear, quadratic and linearly enriched partition-of-unity generating families. The first label number identifies grid resolution and the lower number is the number of surviving coarse basis columns after restriction to the interior DOFs and screening. Appendix F.1 and Supplementary Note S3 explain the rank and solve conditions; Table ST07 gives all statistics. Coarse-grid corrections preserve every retained DOF.
 
 ![Figure S06](figures/S06_homogenised_law.png)
 
