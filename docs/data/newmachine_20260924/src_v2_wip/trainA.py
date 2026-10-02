@@ -90,6 +90,7 @@ def main(argv):
     ap.add_argument('--eval_every', type=int, default=1000); ap.add_argument('--id_frac', type=float, default=0.25)
     ap.add_argument('--classes', default='force,macro,grf,force_c,face_c'); ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--clip', type=float, default=1.0)
+    ap.add_argument('--freeze_base', type=int, default=0)                    # train only u_in: similarity maps stay A3 exactly
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     logf = open(out / 'train.log', 'a')
@@ -118,8 +119,14 @@ def main(argv):
     CR.install()
     u_params = list(model.u_in.parameters()); u_ids = {id(p) for p in u_params}
     base = [p for p in model.parameters() if id(p) not in u_ids]
-    opt = torch.optim.AdamW([dict(params=base, lr=a.lr), dict(params=u_params, lr=a.lr_u)], weight_decay=0.0)
-    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=[a.lr, a.lr_u], total_steps=a.steps, pct_start=0.05)
+    if a.freeze_base:
+        for p in base:
+            p.requires_grad_(False)
+        opt = torch.optim.AdamW([dict(params=u_params, lr=a.lr_u)], weight_decay=0.0)
+        sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=[a.lr_u], total_steps=a.steps, pct_start=0.05)
+    else:
+        opt = torch.optim.AdamW([dict(params=base, lr=a.lr), dict(params=u_params, lr=a.lr_u)], weight_decay=0.0)
+        sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=[a.lr, a.lr_u], total_steps=a.steps, pct_start=0.05)
     classes = a.classes.split(',')
 
     def pick():
@@ -156,9 +163,9 @@ def main(argv):
         e = TL.energy(s.g.field(model, Q), s.C.K)
         loss = torch.log(e.clamp_min(1e-12)).mean()
         opt.zero_grad(set_to_none=True); loss.backward()
-        gn = float(torch.nn.utils.clip_grad_norm_(model.parameters(), a.clip))
+        gn = float(torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], a.clip))
         opt.step(); sched.step()
-        hist.append(float(loss))
+        hist.append(float(loss.detach()))
         if step % 50 == 0:
             log(dict(event='STEP', step=step, loss=float(np.mean(hist[-50:])), gn=gn, map=s.map, case=s.case,
                      s_per_step=(time.perf_counter() - t0) / step, mem_gb=torch.cuda.max_memory_allocated() / 2 ** 30,
