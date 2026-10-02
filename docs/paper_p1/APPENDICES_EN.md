@@ -439,7 +439,7 @@ For each input direction, the study evaluates the exact field and the uncorrecte
 
 The differentiable implementation constructs coarse support metadata and recovers a coarse matrix using coloured stiffness probes. Its configured stencil reach is four fine-grid node spacings. With \(h_g\) fine-node spacings per coarse-vertex spacing, the probe radius is \(R_g=2+\lceil4/h_g\rceil\); colours use vertex coordinates modulo \(2R_g+1\) and the component or enrichment slot. Recovery assumes the resulting colour separation resolves every interacting coarse pair. This setup supports the \(Q_1\) and enriched \(Q_1\) spaces. The explicit \(Q_2\) study uses the CPU construction in Appendix F.1.
 
-The recovered matrix is Jacobi scaled with the corresponding column scaling of \(V\). Cholesky factorisation reads its lower triangle, trying diagonal shifts in the order \(0,10^{-12},10^{-10},10^{-8},10^{-6},10^{-4}\). The selected value is stored with the geometry factorisation; in the recorded setups it was 0 on six cells and \(10^{-12}\) on H1 (data archive record of the setup timings). On three lattice cells, the probed factor agrees with the element-assembled Galerkin factor to a relative \(1.3\times10^{-11}\) or better (data archive record of the probing test). To characterise such a solve algebraically, let \(V_s\) denote the scaled basis, \(A_s=V_s^TAV_s\succeq0\), \(\xi\ge0\), \(A_s+\xi I\succ0\), \(G_s=(A_s+\xi I)^{-1}\), and \(b_s=V_s^Tr_I\). Then
+The recovered matrix is Jacobi scaled with the corresponding column scaling of \(V\). Cholesky factorisation reads its lower triangle, trying diagonal shifts in the order \(0,10^{-12},10^{-10},10^{-8},10^{-6},10^{-4}\). The selected value is stored with the geometry factorisation (the coarse-factor shift); in the recorded setups it was 0 on six cells and \(10^{-12}\) on H1 (data archive record of the setup timings). On three lattice cells, the probed factor agrees with the element-assembled Galerkin factor to a relative \(1.3\times10^{-11}\) or better (data archive record of the probing test). To characterise such a solve algebraically, let \(V_s\) denote the scaled basis, \(A_s=V_s^TAV_s\succeq0\), \(\xi\ge0\), \(A_s+\xi I\succ0\), \(G_s=(A_s+\xi I)^{-1}\), and \(b_s=V_s^Tr_I\). Then
 
 \[
 \|d_I\|_A^2-\|d_I-V_sG_sb_s\|_A^2
@@ -579,10 +579,11 @@ Here \(T_a\in\mathbb R^{n_a\times n_a}\) and \(T_P\in\mathbb R^{p\times p}\) are
 The normalised retained directions are
 
 \[
-q_j=\frac{\Pi_P\widetilde q_j}
-{\sqrt{(\Pi_P\widetilde q_j)^TS(\Pi_P\widetilde q_j)}}.
+q_j=\frac{\Pi_Pq_j^{\rm raw}}
+{\sqrt{(\Pi_Pq_j^{\rm raw})^TS(\Pi_Pq_j^{\rm raw})}},
 \tag{G.3}
 \]
+where \(q_j^{\rm raw}\) is the direction produced by its class before rigid-body removal and energy normalisation.
 
 The direction classes used by the trainer have the following mechanical definitions.
 

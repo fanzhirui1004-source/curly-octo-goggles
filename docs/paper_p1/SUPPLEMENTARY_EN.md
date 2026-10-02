@@ -22,8 +22,15 @@ Supplementary Notes, Tables and Figures are numbered in the order in which they 
 | H2 | Heavily cut | fresh_val_2010_d0_v0 |
 | H3 | Heavily cut | fresh_val_2002_d0_v0 |
 | L1 | Lightly cut | fresh_val_2004_d0_v2 |
-| Validation cell with the largest NICE error (Table ST14) | Moderately cut | fresh_val_2051_d1_v1 |
-| Validation cell with the thinnest walls (Table ST14) | Heavily cut | fresh_val_2074_d0_v0 |
+| W1: validation cell with the largest NICE error (Tables ST09b, ST14) | Moderately cut | fresh_val_2051_d1_v1 |
+| W2 (Table ST09b) | Heavily cut | fresh_val_2045_d1_v0 |
+| W3: validation cell with the thinnest walls (Tables ST09b, ST14) | Heavily cut | fresh_val_2074_d0_v0 |
+| W4 (Table ST09b) | Heavily cut | fresh_val_2021_d1_v0 |
+| W5 (Table ST09b) | Lightly cut | fresh_val_2063_d1_v2 |
+| RU (Table ST09b) | Uncut | fresh_val_2032_full |
+| RL (Table ST09b) | Lightly cut | fresh_val_2047_d1_v2 |
+| RM (Table ST09b) | Moderately cut | fresh_val_2078_d0_v1 |
+| RH (Table ST09b) | Heavily cut | fresh_val_2053_d1_v0 |
 
 In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) that contains the cut angle \(\vartheta\), and v0, v1 and v2 give the heavy, moderate and light retained-volume strata (Tables ST02 and ST03b). In configuration labels such as U1/x, x and y give the neighbour configuration of Figure 4. The deployment geometries use the G1–G4 labels of Table ST18; the table below gives their identifiers in the data archive.
 
@@ -44,7 +51,7 @@ In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) tha
 | Base network, corrected | 305 | 40 | — | 30,000 / EMA | 8 / Q1(17) / 8 | Identity |
 | NICE | 591 | 40 | 15,000 | 15,000 / EMA | 8 / Q1(17) / 8 | Identity, 17 |
 
-All variants are evaluated on the 80 validation geometries of Table ST02. Orientation 17 is one of the 48 cube-symmetry transformations of Appendix G (Eq. (G.2)), applied to the geometry and to the retained directions; orientation 0 is the identity. The training set contains 305 geometries for the base network and 591 for Uncorrected, Smoothing-trained and NICE. The training set of 591 comprises 304 of the base network's 305 geometries (one cell that behaved as a near-mechanism was removed) and 287 further training geometries. With three geometries held in GPU memory at a time and one of them replaced every 100 training steps (Appendix G.3), a run of \(N\) training steps visits at most \(N/100+3\) distinct geometries, i.e. at most 153 for each continuation of 15,000 steps; the base network visited all 305 geometries of its training set over its 40,000 training steps. Uncorrected, Smoothing-trained and NICE use the same seed and split, so they draw their geometries in the same order.
+All variants are evaluated on the 80 validation geometries of Table ST02. Orientation 17 is one of the 48 cube-symmetry transformations of Appendix G (Eq. (G.2)), applied to the geometry and to the retained directions; orientation 0 is the identity. The training set contains 305 geometries for the base network and 591 for Uncorrected, Smoothing-trained and NICE. The training set of 591 comprises 304 of the base network's 305 geometries (one cell that behaved as a near-mechanism was removed) and 287 further training geometries. By the rotation of Appendix G.3, each 15,000-step continuation visits at most 153 of its 591 training geometries; the base network visited all 305 of its own over 40,000 training steps. Uncorrected, Smoothing-trained and NICE use the same seed and split, so they draw their geometries in the same order.
 
 Measured to the last training step, the base network's training took 4.6 h and NICE's continuation 3.5 h on the GPU (Section 5.1), or 5.0 h and 4.8 h including all selection evaluations; peak GPU memory during training was 29.6 GiB. The base network was initialised from parameters obtained in three preceding training stages (7.5 GPU-hours together). Together with these stages, the two runs including their selection evaluations and the generation of the direction sets and exact sensitivities (about 42 GPU-hours, Section 5.1) make up the offline cost of NICE, about 60 GPU-hours.
 
@@ -62,7 +69,7 @@ Families and the two orientations carry equal weight. The eight selection classe
 - Smoothing-trained used the same evaluation schedule and orientations; its selection scores were not recorded, and the parameters of its final step, 15,000, are used.
 - NICE was designated the principal variant after all variants had been compared on the 80 validation geometries and the two-cell configurations.
 
-This selection criterion differs from the per-batch training loss in Eq. (18) and from the geometry-weighted statistics of the 80-geometry validation set. Twenty of those 80 geometries belong to the selection list (Section 5.1).
+This selection criterion differs from the per-batch training loss in Eq. (18) and from the geometry-weighted statistics of the 80-geometry validation set. Twenty of those 80 geometries (6 uncut, 14 cut) belong to the selection list; they include all eight detailed cells of Section R1.
 
 ## Table ST02. Discrete operator and diagnostic definitions
 
@@ -104,7 +111,7 @@ The cut volumes refer to the box before intersecting it with the TPMS band. No t
 
 ## Table ST03. Energy error by direction class (identity orientation)
 
-Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. "Base network, corrected" denotes the base network with NICE's correction applied at deployment, without retraining. For NICE under consistent tractions, the 5,120 individual sampled directions of the 80 geometries have a 95th percentile of 0.331%, a 99th percentile of 0.693% and a maximum of 1.24% (3,840 directions of the 60 geometries outside model selection: 0.355%, 0.734%, 1.24%).
+Entries are geometry-equal mean / 90th percentile / maximum of geometry-level direction means, in percent. The maximum is not a worst individual direction. "Base network, corrected" denotes the base network with NICE's correction applied at deployment, without retraining. For NICE under consistent tractions, the 5,120 individual sampled directions of the 80 geometries have a 95th percentile of 0.331%, a 99th percentile of 0.693% and a maximum of 1.24% (3,840 directions of the 60 geometries outside model selection: 0.355%, 0.734%, 1.24%). Under consistent tractions the mean of the corrected base network is 0.0965% and that of NICE 0.0737%, a ratio of 1.31; resampling the 80 geometries with replacement (paired, ratio of geometry-equal means, percentile interval) gives a 95% interval of 1.20–1.40.
 
 | Class | Geometries per variant | Base network | Uncorrected | Smoothing-trained | Base network, corrected | NICE |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -118,14 +125,14 @@ Entries are geometry-equal mean / 90th percentile / maximum of geometry-level di
 | support_k | 75 | 4.177 / 9.695 / 28.817 | 3.941 / 8.831 / 26.175 | 0.938 / 2.390 / 5.246 | 0.077 / 0.193 / 0.632 | 0.057 / 0.169 / 0.468 |
 | glued | 75 | 4.593 / 11.227 / 38.128 | 4.422 / 10.378 / 42.030 | 0.953 / 2.696 / 4.629 | 0.078 / 0.217 / 0.555 | 0.060 / 0.172 / 0.384 |
 
-### ST03b. Force/support geometry-stratum means (%)
+### ST03b. Force/support/consistent-traction geometry-stratum means (%)
 
-| Stratum | Geometries | Base network force/support | Uncorrected force/support | Smoothing-trained force/support | Base network, corrected force/support | NICE force/support |
+| Stratum | Geometries | Base network force/support/force_c | Uncorrected force/support/force_c | Smoothing-trained force/support/force_c | Base network, corrected force/support/force_c | NICE force/support/force_c |
 | --- | --- | --- | --- | --- | --- | --- |
-| Uncut | 20 | 0.908 / 1.413 | 0.879 / 1.332 | 0.072 / 0.225 | 0.034 / 0.044 | 0.013 / 0.022 |
-| Light cut (v2) | 20 | 3.239 / 3.049 | 3.021 / 2.832 | 0.523 / 0.661 | 0.088 / 0.072 | 0.059 / 0.050 |
-| Moderate cut (v1) | 20 | 4.720 / 3.930 | 4.506 / 3.810 | 0.723 / 0.698 | 0.103 / 0.075 | 0.070 / 0.050 |
-| Heavy cut (v0) | 20 | 11.278 / 12.938 | 10.021 / 11.540 | 0.783 / 0.966 | 0.141 / 0.145 | 0.090 / 0.098 |
+| Uncut | 20 | 0.908 / 1.413 / 1.142 | 0.879 / 1.332 / 1.029 | 0.072 / 0.225 / 0.242 | 0.034 / 0.044 / 0.029 | 0.013 / 0.022 / 0.016 |
+| Light cut (v2) | 20 | 3.239 / 3.049 / 5.801 | 3.021 / 2.832 / 5.325 | 0.523 / 0.661 / 1.414 | 0.088 / 0.072 / 0.096 | 0.059 / 0.050 / 0.079 |
+| Moderate cut (v1) | 20 | 4.720 / 3.930 / 7.899 | 4.506 / 3.810 / 7.823 | 0.723 / 0.698 / 1.769 | 0.103 / 0.075 / 0.105 | 0.070 / 0.050 / 0.091 |
+| Heavy cut (v0) | 20 | 11.278 / 12.938 / 12.702 | 10.021 / 11.540 / 11.160 | 0.783 / 0.966 / 1.697 | 0.141 / 0.145 / 0.156 | 0.090 / 0.098 / 0.109 |
 
 ### ST03c. Orientation dependence: identity / orientation 17 means (%)
 
@@ -145,7 +152,7 @@ This comparison uses a separate evaluation in both orientations, in which the cl
 
 ### ST03d. Geometries outside model selection
 
-Table ST03 restricted to the 60 validation geometries that entered neither training nor model selection (the other 20 entered model selection, Table ST01). Same statistics as Table ST03.
+Table ST03 restricted to the 60 validation geometries that entered neither training nor model selection (the other 20 entered model selection, Table ST01). Same statistics as Table ST03. Under consistent tractions, NICE's stratum means on these 60 geometries are 0.020% (uncut), 0.054% (light), 0.105% (moderate) and 0.126% (heavy), and the five largest geometry means of the 80 (0.651%, 0.540%, 0.487%, 0.303%, 0.287%) all belong to them.
 
 | Class | Geometries per variant | Base network | Uncorrected | Smoothing-trained | Base network, corrected | NICE |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -161,7 +168,7 @@ Table ST03 restricted to the 60 validation geometries that entered neither train
 
 ## Table ST04. Operator verification in the deployed arithmetic
 
-Columns: \(\lambda_{\max}\) of \(D^{-1}K_{II}\) by Lanczos; a power-iteration estimate \(b\) of the upper smoothing endpoint; the Gershgorin bound; the maximum relative asymmetry \(\max_{i,j}|G_{ij}-G_{ji}|/\sqrt{|G_{ii}G_{jj}|}\) of \(G=Q^T\widehat SQ\), where the columns of \(Q\) are the first eight retained-displacement directions of the cell's consistent-traction (force_c) validation set; the maximum relative difference between returned work and field energy; the deployed-versus-training field difference; the maximum rigid-body energy ratio; the ghost-penalty share of the exact field energy (consistent tractions / nodal forces); and the mean \(\delta\) and \(\kappa\) of the base network and of NICE under consistent tractions. Here \(\delta^2=d_I^TDd_I/u_I^TDu_I\) and \(\kappa=(d^TKd/d_I^TDd_I)/(u^TKu/u_I^TDu_I)\) with \(D=\operatorname{diag}(K_{II})\), i.e. the weighting \(W=\operatorname{diag}(0,D)\) of Appendix B.3. The endpoint used in the reported runs is verified on all 80 validation geometries in Appendix D.
+Columns: \(\lambda_{\max}\) of \(D^{-1}K_{II}\) by Lanczos; a power-iteration estimate \(b\) of the upper smoothing endpoint; the Gershgorin bound; the maximum relative asymmetry \(\max_{i,j}|G_{ij}-G_{ji}|/\sqrt{|G_{ii}G_{jj}|}\) of \(G=Q^T\widehat SQ\), where the columns of \(Q\) are the first eight retained-displacement directions of the cell's consistent-traction (force_c) validation set; the maximum relative difference between returned work and field energy, the deployed-versus-training field difference and the maximum rigid-body energy ratio, all over the consistent-traction validation directions; the ghost-penalty share of the exact field energy, mean over directions (consistent tractions / nodal forces); and the mean \(\delta\) and \(\kappa\) of the base network and of NICE under consistent tractions. Here \(\delta^2=d_I^TDd_I/u_I^TDu_I\) and \(\kappa=(d^TKd/d_I^TDd_I)/(u^TKu/u_I^TDu_I)\) with \(D=\operatorname{diag}(K_{II})\), i.e. the weighting \(\mathsf W=\operatorname{diag}(0,D)\) of Appendix B.3. Over the nodal-force directions the asymmetry, the work–energy difference and the rigid-body energy ratio are at most \(3\times10^{-8}\), \(2\times10^{-8}\) and \(1\times10^{-10}\). The endpoint used in the reported runs is verified on all 80 validation geometries in Appendix D.
 
 | Cell | \(\lambda_{\max}\) (Lanczos) | \(b=1.05\times\) power estimate | Margin | Gershgorin bound | Asymmetry | Work–energy difference | Deployed vs training field | Rigid-body energy | Ghost-penalty share (consistent tractions / nodal forces) | \(\delta\), \(\kappa\): base network (consistent tractions) | \(\delta\), \(\kappa\): NICE (consistent tractions) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -320,7 +327,7 @@ Entries are mean [90th percentile] energy error (%). C denotes one coarse-grid c
 
 ## Table ST08. Energy error of different starting fields under the same correction
 
-Mean directional energy error (%) of the base network, of NICE and of starting fields under the same correction (fixed retained displacement, 32 validation directions per class). Columns give the starting field and the correction (smoothing steps per stage / coarse space / smoothing steps). Harmonic and zero starting fields receive the exact rigid-body split. Data: records of the data archive.
+Mean directional energy error (%) of the base network, of NICE and of starting fields under the same correction (fixed retained displacement, 32 validation directions per class). Columns give the starting field and the correction (smoothing steps per stage / coarse space / smoothing steps). Harmonic and zero starting fields receive the exact rigid-body split.
 
 | cell | class | Base network | NICE | Base network, corrected (8/Q1/8) | harmonic + 8/Q1/8 | zero + 8/Q1/8 | Base network + 32/Q1/32 | harmonic + 32/Q1/32 | zero + 32/Q1/32 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -337,7 +344,7 @@ Mean directional energy error (%) of the base network, of NICE and of starting f
 
 ### ST08b. Smoothing budget: 8, 16, 32 and 64 steps per stage
 
-Mean directional energy error (%) after the correction with \(k\) smoothing steps before and after the Q1(17) coarse-grid correction, for three starting fields and six detailed cells, including U1 (32 validation directions per class, fixed retained displacement). Data: records of the data archive.
+Mean directional energy error (%) after the correction with \(k\) smoothing steps before and after the Q1(17) coarse-grid correction, for three starting fields and six detailed cells, including U1 (32 validation directions per class, fixed retained displacement).
 
 | cell | class | starting field | 8 steps | 16 steps | 32 steps | 64 steps |
 |---|---|---|---|---|---|---|
@@ -512,7 +519,7 @@ Maximum relative errors (%) over the three cut-surface traction directions, for 
 
 Sensitivity after assembly depends on the interaction between field recovery and the assembled retained displacement. For the base network in M1/x, the largest full sensitivity error over the six face loads is 12.2%; evaluating the learned extension at the exact retained displacement (field-only) gives 15.6%, and evaluating the exact extension at the learned retained displacement (solution-only) gives 19.3%. The full error is smaller than either replacement error. The vector expansion of Eq. (H.2) accounts for this: the extension error, the change of the retained displacement and their mixed term enter the recovered field together, so the replacement norms cannot be added as scalar error contributions (Appendix H.1).
 
-Maximum errors (%) over the six face loads compared with the 3% reference; maxima in separate columns may occur at different loads. Full, field-only, and solution-only values are separate nonlinear replacement evaluations. The trace error is the relative exact-Schur norm, not its square.
+Maximum errors (%) over the six face loads compared with the 3% reference; maxima in separate columns may occur at different loads. Full, field-only, and solution-only values are separate nonlinear replacement evaluations. The base network on M1/y, which is not part of the comparison of Table ST09, was evaluated only in this replacement study. The trace error is the relative exact-Schur norm, not its square.
 
 | Variant | Cell | Configuration | Full sensitivity error | Field-only error | Solution-only error | Trace error | Energy error at exact trace |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -549,7 +556,7 @@ Smoothing-trained on the target cell, exact neighbour, configuration x; the per-
 
 ## Table ST13. Load-specific compliance weighting for the base network
 
-U1/x under the neighbour-face z traction. The base network is used on the target and its neighbour is exact. The bound is evaluated from dimensionless ratios before percentage conversion.
+U1/x under the neighbour-face z traction. The base network is used on the target and its neighbour is exact. The product bound is \(\beta=w\varepsilon\) of Section 5.6, the target energy share times the local energy error.
 
 | Target energy share (%) | Local energy error (%) | Product bound (%) | Compliance error (%) | Target sensitivity error (%) |
 | --- | --- | --- | --- | --- |
@@ -704,12 +711,12 @@ All memory values are in GiB (\(2^{30}\) bytes): GPU memory is the peak memory a
 
 #### ST17a. Lattice dimensions
 
-| Lattice | Cells (cut) | Cell DOFs (min–max) | Total DOFs | Free retained DOFs | Interior DOFs | Stored nonzeros, upper triangle |
-| --- | --- | --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | 4 (2) | 102,786–328,608 | 957,888 | 77,310 | 880,578 | 132,719,531 |
-| 2×2×1, z=1 | 4 (2) | 97,230–302,772 | 884,940 | 71,046 | 813,894 | 125,748,434 |
-| 2×2×2 | 8 (4) | 97,230–328,608 | 1,833,474 | 139,002 | 1,694,472 | 258,181,146 |
-| 3×3×1 | 8 (3) | 83,220–336,162 | 2,113,611 | 143,685 | 1,969,926 | 296,791,884 |
+| Lattice | Cells (cut) | Cell DOFs (min–max) | Total DOFs | Free retained DOFs | Cut-band DOFs off the box faces (share of free retained) | Interior DOFs | Stored nonzeros, upper triangle |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | 4 (2) | 102,786–328,608 | 957,888 | 77,310 | 35,829 (46%) | 880,578 | 132,719,531 |
+| 2×2×1, z=1 | 4 (2) | 97,230–302,772 | 884,940 | 71,046 | 33,327 (47%) | 813,894 | 125,748,434 |
+| 2×2×2 | 8 (4) | 97,230–328,608 | 1,833,474 | 139,002 | 69,156 (50%) | 1,694,472 | 258,181,146 |
+| 3×3×1 | 8 (3) | 83,220–336,162 | 2,113,611 | 143,685 | 53,085 (37%) | 1,969,926 | 296,791,884 |
 
 #### ST17b. Direct solution on the CPU: phases (s) and memory (GiB)
 
@@ -802,7 +809,7 @@ The gradient metrics compare the field-based sensitivities with the exact ones a
 
 #### Table ST19. Residual work, dual-norm bound, field-based gradient and difference quotients of the surrogate compliance
 
-Face = the three consistent face loads; random = the three random loads. Gradient error: \(\|\widetilde s_g-s_g\|/\|s_g\|\) over the shared vertex parameters, in percent; cosine and largest component error over all six loads. \(D_{\mathrm{act}}\): relative error against the exact vertex gradient under the face loads at step \(h\) (in units of \(\tau_c\)), in percent. Switched rebuilds: number of the 49 rebuilds per cell (three steps, both signs and eight corners, plus one unperturbed) that change a discrete choice, range over cells.
+Face = the three consistent face loads; random = the three random loads. Gradient error: \(\|\widetilde{\boldsymbol s}_g-\boldsymbol s_g\|/\|\boldsymbol s_g\|\) over the shared vertex parameters, in percent; cosine and largest component error over all six loads. \(D_{\mathrm{act}}\): relative error against the exact vertex gradient under the face loads at step \(h\) (in units of \(\tau_c\)), in percent. Switched rebuilds: number of the 49 rebuilds per cell (three steps, both signs and eight corners, plus one unperturbed) that change a discrete choice, range over cells.
 
 | Lattice | Compliance error, face (%) | \(\max\lvert\bar U^T\rho\rvert/C\) | Dual-norm bound / \(C\) | \(\max\lvert\omega\rvert/C\) | Identity residual / \(C\) | Gradient error, face / random (%) | Smallest cosine | Largest component error (%) | \(D_{\mathrm{act}}\) at \(h=3\times10^{-3}\) / \(10^{-3}\) / \(3\times10^{-4}\) (%) | Switched rebuilds per cell |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1029,7 +1036,7 @@ The plates are a single layer of \(8\times4\) cells, cut by a plane that runs fr
 
 B1 stopped after 23 iterations by the objective-change rule and B2 after 30 by the parameter-change rule (Table ST23a). With 20% less material than the uniform start, the NICE compliance falls by 7.7% for B1 (94.341 to 87.089) and by 8.3% for B2 (1,467.743 to 1,346.354). Both final designs span the full parameter range [0.180, 0.690], with the span and gradient-norm constraints active. An iteration took 574 s (B1) and 639 s (B2) on average, most of it in the conjugate-gradient solve (294 and 362 s, 138–295 iterations) and the sensitivities (160 and 159 s); the iterations took 3.7 and 5.3 h in total, with at most 24.3 GiB of GPU and 5.0 GiB of CPU memory. The recomputed residual reached \(3.8\times10^{-3}\) (B1) and \(6.7\times10^{-3}\) (B2), while the signed residual work was at most \(3.1\times10^{-7}\) of the compliance. All plate values are NICE values; selected designs are checked with exact condensation in S9.6 (Table ST27).
 
-For comparison with a homogenisation-based graded design, the effective elasticity tensor \(C^H(\tau)\) of the uncut cell with uniform corner parameter was computed by periodic homogenisation on the same discrete model (\(n=32\), Q2 elements, the stabilised stiffness \(K\) with its ghost penalty). Nodes on opposite faces of the cell are identified, the fluctuation is periodic with one node fixed, and six unit macroscopic strains give \(C^H_{ij}=u_i^TKu_j\) for the unit cell; the material volume fraction \(V^H(\tau)\) is the sum of the zeroth element moments. At twelve thicknesses from 0.18 to 0.70 (Table ST23b), the tensor is cubic to \(3.1\times10^{-13}\) and the periodic fluctuations are in equilibrium to \(2.2\times10^{-13}\); cubic splines in \(\tau\) interpolate \(C^H_{11}\), \(C^H_{12}\), \(C^H_{44}\) and \(V^H\) (Figure S06). The macroscale model meshes the plate with Q1 hexahedra, six per cell and axis (4,464 elements). At every quadrature point it interpolates the local parameter \(\tau(\mathbf x)\) trilinearly from the corners of its cell and evaluates \(C^H(\tau(\mathbf x))\) and \(V^H(\tau(\mathbf x))\); it integrates the elements intersected by the cut with \(4^3\) sub-points, the void part carrying \(10^{-6}\,C^H(0.4)\); and it applies the same clamped face and a uniform traction of unit resultant on the material part of the loaded face. It was optimised with adjoint sensitivities and the same MMA settings, constraints, fixed vertices and volume fraction. At the uniform design its volume agrees with the fine-scale material volume to \(1.2\times10^{-7}\).
+For comparison with a homogenisation-based graded design, the effective elasticity tensor \(C^H(\tau)\) of the uncut cell with uniform corner parameter was computed by periodic homogenisation on the same discrete model (\(n=32\), Q2 elements, the stabilised stiffness \(K\) with its ghost penalty). Nodes on opposite faces of the cell are identified, the fluctuation is periodic with one node fixed, and six unit macroscopic strains give \(C^H_{ij}=u_i^TKu_j\) for the unit cell; the material volume fraction \(V^H(\tau)\) is the sum of the zeroth element moments. At twelve thicknesses from 0.18 to 0.70 (Table ST23b), the tensor is cubic to \(3.1\times10^{-13}\) and the periodic fluctuations are in equilibrium to \(2.2\times10^{-13}\); cubic splines in \(\tau\) interpolate \(C^H_{11}\), \(C^H_{12}\), \(C^H_{44}\) and \(V^H\) (Figure S06). The macroscale model meshes the plate with Q1 hexahedra, six per cell and axis (4,464 elements). At every quadrature point it interpolates the local parameter \(\tau(x)\) trilinearly from the corners of its cell and evaluates \(C^H(\tau(x))\) and \(V^H(\tau(x))\); it integrates the elements intersected by the cut with \(4^3\) sub-points, the void part carrying \(10^{-6}\,C^H(0.4)\); and it applies the same clamped face and a uniform traction of unit resultant on the material part of the loaded face. It was optimised with adjoint sensitivities and the same MMA settings, constraints, fixed vertices and volume fraction. At the uniform design its volume agrees with the fine-scale material volume to \(1.2\times10^{-7}\).
 
 At the uniform design the macroscale model underestimates the fine-scale NICE compliance by 26.7% for the in-plane load and by 36.6% for bending (Table ST23c). The plate, one cell thick and four cells wide, offers little separation of scales, most of all through its thickness; the error was not analysed further. The macroscale optimisations stopped after 23 and 27 iterations. Evaluated with NICE on the fine scale, the homogenisation design Hom-\(y\) has a compliance 1.07% above that of B1, with a volume 0.040% above the bound, and Hom-\(z\) one 0.34% below that of B2, with a volume 0.045% below the bound; for these graded designs the macroscale volume model no longer equals the fine-scale material volume exactly. The corner parameters of the B and Hom designs have correlation coefficients of 0.906 (\(y\)) and 0.969 (\(z\)) and differ by 0.074 and 0.045 in root mean square. Continued with NICE for 12 iterations under the absolute volume bound of B1 and B2, the homogenisation designs reach 87.141 (X-\(y\), 0.060% above B1) and 1,334.697 (X-\(z\), 0.87% below B2). Neither continuation met the stopping rule; the last parameter change of X-\(y\) was still close to the move limit (0.0254 of 0.0255). For each load the three final designs thus lie within 1.1% (\(y\)) and 0.9% (\(z\)) of each other in NICE compliance, and for bending the optimisation from the uniform design ended 0.87% above the design reached from the homogenisation start. In the exact model the bending comparisons hold to within 0.002 percentage points (S9.6, Table ST27). Hom-\(y\) and X-\(y\) were not checked with exact condensation. Since the NICE compliance does not exceed the exact one (Eqs. (7) and (8); the signed residual work of X-\(y\) is at most \(4.4\times10^{-8}\) of its compliance, Table ST23a), the exact compliance of X-\(y\) is at least 87.14, above the exact 87.109 of B1 (Table ST27), so B1 remains the better in-plane design.
 
@@ -1175,7 +1182,7 @@ Each comparison runs the case A optimisation for up to three iterations with bot
 
 ![Figure S01](figures/S06_reference_verification.png)
 
-**Figure S01. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and thickness sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); the reference used throughout has \(n=32\). On H1 the successive compliance increments do not yet decrease between \(n=40\) and 48; refinement to \(n=64\) (Table ST14) shows that H1 does not converge monotonically, so the difference from \(n=48\) is not an estimate of the \(n=32\) error. (b) The same quantities when the ghost-penalty coefficient is changed from the value \(10^{-4}\) used throughout. (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from the value \(h=10^{-5}\tau_c\) used throughout (filled), and largest relative difference between central compliance differences and the sensitivity at that step (open). The relative change is at most \(2.6\times10^{-5}\)% at \(10^{-3}\tau_c\) and falls a hundredfold from \(10^{-3}\tau_c\) to \(10^{-4}\tau_c\). Refinement to \(n=64\) of H1, H2 and two further validation cells: Table ST14.
+**Figure S01. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and thickness sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); the reference used throughout has \(n=32\). On H1 the successive compliance increments do not yet decrease between \(n=40\) and 48; refinement to \(n=64\) (Table ST14) shows that H1 does not converge monotonically, so the difference from \(n=48\) is not an estimate of the \(n=32\) error. (b) The same quantities when the ghost-penalty coefficient is changed from the value \(10^{-4}\) used throughout. (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from the value \(h_c=10^{-5}\tau_c\) used throughout (filled), and largest relative difference between central compliance differences and the sensitivity at that step (open). The relative change is at most \(2.6\times10^{-5}\)% at \(10^{-3}\tau_c\) and falls a hundredfold from \(10^{-3}\tau_c\) to \(10^{-4}\tau_c\). Refinement to \(n=64\) of H1, H2 and two further validation cells: Table ST14.
 
 ![Figure S02](figures/S01_distributions.png)
 

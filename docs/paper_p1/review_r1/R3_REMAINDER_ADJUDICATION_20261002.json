@@ -1,0 +1,430 @@
+{
+ "rem": {
+  "applied": [
+   {
+    "id": "F083",
+    "part": "M02_sec2",
+    "what": "Section 2.2: 'exactly six rigid-body modes whose restriction to P has rank six.' became 'exactly six rigid-body modes, the columns of \\(R\\in\\mathbb R^{n_a\\times6}\\), whose restriction \\(R_P=J_PR\\) has rank six.' R and R_P are defined again before 4.1 uses them."
+   },
+   {
+    "id": "F094",
+    "part": "M03_sec3",
+    "what": "Section 3.3: after '...with the reconstructed field.' added 'Over the eight corners these form the thickness sensitivity vectors \\(\\boldsymbol s=(s_c)_{c=1}^8\\) and \\(\\widetilde{\\boldsymbol s}=(\\widetilde s_c)_{c=1}^8\\).'"
+   },
+   {
+    "id": "F074 (6.3 + ref)",
+    "part": "M10_sec6_7, M11_refs",
+    "what": "In 6.3, added ', [Hirschler et al. (2024)](https://doi.org/10.1002/nme.7419)' after Klawonn & Rheinbach in the inexact-substructuring sentence. Added the Hirschler et al. (2024) entry to M11 between Henson & Yang and Hou & Wu; Crossref confirms IJNME 125(8) e7419."
+   },
+   {
+    "id": "F078 (5.10 + ref)",
+    "part": "M09_sec5_10, M11_refs",
+    "what": "In 5.10 the citation is attached to the design approach, not to the tensor computation, as the defender advised: 'A homogenised model, as in homogenisation-based graded design [Li et al. (2018)](https://doi.org/10.1016/j.cad.2018.06.003), with the tensor of ...'. Added the Li, D. et al. (2018) entry to M11 between Kopaničáková & Karniadakis and Li & Widlund; Crossref confirms CAD 104, 87–99."
+   },
+   {
+    "id": "F060 (c),(d)",
+    "part": "M09_sec5_10, M11_refs",
+    "what": "(c) In 5.10: '...method of moving asymptotes [Svanberg (1987)](...) in the form of Svanberg (2007), with a move limit...'. (d) Added after Svanberg (1987) in M11: 'Svanberg, K. (2007). *MMA and GCMMA – two methods for nonlinear optimization*. Technical note, KTH Royal Institute of Technology, Stockholm.' The note has no DOI and the KTH URL returns 404, so the entry is unlinked and could not be checked on Crossref."
+   },
+   {
+    "id": "F067-ref",
+    "part": "M11_refs, M01_front",
+    "what": "Added the Zhang, L., Huang, M., ... (2024) EML 72, 102237 entry before Zhang, L. et al. (2026); Crossref confirms it. The list now holds two different 'Zhang et al. (2024)' works. Following the paper's 'Jiang, C. et al.' convention, the in-text labels became [Zhang, L. et al. (2024)] (M01) and [Zhang, E. et al. (2024)] (M01 line 15 and M04 4.2)."
+   },
+   {
+    "id": "F075-ref",
+    "part": "M11_refs",
+    "what": "Added the Wu, Xia, Wang, Shi (2019) CMAME 345, 602–617 entry between Vaněk et al. and Xing et al.; Crossref confirms it."
+   },
+   {
+    "id": "F077-ref",
+    "part": "M11_refs",
+    "what": "Added the Capuano & Rimoli (2019) CMAME 345, 363–381 entry between Burman et al. and Chen & Li; Crossref confirms it."
+   },
+   {
+    "id": "REF-Burman2010",
+    "part": "M11_refs",
+    "what": "Reference check: M02 (Section 2.1) cites [Burman (2010)](https://doi.org/10.1016/j.crma.2010.10.006), which had no list entry. Added 'Burman, E. (2010). [Ghost penalty](...). *Comptes Rendus Mathématique*, 348(21–22), 1217–1220.' before Burman et al. (2015); Crossref confirms it."
+   },
+   {
+    "id": "REF-check",
+    "part": "all",
+    "what": "Every [Author (year)](link) citation in all parts was matched by link against M11. Each now resolves to exactly one entry with the same first author and year, and all 69 entries are cited at least once, so there are no uncited entries. The list is alphabetical; same-author entries are chronological. All 59 DOI entries were checked against Crossref and match on authors, title, journal, volume, issue and pages, with two exceptions that I left unchanged. (1) Bendsøe & Sigmund: Crossref gives 2004 (copyright year), while the list and text give 2003 (print date of the 2nd edn). (2) Bonilla Moreno et al.: Crossref's author record is garbled ('M.'). Entries without a DOI cannot be checked on Crossref: Greenfeld 2019, Guo 2026b, He 2024, Jiang H. 2026, Li Z. 2023a, Luz 2020, Pfaff 2021, Trottenberg 2001, Um 2020, Svanberg 2007."
+   },
+   {
+    "id": "F020/F150 (table half)",
+    "part": "S03_S1_S6",
+    "what": "Table ST17a: inserted a column after 'Free retained DOFs' headed 'Cut-band DOFs off the box faces (share of free retained)', with 35,829 (46%), 33,327 (47%), 69,156 (50%) and 53,085 (37%). The ratios check out against the free retained DOFs. Of the two proposed headers I chose F150's, because it matches the 6.1 wording 'its DOFs off the box faces'. The header and separator were extended to 8 columns."
+   },
+   {
+    "id": "F112 (ST19 note)",
+    "part": "S03_S1_S6",
+    "what": "The ST19 note now reads 'Gradient error: \\(\\|\\widetilde{\\boldsymbol s}_g-\\boldsymbol s_g\\|/\\|\\boldsymbol s_g\\|\\)', which matches the bold s_g of ST22b and ST25."
+   },
+   {
+    "id": "F143 (F.2)",
+    "part": "A02_D_F",
+    "what": "Appendix F.2: 'The selected value is stored with the geometry factorisation (the coarse-factor shift);'."
+   },
+   {
+    "id": "F110 (G.2)",
+    "part": "A03_G_I",
+    "what": "Eq. (G.3): replaced \\widetilde q_j by q_j^{\\rm raw} at all 3 occurrences and ended the display with a comma. Added on the next line: 'where \\(q_j^{\\rm raw}\\) is the direction produced by its class before rigid-body removal and energy normalisation.'"
+   },
+   {
+    "id": "F269",
+    "part": "M06_sec5_3_5",
+    "what": "Section 5.3: '(Table ST03)' became '(Table ST03; per-geometry distributions in Figure S02)'. Figure S02 is now cited, after S01 (5.1) and before S03."
+   },
+   {
+    "id": "F208 (5.5 citation)",
+    "part": "M06_sec5_3_5",
+    "what": "Section 5.5: 'reduce the mean energy error everywhere, but unevenly (Table ST06): under consistent tractions ...'. '(Figure 8a,b; Figure S04)' stays at the non-monotone statement."
+   },
+   {
+    "id": "F207 (R1 rows)",
+    "part": "S01_R1_ST05",
+    "what": "R1 geometry key: the two descriptive rows keep their names, which ST14 uses, and gain labels: 'W1: validation cell with the largest NICE error (Tables ST09b, ST14)' and 'W3: validation cell with the thinnest walls (Tables ST09b, ST14)'. Added rows for W2, W4, W5, RU, RL, RM and RH with their fresh_val identifiers. The strata come from the archive's stratum rule (valmeta.json vol, as in fig05_population.py): W2 and W4 heavily cut, W5 lightly cut (the fix had guessed 'Moderately cut' for 2063_d1_v2), RU uncut, RL light, RM moderate, RH heavy."
+   },
+   {
+    "id": "F167",
+    "part": "S01_R1_ST05",
+    "what": "Last sentence of the ST01 text is now 'Twenty of those 80 geometries (6 uncut, 14 cut) belong to the selection list; they include all eight detailed cells of Section R1.'"
+   },
+   {
+    "id": "F121 (ST04 legend)",
+    "part": "S01_R1_ST05",
+    "what": "The ST04 legend now reads 'the weighting \\(\\mathsf W=\\operatorname{diag}(0,D)\\) of Appendix B.3', matching B.3."
+   },
+   {
+    "id": "F157 (ST04 half)",
+    "part": "S01_R1_ST05",
+    "what": "ST04 column description: work–energy difference, deployed-vs-training difference and rigid-body ratio are now stated 'all over the consistent-traction validation directions'. The M05 sentence cites ST04 for the nodal-force values, which the table did not contain. I therefore added to the ST04 note: 'Over the nodal-force directions the asymmetry, the work–energy difference and the rigid-body energy ratio are at most 3e-8, 2e-8 and 1e-10.' The values are from the verified records (3.14e-8, 1.98e-8, 9.55e-11)."
+   },
+   {
+    "id": "F161 (ST04 half)",
+    "part": "S01_R1_ST05",
+    "what": "ST04 column description: 'the ghost-penalty share of the exact field energy, mean over directions (consistent tractions / nodal forces)'."
+   },
+   {
+    "id": "F158 (ST03d note)",
+    "part": "S01_R1_ST05",
+    "what": "Added to the ST03d note: under consistent tractions NICE's stratum means on the 60 geometries are 0.020/0.054/0.105/0.126%, and the five largest geometry means of the 80 (0.651, 0.540, 0.487, 0.303, 0.287%) all belong to them."
+   },
+   {
+    "id": "F159 (ST03b extension)",
+    "part": "S01_R1_ST05",
+    "what": "Retitled 'ST03b. Force/support/consistent-traction geometry-stratum means (%)'. Headers now end in 'force/support/force_c', and the force_c value is appended to every cell, e.g. NICE uncut '0.013 / 0.022 / 0.016'; Uncorrected heavy is 11.160. Column count unchanged. The values match the 5.3 text (0.016/0.079/0.091/0.109)."
+   },
+   {
+    "id": "F160 (ST03 note)",
+    "part": "S01_R1_ST05",
+    "what": "Added to the ST03 note: the corrected base network's mean is 0.0965% and NICE's 0.0737% (ratio 1.31); a paired percentile bootstrap over the 80 geometries gives a 95% interval of 1.20–1.40."
+   },
+   {
+    "id": "F232 (ST08, ST08b)",
+    "part": "S02_ST06_ST13",
+    "what": "Deleted 'Data: records of the data archive.' from the ST08 and ST08b notes (2 occurrences). None remain in the table notes."
+   },
+   {
+    "id": "F096 (S9 half)",
+    "part": "S04b_S9_figs",
+    "what": "Note S9 homogenisation paragraph: changed the three \\mathbf x to plain x, giving \\(\\tau(x)\\), \\(C^H(\\tau(x))\\) and \\(V^H(\\tau(x))\\)."
+   },
+   {
+    "id": "F113 (caption half)",
+    "part": "S04b_S9_figs",
+    "what": "Figure S01 caption (c): 'changed from the value \\(h_c=10^{-5}\\tau_c\\) used throughout (filled)'. S6.3/ST19 keep their relative step h, as the fix specifies."
+   }
+  ],
+  "skipped": [
+   {
+    "id": "F229 (5.6 citation)",
+    "reason": "Already present: M07 5.6 reads '...is 5.83% (Supplementary Table ST13).' No edit was needed."
+   },
+   {
+    "id": "F129 (S8.1)",
+    "reason": "Already done: S04a S8.1 already writes 'set \\(K_{,c}=(Y_c+Y_c^T)/16\\)', and no D_c alias remains in any part."
+   },
+   {
+    "id": "F256 (ST24b)",
+    "reason": "Already done in S04b under F143. The ST24b headers and footnote use 'weak-region element/face stencils', and no 'fringe' remains in any part."
+   },
+   {
+    "id": "F144-table",
+    "reason": "Verifier advised against it: the defender said adding a 'Retained DOFs per cell' column to ST17a would cover only the lattices, not the plates, and should be dropped. Not applied."
+   },
+   {
+    "id": "F074 (6.4 citation)",
+    "reason": "Verifier advised against it: the defender said the 6.4 solver-family list should stay as it is. Hirschler is cited only in the Introduction and 6.3."
+   },
+   {
+    "id": "F103 (G.4 portion)",
+    "reason": "Verifier advised against it: the defender judged the G.4 rename to ⟨ε⟩_N unnecessary once Appendix C uses ε_*, because it adds notation found nowhere else. \\overline\\varepsilon stays in Eq. (G.4)."
+   },
+   {
+    "id": "F113 (figure script), F201 (colour-bar label)",
+    "reason": "These edits are in figures_src/*.py in the repository, which this round may not edit; they are left for the figure stage. The S01 axis label should read h_c/τ_c, and the F12 colour bar 'element error energy / exact total'."
+   },
+   {
+    "id": "F061",
+    "reason": "Superseded by the applied F052 (same sentence)."
+   },
+   {
+    "id": "F068",
+    "reason": "Conflicts with the applied F058, which rewrites the same clause and resolves the misattribution."
+   },
+   {
+    "id": "F145",
+    "reason": "Superseded by the applied F051, and its 'one to two orders of magnitude' conflicts with the verified 7–15×."
+   },
+   {
+    "id": "F155",
+    "reason": "Conflicts with the applied F190 (same quote)."
+   },
+   {
+    "id": "F219 (ST01 note), F216 (ST01 note)",
+    "reason": "The target sentences were deleted by the applied F210 and F217."
+   },
+   {
+    "id": "F239 (gloss/keep 'view')",
+    "reason": "Conflicts with the applied F211 and F215 (switch to 'orientation')."
+   },
+   {
+    "id": "F225 (second half)",
+    "reason": "Conflicts with the applied F224, which deletes the sentence."
+   }
+  ]
+ },
+ "adj": {
+  "applied": [
+   {
+    "id": "F001",
+    "part": "M01_front",
+    "what": "Intro thesis sentence now credits the structure to where the approximation is placed and how the condensed stiffness is formed, and credits improvability to the fixed correction; it is split into two sentences, which matches the abstract and the Conclusions and adds no caveat."
+   },
+   {
+    "id": "F022",
+    "part": "M01_front",
+    "what": "Intro requirement list now matches Section 2.3 item for item: it adds the requirement of no interior factorisation per geometry, and 'deliver sensitivities' becomes 'error traceable to the compliance and to the sensitivities'."
+   },
+   {
+    "id": "F016",
+    "part": "M01_front",
+    "what": "Abstract now names the loading class (consistent tractions) of the 0.074% figure and reports, in a separate sentence, the evidence for the improvability claim: the correction alone lowers the base network's error from 6.89% to 0.0965%."
+   },
+   {
+    "id": "F055",
+    "part": "M01_front",
+    "what": "Related-work contrast now rests on the per-cell extension whose energy gives an assemblable condensed stiffness, not on linearity alone, which a learned Green's function also has."
+   },
+   {
+    "id": "F100",
+    "part": "M02_sec2",
+    "what": "f_g is now defined in the sentence right after Eq. (3), where it is first used, and the next paragraph starts with 'Compliance is C=f_g^TU'."
+   },
+   {
+    "id": "F021",
+    "part": "M03_sec3",
+    "what": "The 'derived here' list now points to Appendix B.3, where eps=delta^2*kappa is derived (applied in Section 5.4), like the other items in the list."
+   },
+   {
+    "id": "F041",
+    "part": "M03_sec3",
+    "what": "Replaced the misleading 'samples' with an exact statement: the largest sampled error bounds eps_* (Eq. B.5) from below, and an upper bound needs coverage of the direction set (G.4); the 44.5% figure in the finding is not used."
+   },
+   {
+    "id": "F035",
+    "part": "M05_sec5_1_2",
+    "what": "Spectrum containment is now claimed for the 80 validation geometries only, and the text says it was not checked for the lattice and optimisation cells, which use the same power-iteration estimate; this caveat lives in 5.2 under the caveat policy. The failure clause, already in 4.2 and Appendix D, is left out."
+   },
+   {
+    "id": "F033",
+    "part": "M09_sec5_10",
+    "what": "Added 'about in proportion to the number of cells (22 to 24 s per cell)' to the plate timing sentence (consistent with Table ST26 and S9.6). The proposed 'no comparison at these sizes' clause was left out because it brings back a caveat that R3 removed and kept in Table 6 and 6.4."
+   },
+   {
+    "id": "F036",
+    "part": "M10_sec6_7",
+    "what": "In 6.4, the 'although' clause no longer implies a run-time accuracy check: the text says the residual is available, that turning it into an energy error needs one interior solve per direction, and that the Appendix I lower bound can detect a large error but cannot confirm a small one."
+   },
+   {
+    "id": "F174",
+    "part": "S02_ST06_ST13",
+    "what": "Added one sentence to the ST11 note: the base network on M1/y was evaluated only in this replacement study, which removes the apparent conflict with ST09's 'combinations without a row were not evaluated'."
+   },
+   {
+    "id": "F230",
+    "part": "S02_ST06_ST13",
+    "what": "In the ST13 note, the percentage-conversion bookkeeping sentence is replaced by the definition of the product bound, beta = w*eps of Section 5.6, so the column is defined and the factor-100 reading is still clear."
+   },
+   {
+    "id": "F237",
+    "part": "S01_R1_ST05",
+    "what": "Condensed the ST01 rotation sentence, which repeats Appendix G.3 (G.3 does state the N/100+3 bound), to its consequence (at most 153 of 591 per continuation; base network all 305). Kept the seed/order sentence that Section 5.1 cites."
+   }
+  ],
+  "skipped": [
+   {
+    "id": "F013",
+    "reason": "The quote no longer exists; the Conclusions now say 'up to four orders of magnitude', which is accurate against Table 3 (largest ratio about 11,900)."
+   },
+   {
+    "id": "F014",
+    "reason": "The sentence is R3-prescribed and agrees with 6.4: it says the construction is family-independent and that new training data are needed, which is not an accuracy claim."
+   },
+   {
+    "id": "F017",
+    "reason": "The fourth requirement is 'admit improvement at deployment without retraining', which W gives by construction; the ordering conditions belong in 4.3 and 5.2 under the caveat policy, and repeating them here would be defensive repetition."
+   },
+   {
+    "id": "F018",
+    "reason": "The 4.1 sentence is a forward pointer to 4.2/4.3, which state the conditions; the caveat policy states the ordering caveat once, in 4.3."
+   },
+   {
+    "id": "F023",
+    "reason": "Leaving the beta tightness out of the Conclusions is not a defect: R3 prescribes a lean Section 7, and the 0.4% margin holds only for face loads in 5.8."
+   },
+   {
+    "id": "F024",
+    "reason": "'Below 0.3%' is a true bound on 0.2706% and is the R3-prescribed wording; the rule is not to change numbers that are not wrong."
+   },
+   {
+    "id": "F025",
+    "reason": "Adding ablation numbers to the Conclusions goes against the author's decision to keep ablation figures out of the front and back matter and against R3's compressed Section 7."
+   },
+   {
+    "id": "F026",
+    "reason": "The worst-direction lower bounds come from a follow-up project's unconverged run that is not in the paper's archive, and whether to report them is a pending author decision."
+   },
+   {
+    "id": "F027",
+    "reason": "The CPU PARDISO baseline is a recorded author decision; Table 5 and the Conclusions already state the hardware of each route, and the proposed memory reason is not the authors' reason."
+   },
+   {
+    "id": "F028",
+    "reason": "Binding decision 1 prescribes 'training through the correction lowers the mean energy error by a further factor of 1.31'; Table 2 discloses the 15,000-step continuation, and the matched control does not exist."
+   },
+   {
+    "id": "F029",
+    "reason": "'Other TPMS families were not tested' is an explicit author decision, and merging the gyroid S10 draft is still a pending author decision."
+   },
+   {
+    "id": "F030",
+    "reason": "Decision 1 removes per-configuration comparisons of NICE against the corrected base network, and the proposed text has no recorded source for the cost split."
+   },
+   {
+    "id": "F031",
+    "reason": "The R3-prescribed sentence is hedged and backed by the preceding 64-step comparison (and by 6.1); the fix adds a defensive equal-time caveat to a results section."
+   },
+   {
+    "id": "F032",
+    "reason": "The 6.3 sentence is R3-prescribed and points to 6.4; that the time ratios refer to the routes of Table 5 is already evident, so the addition would be redundant."
+   },
+   {
+    "id": "F034",
+    "reason": "R3 deliberately moved the principal-variant designation statement to Table ST01, which 5.1 cites, and 5.3 already reports the outside-selection statistics."
+   },
+   {
+    "id": "F037",
+    "reason": "Already resolved: the Introduction now says that inexact substructuring approximates solves only inside a preconditioner and converges to the exact discrete solution, and 6.3 repeats the contrast."
+   },
+   {
+    "id": "F040",
+    "reason": "R3 limits this 6.4 sentence to the size of the reference error and deleted the 'shared with exact condensation / designs optimal for n=32' content, and 2.1 defines the discrete reference."
+   },
+   {
+    "id": "F045",
+    "reason": "References are not edited this round and Guyan/Irons are already cited for the static constraint modes; adding Craig–Bampton would be a new claim plus a new reference."
+   },
+   {
+    "id": "F046",
+    "reason": "The zero-interior-load assumption is stated in 2.2 and B.1 (caveat in one place), and 'local stresses were not evaluated' would be a new limitation that no decision or R3 item asks for."
+   },
+   {
+    "id": "F048",
+    "reason": "Already resolved: the quote is gone, and the sentence now reads 'at the price of an assembled model that carries all of these retained degrees of freedom'."
+   },
+   {
+    "id": "F050",
+    "reason": "R3 moved the 153-of-591 visit count to the Table ST01 note and G.3 on purpose; putting it back in 5.1 would reverse that relocation."
+   },
+   {
+    "id": "F054",
+    "reason": "The sentence claims the per-substructure Ritz bound, which also holds for oversampled MsFEM element extensions; only global conformity fails, so the qualifier would wrongly narrow a correct statement."
+   },
+   {
+    "id": "F070",
+    "reason": "2003 is the standard citation year of this edition and matches the verified bibliography and ISBN, so the year is not proven wrong, and references are not edited this round."
+   },
+   {
+    "id": "F076",
+    "reason": "The static part of Hurty/Craig–Bampton reduction is the Guyan/Irons condensation already cited; the R1 decision added only Guyan/Irons, and references are not edited this round."
+   },
+   {
+    "id": "F080",
+    "reason": "Omitting a root reference for a route the paper does not follow is not a defect, the proposed wording misattributes optimal local spaces, and references are not edited this round."
+   },
+   {
+    "id": "F098",
+    "reason": "Symbol renames (w_s, B) are excluded from this round by the brief and left to the later notation review."
+   },
+   {
+    "id": "F104",
+    "reason": "Symbol rename (V to Y in C.1) is excluded from this round by the brief and left to the later notation review."
+   },
+   {
+    "id": "F131",
+    "reason": "Symbol rename (gamma_c to psi_c) is excluded from this round by the brief, and gamma_c is defined in the sentence that uses it."
+   },
+   {
+    "id": "F132",
+    "reason": "The notation change of e_c (bold, new definition, in three parts) belongs to the later notation review under the brief."
+   },
+   {
+    "id": "F136",
+    "reason": "'s̃_c of Eq. (9)' matches the main text (Section 5.10 uses the same pointer), and Eq. (9) is where s̃_c is introduced in the main text."
+   },
+   {
+    "id": "F142",
+    "reason": "Symbol rename (G to blackboard K in S8.1) is excluded from this round by the brief, and G is defined locally in the same display."
+   },
+   {
+    "id": "F148",
+    "reason": "'Below 0.3%' is a true bound and the R3-prescribed wording; the rule is not to change numbers that are not wrong."
+   },
+   {
+    "id": "F149",
+    "reason": "The plate gradient errors 0.22% and 0.32% are both below 0.33%, so the statement is correct, and it is the R3 wording for a deliberately compressed paragraph."
+   },
+   {
+    "id": "F166",
+    "reason": "The fix would bring into the supplement a '100 validation geometries' split that appears nowhere else in the paper and would confuse readers about the 80-geometry validation set."
+   },
+   {
+    "id": "F175",
+    "reason": "Not proven wrong: the column evidently comes from the replacement evaluations, not from the gate records (M2/x also differs by 0.001), and the difference has no consequence."
+   },
+   {
+    "id": "F177",
+    "reason": "'Less than 1%' matches the archived single-precision re-solve that the paper's evidence uses (0.77%); the 1.9% figure comes from a different review run."
+   },
+   {
+    "id": "F250",
+    "reason": "The clause documents that the PARDISO ordering of the cost baseline was tuned on a defined cell, which supports the fairness of the comparison, so it is not development residue."
+   },
+   {
+    "id": "F257",
+    "reason": "'Detailed cells' is the short form of Section 5.1's 'cells used for detailed comparisons', is also used in ST08b, and ST15 lists the cells by label below its caption."
+   },
+   {
+    "id": "F259",
+    "reason": "R3 keeps Note S6.3 as it is, the title correctly describes the re-solve procedure in its body, and the change would be a style-only retitle."
+   },
+   {
+    "id": "F279",
+    "reason": "Unnumbering subsection S8.1 would renumber a section, which the brief forbids; 'Section S8.1' and 'Equation (S8.1)' are distinguishable, as with Appendix B.x and the (B.x) tags."
+   }
+  ]
+ }
+}
