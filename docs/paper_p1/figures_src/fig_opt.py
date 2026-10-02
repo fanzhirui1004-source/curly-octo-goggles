@@ -44,7 +44,7 @@ plt = FS.plt
 
 HERE = Path(__file__).resolve().parent
 D = HERE.parent / 'review_r1' / 'results' / 'X6_opt'
-DC = HERE.parent / 'review_r1' / 'results' / 'X6_cplate'
+DC = HERE.parent / 'review_r1' / 'results' / 'X6_final'          # final-route runs (case A NICE, plate)
 SRC = HERE.parents[1] / 'data' / 'newmachine_20260924' / 'src_v2_wip'   # homog_macro.py (spline of the material law)
 F = json.loads((D / 'FACTS_6_11.json').read_text())
 
@@ -70,17 +70,18 @@ def check(run, k):
 
 
 # ------------------------------------------------------------------------------------------------ data
-A, AX = hist('optA/optA/history.jsonl'), hist('optA/optAx/history.jsonl')
-CHK = {k: json.loads((D / f'optA/optA/check_{k:03d}.json').read_text()) for k in (0, 12, 23)}
+A, AX = hist('optA/history.jsonl', DC), hist('optA/optAx/history.jsonl')
+CHK = {k: c for k in (0, 12, len(A) - 1) if (c := check('optA', k)) is not None}
 CN, CH, CE = hist('cplateN/history.jsonl', DC), hist('HC_x/history.jsonl', DC), hist('hevalHC/history.jsonl', DC)
 LAY = json.loads((DC / 'plate841.json').read_text())
 CHN = {k: c for k in (0, len(CN) - 1) if (c := check('cplateN', k)) is not None}   # exact checks of the NICE run
 CHH = check('hevalHC', 0)                                                          # exact check of the homogenisation design
 
 # consistency with the fact sheet (the single source of numbers for case A) and with the records of the plate
-assert np.allclose(ctrace(A), F['A']['C_trace']) and np.allclose(ctrace(AX), F['A_exact_twin']['C_trace'])
+FF = json.loads((DC / 'FACTS_FINAL.json').read_text())
+assert np.allclose(ctrace(A), FF['A']['C_trace']) and np.allclose(ctrace(AX), F['A_exact_twin']['C_trace'])
 for k, c in CHK.items():
-    assert np.isclose(c['C_exact'], F['A_checks'][str(k)]['C_exact'])
+    assert np.isclose(c['C_hat'], A[k]['C'], rtol=1e-12), k
 assert [h['k'] for h in A] == list(range(len(A))) and [h['k'] for h in CN] == list(range(len(CN)))
 for k, c in CHN.items():
     assert np.isclose(c['C_hat'], CN[k]['C'], rtol=1e-12), k
@@ -244,7 +245,7 @@ def draw_caseA(fig, gs_up, gs_lo, legend=False):
     axs.axhline(0, color=FS.GRID, lw=.8, zorder=1)
     axs.plot(kA[:n], rel_twin, '-', color=EXACT, lw=.8, marker=EXACT_MK, ms=3.0, mew=.7, zorder=3)
     axs.plot(kc, rel_chk, ls='none', marker='o', ms=5, mfc='none', mec=EXACT, mew=.9, zorder=4)
-    pert = [p['k'] for p in F['A']['body_perturbations_applied']]
+    pert = [p['k'] for p in FF['A']['perturbations']]
     for kp in pert:
         axs.annotate('', (kp, rel_twin[kp]), (12.3, -.083), arrowprops=dict(arrowstyle='-', color=FS.MUTED, lw=.5,
                      shrinkA=0, shrinkB=2.5))

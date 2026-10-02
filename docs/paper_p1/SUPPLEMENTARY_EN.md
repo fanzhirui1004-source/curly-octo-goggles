@@ -957,7 +957,7 @@ Geometry generation failed in four design iterations over all runs: the geometry
 | Stopping rule | \(\max\lvert\Delta\tau\rvert<10^{-3}\), or relative objective change below \(10^{-4}\) in three consecutive iterations, or 60 iterations |
 | Geometry | Every iteration regenerates the geometry of every cell from its current corner parameters with the geometry generator used for all cells of this study, in parallel processes on the CPU (8 for case A, 12 for the plate), and rebuilds every learned substructure |
 | Lattice solve | Preconditioned conjugate gradients with the balanced two-level preconditioner of Supplementary Note S6.1 to a recursive relative residual of \(10^{-6}\) (at most 3,000 iterations); network and correction in single precision, stiffness actions of the condensed product in double precision: the arithmetic, preconditioner and implementation of the timed route of Table 5, with the coarse-factor pivot rule of Appendix F.2; a run stops if a solve reaches 3,000 iterations or a recomputed relative residual above \(10^{-2}\). Exact twin: dense exact condensed matrices of every cell, assembled solve to \(10^{-10}\) |
-| Warm start | From the previous iteration's solution, matched DOF by DOF on absolute grid position, displacement component and private cut-band flag; unmatched DOFs start at zero; the start is scaled by the energy-optimal factor \(f_g^TX_0/(X_0^T\widehat{\mathbb K}X_0)\); the stopping criterion, relative to \(\lVert f_g\rVert\), is unchanged. At iteration 0 of every run, and at iteration 16 of case A, the solve started from zero. Exact twin: cold start |
+| Warm start | From the previous iteration's solution, matched DOF by DOF on absolute grid position, displacement component and private cut-band flag; unmatched DOFs start at zero; the start is scaled by the energy-optimal factor \(f_g^TX_0/(X_0^T\widehat{\mathbb K}X_0)\); the stopping criterion, relative to \(\lVert f_g\rVert\), is unchanged. At iteration 0 of every run the solve started from zero. Exact twin: cold start |
 | Placement of the learned substructures | Case A: all cells on the GPU; plate: cells kept on the GPU while its allocated memory stayed below 22 GiB, the others streamed from CPU memory as in Supplementary Note S5 |
 | Geometry-generation fallback | If generation fails for some cells, the free vertices of those cells are multiplied by \(1+\epsilon\), \(\epsilon=10^{-4},-10^{-4},10^{-3},-10^{-3},3\times10^{-3},-3\times10^{-3}\) in turn (clipped to the bounds), every cell sharing them is regenerated, and the perturbed design is analysed and continued from. Applied four times over all runs (Table ST24a) |
 
@@ -969,9 +969,9 @@ Case A is the \(2\times2\times2\) block of Section 5.8, with its graded initial 
 
 The NICE run stopped after 24 iterations and the twin after 23, both by the objective-change rule (Tables ST22a and ST22c). Both paths first thin the block to the volume bound, the NICE compliance rising from 24.59 to 37.86 at iteration 4, and then redistribute material. Up to iteration 4 the two runs analyse the same design: while the volume bound is violated, every free parameter moves by the move limit or to the lower bound. At these iterations the difference of the two compliances is the surrogate compliance error on the same design, which grows from −0.011% to −0.023% as material is removed. From iteration 5 the paths separate, with corner parameters differing by at most \(8.8\times10^{-4}\), and the NICE compliance lies 0.016–0.030% below the twin's, except at iterations 16 and 19, where the fallback perturbed the NICE design (−0.037% and −0.10%, the latter with the volume 0.036% above the bound). Both final designs reach the lower bound 0.18, have a largest parameter of 0.624, and have the gradient-norm constraint active (0.4500) and the span below its limit (0.444). Their corner parameters differ by at most 0.0051 (root mean square 0.0011), and the exact compliances of the final designs are 24.110504 for NICE and 24.110806 for the twin, a relative difference of \(1.25\times10^{-5}\). The final compliance is 2.0% below that of the initial design, which holds 25% more material.
 
-In the exact checks (Table ST22b), the surrogate compliance error is −0.0112%, −0.0182% and −0.0279% at iterations 0, 12 and 23, and the error of the vertex gradient 0.069%, 0.17% and 0.33%, with cosines of at least 0.9999966 and the signs of all 18 components correct; the component errors are at most \(4.1\times10^{-3}\) of the largest gradient component (95th percentile at most \(2.8\times10^{-3}\)). Both errors increase along the path and remain below 0.03% and 0.33%. Over all iterations the recomputed residual lies between \(5.3\times10^{-5}\) and \(3.2\times10^{-4}\) and the signed residual work \(\lvert\bar U^T\rho\rvert\) is at most \(2.7\times10^{-8}\) of the compliance, as in Section 5.8.
+In the exact checks (Table ST22b), the surrogate compliance error is −0.0112%, −0.0182% and −0.0279% at iterations 0, 12 and 23, and the error of the vertex gradient 0.069%, 0.17% and 0.33%, with cosines of at least 0.9999966 and the signs of all 18 components correct; the component errors are at most \(4.1\times10^{-3}\) of the largest gradient component (95th percentile at most \(2.8\times10^{-3}\)). Both errors increase along the path and remain below 0.03% and 0.33%. Over all iterations the recomputed residual lies between \(6.2\times10^{-5}\) and \(1.5\times10^{-4}\) and the signed residual work \(\lvert\bar U^T\rho\rvert\) is at most \(1.5\times10^{-8}\) of the compliance, as in Section 5.8.
 
-A NICE iteration took 141 s on average (128–171 s), 3,380 s for all 24 iterations together, with peaks of 15.7 GiB of GPU and 3.5 GiB of CPU memory. The longest iteration and the largest number of conjugate-gradient iterations, 170.7 s and 170 at iteration 16, occur where the solve started from zero and the geometry needed a second generation attempt (Tables ST22a and ST24a). The twin, which forms the dense exact condensed matrices of every cell on the same GPU, took 469 s per iteration and 10,793 s for its 23 iterations, with 17.3 GiB of GPU and 80.0 GiB of CPU memory. The twin is a verification run, not a cost baseline; the cost comparison of the exact and learned routes is that of Section 5.9.
+A NICE iteration took 74 s on average (62–120 s), 1,782 s for all 24 iterations together, with peaks of 13.0 GiB of GPU and 3.5 GiB of CPU memory. The longest iteration, 119.8 s at iteration 19, is the one whose geometry needed four generation attempts (Tables ST22a and ST24a). The twin, which forms the dense exact condensed matrices of every cell on the same GPU, took 469 s per iteration and 10,793 s for its 23 iterations, with 17.3 GiB of GPU and 80.0 GiB of CPU memory. The twin is a verification run, not a cost baseline; the cost comparison of the exact and learned routes is that of Section 5.9.
 
 ### Table ST22. Case A: NICE optimisation, exact twin and exact checks
 
@@ -979,32 +979,32 @@ A NICE iteration took 141 s on average (128–171 s), 3,380 s for all 24 iterati
 
 | Iteration | \(\widehat C\) (NICE) | \(V/V^*\) | PCG iterations | Recomputed residual | \(\bar U^T\rho/\widehat C\) | Time (s) | \(C\), exact twin | \(V/V^*\), exact twin | NICE vs twin (%) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0 | 24.59081 | 1.25000 | 122 | 7.2e-05 | 2.7e-09 | 134.3 | 24.59356 | 1.25000 | −0.011 |
-| 1 | 27.14662 | 1.18615 | 102 | 9.9e-05 | 2.3e-09 | 135.2 | 27.14994 | 1.18615 | −0.012 |
-| 2 | 30.16595 | 1.12233 | 108 | 1.1e-04 | −1.9e-08 | 137.0 | 30.17025 | 1.12233 | −0.014 |
-| 3 | 33.73641 | 1.05885 | 112 | 1.3e-04 | 1.5e-08 | 136.1 | 33.74275 | 1.05885 | −0.019 |
-| 4 | 37.85673 | 0.99681 | 117 | 1.5e-04 | 2.6e-09 | 137.0 | 37.86557 | 0.99681 | −0.023 |
-| 5 | 35.69282 | 0.99778 | 119 | 1.4e-04 | −1.7e-08 | 137.7 | 35.70004 | 0.99778 | −0.020 |
-| 6 | 33.80530 | 0.99727 | 119 | 1.3e-04 | 8.2e-09 | 137.3 | 33.81157 | 0.99727 | −0.019 |
-| 7 | 32.05341 | 0.99771 | 121 | 1.2e-04 | −9.4e-09 | 137.8 | 32.05955 | 0.99771 | −0.019 |
-| 8 | 30.48399 | 0.99810 | 139 | 9.6e-05 | 9.1e-10 | 145.8 | 30.49000 | 0.99810 | −0.020 |
-| 9 | 29.08392 | 0.99844 | 129 | 9.5e-05 | 2.0e-08 | 142.0 | 29.08994 | 0.99844 | −0.021 |
-| 10 | 27.85699 | 0.99871 | 145 | 3.2e-04 | 1.5e-08 | 147.0 | 27.86145 | 0.99872 | −0.016 |
-| 11 | 26.84866 | 0.99874 | 142 | 8.3e-05 | 1.4e-08 | 145.7 | 26.85332 | 0.99874 | −0.017 |
-| 12 | 26.00158 | 0.99867 | 129 | 1.4e-04 | 6.8e-09 | 139.8 | 26.00632 | 0.99867 | −0.018 |
-| 13 | 25.28700 | 0.99878 | 133 | 7.0e-05 | 2.0e-09 | 142.6 | 25.29168 | 0.99879 | −0.018 |
-| 14 | 24.78587 | 0.99856 | 128 | 6.5e-05 | −1.5e-10 | 140.6 | 24.79256 | 0.99856 | −0.027 |
-| 15 | 24.46873 | 0.99892 | 137 | 6.4e-05 | 1.2e-08 | 142.9 | 24.47568 | 0.99892 | −0.028 |
-| 16* | 24.24430 | 0.99932 | 170 | 5.3e-05 | −1.5e-08 | 170.7 | 24.25329 | 0.99928 | −0.037 |
-| 17 | 24.14971 | 0.99956 | 157 | 6.2e-05 | 1.7e-08 | 151.7 | 24.15703 | 0.99956 | −0.030 |
-| 18 | 24.10947 | 0.99993 | 121 | 6.3e-05 | −7.8e-09 | 136.7 | 24.11624 | 0.99992 | −0.028 |
-| 19* | 24.08748 | 1.00036 | 104 | 6.2e-05 | 1.1e-08 | 169.0 | 24.11211 | 0.99999 | −0.102 |
-| 20 | 24.10488 | 1.00000 | 99 | 6.2e-05 | 1.5e-08 | 127.8 | 24.11155 | 1.00000 | −0.028 |
-| 21 | 24.10448 | 1.00000 | 100 | 6.2e-05 | −2.2e-08 | 128.5 | 24.11117 | 1.00000 | −0.028 |
-| 22 | 24.10411 | 1.00000 | 100 | 6.3e-05 | −2.7e-08 | 128.1 | 24.11081 | 1.00000 | −0.028 |
-| 23 | 24.10378 | 1.00000 | 101 | 6.2e-05 | −1.3e-08 | 128.5 | — | — | — |
+| 0 | 24.59081 | 1.25000 | 122 | 7.3e-05 | -1.1e-08 | 93.0 | 24.59356 | 1.25000 | −0.011 |
+| 1 | 27.14662 | 1.18615 | 102 | 9.9e-05 | 5.2e-09 | 87.2 | 27.14994 | 1.18615 | −0.012 |
+| 2 | 30.16595 | 1.12233 | 108 | 1.1e-04 | -2.8e-09 | 68.5 | 30.17025 | 1.12233 | −0.014 |
+| 3 | 33.73640 | 1.05885 | 112 | 1.3e-04 | 5.7e-09 | 68.9 | 33.74275 | 1.05885 | −0.019 |
+| 4 | 37.85673 | 0.99681 | 117 | 1.5e-04 | 1.5e-08 | 62.4 | 37.86557 | 0.99681 | −0.023 |
+| 5 | 35.69282 | 0.99778 | 119 | 1.4e-04 | 9.7e-10 | 68.4 | 35.70004 | 0.99778 | −0.020 |
+| 6 | 33.80530 | 0.99727 | 119 | 1.3e-04 | 8.5e-09 | 66.0 | 33.81157 | 0.99727 | −0.019 |
+| 7 | 32.05341 | 0.99771 | 121 | 1.2e-04 | -2.4e-09 | 67.1 | 32.05955 | 0.99771 | −0.019 |
+| 8 | 30.48399 | 0.99810 | 139 | 9.8e-05 | -1.2e-08 | 68.6 | 30.49000 | 0.99810 | −0.020 |
+| 9 | 29.08392 | 0.99844 | 129 | 9.5e-05 | -3.3e-09 | 68.4 | 29.08994 | 0.99844 | −0.021 |
+| 10 | 27.85699 | 0.99871 | 145 | 8.0e-05 | -1.1e-08 | 71.1 | 27.86145 | 0.99872 | −0.016 |
+| 11 | 26.84866 | 0.99874 | 142 | 7.4e-05 | -1.4e-08 | 95.2 | 26.85332 | 0.99874 | −0.017 |
+| 12 | 26.00158 | 0.99867 | 129 | 7.5e-05 | -2.2e-09 | 66.7 | 26.00632 | 0.99867 | −0.018 |
+| 13 | 25.28700 | 0.99878 | 133 | 6.8e-05 | -1.4e-09 | 71.9 | 25.29168 | 0.99879 | −0.018 |
+| 14 | 24.78587 | 0.99856 | 128 | 6.4e-05 | -8.5e-09 | 71.3 | 24.79256 | 0.99856 | −0.027 |
+| 15 | 24.46873 | 0.99892 | 137 | 6.4e-05 | -2.7e-09 | 71.7 | 24.47568 | 0.99892 | −0.028 |
+| 16* | 24.24430 | 0.99932 | 130 | 6.3e-05 | 8.5e-09 | 90.5 | 24.25329 | 0.99928 | −0.037 |
+| 17 | 24.14971 | 0.99956 | 157 | 6.2e-05 | 9.7e-09 | 79.2 | 24.15703 | 0.99956 | −0.030 |
+| 18 | 24.10947 | 0.99993 | 121 | 6.3e-05 | 1.5e-09 | 70.5 | 24.11624 | 0.99992 | −0.028 |
+| 19* | 24.08748 | 1.00036 | 104 | 6.3e-05 | 8.2e-09 | 119.8 | 24.11211 | 0.99999 | −0.102 |
+| 20 | 24.10488 | 1.00000 | 99 | 6.3e-05 | 1.1e-08 | 62.8 | 24.11155 | 1.00000 | −0.028 |
+| 21 | 24.10448 | 1.00000 | 100 | 6.2e-05 | -6.9e-09 | 64.4 | 24.11117 | 1.00000 | −0.028 |
+| 22 | 24.10411 | 1.00000 | 100 | 6.2e-05 | -1.2e-08 | 64.0 | 24.11081 | 1.00000 | −0.028 |
+| 23 | 24.10377 | 1.00000 | 101 | 6.3e-05 | 5.3e-09 | 64.1 | — | — | — |
 
-\* Design perturbed by the geometry-generation fallback (Table ST24a). NICE vs twin: \((\widehat C-C_{\rm twin})/C_{\rm twin}\) at the same iteration index. The designs coincide (to 4e-14) at iterations 0–4, where every free parameter moves by the move limit or to the lower bound while the volume bound is violated; there the column is the surrogate compliance error of the same design. From iteration 5 the corner parameters differ, by 3.3e-04 at iteration 5 and by at most 8.8e-04 over the remaining iterations. The solve started from zero at iterations 0 and 16. Recomputed residual: \(\lVert f_g-\widehat{\mathbb K}\bar U\rVert/\lVert f_g\rVert\); time: complete design iteration including geometry generation, except at iteration 0, whose geometry was generated beforehand.
+\* Design perturbed by the geometry-generation fallback (Table ST24a). NICE vs twin: \((\widehat C-C_{\rm twin})/C_{\rm twin}\) at the same iteration index. The designs coincide (to 4e-14) at iterations 0–4, where every free parameter moves by the move limit or to the lower bound while the volume bound is violated; there the column is the surrogate compliance error of the same design. From iteration 5 the corner parameters differ, by 3.3e-04 at iteration 5 and by at most 8.8e-04 over the remaining iterations. The solve started from zero at iteration 0. Recomputed residual: \(\lVert f_g-\widehat{\mathbb K}\bar U\rVert/\lVert f_g\rVert\); time: complete design iteration including geometry generation, except at iteration 0, whose geometry was generated beforehand.
 
 #### ST22b. Exact checks of the NICE run
 
@@ -1025,10 +1025,10 @@ Over the 18 free vertex parameters. Surrogate compliance error \((\widehat C-C)/
 | Exact compliance of the final design | 24.110504 | 24.110806 |
 | Final \(V/V^*\) | 0.999998 | 0.999998 |
 | Final \(\tau\) range; largest corner span; largest gradient norm | 0.1800–0.6239; 0.4439; 0.4500 | 0.1800–0.6236; 0.4436; 0.4500 |
-| PCG iterations; recomputed residual | 99–170; 5.3e-05–3.2e-04 | 178–262; 8.5e-11–9.9e-11 |
-| Time per iteration, mean (range) (s); sum over all iterations (s) | 141 (128–171); 3,380 | 469 (455–534); 10,793 |
-| Mean phases (s) | geometry 14.0, cell preparation 20.7, lattice and \(\mathbb K_{PP}\) assembly 0.1, preconditioner 6.8, PCG 52.7, sensitivities and volume gradient 46.4, MMA 0.005 | geometry 11.4, cell setup with moment derivatives 121.7, dense exact condensation 123.5, PCG 48.6, exact sensitivities 163.2, MMA 0.005 |
-| Peak memory, GPU / CPU (GiB) | 15.7 / 3.5 | 17.3 / 80.0 |
+| PCG iterations; recomputed residual | 99–157; 6.2e-05–1.5e-04 | 178–262; 8.5e-11–9.9e-11 |
+| Time per iteration, mean (range) (s); sum over all iterations (s) | 74 (62–120); 1,782 | 469 (455–534); 10,793 |
+| Mean phases (s) | geometry 20.8, cell preparation 10.1, lattice and \(\mathbb K_{PP}\) assembly 0.1, preconditioner 5.9, PCG 31.6, sensitivities and volume gradient 5.5, MMA 0.006 | geometry 11.4, cell setup with moment derivatives 121.7, dense exact condensation 123.5, PCG 48.6, exact sensitivities 163.2, MMA 0.005 |
+| Peak memory, GPU / CPU (GiB) | 13.0 / 3.5 | 17.3 / 80.0 |
 
 Final designs: exact compliance of the NICE design relative to that of the twin's design −1.25e-05; corner parameters differ by at most 0.0051 (root mean square 0.0011). Mean phases over all iterations; the geometry phase is zero at iteration 0 of the NICE run and at iterations 0 and 17 of the twin, where the geometry had been generated beforehand.
 
@@ -1036,7 +1036,7 @@ Final designs: exact compliance of the NICE design relative to that of the twin'
 
 The plate is a single layer of \(8\times4\) cells, cut by a plane that runs from the bottom-right corner to the top edge at two cells from the left end. Of the 32 cells, 24 remain: 16 uncut and 8 cut, two each with retained volume fractions 0.917, 0.667, 0.333 and 0.083. The layout is stored with its two in-plane axes interchanged, a cube-symmetry image of the plate, so that the cut normal lies at \(\vartheta=33.69^\circ\), within the range \(0<\vartheta<\pi/4\) of the validation geometries (Section 5.1), rather than at its image, 56.31°; the network is not equivariant under the cube symmetries (Section 6.4). The plate is clamped on its cut: every DOF of the cut band of each of the eight cut cells is fixed (Section 2.2), so that the support lies within one element (\(h=1/32\)) of the cut surface; no other DOF is fixed. The end face of the plate opposite its tip, four cells wide and uncut, carries a consistent traction of unit resultant in the plane of the plate, normal to its long side. Of the 74 vertices, the 10 in the plane of the loaded face are fixed and 64 are design variables; the start is uniform, \(\tau=0.40\), and \(V^*=0.8\,V(\boldsymbol\tau^0)=3.65526\).
 
-The NICE run stopped after 24 iterations by the objective-change rule (Table ST23a). The compliance rises from 75.591 to 110.493 at iteration 4, where the volume first meets the bound, and then falls to 78.264, 3.5% above the start with 20% less material. The final design spans the full parameter range [0.180, 0.690], with the span and gradient-norm constraints active. An iteration took 180 s on average (150–250 s), 4,313 s for all 24 iterations, most of it in the conjugate-gradient solve (80 s, 73–122 iterations) and the geometry generation (35 s), with at most 22.5 GiB of GPU and 4.3 GiB of CPU memory; the longest iteration is iteration 5, where the geometry needed four generation attempts (Table ST24a). The recomputed residual stayed between \(3.6\times10^{-4}\) and \(5.8\times10^{-4}\), and the signed residual work was at most \(3.6\times10^{-8}\) of the compliance.
+The NICE run stopped after 24 iterations by the objective-change rule (Table ST23a). The compliance rises from 75.591 to 110.493 at iteration 4, where the volume first meets the bound, and then falls to 78.264, 3.5% above the start with 20% less material. The final design spans the full parameter range [0.180, 0.690], with the span and gradient-norm constraints active. An iteration took 200 s on average (155–270 s), 4,802 s for all 24 iterations, most of it in the conjugate-gradient solve (86 s, 73–122 iterations) and the geometry generation (44 s), with at most 22.5 GiB of GPU and 4.3 GiB of CPU memory; the longest iteration is iteration 5, where the geometry needed four generation attempts (Table ST24a). The recomputed residual stayed between \(3.5\times10^{-4}\) and \(5.8\times10^{-4}\), and the signed residual work was at most \(5.2\times10^{-8}\) of the compliance.
 
 For comparison with a homogenisation-based graded design, the effective elasticity tensor \(C^H(\tau)\) of the uncut cell with uniform corner parameter was computed by periodic homogenisation on the same discrete model (\(n=32\), Q2 elements, the stabilised stiffness \(K\) with its ghost penalty). Nodes on opposite faces of the cell are identified, the fluctuation is periodic with one node fixed, and six unit macroscopic strains give \(C^H_{ij}=u_i^TKu_j\) for the unit cell; the material volume fraction \(V^H(\tau)\) is the sum of the zeroth element moments. At twelve thicknesses from 0.18 to 0.70 (Table ST23b), the tensor is cubic to \(3.1\times10^{-13}\) and the periodic fluctuations are in equilibrium to \(2.2\times10^{-13}\); cubic splines in \(\tau\) interpolate \(C^H_{11}\), \(C^H_{12}\), \(C^H_{44}\) and \(V^H\) (Figure S06). The macroscale model meshes the plate with Q1 hexahedra, six per cell and axis (4,464 elements, 5,719 nodes). At every quadrature point it interpolates the local parameter \(\tau(x)\) trilinearly from the corners of its cell and evaluates \(C^H(\tau(x))\) and \(V^H(\tau(x))\); it integrates the elements intersected by the cut with \(4^3\) sub-points, the void part carrying \(10^{-6}\,C^H(0.4)\). It applies the clamp on the plane of the cut, \(u=0\) on the section of the plane with the plate, by a penalty \(\alpha\int u\cdot v\,dA\) with \(\alpha=10^6\,C^H_{11}(0.4)/h_M\), \(h_M=1/6\), integrated with a seven-point rule on the triangles of the section polygon of every intersected element; the integrated section area equals the analytic 7.2111 (the cut line times the plate thickness) to \(1.8\times10^{-14}\). The load is a uniform traction of unit resultant on the loaded face. It was optimised with adjoint sensitivities and the same MMA settings, constraints, fixed vertices and volume fraction. At the uniform design its volume agrees with the fine-scale material volume to \(1.2\times10^{-7}\).
 
@@ -1056,12 +1056,12 @@ At the uniform design the macroscale model underestimates the compliance by 26.9
 | Final \(\tau\) range | 0.180–0.690 | 0.180–0.690 | 0.180–0.690 |
 | Largest corner span / gradient norm at the end | 0.450 / 0.450 | 0.450 / 0.450 | 0.450 / 0.450 |
 | Last \(\max\lvert\Delta\tau\rvert\) | 0.0004 | 0.0015 (macroscale) | — |
-| Time per iteration, mean (range) (s) | 180 (150–250) | 4.1 (macroscale, CPU) | 196 |
-| Sum of iteration times (s) | 4,313 | 95 (macroscale, CPU) | — |
-| Mean phases (s): geometry / cell preparation / preconditioner / PCG / sensitivities | 35 / 28 / 18 / 80 / 18 | — | 34 / 28 / 18 / 97 / 19 |
+| Time per iteration, mean (range) (s) | 200 (155–270) | 4.1 (macroscale, CPU) | 196 |
+| Sum of iteration times (s) | 4,802 | 95 (macroscale, CPU) | — |
+| Mean phases (s): geometry / cell preparation / preconditioner / PCG / sensitivities | 44 / 32 / 18 / 86 / 19 | — | 34 / 29 / 18 / 97 / 19 |
 | PCG iterations | 73–122 | — | 127 |
-| Recomputed residual | 3.6e-04–5.8e-04 | — | 3.9e-04 |
-| \(\max\lvert\bar U^T\rho\rvert/\widehat C\) | 3.6e-08 | — | 4.0e-08 |
+| Recomputed residual | 3.5e-04–5.8e-04 | — | 3.9e-04 |
+| \(\max\lvert\bar U^T\rho\rvert/\widehat C\) | 5.2e-08 | — | 5.4e-08 |
 | Peak memory, GPU / CPU (GiB) | 22.5 / 4.3 | — | 20.4 / 3.9 |
 | Geometry-generation fallback applied | iterations 5 and 14 | — | none |
 
