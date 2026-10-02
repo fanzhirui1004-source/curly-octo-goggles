@@ -12,7 +12,8 @@ error energy within 2 grid steps of them, 90% on 10-21 nodes), of those plus the
 
 i.e. Eq. (14) of P1 with V = the coordinate injection of W. Linear in x, preserves the retained values, cannot increase the
 A-energy error (exact subspace minimisation), so S <= S_hat(after) <= S_hat(before) for every input. A_WW is extracted from
-the upper-triangular COO of K (C.ru, C.cu, C.vals) and factored densely in fp64 (patches of up to a few thousand DOFs)."""
+the upper-triangular COO of K (C.ru, C.cu, C.vals); patches up to `dense_max` DOFs are factored densely (fp64 Cholesky),
+larger ones with the sparse SPD solver of teacher.py (cuDSS, Jacobi-scaled upper CSR, fp64). free(C) releases it."""
 import numpy as np
 import torch
 
@@ -21,7 +22,7 @@ import trainlib as TL
 dev, dt = TL.dev, TL.dt
 
 
-def setup(C, nd, dil=2, seed='cutport', max_dofs=24000):
+def setup(C, nd, dil=2, seed='cutport', max_dofs=200000, dense_max=8000):
     """nd: NETDATA dict ('weak', 'is_port' over C.nodes). Stores C._wp = (W (global interior dof ids), L) or None."""
     n = C.n; M = 2 * n + 1
     grid = np.stack(np.unravel_index(C.nodes, (M,) * 3), 1)
@@ -51,28 +52,63 @@ def setup(C, nd, dil=2, seed='cutport', max_dofs=24000):
     ru, cu, v = C.ru.long(), C.cu.long(), C.vals.to(dt)
     a, b = locT[ru], locT[cu]
     keep = (a >= 0) & (b >= 0)
-    A = torch.zeros((len(W), len(W)), dtype=dt, device=dev)
-    A.index_put_((a[keep], b[keep]), v[keep], accumulate=True)
-    off = keep & (ru != cu)
-    A.index_put_((b[off], a[off]), v[off], accumulate=True)
-    A = 0.5 * (A + A.T)
-    L, err = torch.linalg.cholesky_ex(A)
-    if int(err) != 0:
-        C._wp = None; info['skipped'] = 'cholesky'
-        return info
-    info['A_diag_ratio'] = float(A.diagonal().min() / A.diagonal().max()); del A
-    C._wp = (torch.as_tensor(W, device=dev), L)
+    if len(W) <= dense_max:
+        A = torch.zeros((len(W), len(W)), dtype=dt, device=dev)
+        A.index_put_((a[keep], b[keep]), v[keep], accumulate=True)
+        off = keep & (ru != cu)
+        A.index_put_((b[off], a[off]), v[off], accumulate=True)
+        A = 0.5 * (A + A.T)
+        L, err = torch.linalg.cholesky_ex(A)
+        if int(err) != 0:
+            C._wp = None; info['skipped'] = 'cholesky'
+            return info
+        info['A_diag_ratio'] = float(A.diagonal().min() / A.diagonal().max()); del A
+        C._wp = (torch.as_tensor(W, device=dev), ('dense', L))
+    else:                                                 # sparse: rows of the upper COO stay sorted (loc is monotone)
+        import teacher as TE
+        rA, cA, vA = a[keep], b[keep], v[keep]
+        d = vA[rA == cA]
+        s_ = torch.zeros(len(W), dtype=dt, device=dev); s_[rA[rA == cA]] = 1 / torch.sqrt(d)
+        crow = torch.cat([torch.zeros(1, dtype=torch.long, device=dev), torch.cumsum(torch.bincount(rA, minlength=len(W)), 0)])
+        sol = TE.SPDSolver(crow.int(), cA.int(), (vA * s_[rA] * s_[cA]).contiguous(), len(W))
+        info['A_diag_ratio'] = float(d.min() / d.max()); info['sparse'] = True
+        C._wp = (torch.as_tensor(W, device=dev), ('sparse', sol, s_))
     return info
+
+
+class _SparseSolve(torch.autograd.Function):
+    """y = A^-1 r with A SPD (symmetric), so the adjoint is the same solve."""
+
+    @staticmethod
+    def forward(ctx, r, sol, s_):
+        ctx.sol, ctx.s_ = sol, s_
+        return s_[:, None] * sol.solve((s_[:, None] * r).contiguous())
+
+    @staticmethod
+    def backward(ctx, g):
+        s_ = ctx.s_
+        return s_[:, None] * ctx.sol.solve((s_[:, None] * g).contiguous()), None, None
+
+
+def free(C):
+    wp = getattr(C, '_wp', None)
+    if wp is not None and wp[1][0] == 'sparse':
+        try:
+            wp[1][1].free()
+        except Exception:
+            pass
+    C._wp = None
 
 
 def apply(C, x):
     """x (nb, B) -> x with the patch correction (differentiable, fp64)."""
     if getattr(C, '_wp', None) is None:
         return x
-    W, L = C._wp
+    W, f = C._wp
     x = x.to(dt)
     r = -TL._KMat.apply(x, TL._Kc(C))[W]
-    return x.index_add(0, W, torch.cholesky_solve(r, L))
+    y = torch.cholesky_solve(r, f[1]) if f[0] == 'dense' else _SparseSolve.apply(r, f[1], f[2])
+    return x.index_add(0, W, y)
 
 
 def wrap_geo(g):

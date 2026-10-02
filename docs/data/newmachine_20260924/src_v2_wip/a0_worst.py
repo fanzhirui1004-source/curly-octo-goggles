@@ -244,6 +244,10 @@ def main(argv):
                                 mu_half=rec.get('full', {}).get('mu_half_basis'),
                                 box=rec.get('box', {}).get('mu', [None])[:1],
                                 fc=rec.get('means', {}).get('force_c', {}).get('mean'))))
+            try:
+                WP.free(C)
+            except Exception:
+                pass
             del C, g
             gc.collect(); torch.cuda.empty_cache()
     print('DONE', flush=True)

@@ -131,6 +131,10 @@ def main(argv):
                 C._free()
             except Exception:
                 pass
+            try:
+                WP.free(C)
+            except Exception:
+                pass
             del C, g
             gc.collect(); torch.cuda.empty_cache()
     print('DONE', flush=True)
