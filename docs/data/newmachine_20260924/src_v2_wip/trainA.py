@@ -91,6 +91,8 @@ def main(argv):
     ap.add_argument('--classes', default='force,macro,grf,force_c,face_c'); ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--clip', type=float, default=1.0)
     ap.add_argument('--freeze_base', type=int, default=0)                    # train only u_in: similarity maps stay A3 exactly
+    ap.add_argument('--l2sp', type=float, default=0.0)                       # lam * sum (theta - theta_A3)^2 over A3 parameters
+    ap.add_argument('--ema', type=float, default=0.0)                        # EMA of the weights for evaluation / saving
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     logf = open(out / 'train.log', 'a')
@@ -128,6 +130,14 @@ def main(argv):
         opt = torch.optim.AdamW([dict(params=base, lr=a.lr), dict(params=u_params, lr=a.lr_u)], weight_decay=0.0)
         sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=[a.lr, a.lr_u], total_steps=a.steps, pct_start=0.05)
     classes = a.classes.split(',')
+    theta0 = [p.detach().clone() for p in base] if a.l2sp > 0 else None
+    ema = [p.detach().clone() for p in model.parameters()] if a.ema > 0 else None
+
+    def swap_ema():                                                           # exchange live and EMA weights in place
+        if ema is not None:
+            with torch.no_grad():
+                for p, e in zip(model.parameters(), ema):
+                    t = p.detach().clone(); p.copy_(e); e.copy_(t)
 
     def pick():
         src = ids if (ids and rng.random() < a.id_frac) else maps
@@ -162,9 +172,15 @@ def main(argv):
         Q = torch.cat(cols, 1)
         e = TL.energy(s.g.field(model, Q), s.C.K)
         loss = torch.log(e.clamp_min(1e-12)).mean()
+        if theta0 is not None:
+            loss = loss + a.l2sp * sum(((p - p0) ** 2).sum() for p, p0 in zip(base, theta0))
         opt.zero_grad(set_to_none=True); loss.backward()
         gn = float(torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], a.clip))
         opt.step(); sched.step()
+        if ema is not None:
+            with torch.no_grad():
+                for p, e_ in zip(model.parameters(), ema):
+                    e_.mul_(a.ema).add_(p.detach(), alpha=1 - a.ema)
         hist.append(float(loss.detach()))
         if step % 50 == 0:
             log(dict(event='STEP', step=step, loss=float(np.mean(hist[-50:])), gn=gn, map=s.map, case=s.case,
@@ -174,11 +190,13 @@ def main(argv):
             for sl in pool:
                 sl.release()
             pool = []; gc.collect(); torch.cuda.empty_cache()
+            swap_ema()
             score, res = evaluate(model, wrap, a.body, val, log=log)
-            log(dict(event='EVAL', step=step, score=score, res=res))
+            log(dict(event='EVAL', step=step, score=score, res=res, ema=a.ema))
             torch.save(dict(model=model.state_dict(), cfg=cfg, step=step, score=score, u=True), out / 'last.pt')
             if score < best:
                 best = score; torch.save(dict(model=model.state_dict(), cfg=cfg, step=step, score=score, u=True), out / 'best.pt')
+            swap_ema()
     log(dict(event='DONE', best=best, seconds=time.perf_counter() - t0))
 
 
