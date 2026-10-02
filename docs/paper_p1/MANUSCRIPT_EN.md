@@ -28,7 +28,7 @@ Section 2 states the discrete cut-cell model, exact condensation and the require
 
 ## 2. Discrete substructures and static condensation
 
-The error relations of Section 3 and the construction of Section 4 apply to any discrete model with a symmetric positive semidefinite stiffness whose interior block is positive definite once the retained degrees of freedom are prescribed. The cut thin-walled TPMS cell of this section is the instance on which they are realised and tested: its retained space is large, its active elements and retained set change with the cut, and in its cut configurations interior displacement errors of about one percent can become energy errors of several percent (Section 5.4).
+The error relations of Section 3 and the construction of Section 4 apply to any discrete model with a symmetric positive semidefinite stiffness whose interior block is positive definite once the retained degrees of freedom are prescribed. The cut thin-walled TPMS cell of this section is the instance on which they are realised and tested: its retained space is large, and its active elements and retained set change with the cut.
 
 ### 2.1. Geometry and discrete elastic problem
 
@@ -45,7 +45,7 @@ We consider three-dimensional thin-walled TPMS cells in the reference box \(\mat
 
 The eight parameters \(\tau_c\), interpolated by the trilinear functions \(N_c^{Q_1}\), control the implicit band width and hence the material distribution; we call them corner thickness parameters (band parameters, not pointwise wall thicknesses) and derivatives with respect to them thickness sensitivities. When the eight corner values are collected in vectors, such as \(\boldsymbol\tau\) or the sensitivity vector \(\boldsymbol s\), the corners are numbered \(c=1,\ldots,8\). The cut plane \(\boldsymbol n\cdot x=b_{\rm cut}\) has unit normal \(\boldsymbol n\), pointing away from the retained material, and offset \(b_{\rm cut}\); the half-space constraint is omitted for an uncut cell, and \(\eta\) collects geometry, material and discretisation parameters.
 
-The elastic problem uses continuous tensor-product \(Q_2\) displacement functions on a Cartesian background mesh. Integration over the material domain supplies the bulk stiffness, and ghost-penalty stabilisation [Burman (2010)](https://doi.org/10.1016/j.crma.2010.10.006) couples neighbouring active elements to control small-cut effects [Burman et al. (2015)](https://doi.org/10.1002/nme.4823). The symmetric matrix \(K\) defines the stabilised discrete energy \(\tfrac12u^TKu\), and the reference in this work is the equilibrium of this discrete system: all errors are measured against it, not against the continuum problem. Figure 1 shows representative geometries and Table 1 the principal settings; Appendix A gives the integration and assembly details.
+The elastic problem uses continuous tensor-product \(Q_2\) displacement functions on a Cartesian background mesh. A background element is active if its intersection with \(\Omega(\eta)\) has positive measure, which is certified by interval enclosures of the level-set and band functions over the element (Appendix A.1); the displacement DOFs of the nodes of active elements are the active DOFs. Integration over the material domain supplies the bulk stiffness, and ghost-penalty stabilisation [Burman (2010)](https://doi.org/10.1016/j.crma.2010.10.006) couples neighbouring active elements to control small-cut effects [Burman et al. (2015)](https://doi.org/10.1002/nme.4823). The symmetric matrix \(K\) defines the stabilised discrete energy \(\tfrac12u^TKu\), and the reference in this work is the equilibrium of this discrete system: all errors are measured against it, not against the continuum problem. Figure 1 shows representative geometries; Table 1 (Section 5.1) lists the settings of the examples, and Appendix A gives the integration and assembly details.
 
 ![Figure 1](figures/F08_geometry.png)
 
@@ -85,26 +85,7 @@ Here \(\widehat S_m\) is the approximate condensed stiffness of Section 4 and \(
 
 Compliance is \(C=f_g^TU\), with \(\widehat C=f_g^T\widehat U\) and relative error \(e_C=|\widehat C/C-1|\). The local accuracy of the condensed stiffness is measured by the relative directional energy error of Section 3.1. Thickness sensitivities use the eight-component vector of Section 3.3, with relative Euclidean error \(e_s=\|\widetilde{\boldsymbol s}-\boldsymbol s\|_2/\|\boldsymbol s\|_2\).
 
-An approximate condensed stiffness \(\widehat S_m\) that is to replace \(S_m\) in Eq. (3) for analysis and design must satisfy four requirements. It must be symmetric and positive semidefinite with the retained rigid-body modes as its only null space, so that the supported assembled matrix is positive definite. It must be applicable without the interior factorisation of the exact operator, for every new geometry of a design iteration. Its error must be traceable to the assembled compliance and to the thickness sensitivity, since the two weight it differently. And it should admit improvement at deployment, for a given geometry, without retraining. Section 3 derives what any admissible extension gives towards the first and third requirements; Section 4 constructs a condensed stiffness that meets all four.
-
-**Table 1. Discretisation and correction settings**
-
-| Quantity | Setting |
-|---|---|
-| Reference geometry | Unit box; Schwarz-P-type implicit band with trilinear corner parameters and an optional planar cut |
-| Displacement approximation | Continuous tensor-product \(Q_2\) solid elements on a Cartesian background mesh |
-| Background resolution, validation geometries | \(n=32\) elements per axis; \(65\) Q2 nodes per axis |
-| Isotropic material, validation geometries | Normalised Young's modulus \(E_Y=1\), Poisson's ratio \(\nu=0.3\) |
-| Ghost-penalty coefficient, validation geometries | \(\gamma=10^{-4}\) |
-| Retained space | Active box-face DOFs and all DOFs of active elements carrying a positive-area cut-surface patch |
-| Standard volume integration | \(4^3\) initial subcells; one local refinement of partial subcells; clipped Kuhn tetrahedra with quadrature-rule parameter 4 |
-| Smoothing interval | \([b/30,b]\), with \(b\) equal to 1.05 times a 40-step power-iteration estimate of \(\lambda_{\max}(D^{-1}A)\) (Section 4.2) |
-| Principal interior coarse space | Trilinear vector functions on a \(17^3\)-vertex grid, restricted to the interior DOFs |
-| Thickness-difference step | \(h_c=10^{-5}\tau_c\), with fixed active DOFs and ghost contribution |
-| Correction of NICE | 8 Chebyshev steps, \(Q_1(17)\) coarse-grid Galerkin correction, 8 Chebyshev steps; same sequence in training and evaluation |
-| Arithmetic | Network in single precision; stiffness actions and energies in double precision; correction in double precision in the accuracy studies and in single precision in the timed route of Table 5 (Appendix F.3) |
-
-The mesh, material and stabilisation entries apply to all 80 validation geometries; lengths are relative to the unit box and the modulus is normalised. Coarse dimensions and smoothing counts of other correction sequences are reported with their comparisons.
+An approximate condensed stiffness \(\widehat S_m\) that is to replace \(S_m\) in Eq. (3) for analysis and design must satisfy four requirements. It must be symmetric and positive semidefinite with the retained rigid-body modes as its only null space, so that the supported assembled matrix is positive definite. It must be applicable without the interior factorisation of the exact operator, for every new geometry of a design iteration, including one whose active elements and retained set change with the cut. Its error must be traceable to the assembled compliance and to the thickness sensitivity, since the two weight it differently. And it should admit improvement at deployment, for a given geometry, without retraining. Section 3 derives what any admissible extension gives towards the first and third requirements; Section 4 constructs a condensed stiffness that meets all four.
 
 ## 3. Error of an approximate extension in analysis and design
 
@@ -328,7 +309,26 @@ The examples follow the error of the learned extension from single cells, throug
 
 ### 5.1. Geometries, variants and loading conditions
 
-The 80 validation geometries comprise 20 uncut, 20 lightly, 20 moderately and 20 heavily cut cells, with uniform, affine or mixed trilinear thickness fields and corner parameters from 0.1762 to 0.6983 (Table ST02). Each carries at most one planar cut with normal \((\cos\vartheta,\sin\vartheta,0)\), \(0<\vartheta<\pi/4\); heavy cuts retain less than one third of the volume of the cell box, moderate cuts between one and two thirds, and light cuts more than two thirds. U, L, M and H identify the uncut, lightly, moderately and heavily cut cells used for detailed comparisons (U1, U2, L1, M1, M2 and H1–H3; Supplementary R1).
+The 80 validation geometries comprise 20 uncut, 20 lightly, 20 moderately and 20 heavily cut cells, with uniform, affine or mixed trilinear thickness fields and corner parameters from 0.1762 to 0.6983 (Table ST02). Each carries at most one planar cut with normal \((\cos\vartheta,\sin\vartheta,0)\), \(0<\vartheta<\pi/4\); heavy cuts retain less than one third of the volume of the cell box, moderate cuts between one and two thirds, and light cuts more than two thirds. U, L, M and H identify the uncut, lightly, moderately and heavily cut cells used for detailed comparisons (U1, U2, L1, M1, M2 and H1–H3; Supplementary R1). Table 1 lists the discretisation and correction settings.
+
+**Table 1. Discretisation and correction settings**
+
+| Quantity | Setting |
+|---|---|
+| Reference geometry | Unit box; Schwarz-P-type implicit band with trilinear corner parameters and an optional planar cut |
+| Displacement approximation | Continuous tensor-product \(Q_2\) solid elements on a Cartesian background mesh |
+| Background resolution, validation geometries | \(n=32\) elements per axis; \(65\) Q2 nodes per axis |
+| Isotropic material, validation geometries | Normalised Young's modulus \(E_Y=1\), Poisson's ratio \(\nu=0.3\) |
+| Ghost-penalty coefficient, validation geometries | \(\gamma=10^{-4}\) |
+| Retained space | Active box-face DOFs and all DOFs of active elements carrying a positive-area cut-surface patch |
+| Standard volume integration | \(4^3\) initial subcells; one local refinement of partial subcells; clipped Kuhn tetrahedra with quadrature-rule parameter 4 |
+| Smoothing interval | \([b/30,b]\), with \(b\) equal to 1.05 times a 40-step power-iteration estimate of \(\lambda_{\max}(D^{-1}A)\) (Section 4.2) |
+| Principal interior coarse space | Trilinear vector functions on a \(17^3\)-vertex grid, restricted to the interior DOFs |
+| Thickness-difference step | \(h_c=10^{-5}\tau_c\), with fixed active DOFs and ghost contribution |
+| Correction of NICE | 8 Chebyshev steps, \(Q_1(17)\) coarse-grid Galerkin correction, 8 Chebyshev steps; same sequence in training and evaluation |
+| Arithmetic | Network in single precision; stiffness actions and energies in double precision; correction in double precision in the accuracy studies and in single precision in the timed route of Table 5 (Appendix F.3) |
+
+The mesh, material and stabilisation entries apply to all 80 validation geometries; lengths are relative to the unit box and the modulus is normalised. Coarse dimensions and smoothing counts of other correction sequences are reported with their comparisons.
 
 Four variants are compared (Table 2). The base network was trained without correction. Three networks continue it for 15,000 training steps: with the complete correction \(\mathcal W\) of Sections 4.2 and 4.3 inside the training loop (NICE, Section 4.5), with eight smoothing steps and no coarse-grid correction in every training step (Smoothing-trained), or without correction (Uncorrected).
 

@@ -2,7 +2,7 @@
 
 ### A.1. Active degrees of freedom and element integration
 
-The active background elements use tensor-product \(Q_2\) displacements, with 27 nodes and 81 displacement degrees of freedom per element. Active DOFs are stored in a fixed node-major \(x,y,z\) order. The retained box set is the union of the nine face nodes of every certified positive-area material patch. The cut set is the union of all 27 nodes of each active element carrying a positive-area cut-surface patch. Their union is deduplicated in active-node order. The off-plane cut-band DOFs are retained because their basis functions determine displacement and virtual work on the cut plane.
+A background element is active if its intersection with \(\Omega(\eta)\) has positive measure. This is decided with closed-form interval enclosures of \(\phi\) and \(\tau\) over the element clipped by the cut plane: the element is excluded if an enclosure shows that a constraint is violated everywhere, accepted if both constraints hold strictly at its centre or a vertex, and subdivided otherwise. The active background elements use tensor-product \(Q_2\) displacements, with 27 nodes and 81 displacement degrees of freedom per element. Active DOFs are stored in a fixed node-major \(x,y,z\) order. The retained box set is the union of the nine face nodes of every certified positive-area material patch. The cut set is the union of all 27 nodes of each active element carrying a positive-area cut-surface patch. Their union is deduplicated in active-node order. The off-plane cut-band DOFs are retained because their basis functions determine displacement and virtual work on the cut plane.
 
 The discrete stiffness is assembled as
 
