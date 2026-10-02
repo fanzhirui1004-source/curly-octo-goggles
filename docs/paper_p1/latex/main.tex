@@ -146,7 +146,7 @@ For the specified symmetric stiffness \(K\succeq0\), with \(A=K_{II}\succ0\) and
 \tag{4}
 \]
 
-The learned extension therefore adds stiffness in proportion to the energy of its interior error; the absence of a first-order term follows from equilibrium of the reference field. For \(u=Eq\), \(\widehat u=Fq\) and \(d_I=Hq\), the interior residual \(r_I=(K\widehat u)_I\) satisfies \(r_I=Ad_I\). The relative directional energy error \(\varepsilon(q)=q^T(\widehat S-S)q/(q^TSq)\), which measures the excess of the condensed strain energy over the exact one and is nonnegative by Eq. (4), can consequently be written as
+An approximate extension therefore adds stiffness in proportion to the energy of its interior error; the absence of a first-order term follows from equilibrium of the reference field. For \(u=Eq\), \(\widehat u=Fq\) and \(d_I=Hq\), the interior residual \(r_I=(K\widehat u)_I\) satisfies \(r_I=Ad_I\). The relative directional energy error \(\varepsilon(q)=q^T(\widehat S-S)q/(q^TSq)\), which measures the excess of the condensed strain energy over the exact one and is nonnegative by Eq. (4), can consequently be written as
 
 \[
 \varepsilon(q)=\frac{d_I^TAd_I}{q^TSq}
@@ -154,7 +154,7 @@ The learned extension therefore adds stiffness in proportion to the energy of it
 \tag{5}
 \]
 
-The squared \(A^{-1}\)-norm of the interior residual, available without the reference extension, is thus the stiffness-error measure; Appendix B gives the all-direction energy error \(\varepsilon_*\) (Eq. (B.5)); the largest error over a finite direction set bounds it from below, and an upper bound follows only from the coverage of the direction set (Appendix G.4).
+The interior residual is available without the reference extension, and its squared \(A^{-1}\)-norm, which needs one interior solve per direction, is the stiffness-error measure. Appendix B gives the all-direction energy error \(\varepsilon_*\) (Eq. (B.5)). The largest error over a finite direction set bounds it from below; an upper bound follows only from the coverage of the direction set (Appendix G.4).
 
 \subsection{Assembled compliance and energy share}
 
@@ -200,7 +200,7 @@ The field-based sensitivity estimate \(\widetilde s_c=-\widehat u^TK_{,c}\wideha
 \tag{9}
 \]
 
-Interior equilibrium sets \((Ku)_I=0\) but generally leaves \((K_{,c}u)_I\ne0\), so the linear cross term survives, and decreasing energy error need not decrease sensitivity error monotonically. For corner thickening, nonnegative trilinear shape functions generate nested material domains, and with fixed basis, material and ghost contribution the exact integral gives \(K_{,c}\succeq0\) (Eq. H.10); a numerical derivative inherits this only while its quadrature preserves the nesting of the material domains (Appendix H.2). Even then the cross term can have either sign (Appendix H.1).
+Interior equilibrium sets \((Ku)_I=0\) but generally leaves \((K_{,c}u)_I\ne0\), so the linear cross term survives, and decreasing energy error need not decrease sensitivity error monotonically. Because nonnegative trilinear shape functions make corner thickening nest the material domains, the exact stiffness derivative is positive semidefinite, \(K_{,c}\succeq0\), with fixed basis, material and ghost contribution (Eq. (H.10)); the quadratic term of Eq. (9) is then nonpositive, but the cross term can have either sign (Appendix H.1). A numerical derivative inherits \(K_{,c}\succeq0\) only while its quadrature preserves the nesting (Appendix H.2).
 
 The derivative of the surrogate compliance also contains the design dependence of the extension. For a parameter affecting one substructure, differentiation at fixed retained DOFs gives
 
@@ -217,7 +217,7 @@ Here \(\widehat q\) is the assembled retained solution obtained with \(\widehat 
 
 These derivatives hold on intervals where the active elements, ghost faces, retained DOFs and the network\textquotesingle s binary node indicators are fixed. Across such a switch the discrete reference compliance itself can jump, as it does for exact condensation on the same background mesh; because \(0\le C-\widehat C\le\beta C\) at every design (Eq. 7), any jump that the surrogate compliance adds is bounded by its own error level (Supplementary Note S6.3).
 
-Three requirements on an approximate extension follow. Its interior error energy must be small in the directions that the assembled solution selects, which Eq. (5) measures by a computable residual. Any correction applied at deployment must not increase that energy, so that Eq. (4) orders the corrected condensed stiffness between the uncorrected one and the exact Schur complement; Section 4.3 gives such a correction. And because the energy error does not control the sensitivity error of Eq. (9), the sensitivity must be verified independently of the compliance, which Sections 5.6 and 5.10 do. Section 4 constructs an extension to these requirements.
+For the construction of Section 4, the analysis turns the requirements of Section 2.3 into three conditions on the extension. Its interior error energy must be small in the directions that the assembled solution selects, which Eq. (5) expresses through the interior residual. Any correction applied at deployment must not increase that energy, so that Eq. (4) orders the corrected condensed stiffness between the uncorrected one and the exact Schur complement; Section 4.3 gives such a correction. And because the energy error does not control the sensitivity error of Eq. (9), the sensitivity must be verified independently of the compliance, which Sections 5.6 and 5.10 do. Section 4 constructs an extension that meets these conditions.
 
 \section{Neural-initialised condensation with equilibrium correction}
 
