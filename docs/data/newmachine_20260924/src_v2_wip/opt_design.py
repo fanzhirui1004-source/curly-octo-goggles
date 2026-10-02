@@ -88,6 +88,9 @@ if A.table5:
     if not A.fast or A.exact or A.check:
         raise SystemExit('--table5 applies to the --fast NICE route only')
     os.environ['OPL_COARSE_ELEM'] = '1'; os.environ['OPL_TET_TRITON'] = '1'; os.environ['OPL_COARSE_SPARSE'] = '1'
+    # coarse factor of the float32 correction: a Cholesky factor is accepted only if its smallest pivot^2 is >= 1e-7 of the
+    # unit (Jacobi-scaled) diagonal, otherwise the next diagonal shift is tried (trainlib._chol_jitter; Appendix F.2)
+    os.environ.setdefault('OPL_COARSE_PIVOT_FLOOR', '1e-7')
     for _k in [k for k in os.environ.get('OPL_T5_SKIP', '').split(',') if k]:   # diagnostic only (default: none skipped)
         if _k in ('COARSE_ELEM', 'TET_TRITON', 'COARSE_SPARSE'):
             os.environ['OPL_' + _k] = '0'
@@ -650,6 +653,9 @@ def main():
         with open(HIST, 'a') as fh:
             fh.write(json.dumps(RC.tojson(dict(rec, tv=tv, s_vertex=gv, s_cell=S)), default=float) + '\n')
         log({k_: v for k_, v in rec.items() if k_ not in ('cases', 'fps')})
+        if A.table5 and (res['pcg'] >= A.maxit_pcg or res['true_residual'] > 1e-2):   # final route: never continue from
+            log(dict(event='PCG_NOT_CONVERGED', k=k, pcg=res['pcg'], true_residual=res['true_residual']))   # a failed solve
+            raise SystemExit('PCG_NOT_CONVERGED')
         tv = tv.copy(); tv[free] = xnew
         k += 1; nrun += 1
         np.savez(STATE, k=k, tv=tv, Vstar=Vstar, C0=C0, mstate=np.array(mstate, dtype=object), fhist=np.asarray(fhist))

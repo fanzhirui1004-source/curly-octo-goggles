@@ -173,10 +173,9 @@ def coarse_prolong(C, space, with_meta=False):
 def _chol_jitter(A):
     """Cholesky of a symmetric unit-diagonal (Jacobi-scaled) matrix, with a growing diagonal shift when it is only
     semi-definite (coarse columns that are nearly dependent on the interior); returns (L, shift)."""
-    floor = float(os.environ.get('OPL_COARSE_PIVOT_FLOOR', '0'))                # opt-in: also require min pivot^2 >= floor
     for eps in (0.0, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4):
         L, info = torch.linalg.cholesky_ex(A + eps * torch.eye(A.shape[0], dtype=A.dtype, device=A.device) if eps else A)
-        if int(info) == 0 and (floor <= 0 or float(torch.diagonal(L).min()) ** 2 >= floor):
+        if int(info) == 0:
             return L, eps
     raise ValueError('COARSE_CHOLESKY_FAILED')
 
