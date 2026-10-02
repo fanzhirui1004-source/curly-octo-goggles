@@ -88,6 +88,9 @@ if A.table5:
     if not A.fast or A.exact or A.check:
         raise SystemExit('--table5 applies to the --fast NICE route only')
     os.environ['OPL_COARSE_ELEM'] = '1'; os.environ['OPL_TET_TRITON'] = '1'; os.environ['OPL_COARSE_SPARSE'] = '1'
+    for _k in [k for k in os.environ.get('OPL_T5_SKIP', '').split(',') if k]:   # diagnostic only (default: none skipped)
+        if _k in ('COARSE_ELEM', 'TET_TRITON', 'COARSE_SPARSE'):
+            os.environ['OPL_' + _k] = '0'
 CLAMP = tuple((A.clamp + ',').split(',')[:2])                            # 'y,min' -> ('y', 'min'); 'cut' -> ('cut', '')
 ROOT = Path(A.root); ROOT.mkdir(parents=True, exist_ok=True)
 for d in ('packets', 'body', 'tmp'):
@@ -108,7 +111,7 @@ import r1x3_common as RC                                                # noqa: 
 import mma as MMA                                                       # noqa: E402
 if A.table5:
     import fastidx as FI                                                # noqa: E402
-    FI.ON = True
+    FI.ON = 'FI' not in os.environ.get('OPL_T5_SKIP', '').split(',')
 
 dev, dt = TE.dev, TE.dt
 BODY, TMP = ROOT / 'body', ROOT / 'tmp'
