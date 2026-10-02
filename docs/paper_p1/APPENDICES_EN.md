@@ -19,11 +19,11 @@ Here \(L_e,L_f\) extract element and ghost-face DOFs. The fixed elasticity templ
 The ghost-face set \(\mathcal F_g\) consists of interior background faces whose two neighbouring elements are active and are not both certified as completely filled with material. These faces lie within each substructure. For background-element width \(h=1/n\), the unit-coefficient stabilisation bilinear form is
 
 \[
-g_h(v,u)=(\lambda_0+2\mu_0)\sum_{f\in\mathcal F_g}\sum_{j=1}^{2}
+g_h(v,u)=(\lambda_{\rm ref}+2\mu_{\rm ref})\sum_{f\in\mathcal F_g}\sum_{j=1}^{2}
 h^{2j-1}\int_f [\partial_{n_f}^{j}v]\cdot[\partial_{n_f}^{j}u] \,\mathrm dA.
 \]
 
-The derivative uses a common positive coordinate normal on both neighbouring elements, and the jump is the value on the first element minus that on the second. Integration covers the complete background face. The fixed templates use \(E_0=1\), \(\nu_0=0.3\), and their Lamé constants \(\lambda_0,\mu_0\); these match the material values of the 80 validation geometries. Each face integral uses a tensor-product three-point Gauss rule in its two tangential coordinates. Stacking the square-root-weighted jump evaluations for both derivative orders and all three displacement components gives \(G_f\in\mathbb R^{54\times135}\), acting on the 45 distinct nodes of the two-element patch. Thus the second term in Eq. (A.1) is the matrix representation of \(\gamma g_h\).
+The derivative uses a common positive coordinate normal on both neighbouring elements, and the jump is the value on the first element minus that on the second. Integration covers the complete background face. The stabilisation form \(g_h\), and hence \(G_f\), uses fixed reference values \(E_{\rm ref}=1\), \(\nu_{\rm ref}=0.3\) and their Lamé constants \(\lambda_{\rm ref},\mu_{\rm ref}\); these equal the material values \(E_Y,\nu\) of the 80 validation geometries. Each face integral uses a tensor-product three-point Gauss rule in its two tangential coordinates. Stacking the square-root-weighted jump evaluations for both derivative orders and all three displacement components gives \(G_f\in\mathbb R^{54\times135}\), acting on the 45 distinct nodes of the two-element patch. Thus the second term in Eq. (A.1) is the matrix representation of \(\gamma g_h\).
 
 All 80 validation geometries use \(n=32\), normalised Young's modulus \(E_Y=1\), Poisson's ratio \(\nu=0.3\), and ghost-penalty coefficient \(\gamma=10^{-4}\), with length expressed relative to the unit reference box. This gives 65 Q2 node positions per axis; the network's three transfer levels use 33, 17 and 9 positions per axis. The moment evaluator begins with \(4^3\) subcells per element and refines partial subcells once, then clips Kuhn tetrahedra using the tetrahedral rule parameter four. Appendix F.4 gives the full integration sequence. Geometry generation accepts a cell only if its active background elements form a single face-connected set carrying retained box-face DOFs; 10 of the 1,109 cells generated as training candidates failed this check, and every training, validation, neighbour and lattice cell used in this work passes it. Training populations are identified in Table ST01.
 
@@ -51,9 +51,9 @@ The pair-assembly comparison joins a learned target to an exact neighbour with m
 
 ### B.1. Assumptions
 
-In this appendix, \(f\equiv f_g\) denotes the assembled retained load.
+In Appendices B and C, \(f\equiv f_g\) denotes the assembled retained load.
 
-For each cell, \(K=K^T\succeq0\), the retained and interior DOF sets \(P,I\) are fixed, and \(A=K_{II}\succ0\). The exact extension is defined by \(E_P=I\) and \(E_I=-A^{-1}K_{IP}\). A linear extension \(F\) has \(F_P=I\). Set \(H=F_I-E_I\), so \(F=E+J_I^TH\), \(S=E^TKE\), and \(\widehat S=F^TKF\). All transposes include the entire extension and correction. Interior body loads are zero; equivalently, the load functional factors through the retained DOFs. Consistent boundary loads have this property when all DOFs with nonzero boundary virtual work are retained.
+For each cell, \(K=K^T\succeq0\), the retained and interior DOF sets \(P,I\) are fixed, and \(A=K_{II}\succ0\). The exact extension is defined by \(E_P=I_p\) and \(E_I=-A^{-1}K_{IP}\). A linear extension \(F\) has \(F_P=I_p\). Set \(H=F_I-E_I\), so \(F=E+J_I^TH\), \(S=E^TKE\), and \(\widehat S=F^TKF\). All transposes include the entire extension and correction. Interior body loads are zero; equivalently, the load functional factors through the retained DOFs. Consistent boundary loads have this property when all DOFs with nonzero boundary virtual work are retained.
 
 The cell interiors are disjoint, all intercell couplings act through the retained DOFs, and the assembly maps \(B_m\) include fixed homogeneous supports. The supported exact assembled stiffness \(\mathbb K=\sum_m B_m^TS_mB_m\) is positive definite. The same local stabilised matrices define both the reference and the learned assemblies. The applied global load \(f\ne0\) is fixed. These assumptions distinguish the modular reference from a different monolithic discretisation that introduces additional intercell stabilisation.
 
@@ -135,23 +135,23 @@ For any global vector, the quadratic error is the sum of nonnegative local error
 
 ### B.3. Displacement magnitude and directional stiffness
 
-The energy metric assigns different significance to displacement errors of equal magnitude. To make that dependence explicit, fix the retained rigid gauge by taking \(q\perp R_P\), let \(d=Fq-Eq\), and introduce a displacement norm induced by \(W\succ0\):
+The energy metric assigns different significance to displacement errors of equal magnitude. To make that dependence explicit, fix the retained rigid gauge by taking \(q\perp R_P\), let \(d=Fq-Eq\), and introduce a displacement norm induced by \(\mathsf W\succ0\):
 
 \[
-\delta_W(q)=\frac{\|d\|_W}{\|Eq\|_W},\qquad
-\mathcal R_{K,W}(v)=\frac{v^TKv}{v^TWv},\qquad
-\kappa_W(q,d)=\frac{\mathcal R_{K,W}(d)}{\mathcal R_{K,W}(Eq)}.
+\delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|Eq\|_{\mathsf W}},\qquad
+\mathcal R_{K,\mathsf W}(v)=\frac{v^TKv}{v^T\mathsf Wv},\qquad
+\kappa_{\mathsf W}(q,d)=\frac{\mathcal R_{K,\mathsf W}(d)}{\mathcal R_{K,\mathsf W}(Eq)}.
 \tag{B.8}
 \]
 
-For nonzero field error and nonzero reference energy, cancellation of \(d^TWd\) and \(u^TWu\), with \(u=Eq\), gives
+For nonzero field error and nonzero reference energy, cancellation of \(d^T\mathsf Wd\) and \(u^T\mathsf Wu\), with \(u=Eq\), gives
 
 \[
-\boxed{\varepsilon(q)=\delta_W(q)^2\kappa_W(q,d).}
+\boxed{\varepsilon(q)=\delta_{\mathsf W}(q)^2\kappa_{\mathsf W}(q,d).}
 \tag{B.9}
 \]
 
-Section 5.4 and Table ST04 use \(W=\operatorname{diag}(0,D)\) with \(D=\operatorname{diag}(K_{II})\), i.e. a Jacobi-weighted interior norm. This weighting is only positive semidefinite, but the identity still holds because \(d\) vanishes on the retained DOFs, and the rigid gauge is then not needed. The factor \(\kappa_W\) compares the stiffness content of the error and the equilibrium response; it is not a matrix condition number. An error concentrated in stiffer deformation than the loaded response has a large \(\kappa_W\), making even a small relative displacement error mechanically significant. Thus an energy target \(\varepsilon_{\rm tar}\) requires \(\delta_W\le\sqrt{\varepsilon_{\rm tar}/\kappa_W}\). Correction must address this energy content as well as displacement magnitude.
+Section 5.4 and Table ST04 use \(\mathsf W=\operatorname{diag}(0,D)\) with \(D=\operatorname{diag}(K_{II})\), i.e. a Jacobi-weighted interior norm. This weighting is only positive semidefinite, but the identity still holds because \(d\) vanishes on the retained DOFs, and the rigid gauge is then not needed. The factor \(\kappa_{\mathsf W}\) compares the stiffness content of the error and the equilibrium response; it is not a matrix condition number. An error concentrated in stiffer deformation than the loaded response has a large \(\kappa_{\mathsf W}\), making even a small relative displacement error mechanically significant. Thus an energy target \(\varepsilon_{\rm tar}\) requires \(\delta_{\mathsf W}\le\sqrt{\varepsilon_{\rm tar}/\kappa_{\mathsf W}}\). Correction must address this energy content as well as displacement magnitude.
 
 Changing the displacement normalisation changes the corresponding amplification factor. An alternative based on the retained displacement is
 
@@ -162,7 +162,7 @@ Changing the displacement normalisation changes the corresponding amplification 
 \tag{B.10}
 \]
 
-In Eq. (B.9), the same displacement weighting enters both Rayleigh quotients, and the denominator of \(\kappa_W\) measures the physical response in the chosen trace direction. The smoothing instead acts on the spectrum of \(A v=\lambda Dv\) with the trace fixed, so the two notions of softness are distinct. For example, \(A=\operatorname{diag}(\epsilon,1)\) has a very soft unscaled direction, while \(D^{-1/2}AD^{-1/2}=I\). An interior eigenmode also has zero retained trace and is not itself a free-cell Schur response. Consequently, cumulative Jacobi-scaled low-mode error energy identifies components that the smoothing reduces slowly; it does not determine the measured \(\kappa\), a continuum bending-mode label, or a model-capacity lower bound.
+In Eq. (B.9), the same displacement weighting enters both Rayleigh quotients, and the denominator of \(\kappa_{\mathsf W}\) measures the physical response in the chosen trace direction. The smoothing instead acts on the spectrum of \(A v=\lambda Dv\) with the trace fixed, so the two notions of softness are distinct. For example, \(A=\operatorname{diag}(\epsilon,1)\) has a very soft unscaled direction, while \(D^{-1/2}AD^{-1/2}=I\). An interior eigenmode also has zero retained trace and is not itself a free-cell Schur response. Consequently, cumulative Jacobi-scaled low-mode error energy identifies components that the smoothing reduces slowly; it does not determine the measured \(\kappa\), a continuum bending-mode label, or a model-capacity lower bound.
 
 ## Appendix C. Assembly and compliance ordering
 
@@ -183,12 +183,12 @@ If homogeneous supports make \(\mathbb K\succ0\), then both global systems are i
 \tag{C.2}
 \]
 
-For completeness, the order reversal follows by setting \(Q=\mathbb K^{-1/2}\widehat{\mathbb K}\mathbb K^{-1/2}\succeq I\). Its eigenvalues are at least one, so \(Q^{-1}\preceq I\); a congruence gives the inverse inequality. If every substructure also satisfies \(0\preceq\widehat S_m-S_m\preceq\bar\varepsilon S_m\), applying the same argument to the upper and lower bounds gives
+For completeness, the order reversal follows by setting \(Q=\mathbb K^{-1/2}\widehat{\mathbb K}\mathbb K^{-1/2}\succeq I\). Its eigenvalues are at least one, so \(Q^{-1}\preceq I\); a congruence gives the inverse inequality. If every substructure also satisfies \(0\preceq\widehat S_m-S_m\preceq\varepsilon_* S_m\), applying the same argument to the upper and lower bounds gives
 
 \[
-\mathbb K\preceq\widehat{\mathbb K}\preceq(1+\bar\varepsilon)\mathbb K,
-\qquad\frac{C}{1+\bar\varepsilon}\le\widehat C\le C,
-\qquad\frac{C-\widehat C}{C}\le\frac{\bar\varepsilon}{1+\bar\varepsilon}.
+\mathbb K\preceq\widehat{\mathbb K}\preceq(1+\varepsilon_*)\mathbb K,
+\qquad\frac{C}{1+\varepsilon_*}\le\widehat C\le C,
+\qquad\frac{C-\widehat C}{C}\le\frac{\varepsilon_*}{1+\varepsilon_*}.
 \tag{C.3}
 \]
 
@@ -226,7 +226,7 @@ The two terms are \(K_m\)-orthogonal because \(J_{I,m}K_mE_m=0\). Thus complianc
 
 This nonasymptotic bound is valid without a small-error assumption. The sharper asymptotic retained-solution order is derived below.
 
-Define \(T=\mathbb K^{-1/2}\mathbb D\mathbb K^{-1/2}\succeq0\), \(z=\mathbb K^{-1/2}f\), \(\rho=\|T\|_2\), and
+Define \(T=\mathbb K^{-1/2}\mathbb D\mathbb K^{-1/2}\succeq0\), \(z=\mathbb K^{-1/2}f\), and
 
 \[
 \beta=\frac{U^T\mathbb D U}{C}
@@ -239,11 +239,11 @@ For zero-energy cells with exact rigid reproduction, the corresponding numerator
 \[
 \frac{C-\widehat C}{C}
 =\frac{z^TT(I+T)^{-1}z}{z^Tz},\qquad
-\boxed{\frac{\beta}{1+\rho}\le\frac{C-\widehat C}{C}
+\boxed{\frac{\beta}{1+\|T\|_2}\le\frac{C-\widehat C}{C}
 \le\frac{\beta}{1+\beta}\le\beta.}
 \]
 
-The lower bound uses \(\lambda/(1+\lambda)\ge\lambda/(1+\rho)\). For the sharper upper bound, insert \(V=\alpha U\) in the maximum principle
+The lower bound uses \(\lambda/(1+\lambda)\ge\lambda/(1+\|T\|_2)\). For the sharper upper bound, insert \(V=\alpha U\) in the maximum principle
 
 \[
 \widehat C=\max_V\{2f^TV-V^T\widehat{\mathbb K}V\}.
@@ -304,32 +304,32 @@ p_k(t)=\frac{T_k((a+b-2t)/(b-a))}{T_k((a+b)/(b-a))}.
 
 \[
 d_I^{\rm sm}=p_k(D^{-1}A)d_I,\qquad
-\|d_I^{\rm sm}\|_A^2\le\rho_k^2\|d_I\|_A^2,\qquad
-\rho_k=\max_{\lambda\in\sigma(\widetilde A)}|p_k(\lambda)|.
+\|d_I^{\rm sm}\|_A^2\le\psi_k^2\|d_I\|_A^2,\qquad
+\psi_k=\max_{\lambda\in\sigma(D^{-1/2}AD^{-1/2})}|p_k(\lambda)|.
 \tag{D.2}
 \]
 
-Here \(D=\operatorname{diag}(A)\) and \(\widetilde A=D^{-1/2}AD^{-1/2}\).
+Here \(D=\operatorname{diag}(A)\).
 
-Write \(M=D^{-1}A\), \(\theta=(a+b)/2\), \(\eta_s=(b-a)/2\), and \(\sigma=\theta/\eta_s>1\). Starting from \(u_0\), keep its retained entries fixed and define the interior residual with the sign convention \(r_j=(Ku_j)_I\). A recurrence producing the polynomial in Eq. (D.1) is
+Write \(\bar\lambda=(a+b)/2\), \(\eta_s=(b-a)/2\), and \(\sigma=\bar\lambda/\eta_s>1\) for the centre and half-width of the target interval and their ratio. Starting from \(u_0\), keep its retained entries fixed and define the interior residual with the sign convention \(r_j=(Ku_j)_I\). A recurrence producing the polynomial in Eq. (D.1) is
 
 \[
 \begin{aligned}
-\varrho_0&=1/\sigma,& s_0&=-D^{-1}r_0/\theta,\\
-u_{j+1}&=u_j+J_I^Ts_j,&
+\varrho_0&=1/\sigma,& z_0&=-D^{-1}r_0/\bar\lambda,\\
+u_{j+1}&=u_j+J_I^Tz_j,&
 \varrho_{j+1}&=(2\sigma-\varrho_j)^{-1},\\
-s_{j+1}&=\varrho_{j+1}\varrho_j s_j
+z_{j+1}&=\varrho_{j+1}\varrho_j z_j
  -\frac{2\varrho_{j+1}}{\eta_s}D^{-1}r_{j+1}.
 \end{aligned}
 \tag{D.3}
 \]
 
-The last line is evaluated only when another step is needed. Zero steps return the initial field. To verify the polynomial, observe that \(\varrho_j=T_j(\sigma)/T_{j+1}(\sigma)\), and apply \(T_{j+2}(x)=2xT_{j+1}(x)-T_j(x)\). After the first step the error is \(d_1=(I-M/\theta)d_0\), and the same recurrence gives \(d_k=p_k(M)d_0\).
+The last line is evaluated only when another step is needed. Zero steps return the initial field. To verify the polynomial, observe that \(\varrho_j=T_j(\sigma)/T_{j+1}(\sigma)\), and apply \(T_{j+2}(x)=2xT_{j+1}(x)-T_j(x)\). After the first step the error is \(d_1=(I-D^{-1}A/\bar\lambda)d_0\), and the same recurrence gives \(d_k=p_k(D^{-1}A)d_0\).
 
-The matrices \(M\) and \(\widetilde A=D^{-1/2}AD^{-1/2}\) are similar, \(p_k(M)\) is self-adjoint in the \(A\)-inner product, and
+The matrices \(D^{-1}A\) and \(D^{-1/2}AD^{-1/2}\) are similar, \(p_k(D^{-1}A)\) is self-adjoint in the \(A\)-inner product, and
 
 \[
-\|p_k(M)d\|_A^2
+\|p_k(D^{-1}A)d\|_A^2
 =\sum_j\lambda_j p_k(\lambda_j)^2c_j^2,
 \qquad c_j=v_j^TDd.
 \tag{D.4}
@@ -337,7 +337,7 @@ The matrices \(M\) and \(\widetilde A=D^{-1/2}AD^{-1/2}\) are similar, \(p_k(M)\
 
 This proves Eq. (D.2). If \(a\le\lambda\le b\), the argument of \(T_k\) lies in \([-1,1]\), where \(|T_k|\le1\). For \(0<\lambda<a\), it lies between 1 and \(\sigma\), where \(T_k\) increases from 1 to \(T_k(\sigma)\). Hence \(|p_k(\lambda)|\le1\) throughout \((0,b]\), so the polynomial is nonexpansive in the \(A\)-energy norm when the actual positive spectrum is contained in \((0,b]\). Modes below \(a\) can contract slowly, and eigenvalues above \(b\) can be amplified.
 
-The operational upper endpoint is estimated using a random power vector, 40 iterations of \(M\), Euclidean normalisation, and a factor of 1.05. The correction implementation fixes the random generator seed and caches the interval for the geometry. The separate fixed-weight smoothing study of the base network uses its own random start. The estimates are used to set the polynomial, while the result in Eq. (D.2) is conditional on its actual spectral values: a finite power estimate multiplied by a safety factor is an estimate of the endpoint, not the containment used above. For the 80 validation geometries we therefore compared the operational endpoint with \(\lambda_{\max}(M)\) computed by Lanczos iteration with full reorthogonalisation on \(D^{-1/2}AD^{-1/2}\) (78–150 steps; relative Ritz residual at most \(9.6\times10^{-4}\), median \(2.2\times10^{-6}\)). The operational endpoint exceeds the converged value by 2.1–5.0% (median 3.9%) on every geometry, so the containment required by Eq. (D.2) holds for all evaluated cells. The strict Gershgorin bound \(\max_i\sum_j|A_{ij}|/A_{ii}\) is 4.7–19.4 times the operational endpoint (median 18.4); used as \(b\), it would stretch the targeted interval by that factor and slow the contraction of the upper spectrum accordingly.
+The operational upper endpoint is estimated using a random power vector, 40 iterations of \(D^{-1}A\), Euclidean normalisation, and a factor of 1.05. The correction implementation fixes the random generator seed and caches the interval for the geometry. The separate fixed-weight smoothing study of the base network uses its own random start. The estimates are used to set the polynomial, while the result in Eq. (D.2) is conditional on its actual spectral values: a finite power estimate multiplied by a safety factor is an estimate of the endpoint, not the containment used above. For the 80 validation geometries we therefore compared the operational endpoint with \(\lambda_{\max}(D^{-1}A)\) computed by Lanczos iteration with full reorthogonalisation on \(D^{-1/2}AD^{-1/2}\) (78–150 steps; relative Ritz residual at most \(9.6\times10^{-4}\), median \(2.2\times10^{-6}\)). The operational endpoint exceeds the converged value by 2.1–5.0% (median 3.9%) on every geometry, so the containment required by Eq. (D.2) holds for all evaluated cells. The strict Gershgorin bound \(\max_i\sum_j|A_{ij}|/A_{ii}\) is 4.7–19.4 times the operational endpoint (median 18.4); used as \(b\), it would stretch the targeted interval by that factor and slow the contraction of the upper spectrum accordingly.
 
 For a full-column-rank coarse basis \(V\), with \(A_c=V^TAV\succ0\), define \(Q_V=VA_c^{-1}V^TA\). Direct multiplication gives \(Q_V^2=Q_V\) and \(Q_V^TA=AQ_V\). Thus \(Q_V\) is an \(A\)-orthogonal projection and \(C_V=I-Q_V\) is its complementary projection. With \(b_r=V^TAd\),
 
@@ -347,11 +347,11 @@ For a full-column-rank coarse basis \(V\), with \(A_c=V^TAV\succ0\), define \(Q_
 \tag{D.5}
 \]
 
-This proves Eq. (14). Applying Eq. (D.2) before and after this projection yields \(\|P_kC_VP_kd\|_A\le\rho_k^2\|d\|_A\). Because \(\rho_k<1\) whenever the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering of Eq. (15) (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, \(\rho_8^4\ge0.98\), so the estimate guarantees little more than non-expansion; it uses no approximation property of the coarse space, and the reductions by one to two orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
+This proves Eq. (14). Applying Eq. (D.2) before and after this projection yields \(\|\Phi_kC_V\Phi_kd\|_A\le\psi_k^2\|d\|_A\). Because \(\psi_k<1\) whenever the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering of Eq. (15) (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, \(\psi_8^4\ge0.98\), so the estimate guarantees little more than non-expansion; it uses no approximation property of the coarse space, and the reductions by one to two orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
 
 ### D.1. Corrections, orderings and approximate coarse inverses
 
-A geometry-fixed linear correction acts on \(H\) through \(H_{\rm new}=TH\). If \(T^TAT\preceq A\), then
+A geometry-fixed linear correction acts on \(H\) through \(H_{\rm new}=\Theta H\). If \(\Theta^TA\Theta\preceq A\), then
 
 \[
 S\preceq\widehat S_{\rm new}\preceq\widehat S_{\rm old}.
@@ -371,7 +371,7 @@ Consequently \(2G-GA_cG\succeq0\) suffices for nonexpansiveness. For an accurate
 
 At the operator-application level the entire affine correction of the field, including the retained forcing, is transposed in reverse order, as in Eqs. (E.3)–(E.4). Geometry-fixed coefficients and a fixed iteration count ensure linearity. A fixed number of ordinary CG iterations generally does not: its coefficients depend on the right-hand side. Arbitrary direction-dependent stopping also need not define one linear extension.
 
-The benefit of learning under a fixed correction budget is measured by the error surviving the correction: \(\|TH_{\rm net}q\|_A^2\) versus \(\|TH_{\rm start}q\|_A^2\). Initial errors with the same energy can leave different corrected errors. This connects direction-sensitive training to the numerical correction actually used.
+The benefit of learning under a fixed correction budget is measured by the error surviving the correction: \(\|\Theta H_{\rm net}q\|_A^2\) versus \(\|\Theta H_{\rm start}q\|_A^2\). Initial errors with the same energy can leave different corrected errors. This connects direction-sensitive training to the numerical correction actually used.
 
 Boundary-space restriction and interior correction affect different trial spaces. Exact interior condensation followed by a restriction \(U=G_ry\) solves over a subspace of the retained space; nested boundary spaces give nondecreasing Ritz compliance. Interior correction preserves all retained DOFs and changes the interior graph \(u=FBU\); its matrix ordering comes from contraction of \(H\), even though two such graph spaces need not be nested. In neither case is a local sensitivity norm ordered.
 
@@ -387,23 +387,23 @@ All transposes below use the Euclidean pairing of the stored displacement and no
 
 The overwrite therefore selects the direct retained contribution and masks the field sent through the network transpose. The geometry coefficients are held fixed during this displacement transpose.
 
-Set \(s_k(t)=[1-p_k(t)]/t\), with the polynomial continuation at zero. The full-field smoothing map \(\mathcal T_k\) has the block representation
+Set \(\varphi_k(t)=[1-p_k(t)]/t\), with the polynomial continuation at zero. The full-field smoothing map \(\mathcal T_k\) has the block representation
 
 \[
 \mathcal T_k=
 \begin{bmatrix}
 I_p&0\\
--s_k(M)D^{-1}K_{IP}&p_k(M)
+-\varphi_k(D^{-1}A)D^{-1}K_{IP}&p_k(D^{-1}A)
 \end{bmatrix},\qquad
 \mathcal T_k^Ty=
 \begin{bmatrix}
-y_P-K_{PI}s_k(M)D^{-1}y_I\\
-D p_k(M)D^{-1}y_I
+y_P-K_{PI}\varphi_k(D^{-1}A)D^{-1}y_I\\
+D p_k(D^{-1}A)D^{-1}y_I
 \end{bmatrix}.
 \tag{E.2}
 \]
 
-Indeed, the final interior field is its equilibrium value plus \(p_k(M)\) times the initial error. Replacing \((I-p_k(M))A^{-1}\) by \(s_k(M)D^{-1}\) yields the first expression. The second follows from \(M^TD=DM\), which implies \(p_k(M)^T=Dp_k(M)D^{-1}\) and the corresponding identity for \(s_k\). Although the forward map preserves retained displacement, its transpose contributes a retained force through the upper block in Eq. (E.2).
+Indeed, the final interior field is its equilibrium value plus \(p_k(D^{-1}A)\) times the initial error. Replacing \((I-p_k(D^{-1}A))A^{-1}\) by \(\varphi_k(D^{-1}A)D^{-1}\) yields the first expression. The second follows from \((D^{-1}A)^TD=A=D(D^{-1}A)\), which implies \(p_k(D^{-1}A)^T=Dp_k(D^{-1}A)D^{-1}\) and the corresponding identity for \(\varphi_k\). Although the forward map preserves retained displacement, its transpose contributes a retained force through the upper block in Eq. (E.2).
 
 For the full-field coarse-grid correction,
 
@@ -439,15 +439,15 @@ For each input direction, the study evaluates the exact field and the uncorrecte
 
 The differentiable implementation constructs coarse support metadata and recovers a coarse matrix using coloured stiffness probes. Its configured stencil reach is four fine-grid node spacings. With \(h_g\) fine-node spacings per coarse-vertex spacing, the probe radius is \(R_g=2+\lceil4/h_g\rceil\); colours use vertex coordinates modulo \(2R_g+1\) and the component or enrichment slot. Recovery assumes the resulting colour separation resolves every interacting coarse pair. This setup supports the \(Q_1\) and enriched \(Q_1\) spaces. The explicit \(Q_2\) study uses the CPU construction in Appendix F.1.
 
-The recovered matrix is Jacobi scaled with the corresponding column scaling of \(V\). Cholesky factorisation reads its lower triangle, trying diagonal shifts in the order \(0,10^{-12},10^{-10},10^{-8},10^{-6},10^{-4}\). The selected value is stored with the geometry factorisation; in the recorded setups it was 0 on six cells and \(10^{-12}\) on H1 (data archive record of the setup timings). On three lattice cells, the probed factor agrees with the element-assembled Galerkin factor to a relative \(1.3\times10^{-11}\) or better (data archive record of the probing test). To characterise such a solve algebraically, let \(V_s\) denote the scaled basis, \(H_c=V_s^TAV_s\succeq0\), \(\xi\ge0\), \(H_c+\xi I\succ0\), \(B_c=(H_c+\xi I)^{-1}\), and \(b_s=V_s^Tr_I\). Then
+The recovered matrix is Jacobi scaled with the corresponding column scaling of \(V\). Cholesky factorisation reads its lower triangle, trying diagonal shifts in the order \(0,10^{-12},10^{-10},10^{-8},10^{-6},10^{-4}\). The selected value is stored with the geometry factorisation; in the recorded setups it was 0 on six cells and \(10^{-12}\) on H1 (data archive record of the setup timings). On three lattice cells, the probed factor agrees with the element-assembled Galerkin factor to a relative \(1.3\times10^{-11}\) or better (data archive record of the probing test). To characterise such a solve algebraically, let \(V_s\) denote the scaled basis, \(A_s=V_s^TAV_s\succeq0\), \(\xi\ge0\), \(A_s+\xi I\succ0\), \(G_s=(A_s+\xi I)^{-1}\), and \(b_s=V_s^Tr_I\). Then
 
 \[
-\|d_I\|_A^2-\|d_I-V_sB_cb_s\|_A^2
-=b_s^TB_c(H_c+2\xi I)B_cb_s\ge0.
+\|d_I\|_A^2-\|d_I-V_sG_sb_s\|_A^2
+=b_s^TG_s(A_s+2\xi I)G_sb_s\ge0.
 \tag{F.1}
 \]
 
-Expanding the squared norms, as in Eq. (D.6) with basis \(V_s\), \(G=B_c\), and \(A_c\) replaced by \(H_c\), gives \(b_s^T(2B_c-B_cH_cB_c)b_s\), and multiplication by \(H_c+\xi I\) establishes the equality. A positive shift changes the exact projection but preserves this energy decrease when the solved matrix is the stated scaled Galerkin matrix. The identity assumes that matrix equality, symmetry, and consistent forward and transpose solves.
+Expanding the squared norms, as in Eq. (D.6) with basis \(V_s\), \(G=G_s\), and \(A_c\) replaced by \(A_s\), gives \(b_s^T(2G_s-G_sA_sG_s)b_s\), and multiplication by \(A_s+\xi I\) establishes the equality. A positive shift changes the exact projection but preserves this energy decrease when the solved matrix is the stated scaled Galerkin matrix. The identity assumes that matrix equality, symmetry, and consistent forward and transpose solves.
 
 ### F.3. Precision and normalisation
 
@@ -486,11 +486,11 @@ The reference integration initialises \(4^3\) subcells per active background ele
 
 ### G.1. Geometry features and displacement maps
 
-The architecture in Figure 3 separates geometry-dependent coefficient generation from displacement propagation. Let \(N\) denote the number of active nodes, \(N_P\) the number of retained nodes and \(B\) the number of simultaneous displacement directions. Then \(n_a=3N\), \(p=3N_P\), and the deformational input \(q_d=\Pi_Pq\) has shape \(p\times B\). The fine displacement features have shape \(N\times B\times32\); a coarse latent level with \(N_\ell\) participating vertices has shape \(N_\ell\times B\times32\). Geometry embeddings have 64 components and carry no displacement-direction dimension. Element, face, retained-node and grid-transfer incidences are constructed before the network is evaluated.
+The architecture in Figure 3 separates geometry-dependent coefficient generation from displacement propagation. Let \(N\) denote the number of active nodes, \(N_P\) the number of retained nodes and \(B\) the number of simultaneous displacement directions. Then \(n_a=3N\), \(p=3N_P\), and the deformational input \(q_d=\Pi_Pq\) has shape \(p\times B\). The fine displacement features have shape \(N\times B\times32\); a coarse latent level \(k\) with \(N^{(k)}\) participating vertices has shape \(N^{(k)}\times B\times32\), where \(k=1,2,3\) index the 33, 17 and 9 grids and \(k=0\) the fine 65 grid. Geometry embeddings, the 64-component element and node feature vectors of Section 4.4, carry no displacement-direction dimension. Element, face, retained-node and grid-transfer incidences are constructed before the network is evaluated.
 
 **Geometry encoding.** Each element has 126 input features: material volume fraction, its logarithm, and the remaining 124 moments normalised by material volume. The 11 node features contain retained, box, cut-band and weak-support indicators, a normalised logarithmic stiffness diagonal, and six sine/cosine coordinate entries. The stiffness summary is the Frobenius norm of the node's diagonal \(3\times3\) block. A node is designated weakly supported when this norm is less than 0.01 times its median over active nodes. These features supply information about both material occupancy and its mechanical support.
 
-The element encoder maps 126 inputs to a 64-component embedding. Mean aggregation of incident element embeddings, concatenated with the 11 node features, supplies the 75-input node encoder. Two residual message-passing rounds then update elements from the mean embeddings of their 27 nodes and update nodes from their incident elements. Each update uses the current embedding and the aggregated neighbouring embedding as a 128-component input. A ghost-face embedding is formed from the two adjacent element embeddings and a three-component indicator of the face axis. All encoders and coefficient heads use two affine layers separated by GELU, with hidden width 64. Every variant uses only the features described here.
+The element encoder maps 126 inputs to a 64-component embedding. Mean aggregation of incident element embeddings, concatenated with the 11 node features, supplies the 75-input node encoder. Two residual message-passing rounds (the two rounds of exchange in Section 4.4) then update elements from the mean embeddings of their 27 nodes and update nodes from their incident elements. Each update uses the current embedding and the aggregated neighbouring embedding as a 128-component input. A ghost-face embedding is formed from the two adjacent element embeddings and a three-component indicator of the face axis. All encoders and coefficient heads use two affine layers separated by GELU, with hidden width 64. Every variant uses only the features described here.
 
 **Local linear interactions.** The three retained displacement components are lifted by a shared matrix \(W_{\rm in}\in\mathbb R^{3\times32}\), while interior features are initially zero. Denote this initial feature field by \(X^0(q)\), with its dependence on \(q\) occurring through \(q_d\). For each element or face stencil \(t\), local node slot \(s\) and head \(h\), the interaction first gathers and mixes channels:
 
@@ -530,7 +530,7 @@ Only coarse vertices reached by the stored trilinear incidences participate. The
 On each coarse level, a residual convolution takes the form
 
 \[
-X\leftarrow X+g_{\ell j}(\eta)\odot\operatorname{Conv}_{\ell j}(X).
+X\leftarrow X+g^{(k)}_j(\eta)\odot\operatorname{Conv}^{(k)}_j(X).
 \]
 
 Each convolution has a \(3\times3\times3\) kernel, 32 input and output channels, unit padding and no bias or displacement activation. Participating latent nodes are inserted into the corresponding background grid, with unused positions set to zero; the convolution output is sampled back at those nodes. The geometry branch supplies one multiplicative coefficient per participating node, channel and convolution. Its coarse embeddings are obtained by fixed trilinear weighted averaging.
@@ -539,16 +539,16 @@ The full displacement sequence is specified below. Grid sizes count background p
 
 | Stage | Operations in execution order |
 |---|---|
-| Fine input, 65 grid | Lift \(q_d\) on retained nodes, set interior features to zero; apply four element-then-face interaction pairs; save \(S_0\). |
-| Downward, 33 grid | Restrict 65→33; apply two residual convolutions; save \(S_1\). |
-| Downward, 17 grid | Restrict 33→17; apply two residual convolutions; save \(S_2\). |
+| Fine input, 65 grid | Lift \(q_d\) on retained nodes, set interior features to zero; apply four element-then-face interaction pairs; save \(Y^{(0)}\). |
+| Downward, 33 grid | Restrict 65→33; apply two residual convolutions; save \(Y^{(1)}\). |
+| Downward, 17 grid | Restrict 33→17; apply two residual convolutions; save \(Y^{(2)}\). |
 | Downward, 9 grid | Restrict 17→9; apply two residual convolutions. |
-| Upward, 9 grid | Apply two residual convolutions; prolong 9→17; add \(S_2\). |
-| Upward, 17 grid | Apply two residual convolutions; prolong 17→33; add \(S_1\). |
-| Upward, 33 grid | Apply two residual convolutions; prolong 33→65; add \(S_0\). |
+| Upward, 9 grid | Apply two residual convolutions; prolong 9→17; add \(Y^{(2)}\). |
+| Upward, 17 grid | Apply two residual convolutions; prolong 17→33; add \(Y^{(1)}\). |
+| Upward, 33 grid | Apply two residual convolutions; prolong 33→65; add \(Y^{(0)}\). |
 | Fine output, 65 grid | Restore retained features; apply four element-then-face interaction pairs, then four weak-region element-then-face pairs; project 32→3. |
 
-At each upward step the combination is \(X=S_\ell+\sigma_\ell\mathcal P_\ell X_c\), with a learned scalar \(\sigma_\ell\). Thus convolution precedes prolongation, the skips are additive, and the 9-position grid receives two downward and two upward convolutions. There are twelve coarse convolution updates in total. The fine retained values are restored after the hierarchy returns to the active nodes. These latent operations communicate within the extension; the mechanical operator still accepts and returns all \(p\) retained DOFs. The coarse-grid (Galerkin) correction of Section 4.3 instead uses the interior stiffness and the interior equilibrium residual.
+At the upward step that returns to level \(k\in\{0,1,2\}\), the combination is \(X=Y^{(k)}+\sigma^{(k)}\mathcal P^{(k)}X_c\), where \(X_c\) is the field on level \(k+1\) and \(\sigma^{(k)}\) is a learned scalar. Thus convolution precedes prolongation, the skips are additive, and the 9-position grid receives two downward and two upward convolutions. There are twelve coarse convolution updates in total. The fine retained values are restored after the hierarchy returns to the active nodes. These latent operations communicate within the extension; the mechanical operator still accepts and returns all \(p\) retained DOFs. The coarse-grid (Galerkin) correction of Section 4.3 instead uses the interior stiffness and the interior equilibrium residual.
 
 **Coefficient bounds and output.** The local heads produce separate gather/scatter values for eight ordinary element layers, twelve face layers and four additional weak-region element layers, each with four heads and 27 slots. Raw head outputs are multiplied by 0.2. For a finite positive group bound \(a_{\max}\), the coefficient map is
 
@@ -572,7 +572,7 @@ K'=T_aKT_a^T,\qquad E'=T_aET_P^T,\qquad S'=T_PST_P^T.
 \tag{G.2}
 \]
 
-The augmented geometry and vector field are passed through the network and the predicted displacement is returned to the original frame for mechanical evaluation. These relations describe the transformed target and the frame-consistency condition. Sampling the cube views trains the geometry-conditioned extension towards that condition; displacement linearity alone does not establish rotational equivariance.
+Here \(T_a\in\mathbb R^{n_a\times n_a}\) and \(T_P\in\mathbb R^{p\times p}\) are the signed permutation matrices that the cube transformation induces on the active and the retained DOFs of the cell, and primes denote quantities of the transformed cell. The augmented geometry and vector field are passed through the network and the predicted displacement is returned to the original frame for mechanical evaluation. These relations describe the transformed target and the frame-consistency condition. Sampling the cube views trains the geometry-conditioned extension towards that condition; displacement linearity alone does not establish rotational equivariance.
 
 ### G.2. Direction sets
 
@@ -602,7 +602,7 @@ The exact reference computation for an isolated cell removes the rigid-body comp
 
 ### G.3. Optimisation and difficult-direction search
 
-The variants of Table 2 use batches of 16 directions and change the geometry at every step; three geometries of the training set are held on the GPU, and one of them is replaced every 100 steps. Their nominal class weights, in the order `force`, `force_c`, `support`, `support_k`, `face`, `face_c`, `macro`, `grf`, `glued`, `adv`, are \(0.10,0.10,0.075,0.075,0.10,0.10,0.10,0.125,0.075,0.15\). The class weights are renormalised over the available classes and assigned by systematic quotas. A run of \(N\) training steps therefore visits at most \(N/100+3\) distinct geometries of its training set, which contains 305 geometries for the base network and 591 for the continuations (Table ST01).
+The variants of Table 2 use batches of 16 directions and change the geometry at every step; three geometries of the training set are held on the GPU, and one of them is replaced every 100 steps. Their nominal class weights, in the order `force`, `force_c`, `support`, `support_k`, `face`, `face_c`, `macro`, `grf`, `glued`, `adv`, are \(0.10,0.10,0.075,0.075,0.10,0.10,0.10,0.125,0.075,0.15\). The class weights are renormalised over the available classes and assigned by systematic quotas. A run of \(N_{\rm st}\) training steps therefore visits at most \(N_{\rm st}/100+3\) distinct geometries of its training set, which contains 305 geometries for the base network and 591 for the continuations (Table ST01).
 
 Optimisation uses Adam, a one-cycle learning-rate schedule with peak \(3\times10^{-4}\), 5% warm-up, cosine decay, and final division factor 100. The gradient norm is clipped at one. Model selection and evaluation use an exponential moving average of the network parameters, with decay 0.9997 and zero-initialisation bias correction. Table 2 identifies the variants, and Table ST01 gives the training and model-selection settings of each. The energy term in Eq. (18) uses a \(10^{-12}\) lower clamp inside the logarithm, and the sensitivity term, the squared relative error of the thickness sensitivity vector, has unit weight.
 
@@ -614,21 +614,21 @@ The adversarial search initialises eight candidate directions and performs four 
 
 With \(Z\) and \(S_*=Z^TSZ\succ0\) as in Eq. (B.5), let
 \(T_*=S_*^{-1/2}Z^TH^TAHZ S_*^{-1/2}\).
-For an energy-normalised direction, \(x_j=S_*^{1/2}Z^Tq_j\) has unit Euclidean norm and, by Eq. (B.6), \(\varepsilon_j=x_j^TT_*x_j\). Define its coverage matrix \(M_N=N^{-1}\sum_jx_jx_j^T\). Then
+For an energy-normalised direction, \(x_j=S_*^{1/2}Z^Tq_j\) has unit Euclidean norm and, by Eq. (B.6), \(\varepsilon_j=x_j^TT_*x_j\). For \(N_q\) sampled directions, define the coverage matrix \(M_{N_q}=N_q^{-1}\sum_{j=1}^{N_q}x_jx_j^T\). Then
 
 \[
-\overline\varepsilon=\operatorname{tr}(T_*M_N),\qquad
-M_N\succeq\alpha I, \alpha>0
+\overline\varepsilon=\operatorname{tr}(T_*M_{N_q}),\qquad
+M_{N_q}\succeq\alpha I, \alpha>0
 \ \Longrightarrow\ 
 \varepsilon_*\le\operatorname{tr}(T_*)\le\overline\varepsilon/\alpha.
 \tag{G.4}
 \]
 
-If the directions do not span the complement, choose a unit \(v\) orthogonal to them and \(T_*=Mvv^T\). Every sampled error is zero and the worst error is \(M\), arbitrarily large. Such a PSD perturbation can be realised as \(H^TAH\) if there is at least one interior degree of freedom. Thus retaining all DOFs in P defines the approximation target, while adequate direction coverage controls its learned accuracy.
+If the directions do not span the complement, choose a unit \(v\) orthogonal to them and \(T_*=\Theta\,vv^T\) with \(\Theta>0\). Every sampled error is zero and the worst error is \(\Theta\), arbitrarily large. Such a PSD perturbation can be realised as \(H^TAH\) if there is at least one interior degree of freedom. Thus retaining all DOFs in P defines the approximation target, while adequate direction coverage controls its learned accuracy.
 
-The logarithmic loss is nonnegative for the exact variational construction and behaves as \(\log(1+\varepsilon)=\varepsilon+O(\varepsilon^2)\) near zero. It weights large directional errors differently from their arithmetic mean. A finite average log loss \(L_N\) only supplies the weak sample bound \(\sum_j\varepsilon_j\le e^{NL_N}-1\); it has no unsampled-direction implication without coverage. With exact reference normalisation, Ritz searches give attained Rayleigh quotients and hence lower bounds on the true largest quotient. Geometry-averaged direction means, their population maxima, and the full operator supremum are different statistics.
+The logarithmic loss is nonnegative for the exact variational construction and behaves as \(\log(1+\varepsilon)=\varepsilon+O(\varepsilon^2)\) near zero. It weights large directional errors differently from their arithmetic mean. A finite average log loss \(L_{N_q}\) over these directions only supplies the weak sample bound \(\sum_j\varepsilon_j\le e^{N_qL_{N_q}}-1\); it has no unsampled-direction implication without coverage. With exact reference normalisation, Ritz searches give attained Rayleigh quotients and hence lower bounds on the true largest quotient. Geometry-averaged direction means, their population maxima, and the full operator supremum are different statistics.
 
-For an orthogonal signed-permutation action, the transformations in Eq. (G.2) together with \(q'=T_Pq\) and \(B'_m=T_PB_mT_g^T\) preserve energies, nullspaces and assembly. A correspondingly transformed extension has the same property. Training on transformed examples (Appendix G.1) encourages this relation but does not prove that an unconstrained learned map satisfies it on every group element.
+For an orthogonal signed-permutation action, the transformations in Eq. (G.2) together with \(q'=T_Pq\) and \(B'_m=T_PB_mT_g^T\), where \(T_g\) is the signed permutation that the same transformation of the assembly induces on the free global retained displacement \(U\), preserve energies, nullspaces and assembly. A correspondingly transformed extension has the same property. Training on transformed examples (Appendix G.1) encourages this relation but does not prove that an unconstrained learned map satisfies it on every group element.
 
 ## Appendix H. Sensitivity identities and design intervals
 
@@ -692,17 +692,17 @@ The active set is fixed for this calculation, and the elasticity templates and g
 
 ### H.1. Sensitivity error bounds
 
-For a fixed retained \(q\), set \(u=Eq\), \(d=J_I^THq\), and \(\mathcal E=d^TKd=(Hq)^TA(Hq)\). Let \(D_c=K_{,c}\), \(c=1,\ldots,8\), be symmetric. Define the reference vector \(s_c=-u^TD_cu\), and assume \(\|\boldsymbol s\|_2>0\). Eq. (9) then reads
+For a fixed retained \(q\), set \(u=Eq\), \(d=J_I^THq\), and \(\mathcal E=d^TKd=(Hq)^TA(Hq)\). The derivatives \(K_{,c}\), \(c=1,\ldots,8\), are symmetric. Define the reference vector \(\boldsymbol s\) with components \(s_c=-u^TK_{,c}u\), and assume \(\|\boldsymbol s\|_2>0\). Eq. (9) then reads
 
 \[
-\widetilde s_c-s_c=-2d^TD_cu-d^TD_cd.
+\widetilde s_c-s_c=-2d^TK_{,c}u-d^TK_{,c}d.
 \]
 
-Let \(b_c=J_ID_cu\), \(D_{II,c}=J_ID_cJ_I^T\), and let the rows of \(\mathsf B_s\in\mathbb R^{8\times i}\) be \(b_c^TA^{-1/2}\). Define
+Let \(b_c=J_IK_{,c}u\), \(K_{II,c}=J_IK_{,c}J_I^T\), and let the rows of \(\mathsf B_s\in\mathbb R^{8\times i}\) be \(b_c^TA^{-1/2}\). Define
 
 \[
 L=\|\mathsf B_s\|_2,\qquad
-Q=\left(\sum_{c=1}^8\|A^{-1/2}D_{II,c}A^{-1/2}\|_2^2\right)^{1/2}.
+Q=\left(\sum_{c=1}^8\|A^{-1/2}K_{II,c}A^{-1/2}\|_2^2\right)^{1/2}.
 \]
 
 Cauchy–Schwarz and the quadratic-form operator bound give
@@ -715,29 +715,29 @@ Cauchy–Schwarz and the quadratic-form operator bound give
 \tag{H.7}
 \]
 
-All eight components are included, and the denominator is the norm of the exact sensitivity vector for that particular direction. The constants distinguish derivative coupling, interior coercivity, and reference sensitivity scale. For fixed \(q\) and \(H=tH_0\), the linear coefficient vanishes precisely when \((H_0q)^Tb_c=0\) for every corner. It vanishes for all interior errors if \(J_ID_cE q=0\) for every corner. A useful special case is \(D_c=\alpha_cK\): interior equilibrium removes the linear term and the relative sensitivity error equals the energy error when the reference vector is nonzero.
+All eight components are included, and the denominator is the norm of the exact sensitivity vector for that particular direction. The constants distinguish derivative coupling, interior coercivity, and reference sensitivity scale. For fixed \(q\) and \(H=tH_0\), the linear coefficient vanishes precisely when \((H_0q)^Tb_c=0\) for every corner. It vanishes for all interior errors if \(J_IK_{,c}E q=0\) for every corner. A useful special case is \(K_{,c}=\alpha_cK\): interior equilibrium removes the linear term and the relative sensitivity error equals the energy error when the reference vector is nonzero.
 
 For a re-equilibrated assembly, the quadratic expansion remains exact with \(d_m=\widehat u_m-u_m\), but \(d_m\) now includes a changed retained trace. Eq. (C.5) gives, componentwise,
 
 \[
 \begin{aligned}
 \widetilde s_{m,c}(t)-s_{m,c}
-={}&-2t(J_I^TH_{0,m}q_m)^TD_cu_m\\
-&+t^2\{2(E_mB_m\mathbb K^{-1}\mathbb D_0U)^TD_cu_m\\
-&\qquad-(J_I^TH_{0,m}q_m)^TD_c(J_I^TH_{0,m}q_m)\}+O(t^3).
+={}&-2t(J_I^TH_{0,m}q_m)^TK_{m,c}u_m\\
+&+t^2\{2(E_mB_m\mathbb K^{-1}\mathbb D_0U)^TK_{m,c}u_m\\
+&\qquad-(J_I^TH_{0,m}q_m)^TK_{m,c}(J_I^TH_{0,m}q_m)\}+O(t^3).
 \end{aligned}
 \]
 
 The leading term is the same as the fixed-trace term. The solution-only replacement is \(O(t^2)\); its coefficient can be large on a soft assembly or relative to a small local reference. If only one cell has a learned extension, an exact neighbouring cell has no \(O(t)\) reconstruction term, although its solved trace can change at order \(t^2\).
 
-There is also a global-to-local bound. Suppose \(K_m\) has its fixed rigid-body kernel, each \(D_{m,c}\) annihilates that kernel, and
+There is also a global-to-local bound. Suppose \(K_m\) has its fixed rigid-body kernel, each \(K_{m,c}\) annihilates that kernel, and
 
 \[
 \Gamma_m=\left(\sum_c
-\|K_{m,*}^{-1/2}D_{m,c,*}K_{m,*}^{-1/2}\|_2^2\right)^{1/2}<\infty
+\|K_{m,*}^{-1/2}K_{m,c,*}K_{m,*}^{-1/2}\|_2^2\right)^{1/2}<\infty
 \]
 
-on its rigid complement. Set \(E_m^{\rm loc}=u_m^TK_mu_m=w_mC>0\), \(\chi_m=\|\boldsymbol s_m\|_2/E_m^{\rm loc}>0\), and \(e_C=(C-\widehat C)/C\). The field expansion and Eq. (6) yield
+on its rigid complement. Since \(u_m^TK_mu_m=q_m^TS_mq_m=w_mC>0\), set \(\chi_m=\|\boldsymbol s_m\|_2/(w_mC)>0\) and \(e_C=(C-\widehat C)/C\). The field expansion and Eq. (6) yield
 
 \[
 \boxed{e_{s,m}\le\frac{\Gamma_m}{\chi_m}
@@ -746,11 +746,11 @@ on its rigid complement. Set \(E_m^{\rm loc}=u_m^TK_mu_m=w_mC>0\), \(\chi_m=\|\b
 \]
 
 Indeed, the local error energy is at most \(e_CC\). Substitution into
-\(\|\delta\boldsymbol s_m\|_2\le\Gamma_m(2\sqrt{E_m^{\rm loc}a_m(d_m,d_m)}+a_m(d_m,d_m))\)
+\(\|\delta\boldsymbol s_m\|_2\le\Gamma_m\big(2\sqrt{w_mC\,a_m(d_m,d_m)}+a_m(d_m,d_m)\big)\)
 proves the result. This bound makes the roles of a small energy share and a small reference sensitivity explicit. The recorded results do not measure \(\Gamma_m\), \(\chi_m\), or the local error energy, so Eq. (H.8) is a quantitative theoretical explanation, not a fitted attribution of a reported percentage.
 
-The field-only and solution-only replacements of Table ST11 do not form an additive sensitivity decomposition. Denote the three terms of Eq. (H.2) by \(a=(F-E)q\), \(b=E(\widehat q-q)\), and \(c=(F-E)(\widehat q-q)\), so that the full field error is \(a+b+c\). In addition to the field-only and solution-only vector differences, its sensitivity discrepancy contains
-\(-2c^TD_cu-c^TD_cc-2a^TD_cb-2a^TD_cc-2b^TD_cc\).
+The field-only and solution-only replacements of Table ST11 do not form an additive sensitivity decomposition. Denote the three terms of Eq. (H.2) by \(d^{(1)}=(F-E)q\), \(d^{(2)}=E(\widehat q-q)\) and \(d^{(3)}=(F-E)(\widehat q-q)\), so that the full field error is \(d^{(1)}+d^{(2)}+d^{(3)}\). In addition to the field-only and solution-only vector differences, its sensitivity discrepancy contains
+\(-2d^{(3)T}K_{,c}u-d^{(3)T}K_{,c}d^{(3)}-2d^{(1)T}K_{,c}d^{(2)}-2d^{(1)T}K_{,c}d^{(3)}-2d^{(2)T}K_{,c}d^{(3)}\).
 Knowing only the three output norms does not determine these terms or their angles.
 
 ### H.2. The complete design derivative and the sign of the thickness derivative
@@ -763,34 +763,35 @@ A E_{I,c}=-J_IK_{,c}E,
 
 while the condensed derivative \(S_{,c}=E^TK_{,c}E\) is Eq. (H.1). The exact assembly compliance derivative \(C_{,c}=-U^T\mathbb K_{,c}U\) and, from the equilibrium of the assembly with \(\widehat S\), Eq. (10) were derived above: \(\widehat C_{,c}\) is the sum over affected cells of \(\widetilde s_{m,c}-2(F_{I,m,c}\widehat q_m)^Tr_{I,m}\). The design derivative of the solved trace has already been eliminated using equilibrium; the residual term differentiates \(F\) at fixed trace. It includes geometry-conditioned coefficients and every design-dependent correction operation.
 
-Equivalently, with \(A_{,c}=(K_{,c})_{II}\), differentiate the variational stiffness error:
+Equivalently, with \(K_{II,c}\) as in Appendix H.1, differentiate the variational stiffness error:
 
 \[
 \boxed{(\widehat S-S)_{,c}
-=H_{,c}^TAH+H^TA_{,c}H+H^TAH_{,c}.}
+=H_{,c}^TAH+H^TK_{II,c}H+H^TAH_{,c}.}
 \tag{H.9}
 \]
 
-Its norm is bounded by \(2\|A\|\|H\|\|H_{,c}\|+\|A_{,c}\|\|H\|^2\). Thus a value error \(H=O(t)\) by itself does not imply a quadratic derivative error. A uniformly \(C^1\)-small extension error, \(H=tH_0(\tau)\) with bounded \(H_0,H_{0,c}\), gives \((\widehat S-S)_{,c}=O(t^2)\). With uniformly bounded exact solutions and inverse stiffnesses, this also yields \(\widehat C_{,c}-C_{,c}=O(t^2)\). One useful exact splitting is
+Its norm is bounded by \(2\|A\|\|H\|\|H_{,c}\|+\|K_{II,c}\|\|H\|^2\). Thus a value error \(H=O(t)\) by itself does not imply a quadratic derivative error. A uniformly \(C^1\)-small extension error, \(H=tH_0(\tau)\) with bounded \(H_0,H_{0,c}\), gives \((\widehat S-S)_{,c}=O(t^2)\). With uniformly bounded exact solutions and inverse stiffnesses, this also yields \(\widehat C_{,c}-C_{,c}=O(t^2)\). One useful exact splitting is
 
 \[
 \widehat C_{,c}-C_{,c}
-=-\widehat U^T\Delta_{,c}\widehat U
--(\widehat U-U)^T\mathbb K_{,c}(\widehat U+U).
+=-\widehat U^T\mathbb D_{,c}\widehat U
+-(\widehat U-U)^T\mathbb K_{,c}(\widehat U+U),
 \]
+where \(\mathbb D=\widehat{\mathbb K}-\mathbb K\) as in Eq. (C.1).
 
 The \(O(t)\) field-estimate term can cancel against the residual term. At the same trace, \(J_IK_{,c}Eq=-AE_{I,c}q\). For \(H=tH_0\), the linear field-estimate error is \(+2t(H_0q)^TAE_{I,c}q\), while the linear residual-chain contribution is \(-2t(E_{I,c}q)^TAH_0q\). This cancellation explains how a first-order field estimate and a second-order complete derivative can coexist.
 
 Under a fixed basis and exact integration, increasing one band parameter \(\tau_c\) with nonnegative \(Q_1\) shape functions enlarges the material domain. With fixed ghost stabilisation, this gives \(K_{,c}\succeq0\), \(S_{,c}\succeq0\), and \(C_{,c}\le0\). The field estimate is then also nonpositive for any field. Pointwise variational stiffness dominance does not itself enforce monotonicity of the surrogate compliance with respect to design: the residual-chain term can change the sign of its complete derivative. This is a separate mechanical consistency question from symmetry and positive definiteness at a fixed design. Numerical moment derivatives inherit the monotonicity statement only when they represent the same nested-domain integration rule.
 
-More explicitly, for \(h>0\), \(N_c^{Q_1}(x)\ge0\) implies \(\Omega(\tau)\subseteq\Omega(\tau+h e_c)\). For any discrete coefficient vector \(v\),
+More explicitly, for \(h>0\), \(N_c^{Q_1}(x)\ge0\) implies \(\Omega(\tau)\subseteq\Omega(\tau+h e_c)\). For any discrete coefficient vector \(v\), with interpolated displacement field \(v_h\),
 \[
 v^T[K(\tau+h e_c)-K(\tau)]v
 =\int_{\Omega(\tau+h e_c)\setminus\Omega(\tau)}
-\epsilon(v):\mathsf C:\epsilon(v)\,dx\ge0.
+\nabla^{\rm s}v_h:\mathsf C:\nabla^{\rm s}v_h\,dx\ge0.
 \tag{H.10}
 \]
-Here the material tensor and basis are fixed and the ghost contribution cancels. Taking the differentiable limit proves positive semidefiniteness of the thickness derivative. A centred difference of stiffness matrices assembled from exactly nested domains is also PSD. Changes of adaptive integration subdivision, approximate moments, or independently selected stabilisation can interrupt that discrete nesting relation; fixed active topology alone does not verify its numerical preservation. Figure S01(c) reports a step-refinement study of the numerical derivative on four cells: relative to the production step \(10^{-5}\tau_c\), the sensitivity changes by at most \(2.6\times10^{-7}\) at \(10^{-3}\tau_c\), \(2.5\times10^{-9}\) at \(10^{-4}\tau_c\) and \(1.6\times10^{-10}\) at \(10^{-6}\tau_c\); the hundredfold reduction per decade is the second-order truncation of the central difference, so no integration branch changes within \(\pm10^{-3}\tau_c\) at the fixed active set on these cells. On the same cells, the central-difference stiffness derivative agrees with differences of the re-solved compliance to \(4\times10^{-8}\). The element-level check of Supplementary Table ST15 shows that the discrete moments do not preserve the nesting everywhere. The element stiffnesses are positive semidefinite to rounding, but the exact derivative of the discrete moments at fixed clipping topology gives element derivative matrices with negative eigenvalues: in the uncut cells the smallest ratio \(\lambda_{\min}/\max|\lambda|\) is \(-2.3\times10^{-3}\), and in four of the six cut cells between 2 and 11 partially filled elements (of 762 to 6,033) have a uniform-thickening derivative whose most negative eigenvalue exceeds \(10^{-6}\) of its largest in magnitude, some of them negative semidefinite. The production central difference agrees with this exact discrete derivative to \(2\times10^{-8}\). Eq. (H.10), and the bound (H.11) that rests on it, therefore describe exact integration; the discrete model satisfies them only approximately. The reference sensitivities of this study are derivatives of the discrete model and are compared as such.
+Here \(\nabla^{\rm s}\) is the symmetric gradient, the elasticity tensor \(\mathsf C\) and the basis are fixed, and the ghost contribution cancels. Taking the differentiable limit proves positive semidefiniteness of the thickness derivative. A centred difference of stiffness matrices assembled from exactly nested domains is also PSD. Changes of adaptive integration subdivision, approximate moments, or independently selected stabilisation can interrupt that discrete nesting relation; fixed active topology alone does not verify its numerical preservation. Figure S01(c) reports a step-refinement study of the numerical derivative on four cells: relative to the production step \(10^{-5}\tau_c\), the sensitivity changes by at most \(2.6\times10^{-7}\) at \(10^{-3}\tau_c\), \(2.5\times10^{-9}\) at \(10^{-4}\tau_c\) and \(1.6\times10^{-10}\) at \(10^{-6}\tau_c\); the hundredfold reduction per decade is the second-order truncation of the central difference, so no integration branch changes within \(\pm10^{-3}\tau_c\) at the fixed active set on these cells. On the same cells, the central-difference stiffness derivative agrees with differences of the re-solved compliance to \(4\times10^{-8}\). The element-level check of Supplementary Table ST15 shows that the discrete moments do not preserve the nesting everywhere. The element stiffnesses are positive semidefinite to rounding, but the exact derivative of the discrete moments at fixed clipping topology gives element derivative matrices with negative eigenvalues: in the uncut cells the smallest ratio \(\lambda_{\min}/\max|\lambda|\) is \(-2.3\times10^{-3}\), and in four of the six cut cells between 2 and 11 partially filled elements (of 762 to 6,033) have a uniform-thickening derivative whose most negative eigenvalue exceeds \(10^{-6}\) of its largest in magnitude, some of them negative semidefinite. The production central difference agrees with this exact discrete derivative to \(2\times10^{-8}\). Eq. (H.10), and the bound (H.11) that rests on it, therefore describe exact integration; the discrete model satisfies them only approximately. The reference sensitivities of this study are derivatives of the discrete model and are compared as such.
 
 This positive structure strengthens the sensitivity interpretation without requiring an indefinite derivative. Put \(a_c=u^TK_{,c}u=-s_c\ge0\), \(\zeta_c=d^TK_{,c}d\ge0\). Positive-semidefinite Cauchy–Schwarz gives
 \[
@@ -799,7 +800,7 @@ This positive structure strengthens the sensitivity interpretation without requi
 \le2\sqrt{\sum_c a_c\zeta_c}+\|\boldsymbol\zeta\|_2.
 \tag{H.11}
 \]
-If \(\gamma_c=\|A^{-1/2}A_{,c}A^{-1/2}\|_2\), then \(\zeta_c\le\gamma_c\mathcal E\), giving \(2\sqrt{\sum_c a_c\gamma_c}\sqrt{\mathcal E}+\|\boldsymbol\gamma\|_2\mathcal E\). The quadratic term in the signed sensitivity discrepancy is nonpositive; the cross term can have either sign. The reference sensitivity vector has nonpositive components. A small reference norm reflects small derivative-weighted local strain energy. For a general variable that moves a cut or redistributes material, an indefinite derivative is possible; that generality is unnecessary to explain the present corner-thickening mechanism.
+If \(\gamma_c=\|A^{-1/2}K_{II,c}A^{-1/2}\|_2\) (so that \(\|\boldsymbol\gamma\|_2=Q\) of Eq. (H.7)), then \(\zeta_c\le\gamma_c\mathcal E\), giving \(2\sqrt{\sum_c a_c\gamma_c}\sqrt{\mathcal E}+\|\boldsymbol\gamma\|_2\mathcal E\). The quadratic term in the signed sensitivity discrepancy is nonpositive; the cross term can have either sign. The reference sensitivity vector has nonpositive components. A small reference norm reflects small derivative-weighted local strain energy. For a general variable that moves a cut or redistributes material, an indefinite derivative is possible; that generality is unnecessary to explain the present corner-thickening mechanism.
 
 Design-dependent loads and assembly maps add the chain-rule terms stated after Eq. (H.5). These changes are different derivative problems rather than modifications of Eq. (H.9).
 
