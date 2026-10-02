@@ -15,16 +15,29 @@ def api(path, method="GET", body=None):
         return json.loads(r.read() or b"null")
 
 def get_kernel():
-    if os.environ.get("JRUN_NEW_KERNEL"): return api("/api/kernels", "POST", {"name": "python3"})["id"]
+    """Returns (kernel id, created): with JRUN_NEW_KERNEL a fresh kernel that run() shuts down afterwards (a kernel left
+    behind per call piled up to 171 idle kernels on 2026-10-02 and made the Jupyter gateway fail)."""
+    if os.environ.get("JRUN_NEW_KERNEL"): return api("/api/kernels", "POST", {"name": "python3"})["id"], True
     ks = api("/api/kernels")
     py = [k for k in ks if k.get("name", "").startswith("python")]
     for k in py:                                                   # an idle kernel first: a busy one queues the command
-        if k.get("execution_state") == "idle": return k["id"]
-    if py: return py[0]["id"]
-    return api("/api/kernels", "POST", {"name": "python3"})["id"]
+        if k.get("execution_state") == "idle": return k["id"], False
+    if py: return py[0]["id"], False
+    return api("/api/kernels", "POST", {"name": "python3"})["id"], True
 
 def run(cmd, timeout=3600):
-    kid = get_kernel()
+    kid, created = get_kernel()
+    try:
+        return _run(kid, cmd, timeout)
+    finally:
+        if created:                                                # shut down only the kernel this call created
+            try:
+                api(f"/api/kernels/{kid}", "DELETE")
+            except Exception:
+                pass
+
+
+def _run(kid, cmd, timeout):
     ws = websocket.create_connection(f"wss://{HOST}/jupyter/api/kernels/{kid}/channels", header=[f"Authorization: token {TOK}"],
                                      http_proxy_host=PROXY[0], http_proxy_port=int(PROXY[1]), proxy_type="http",
                                      sslopt={"ca_certs": CA}, timeout=timeout)
