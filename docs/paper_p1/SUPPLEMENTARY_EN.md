@@ -329,6 +329,8 @@ Entries are mean [90th percentile] energy error (%). C denotes one coarse-grid c
 
 Mean directional energy error (%) of the base network, of NICE and of starting fields under the same correction (fixed retained displacement, 32 validation directions per class). Columns give the starting field and the correction (smoothing steps per stage / coarse space / smoothing steps). Harmonic and zero starting fields receive the exact rigid-body split.
 
+The harmonic starting field is the graph-harmonic extension of the deformation part of the retained displacement. The graph has the active nodes of the cell as vertices and joins every pair of the 27 nodes of each active element, with the element's material volume as weight (summed over the elements that share a pair); \(L=D_W-W\) is its Laplacian. With the retained values prescribed, each displacement component is extended separately by \(L_{II}u_I=-L_{IP}q\). As for the zero field, the retained displacement is first split as \(q=R_Pc+(q-R_Pc)\) with \(c=R_P^{+}q\); only the second part is extended, the rigid field \(Rc\) is added, and the retained values are restored. The extension has no trainable parameters and uses only the element connectivity and volumes.
+
 | cell | class | Base network | NICE | Base network, corrected (8/Q1/8) | harmonic + 8/Q1/8 | zero + 8/Q1/8 | Base network + 32/Q1/32 | harmonic + 32/Q1/32 | zero + 32/Q1/32 |
 |---|---|---|---|---|---|---|---|---|---|
 | H2 | force_c | 35 | 0.0148 | 0.0117 | 0.0806 | 28.3 | 0.000182 | 0.000614 | 0.0156 |
@@ -564,7 +566,7 @@ U1/x under the neighbour-face z traction. The base network is used on the target
 
 ## Supplementary Note S1. Geometry visualisation
 
-The surfaces in Figure 1 are sampled on a grid with 97 positions per unit-box axis using the eight corner thickness parameters and cut-plane data of U1, M1, H1 and H2. This surface sampling is used for visualisation; the mechanical discretisation has 32 background elements per axis and continuous Q2 displacement functions.
+The surfaces in Figure 1 are sampled on a grid with 129 positions per unit-box axis using the eight corner thickness parameters and cut-plane data of U1, M1, H1 and H2. This surface sampling is used for visualisation; the mechanical discretisation has 32 background elements per axis and continuous Q2 displacement functions.
 
 ## Supplementary Note S2. Verification of the reference and of the thickness derivative
 

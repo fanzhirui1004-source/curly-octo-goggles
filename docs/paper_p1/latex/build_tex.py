@@ -53,10 +53,11 @@ def figures(md):
 
 
 def tables(md):
-    """'**Table n. Title.** rest' immediately before a pipe table -> pandoc caption line after the table."""
+    """'**Table n. Title.** rest' immediately before a pipe table -> pandoc caption line after the table (numbered by
+    LaTeX). Only numeric labels: supplementary labels ('Table ST27') stay as their bold paragraph, like the other ST tables."""
     lines = md.split('\n'); out = []; i = 0
     while i < len(lines):
-        m = re.match(r'^\*\*(Table [0-9A-Z]+)\.\s*(.*?)\*\*(.*)$', lines[i])
+        m = re.match(r'^\*\*(Table [0-9]+)\.\s*(.*?)\*\*(.*)$', lines[i])
         if m:
             j = i + 1
             while j < len(lines) and not lines[j].strip():

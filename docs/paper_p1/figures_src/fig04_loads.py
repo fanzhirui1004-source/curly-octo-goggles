@@ -85,7 +85,7 @@ def config_x(ax):
         base, L = (x0 + .32, 0, .3), .3
         arrow(ax, base, (L, 0, 0), 'x')
         arrow(ax, base, (0, 0, L), 'z')
-        arrow(ax, base, (0, -.8 * L, 0), 'y', off=(.03, 0))            # face normal, drawn outward
+        arrow(ax, (base[0], -.8 * L, base[2]), (0, .8 * L, 0), 'y', off=(.03, 0))   # face normal, +y, ending on the face
     cell_label(ax, (-.5, .5, 1), 'N', 'exact')
     cell_label(ax, (.42, .5, 1), 'T', 'learned')
     ax.text(-1 - A - .08, .5 + B / 2, 'clamped\nx = −1', fontsize=7, ha='right', va='center', color=TEXT)
@@ -105,7 +105,7 @@ def config_y(ax):
     shared_face(ax, [(0, 0, 0), (1, 0, 0), (1, 0, 1), (0, 0, 1)])     # y = 0 (hidden behind N: dashed)
     for base in ((0, -.84, .42), (0, .1, .45)):                        # N face, T face
         L = .26
-        arrow(ax, base, (-.85 * L, 0, 0), 'x', off=(0, -.08))          # face normal, drawn outward
+        arrow(ax, (-.85 * L, base[1], base[2]), (.85 * L, 0, 0), 'x', off=(0, -.08))   # face normal, +x, ending on the face
         arrow(ax, base, (0, L, 0), 'y', off=(-.04, .05))
         arrow(ax, base, (0, 0, L), 'z')
     cell_label(ax, (.5, -.5, 1), 'N', 'exact')
