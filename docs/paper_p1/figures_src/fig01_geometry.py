@@ -35,7 +35,7 @@ CUT = {'U1': None,                                                      # uncut
        'H2': ([0.9984316431248911, 0.05598440860570193, 0.0], 0.05459404962921295)} # fresh_val_2010_d0_v0
 PCT = {'U1': '100%', 'M1': '64.8%', 'H1': '8.6%', 'H2': '2.67%'}       # remaining box volume, as in the figure
 VOL = {'M1': 0.6478160496334634, 'H1': 0.08604416938804589, 'H2': 0.026660923780561247}   # evidence/valmeta.json 'vol'
-BAND, SECTION, BOX = '#7FA6C4', FS.C['cut'], '#9AA5B1'
+BAND, SECTION, BOX = '#7FA6C4', '#C9B48A', '#9AA5B1'               # section: neutral sand (no vermillion / gold)
 
 
 def plane_from_volume(theta, v):

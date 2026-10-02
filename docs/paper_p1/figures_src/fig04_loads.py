@@ -11,7 +11,7 @@ from figstyle import C, MUTED, TEXT, MM, panel, save
 
 A, B = .5, .33                                               # oblique projection: depth (+y) runs to the upper left
 FILL = {'N': '#E3E7EB', 'T': '#D6E7F4'}                     # exact neighbour: grey; learned target: light blue
-LOAD, CLAMP, SHARED, ARROW = '#FFF0CC', '#C5CDD4', C['assembly'], C['corrected']
+LOAD, CLAMP, SHARED, ARROW = '#FFF0CC', '#C5CDD4', MUTED, TEXT      # neutral schematic: no variant colours
 plt.rcParams['hatch.linewidth'] = .5
 
 
@@ -70,7 +70,7 @@ def shared_label(ax, xy, anchor, ha):
 
 def triad(ax, origin, L=.3):
     for vec, lab, off in (((L, 0, 0), 'x', (0, 0)), ((0, L, 0), 'y', (0, 0)), ((0, 0, L), 'z', (0, 0))):
-        arrow(ax, origin, vec, lab, off, color=TEXT, lw=.7, size=5, fs=7)
+        arrow(ax, origin, vec, lab, off, color=MUTED, lw=.7, size=5, fs=7)
 
 
 def config_x(ax):

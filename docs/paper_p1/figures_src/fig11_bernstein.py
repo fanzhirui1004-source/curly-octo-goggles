@@ -28,19 +28,21 @@ print('r', R, 'retained DOFs', (dofs * 1e3).astype(int).tolist(), 'full', rec['f
 print('compliance 3/6 loads (%)', np.round(comp3, 3).tolist(), np.round(comp6, 3).tolist())
 print('sensitivity 3/6 loads (%)', np.round(sens3, 3).tolist(), np.round(sens6, 3).tolist())
 
-T3 = dict(color=FS.C['uncorrected'], marker='o', ms=5, lw=1.2, label='Target face: 3 loads')
-A6 = dict(color=FS.C['corrected'], marker='s', ms=5, lw=1.2, label='All faces: 6 loads')
+# restriction scope is a layer-3 category: neutral greys distinguished by line style and marker
+T3 = dict(color=FS.GREY[1], ls='--', marker='o', ms=5, lw=1.2, label='Target face: 3 loads')
+A6 = dict(color=FS.GREY[0], ls='-', marker='s', ms=5, lw=1.2, label='All faces: 6 loads')
+DOF = dict(color=FS.GREY[0], ls='-', marker='D', ms=4.5, lw=1.2)        # retained DOFs (load-independent)
 
 fig, axs = plt.subplots(1, 3, figsize=(178 * FS.MM, 66 * FS.MM), gridspec_kw=dict(wspace=.42))
 ax = axs[0]
-ax.plot(R, dofs, **T3)
+ax.plot(R, dofs, **DOF)
 ax.axhline(full, ls='--', color=FS.TEXT, lw=1.0)
 ax.text(1.0, full - 1.6, 'Full representation\n(32,991)', ha='left', va='top', fontsize=6.5, color=FS.TEXT)
 ax.set_ylim(0, 37); ax.set_ylabel('Retained DOFs (thousands)')
 FS.panel(ax, 'a', 'Retained DOFs')
 for ax, y3, y6, t, l in ((axs[1], comp3, comp6, 'b', 'Compliance'), (axs[2], sens3, sens6, 'c', 'Sensitivity')):
     ax.plot(R, y3, **T3); ax.plot(R, y6, **A6)
-    ax.axhline(3, ls='--', color=FS.MUTED, lw=.8)
+    ax.axhline(3, ls=':', color=FS.GREY[2], lw=.9)
     ax.set_yscale('log'); ax.set_ylim(.1, 500); ax.set_ylabel('Maximum relative error (%)')
     FS.panel(ax, t, l)
 for ax in axs:

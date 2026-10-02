@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, ListedColormap
-from figstyle import C, MUTED, TEXT, MM, panel, save
+from figstyle import GREY, CELL, MUTED, TEXT, MM, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
 plt.rcParams['savefig.dpi'] = 300                       # resolution of the rasterised scatters inside the PDF and SVG
@@ -18,6 +18,8 @@ VIEW = dict(elev=24, azim=-58)                           # the same viewing angl
 # visible on the white background (light = small, dark = large)
 CMAP = ListedColormap(plt.get_cmap('magma_r')(np.linspace(.08, 1, 256)), name='magma_r_trunc')
 PT = dict(s=1.2, linewidths=0, rasterized=True)
+# panel (a) categories (layer 3): greys plus one blue-ramp mid tone for the cut band
+INTERIOR, BOXFACE, CUTBAND = GREY[2], GREY[0], CELL['M1'][0]
 
 
 def ax3(fig, pos):
@@ -53,11 +55,11 @@ def main(k=3):
     ax = ax3(fig, gs[0, 0])                                             # (a) partition of the DOFs
     P, box = z['port_xyz'], z['port_is_box']
     I = z['int_xyz']
-    ax.scatter(*I.T, s=.15, c='#B8C2CC', alpha=.35, linewidths=0, label='interior (I)', rasterized=True)
-    ax.scatter(*P[box].T, s=.5, c=C['exact'], linewidths=0, label='retained: box face', rasterized=True)
-    ax.scatter(*P[~box].T, s=.6, c=C['cut'], marker='s', linewidths=0, alpha=.8, label='retained: cut band', rasterized=True)
+    ax.scatter(*I.T, s=.15, c=INTERIOR, alpha=.35, linewidths=0, label='interior (I)', rasterized=True)
+    ax.scatter(*P[box].T, s=.5, c=BOXFACE, linewidths=0, label='retained: box face', rasterized=True)
+    ax.scatter(*P[~box].T, s=.6, c=CUTBAND, marker='s', linewidths=0, alpha=.8, label='retained: cut band', rasterized=True)
     handles = [plt.Line2D([], [], ls='none', marker=mk, color=col, ms=4, label=lab) for col, mk, lab in
-               (('#B8C2CC', 'o', 'interior (I)'), (C['exact'], 'o', 'retained: box face'), (C['cut'], 's', 'retained: cut band'))]
+               ((INTERIOR, 'o', 'interior (I)'), (BOXFACE, 'o', 'retained: box face'), (CUTBAND, 's', 'retained: cut band'))]
     ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(.5, -.12), ncol=3, frameon=False, fontsize=6.5,
               handletextpad=.3, columnspacing=1.2, borderaxespad=0)      # below the panel (3D axes draw their labels inside)
     panel(ax, 'a', 'Retained and interior DOFs')

@@ -20,9 +20,10 @@ Supplementary Figure S06 -> figures/S06_homogenised_law.{svg,pdf,png}
   C11, C12, C44 and the material volume fraction (symbol V^H; rho is the recomputed residual of Eq. (18)) of the
   uniform-thickness cell against tau, with the cubic splines of homog_macro.Material.
 
-Colours and markers: NICE keeps its house identity (figstyle.MODEL['A3']: orange, squares). The exact-condensation twin is
-grey without the Base-network plus marker ('x'); the homogenisation series use C['extra'] (a colour no variant uses)
-with markers no variant uses ('*', 'h'); the load face and Figure S06 are drawn in neutral colours.
+Colours and markers: NICE keeps its house identity (figstyle.MODEL['A3']: vermillion, squares). The exact-condensation
+twin is ink (figstyle.C['exact']) with marker 'x'; the homogenisation series use C['extra'] (purple, a colour no variant
+uses) with markers no variant uses ('*', 'h'); the resource curves of the scale demonstration are neutral greys
+(figstyle.GREY); the load face and Figure S06 are drawn in neutral colours.
 
 Data only from review_r1/results/X6_opt: optA/optA, optA/optAx (histories, check_*.json), plates/* (histories, meta.json
 'vkeys' and 'fixed'), homog/plate841.json ('shape', 'normal', 'b_global', 'cells'), homog/homog_cells.json ('cells'),
@@ -45,8 +46,8 @@ D = HERE.parent / 'review_r1' / 'results' / 'X6_opt'
 SRC = HERE.parents[1] / 'data' / 'newmachine_20260924' / 'src_v2_wip'   # homog_macro.py (spline of the material law)
 F = json.loads((D / 'FACTS_6_11.json').read_text())
 
-NICE, NICE_MK = FS.MODEL['A3'][0], FS.MODEL['A3'][1]                    # NICE: orange squares, as in Figures 5-10
-EXACT, EXACT_MK = FS.C['exact'], 'x'                                    # exact condensation: grey, no variant marker
+NICE, NICE_MK = FS.MODEL['A3'][0], FS.MODEL['A3'][1]                    # NICE: vermillion squares, as in Figures 5-10
+EXACT, EXACT_MK = FS.C['exact'], 'x'                                    # exact condensation: ink, no variant marker
 HOM, HOM_MK, XH_MK = FS.C['extra'], '*', 'h'                            # homogenisation design / continuation from it
 SHADE = '#EEF1F4'
 TAU_LO, TAU_HI = 0.18, 0.69
@@ -330,31 +331,32 @@ def draw_scale(fig, gs_e, letter='e', wide=False):
     t = [np.array(S[r]['iter_s']) / 60 for r in runs]
     tm = np.array([x.mean() for x in t])
     err = np.array([[m - x.min() for m, x in zip(tm, t)], [x.max() - m for m, x in zip(tm, t)]])
-    axe.errorbar(n, tm, yerr=err, color=NICE, marker=NICE_MK, ms=3.2, lw=.9, capsize=1.5, elinewidth=.6, zorder=4)
-    axe.set_xlabel('cells'); axe.set_ylabel('time per design iteration (min)', color=NICE, fontsize=7)
-    axe.tick_params(axis='y', colors=NICE)
+    TIME, MEM = FS.GREY[0], FS.GREY[1]                                  # resource curves: neutral greys (layer 3)
+    axe.errorbar(n, tm, yerr=err, color=TIME, marker=NICE_MK, ms=3.2, lw=.9, capsize=1.5, elinewidth=.6, zorder=4)
+    axe.set_xlabel('cells'); axe.set_ylabel('time per design iteration (min)', color=TIME, fontsize=7)
+    axe.tick_params(axis='y', colors=TIME)
     axe.set_xlim(0, 150); axe.set_ylim(0, 55); axe.set_xticks([0, 24, 51, 88, 110, 135])
     axe.tick_params(axis='x', labelsize=6)
     axm = axe.twinx()
     hp = np.array([S[r]['host_peak_gb'] for r in runs])                  # GiB (ru_maxrss / 2**20, main process)
     gp = np.array([S[r]['sampler_gpu_used_max_gib'] for r in runs])     # GiB in use on the device (nvidia-smi, 30-s samples)
-    axm.plot(n, hp, '--', color=EXACT, lw=.8, marker='o', ms=3.0, mfc='white', mew=.8, zorder=3)
-    axm.plot(n, gp, ':', color=EXACT, lw=.9, marker='^', ms=3.0, mfc=EXACT, mew=.6, zorder=3)
+    axm.plot(n, hp, '--', color=MEM, lw=.8, marker='o', ms=3.0, mfc='white', mew=.8, zorder=3)
+    axm.plot(n, gp, ':', color=MEM, lw=.9, marker='^', ms=3.0, mfc=MEM, mew=.6, zorder=3)
     cap = 32607 / 1024
-    axm.axhline(cap, color=EXACT, lw=.5, ls='-', alpha=.5)
-    axm.set_ylim(0, 110); axm.set_ylabel('peak memory (GiB)', color=EXACT, fontsize=7)
-    axm.tick_params(axis='y', colors=EXACT, labelsize=6.5)
+    axm.axhline(cap, color=MEM, lw=.5, ls='-', alpha=.5)
+    axm.set_ylim(0, 110); axm.set_ylabel('peak memory (GiB)', color=MEM, fontsize=7)
+    axm.tick_params(axis='y', colors=MEM, labelsize=6.5)
     axe.axvline(135, color=FS.MUTED, lw=.6, ls=':')
     if wide:
-        axm.text(132.5, cap + 1.2, 'GPU capacity', fontsize=5.8, color=EXACT, ha='right', va='bottom')
-        axm.text(n[-1] + 3.5, hp[-1], 'CPU', fontsize=6, color=EXACT, ha='left', va='center')
-        axm.text(n[-1] + 3.5, gp[-1] - .5, 'GPU', fontsize=6, color=EXACT, ha='left', va='top')
+        axm.text(132.5, cap + 1.2, 'GPU capacity', fontsize=5.8, color=MEM, ha='right', va='bottom')
+        axm.text(n[-1] + 3.5, hp[-1], 'CPU', fontsize=6, color=MEM, ha='left', va='center')
+        axm.text(n[-1] + 3.5, gp[-1] - .5, 'GPU', fontsize=6, color=MEM, ha='left', va='top')
         axe.text(132.5, 11.0, 'out of GPU\nmemory at\n135 cells', ha='right', va='top', fontsize=5.8, color=FS.MUTED,
                  linespacing=1.05)
     else:
-        axm.text(62, cap + 1.2, 'GPU capacity', fontsize=5.6, color=EXACT, va='bottom')
-        axm.text(n[-1] + 3, hp[-1], 'CPU', fontsize=5.8, color=EXACT, ha='left', va='center')
-        axm.text(n[-1] + 3, gp[-1] - 1, 'GPU', fontsize=5.8, color=EXACT, ha='left', va='top')
+        axm.text(62, cap + 1.2, 'GPU capacity', fontsize=5.6, color=MEM, va='bottom')
+        axm.text(n[-1] + 3, hp[-1], 'CPU', fontsize=5.8, color=MEM, ha='left', va='center')
+        axm.text(n[-1] + 3, gp[-1] - 1, 'GPU', fontsize=5.8, color=MEM, ha='left', va='top')
         axe.text(142.5, 27.5, '135 cells: out of GPU memory', ha='center', va='center', rotation=90, fontsize=5.6,
                  color=FS.MUTED)
     axe.grid(True, color=FS.GRID, lw=.4)

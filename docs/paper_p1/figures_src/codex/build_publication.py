@@ -53,9 +53,17 @@ plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 8,
 
 C = dict(ink="#243447", muted="#657382", grid="#DFE5E9", gray="#343D46",
          blue="#0072B2", orange="#D55E00", green="#009E73", purple="#AA4499", gold="#E69F00")
+# Palette (scheme A), mirroring figstyle.py: layer 1 variants, layer 2 cells (blue ramp by cut severity, shape by
+# stratum), layer 3 other categories (greys; the only accent is NICE vermillion for the complete NICE correction).
+VAR = dict(base="#8A94A0", uncorrected="#0072B2", nice="#D55E00")
+GREY = ("#243447", "#657382", "#A3ADB8"); GREY_FILL = "#CDD3DA"
+CELL = {"U1": ("#8FB1D6", "o"), "U2": ("#7AA2CD", "o"), "L1": ("#6390C2", "D"), "M1": ("#4A7AB0", "s"),
+        "M2": ("#3A679C", "D"), "H1": ("#24528A", "^"), "H2": ("#133A68", "v"), "H3": ("#0B2747", "<")}
 CASES = ["fresh_val_2000_full", "fresh_val_2003_d1_v1", "fresh_val_2005_d1_v0", "fresh_val_2006_d0_v1", "fresh_val_2010_d0_v0"]
-CASE_COLOR = dict(zip(CASES, [C["blue"], C["orange"], C["green"], C["purple"], C["gray"]]))
-CASE_MARK = dict(zip(CASES, ["o", "s", "^", "D", "v"]))
+_CELL_OF = dict(zip(CASES, ["U1", "M1", "H1", "M2", "H2"]))
+CASE_COLOR = {c: CELL[k][0] for c, k in _CELL_OF.items()}
+CASE_MARK = {c: CELL[k][1] for c, k in _CELL_OF.items()}
+SEVERITY = [CASES[0], CASES[1], CASES[3], CASES[2], CASES[4]]  # U1, M1, M2, H1, H2: legend order follows the ramp
 CLASS_LABEL=dict(force="Nodal force",support="Spring support",face="Single-face force",macro="Polynomial",grf="Multiscale",force_c="Traction",face_c="Face traction",support_k="Stiffness support",glued="Neighbour-induced")
 TABLE_CACHE, TABLE_HASHES, SOURCE_HASHES, BUILD_LOG = {}, {}, {}, {}
 CURRENT, ROWS, BINDINGS = None, {}, []
@@ -151,7 +159,7 @@ def style(ax, title=None, xlabel=None, ylabel=None, logy=False):
 
 
 def case_handles():
-    return [Line2D([], [], c=CASE_COLOR[c], marker=CASE_MARK[c], ms=4, lw=1.1, label=short(c)) for c in CASES]
+    return [Line2D([], [], c=CASE_COLOR[c], marker=CASE_MARK[c], ms=4, lw=1.1, label=short(c)) for c in SEVERITY]
 
 
 def legend(fig, handles, ncol=3, y=.885, size=7.5):
@@ -268,13 +276,14 @@ def finish(fig, note="", extra=None):
 def f03():
     begin("F03_spectrum")
     fig,grid=canvas("Spectral location of extension error", r"$Av=\lambda Dv,\quad D=\mathrm{diag}(A)$  ·  cumulative energy in the lowest modes",2,2,height=154)
-    handles=[Line2D([],[],color=C["orange"],marker="o",ms=3,lw=1.2,label="Error (filled)"),Line2D([],[],color=C["gray"],marker="o",mfc="white",ms=3,lw=1.2,label="Exact field (open)"),
-             Line2D([],[],color=C["gray"],marker="o",lw=1,ms=3,label="Traction"),Line2D([],[],color=C["gray"],marker="^",ls="--",lw=1,ms=3,label="Nodal force")]
+    ERR,FLD,KEY=GREY[0],GREY[2],GREY[1]  # base-network error: ink filled; exact field: light grey open; style keys: mid grey
+    handles=[Line2D([],[],color=ERR,marker="o",ms=3,lw=1.2,label="Error (filled)"),Line2D([],[],color=FLD,marker="o",mfc="white",ms=3,lw=1.2,label="Exact field (open)"),
+             Line2D([],[],color=KEY,marker="o",lw=1,ms=3,label="Traction"),Line2D([],[],color=KEY,marker="^",ls="--",lw=1,ms=3,label="Nodal force")]
     legend(fig,handles,4)
     cases=[CASES[0],CASES[1],CASES[3],CASES[4]]
     for j,case in enumerate(cases):
         ax=fig.add_subplot(grid[j//2,j%2]);panel="abcd"[j]
-        for field,col in [("error",C["orange"]),("field",C["gray"])]:
+        for field,col in [("error",ERR),("field",FLD)]:
             for cls,ls,mark in [("force_c","-","o"),("force","--","^")]:
                 rr=sorted(select("05_spectrum",case=case,field=field,direction_class=cls,statistic="mean"),key=lambda r:r["modes"])
                 x=[r["modes"] for r in rr]
@@ -303,15 +312,16 @@ def f04():
     ax=fig.add_subplot(grid[1,0]);case=CASES[1]
     methods=["net","net_tail","net+Q1_17+tail","net+tail+Q1_17+tail"]
     labels=["Network\nonly\n0 total steps","Post-8\nsmoothing\n8 total steps","$Q_1(17)$\n→ Post-8\n8 total steps","Pre-8 → $Q_1(17)$\n→ Post-8\n16 total steps"]
-    for i,(method,color) in enumerate(zip(methods,[C["blue"],C["gray"],C["green"],C["orange"]])):
+    # correction stages: greys (layer 3); only the complete correction (pre-8 -> Q1(17) -> post-8) is vermillion
+    for i,(method,color,mark) in enumerate(zip(methods,[GREY[0],GREY[1],GREY[2],VAR["nice"]],["o","D","^","s"])):
         rr=[one("04_coarse_correction",case=case,direction_class="force_c",k_per_tail=8,method=method,statistic=s) for s in ["mean","p90"]]
         vals=bind(rr,"c",method)
-        ax.plot([i,i],vals,c=color,lw=1);ax.plot(i,vals[0],"o",c=color,ms=4.5);ax.plot(i,vals[1],"_",c=color,ms=8)
+        ax.plot([i,i],vals,c=color,lw=1);ax.plot(i,vals[0],mark,c=color,ms=4.5);ax.plot(i,vals[1],"_",c=color,ms=8)
         ax.annotate(f"{vals[0]:.3g}%",(i,vals[0]),xytext=(0,-13),textcoords="offset points",ha="center",fontsize=7)
     ax.set_xticks(range(4),labels,fontsize=6.5);ax.set_xlim(-.4,3.4);ax.set_ylim(.055,40)
     style(ax,"c  M1: correction stages",None,"Energy error (%)",True)
     ax=fig.add_subplot(grid[1,1])
-    for method,label,color,marker in [("net_tail","One smoothing stage",C["gray"],"o"),("net+tail+Q1_17+tail","Two-stage + $Q_1(17)$",C["orange"],"s")]:
+    for method,label,color,marker in [("net_tail","One smoothing stage",GREY[1],"D"),("net+tail+Q1_17+tail","Two-stage + $Q_1(17)$",VAR["nice"],"s")]:
         rr=[one("04_coarse_correction",case=case,direction_class="force_c",k_per_tail=k,method=method,statistic="mean") for k in [2,4,8]]
         ax.plot([2,4,8],bind(rr,"d",method),c=color,marker=marker,ms=4,lw=1.1,label=label)
     ax.set_xticks([2,4,8]);ax.set_xlim(1,9);ax.set_ylim(.1,20)
@@ -345,12 +355,13 @@ def s03b():
     begin("S02B_coarse_spaces")
     fig,grid=canvas("Interior coarse-space comparisons", "Base network  ·  eight steps per smoothing stage  ·  dots: means; caps: directional p90",3,2,height=225,top=.81,bottom=.13,hspace=.68,wspace=.4)
     spaces=["Q1_9","PU_9","Q1_17","Q2_17","PU_17","Q1_33"]
-    recipes=[("net+{s}","Network + coarse",C["blue"],"o"),
-             ("net+{s}+tail","Network + coarse + post",C["green"],"^"),
-             ("net+tail+{s}+tail","Network + pre + coarse + post",C["orange"],"s"),
-             ("zero+tail+{s}+tail","Zero + pre + coarse + post",C["purple"],"D")]
+    # sequences: greys (layer 3); the complete correction in vermillion; zero start in light grey
+    recipes=[("net+{s}","Network + coarse",GREY[0],"o"),
+             ("net+{s}+tail","Network + coarse + post",GREY[1],"^"),
+             ("net+tail+{s}+tail","Network + pre + coarse + post",VAR["nice"],"s"),
+             ("zero+tail+{s}+tail","Zero + pre + coarse + post",GREY[2],"D")]
     hs=[Line2D([],[],c=col,marker=mark,ls="",ms=4,label=lab) for _,lab,col,mark in recipes]
-    hs.extend([Line2D([],[],c=C["gray"],ls="--",lw=1,label="Network initial field"),Line2D([],[],c=C["gray"],ls=":",lw=1,label="Network + one smoother")])
+    hs.extend([Line2D([],[],c=GREY[1],ls="--",lw=1,label="Network initial field"),Line2D([],[],c=GREY[1],ls=":",lw=1,label="Network + one smoother")])
     legend(fig,hs,2,y=.90,size=7.3)
     cases=[CASES[0],CASES[1],CASES[3]]
     for i,case in enumerate(cases):
@@ -365,7 +376,7 @@ def s03b():
                     if n==0:dofs.append(rr[0]["coarse_dofs"])
             for method,ls in [("net","--"),("net_tail",":")]:
                 rr=[one("04_coarse_correction",case=case,direction_class=cls,k_per_tail=8,method=method,statistic="mean")]
-                ax.axhline(bind(rr,panel,method)[0],ls=ls,c=C["gray"],lw=.8)
+                ax.axhline(bind(rr,panel,method)[0],ls=ls,c=GREY[1],lw=.8)
             ax.set_xticks(range(6),[("$Q_"+s[1]+"("+s.split("_")[1]+")$" if s.startswith("Q") else "PU("+s.split("_")[1]+")")+"\n"+f"{d:,}" for s,d in zip(spaces,dofs)],fontsize=7)
             ax.set_xlim(-.55,5.55);ax.set_ylim(.001,2e6)
             style(ax,panel+"  "+short(case)+" · "+CLASS_LABEL[cls],"Coarse family / coarse DOFs","Energy error (%)",True)
@@ -376,11 +387,11 @@ def s03b():
 def s04():
     begin("S03_sensitivity_diagnostics")
     fig,grid=canvas("Field-based sensitivity diagnostics", "Matched trace inputs  ·  Base network and Uncorrected  ·  eight-component design response",2,2,height=166,top=.82,bottom=.17,hspace=.59,wspace=.4)
-    hs=[Line2D([],[],c=C["blue"],marker="o",ls="",ms=4,label="Base network (filled)"),Line2D([],[],c=C["purple"],marker="o",mfc="white",ls="",ms=4,label="Uncorrected (open / hatched)"),
-        Line2D([],[],c=C["gray"],marker="o",ls="",ms=4,label="Traction"),Line2D([],[],c=C["gray"],marker="^",ls="",ms=4,label="Nodal force")]
+    hs=[Line2D([],[],c=VAR["base"],marker="o",ls="",ms=4,label="Base network (filled)"),Line2D([],[],c=VAR["uncorrected"],marker="o",mfc="white",ls="",ms=4,label="Uncorrected (open / hatched)"),
+        Line2D([],[],c=GREY[0],marker="o",mfc="none",ls="",ms=4,label="Traction"),Line2D([],[],c=GREY[0],marker="^",mfc="none",ls="",ms=4,label="Nodal force")]
     legend(fig,hs,4)
     ax=fig.add_subplot(grid[0,0])
-    for model,col in [("v2L1",C["blue"]),("A0_ctrl",C["purple"])]:
+    for model,col in [("v2L1",VAR["base"]),("A0_ctrl",VAR["uncorrected"])]:
         for cls,mark in [("force_c","o"),("force","^")]:
             rr=sorted(select("06_sensitivity_diagnostic",model=model,direction_class=cls,metric="energy_excess_mean"),key=lambda r:r["case"])
             ss=[one("06_sensitivity_diagnostic",model=model,direction_class=cls,metric="sens_rel_mean",case=r["case"]) for r in rr]
@@ -390,14 +401,14 @@ def s04():
     style(ax,"a  Energy and sensitivity","Mean energy error (%)","Mean sensitivity error (%)",True)
     cases=sorted({r["case"] for r in select("06_sensitivity_diagnostic",model="v2L1")})
     ax=fig.add_subplot(grid[0,1])
-    for model,col,offset in [("v2L1",C["blue"],-.15),("A0_ctrl",C["purple"],.15)]:
+    for model,col,offset in [("v2L1",VAR["base"],-.15),("A0_ctrl",VAR["uncorrected"],.15)]:
         for i,case in enumerate(cases):
             rr=select("06_sensitivity_diagnostic",model=model,direction_class="force_c",metric="first_order_share",case=case)
-            if rr:ax.bar(i+offset,bind(rr,"b",model+"/"+case)[0],width=.28,color=col,hatch="///" if model=="A0_ctrl" else "",edgecolor="white",lw=.3)
+            if rr:ax.bar(i+offset,bind(rr,"b",model+"/"+case)[0],width=.28,color=col if model=="v2L1" else "white",hatch="///" if model=="A0_ctrl" else "",edgecolor=col if model=="A0_ctrl" else "white",lw=.3 if model=="v2L1" else .6)
     ax.set_xticks(range(len(cases)),[short(c) for c in cases]);ax.set_ylim(0,100)
     style(ax,"b  Linear-term norm share","Cell","Linear-term share (%)")
     groups=["vf<0.1","vf0.1-0.5","vf0.5-0.999","vf_full"]
-    colors=[C["blue"],C["orange"],C["green"],C["gray"]];hatches=["///","..","xx",""]
+    colors=[GREY[0],GREY[1],GREY[2],GREY_FILL];hatches=["///","..","xx",""]  # volume-fraction groups: greys + hatches
     for j,metric in enumerate(["group_abs_share","element_fraction"]):
         ax=fig.add_subplot(grid[1,j]);panel="cd"[j];bottom=np.zeros(len(cases))
         for group,col,hatch in zip(groups,colors,hatches):

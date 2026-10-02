@@ -9,10 +9,10 @@ import figstyle as FS
 plt = FS.plt
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
-CASES = [('U1', 'ref_valid.json', 'fresh_val_2000_full', FS.C['exact'], 'o'),
-         ('M1', 'ref_valid.json', 'fresh_val_2003_d1_v1', FS.C['uncorrected'], 's'),
-         ('M2', 'ref_valid.json', 'fresh_val_2006_d0_v1', FS.C['assembly'], '^'),
-         ('H1', 'ref_valid_h1.json', 'fresh_val_2005_d1_v0', FS.C['cut'], 'D')]
+CASES = [('U1', 'ref_valid.json', 'fresh_val_2000_full') + FS.CELL['U1'],          # cells: blue ramp, shape by stratum
+         ('M1', 'ref_valid.json', 'fresh_val_2003_d1_v1') + FS.CELL['M1'],
+         ('M2', 'ref_valid.json', 'fresh_val_2006_d0_v1') + FS.CELL['M2'],
+         ('H1', 'ref_valid_h1.json', 'fresh_val_2005_d1_v0') + FS.CELL['H1']]
 
 
 def pct(v):
