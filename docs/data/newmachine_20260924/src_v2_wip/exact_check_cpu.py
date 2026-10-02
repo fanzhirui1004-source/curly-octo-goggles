@@ -56,7 +56,8 @@ Guards: the packet tau corners of every cell must equal the history's tv[vid] (-
 decimals), and the ports and active elements of every cell (cellinfo) must equal those the run recorded in history
 'fps'; otherwise the design is refused (a wrong or regenerated body or packet).
 Memory: the solve holds every distinct T of a design (65-93 GB for the plates), refused if MemAvailable is smaller than
-that plus --solve-margin-gib. Workers: at most --*-jobs at a time and at most one start per poll; after the first, a
+that plus --solve-margin-gib; with --mmap-T (opt-in) the T are memory-mapped from disk instead and this check is skipped.
+--clamp cut runs (opt_design.py --clamp cut) are read as clamp ('cut', ''). Workers: at most --*-jobs at a time and at most one start per poll; after the first, a
 worker starts only when --*-settle-s have passed since the previous start and MemAvailable minus what the running
 workers may still take (--*-est-gib each, less their current RSS) is >= --min-free-gib. MemAvailable is read before a
 new worker allocates anything, so this is an estimate-based guard; the backstop is the retry: a worker that fails
@@ -278,7 +279,7 @@ def load_run(run, layout_override=None):
     need = ('clamp', 'load', 'load_dir')
     if any(k not in args for k in need):
         raise ValueError(f'META_ARGS_INCOMPLETE {run}: {need}')
-    cfg = dict(clamp=tuple(args['clamp'].split(',')), load=tuple(args['load'].split(',')), load_dir=args['load_dir'],
+    cfg = dict(clamp=tuple((args['clamp'] + ',').split(',')[:2]) if args['clamp'] == 'cut' else tuple(args['clamp'].split(',')), load=tuple(args['load'].split(',')), load_dir=args['load_dir'],
                tmin=float(args.get('tmin', 0.18)), tmax=float(args.get('tmax', 0.69)), max_cols=args.get('max_cols', 16),
                prec=args.get('prec', 'bnn:kpp:q1r'), nice_tol=args.get('tol'), sens_route_of_run=args.get('sens'))
     return dict(run=run, name=run.name, meta=meta, hist=hist, layout_path=lp,
@@ -992,7 +993,7 @@ class Runner:
             need += 8 * n * n
         avail = avail_gib()
         phases['solve_mem_plan'] = dict(T_distinct_gib=need / GIB, mem_available_gib=avail)
-        if need / GIB + self.a.solve_margin_gib > avail and not self.a.no_mem_check:
+        if need / GIB + self.a.solve_margin_gib > avail and not (self.a.no_mem_check or self.a.mmap_T):
             raise MemoryError(f'SOLVE_NEEDS {need / GIB:.1f} GiB of T + {self.a.solve_margin_gib} GiB margin, '
                               f'MemAvailable {avail:.1f} GiB (--no-mem-check to try anyway)')
         with Phase('load_T', phases):
@@ -1002,7 +1003,8 @@ class Runner:
                 pd = self.tcache.find(f, self.t_candidates(P, f), ports)
                 if pd is None:
                     raise FileNotFoundError(f'T_MISSING {f} ({P["rep"][f]})')
-                ops_by_fp[f] = HostDenseOp(torch.from_numpy(np.load(pd / 'T64.npy')), f)
+                T_ = np.load(pd / 'T64.npy', mmap_mode='r') if self.a.mmap_T else np.load(pd / 'T64.npy')
+                ops_by_fp[f] = HostDenseOp(torch.from_numpy(T_), f)
         ops = [ops_by_fp[f] for f in P['fps']]
         geoms = geoms_from_cellinfo(P['cases'], P['fps'], self.infos)
         iparm = ({int(k_): int(v_) for k_, v_ in json.loads(Path(self.a.iparm_file).read_text())['iparm'].items()}
@@ -1250,6 +1252,10 @@ def build_parser():
                         help=f'kill a {key} worker after this many hours (then retried once alone; 0: no limit)')
     ap.add_argument('--solve-margin-gib', type=float, default=24.0, help='MemAvailable needed beyond the T of a design')
     ap.add_argument('--no-mem-check', action='store_true')
+    ap.add_argument('--mmap-T', action='store_true',
+                    help='solve with every T64.npy memory-mapped (file-backed, reclaimable page cache) instead of loaded '
+                         'into process memory: for designs whose distinct T exceed the container memory limit; the '
+                         'MemAvailable check of the solve is skipped')
     ap.add_argument('--tol', type=float, default=1e-10); ap.add_argument('--maxit', type=int, default=3000)
     ap.add_argument('--prec', default=None, help="lattice preconditioner (default: the run's --prec, bnn:kpp:q1r)")
     ap.add_argument('--fine', default='pardiso', choices=['pardiso', 'factory'])
