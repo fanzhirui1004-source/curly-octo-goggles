@@ -2,11 +2,11 @@
 
 ## 1. Highlights（3–5 条，每条 ≤85 字符含空格；单独文件，文件名含 "highlights"）
 
-- NICE keeps all box-face and cut-band DOFs of cut cells, tens of thousands（74）
-- Energy-form condensation is bounded below by the exact Schur complement（71）
+- NICE keeps all box-face and cut-band DOFs of cut cells, tens of thousands（73）
+- One linear, geometry-conditioned network serves every retained set, matrix-free（79）
 - A fixed two-grid correction improves the learned operator without retraining（76）
 - Accurate compliance does not imply accurate local thickness sensitivity（71）
-- Thickness optimisation closely reproduces the exact-condensation design（75）
+- On a cut-clamped plate, the NICE design is 2.4% stiffer than the homogenised one（80）
 
 ## 2. 生成式 AI 使用声明（必需；参考文献前单独一节）
 
@@ -22,4 +22,4 @@ Elsevier 模板（方括号处需作者本人填写，内容须如实）：
 
 - Vitae：录用后提供，每位作者 ≤100 词简介 + 证件照。
 - 关键词：7 个，已写入正文。
-- 摘要：245 词（≤250）。
+- 摘要：249 词（≤250）。
