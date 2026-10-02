@@ -2,11 +2,11 @@
 
 ## 1. Highlights（3–5 条，每条 ≤85 字符含空格；单独文件，文件名含 "highlights"）
 
-- Learned substructures keep the full trace of cut cells, tens of thousands of DOFs（81）
+- NICE keeps all box-face and cut-band DOFs of cut cells, tens of thousands（74）
 - Energy-form condensation is bounded below by the exact Schur complement（71）
 - A fixed two-grid correction improves the learned operator without retraining（76）
 - Accurate compliance does not imply accurate local thickness sensitivity（71）
-- Thickness optimisation reproduces the design obtained with exact condensation（77）
+- Thickness optimisation closely reproduces the exact-condensation design（75）
 
 ## 2. 生成式 AI 使用声明（必需；参考文献前单独一节）
 
