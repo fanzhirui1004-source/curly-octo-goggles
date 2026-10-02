@@ -45,7 +45,7 @@ The elastic problem uses continuous tensor-product \(Q_2\) displacement function
 
 ![Figure 1](figures/F08_geometry.png)
 
-**Figure 1. Representative validation geometries.** The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and orange the section on the cut plane. Percentages indicate the box volume remaining after the cut, relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).
+**Figure 1. Representative validation geometries.** The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and sand the section on the cut plane. Percentages indicate the box volume remaining after the cut, relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).
 
 ### 2.2. Retained degrees of freedom and equilibrium extension
 
@@ -375,7 +375,7 @@ The base network's error occupies different parts of the Jacobi-scaled interior 
 
 ![Figure 6](figures/F03_spectrum.png)
 
-**Figure 6. Spectral distribution of the base network's extension error.** Panels show U1, M1, M2 and H2 for the base network. Modes solve \(Av=\lambda Dv\), with \(D=\operatorname{diag}(A)\), ordered by increasing eigenvalue. Filled orange markers represent the extension error and open grey markers the exact interior field; solid circles correspond to consistent tractions and dashed triangles to nodal forces. Curves are directional means; bands give the 10th–90th directional percentiles under consistent tractions. Each cumulative fraction uses the total interior energy of its own field or error.
+**Figure 6. Spectral distribution of the base network's extension error.** Panels show U1, M1, M2 and H2 for the base network. Modes solve \(Av=\lambda Dv\), with \(D=\operatorname{diag}(A)\), ordered by increasing eigenvalue. Filled dark markers represent the extension error and open light-grey markers the exact interior field; solid circles correspond to consistent tractions and dashed triangles to nodal forces. Curves are directional means; bands give the 10th–90th directional percentiles under consistent tractions. Each cumulative fraction uses the total interior energy of its own field or error.
 
 Spatially (Figure 7), the exact field of M1 under one consistent-traction direction places 8% of its energy in the elements within two element widths of the cut plane, which are 13% of the elements, whereas 39–43% of the base network's error energy lies there, next to the retained cut-band DOFs whose values the extension must propagate. Relative to the base network, NICE reduces the total error energy by about two orders of magnitude (113–138 times) and the element error energies by roughly 25 to 300 times (10th–90th percentiles), and halves the share of this layer to 19–22%.
 

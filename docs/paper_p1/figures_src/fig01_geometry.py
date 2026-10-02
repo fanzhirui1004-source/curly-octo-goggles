@@ -1,6 +1,6 @@
 """Figure 1 -> figures/F08_geometry.{svg,pdf,png}: the validation cells U1, M1, H1 and H2 of Eq. (1), rendered by marching
 cubes on a 129^3 grid of the implicit material function g(x) = max(|phi(x)| - tau(x), n.x - b_cut) (material: g <= 0),
-light-shaded, with the cut-plane section (where n.x = b_cut is active) in orange; the same orthographic view for all cells.
+light-shaded, with the cut-plane section (where n.x = b_cut is active) in sand; the same orthographic view for all cells.
 
 Parameters.  The eight corner thickness parameters tau_c (corner index 4x + 2y + z) are archived in this repository:
 docs/data/newmachine_20260924/gcell/gval.json, key 'tau_corners_P' of the P-twin of every G cell (U1 = fresh_val_2000_full,

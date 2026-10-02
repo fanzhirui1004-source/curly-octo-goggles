@@ -8,7 +8,7 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ![Figure 1](figures/F08_geometry.png)
 
-**Figure 1. Representative validation geometries.** The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and orange the section on the cut plane. Percentages indicate the box volume remaining after the cut, relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).
+**Figure 1. Representative validation geometries.** The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and sand the section on the cut plane. Percentages indicate the box volume remaining after the cut, relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).
 
 [PNG](figures/F08_geometry.png) · [PDF](figures/F08_geometry.pdf)
 
@@ -48,7 +48,7 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ![Figure 6](figures/F03_spectrum.png)
 
-**Figure 6. Spectral distribution of the base network's extension error.** Panels show U1, M1, M2 and H2 for the base network. Modes solve \(Av=\lambda Dv\), with \(D=\operatorname{diag}(A)\), ordered by increasing eigenvalue. Filled orange markers represent the extension error and open grey markers the exact interior field; solid circles correspond to consistent tractions and dashed triangles to nodal forces. Curves are directional means; bands give the 10th–90th directional percentiles under consistent tractions. Each cumulative fraction uses the total interior energy of its own field or error.
+**Figure 6. Spectral distribution of the base network's extension error.** Panels show U1, M1, M2 and H2 for the base network. Modes solve \(Av=\lambda Dv\), with \(D=\operatorname{diag}(A)\), ordered by increasing eigenvalue. Filled dark markers represent the extension error and open light-grey markers the exact interior field; solid circles correspond to consistent tractions and dashed triangles to nodal forces. Curves are directional means; bands give the 10th–90th directional percentiles under consistent tractions. Each cumulative fraction uses the total interior energy of its own field or error.
 
 [PNG](figures/F03_spectrum.png) · [PDF](figures/F03_spectrum.pdf)
 
