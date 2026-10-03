@@ -15,7 +15,7 @@ Main Figure 13 -> figures/F14_designs_scale.{svg,pdf,png}
       vertices in the removed region are corners of cut cells; clamp along the cut, in-plane traction on the end face.
   (c) scale demonstration (X6_final/scale/scale_summary.json): time per design iteration (mean, range bars) against the
       number of cells, plates of 24, 51, 88 and 110 cells, with the line through the origin at the mean time per cell;
-      memory is reported in Table ST25.
+      memory is reported in Table ST20.
 Supplementary Figure S06 -> figures/S06_homogenised_law.{svg,pdf,png}
   C11, C12, C44 and the material volume fraction (symbol V^H; rho is the recomputed residual of Eq. (18)) of the
   uniform-thickness cell against tau, with the cubic splines of homog_macro.Material.

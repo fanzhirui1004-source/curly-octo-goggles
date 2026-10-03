@@ -1,5 +1,5 @@
 """Figure 11 -> figures/F06_bernstein.{svg,pdf,png}: Bernstein restriction of the box-face displacements on H1
-(fresh_val_2005_d1_v0, configuration x, exact cell operators; Table ST16a, H1 rows).
+(fresh_val_2005_d1_v0, configuration x, exact cell operators; Table ST11a, H1 rows).
 
   (a) number of retained DOFs after restriction against the degree r; dashed: the 32,991 DOFs of the full representation;
   (b) maximum relative compliance error, (c) maximum relative error of the target-cell thickness-sensitivity vector, each

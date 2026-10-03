@@ -4,7 +4,7 @@ Smoothing-trained, Base network, corrected, NICE). Writes F10_energy_share.*.
 Source: evidence/gate_<run>_fresh_val_<case>_<config>.json (lat_full.py --sets test). Per load: compliance_rel_err,
 sens_vec_rel_err[0] (target cell), bound (beta = sum_m w_m eps_m at the exact assembled trace) and energy_share[0]
 (target energy share w). Face loads are the six loads of the joint criterion (gate flag), cut loads the three
-cut-surface tractions. All seven cells of Table ST09 are included.
+cut-surface tractions. All seven cells of Table ST08 are included.
 The observation and combination counts are printed and must match the caption."""
 import json
 from pathlib import Path

@@ -65,10 +65,10 @@ Rigid reproduction and symmetry give
 
 \[
 \widehat S R_P=0,\qquad R_P^T\widehat S=0.
-\tag{B.4}
+\tag{B.3}
 \]
 
-For the construction in Eq. (17), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat ER_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(FR_P=R\) and Eq. (B.4) holds for the corrected extension.
+For the construction in Eq. (17), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat ER_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(FR_P=R\) and Eq. (B.3) holds for the corrected extension.
 
 Let \(Z\in\mathbb R^{p\times(p-6)}\) have orthonormal columns spanning the retained rigid complement, and define \(S_*=Z^TSZ\succ0\). The all-direction energy error on this space is
 
@@ -76,7 +76,7 @@ Let \(Z\in\mathbb R^{p\times(p-6)}\) have orthonormal columns spanning the retai
 \varepsilon_*=\sup_{q\perp R_P,\ q\ne0}\varepsilon(q)
 =\|A^{1/2}HZ S_*^{-1/2}\|_2^2,
 \qquad\mu_*=1+\varepsilon_*.
-\tag{B.5}
+\tag{B.4}
 \]
 
 Let \(q=Za\), with \(Z^TZ=I\) spanning the rigid complement. Its relative energy error is
@@ -85,10 +85,10 @@ Let \(q=Za\), with \(Z^TZ=I\) spanning the rigid complement. Its relative energy
 \frac{a^TZ^TH^TAHZa}{a^TS_*a}
 =\frac{\|A^{1/2}HZ S_*^{-1/2}b\|_2^2}{\|b\|_2^2},
 \qquad b=S_*^{1/2}a.
-\tag{B.6}
+\tag{B.5}
 \]
 
-Taking the supremum proves Eq. (B.5).
+Taking the supremum proves Eq. (B.4).
 
 The retained block of the unbalanced discrete force, used alone, would be
 
@@ -100,7 +100,7 @@ The additional variational reaction is \(F_I^T(KF)_I=(E_I+H)^TAH\). Since \(E_I^
 
 \[
 (KF)_P+F_I^T(KF)_I=S+H^TAH.
-\tag{B.7}
+\tag{B.6}
 \]
 
 The transpose \(F^T\) supplies both reciprocity and cancellation of the first-order stiffness error. A retained-force extraction without this term generally has an \(O(H)\) error and need not be symmetric.
@@ -115,14 +115,14 @@ The energy metric assigns different significance to displacement errors of equal
 \delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|Eq\|_{\mathsf W}},\qquad
 \mathcal R_{K,\mathsf W}(v)=\frac{v^TKv}{v^T\mathsf Wv},\qquad
 \kappa_{\mathsf W}(q,d)=\frac{\mathcal R_{K,\mathsf W}(d)}{\mathcal R_{K,\mathsf W}(Eq)}.
-\tag{B.8}
+\tag{B.7}
 \]
 
 For nonzero field error and nonzero reference energy, cancellation of \(d^T\mathsf Wd\) and \(u^T\mathsf Wu\), with \(u=Eq\), gives
 
 \[
 \boxed{\varepsilon(q)=\delta_{\mathsf W}(q)^2\kappa_{\mathsf W}(q,d).}
-\tag{B.9}
+\tag{B.8}
 \]
 
 Section 5.4 and Table ST04 use \(\mathsf W=\operatorname{diag}(0,D)\) with \(D=\operatorname{diag}(K_{II})\), i.e. a Jacobi-weighted interior norm. This weighting is only positive semidefinite, but the identity still holds because \(d\) vanishes on the retained DOFs, and the rigid gauge is then not needed. The factor \(\kappa_{\mathsf W}\) compares the stiffness content of the error and the equilibrium response; it is not a matrix condition number. An error concentrated in stiffer deformation than the loaded response has a large \(\kappa_{\mathsf W}\), making even a small relative displacement error mechanically significant.
@@ -197,7 +197,7 @@ The error of the corrected functional is \(\widehat C-J(\bar U)=\rho^T\widehat{\
 
 If an applied action \(y(\bar U)\) is not numerically identical to the variational energy, define
 \(\omega=\bar U^Ty(\bar U)-\sum_m\bar u_m^TK_m\bar u_m\)
-and \(\rho=f-y(\bar U)\). Then the first identity acquires an additional \(+\omega\). This separates solve residual from action/energy inconsistency. A recursive Krylov residual need not equal this applied-action residual. Evaluating the terms in Eq. (8) additionally requires the signed residual work and \(\omega\). For the pair configurations and lattices, both are recorded together with the dual-norm bound \(|\bar U^T\rho|\le\sqrt{\bar U^T\mathbb K\bar U}\sqrt{\rho^T\mathbb K^{-1}\rho}\le\sqrt{\bar U^Ty(\bar U)-\omega}\,\sqrt{\rho^T\mathbb K^{-1}\rho}\), the second step because \(\widehat{\mathbb K}\succeq\mathbb K\) (Supplementary Note S6.3).
+and \(\rho=f-y(\bar U)\). Then the first identity acquires an additional \(+\omega\). This separates solve residual from action/energy inconsistency. A recursive Krylov residual need not equal this applied-action residual. Evaluating the terms in Eq. (8) additionally requires the signed residual work and \(\omega\). For the pair configurations and lattices, both are recorded together with the dual-norm bound \(|\bar U^T\rho|\le\sqrt{\bar U^T\mathbb K\bar U}\sqrt{\rho^T\mathbb K^{-1}\rho}\le\sqrt{\bar U^Ty(\bar U)-\omega}\,\sqrt{\rho^T\mathbb K^{-1}\rho}\), the second step because \(\widehat{\mathbb K}\succeq\mathbb K\) (Supplementary Note S4.3).
 
 ## Appendix D. Polynomial smoothing and coarse projections
 
@@ -327,13 +327,13 @@ The same formulas hold for the symmetric shifted inverse of Appendix F.1 when it
 
 ### F.1. Coarse basis and factorisation
 
-The principal coarse basis \(V\) consists of trilinear (\(Q_1\)) vector shape functions on a \(17^3\)-vertex grid over the reference box, with three displacement DOFs per vertex, evaluated at the active background-node coordinates and restricted to the interior DOFs \(I\); columns with an absolute interior-support sum at most \(10^{-14}\) are removed. Alternative coarse spaces (\(Q_1\) on \(9^3\) and \(33^3\) vertices, \(Q_2\) on \(17^3\) nodes and enriched partition-of-unity spaces) are compared in Supplementary Table ST07.
+The principal coarse basis \(V\) consists of trilinear (\(Q_1\)) vector shape functions on a \(17^3\)-vertex grid over the reference box, with three displacement DOFs per vertex, evaluated at the active background-node coordinates and restricted to the interior DOFs \(I\); columns with an absolute interior-support sum at most \(10^{-14}\) are removed. Alternative coarse spaces (\(Q_1\) on \(9^3\) and \(33^3\) vertices, \(Q_2\) on \(17^3\) nodes and enriched partition-of-unity spaces) are compared in Supplementary Table ST06.
 
 The coarse matrix \(V^TAV\) is recovered from coloured stiffness probes. With a stencil reach of four fine-grid node spacings and \(h_g\) fine-node spacings per coarse-vertex spacing, the probe radius is \(R_g=2+\lceil4/h_g\rceil\); colours use vertex coordinates modulo \(2R_g+1\) and the displacement component, and the resulting colour separation resolves every interacting coarse pair. The recovered matrix is Jacobi scaled, with the corresponding column scaling of \(V\), and factorised by Cholesky, trying diagonal shifts \(\xi\) in the order \(0,10^{-12},10^{-10},10^{-8},10^{-6},10^{-4}\); the selected value is stored with the geometry factorisation (the coarse-factor shift). With the correction in single precision, as in the optimisation runs of Section 5.10, a factor is accepted only if its smallest squared pivot is at least \(10^{-7}\) of the unit diagonal, and otherwise the next shift is tried; this keeps the forward and transposed coarse solves consistent for cut cells near the lower thickness bound. A shift replaces the exact projection by the approximate inverse \(G_s=(A_s+\xi I)^{-1}\) of the scaled Galerkin matrix \(A_s\). Since \(2G_s-G_sA_sG_s=G_s(A_s+2\xi I)G_s\succeq0\), Eq. (D.6), with the scaled basis in place of \(V\), shows that the shifted coarse-grid correction still does not increase the \(A\)-energy error, provided the forward and transposed actions use the same solve.
 
 ### F.2. Arithmetic
 
-The learned displacement extension, rigid-body reconstruction and prescribed retained entries use single precision (float32); quadratic energies and sparse stiffness products use double precision (float64), and convolutions use true float32 arithmetic, without TF32 or lower precisions. The correction, smoothing and coarse algebra alike, runs in double precision in training and in the accuracy studies of Sections 5.2–5.8, and in single precision in the timed lattice route of Table 5 and in the optimisations of Section 5.10. The fixed-network correction studies of Section 5.5 (Table 3 and Supplementary Tables ST05a, ST07 and ST08) apply the same correction in double precision to the single-precision network field; for the base network they estimate the smoothing interval from their own power-iteration start, which is also the interval compared with the spectrum in Section 5.4 (Supplementary Table ST05b). Sensitivity contractions use float32 element products with float64 accumulation. These arithmetic choices approximate the real linear maps of the preceding derivations.
+The learned displacement extension, rigid-body reconstruction and prescribed retained entries use single precision (float32); quadratic energies and sparse stiffness products use double precision (float64), and convolutions use true float32 arithmetic, without TF32 or lower precisions. The correction, smoothing and coarse algebra alike, runs in double precision in training and in the accuracy studies of Sections 5.2–5.8, and in single precision in the timed lattice route of Table 5 and in the optimisations of Section 5.10. The fixed-network correction studies of Section 5.5 (Table 3 and Supplementary Tables ST05a, ST06 and ST07) apply the same correction in double precision to the single-precision network field; for the base network they estimate the smoothing interval from their own power-iteration start, which is also the interval compared with the spectrum in Section 5.4 (Supplementary Table ST05b). Sensitivity contractions use float32 element products with float64 accumulation. These arithmetic choices approximate the real linear maps of the preceding derivations.
 
 ## Appendix G. Network coefficients and directional training
 
@@ -414,7 +414,7 @@ z,&|z|\le k_ba_{\max},\\
 \end{cases}
 \]
 
-All variants of Table 2 set \(k_b=0.5\); each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST20 (Supplementary Note S7) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
+All variants of Table 2 set \(k_b=0.5\); each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST15 (Supplementary Note S5) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
 
 A bias-free matrix \(W_{\rm out}\in\mathbb R^{32\times3}\) returns the fine features to nodal displacement in the prescribed coordinate order. Rigid reconstruction and retained-value restoration then produce Eq. (17).
 
@@ -460,9 +460,9 @@ Directions with large energy ratios \(q^T\widehat Sq/q^TSq\) are found by a bloc
 
 ### G.4. Direction coverage
 
-With \(Z\) and \(S_*=Z^TSZ\succ0\) as in Eq. (B.5), let
+With \(Z\) and \(S_*=Z^TSZ\succ0\) as in Eq. (B.4), let
 \(T_*=S_*^{-1/2}Z^TH^TAHZ S_*^{-1/2}\).
-For an energy-normalised direction, \(x_j=S_*^{1/2}Z^Tq_j\) has unit Euclidean norm and, by Eq. (B.6), \(\varepsilon_j=x_j^TT_*x_j\). For \(N_q\) sampled directions, define the coverage matrix \(M_{N_q}=N_q^{-1}\sum_{j=1}^{N_q}x_jx_j^T\). Then
+For an energy-normalised direction, \(x_j=S_*^{1/2}Z^Tq_j\) has unit Euclidean norm and, by Eq. (B.5), \(\varepsilon_j=x_j^TT_*x_j\). For \(N_q\) sampled directions, define the coverage matrix \(M_{N_q}=N_q^{-1}\sum_{j=1}^{N_q}x_jx_j^T\). Then
 
 \[
 \overline\varepsilon=\operatorname{tr}(T_*M_{N_q}),\qquad
@@ -495,7 +495,7 @@ For the condensed stiffness \(\widehat S=F^TKF\), direct differentiation gives
 
 \[
 \widehat S_{,c}=F_{,c}^TKF+F^TK_{,c}F+F^TKF_{,c}.
-\tag{H.4}
+\tag{H.2}
 \]
 
 Apply the equilibrium compliance derivative to the assembly of learned substructures and use \(J_PF_{,c}=0\). The two extension terms become \(2(F_{I,c}\widehat q)^Tr_I\), proving Eq. (10). If the load depends on design, the full compliance derivative also contains \(2f_{g,c}^T\widehat U\), and correspondingly \(2f_{g,c}^TU\) for the exact assembly; changes of the DOF selectors, assembly maps or support maps contribute their own chain-rule terms, including the derivatives of \(B_m^TS_mB_m\) when \(B_m\) varies.
@@ -506,7 +506,7 @@ In the reference computation, moment derivatives are approximated by
 M_{e\alpha,c}\approx
 \frac{M_{e\alpha}(\boldsymbol\tau+h_ce_c)-M_{e\alpha}(\boldsymbol\tau-h_ce_c)}{2h_c},
 \qquad h_c=10^{-5}\tau_c.
-\tag{H.6}
+\tag{H.3}
 \]
 
 The active set is fixed for this calculation, and the elasticity templates and ghost contribution are held constant. The moment quadrature is recomputed at each perturbed thickness, so its clipping and integration branches may change. The resulting matrices represent a numerical design derivative on that prescribed topology. The field-based sensitivities of the NICE lattice analyses and optimisations (Sections 5.9 and 5.10) are instead obtained by reverse-mode differentiation of the moment integrals at the fixed recovered field.
@@ -533,7 +533,7 @@ Cauchy–Schwarz and the quadratic-form operator bound give
 \le2L\sqrt{\mathcal E}+Q\mathcal E,
 \qquad e_s\le\frac{2L\sqrt{q^TSq}}{\|\boldsymbol s\|_2}\sqrt\varepsilon
 +\frac{Qq^TSq}{\|\boldsymbol s\|_2}\varepsilon.}
-\tag{H.7}
+\tag{H.4}
 \]
 
 All eight components are included, and the denominator is the norm of the exact sensitivity vector for that particular direction. The constants distinguish derivative coupling, interior coercivity, and reference sensitivity scale. For fixed \(q\) and \(H=tH_0\), the linear coefficient vanishes precisely when \((H_0q)^Tb_c=0\) for every corner. It vanishes for all interior errors if \(J_IK_{,c}E q=0\) for every corner. A useful special case is \(K_{,c}=\alpha_cK\): interior equilibrium removes the linear term and the relative sensitivity error equals the energy error when the reference vector is nonzero.
@@ -545,7 +545,7 @@ With fixed selectors, differentiating \(J_IKE=0\) gives \(AE_{I,c}=-J_IK_{,c}E\)
 \[
 \boxed{(\widehat S-S)_{,c}
 =H_{,c}^TAH+H^TK_{II,c}H+H^TAH_{,c}.}
-\tag{H.9}
+\tag{H.5}
 \]
 
 Its norm is bounded by \(2\|A\|\|H\|\|H_{,c}\|+\|K_{II,c}\|\|H\|^2\). Thus a value error \(H=O(t)\) by itself does not imply a quadratic derivative error. For example, with \(f=1\), \(K=I_2\), \(E=(1,0)^T\) and \(F_t(\tau)=(1,t+\tau)^T\), the compliance gap at \(\tau=0\) is \(C-\widehat C_t=t^2/(1+t^2)\), whereas the derivative error is \(\partial_\tau(\widehat C_t-C)=-2t/(1+t^2)^2\); with \(H_t(\tau)=t\sin(\tau/t^2+\pi/4)\) the gap is \(O(t^2)\), but the derivative error tends to \(-1\). Neither family is uniformly \(C^1\)-small. A uniformly \(C^1\)-small extension error, \(H=tH_0(\tau)\) with bounded \(H_0,H_{0,c}\), gives \((\widehat S-S)_{,c}=O(t^2)\). With uniformly bounded exact solutions and inverse stiffnesses, this also yields \(\widehat C_{,c}-C_{,c}=O(t^2)\).
@@ -559,9 +559,9 @@ More explicitly, for \(h>0\), \(N_c^{Q_1}(x)\ge0\) implies \(\Omega(\tau)\subset
 v^T[K(\tau+h e_c)-K(\tau)]v
 =\int_{\Omega(\tau+h e_c)\setminus\Omega(\tau)}
 \nabla^{\rm s}v_h:\mathsf C:\nabla^{\rm s}v_h\,dx\ge0.
-\tag{H.10}
+\tag{H.6}
 \]
-Here \(\nabla^{\rm s}\) is the symmetric gradient, the elasticity tensor \(\mathsf C\) and the basis are fixed, and the ghost contribution cancels. Taking the differentiable limit proves positive semidefiniteness of the thickness derivative. A centred difference of stiffness matrices assembled from exactly nested domains is also PSD. Changes of adaptive integration subdivision, approximate moments, or independently selected stabilisation can interrupt that discrete nesting relation; fixed active topology alone does not verify its numerical preservation. A step study of the central difference and an element-level check of the moment derivatives (Supplementary Note S2, Figure S01(c)) show that the numerical derivative is accurate on the fixed active set, but that the discrete moments preserve the nesting only approximately: some partially filled elements have indefinite derivative matrices. Eq. (H.10) therefore describes exact integration; the reference sensitivities of this study are derivatives of the discrete model and are compared as such.
+Here \(\nabla^{\rm s}\) is the symmetric gradient, the elasticity tensor \(\mathsf C\) and the basis are fixed, and the ghost contribution cancels. Taking the differentiable limit proves positive semidefiniteness of the thickness derivative. A centred difference of stiffness matrices assembled from exactly nested domains is also PSD. Changes of adaptive integration subdivision, approximate moments, or independently selected stabilisation can interrupt that discrete nesting relation; fixed active topology alone does not verify its numerical preservation. A step study of the central difference and an element-level check of the moment derivatives (Supplementary Note S1, Figure S01(c)) show that the numerical derivative is accurate on the fixed active set, but that the discrete moments preserve the nesting only approximately: some partially filled elements have indefinite derivative matrices. Eq. (H.6) therefore describes exact integration; the reference sensitivities of this study are derivatives of the discrete model and are compared as such.
 
 ## Appendix I. A computable lower bound on the energy error
 
