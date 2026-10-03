@@ -42,6 +42,10 @@ class Slot:
         model.add_geo(self.g); AU.set_ufeat(model, self.g, self.C)
         self.g.set_variant('V0R', wrap)
         CR.set_corot(self.C, AE.nodal_rotations(self.C))
+        gc.collect(); torch.cuda.empty_cache()
+        with torch.no_grad():                                # coarse factor and smoothing interval outside any graph
+            TL.coarse_setup(self.C, wrap.coarse_space); TL.tail_bounds(self.C, wrap.smooth_alpha)
+        torch.cuda.empty_cache()
         self.case, self.map, self.model = case, mname, model
 
     def release(self):
