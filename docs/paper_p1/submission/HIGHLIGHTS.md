@@ -1,17 +1,16 @@
 # Highlights (draft)
 
 Elsevier: 3 to 5 bullet points, at most 85 characters each including spaces (check the current CMAME Guide for Authors).
-Candidates below; choose at most five. Every number is taken from the text named in the second column; Section 6.11 is merged (2026-10-01).
+Candidates below; choose at most five. Every number is taken from the text named in the last column (structure of 2026-10-03).
 
 | # | Highlight | Characters | Source |
 | --- | --- | ---: | --- |
-| 1 | NICE: learned static condensation of cut thin-walled TPMS cells | 63 | Title, Abstract |
-| 2 | Network interior field plus multilevel equilibrium correction on all retained DOFs | 82 | Abstract; contribution (i) |
-| 3 | Condensed stiffness: symmetric, semidefinite, bounded below by the Schur complement | 83 | Abstract; Section 1 |
-| 4 | Error analysis explains accurate compliance with inaccurate thickness sensitivity | 81 | Abstract; contribution (ii); Section 8 |
-| 5 | Mean energy error 0.074% on 80 validation geometries not used in training | 73 | Abstract |
-| 6 | Eight-cell design iteration 81-110 s on one GPU vs 868-1,042 s whole-lattice Cholesky | 85 | Abstract; Section 8 (16 CPU threads) |
-| 7 | Thickness optimisation matches exact condensation within 0.0051 per corner parameter | 84 | Section 6.11 (case A) |
-| 8 | Design iterations of a 110-cell plate with 32.7 million DOFs on one GPU | 71 | Section 6.11 (scale) |
+| 1 | Learned static condensation of cut thin-walled TPMS cells on all retained DOFs | 78 | Title; Section 1 |
+| 2 | Condensed stiffness symmetric, semidefinite, bounded below by the Schur complement | 82 | Abstract; Section 4.1 |
+| 3 | Error analysis: accurate compliance does not imply accurate thickness sensitivity | 81 | Abstract; Section 3 |
+| 4 | Mean energy error 0.074% on 80 validation geometries not used in training | 73 | Abstract; Section 5.3 |
+| 5 | Thickness optimisation reproduces the exact-condensation design within 0.0051 | 77 | Section 5.10 (case A); Section 7 |
+| 6 | Eight-cell analysis with sensitivities about ten times faster than direct solution | 82 | Abstract; Section 5.9 |
+| 7 | On a cut-clamped plate, a homogenised model underestimates compliance by 27% | 76 | Abstract; Section 5.10 |
 
-Suggested set of five, matching the title with its design part: 1, 2, 4, 5, 7.
+Suggested set of five, covering method, theory, accuracy and design: 1, 2, 3, 4, 5.
