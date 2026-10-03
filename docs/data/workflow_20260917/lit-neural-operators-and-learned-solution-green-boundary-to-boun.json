@@ -1,0 +1,172 @@
+{
+ "angle": "Neural operators and learned solution/Green/boundary-to-boundary operators for elliptic PDEs: learned DtN / Steklov-Poincare / Schur-complement maps as a function of geometry, learned static condensation and neural superelements, H-matrix-structured networks, learned factorizations/preconditioners and the spectral behaviour of their losses, learned multiscale bases and DD coarse spaces, SPD-by-construction output layers.",
+ "papers": [
+  {
+   "title": "Embedded symmetric positive semi-definite machine-learned elements for reduced-order modeling in finite-element simulations with application to threaded fasteners",
+   "authors": "Eric Parish, Payton Lindsay, Timothy Shelton, John Mersch (Sandia)",
+   "year": "2023 (arXiv) / 2024 (Computational Mechanics 74:1357-1381)",
+   "venue_or_arxiv": "arXiv:2307.05434; Comput. Mech. 2024",
+   "url": "https://arxiv.org/abs/2307.05434",
+   "what_it_does": "Closest published analogue of our deliverable. Decomposes the domain into an outer FE region and an inner fine region and learns the static condensation of the inner region: the map from interface displacements to interface forces. Two variants: an unconstrained displacement-to-force regressor and a variant that learns an SPSD stiffness matrix (i.e. the Schur complement) directly. Assembled into the outer FE problem and tested on a cube under finite deformation and on a fastener-bushing geometry with contact; the SPSD variant is reported as critical for accurate coupled FE-ML simulation, with 'significant speedups'.",
+   "relevance_to_goal": "Confirms the deployment mode (A) architecture we are targeting: a learned Schur complement assembled as a superelement. Their key empirical finding (unconstrained regressor breaks the coupled solve; SPSD-constrained matrix is required) matches our observation that only structure-preserving parameterisations (factor form, rigid-invariance-by-construction) avoid the diagonal-only attractor. Their inner domain is a fixed geometry (parameterised by loading, not by shape), so they never faced our geometry->operator generalisation, and their accuracy metric is response error, not a whitened worst-direction spectrum.",
+   "transferable_idea": "Learn the condensed operator in an SPSD parameterisation (R^T R, output the factor) and validate through the assembled coarse solve; treat the unconstrained force-regressor as a known failure mode. Also: they accept a task-level accuracy contract (displacement/force on the interface under out-of-sample loads), which is a precedent for open decision (1).",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Neural-operator element method (NOEM): Efficient and scalable finite element method enabled by reusable neural operators",
+   "authors": "Weihang Ouyang, Yeonjong Shin, Si-Wei Liu, Lu Lu",
+   "year": "2025 (arXiv) / 2026 (Nature Computational Science)",
+   "venue_or_arxiv": "arXiv:2506.18427; Nat. Comput. Sci. 2026",
+   "url": "https://arxiv.org/abs/2506.18427",
+   "what_it_does": "Replaces a whole subdomain that would need many finite elements by a single 'neural-operator element' whose pretrained neural operator takes the (parameterised) boundary displacement of the subdomain as input and returns the subdomain's total potential energy; the element is then assembled with ordinary finite elements in the variational framework (stiffness = Hessian of the learned energy). Demonstrated on nonlinear PDEs, multiscale problems, complex geometries and discontinuous coefficients; code at github.com/lu-group/noem.",
+   "relevance_to_goal": "A 'neural superelement' that is exactly a learned Steklov-Poincare/Schur complement in energy form. It shows that the boundary-trace-to-energy formulation with a low-cardinality boundary parameterisation is viable and reusable across a lattice (same NOE reused in many places). Their trace is parameterised by a few modes; ours has q=12,798 dofs and we need worst-direction accuracy, which their L2-type validation does not measure.",
+   "transferable_idea": "Supervise the energy functional u_Gamma^T S u_Gamma (or its Hessian-vector products) rather than matrix entries: the energy/action formulation is gauge-free, composes under assembly, and can be evaluated on random and adversarial trace vectors, which is what eps_op needs. Reuse across cells is the same 'one element, many placements' idea.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Principal-Part Decomposition for Neural Operator Learning of Dirichlet-to-Neumann Maps",
+   "authors": "Shuo Ling, Wenjun Ying, Han Zhou",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2606.25952",
+   "url": "https://arxiv.org/abs/2606.25952",
+   "what_it_does": "Learns DtN maps across varying (smooth planar) boundary geometries. Uses the boundary-integral representation to split the DtN operator into a geometry-independent singular principal part (a universal Fourier multiplier, applied exactly via FFT) plus a smoother geometry-dependent residual that a low-rank DeepONet-type network learns. Gives finite-node and training-error bounds; tests on interior Laplace and exterior Helmholtz show better accuracy than direct neural-operator baselines and zero-shot robustness to OOD boundary data.",
+   "relevance_to_goal": "Direct evidence that raw DtN maps are hard for neural operators because they are non-smoothing (order +1 pseudo-differential): the unbounded principal part must be handled analytically and only a compact residual learned. Our S has the same character (stiff high-frequency trace modes, cond 7.2e4) and our V1 CNN underfit it.",
+   "transferable_idea": "Decompose S = S_0(geometry-cheap analytic/reference part) + learned residual, with S_0 supplying the principal (high-frequency, near-field) part and the network supplying a smoother, low-rank correction. Candidate S_0 for us: the collar/coarse-core condensation or a nearest-seat operator transported by the cube group.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Learning local Dirichlet-to-Neumann maps of nonlinear elliptic PDEs with rough coefficients",
+   "authors": "Miranda Boutilier, Konstantin Brenner, Larissa Miguez",
+   "year": "2024",
+   "venue_or_arxiv": "arXiv:2405.04433",
+   "url": "https://arxiv.org/abs/2405.04433",
+   "what_it_does": "In an MsFEM/nonoverlapping DD setting, the offline phase pre-assembles local linear DtN operators of coarse cells; the paper replaces these with learned local (nonlinear) DtN maps so that the multiscale method extends to p-Laplacian and degenerate nonlinear diffusion with high-contrast oscillating coefficients.",
+   "relevance_to_goal": "Same object as ours (local cell DtN operators to be assembled into a coarse global problem), but the learned map is per cell with fixed geometry and the emphasis is nonlinearity, not geometry generalisation. Their coarse trace spaces are low-dimensional (a few modes per edge), which sidesteps the ill-conditioning we see at full trace resolution.",
+   "transferable_idea": "Reduce the trace space before learning: learn the DtN map restricted to a coarse trace basis per face (as MsFEM/GMsFEM do) and keep the fine-trace completion analytic; this limits what the network must resolve to the modes that actually couple cells.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Locally Subspace-Informed Neural Operators for Efficient Multiscale PDE Solving (GMsFEM-NO)",
+   "authors": "Alexander Rudikov, Vladimir Fanaskov, Sergei Stepanov, Buzheng Shan, Ekaterina Muravleva, Yalchin Efendiev, Ivan Oseledets",
+   "year": "2025 (arXiv) / ICLR 2026",
+   "venue_or_arxiv": "arXiv:2505.16030; ICLR 2026",
+   "url": "https://arxiv.org/abs/2505.16030",
+   "what_it_does": "Replaces the GMsFEM offline phase (local spectral problems per coarse block) with a factorised FNO that maps the local coefficient field to the subspace spanned by the multiscale basis functions. Because the downstream solve depends only on the subspace, they train with a Subspace Alignment Loss (Frobenius overlap of projectors, invariant to sign and rotation of the basis) plus a projection-consistency term on random test vectors. Sub-blocks are grouped by geometric position with rotation normalisation. 60x faster basis generation, ~60% lower error than standalone neural operators, robust to OOD forcing.",
+   "relevance_to_goal": "Solves precisely the gauge problem we identified for H-matrix SVD factors: supervise the subspace/projector or block product, not the factor coefficients. Their 'group by position, normalise by rotation' is our cube-group augmentation. Their target (a smooth subspace of a local operator) is a lower-dimensional and smoother label than an operator.",
+   "transferable_idea": "Use a gauge-invariant loss on far-field blocks: fit U V^T (block product) or the projector U U^T of fixed rank per level, plus random-vector action consistency, instead of fitting SVD factors. Also: train per-face-position heads and enforce cube-group equivariance.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Learning Adaptive Coarse Spaces Using Transferable Neural Network Models for Linear and Nonlinear Overlapping Domain Decomposition Methods",
+   "authors": "Axel Klawonn, Martin Lanser, Janine Weber-Hamacher",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2607.06261",
+   "url": "https://arxiv.org/abs/2607.06261",
+   "what_it_does": "Trains regression networks to predict adaptive coarse basis functions (which classically come from local generalised eigenproblems on edges/faces) and a classifier for how many are needed, from the local coefficient field; uses sign-invariant losses and post-processing. Models trained on scalar diffusion transfer to linear elasticity and nonlinear p-Laplace without retraining. Builds on Heinlein-Klawonn-Lanser-Weber (SISC 2019, 'predicting the geometric location of constraints').",
+   "relevance_to_goal": "The adaptive coarse-space eigenmodes are exactly the soft interface modes of local Schur complements, i.e. the modes that decide our eps_op verdict. This line of work shows those modes are learnable from local data if one accepts a robustness (not exactness) criterion and uses sign-invariant losses.",
+   "transferable_idea": "Predict the soft-mode subspace of S separately (a low-rank 'which directions are soft' head with sign-invariant loss) and give it its own accuracy gate; combine with a stiff-part model. This directly targets the 3-of-12,792 modes that decided our verdicts.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Elliptic PDE learning is provably data-efficient",
+   "authors": "Nicolas Boullé, Diana Halikias, Alex Townsend",
+   "year": "2023",
+   "venue_or_arxiv": "arXiv:2302.12888 (PNAS 2023)",
+   "url": "https://arxiv.org/abs/2302.12888",
+   "what_it_does": "Proves that the solution operator (Green's function) of 3D uniformly elliptic PDEs can be recovered from O(polylog(1/eps)) random input-output pairs with exponential convergence, by combining a randomised SVD generalised to Hilbert-Schmidt operators with the hierarchical low-rank (H-matrix) structure of Green's functions; admissible far-field blocks are recovered from actions on random vectors.",
+   "relevance_to_goal": "Gives the theoretical basis for our measured H-matrix result (14.95% of dense passes +-3%) and shows that far-field blocks can be recovered from actions rather than from entries. It also clarifies the near-field: the theory covers off-diagonal blocks only; near-field dense blocks must be stored or learned separately. Note their error is operator-norm relative, not whitened; our whitened metric is harsher by cond(A).",
+   "transferable_idea": "Generate labels for far-field blocks as random-action sketches (A times Gaussian probes restricted to clusters) instead of SVDs; sketches are cheap, gauge-free and are what a randomised-SVD-structured decoder should be trained to reproduce.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A multiscale neural network based on hierarchical matrices",
+   "authors": "Yuwei Fan, Lin Lin, Lexing Ying, Leonardo Zepeda-Núñez",
+   "year": "2018 (arXiv) / 2019 (Multiscale Model. Simul.)",
+   "venue_or_arxiv": "arXiv:1807.01883; MMS 17(4) 2019; companion 'hierarchical nested bases' arXiv:1808.02376",
+   "url": "https://arxiv.org/abs/1807.01883",
+   "what_it_does": "Turns the H-matrix (and H2/nested-basis) structure into a neural-network architecture: at each spatial scale a local network plays the role of the low-rank far-field block, with fixed ranks per level, and the near field is a locally connected layer. Trained end-to-end on discretised nonlinear maps (NLSE, Kohn-Sham) with parameter counts far below dense.",
+   "relevance_to_goal": "Exactly the 'learnable version with fixed ranks per level' our H-matrix note asks for. The architecture is a template for outputting R* or A in H-form with rank budgets fixed a priori (we measured that 15% of dense suffices).",
+   "transferable_idea": "Make the network's output layer an H-matrix with fixed per-level ranks (from our adaptive-tolerance experiment) and near-field dense blocks; train the factor coefficients through block-product/action losses so gauge is irrelevant.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Geometry-Informed Neural Operator for Large-Scale 3D PDEs (GINO)",
+   "authors": "Zongyi Li, Nikola Kovachki, Chris Choy, Boyi Li, Jean Kossaifi, Shourya Otta, Mohammad Amin Nabian, Maximilian Stadler, Christian Hundt, Kamyar Azizzadenesheli, Anima Anandkumar",
+   "year": "2023",
+   "venue_or_arxiv": "arXiv:2309.00583; NeurIPS 2023",
+   "url": "https://arxiv.org/abs/2309.00583",
+   "what_it_does": "Encodes varying 3D geometry via signed-distance function and point clouds, uses graph neural operator layers to move between the irregular surface and a regular latent grid, FNO layers on the grid for global mixing, and GNO decoding back to the surface; discretisation-convergent; trained on ~500 car geometries for surface pressure with ~25% error reduction over DNN baselines.",
+   "relevance_to_goal": "The standard architecture for geometry -> surface field. Our V1 CNN used only 6 face images with receptive radius 0.23; GINO-style volumetric SDF encoding plus global (Fourier) mixing is the natural fix for the near/far-field cancellation (ratio 1e3-1e4) that a local receptive field cannot see. Its reported accuracy (~few % L2) is far from our whitened tolerance, so it is an encoder template, not an accuracy precedent.",
+   "transferable_idea": "Use the 65^3 analytic fields (our SDF equivalent) as a volumetric input with global mixing, and decode onto the trace nodes with graph kernels; supplement with the 48-element cube group as augmentation/equivariance.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Neural incomplete factorization: learning preconditioners for the conjugate gradient method (NeuralIF)",
+   "authors": "Paul Häusner, Ozan Öktem, Jens Sjölund",
+   "year": "2023 (arXiv) / 2024 (TMLR)",
+   "venue_or_arxiv": "arXiv:2305.16368; TMLR 2024; follow-up for GMRES arXiv:2409.08262",
+   "url": "https://arxiv.org/abs/2305.16368",
+   "what_it_does": "A GNN on the matrix graph outputs a sparse Cholesky-like factor L with a prescribed sparsity pattern; trained with a Hutchinson-estimated stochastic Frobenius loss ||A - L L^T|| using only matvecs; shows a bound sigma_max(A P^-1) <= ||A-P||_F/eps + 1 and speedups of PCG on Poisson problems on varying domains.",
+   "relevance_to_goal": "The mainstream way to output a factor from a network, and a precedent for deployment mode (B) (learned Shat as preconditioner). Its own loss analysis shows Frobenius-type losses only control the top of the spectrum, which is exactly our finding that averaged losses miss the deciding soft modes. Their sparse-pattern factor is also what our banded-truncation test showed cannot pass module gates (eps_op 58).",
+   "transferable_idea": "If mode (B) is chosen, a learned factor with GNN message passing and matvec-only losses is the established route, and the metric becomes CG iteration count, not eps_op; the paper's bound says to expect control of lambda_max only.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Learning from Linear Algebra: A Graph Neural Network Approach to Preconditioner Design for Conjugate Gradient Solvers (PreCorrector)",
+   "authors": "Vladislav Trifonov, Alexander Rudikov, Oleg Iliev, Yuri Laevsky, Ivan Oseledets, Ekaterina Muravleva",
+   "year": "2024 (v3 2025)",
+   "venue_or_arxiv": "arXiv:2405.15557",
+   "url": "https://arxiv.org/abs/2405.15557",
+   "what_it_does": "Starts from a classical factor (IC(0)) and trains a GNN correction; observes that earlier neural preconditioners fail to reduce CG iterations because their losses ignore the small-eigenvalue (low-frequency) part of the spectrum, and proposes a weighted loss that targets those modes; outperforms classical and neural baselines on parametric PDEs.",
+   "relevance_to_goal": "Independent confirmation of our central negative result: averaged/Frobenius losses do not see the soft modes that decide the verdict. Their remedy (reweight the loss by the inverse spectrum, i.e. work in a whitened metric) is the loss-side analogue of our eps_op definition. 'Start from a classical factor and learn a correction' is also the multiplicative-error strategy that our sensitivity analysis says is not amplified by cond(A).",
+   "transferable_idea": "Train on the whitened residual: loss on R*^-T (Ahat - A) R*^-1 (or on (I+Delta) with Rhat=(I+Delta)R*), so gradients weight each mode by 1/lambda; combine with a max-type (spectral-norm / power-iteration) term rather than mean.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Spectral Analysis of the Weighted Frobenius Objective",
+   "authors": "Vladislav Trifonov, Ivan Oseledets, Ekaterina Muravleva",
+   "year": "2025",
+   "venue_or_arxiv": "arXiv:2509.16783",
+   "url": "https://arxiv.org/abs/2509.16783",
+   "what_it_does": "Analyses the loss ||(P - A) A^-1 ...||-type weighted Frobenius objectives used for SPD approximation: shows each eigenmode's error is scaled by its (inverse) eigenvalue squared, so minimisers concentrate the residual on the largest-eigenvalue direction and suppress low-frequency error; results hold for incomplete factorisations, algebraic updates and neural methods; validated with gradient-trained sparse factor updates.",
+   "relevance_to_goal": "Provides the theory for why our unweighted Frobenius runs stalled at the diagonal-only error and why the divergence D/d misleads by ~100x: the loss's mode weighting decides which errors are visible. It quantifies what a 1/lambda^2-weighted loss buys and where it still fails (it is still an average).",
+   "transferable_idea": "Use the paper's spectral decomposition of the loss to design a loss whose per-mode weights match the acceptance test (uniform in the whitened domain) and add an explicit extreme-eigenvalue term (Lanczos on R*^-T Ahat R*^-1) so the 3 deciding modes carry gradient.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Learning Interface Conditions in Domain Decomposition Solvers",
+   "authors": "Ali Taghibakhshi, Nicolas Nytko, Tareq Uz Zaman, Scott MacLachlan, Luke Olson, Matthew West",
+   "year": "2022",
+   "venue_or_arxiv": "arXiv:2205.09833; NeurIPS 2022",
+   "url": "https://arxiv.org/abs/2205.09833",
+   "what_it_does": "Learns optimised-Schwarz interface operators (modifications of the interface rows of subdomain matrices, i.e. approximate DtN/Robin data) on unstructured grids with a graph CNN and an unsupervised loss that is a differentiable surrogate for the spectral radius of the iteration (power-iteration-style on the error propagator); trains on small problems and generalises to arbitrarily large ones with linear cost.",
+   "relevance_to_goal": "Shows how to train an interface-operator predictor with a worst-mode (spectral radius) objective rather than an averaged one, and that graph-based interface operators generalise across mesh geometry. Their accuracy target is solver convergence, i.e. our mode (B).",
+   "transferable_idea": "Adopt the power-iteration / Lanczos surrogate for the extreme whitened eigenvalue as a differentiable loss term; it is cheap (a few matvecs per step) and directly matches eps_op.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Neural Network Layers for Prediction of Positive Definite Elastic Stiffness Tensors",
+   "authors": "Charles Jekel, Kenneth Swartz, Daniel White, Daniel Tortorelli, Seth Watts (LLNL)",
+   "year": "2022",
+   "venue_or_arxiv": "arXiv:2203.13938",
+   "url": "https://arxiv.org/abs/2203.13938",
+   "what_it_does": "Wraps Cholesky-factor and eigendecomposition parameterisations as output layers so that predicted homogenised lattice stiffness tensors are SPD by construction; evaluated on two lattice-material datasets with polynomial, RBF and NN regressors; the SPD layer improves mean accuracy rather than costing it.",
+   "relevance_to_goal": "The lattice/TO community's standard answer to 'output must be SPD' at 6x6 scale; our collar-core experiment (23,016 SPD 6x6 tensors per coarse cell) and the whole R^T R factor design follow the same principle. Its scale (6x6) is 2000x below ours, so its evidence on accuracy does not transfer.",
+   "transferable_idea": "Keep SPD-by-construction outputs (Cholesky heads) everywhere, including for per-coarse-cell material tensors; note that the Cholesky parameterisation makes error multiplicative on the factor, which our sensitivity analysis shows is the benign error model.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Topology optimization of hierarchical lattice structures with substructuring (ARSP)",
+   "authors": "Zijun Wu, Liang Xia, Shuting Wang, Tielin Shi",
+   "year": "2019",
+   "venue_or_arxiv": "Comput. Methods Appl. Mech. Eng. 345:602-617, doi:10.1016/j.cma.2018.11.003",
+   "url": "https://www.sciencedirect.com/science/article/abs/pii/S0045782518305589",
+   "what_it_does": "Condenses each lattice substructure into a super-element and builds a surrogate (POD + diffuse approximation) from a scalar density design variable to the super-element stiffness matrix; the super-elements are assembled for TO of hierarchical lattices (a 2020 IJNME follow-up does eigenvalue maximisation).",
+   "relevance_to_goal": "The closest TO-pipeline precedent: learned/surrogate super-element stiffness assembled in TO with design sensitivities taken through the surrogate. Their design space is 1-D (density) and the super-element is tiny, so interpolation suffices; our 9-D geometry with 12,798-dof trace and whitened tolerance is a different regime, but the assembly/sensitivity workflow is the same.",
+   "transferable_idea": "POD of super-element stiffness across the design space plus a smooth low-dimensional interpolant of the coefficients; for us a cross-seat POD of R* (after cube-group alignment) could give a smooth reduced coordinate for the network to predict, and their sensitivity handling shows how dK/dtheta flows into TO.",
+   "confidence_real": "search-result-only"
+  }
+ ],
+ "synthesis": "What the field already knows and we should use: (1) Learned static condensation as an assembled superelement exists and works only when the learned object is SPSD by construction (Parish et al. 2023/24; NOEM 2025/26; Jekel et al. 2022); nobody reports success with an unconstrained displacement-to-force regressor, matching our diagonal-only attractor. The energy form u^T S u / boundary-to-energy (NOEM) and the factor form R^T R are the accepted parameterisations. (2) DtN/Steklov-Poincare maps are non-smoothing operators; direct neural operators underfit them, and the fix in the literature is analytic principal part + learned smooth residual (PPDNO 2026). Our S has the same structure (stiff near-field principal part, smoother far field), so a reference-operator-plus-correction design (e.g. collar-core or transported nearest seat as S_0) is the literature's recommendation, and it also puts the network error into the multiplicative regime that our sensitivity analysis shows is not amplified by cond(A). (3) Hierarchical low-rank structure is both provable (Boullé-Halikias-Townsend 2023: far-field blocks recoverable from random actions) and available as a network architecture with fixed per-level ranks (Fan-Lin-Ying-Zepeda-Núñez 2018/19); the gauge non-uniqueness of factors is handled by subspace/projector losses that are sign- and rotation-invariant (Rudikov et al. ICLR 2026; Klawonn-Lanser-Weber-Hamacher 2026). (4) The loss-spectrum problem we measured (averaged losses blind to the deciding soft modes; D/d misleading by 100x) is independently documented in the learned-preconditioner literature: unweighted Frobenius/Hutchinson losses control only lambda_max (NeuralIF bound), and inverse-eigenvalue-weighted losses are needed to see low-frequency error (Trifonov et al. 2024, 2025). Unsupervised spectral-radius / power-iteration losses that target the worst mode are established for interface operators (Taghibakhshi et al. NeurIPS 2022) and are cheap. (5) Geometry encoders for 3D shape -> surface operator exist (GINO: SDF volume + graph kernels + global Fourier mixing), and the standard remedy for locality-limited CNNs (our V1, receptive radius 0.23, cannot represent a 1e3-1e4 near/far cancellation) is global mixing plus symmetry-group augmentation. (6) MsFEM/GMsFEM-style work (Boutilier et al. 2024; Rudikov et al.; Vasilyeva-Pangilinan 2026) learns local interface operators only on coarse trace subspaces; the soft-mode subspace of local Schur complements is exactly what adaptive coarse spaces extract, and it has been shown to be predictable from local coefficient data with sign-invariant losses. (7) In lattice TO, surrogate super-element stiffness assembled with sensitivities through the surrogate is an accepted workflow (Wu et al. 2019), but at 1-D design spaces and tiny superelements. Net: the literature supports a design of the form Shat = (I+Delta(g)) R_0(g) [factor form, SPD by construction], with R_0 an analytic/transported reference, Delta output in H-matrix form with fixed ranks, trained with whitened and worst-mode (Lanczos) losses on gauge-free targets (actions, block products, energies), with cube-group equivariance and a GINO-style volumetric encoder.",
+ "gaps": "Nobody has done: (a) a learned Schur complement / DtN map that is validated in a whitened worst-direction metric (max|mu-1|) at a +-3% or even +-10% tolerance on a trace of O(10^4) dofs; all reported accuracies are L2/relative-Frobenius/response errors at the percent level or CG iteration counts, and no paper quantifies the cond(A) amplification between entrywise error and energy-norm error for a learned operator. (b) Geometry -> condensed operator generalisation at high trace resolution: Parish et al. and NOEM fix the inner geometry; PPDNO varies smooth 2D boundaries; MsFEM/GMsFEM work varies coefficients, not cut geometry; no work learns the condensation of a CutFEM/unfitted cell as a function of cut-plane and thickness parameters. (c) Learning operators whose labels are discontinuous in the design parameters (ghost-penalty activation of near-empty cut cells, +0.01% thickness -> 60% change in one soft direction); the literature assumes smooth operator dependence and has no treatment of label regularisation or of the fact that the task-level (compliance) derivative is stable while the operator derivative is not. (d) Loss design that guarantees control of the bottom of the whitened spectrum: weighted-Frobenius (Trifonov) and spectral-radius surrogates (Taghibakhshi) improve but are still average- or single-mode losses; no published method combines exact SPD parameterisation, whitened per-mode weighting and a certified bound on max|mu-1| from a small number of Lanczos steps. (e) Fixed-rank learnable H-matrix output for elasticity Schur complements with a proven admissibility/rank budget and gauge-free training; Fan et al.'s architecture was demonstrated only on scalar nonlinear maps of modest size. (f) Task-level acceptance contracts for assembled learned superelements in TO (compliance, displacement and design-sensitivity error registered per load family), and the mode-A vs mode-B (proxy vs preconditioner) decision framework; existing TO surrogate work never reports operator-level error, and preconditioner work never reports task-level error. (g) Data regime: all cited works train on hundreds to thousands of labelled operators; we have 33 factors (1024 condensed packets), so a label-efficient scheme (randomised-action sketches of A as labels, cube-group augmentation, cross-seat POD coordinates) is unexplored at this accuracy."
+}

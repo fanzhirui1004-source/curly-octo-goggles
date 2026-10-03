@@ -1,0 +1,14 @@
+{
+ "question": "At fixed sampling, fixed encoder/decoder, fixed loss, fixed seed and fixed budget, does predicting the symmetric square root M = A^{1/2} learn better than predicting the Cholesky factor R?",
+ "falsifies": "the claim that the Cholesky gauge (ordering dependence, no permutation equivariance, the TMLR-2025 sparse-triangular obstruction) is what limits line 1's accuracy",
+ "does_not_falsify": "route 3 as a whole; a loss for the sqrt arm could also be a bad sqrt head rather than a bad route",
+ "only_variable": "the output head; A_hat = R^T R versus A_hat = M M",
+ "identical_across_arms": ["model and parameter count", "pair sampler and seed", "three-bucket normalised factor MSE", "optimizer, schedule, warmup, steps", "seat", "whitening reference R_* and the acceptance eps_op = max|mu-1|"],
+ "known_differences_that_are_part_of_the_head": [
+   "per-bucket RMS normalisers are calibrated from each head's own label",
+   "the diagonal 3x3 log-pivot parameterisation applies to both because A^{1/2} is SPD and so has a strictly positive diagonal",
+   "the closed-form triangular divergence is replaced by slogdet for the sqrt arm; both are cross-checked against the spectral value"
+ ],
+ "stage1": "8192 pairs per bucket, 20000 steps, seat 253",
+ "stage2": "32768 pairs per bucket, 20000 steps, seat 253, both heads"
+}

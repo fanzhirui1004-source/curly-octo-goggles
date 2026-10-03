@@ -1,0 +1,35 @@
+{
+ "status": "ok",
+ "machine": "autodl-container-48244ca5f1-cc078caa",
+ "scipy": "1.18.1",
+ "pid": 6285,
+ "rlimit_as": [
+  8589934592,
+  8589934592
+ ],
+ "variant": "colamd",
+ "splu_kwargs": {
+  "permc_spec": "COLAMD"
+ },
+ "solver": "SuperLU bundled with SciPy 1.18.1 (scipy.sparse.linalg.splu; sequential, single thread)",
+ "load_s": 0.002295061945915222,
+ "n": 8000,
+ "nnz": 53600,
+ "rss_after_load_GiB": 0.0558013916015625,
+ "wall_limit_s": 600,
+ "factor_s": 0.30080363154411316,
+ "nnz_L": 1858270,
+ "nnz_U": 1858270,
+ "LU_GiB": 0.041535571217536926,
+ "solve_s": 0.01389622688293457,
+ "seconds": 0.33594848215579987,
+ "rel_residual": [
+  1.0542032495360607e-15,
+  9.915268835206248e-16
+ ],
+ "compliance": [
+  1833.1202330604374,
+  1791.9691006906094
+ ],
+ "peak_rss_GiB": 0.13547897338867188
+}

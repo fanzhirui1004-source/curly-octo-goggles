@@ -1,0 +1,268 @@
+{
+ "block:hlat221a": {
+  "machine": [
+   "autodl-container-2f9845b53b-a1297f04"
+  ],
+  "reps": 1,
+  "completed": 1,
+  "skipped": [],
+  "free_retained": 77310,
+  "nnz_upper": null,
+  "csr_GiB": null,
+  "dense_S_total_GiB": 17.849179185926914,
+  "predicted_GiB": null,
+  "interface": null,
+  "solver": "block",
+  "n_shared": 12327,
+  "interface_dense_GiB": 1.132152445614338,
+  "held_factor_GiB": 11.450246885418892,
+  "front_end_s": {
+   "median": 262.9337408915162,
+   "min": 262.9337408915162,
+   "n": 1
+  },
+  "schur_s": {
+   "median": 270.4362641572952,
+   "min": 270.4362641572952,
+   "n": 1
+  },
+  "lattice_s": {
+   "median": 0.027758799493312836,
+   "min": 0.027758799493312836,
+   "n": 1
+  },
+  "structure_s": null,
+  "indices_s": null,
+  "values_s": null,
+  "analysis_s": null,
+  "factor_s": null,
+  "solve_s": null,
+  "condensed_s": {
+   "median": 91.46652749180794,
+   "min": 91.46652749180794,
+   "n": 1
+  },
+  "total_s": {
+   "median": 647.1565125212073,
+   "min": 647.1565125212073,
+   "n": 1
+  },
+  "process_peak_rss_GiB": {
+   "median": 27.862838745117188,
+   "min": 27.862838745117188,
+   "n": 1
+  },
+  "assembly_peak_rss_GiB": null,
+  "factor_solve_peak_rss_GiB": null,
+  "throttled_s": {
+   "median": 0.0,
+   "min": 0.0,
+   "n": 1
+  },
+  "private_elimination_s": {
+   "median": 85.30772130936384,
+   "min": 85.30772130936384,
+   "n": 1
+  },
+  "interface_factor_solve_s": {
+   "median": 2.2335192263126373,
+   "min": 2.2335192263126373,
+   "n": 1
+  },
+  "back_substitution_s": {
+   "median": 3.016671195626259,
+   "min": 3.016671195626259,
+   "n": 1
+  },
+  "block_peak_rss_GiB": {
+   "median": 22.085063934326172,
+   "min": 22.085063934326172,
+   "n": 1
+  },
+  "schur_pardiso_GiB_max": 15.025330543518066,
+  "rel_residual_max": null,
+  "compliance": [
+   302.1934843551455,
+   51.693455233042414,
+   635.773881811865,
+   90846.45315318857,
+   81897.44774451094,
+   85365.45259615332
+  ],
+  "reference": {
+   "file": "/root/autodl-tmp/OPL/S1/V2/lat_direct_hlat221a_m11.json",
+   "mtype": 11,
+   "compliance": [
+    302.19348447507167,
+    51.69345524370899,
+    635.773882264183,
+    90846.45315316597,
+    81897.44774450839,
+    85365.45259651908
+   ],
+   "rel_diff": [
+    3.9685232877673116e-10,
+    2.0634283171006018e-10,
+    7.114449029899106e-10,
+    2.4868995751603507e-13,
+    3.108624468950438e-14,
+    4.284683718935867e-12
+   ]
+  }
+ },
+ "block:hlat221b": {
+  "machine": [
+   "autodl-container-2f9845b53b-a1297f04"
+  ],
+  "reps": 1,
+  "completed": 1,
+  "skipped": [],
+  "free_retained": 71046,
+  "nnz_upper": null,
+  "csr_GiB": null,
+  "dense_S_total_GiB": 14.949009843170643,
+  "predicted_GiB": null,
+  "interface": null,
+  "solver": "block",
+  "n_shared": 11103,
+  "interface_dense_GiB": 0.9184823110699654,
+  "held_factor_GiB": 9.698182359337807,
+  "front_end_s": {
+   "median": 254.88729083538055,
+   "min": 254.88729083538055,
+   "n": 1
+  },
+  "schur_s": {
+   "median": 213.56602121144533,
+   "min": 213.56602121144533,
+   "n": 1
+  },
+  "lattice_s": {
+   "median": 0.030683442950248718,
+   "min": 0.030683442950248718,
+   "n": 1
+  },
+  "structure_s": null,
+  "indices_s": null,
+  "values_s": null,
+  "analysis_s": null,
+  "factor_s": null,
+  "solve_s": null,
+  "condensed_s": {
+   "median": 74.55955380946398,
+   "min": 74.55955380946398,
+   "n": 1
+  },
+  "total_s": {
+   "median": 563.8855987638235,
+   "min": 563.8855987638235,
+   "n": 1
+  },
+  "process_peak_rss_GiB": {
+   "median": 24.471324920654297,
+   "min": 24.471324920654297,
+   "n": 1
+  },
+  "assembly_peak_rss_GiB": null,
+  "factor_solve_peak_rss_GiB": null,
+  "throttled_s": {
+   "median": 0.0,
+   "min": 0.0,
+   "n": 1
+  },
+  "private_elimination_s": {
+   "median": 68.87752208858728,
+   "min": 68.87752208858728,
+   "n": 1
+  },
+  "interface_factor_solve_s": {
+   "median": 1.878188744187355,
+   "min": 1.878188744187355,
+   "n": 1
+  },
+  "back_substitution_s": {
+   "median": 2.995960161089897,
+   "min": 2.995960161089897,
+   "n": 1
+  },
+  "block_peak_rss_GiB": {
+   "median": 18.66546630859375,
+   "min": 18.66546630859375,
+   "n": 1
+  },
+  "schur_pardiso_GiB_max": 13.299086570739746,
+  "rel_residual_max": null,
+  "compliance": [
+   404.88803356081957,
+   68.60892818356774,
+   833.2974705889237,
+   90599.34036612615,
+   87706.59897553196,
+   98044.67367443253
+  ],
+  "reference": {
+   "file": "/root/autodl-tmp/OPL/S1/V2/lat_direct_hlat221b_m2_11.json",
+   "mtype": 2,
+   "compliance": [
+    404.88803373934184,
+    68.6089282007389,
+    833.297471221761,
+    90599.34036612045,
+    87706.59897576469,
+    98044.67367443859
+   ],
+   "rel_diff": [
+    4.4091763573561593e-10,
+    2.502759111067121e-10,
+    7.594375128761044e-10,
+    6.306066779870889e-14,
+    2.6535440511565866e-12,
+    6.17284001691587e-14
+   ]
+  }
+ },
+ "pardiso:hlat221b": {
+  "machine": [
+   "autodl-container-2f9845b53b-a1297f04"
+  ],
+  "reps": 1,
+  "completed": 0,
+  "skipped": [
+   "condensed factor: predicted 36.18 GiB + margin > available 14.62 GiB"
+  ],
+  "free_retained": 71046,
+  "nnz_upper": 856072755,
+  "csr_GiB": 9.567887928336859,
+  "dense_S_total_GiB": 14.949009843170643,
+  "predicted_GiB": {
+   "peak_analysis": 23.03585433959961,
+   "permanent": 22.9378080368042,
+   "factor_solve": 13.242597579956055,
+   "total": 36.180405616760254
+  },
+  "interface": "pardiso (int32)",
+  "solver": "pardiso",
+  "n_shared": 11103,
+  "interface_dense_GiB": null,
+  "held_factor_GiB": null,
+  "front_end_s": null,
+  "schur_s": null,
+  "lattice_s": null,
+  "structure_s": null,
+  "indices_s": null,
+  "values_s": null,
+  "analysis_s": null,
+  "factor_s": null,
+  "solve_s": null,
+  "condensed_s": null,
+  "total_s": null,
+  "process_peak_rss_GiB": null,
+  "assembly_peak_rss_GiB": null,
+  "factor_solve_peak_rss_GiB": null,
+  "throttled_s": null,
+  "private_elimination_s": null,
+  "interface_factor_solve_s": null,
+  "back_substitution_s": null,
+  "block_peak_rss_GiB": null
+ }
+}

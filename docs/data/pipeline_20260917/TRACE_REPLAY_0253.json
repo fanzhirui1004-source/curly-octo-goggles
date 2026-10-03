@@ -1,0 +1,96 @@
+{
+ "packet": "/root/autodl-tmp/CUTFEM_INGEST_R38/dataset_independent_20260910/B256_N32_INDEPENDENT_20260910_0253/payload/packet",
+ "n": 32,
+ "case_id": "B256_N32_INDEPENDENT_20260910_0253",
+ "full_trace_dimension": 12828,
+ "from_case_seconds": 0.00045786052942276,
+ "compile_topology_seconds": 15.530421774834394,
+ "topology_status": "TRUE_TOPOLOGY_CERTIFIED",
+ "component_count": 1,
+ "node_ids_seconds": 0.10779302194714546,
+ "active_cells": 7444,
+ "body_dofs": 230364,
+ "compile_trace_seconds": 0.3030846491456032,
+ "trace_cache_seconds": 0.013550825417041779,
+ "arrays": {
+  "rigid": [
+   [
+    12828,
+    6
+   ],
+   "float64"
+  ],
+  "order": [
+   [
+    12828
+   ],
+   "int64"
+  ],
+  "support_centroid": [
+   [
+    4276,
+    3
+   ],
+   "float64"
+  ],
+  "kind": [
+   [
+    4276
+   ],
+   "uint8"
+  ],
+  "background_nodes": [
+   [
+    76788
+   ],
+   "int64"
+  ],
+  "indptr": [
+   [
+    4277
+   ],
+   "int32"
+  ],
+  "indices": [
+   [
+    4276
+   ],
+   "int32"
+  ],
+  "coefficients": [
+   [
+    4276
+   ],
+   "float64"
+  ],
+  "tau_corners": [
+   [
+    8
+   ],
+   "float64"
+  ],
+  "cut_plane": [
+   [
+    4
+   ],
+   "float64"
+  ]
+ },
+ "key_sets_equal": true,
+ "frozen_only": [],
+ "new_only": [],
+ "all_arrays_equal": {
+  "background_nodes": true,
+  "coefficients": true,
+  "cut_plane": true,
+  "indices": true,
+  "indptr": true,
+  "kind": true,
+  "order": true,
+  "rigid": true,
+  "support_centroid": true,
+  "tau_corners": true
+ },
+ "bit_exact": true,
+ "status": "REPLAY_COMPLETE"
+}

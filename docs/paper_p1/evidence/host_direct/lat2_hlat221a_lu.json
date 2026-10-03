@@ -1,0 +1,198 @@
+{
+ "layout": "hlat221a",
+ "machine": "autodl-container-48244ca5f1-cc078caa",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "cgroup": "v1",
+   "memory_max_bytes": 128849018880,
+   "memory_high_bytes": 126701535232,
+   "anon_bytes": 664416256,
+   "file_bytes": 4346953728,
+   "cpu_quota_cores": 32.0,
+   "nproc": 32,
+   "os_cpu_count": 384,
+   "memory_max_GiB": 120.0,
+   "memory_high_GiB": 118.0,
+   "anon_GiB": 0.6187858581542969,
+   "file_GiB": 4.0484161376953125
+  },
+  "loadavg": [
+   308.41845703125,
+   284.61669921875,
+   302.14599609375
+  ],
+  "host": "autodl-container-48244ca5f1-cc078caa",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 16
+ },
+ "loadavg_start": [
+  308.41845703125,
+  284.61669921875,
+  302.14599609375
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 41.762114226818085,
+   "assembly_s": 37.60848595201969,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424
+  },
+  "hlat222_010": {
+   "setup_s": 42.645735919475555,
+   "assembly_s": 33.9852035343647,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340
+  },
+  "hlat222_100": {
+   "setup_s": 21.207478374242783,
+   "assembly_s": 18.438972532749176,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510
+  },
+  "hlat222_110": {
+   "setup_s": 9.4471755027771,
+   "assembly_s": 9.895029515028,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304
+  }
+ },
+ "cells_s": 214.9941250383854,
+ "lattice_s": 0.06044170260429382,
+ "global_assembly_s": 14.394621640443802,
+ "global_dofs": 957888,
+ "free_retained": 77310,
+ "interior": 880578,
+ "nnz_upper": 132719531,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "front_end_peak_rss_GiB": 21.266605377197266,
+ "scaling_s": 5.825122371315956,
+ "rss_before_pardiso_GiB": 3.6338233947753906,
+ "runs": [
+  {
+   "mtype": 11,
+   "nnz_stored": 264419738,
+   "iparm_requested": null,
+   "loadavg_start": [
+    189.787109375,
+    235.26318359375,
+    278.28173828125
+   ],
+   "cpu_stat_start": {
+    "nr_periods": 112762,
+    "nr_throttled": 94,
+    "throttled_time": 118995961,
+    "throttled_usec": 118995,
+    "usage_usec": 92708225295
+   },
+   "analysis_s": 27.788013100624084,
+   "analysis_peak_rss_GiB": 20.735305786132812,
+   "predicted_kB": {
+    "peak_analysis": 13764383,
+    "permanent": 9102417,
+    "factor_solve": 57594317
+   },
+   "predicted_GiB": {
+    "peak_analysis": 13.126738548278809,
+    "permanent": 8.680741310119629,
+    "factor_solve": 54.92622089385986,
+    "total": 63.60696220397949
+   },
+   "avail_before_factor_GiB": 102.96686553955078,
+   "cgroup_before_factor": {
+    "cgroup": "v1",
+    "memory_max_bytes": 128849018880,
+    "memory_high_bytes": 126701535232,
+    "anon_bytes": 16141705216,
+    "file_bytes": 4346941440,
+    "cpu_quota_cores": 32.0,
+    "nproc": 32,
+    "os_cpu_count": 384,
+    "memory_max_GiB": 120.0,
+    "memory_high_GiB": 118.0,
+    "anon_GiB": 15.033134460449219,
+    "file_GiB": 4.048404693603516
+   },
+   "factor_s": 333.26970522105694,
+   "factor_peak_rss_GiB": 67.73144912719727,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 16,
+     "8": 2,
+     "10": 13,
+     "11": 1,
+     "13": 1,
+     "15": 13764383,
+     "16": 9102417,
+     "17": 57563088,
+     "18": -1541791704,
+     "19": 62800942,
+     "34": -1,
+     "57": -1,
+     "61": 13764383,
+     "62": 5100892
+    },
+    "nnz_factor": -1541791704,
+    "mflop_factor": 62800942,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 13764383,
+     "permanent": 9102417,
+     "factor_solve": 57563088
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 13.126738548278809,
+     "permanent": 8.680741310119629,
+     "factor_solve": 54.89643859863281,
+     "total": 63.57717990875244
+    }
+   },
+   "solve_s": 17.303060829639435,
+   "solve_peak_rss_GiB": 69.89214324951172,
+   "rel_residual": [
+    2.2674225269554975e-11,
+    5.664789683263933e-12,
+    3.2444346816859765e-11,
+    1.8253064576203253e-13,
+    1.9410309214323465e-13,
+    1.2813478247174392e-12
+   ],
+   "compliance": [
+    302.1934844762138,
+    51.69345524379139,
+    635.7738822704385,
+    90846.45315316599,
+    81897.44774450788,
+    85365.45259652135
+   ],
+   "loadavg_end": [
+    215.294921875,
+    215.15966796875,
+    254.04296875
+   ],
+   "throttled_s": 0.0,
+   "process_peak_rss_GiB": 69.89214324951172
+  }
+ ],
+ "process_peak_rss_GiB": 69.89214324951172
+}

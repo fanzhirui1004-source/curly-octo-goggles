@@ -1,0 +1,53 @@
+{
+ "name": "hlatsmoke1",
+ "shape": [
+  2,
+  2,
+  2
+ ],
+ "normal": [
+  0.9396926207859084,
+  0.3420201433256687,
+  0.0
+ ],
+ "b_global": 1.6896926207859084,
+ "cells": [
+  {
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "case": "hlat222_000",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.3754784674928582,
+    0.31079146855055484,
+    0.41066110542114115,
+    0.3925308095680109,
+    0.4474028969515107,
+    0.3926341421648613,
+    0.5042961710635028,
+    0.42134342301221855
+   ]
+  }
+ ],
+ "args": {
+  "name": "hlat222",
+  "shape": "2,2,2",
+  "theta_deg": 20.0,
+  "b0": 0.75,
+  "t0": 0.38,
+  "gx": 0.12,
+  "gy": 0.06,
+  "gz": 0.05,
+  "jitter": 0.02,
+  "seed": 0,
+  "min_vol": 0.15,
+  "packets": "/root/autodl-tmp/OPL/S4/packets",
+  "out": "/root/autodl-tmp/OPL/S4",
+  "template": "/root/autodl-tmp/OPL/S3/packets/fresh_val_2003_d1_v1"
+ },
+ "derived_from": "hlatsmoke2, first cell only"
+}

@@ -1,0 +1,17 @@
+#!/bin/bash
+# samples RSS (GB) and GPU memory of every scale-chain opt_design process every 30 s into rss_<name>.tsv
+R=/root/autodl-tmp/OPL/S1/V2/R1/SCALE
+while pgrep -f chain_scale.sh >/dev/null; do
+  for p in $(pgrep -f "opt_design.py $R/plateS"); do
+    n=$(ps -o args= -p $p | grep -o "plateS[0-9]*" | head -1); r=$(ps -o rss= -p $p 2>/dev/null)
+    [ -n "$r" ] && echo -e "$(date +%T)\t$(awk "BEGIN{print $r/1048576}")\t$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)" >> $R/rss_$n.tsv
+  done; sleep 30; done
+====
+#!/bin/bash
+# samples RSS (GB) and GPU memory of every scale-chain opt_design process every 30 s into rss_<name>.tsv
+R=/root/autodl-tmp/OPL/S1/V2/R1/SCALE
+while pgrep -f chain_scale3.sh >/dev/null; do
+  for p in $(pgrep -f "opt_design.py $R/plateS"); do
+    n=$(ps -o args= -p $p | grep -o "plateS[0-9r]*" | head -1); r=$(ps -o rss= -p $p 2>/dev/null)
+    [ -n "$r" ] && echo -e "$(date +%T)\t$(awk "BEGIN{print $r/1048576}")\t$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)" >> $R/rss_$n.tsv
+  done; sleep 30; done

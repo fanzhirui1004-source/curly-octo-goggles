@@ -1,0 +1,134 @@
+{
+ "seat": 120,
+ "d": 16914,
+ "q": 16920,
+ "n": 32,
+ "coordinates": 5640,
+ "kind1": 0,
+ "box_only": true,
+ "glue_axis": 2,
+ "low_face": 936,
+ "high_face": 960,
+ "shared_coordinates": 936,
+ "rigid_span_residual": 0.0,
+ "design": "uniform stiffness multiplier per module; dc/drho_m = -u_m^T S_m u_m",
+ "scope": "two copies of one cell glued on its kind-0 coordinates; kind-1 coordinates are free surface",
+ "assembled_coordinates": 10344,
+ "assembled_dofs": 31032,
+ "glue_rigid_mismatch": 0.0,
+ "load_left": 936,
+ "load_right": 960,
+ "exact": {
+  "axial_z": {
+   "compliance": 327344.76522929355,
+   "sens": {
+    "A": -187394.40917708736,
+    "B": -139950.35605220532
+   },
+   "solve_residual": 5.886865084167955e-13,
+   "adjoint_identity_relative": 2.6672640177716746e-15
+  },
+  "shear_x": {
+   "compliance": 239730.4189872922,
+   "sens": {
+    "A": -135762.9664380914,
+    "B": -103967.45254918722
+   },
+   "solve_residual": 4.1966779847571955e-13,
+   "adjoint_identity_relative": 5.6816288526460976e-14
+  },
+  "shear_y": {
+   "compliance": 251871.40273256873,
+   "sens": {
+    "A": -142490.59245730308,
+    "B": -109380.81027526764
+   },
+   "solve_residual": 3.529385506987454e-13,
+   "adjoint_identity_relative": -7.857424263282533e-15
+  },
+  "bending_zx": {
+   "compliance": 246710.88675931923,
+   "sens": {
+    "A": -136995.02910364198,
+    "B": -109715.85765567575
+   },
+   "solve_residual": 4.962294418395437e-13,
+   "adjoint_identity_relative": 6.134302395931807e-15
+  }
+ },
+ "e_A": 0.32041119638359605,
+ "predicted": {
+  "axial_z": {
+   "compliance": 325481.8624718209,
+   "sens": {
+    "A": -185727.28215223472,
+    "B": -139754.5803195851
+   },
+   "solve_residual": 5.347139880738379e-13,
+   "adjoint_identity_relative": 3.2190361960126823e-15
+  },
+  "shear_x": {
+   "compliance": 239322.2742319504,
+   "sens": {
+    "A": -135211.92817155074,
+    "B": -104110.34606040288
+   },
+   "solve_residual": 3.936873616943551e-13,
+   "adjoint_identity_relative": -1.3377030451991693e-14
+  },
+  "shear_y": {
+   "compliance": 252312.26872474456,
+   "sens": {
+    "A": -142213.4110875874,
+    "B": -110098.85763715963
+   },
+   "solve_residual": 3.2144293968077063e-13,
+   "adjoint_identity_relative": -9.689270247229457e-15
+  },
+  "bending_zx": {
+   "compliance": 247622.8852392967,
+   "sens": {
+    "A": -137458.66006230144,
+    "B": -110164.22517699645
+   },
+   "solve_residual": 4.339149077575696e-13,
+   "adjoint_identity_relative": -4.701315135490562e-15
+  }
+ },
+ "source": "/root/autodl-tmp/CLAUDE_EQUI_20260918/ENSEMBLE_MW/EVAL_0120/MQ_PRED_UPPER.npy",
+ "relative": {
+  "axial_z": {
+   "compliance_rel": 0.005690950200983869,
+   "sensitivity_rel": {
+    "A": 0.008896354123762662,
+    "B": 0.0013988941374838415
+   }
+  },
+  "shear_x": {
+   "compliance_rel": 0.0017025155049824603,
+   "sensitivity_rel": {
+    "A": 0.004058826062790288,
+    "B": 0.0013744061984020117
+   }
+  },
+  "shear_y": {
+   "compliance_rel": 0.0017503614439464688,
+   "sensitivity_rel": {
+    "A": 0.0019452608409832317,
+    "B": 0.0065646557205505385
+   }
+  },
+  "bending_zx": {
+   "compliance_rel": 0.003696628438076166,
+   "sensitivity_rel": {
+    "A": 0.003384290376760246,
+    "B": 0.004086624585552867
+   }
+  }
+ },
+ "worst_compliance_rel": 0.005690950200983869,
+ "worst_sensitivity_rel": 0.008896354123762662,
+ "worst_exact_adjoint_identity": 5.6816288526460976e-14,
+ "seconds": 60.25378203392029,
+ "status": "ASSEMBLE_TWO_COMPLETE"
+}

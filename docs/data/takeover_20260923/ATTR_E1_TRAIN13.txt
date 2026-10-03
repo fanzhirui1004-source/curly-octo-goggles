@@ -1,0 +1,9 @@
+random r_c min 1.681 median 1.739 max 1.811
+random r_s min 15.79 median 196.2 max 985
+random r_c*r_s median 341.1
+solver_hard_original64             r_c 0.3773 r_s 66.2 product 24.98  r_c pct among random 0.00  r_s pct 0.12
+solver_hard_split64                r_c 0.3771 r_s 66.59 product 25.11  r_c pct among random 0.00  r_s pct 0.12
+solver_pair64_witness              r_c 1.525 r_s 123.2 product 187.9  r_c pct among random 0.00  r_s pct 0.34
+geometry_elements_res8_witness     r_c 3.196 r_s 1.574e+04 product 5.031e+04  r_c pct among random 1.00  r_s pct 1.00
+arm_extreme_compliance_max         r_c 65.1 r_s 0.01536 product 1  r_c pct among random 1.00  r_s pct 0.00
+arm_extreme_compliance_min         r_c 3.208e-07 r_s 3.117e+06 product 1  r_c pct among random 0.00  r_s pct 1.00

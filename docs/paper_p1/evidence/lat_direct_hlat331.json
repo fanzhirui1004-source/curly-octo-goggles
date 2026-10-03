@@ -1,0 +1,115 @@
+{
+ "layout": "hlat331",
+ "threads": {
+  "MKL": "16",
+  "OMP": "16",
+  "torch": 16
+ },
+ "cpu": 128,
+ "loadavg_start": [
+  37.47509765625,
+  22.65283203125,
+  18.32958984375
+ ],
+ "cells": {
+  "hlat331_000": {
+   "setup_s": 31.80183394625783,
+   "assembly_s": 22.22299749031663,
+   "dofs": 304902,
+   "retained": 18606,
+   "interior": 286296
+  },
+  "hlat331_010": {
+   "setup_s": 27.811417434364557,
+   "assembly_s": 19.257084351032972,
+   "dofs": 318498,
+   "retained": 19548,
+   "interior": 298950
+  },
+  "hlat331_020": {
+   "setup_s": 26.313268925994635,
+   "assembly_s": 20.357926420867443,
+   "dofs": 308802,
+   "retained": 18942,
+   "interior": 289860
+  },
+  "hlat331_100": {
+   "setup_s": 27.85461701080203,
+   "assembly_s": 18.68351722881198,
+   "dofs": 327816,
+   "retained": 20124,
+   "interior": 307692
+  },
+  "hlat331_110": {
+   "setup_s": 29.377820160239935,
+   "assembly_s": 18.71530170366168,
+   "dofs": 336162,
+   "retained": 20958,
+   "interior": 315204
+  },
+  "hlat331_120": {
+   "setup_s": 25.478481855243444,
+   "assembly_s": 16.622993499040604,
+   "dofs": 277323,
+   "retained": 33717,
+   "interior": 243606
+  },
+  "hlat331_200": {
+   "setup_s": 15.230852663516998,
+   "assembly_s": 10.566420681774616,
+   "dofs": 198147,
+   "retained": 27933,
+   "interior": 170214
+  },
+  "hlat331_210": {
+   "setup_s": 5.74309579282999,
+   "assembly_s": 5.385856233537197,
+   "dofs": 83220,
+   "retained": 25116,
+   "interior": 58104
+  }
+ },
+ "cells_s": 321.43116249889135,
+ "lattice_s": 0.06698145717382431,
+ "global_assembly_s": 26.891638800501823,
+ "global_dofs": 2113611,
+ "free_retained": 143685,
+ "interior": 1969926,
+ "nnz_upper": 296791896,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "rss_after_assembly_GB": 39.18649673461914,
+ "rss_after_release_GB": 5.607746124267578,
+ "runs": [
+  {
+   "mtype": 2,
+   "nnz_stored": 296719359,
+   "analysis_s": 31.785067792981863,
+   "predicted_kB": {
+    "peak_analysis": 10743687,
+    "permanent": 9660960,
+    "factor_solve": 74973948
+   },
+   "predicted_GB": 80.71413803100586,
+   "skipped": "predicted 80.7 GB > 60.0 GB"
+  },
+  {
+   "mtype": 11,
+   "nnz_stored": 591325107,
+   "analysis_s": 46.933416198939085,
+   "predicted_kB": {
+    "peak_analysis": 30967216,
+    "permanent": 20421928,
+    "factor_solve": 147823817
+   },
+   "predicted_GB": 160.45164585113525,
+   "skipped": "predicted 160.5 GB > 60.0 GB"
+  }
+ ]
+}

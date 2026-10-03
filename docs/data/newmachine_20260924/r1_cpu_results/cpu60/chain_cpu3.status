@@ -1,0 +1,27 @@
+01:56:36 R1CPU3 START pid=1830 machine=autodl-container-2f9845b53b-a1297f04
+01:56:42 R1CPU3 ref_fresh_val_2010_d0_v0_cpu3_sweep rc=0 1s load=66.63 thr_us=0
+01:56:44 R1CPU3 ref_fresh_val_2005_d1_v0_cpu3_sweep rc=0 2s load=66.26 thr_us=0
+01:56:46 R1CPU3 ref_fresh_val_2074_d0_v0_cpu3_sweep rc=0 2s load=66.26 thr_us=0
+02:23:46 R1CPU3 ref_fresh_val_2051_d1_v1_cpu3_sweep rc=0 1620s load=67.97 thr_us=0
+02:23:48 R1CPU3 ref_fresh_val_2010_d0_v0_cpu3_studies rc=0 2s load=67.97 thr_us=0
+03:16:09 R1CPU3 ref_fresh_val_2074_d0_v0_cpu3_studies rc=0 3141s load=67.30 thr_us=0
+03:16:10 R1CPU3 ref_fresh_val_2051_d1_v1_cpu3_studies rc=0 1s load=67.30 thr_us=0
+03:16:10 R1_CPU3_REF_DONE_20260929
+03:27:00 R1CPU3 latcond_hlat221a_rep1 rc=0 650s load=65.79 thr_us=0
+03:36:25 R1CPU3 latcond_hlat221b_rep1 rc=0 565s load=68.09 thr_us=0
+03:45:34 R1CPU3 latcond_pardiso_hlat221b_rep1 rc=0 549s load=61.60 thr_us=0
+03:45:35 R1CPU3 selftest rc=0 1s load=61.60 thr_us=0
+03:45:35 R1CPU3 summary rc=0 0s load=61.60 thr_us=0
+03:45:35 R1_CPU3_COND_DONE_20260929
+04:31:30 R1CPU3 lat1_hlat221a_chol rc=0 2755s load=53.50 thr_us=0
+05:14:01 R1CPU3 lat1_hlat221b_chol rc=0 2551s load=59.29 thr_us=0
+05:14:01 R1_CPU3_ONE_DONE_20260929
+05:30:37 R1CPU3 scipy_hlatsmoke2 rc=0 996s load=47.58 thr_us=0
+05:30:37 R1CPU3 superlu hlatsmoke2: colamd=MemoryError factor_s=None mmd=MemoryError factor_s=None
+05:30:37 R1CPU3 summary_one rc=0 0s load=47.58 thr_us=0
+05:30:37 R1_CPU3_SLU_DONE_20260929
+05:30:37 R1CPU3 END rc=0
+05:30:37 R1_CPU3_ALL_DONE_20260929
+05:33:13 R1CPU3 START scipy_hlatsmoke1 (coordinator, 1-cell SuperLU)
+05:41:08 R1CPU3 END scipy_hlatsmoke1 rc=0 colamd=MemoryError factor_s=None mmd=MemoryError factor_s=None
+05:41:08 R1_CPU3_SLU1_DONE_20260929

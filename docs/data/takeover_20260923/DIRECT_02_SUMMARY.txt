@@ -1,0 +1,40 @@
+== DIRECT_02
+fresh_development_0000_d0_v0_polyref enc 3.20 {'E1a': 0.87, 'E1d': 0.21, 'E4b': 0.46, 'E4c': 0.23} q1 5.3ms q64 44ms wit 1.0056 o7max 1.00015
+fresh_development_0001_cover01_r1_polyref enc 1.56 {'E1a': 0.54, 'E1d': 0.14, 'E4b': 0.08, 'E4c': 0.03} q1 1.9ms q64 16ms wit 1.0060 o7max 1.00069
+fresh_development_0004_cover01_r1_polyref enc 5.60 {'E1a': 1.36, 'E1d': 0.33, 'E4b': 0.91, 'E4c': 0.75} q1 12.1ms q64 99ms wit 1.0048 o7max 1.00017
+fresh_train_0000_cover01_r1_polyref enc 12.03 {'E1a': 2.24, 'E1d': 0.62, 'E4b': 2.08, 'E4c': 2.73} q1 26.0ms q64 213ms wit 1.0042 o7max 1.00046
+fresh_train_0001_cover01_r1_polyref enc 2.57 {'E1a': 0.76, 'E1d': 0.18, 'E4b': 0.34, 'E4c': 0.16} q1 5.0ms q64 41ms wit 1.0041 o7max 1.00022
+fresh_train_0002_cover01_r1_polyref FAIL torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.26 GiB. GPU 0 has a total capacity of 31.36 GiB of which 463.06 MiB is free. Including non-PyTor
+fresh_train_0003_cover01_r1_polyref enc 12.73 {'E1a': 2.39, 'E1d': 0.66, 'E4b': 2.14, 'E4c': 2.85} q1 27.3ms q64 223ms wit 1.0034 o7max 1.00014
+fresh_train_0003_d0_v0_polyref enc 1.79 {'E1a': 0.61, 'E1d': 0.1, 'E4b': 0.15, 'E4c': 0.04} q1 2.3ms q64 18ms wit 1.0024 o7max 1.00011
+fresh_train_0003_full_polyref enc 13.12 {'E1a': 2.43, 'E1d': 0.61, 'E4b': 2.28, 'E4c': 3.15} q1 30.5ms q64 247ms wit 1.0034 o7max 1.00062
+fresh_train_0005_cover01_r1_polyref enc 9.47 {'E1a': 1.65, 'E1d': 0.55, 'E4b': 1.75, 'E4c': 2.26} q1 21.1ms q64 177ms wit 1.0093 o7max 1.00141
+fresh_train_0006_cover01_r1_polyref FAIL torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.28 GiB. GPU 0 has a total capacity of 31.36 GiB of which 1.76 GiB is free. Including non-PyTorch
+fresh_train_0006_d1_v1_polyref enc 6.00 {'E1a': 1.33, 'E1d': 0.38, 'E4b': 1.02, 'E4c': 0.9} q1 13.1ms q64 111ms wit 1.0042 o7max 1.00010
+fresh_train_0006_full_polyref enc 15.41 {'E1a': 2.4, 'E1d': 0.67, 'E4b': 2.76, 'E4c': 4.62} q1 36.2ms q64 293ms wit 1.0044 o7max 1.00112
+fresh_train_0007_cover01_r1_polyref enc 6.41 {'E1a': 1.33, 'E1d': 0.48, 'E4b': 1.06, 'E4c': 1.07} q1 12.5ms q64 108ms wit 1.0061 o7max 1.00035
+fresh_train_0008_cover01_r1_polyref enc 1.79 {'E1a': 0.62, 'E1d': 0.14, 'E4b': 0.11, 'E4c': 0.04} q1 2.3ms q64 20ms wit 1.0059 o7max 1.00033
+fresh_train_0009_cover01_r1_polyref enc 14.50 {'E1a': 2.42, 'E1d': 0.71, 'E4b': 2.55, 'E4c': 3.76} q1 33.6ms q64 275ms wit 1.0047 o7max 1.00084
+fresh_train_0010_cover01_r1_polyref enc 1.37 {'E1a': 0.51, 'E1d': 0.1, 'E4b': 0.06, 'E4c': 0.02} q1 1.5ms q64 11ms wit 1.0070 o7max 1.00057
+fresh_train_0011_cover01_r1_polyref enc 0.91 {'E1a': 0.4, 'E1d': 0.02, 'E4b': 0.02, 'E4c': 0.01} q1 0.5ms q64 1ms wit 1.0021 o7max 1.00014
+fresh_train_0013_cover01_r1_polyref enc 3.35 {'E1a': 0.9, 'E1d': 0.35, 'E4b': 0.45, 'E4c': 0.26} q1 6.3ms q64 54ms wit 1.0065 o7max 1.00086
+fresh_train_0013_d0_v1_polyref enc 7.44 {'E1a': 1.44, 'E1d': 0.4, 'E4b': 1.32, 'E4c': 1.46} q1 15.1ms q64 124ms wit 1.0064 o7max 1.00097
+fresh_train_0014_cover01_r1_polyref enc 5.33 {'E1a': 1.27, 'E1d': 0.27, 'E4b': 0.98, 'E4c': 0.71} q1 10.1ms q64 82ms wit 1.0016 o7max 1.00064
+fresh_train_0015_cover01_r1_polyref FAIL torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.32 GiB. GPU 0 has a total capacity of 31.36 GiB of which 651.06 MiB is free. Including non-PyTor
+fresh_train_0016_cover01_r1_polyref FAIL torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.19 GiB. GPU 0 has a total capacity of 31.36 GiB of which 819.06 MiB is free. Including non-PyTor
+fresh_train_0017_cover01_r1_polyref enc 10.36 {'E1a': 1.75, 'E1d': 0.67, 'E4b': 1.88, 'E4c': 2.55} q1 22.6ms q64 190ms wit 1.0147 o7max 1.00233
+fresh_train_0018_cover01_r1_polyref enc 14.38 {'E1a': 2.33, 'E1d': 0.7, 'E4b': 2.57, 'E4c': 3.88} q1 31.4ms q64 258ms wit 1.0042 o7max 1.00094
+fresh_train_0019_cover01_r1_polyref enc 2.11 {'E1a': 0.64, 'E1d': 0.19, 'E4b': 0.16, 'E4c': 0.07} q1 3.1ms q64 26ms wit 1.0052 o7max 1.00039
+fresh_train_0020_cover01_r1_polyref enc 3.18 {'E1a': 0.84, 'E1d': 0.2, 'E4b': 0.46, 'E4c': 0.25} q1 5.3ms q64 44ms wit 1.0158 o7max 1.00008
+fresh_train_0021_cover01_r1_polyref enc 9.23 {'E1a': 1.97, 'E1d': 0.53, 'E4b': 1.54, 'E4c': 1.51} q1 16.7ms q64 139ms wit 1.0036 o7max 1.00041
+fresh_train_0022_cover01_r1_polyref enc 3.76 {'E1a': 1.13, 'E1d': 0.22, 'E4b': 0.52, 'E4c': 0.27} q1 5.6ms q64 46ms wit 1.0021 o7max 1.00026
+fresh_train_0023_cover01_r1_polyref FAIL torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.06 GiB. GPU 0 has a total capacity of 31.36 GiB of which 877.06 MiB is free. Including non-PyTor
+fresh_train_0024_cover01_r1_polyref enc 9.69 {'E1a': 1.8, 'E1d': 0.5, 'E4b': 1.69, 'E4c': 2.0} q1 20.0ms q64 166ms wit 1.0104 o7max 1.00036
+fresh_train_0025_cover01_r1_polyref FAIL torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.11 GiB. GPU 0 has a total capacity of 31.36 GiB of which 671.06 MiB is free. Including non-PyTor
+fresh_train_0026_cover01_r1_polyref enc 3.76 {'E1a': 1.1, 'E1d': 0.22, 'E4b': 0.54, 'E4c': 0.29} q1 5.8ms q64 47ms wit 1.0028 o7max 1.00014
+fresh_train_0028_cover01_r1_polyref enc 5.76 {'E1a': 1.26, 'E1d': 0.47, 'E4b': 0.93, 'E4c': 0.88} q1 11.4ms q64 99ms wit 1.0061 o7max 1.00008
+fresh_train_0029_cover01_r1_polyref enc 11.77 {'E1a': 2.33, 'E1d': 0.63, 'E4b': 2.0, 'E4c': 2.32} q1 24.4ms q64 200ms wit 1.0034 o7max 1.00111
+fresh_train_0030_cover01_r1_polyref enc 10.69 {'E1a': 1.95, 'E1d': 0.58, 'E4b': 1.81, 'E4c': 2.26} q1 23.1ms q64 193ms wit 1.0144 o7max 1.00043
+fresh_train_0031_cover01_r1_polyref enc 6.45 {'E1a': 1.45, 'E1d': 0.37, 'E4b': 1.13, 'E4c': 0.88} q1 12.6ms q64 104ms wit 1.0036 o7max 1.00055
+
+[exited with code 0]

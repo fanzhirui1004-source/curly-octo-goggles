@@ -1,0 +1,66 @@
+{
+ "case": "hlat222_000",
+ "per_B": {
+  "1": {
+   "f32_dense": 0.779,
+   "f32_symv": 0.417,
+   "f64_dense": 7.77,
+   "f64_symv": 7.476,
+   "coarse_chol": 1.247,
+   "coarse_inv": 0.223
+  },
+  "3": {
+   "f32_dense": 1.124,
+   "f32_symv": 0.554,
+   "f64_dense": 12.724,
+   "f64_symv": 8.89,
+   "coarse_chol": 3.395,
+   "coarse_inv": 0.204
+  },
+  "6": {
+   "f32_dense": 1.316,
+   "f32_symv": 0.729,
+   "f64_dense": 15.956,
+   "f64_symv": 12.543,
+   "coarse_chol": 4.512,
+   "coarse_inv": 0.204
+  },
+  "12": {
+   "f32_dense": 2.059,
+   "f32_symv": 1.504,
+   "f64_dense": 20.803,
+   "f64_symv": 18.369,
+   "coarse_chol": 4.132,
+   "coarse_inv": 0.206
+  },
+  "16": {
+   "f32_dense": 2.741,
+   "f32_symv": 2.257,
+   "f64_dense": 23.53,
+   "f64_symv": 21.081,
+   "coarse_chol": 4.491,
+   "coarse_inv": 0.206
+  },
+  "32": {
+   "f32_dense": 5.132,
+   "f32_symv": 4.912,
+   "f64_dense": 36.265,
+   "f64_symv": 35.916,
+   "coarse_chol": 4.761,
+   "coarse_inv": 0.208
+  },
+  "64": {
+   "f32_dense": 9.66,
+   "f32_symv": 9.894,
+   "f64_dense": 64.726,
+   "f64_symv": 64.638,
+   "coarse_chol": 4.848,
+   "coarse_inv": 0.223
+  }
+ },
+ "enable": {
+  "OPL_KE_SYMV": 1,
+  "OPL_KE_SYMV64": 1,
+  "OPL_COARSE_INV": 1
+ }
+}

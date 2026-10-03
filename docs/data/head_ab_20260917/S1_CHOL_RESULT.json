@@ -1,0 +1,22 @@
+{
+  "status": "BOUNDED_PILOT_COMPLETE",
+  "parameters": 5077241,
+  "steps": 20000,
+  "training_seconds": 3432.8906866386533,
+  "seconds": 3475.291563741863,
+  "peak_gpu_allocated_bytes": 11914887168,
+  "first_loss": 0.6924046277999878,
+  "last_loss": 0.03030172362923622,
+  "median_step_seconds": 0.16964958608150482,
+  "evaluations": {
+    "253": {
+      "e_A": 0.050746942557131594,
+      "D_per_mode": 0.24934953868005658,
+      "mu_min": 0.0011708893684502326,
+      "mu_max": 216.71676340757185,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    }
+  },
+  "interpretation": "training/run completion does not imply accuracy, generalization, or physical validation"
+}

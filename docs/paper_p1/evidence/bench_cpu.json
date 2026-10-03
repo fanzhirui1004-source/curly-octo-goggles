@@ -1,0 +1,298 @@
+{
+ "threads": {
+  "MKL": "16",
+  "OMP": "16",
+  "torch": 16
+ },
+ "cpu": 128,
+ "per_case": {
+  "fresh_val_2005_d1_v0": {
+   "loadavg_start": [
+    8.90087890625,
+    10.76513671875,
+    10.43505859375
+   ],
+   "topology": {
+    "seconds": 2.6516252793371677,
+    "workers": 8
+   },
+   "setup_s": 0.7824318408966064,
+   "assembly_s": 2.8590051531791687,
+   "dofs": 32121,
+   "ports": 15786,
+   "interior": 16335,
+   "elements": 1047,
+   "factor_s": 0.47235020250082016,
+   "factor_mem": {
+    "peak_analysis_kB": 175059,
+    "permanent_kB": 116729,
+    "factor_kB": 250880
+   },
+   "query_s": {
+    "1": 0.034758515655994415,
+    "16": 0.10667373985052109,
+    "64": 0.3961050721506278
+   },
+   "explicit_S": {
+    "columns_done": 15786,
+    "columns": 15786,
+    "seconds_done": 56.844665825366974,
+    "seconds": 56.844665825366974,
+    "extrapolated": false,
+    "dense_GB": 1.8566682636737823
+   }
+  },
+  "fresh_val_2003_d1_v1": {
+   "loadavg_start": [
+    11.3447265625,
+    11.3642578125,
+    10.677734375
+   ],
+   "topology": {
+    "seconds": 2.666130520403385,
+    "workers": 8
+   },
+   "setup_s": 4.036157071590424,
+   "assembly_s": 12.063777934759855,
+   "dofs": 191895,
+   "ports": 25968,
+   "interior": 165927,
+   "elements": 6490,
+   "factor_s": 9.006538596004248,
+   "factor_mem": {
+    "peak_analysis_kB": 2334147,
+    "permanent_kB": 1550527,
+    "factor_kB": 6218612
+   },
+   "query_s": {
+    "1": 0.8973877727985382,
+    "16": 3.7549023603399596,
+    "64": 7.261820871382952
+   },
+   "explicit_S": {
+    "columns_done": 16128,
+    "columns": 25968,
+    "seconds_done": 906.8702545054257,
+    "seconds": 1460.1690704983193,
+    "extrapolated": true,
+    "dense_GB": 5.024202346801758
+   }
+  },
+  "fresh_val_2006_d0_v1": {
+   "loadavg_start": [
+    9.31689453125,
+    9.24462890625,
+    9.66845703125
+   ],
+   "topology": {
+    "seconds": 2.53825106844306,
+    "workers": 8
+   },
+   "setup_s": 3.3126639910042286,
+   "assembly_s": 11.16665492579341,
+   "dofs": 169680,
+   "ports": 26118,
+   "interior": 143562,
+   "elements": 5952,
+   "factor_s": 6.68334187194705,
+   "factor_mem": {
+    "peak_analysis_kB": 1857321,
+    "permanent_kB": 1236546,
+    "factor_kB": 5015570
+   },
+   "query_s": {
+    "1": 0.6629677166541418,
+    "16": 1.967413105070591,
+    "64": 3.7461856938898563
+   },
+   "explicit_S": {
+    "columns_done": 20736,
+    "columns": 26118,
+    "seconds_done": 908.3194422908127,
+    "seconds": 1144.0724919826123,
+    "extrapolated": true,
+    "dense_GB": 5.082412987947464
+   }
+  },
+  "fresh_val_2000_full": {
+   "loadavg_start": [
+    10.7919921875,
+    11.7529296875,
+    11.05224609375
+   ],
+   "topology": {
+    "seconds": 2.51434744335711,
+    "workers": 8
+   },
+   "setup_s": 5.733806762844324,
+   "assembly_s": 23.04825472831726,
+   "dofs": 273816,
+   "ports": 16608,
+   "interior": 257208,
+   "elements": 9226,
+   "factor_s": 18.174080822616816,
+   "factor_mem": {
+    "peak_analysis_kB": 3765488,
+    "permanent_kB": 2496695,
+    "factor_kB": 11252927
+   },
+   "query_s": {
+    "1": 1.6464894637465477,
+    "16": 4.531102622548739,
+    "64": 8.173441673318544
+   },
+   "explicit_S": {
+    "columns_done": 10240,
+    "columns": 16608,
+    "seconds_done": 913.1482817307115,
+    "seconds": 1481.0123694319977,
+    "extrapolated": true,
+    "dense_GB": 2.0550613403320312
+   }
+  },
+  "fresh_train_0020_cover01_r2": {
+   "loadavg_start": [
+    10.61181640625,
+    12.52978515625,
+    12.02001953125
+   ],
+   "topology": {
+    "seconds": 2.020712047815323,
+    "workers": 16
+   },
+   "setup_s": 3.706094555556774,
+   "assembly_s": 13.607909388840199,
+   "dofs": 177507,
+   "ports": 24636,
+   "interior": 152871,
+   "elements": 6007,
+   "factor_s": 7.555906340479851,
+   "factor_mem": {
+    "peak_analysis_kB": 2132193,
+    "permanent_kB": 1417913,
+    "factor_kB": 5559304
+   },
+   "query_s": {
+    "1": 0.7518185998002688,
+    "16": 2.366140781591336,
+    "64": 4.3801293435196085
+   },
+   "explicit_S": {
+    "columns_done": 18944,
+    "columns": 24636,
+    "seconds_done": 902.519026838243,
+    "seconds": 1173.6939793700883,
+    "extrapolated": true,
+    "dense_GB": 4.521999478340149
+   }
+  },
+  "fresh_train_0020_cover01_r1": {
+   "loadavg_start": [
+    11.939453125,
+    10.06005859375,
+    10.47216796875
+   ],
+   "topology": {
+    "seconds": 1.6324898228049278,
+    "workers": 16
+   },
+   "setup_s": 1.4914164170622826,
+   "assembly_s": 5.136054761707783,
+   "dofs": 67224,
+   "ports": 18858,
+   "interior": 48366,
+   "elements": 2244,
+   "factor_s": 1.4417601376771927,
+   "factor_mem": {
+    "peak_analysis_kB": 605937,
+    "permanent_kB": 404091,
+    "factor_kB": 1101968
+   },
+   "query_s": {
+    "1": 0.17798905074596405,
+    "16": 0.480219092220068,
+    "64": 0.9895555588106314
+   },
+   "explicit_S": {
+    "columns_done": 18858,
+    "columns": 18858,
+    "seconds_done": 244.56694056093693,
+    "seconds": 244.56694056093693,
+    "extrapolated": false,
+    "dense_GB": 2.6496064960956573
+   }
+  },
+  "fresh_train_0020_full": {
+   "loadavg_start": [
+    9.5947265625,
+    9.82275390625,
+    10.23291015625
+   ],
+   "topology": {
+    "seconds": 1.972897794097662,
+    "workers": 16
+   },
+   "setup_s": 5.805870432406664,
+   "assembly_s": 22.09406129643321,
+   "dofs": 289494,
+   "ports": 17508,
+   "interior": 271986,
+   "elements": 9859,
+   "factor_s": 20.89528466016054,
+   "factor_mem": {
+    "peak_analysis_kB": 3946284,
+    "permanent_kB": 2616255,
+    "factor_kB": 12330616
+   },
+   "query_s": {
+    "1": 1.7134921016792457,
+    "16": 5.773844639460246,
+    "64": 9.150191696981588
+   },
+   "explicit_S": {
+    "columns_done": 8448,
+    "columns": 17508,
+    "seconds_done": 903.7956767715514,
+    "seconds": 1873.065188081951,
+    "extrapolated": true,
+    "dense_GB": 2.2838269472122192
+   }
+  },
+  "fresh_train_0007_full": {
+   "loadavg_start": [
+    16.31201171875,
+    16.12548828125,
+    13.1513671875
+   ],
+   "topology": {
+    "seconds": 2.199324730783701,
+    "workers": 8
+   },
+   "setup_s": 10.03196982294321,
+   "assembly_s": 36.89707235246897,
+   "dofs": 404148,
+   "ports": 25920,
+   "interior": 378228,
+   "elements": 14560,
+   "factor_s": 47.257074397057295,
+   "factor_mem": {
+    "peak_analysis_kB": 4908390,
+    "permanent_kB": 3247925,
+    "factor_kB": 18530360
+   },
+   "query_s": {
+    "1": 2.383739784359932,
+    "16": 8.522427221139273,
+    "64": 12.110588409006596
+   },
+   "explicit_S": {
+    "columns_done": 6912,
+    "columns": 25920,
+    "seconds_done": 921.7584261372685,
+    "seconds": 3456.594098014757,
+    "extrapolated": true,
+    "dense_GB": 5.005645751953125
+   }
+  }
+ }
+}

@@ -1,0 +1,108 @@
+{
+ "cases": [
+  {
+   "path": "PATH_1",
+   "epsilon": "-1/1000",
+   "active_cells": 7470,
+   "e_A": 0.00129766091536111,
+   "mu_min": 0.8472762153907738,
+   "mu_max": 1.0038938781183573,
+   "eps_op": 0.1527237846092262,
+   "above_1_1": 0,
+   "above_1_03": 0,
+   "D_per_mode": 4.2735691089066667e-05,
+   "numerical_gate_pass": true
+  },
+  {
+   "path": "PATH_2",
+   "epsilon": "-1/10000",
+   "active_cells": 7477,
+   "e_A": 0.00012917896525501375,
+   "mu_min": 0.984293688138353,
+   "mu_max": 1.0000001353458383,
+   "eps_op": 0.01570631186164695,
+   "above_1_1": 0,
+   "above_1_03": 0,
+   "D_per_mode": 3.8520638632079537e-07,
+   "numerical_gate_pass": true
+  },
+  {
+   "path": "PATH_3",
+   "epsilon": "1/10000",
+   "active_cells": 7479,
+   "e_A": 0.00023414250498517627,
+   "mu_min": 0.9999998209392393,
+   "mu_max": 1.5975561179818678,
+   "eps_op": 0.5975561179818678,
+   "above_1_1": 11,
+   "above_1_03": 15,
+   "D_per_mode": 4.383444081615711e-05,
+   "numerical_gate_pass": true
+  },
+  {
+   "path": "PATH_4",
+   "epsilon": "1/1000",
+   "active_cells": 7493,
+   "e_A": 0.001340836516513264,
+   "mu_min": 0.9993801145320386,
+   "mu_max": 1.6748679229462975,
+   "eps_op": 0.6748679229462975,
+   "above_1_1": 33,
+   "above_1_03": 204,
+   "D_per_mode": 0.0001502050332932588,
+   "numerical_gate_pass": true
+  }
+ ],
+ "numeric_timings": [
+  {
+   "path": "PATH_1",
+   "epsilon": "-1/1000",
+   "status": "COMPLETE_LOCAL_OPERATOR_PRODUCTION_CHECKS_PASS_NOT_TEACHER",
+   "volume_seconds": 128.37015330418944,
+   "gp_seconds": 11.046860983595252,
+   "operator_seconds": 39.91990037634969,
+   "total_seconds": 179.3374467752874,
+   "active_cells": 7470,
+   "gamma": 0.0001,
+   "n": 32
+  },
+  {
+   "path": "PATH_2",
+   "epsilon": "-1/10000",
+   "status": "COMPLETE_LOCAL_OPERATOR_PRODUCTION_CHECKS_PASS_NOT_TEACHER",
+   "volume_seconds": 128.75674241781235,
+   "gp_seconds": 10.990436328575015,
+   "operator_seconds": 39.584971422329545,
+   "total_seconds": 179.33259355835617,
+   "active_cells": 7477,
+   "gamma": 0.0001,
+   "n": 32
+  },
+  {
+   "path": "PATH_3",
+   "epsilon": "1/10000",
+   "status": "COMPLETE_LOCAL_OPERATOR_PRODUCTION_CHECKS_PASS_NOT_TEACHER",
+   "volume_seconds": 128.77559522353113,
+   "gp_seconds": 11.274009415879846,
+   "operator_seconds": 40.20785175636411,
+   "total_seconds": 180.25789563171566,
+   "active_cells": 7479,
+   "gamma": 0.0001,
+   "n": 32
+  },
+  {
+   "path": "PATH_4",
+   "epsilon": "1/1000",
+   "status": "COMPLETE_LOCAL_OPERATOR_PRODUCTION_CHECKS_PASS_NOT_TEACHER",
+   "volume_seconds": 137.26359928026795,
+   "gp_seconds": 10.960276124998927,
+   "operator_seconds": 39.85176060535014,
+   "total_seconds": 188.07606404833496,
+   "active_cells": 7493,
+   "gamma": 0.0001,
+   "n": 32
+  }
+ ],
+ "base_active_cells": 7478,
+ "source": "/root/autodl-tmp/CUTFEM_FULL_FACTOR_LOCAL_GEOMETRY_20260913T2330"
+}

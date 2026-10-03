@@ -1,0 +1,18 @@
+CUTMIX_60K: error against the fraction of cut-surface (kind 1) functionals
+   seat coords cut_frac  seen |         g factor_rel | face_med% face_max% | col_med |  acc_c%
+    885   7668    0.000    no |   2.4e+04     0.3018 |    16.499    60.291 |   0.600 |       -
+    974   5352    0.000   yes |      92.7     0.0736 |     7.793    11.065 |   0.295 |  10.646
+ 100051   4176    0.000    no |      69.9     0.1216 |     6.193    10.490 |   0.331 |  15.879
+ 100093   4860    0.000    no |      54.5     0.1256 |     5.355    13.481 |   0.312 |  10.896
+ 100150   5616    0.000    no |       464     0.0925 |     6.960    13.884 |   0.295 |  10.591
+ 100032   3604    0.398   yes |  1.42e+05     0.3566 |    18.079    50.996 |   0.478 |  54.031
+ 100000    237    0.599    no |  1.69e+04     0.8113 |    89.499    90.345 |   0.941 |       -
+    115   4028    0.630    no |   1.4e+05     0.5334 |    34.458    51.078 |   0.550 |  45.978
+ 100021   3102    0.727    no |  4.52e+06     0.9672 |   203.035   398.057 |   0.643 |       -
+ 100079   4651    0.731    no |   2.4e+09     0.8664 |    78.618    88.985 |   0.867 |       -
+
+Spearman vs cut fraction:  face median +0.733   face worst +0.661   point-load +0.612   log g +0.721
+Spearman vs coordinate count: face median -0.648   (size is the competing explanation)
+
+full cells (cut fraction 0): face median 6.960%   cut cells: 78.618%
+box-only baseline on its own 12 seats: face median 0.764%, worst 10.895%, point-load 0.112, g 2.42..41.3

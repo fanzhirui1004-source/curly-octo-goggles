@@ -1,0 +1,23 @@
+{
+ "status": "MemoryError",
+ "machine": "autodl-container-48244ca5f1-cc078caa",
+ "scipy": "1.18.1",
+ "pid": 6291,
+ "rlimit_as": [
+  644245094,
+  644245094
+ ],
+ "variant": "colamd",
+ "splu_kwargs": {
+  "permc_spec": "COLAMD"
+ },
+ "solver": "SuperLU bundled with SciPy 1.18.1 (scipy.sparse.linalg.splu; sequential, single thread)",
+ "load_s": 0.032920897006988525,
+ "n": 343000,
+ "nnz": 2371600,
+ "rss_after_load_GiB": 0.0876312255859375,
+ "wall_limit_s": 600,
+ "detail": "MemoryError()",
+ "seconds": 0.701174721121788,
+ "peak_rss_GiB": 0.15182876586914062
+}

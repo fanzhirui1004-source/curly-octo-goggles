@@ -1,0 +1,20 @@
+{
+ "status": "factorising",
+ "machine": "autodl-container-48244ca5f1-cc078caa",
+ "scipy": "1.18.1",
+ "pid": 6289,
+ "rlimit_as": [
+  8589934592,
+  8589934592
+ ],
+ "variant": "colamd",
+ "splu_kwargs": {
+  "permc_spec": "COLAMD"
+ },
+ "solver": "SuperLU bundled with SciPy 1.18.1 (scipy.sparse.linalg.splu; sequential, single thread)",
+ "load_s": 0.0314057320356369,
+ "n": 343000,
+ "nnz": 2371600,
+ "rss_after_load_GiB": 0.08776092529296875,
+ "wall_limit_s": 1
+}

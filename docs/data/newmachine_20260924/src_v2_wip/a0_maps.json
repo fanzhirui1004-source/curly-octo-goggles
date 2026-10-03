@@ -1,0 +1,255 @@
+[
+ {
+  "name": "id",
+  "spec": {
+   "kind": "identity"
+  }
+ },
+ {
+  "name": "rot30",
+  "spec": {
+   "kind": "affine",
+   "A": [
+    [
+     0.8915443744921646,
+     -0.058071003702544255,
+     0.4491952658258477
+    ],
+    [
+     0.1601468865334481,
+     0.9681012866153426,
+     -0.1926989195282664
+    ],
+    [
+     -0.42367629511812177,
+     0.24373686094371833,
+     0.8724051464613702
+    ]
+   ]
+  }
+ },
+ {
+  "name": "strx0.5",
+  "spec": {
+   "kind": "affine",
+   "A": [
+    [
+     0.5,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  }
+ },
+ {
+  "name": "strx2",
+  "spec": {
+   "kind": "affine",
+   "A": [
+    [
+     2,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  }
+ },
+ {
+  "name": "shear0.15",
+  "spec": {
+   "kind": "affine",
+   "A": [
+    [
+     1,
+     0,
+     0.15
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  }
+ },
+ {
+  "name": "shear0.3",
+  "spec": {
+   "kind": "affine",
+   "A": [
+    [
+     1,
+     0,
+     0.3
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  }
+ },
+ {
+  "name": "twist2",
+  "spec": {
+   "kind": "twist",
+   "deg": 2
+  }
+ },
+ {
+  "name": "twist5",
+  "spec": {
+   "kind": "twist",
+   "deg": 5
+  }
+ },
+ {
+  "name": "twist10",
+  "spec": {
+   "kind": "twist",
+   "deg": 10
+  }
+ },
+ {
+  "name": "twist20",
+  "spec": {
+   "kind": "twist",
+   "deg": 20
+  }
+ },
+ {
+  "name": "twist30",
+  "spec": {
+   "kind": "twist",
+   "deg": 30
+  }
+ },
+ {
+  "name": "bend20",
+  "spec": {
+   "kind": "bend",
+   "R": 20
+  }
+ },
+ {
+  "name": "bend10",
+  "spec": {
+   "kind": "bend",
+   "R": 10
+  }
+ },
+ {
+  "name": "bend5",
+  "spec": {
+   "kind": "bend",
+   "R": 5
+  }
+ },
+ {
+  "name": "bend3",
+  "spec": {
+   "kind": "bend",
+   "R": 3
+  }
+ },
+ {
+  "name": "grade1.1",
+  "spec": {
+   "kind": "grade",
+   "ratio": 1.1
+  }
+ },
+ {
+  "name": "grade1.25",
+  "spec": {
+   "kind": "grade",
+   "ratio": 1.25
+  }
+ },
+ {
+  "name": "grade1.5",
+  "spec": {
+   "kind": "grade",
+   "ratio": 1.5
+  }
+ },
+ {
+  "name": "bez0.025s1",
+  "spec": {
+   "kind": "bezier",
+   "amp": 0.025,
+   "seed": 1
+  }
+ },
+ {
+  "name": "bez0.025s2",
+  "spec": {
+   "kind": "bezier",
+   "amp": 0.025,
+   "seed": 2
+  }
+ },
+ {
+  "name": "bez0.05s1",
+  "spec": {
+   "kind": "bezier",
+   "amp": 0.05,
+   "seed": 1
+  }
+ },
+ {
+  "name": "bez0.05s2",
+  "spec": {
+   "kind": "bezier",
+   "amp": 0.05,
+   "seed": 2
+  }
+ },
+ {
+  "name": "bez0.1s1",
+  "spec": {
+   "kind": "bezier",
+   "amp": 0.1,
+   "seed": 1
+  }
+ },
+ {
+  "name": "bez0.1s2",
+  "spec": {
+   "kind": "bezier",
+   "amp": 0.1,
+   "seed": 2
+  }
+ }
+]

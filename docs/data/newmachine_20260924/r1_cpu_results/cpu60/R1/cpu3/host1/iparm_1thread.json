@@ -1,0 +1,26 @@
+{
+ "iparm": {
+  "1": 1,
+  "2": 3,
+  "4": 0,
+  "5": 0,
+  "6": 0,
+  "8": 0,
+  "10": 8,
+  "11": 0,
+  "13": 0,
+  "18": -1,
+  "19": -1,
+  "24": 0,
+  "25": 0,
+  "27": 0,
+  "28": 0,
+  "34": 0,
+  "35": 1,
+  "36": 0,
+  "56": 0,
+  "60": 0
+ },
+ "derived_from": "/root/autodl-tmp/OPL/S1/V2/R1/cpu3/host/iparm_tuned.json",
+ "note": "single thread: iparm(24)=0, iparm(25)=0; ordering as tuned"
+}

@@ -1,0 +1,201 @@
+{
+ "layout": "hlatsmoke2",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/root/autodl-tmp/CUTFEM_INGEST_R38/environment/runtime/r13_pardiso_v1/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "memory_max_bytes": 96636764160,
+   "memory_high_bytes": 94489280512,
+   "anon_bytes": 9367789568,
+   "file_bytes": 74026962944,
+   "cpu_quota_cores": 16.0,
+   "nproc": 128,
+   "os_cpu_count": 128,
+   "memory_max_GiB": 90.0,
+   "memory_high_GiB": 88.0,
+   "anon_GiB": 8.724433898925781,
+   "file_GiB": 68.9429817199707
+  },
+  "loadavg": [
+   33.7841796875,
+   27.39794921875,
+   21.7763671875
+  ],
+  "host": "autodl-container-473f4db77f-254db1e6",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 16
+ },
+ "loadavg_start": [
+  33.7841796875,
+  27.39794921875,
+  21.7763671875
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 45.88464231044054,
+   "assembly_s": 41.00920034945011,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424
+  },
+  "hlat222_010": {
+   "setup_s": 36.44831705465913,
+   "assembly_s": 32.291597958654165,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340
+  }
+ },
+ "cells_s": 155.636942461133,
+ "lattice_s": 0.04257887601852417,
+ "global_assembly_s": 9.165001925081015,
+ "global_dofs": 650316,
+ "free_retained": 33552,
+ "interior": 616764,
+ "nnz_upper": 90472717,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "front_end_peak_rss_GiB": 21.27703857421875,
+ "scaling_s": 1.650598417967558,
+ "rss_before_pardiso_GiB": 5.535633087158203,
+ "runs": [
+  {
+   "mtype": 2,
+   "nnz_stored": 90463557,
+   "iparm_requested": {
+    "1": 1,
+    "2": 3,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "8": 0,
+    "10": 8,
+    "11": 0,
+    "13": 0,
+    "18": -1,
+    "19": -1,
+    "24": 0,
+    "25": 0,
+    "27": 0,
+    "28": 0,
+    "34": 0,
+    "35": 1,
+    "36": 0,
+    "56": 0,
+    "60": 0
+   },
+   "loadavg_start": [
+    24.2275390625,
+    26.9267578125,
+    22.6162109375
+   ],
+   "cpu_stat_start": {
+    "usage_usec": 1065298951550,
+    "user_usec": 754079233513,
+    "system_usec": 311219718037,
+    "nr_periods": 3219992,
+    "nr_throttled": 136079,
+    "throttled_usec": 61022272109
+   },
+   "analysis_s": 12.799000009894371,
+   "analysis_peak_rss_GiB": 13.761131286621094,
+   "predicted_kB": {
+    "peak_analysis": 3201704,
+    "permanent": 2919741,
+    "factor_solve": 17751312
+   },
+   "predicted_GiB": {
+    "peak_analysis": 3.0533828735351562,
+    "permanent": 2.784482002258301,
+    "factor_solve": 16.928970336914062,
+    "total": 19.713452339172363
+   },
+   "avail_before_factor_GiB": 71.7481918334961,
+   "cgroup_before_factor": {
+    "memory_max_bytes": 96636764160,
+    "memory_high_bytes": 94489280512,
+    "anon_bytes": 17443639296,
+    "file_bytes": 66722074624,
+    "cpu_quota_cores": 16.0,
+    "nproc": 128,
+    "os_cpu_count": 128,
+    "memory_max_GiB": 90.0,
+    "memory_high_GiB": 88.0,
+    "anon_GiB": 16.245655059814453,
+    "file_GiB": 62.139774322509766
+   },
+   "factor_s": 42.96854788810015,
+   "factor_peak_rss_GiB": 24.891807556152344,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 16,
+     "10": 8,
+     "15": 3201704,
+     "16": 2919741,
+     "17": 17724891,
+     "18": 2128500793,
+     "19": 13975539,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 3201704,
+     "62": 2090035
+    },
+    "nnz_factor": 2128500793,
+    "mflop_factor": 13975539,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 3201704,
+     "permanent": 2919741,
+     "factor_solve": 17724891
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 3.0533828735351562,
+     "permanent": 2.784482002258301,
+     "factor_solve": 16.903773307800293,
+     "total": 19.688255310058594
+    }
+   },
+   "solve_s": 5.852151993662119,
+   "solve_peak_rss_GiB": 24.908924102783203,
+   "rel_residual": [
+    1.5236167261479097e-10,
+    8.962886793029244e-12,
+    1.3726484915489851e-10,
+    2.9691077005170363e-12,
+    3.046641184132922e-13,
+    2.433446281234166e-12
+   ],
+   "compliance": [
+    1086.04486683021,
+    58.578636119446095,
+    1083.9393212071411,
+    54115.900153361596,
+    51009.23519422165,
+    50466.71232820693
+   ],
+   "loadavg_end": [
+    22.2509765625,
+    25.6376953125,
+    22.4521484375
+   ],
+   "throttled_s": 634.45494,
+   "process_peak_rss_GiB": 24.908924102783203
+  }
+ ],
+ "process_peak_rss_GiB": 24.908924102783203
+}

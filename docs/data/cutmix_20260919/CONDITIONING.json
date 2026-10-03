@@ -1,0 +1,298 @@
+{
+  "source": "training-label aggregate only; buckets are diagonal / near / far",
+  "samples": [
+    {
+      "seat": 100002,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100002/MQ_UPPER.npy"
+    },
+    {
+      "seat": 185,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00185/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100006,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100006/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100008,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100008/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100010,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100010/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100013,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100013/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100015,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100015/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100017,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100017/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100019,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100019/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100024,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100024/MQ_UPPER.npy"
+    },
+    {
+      "seat": 198,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00198/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100028,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100028/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100030,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100030/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100032,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100032/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100035,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100035/MQ_UPPER.npy"
+    },
+    {
+      "seat": 139,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00139/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100039,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100039/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100041,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100041/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100046,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100046/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100048,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100048/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100050,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100050/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100056,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100056/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100059,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100059/MQ_UPPER.npy"
+    },
+    {
+      "seat": 129,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00129/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100068,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100068/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100070,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100070/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100072,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100072/MQ_UPPER.npy"
+    },
+    {
+      "seat": 224,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00224/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100052,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100052/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100054,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100054/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100057,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100057/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100064,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100064/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100067,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100067/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100077,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100077/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100081,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100081/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100084,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100084/MQ_UPPER.npy"
+    },
+    {
+      "seat": 113,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00113/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100102,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100102/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100108,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100108/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100117,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100117/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100118,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100118/MQ_UPPER.npy"
+    },
+    {
+      "seat": 974,
+      "split": "train",
+      "label": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0974/MQ_UPPER.npy"
+    },
+    {
+      "seat": 882,
+      "split": "train",
+      "label": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0882/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100135,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100135/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100142,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100142/MQ_UPPER.npy"
+    },
+    {
+      "seat": 153,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00153/MQ_UPPER.npy"
+    },
+    {
+      "seat": 120,
+      "split": "train",
+      "label": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0120/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100153,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100153/MQ_UPPER.npy"
+    },
+    {
+      "seat": 920,
+      "split": "train",
+      "label": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0920/MQ_UPPER.npy"
+    },
+    {
+      "seat": 119,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00119/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100167,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100167/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100168,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100168/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100170,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100170/MQ_UPPER.npy"
+    },
+    {
+      "seat": 100172,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_100172/MQ_UPPER.npy"
+    },
+    {
+      "seat": 244,
+      "split": "train",
+      "label": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0244/MQ_UPPER.npy"
+    },
+    {
+      "seat": 131,
+      "split": "train",
+      "label": "/root/autodl-tmp/CLAUDE_LABELS_20260917/BATCH1/REFERENCE_00131/MQ_UPPER.npy"
+    }
+  ],
+  "per_sample_draws_per_bucket": 4096,
+  "seed": 20260917,
+  "log_pivot_min": 1.359605230446499,
+  "log_pivot_max": 8.896288480393766,
+  "values": {
+    "pivot_log_mean": 3.400403370123847,
+    "pivot_log_std": 1.4068106809632706,
+    "diagonal_lower_rms": 4.047241280854918,
+    "diagonal_block_rms": 145.81329897965202,
+    "same_patch_rms": 12.267712652584665,
+    "cross_patch_rms": 0.3617954514002921
+  },
+  "field_map": "same_patch_rms = near bucket, cross_patch_rms = far bucket"
+}

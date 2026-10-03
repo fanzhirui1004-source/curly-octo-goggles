@@ -1,0 +1,645 @@
+=== STEP 1 START 2026-10-01 02:28:03
+{"t": "02:28:04", "event": "PLAN", "designs": ["plateB1_k000", "plateB2_k000"], "work": "/root/autodl-tmp/xc/plates_exact/exact_cpu"}
+{"t": "02:28:05", "event": "DESIGN", "design": "plateB1_k000", "cells": 24, "distinct": 7, "cfg": {"clamp": ["x", "min"], "load": ["x", "max"], "load_dir": "y", "tmin": 0.18, "tmax": 0.69, "max_cols": 16, "prec": "bnn:kpp:q1r", "nice_tol": 1e-06, "sens_route_of_run": "ad"}, "old_mode": null, "solve_pending": true, "sens_pending": false, "t_needed": true, "ci_needed": true}
+{"t": "02:28:05", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_c1336678200c733ff65d", "running": 1, "pending": 6, "mem_available_gib": 237.3, "reserved_gib": 0.0}
+{"t": "02:28:11", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_95e0cb9995a92f4e2403", "running": 2, "pending": 5, "mem_available_gib": 229.2, "reserved_gib": 0.0}
+{"t": "02:28:17", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_a314cc0e237429175a9e", "running": 3, "pending": 4, "mem_available_gib": 224.5, "reserved_gib": 1.0}
+{"t": "02:28:23", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_bfb667ef4fb00a95ea98", "running": 4, "pending": 3, "mem_available_gib": 212.4, "reserved_gib": 0.0}
+{"t": "02:28:53", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_a314cc0e237429175a9e", "rc": 0, "start_s": 12.018417172133923, "seconds": 36.00955577380955, "peak_rss_gib": 8.327587127685547, "timeout": false}
+{"t": "02:28:53", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_58c29c68b41e7cf28ec5", "running": 4, "pending": 2, "mem_available_gib": 222.6, "reserved_gib": 3.5}
+{"t": "02:29:05", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_58c29c68b41e7cf28ec5", "rc": 0, "start_s": 48.0309251639992, "seconds": 12.002012496814132, "peak_rss_gib": 3.4699935913085938, "timeout": false}
+{"t": "02:29:05", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_3b82e80da8c417534421", "running": 4, "pending": 1, "mem_available_gib": 222.1, "reserved_gib": 2.1}
+{"t": "02:29:19", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_bfb667ef4fb00a95ea98", "rc": 0, "start_s": 18.024862119928002, "seconds": 56.01406356878579, "peak_rss_gib": 12.353164672851562, "timeout": false}
+{"t": "02:29:19", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_46eeb2282df3df8ea4a8", "running": 4, "pending": 0, "mem_available_gib": 223.2, "reserved_gib": 3.1}
+{"t": "02:29:27", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_c1336678200c733ff65d", "rc": 0, "start_s": 0.0005975198000669479, "seconds": 82.0434232186526, "peak_rss_gib": 17.88134002685547, "timeout": false}
+{"t": "02:29:29", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_46eeb2282df3df8ea4a8", "rc": 0, "start_s": 74.04244154132903, "seconds": 10.002182653173804, "peak_rss_gib": 3.5195388793945312, "timeout": false}
+{"t": "02:29:37", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_95e0cb9995a92f4e2403", "rc": 0, "start_s": 6.009289365261793, "seconds": 86.03625851869583, "peak_rss_gib": 16.996021270751953, "timeout": false}
+{"t": "02:30:03", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_3b82e80da8c417534421", "rc": 0, "start_s": 60.03631816804409, "seconds": 58.011586893349886, "peak_rss_gib": 12.351741790771484, "timeout": false}
+{"t": "02:30:03", "event": "JOB_START", "phase": "T", "job": "T_c1336678200c733ff65d", "running": 1, "pending": 6, "mem_available_gib": 237.0, "reserved_gib": 0.0}
+{"t": "02:31:04", "event": "JOB_START", "phase": "T", "job": "T_95e0cb9995a92f4e2403", "running": 2, "pending": 5, "mem_available_gib": 231.8, "reserved_gib": 42.5}
+{"t": "02:33:06", "event": "JOB_END", "phase": "T", "job": "T_c1336678200c733ff65d", "rc": 0, "start_s": 0.00037136487662792206, "seconds": 182.0640064906329, "peak_rss_gib": 30.29351043701172, "timeout": false}
+{"t": "02:33:06", "event": "JOB_START", "phase": "T", "job": "T_a314cc0e237429175a9e", "running": 2, "pending": 4, "mem_available_gib": 211.8, "reserved_gib": 22.5}
+{"t": "02:34:24", "event": "JOB_END", "phase": "T", "job": "T_a314cc0e237429175a9e", "rc": 0, "start_s": 182.06750653497875, "seconds": 78.00702215358615, "peak_rss_gib": 13.319690704345703, "timeout": false}
+{"t": "02:34:24", "event": "JOB_START", "phase": "T", "job": "T_bfb667ef4fb00a95ea98", "running": 2, "pending": 3, "mem_available_gib": 225.2, "reserved_gib": 35.9}
+{"t": "02:34:26", "event": "JOB_END", "phase": "T", "job": "T_95e0cb9995a92f4e2403", "rc": 0, "start_s": 60.05337908491492, "seconds": 202.02322099544108, "peak_rss_gib": 30.724628448486328, "timeout": false}
+{"t": "02:35:24", "event": "JOB_START", "phase": "T", "job": "T_58c29c68b41e7cf28ec5", "running": 2, "pending": 2, "mem_available_gib": 220.4, "reserved_gib": 31.1}
+{"t": "02:35:48", "event": "JOB_END", "phase": "T", "job": "T_58c29c68b41e7cf28ec5", "rc": 0, "start_s": 320.13051755167544, "seconds": 24.00323904491961, "peak_rss_gib": 4.406375885009766, "timeout": false}
+{"t": "02:36:24", "event": "JOB_START", "phase": "T", "job": "T_3b82e80da8c417534421", "running": 2, "pending": 1, "mem_available_gib": 217.5, "reserved_gib": 28.2}
+{"t": "02:36:44", "event": "JOB_END", "phase": "T", "job": "T_bfb667ef4fb00a95ea98", "rc": 0, "start_s": 260.07595496438444, "seconds": 140.0938765835017, "peak_rss_gib": 21.861431121826172, "timeout": false}
+{"t": "02:37:24", "event": "JOB_START", "phase": "T", "job": "T_46eeb2282df3df8ea4a8", "running": 2, "pending": 0, "mem_available_gib": 220.3, "reserved_gib": 31.0}
+{"t": "02:37:46", "event": "JOB_END", "phase": "T", "job": "T_46eeb2282df3df8ea4a8", "rc": 0, "start_s": 440.2116447929293, "seconds": 22.00310534797609, "peak_rss_gib": 4.343715667724609, "timeout": false}
+{"t": "02:38:46", "event": "JOB_END", "phase": "T", "job": "T_3b82e80da8c417534421", "rc": 0, "start_s": 380.16714739613235, "seconds": 142.0523266401142, "peak_rss_gib": 21.90926742553711, "timeout": false}
+{"t": "02:40:23", "event": "SOLVED", "design": "plateB1_k000", "C_exact": 94.35315275203716, "C_hat": 94.34065849197489, "pcg": 243, "true_residual": 9.789703062180429e-11, "energy_sum_rel": 1.3555211321124255e-15, "times": {"setup_s": 0.8302285689860582, "precond_s": 9.599759668111801, "pcg_s": 70.29692124389112, "post_s": 0.33887458220124245, "solve_s": 70.63579582609236}}
+{"t": "02:40:23", "k": 0, "C_exact": 94.35315275203716, "C_hat": 94.34065849197489, "surrogate_err": -0.00013242016506967303, "grad_rel_err": null, "grad_cos": null, "comp_err_rel_to_max": null, "sign_agreement": null, "kkt_exact": null, "kkt_lambda": null, "exact_pcg": 243, "exact_true_residual": 9.789703062180429e-11, "times": {"make_T_s": 522.2472212985158, "make_T_new": 7, "cellinfo_s": 118.38682555779815, "load_T_s": 13.816378312185407, "setup_s": 0.8302285689860582, "precond_s": 9.599759668111801, "solve_s": 70.63579582609236, "sens_s": null}}
+{"t": "02:40:23", "event": "DESIGN_DONE", "design": "plateB1_k000", "seconds": 737.4079050607979}
+{"t": "02:40:23", "event": "DESIGN", "design": "plateB2_k000", "cells": 24, "distinct": 7, "cfg": {"clamp": ["x", "min"], "load": ["x", "max"], "load_dir": "z", "tmin": 0.18, "tmax": 0.69, "max_cols": 16, "prec": "bnn:kpp:q1r", "nice_tol": 1e-06, "sens_route_of_run": "ad"}, "old_mode": null, "solve_pending": true, "sens_pending": false, "t_needed": true, "ci_needed": true}
+{"t": "02:42:01", "event": "SOLVED", "design": "plateB2_k000", "C_exact": 1468.0522071452376, "C_hat": 1467.743385404936, "pcg": 252, "true_residual": 1.8757737865965763e-10, "energy_sum_rel": 2.222080458519634e-12, "times": {"setup_s": 0.8142095189541578, "precond_s": 7.415371524170041, "pcg_s": 73.94170069508255, "post_s": 0.37369794584810734, "solve_s": 74.31539864093065}}
+{"t": "02:42:01", "event": "DELETE_T", "fp": "c1336678200c733ff65d", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_000_o000_portview/T64.npy"}
+{"t": "02:42:02", "event": "DELETE_T", "fp": "95e0cb9995a92f4e2403", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_060_o000_portview/T64.npy"}
+{"t": "02:42:02", "event": "DELETE_T", "fp": "a314cc0e237429175a9e", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_070_o000_portview/T64.npy"}
+{"t": "02:42:03", "event": "DELETE_T", "fp": "bfb667ef4fb00a95ea98", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_150_o000_portview/T64.npy"}
+{"t": "02:42:03", "event": "DELETE_T", "fp": "58c29c68b41e7cf28ec5", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_160_o000_portview/T64.npy"}
+{"t": "02:42:03", "event": "DELETE_T", "fp": "3b82e80da8c417534421", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_320_o000_portview/T64.npy"}
+{"t": "02:42:04", "event": "DELETE_T", "fp": "46eeb2282df3df8ea4a8", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_330_o000_portview/T64.npy"}
+{"t": "02:42:04", "k": 0, "C_exact": 1468.0522071452376, "C_hat": 1467.743385404936, "surrogate_err": -0.00021036155172045413, "grad_rel_err": null, "grad_cos": null, "comp_err_rel_to_max": null, "sign_agreement": null, "kkt_exact": null, "kkt_lambda": null, "exact_pcg": 252, "exact_true_residual": 1.8757737865965763e-10, "times": {"make_T_s": 0.002431850880384445, "make_T_new": 0, "cellinfo_s": 0.0010215826332569122, "load_T_s": 14.381050473079085, "setup_s": 0.8142095189541578, "precond_s": 7.415371524170041, "solve_s": 74.31539864093065, "sens_s": null}}
+{"t": "02:42:04", "event": "DESIGN_DONE", "design": "plateB2_k000", "seconds": 101.04202891513705}
+=== STEP rc=0 2026-10-01 02:42:04
+=== STEP 2 START 2026-10-01 02:42:04
+{"t": "02:42:04", "event": "PLAN", "designs": ["plateB1_k022", "plateB2_k029"], "work": "/root/autodl-tmp/xc/plates_exact/exact_cpu"}
+{"t": "02:42:06", "event": "DESIGN", "design": "plateB1_k022", "cells": 24, "distinct": 24, "cfg": {"clamp": ["x", "min"], "load": ["x", "max"], "load_dir": "y", "tmin": 0.18, "tmax": 0.69, "max_cols": 16, "prec": "bnn:kpp:q1r", "nice_tol": 1e-06, "sens_route_of_run": "ad"}, "old_mode": null, "solve_pending": true, "sens_pending": true, "t_needed": true, "ci_needed": true}
+{"t": "02:42:06", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_e421f4a00170a210a6f5", "running": 1, "pending": 23, "mem_available_gib": 237.3, "reserved_gib": 0.0}
+{"t": "02:42:12", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_398ec2be2a3e4b5bc874", "running": 2, "pending": 22, "mem_available_gib": 229.1, "reserved_gib": 0.0}
+{"t": "02:42:18", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_6df60c859196c4d41462", "running": 3, "pending": 21, "mem_available_gib": 224.5, "reserved_gib": 0.6}
+{"t": "02:42:24", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_2ee119f30c4ebd3fbd9d", "running": 4, "pending": 20, "mem_available_gib": 220.2, "reserved_gib": 1.8}
+{"t": "02:43:28", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_398ec2be2a3e4b5bc874", "rc": 0, "start_s": 6.007795635610819, "seconds": 76.01927322521806, "peak_rss_gib": 13.872184753417969, "timeout": false}
+{"t": "02:43:28", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_33459c3e4a891c04ec09", "running": 4, "pending": 19, "mem_available_gib": 228.3, "reserved_gib": 8.2}
+{"t": "02:43:30", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_e421f4a00170a210a6f5", "rc": 0, "start_s": 0.0006575919687747955, "seconds": 84.03139715641737, "peak_rss_gib": 17.40359115600586, "timeout": false}
+{"t": "02:43:34", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_5b3c86f9d1d974e317f2", "running": 4, "pending": 18, "mem_available_gib": 220.7, "reserved_gib": 2.6}
+{"t": "02:43:38", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_6df60c859196c4d41462", "rc": 0, "start_s": 12.015013990923762, "seconds": 80.02881399542093, "peak_rss_gib": 12.287967681884766, "timeout": false}
+{"t": "02:43:40", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_00e3da87d0e453b1dbf3", "running": 4, "pending": 17, "mem_available_gib": 217.1, "reserved_gib": 1.5}
+{"t": "02:43:44", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_2ee119f30c4ebd3fbd9d", "rc": 0, "start_s": 18.021230528131127, "seconds": 80.03056952543557, "peak_rss_gib": 13.527252197265625, "timeout": false}
+{"t": "02:43:46", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_fcf08e4af118bf586f7b", "running": 4, "pending": 16, "mem_available_gib": 214.4, "reserved_gib": 0.0}
+{"t": "02:44:14", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_fcf08e4af118bf586f7b", "rc": 0, "start_s": 100.0571190752089, "seconds": 28.00298330001533, "peak_rss_gib": 6.514934539794922, "timeout": false}
+{"t": "02:44:14", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_61cd68c372b4bc2ba4a1", "running": 4, "pending": 15, "mem_available_gib": 225.1, "reserved_gib": 5.0}
+{"t": "02:44:46", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_00e3da87d0e453b1dbf3", "rc": 0, "start_s": 94.05031434632838, "seconds": 66.0147297065705, "peak_rss_gib": 12.164573669433594, "timeout": false}
+{"t": "02:44:46", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_aeda7821b0b0d4627d6c", "running": 4, "pending": 14, "mem_available_gib": 212.9, "reserved_gib": 1.6}
+{"t": "02:44:48", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_33459c3e4a891c04ec09", "rc": 0, "start_s": 82.03095732815564, "seconds": 80.03634336218238, "peak_rss_gib": 15.705680847167969, "timeout": false}
+{"t": "02:44:52", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_3065e07ca7bce501712e", "running": 4, "pending": 13, "mem_available_gib": 208.0, "reserved_gib": 1.1}
+{"t": "02:44:54", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_5b3c86f9d1d974e317f2", "rc": 0, "start_s": 88.04229228012264, "seconds": 80.0321021899581, "peak_rss_gib": 15.090309143066406, "timeout": false}
+{"t": "02:44:58", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_3649f02a34790581b198", "running": 4, "pending": 12, "mem_available_gib": 217.4, "reserved_gib": 1.9}
+{"t": "02:45:38", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_61cd68c372b4bc2ba4a1", "rc": 0, "start_s": 128.06227455474436, "seconds": 84.0236282069236, "peak_rss_gib": 17.50400161743164, "timeout": false}
+{"t": "02:45:38", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_23a7ae3744e1d747a82f", "running": 4, "pending": 11, "mem_available_gib": 226.5, "reserved_gib": 6.4}
+{"t": "02:46:04", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_aeda7821b0b0d4627d6c", "rc": 0, "start_s": 160.06680874153972, "seconds": 78.02530610747635, "peak_rss_gib": 13.939277648925781, "timeout": false}
+{"t": "02:46:04", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_fb3bb8711a30e72f293c", "running": 4, "pending": 10, "mem_available_gib": 214.6, "reserved_gib": 3.0}
+{"t": "02:46:10", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_3065e07ca7bce501712e", "rc": 0, "start_s": 166.07374886609614, "seconds": 78.02359106577933, "peak_rss_gib": 12.81845474243164, "timeout": false}
+{"t": "02:46:10", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_4ca675fa44a2b941fd17", "running": 4, "pending": 9, "mem_available_gib": 210.6, "reserved_gib": 0.5}
+{"t": "02:46:16", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_3649f02a34790581b198", "rc": 0, "start_s": 172.08149702474475, "seconds": 78.01932845078409, "peak_rss_gib": 15.188209533691406, "timeout": false}
+{"t": "02:46:16", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_eb91b5526721f7f18ce1", "running": 4, "pending": 8, "mem_available_gib": 225.2, "reserved_gib": 5.3}
+{"t": "02:46:20", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_4ca675fa44a2b941fd17", "rc": 0, "start_s": 244.09981216862798, "seconds": 10.004768727347255, "peak_rss_gib": 3.4104156494140625, "timeout": false}
+{"t": "02:46:22", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_c4c9a2307dec47da3ebf", "running": 4, "pending": 7, "mem_available_gib": 217.9, "reserved_gib": 3.1}
+{"t": "02:46:58", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_23a7ae3744e1d747a82f", "rc": 0, "start_s": 212.08903438411653, "seconds": 80.02423574216664, "peak_rss_gib": 15.696762084960938, "timeout": false}
+{"t": "02:46:58", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_96f3a0c992d138eae04e", "running": 4, "pending": 6, "mem_available_gib": 209.5, "reserved_gib": 6.0}
+{"t": "02:46:58", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_fb3bb8711a30e72f293c", "rc": 0, "start_s": 238.09584910050035, "seconds": 54.021631471812725, "peak_rss_gib": 9.953285217285156, "timeout": false}
+{"t": "02:47:04", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_777032cd21d247025fbe", "running": 4, "pending": 5, "mem_available_gib": 218.8, "reserved_gib": 1.8}
+{"t": "02:47:46", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_eb91b5526721f7f18ce1", "rc": 0, "start_s": 250.10382324829698, "seconds": 90.0226412396878, "peak_rss_gib": 17.714279174804688, "timeout": false}
+{"t": "02:47:46", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_d601ca428d1d4aefcb94", "running": 4, "pending": 4, "mem_available_gib": 224.7, "reserved_gib": 4.6}
+{"t": "02:47:48", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_c4c9a2307dec47da3ebf", "rc": 0, "start_s": 256.10952793620527, "seconds": 86.0223244279623, "peak_rss_gib": 16.409297943115234, "timeout": false}
+{"t": "02:47:52", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_ca39014e7b60ff4bcc1f", "running": 4, "pending": 3, "mem_available_gib": 220.6, "reserved_gib": 2.2}
+{"t": "02:48:22", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_d601ca428d1d4aefcb94", "rc": 0, "start_s": 340.13060115650296, "seconds": 36.01105205900967, "peak_rss_gib": 8.283367156982422, "timeout": false}
+{"t": "02:48:22", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_ae966810520765ba6ee2", "running": 4, "pending": 2, "mem_available_gib": 216.3, "reserved_gib": 6.9}
+{"t": "02:48:24", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_96f3a0c992d138eae04e", "rc": 0, "start_s": 292.11671482026577, "seconds": 86.02952539920807, "peak_rss_gib": 16.916175842285156, "timeout": false}
+{"t": "02:48:24", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_777032cd21d247025fbe", "rc": 0, "start_s": 298.12307849898934, "seconds": 80.02431400306523, "peak_rss_gib": 16.716915130615234, "timeout": false}
+{"t": "02:48:28", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_0009404fceead3dc6370", "running": 3, "pending": 1, "mem_available_gib": 212.6, "reserved_gib": 0.0}
+{"t": "02:48:34", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_24a37f4d54ac2eb7994e", "running": 4, "pending": 0, "mem_available_gib": 213.2, "reserved_gib": 0.0}
+{"t": "02:48:46", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_24a37f4d54ac2eb7994e", "rc": 0, "start_s": 388.1626015044749, "seconds": 12.001781014725566, "peak_rss_gib": 3.5888137817382812, "timeout": false}
+{"t": "02:49:16", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_ca39014e7b60ff4bcc1f", "rc": 0, "start_s": 346.13864093646407, "seconds": 84.02848209626973, "peak_rss_gib": 17.88418197631836, "timeout": false}
+{"t": "02:49:28", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_0009404fceead3dc6370", "rc": 0, "start_s": 382.15357371233404, "seconds": 60.01484557799995, "peak_rss_gib": 12.490550994873047, "timeout": false}
+{"t": "02:49:46", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_ae966810520765ba6ee2", "rc": 0, "start_s": 376.14503826387227, "seconds": 84.02510070055723, "peak_rss_gib": 17.694927215576172, "timeout": false}
+{"t": "02:49:46", "event": "JOB_START", "phase": "T", "job": "T_e421f4a00170a210a6f5", "running": 1, "pending": 23, "mem_available_gib": 236.8, "reserved_gib": 0.0}
+{"t": "02:50:46", "event": "JOB_START", "phase": "T", "job": "T_398ec2be2a3e4b5bc874", "running": 2, "pending": 22, "mem_available_gib": 231.7, "reserved_gib": 42.6}
+{"t": "02:52:56", "event": "JOB_END", "phase": "T", "job": "T_398ec2be2a3e4b5bc874", "rc": 0, "start_s": 60.06181572377682, "seconds": 130.0117562133819, "peak_rss_gib": 19.82611846923828, "timeout": false}
+{"t": "02:52:56", "event": "JOB_START", "phase": "T", "job": "T_6df60c859196c4d41462", "running": 2, "pending": 21, "mem_available_gib": 210.0, "reserved_gib": 20.9}
+{"t": "02:53:10", "event": "JOB_END", "phase": "T", "job": "T_e421f4a00170a210a6f5", "rc": 0, "start_s": 0.0006115753203630447, "seconds": 204.07831817306578, "peak_rss_gib": 31.340408325195312, "timeout": false}
+{"t": "02:53:56", "event": "JOB_START", "phase": "T", "job": "T_2ee119f30c4ebd3fbd9d", "running": 2, "pending": 20, "mem_available_gib": 234.1, "reserved_gib": 45.1}
+{"t": "02:54:48", "event": "JOB_END", "phase": "T", "job": "T_6df60c859196c4d41462", "rc": 0, "start_s": 190.0767222288996, "seconds": 112.05495407618582, "peak_rss_gib": 17.193374633789062, "timeout": false}
+{"t": "02:54:56", "event": "JOB_START", "phase": "T", "job": "T_33459c3e4a891c04ec09", "running": 2, "pending": 19, "mem_available_gib": 232.4, "reserved_gib": 43.4}
+{"t": "02:56:02", "event": "JOB_END", "phase": "T", "job": "T_2ee119f30c4ebd3fbd9d", "rc": 0, "start_s": 250.12647628039122, "seconds": 126.02380441501737, "peak_rss_gib": 19.508575439453125, "timeout": false}
+{"t": "02:56:02", "event": "JOB_START", "phase": "T", "job": "T_5b3c86f9d1d974e317f2", "running": 2, "pending": 18, "mem_available_gib": 234.2, "reserved_gib": 45.1}
+{"t": "02:57:28", "event": "JOB_END", "phase": "T", "job": "T_33459c3e4a891c04ec09", "rc": 0, "start_s": 310.1437339410186, "seconds": 152.01777880080044, "peak_rss_gib": 23.857479095458984, "timeout": false}
+{"t": "02:57:28", "event": "JOB_START", "phase": "T", "job": "T_00e3da87d0e453b1dbf3", "running": 2, "pending": 17, "mem_available_gib": 221.3, "reserved_gib": 32.2}
+{"t": "02:58:22", "event": "JOB_END", "phase": "T", "job": "T_5b3c86f9d1d974e317f2", "rc": 0, "start_s": 376.15363839641213, "seconds": 140.0161348283291, "peak_rss_gib": 22.708065032958984, "timeout": false}
+{"t": "02:58:28", "event": "JOB_START", "phase": "T", "job": "T_fcf08e4af118bf586f7b", "running": 2, "pending": 16, "mem_available_gib": 225.5, "reserved_gib": 36.4}
+{"t": "02:59:12", "event": "JOB_END", "phase": "T", "job": "T_fcf08e4af118bf586f7b", "rc": 0, "start_s": 522.1794669758528, "seconds": 44.004768991842866, "peak_rss_gib": 7.498386383056641, "timeout": false}
+{"t": "02:59:15", "event": "JOB_END", "phase": "T", "job": "T_00e3da87d0e453b1dbf3", "rc": 0, "start_s": 462.164702096954, "seconds": 106.02327415533364, "peak_rss_gib": 16.712547302246094, "timeout": false}
+{"t": "02:59:15", "event": "JOB_START", "phase": "T", "job": "T_61cd68c372b4bc2ba4a1", "running": 1, "pending": 15, "mem_available_gib": 236.8, "reserved_gib": 0.0}
+{"t": "03:00:15", "event": "JOB_START", "phase": "T", "job": "T_aeda7821b0b0d4627d6c", "running": 2, "pending": 14, "mem_available_gib": 231.6, "reserved_gib": 42.6}
+{"t": "03:02:29", "event": "JOB_END", "phase": "T", "job": "T_aeda7821b0b0d4627d6c", "rc": 0, "start_s": 628.2498001214117, "seconds": 134.0117369350046, "peak_rss_gib": 19.917007446289062, "timeout": false}
+{"t": "03:02:29", "event": "JOB_START", "phase": "T", "job": "T_3065e07ca7bce501712e", "running": 2, "pending": 13, "mem_available_gib": 209.7, "reserved_gib": 20.6}
+{"t": "03:02:45", "event": "JOB_END", "phase": "T", "job": "T_61cd68c372b4bc2ba4a1", "rc": 0, "start_s": 568.1893114559352, "seconds": 210.078355608508, "peak_rss_gib": 31.91579818725586, "timeout": false}
+{"t": "03:03:29", "event": "JOB_START", "phase": "T", "job": "T_3649f02a34790581b198", "running": 2, "pending": 12, "mem_available_gib": 232.7, "reserved_gib": 43.6}
+{"t": "03:04:31", "event": "JOB_END", "phase": "T", "job": "T_3065e07ca7bce501712e", "rc": 0, "start_s": 762.2654808070511, "seconds": 122.0519229285419, "peak_rss_gib": 18.287330627441406, "timeout": false}
+{"t": "03:04:31", "event": "JOB_START", "phase": "T", "job": "T_23a7ae3744e1d747a82f", "running": 2, "pending": 11, "mem_available_gib": 232.3, "reserved_gib": 43.2}
+{"t": "03:05:53", "event": "JOB_END", "phase": "T", "job": "T_3649f02a34790581b198", "rc": 0, "start_s": 822.3123633414507, "seconds": 144.01504861563444, "peak_rss_gib": 22.894386291503906, "timeout": false}
+{"t": "03:05:53", "event": "JOB_START", "phase": "T", "job": "T_fb3bb8711a30e72f293c", "running": 2, "pending": 10, "mem_available_gib": 221.1, "reserved_gib": 32.1}
+{"t": "03:06:57", "event": "JOB_END", "phase": "T", "job": "T_23a7ae3744e1d747a82f", "rc": 0, "start_s": 884.3199840765446, "seconds": 146.017066616565, "peak_rss_gib": 23.987564086914062, "timeout": false}
+{"t": "03:06:57", "event": "JOB_START", "phase": "T", "job": "T_4ca675fa44a2b941fd17", "running": 2, "pending": 9, "mem_available_gib": 230.6, "reserved_gib": 41.5}
+{"t": "03:07:11", "event": "JOB_END", "phase": "T", "job": "T_4ca675fa44a2b941fd17", "rc": 0, "start_s": 1030.33996424824, "seconds": 14.00205155275762, "peak_rss_gib": 3.3942642211914062, "timeout": false}
+{"t": "03:07:23", "event": "JOB_END", "phase": "T", "job": "T_fb3bb8711a30e72f293c", "rc": 0, "start_s": 966.3309448510408, "seconds": 90.02160311304033, "peak_rss_gib": 15.219223022460938, "timeout": false}
+{"t": "03:07:23", "event": "JOB_START", "phase": "T", "job": "T_eb91b5526721f7f18ce1", "running": 1, "pending": 8, "mem_available_gib": 236.8, "reserved_gib": 0.0}
+{"t": "03:08:23", "event": "JOB_START", "phase": "T", "job": "T_c4c9a2307dec47da3ebf", "running": 2, "pending": 7, "mem_available_gib": 231.6, "reserved_gib": 42.5}
+{"t": "03:10:47", "event": "JOB_END", "phase": "T", "job": "T_eb91b5526721f7f18ce1", "rc": 0, "start_s": 1056.3539787884802, "seconds": 204.0682287402451, "peak_rss_gib": 32.71965408325195, "timeout": false}
+{"t": "03:10:47", "event": "JOB_START", "phase": "T", "job": "T_96f3a0c992d138eae04e", "running": 2, "pending": 6, "mem_available_gib": 215.5, "reserved_gib": 26.4}
+{"t": "03:11:07", "event": "JOB_END", "phase": "T", "job": "T_c4c9a2307dec47da3ebf", "rc": 0, "start_s": 1116.4106232170016, "seconds": 164.01770394295454, "peak_rss_gib": 25.959030151367188, "timeout": false}
+{"t": "03:11:47", "event": "JOB_START", "phase": "T", "job": "T_777032cd21d247025fbe", "running": 2, "pending": 5, "mem_available_gib": 232.1, "reserved_gib": 43.0}
+{"t": "03:13:45", "event": "JOB_END", "phase": "T", "job": "T_96f3a0c992d138eae04e", "rc": 0, "start_s": 1260.4258408211172, "seconds": 178.05704659596086, "peak_rss_gib": 29.038333892822266, "timeout": false}
+{"t": "03:13:45", "event": "JOB_START", "phase": "T", "job": "T_d601ca428d1d4aefcb94", "running": 2, "pending": 4, "mem_available_gib": 210.2, "reserved_gib": 21.1}
+{"t": "03:14:49", "event": "JOB_END", "phase": "T", "job": "T_d601ca428d1d4aefcb94", "rc": 0, "start_s": 1438.4867786467075, "seconds": 64.00608292594552, "peak_rss_gib": 11.058147430419922, "timeout": false}
+{"t": "03:14:49", "event": "JOB_START", "phase": "T", "job": "T_ca39014e7b60ff4bcc1f", "running": 2, "pending": 3, "mem_available_gib": 213.9, "reserved_gib": 24.8}
+{"t": "03:15:27", "event": "JOB_END", "phase": "T", "job": "T_777032cd21d247025fbe", "rc": 0, "start_s": 1320.4725251309574, "seconds": 220.0280602760613, "peak_rss_gib": 31.489368438720703, "timeout": false}
+{"t": "03:15:49", "event": "JOB_START", "phase": "T", "job": "T_ae966810520765ba6ee2", "running": 2, "pending": 2, "mem_available_gib": 231.7, "reserved_gib": 42.6}
+{"t": "03:18:13", "event": "JOB_END", "phase": "T", "job": "T_ca39014e7b60ff4bcc1f", "rc": 0, "start_s": 1502.4965116959065, "seconds": 204.03946270793676, "peak_rss_gib": 31.77143096923828, "timeout": false}
+{"t": "03:18:13", "event": "JOB_START", "phase": "T", "job": "T_0009404fceead3dc6370", "running": 2, "pending": 1, "mem_available_gib": 224.0, "reserved_gib": 35.0}
+{"t": "03:19:13", "event": "JOB_END", "phase": "T", "job": "T_ae966810520765ba6ee2", "rc": 0, "start_s": 1562.5230847690254, "seconds": 204.0215737503022, "peak_rss_gib": 31.087753295898438, "timeout": false}
+{"t": "03:19:13", "event": "JOB_START", "phase": "T", "job": "T_24a37f4d54ac2eb7994e", "running": 2, "pending": 0, "mem_available_gib": 218.7, "reserved_gib": 29.6}
+{"t": "03:19:45", "event": "JOB_END", "phase": "T", "job": "T_24a37f4d54ac2eb7994e", "rc": 0, "start_s": 1766.5473960656673, "seconds": 32.00422363914549, "peak_rss_gib": 5.826427459716797, "timeout": false}
+{"t": "03:20:55", "event": "JOB_END", "phase": "T", "job": "T_0009404fceead3dc6370", "rc": 0, "start_s": 1706.5392702873796, "seconds": 162.0184589046985, "peak_rss_gib": 26.156314849853516, "timeout": false}
+{"t": "03:24:33", "event": "SOLVED", "design": "plateB1_k022", "C_exact": 87.10883081639071, "C_hat": 87.0888947703759, "pcg": 340, "true_residual": 8.759394831987655e-11, "energy_sum_rel": 9.021591248390405e-14, "times": {"setup_s": 0.6786592397838831, "precond_s": 6.7604196928441525, "pcg_s": 176.6249799542129, "post_s": 0.8474138472229242, "solve_s": 177.47239380143583}}
+{"t": "03:24:34", "event": "DELETE_T", "fp": "e421f4a00170a210a6f5", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_000_o022_portview/T64.npy"}
+{"t": "03:24:34", "event": "DELETE_T", "fp": "398ec2be2a3e4b5bc874", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_010_o022_portview/T64.npy"}
+{"t": "03:24:34", "event": "DELETE_T", "fp": "6df60c859196c4d41462", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_020_o022_portview/T64.npy"}
+{"t": "03:24:34", "event": "DELETE_T", "fp": "2ee119f30c4ebd3fbd9d", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_030_o022_portview/T64.npy"}
+{"t": "03:24:34", "event": "DELETE_T", "fp": "33459c3e4a891c04ec09", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_040_o022_portview/T64.npy"}
+{"t": "03:24:34", "event": "DELETE_T", "fp": "5b3c86f9d1d974e317f2", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_050_o022_portview/T64.npy"}
+{"t": "03:24:35", "event": "DELETE_T", "fp": "00e3da87d0e453b1dbf3", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_060_o022_portview/T64.npy"}
+{"t": "03:24:35", "event": "DELETE_T", "fp": "fcf08e4af118bf586f7b", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_070_o022_portview/T64.npy"}
+{"t": "03:24:35", "event": "DELETE_T", "fp": "61cd68c372b4bc2ba4a1", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_100_o022_portview/T64.npy"}
+{"t": "03:24:35", "event": "DELETE_T", "fp": "aeda7821b0b0d4627d6c", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_110_o022_portview/T64.npy"}
+{"t": "03:24:35", "event": "DELETE_T", "fp": "3065e07ca7bce501712e", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_120_o022_portview/T64.npy"}
+{"t": "03:24:35", "event": "DELETE_T", "fp": "3649f02a34790581b198", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_130_o022_portview/T64.npy"}
+{"t": "03:24:36", "event": "DELETE_T", "fp": "23a7ae3744e1d747a82f", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_140_o022_portview/T64.npy"}
+{"t": "03:24:36", "event": "DELETE_T", "fp": "fb3bb8711a30e72f293c", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_150_o022_portview/T64.npy"}
+{"t": "03:24:36", "event": "DELETE_T", "fp": "4ca675fa44a2b941fd17", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_160_o022_portview/T64.npy"}
+{"t": "03:24:36", "event": "DELETE_T", "fp": "eb91b5526721f7f18ce1", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_200_o022_portview/T64.npy"}
+{"t": "03:24:36", "event": "DELETE_T", "fp": "c4c9a2307dec47da3ebf", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_210_o022_portview/T64.npy"}
+{"t": "03:24:37", "event": "DELETE_T", "fp": "96f3a0c992d138eae04e", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_220_o022_portview/T64.npy"}
+{"t": "03:24:37", "event": "DELETE_T", "fp": "777032cd21d247025fbe", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_230_o022_portview/T64.npy"}
+{"t": "03:24:38", "event": "DELETE_T", "fp": "d601ca428d1d4aefcb94", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_240_o022_portview/T64.npy"}
+{"t": "03:24:38", "event": "DELETE_T", "fp": "ca39014e7b60ff4bcc1f", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_300_o022_portview/T64.npy"}
+{"t": "03:24:38", "event": "DELETE_T", "fp": "ae966810520765ba6ee2", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_310_o022_portview/T64.npy"}
+{"t": "03:24:39", "event": "DELETE_T", "fp": "0009404fceead3dc6370", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_320_o022_portview/T64.npy"}
+{"t": "03:24:39", "event": "DELETE_T", "fp": "24a37f4d54ac2eb7994e", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB1/body/plate841_330_o022_portview/T64.npy"}
+{"t": "03:24:39", "event": "JOB_START", "phase": "sens", "job": "sens_e421f4a00170a210a6f5", "running": 1, "pending": 23, "mem_available_gib": 235.5, "reserved_gib": 0.0}
+{"t": "03:24:59", "event": "JOB_START", "phase": "sens", "job": "sens_398ec2be2a3e4b5bc874", "running": 2, "pending": 22, "mem_available_gib": 228.0, "reserved_gib": 8.3}
+{"t": "03:32:39", "event": "JOB_END", "phase": "sens", "job": "sens_e421f4a00170a210a6f5", "rc": 0, "start_s": 0.000698501244187355, "seconds": 480.06267076544464, "peak_rss_gib": 27.134750366210938, "timeout": false}
+{"t": "03:32:39", "event": "JOB_START", "phase": "sens", "job": "sens_6df60c859196c4d41462", "running": 2, "pending": 21, "mem_available_gib": 227.6, "reserved_gib": 7.8}
+{"t": "03:33:01", "event": "JOB_END", "phase": "sens", "job": "sens_398ec2be2a3e4b5bc874", "rc": 0, "start_s": 20.019638136029243, "seconds": 482.04973567835987, "peak_rss_gib": 17.900318145751953, "timeout": false}
+{"t": "03:33:01", "event": "JOB_START", "phase": "sens", "job": "sens_2ee119f30c4ebd3fbd9d", "running": 2, "pending": 20, "mem_available_gib": 224.2, "reserved_gib": 4.4}
+{"t": "03:41:43", "event": "JOB_END", "phase": "sens", "job": "sens_2ee119f30c4ebd3fbd9d", "rc": 0, "start_s": 502.07247619330883, "seconds": 522.0484415572137, "peak_rss_gib": 17.781173706054688, "timeout": false}
+{"t": "03:41:43", "event": "JOB_START", "phase": "sens", "job": "sens_33459c3e4a891c04ec09", "running": 2, "pending": 19, "mem_available_gib": 231.9, "reserved_gib": 12.1}
+{"t": "03:41:45", "event": "JOB_END", "phase": "sens", "job": "sens_6df60c859196c4d41462", "rc": 0, "start_s": 480.0663975980133, "seconds": 546.0599427577108, "peak_rss_gib": 15.73819351196289, "timeout": false}
+{"t": "03:42:03", "event": "JOB_START", "phase": "sens", "job": "sens_5b3c86f9d1d974e317f2", "running": 2, "pending": 18, "mem_available_gib": 221.6, "reserved_gib": 1.9}
+{"t": "03:49:25", "event": "JOB_END", "phase": "sens", "job": "sens_33459c3e4a891c04ec09", "rc": 0, "start_s": 1024.1250316370279, "seconds": 462.0605502650142, "peak_rss_gib": 21.288326263427734, "timeout": false}
+{"t": "03:49:25", "event": "JOB_START", "phase": "sens", "job": "sens_00e3da87d0e453b1dbf3", "running": 2, "pending": 17, "mem_available_gib": 229.3, "reserved_gib": 9.5}
+{"t": "03:50:25", "event": "JOB_END", "phase": "sens", "job": "sens_5b3c86f9d1d974e317f2", "rc": 0, "start_s": 1044.1455080024898, "seconds": 502.04981435090303, "peak_rss_gib": 20.217296600341797, "timeout": false}
+{"t": "03:50:25", "event": "JOB_START", "phase": "sens", "job": "sens_fcf08e4af118bf586f7b", "running": 2, "pending": 16, "mem_available_gib": 230.6, "reserved_gib": 10.8}
+{"t": "03:54:11", "event": "JOB_END", "phase": "sens", "job": "sens_fcf08e4af118bf586f7b", "rc": 0, "start_s": 1546.1980569176376, "seconds": 226.02036806941032, "peak_rss_gib": 6.523181915283203, "timeout": false}
+{"t": "03:54:11", "event": "JOB_START", "phase": "sens", "job": "sens_61cd68c372b4bc2ba4a1", "running": 2, "pending": 15, "mem_available_gib": 230.2, "reserved_gib": 10.3}
+{"t": "03:57:05", "event": "JOB_END", "phase": "sens", "job": "sens_00e3da87d0e453b1dbf3", "rc": 0, "start_s": 1486.1886097285897, "seconds": 460.0481461118907, "peak_rss_gib": 14.015552520751953, "timeout": false}
+{"t": "03:57:05", "event": "JOB_START", "phase": "sens", "job": "sens_aeda7821b0b0d4627d6c", "running": 2, "pending": 14, "mem_available_gib": 229.4, "reserved_gib": 9.6}
+{"t": "04:03:13", "event": "JOB_END", "phase": "sens", "job": "sens_61cd68c372b4bc2ba4a1", "rc": 0, "start_s": 1772.2210411764681, "seconds": 542.0532758235931, "peak_rss_gib": 27.553539276123047, "timeout": false}
+{"t": "04:03:13", "event": "JOB_START", "phase": "sens", "job": "sens_3065e07ca7bce501712e", "running": 2, "pending": 13, "mem_available_gib": 229.3, "reserved_gib": 9.5}
+{"t": "04:04:53", "event": "JOB_END", "phase": "sens", "job": "sens_aeda7821b0b0d4627d6c", "rc": 0, "start_s": 1946.2400456462055, "seconds": 468.045956177637, "peak_rss_gib": 18.16705322265625, "timeout": false}
+{"t": "04:04:53", "event": "JOB_START", "phase": "sens", "job": "sens_3649f02a34790581b198", "running": 2, "pending": 12, "mem_available_gib": 229.6, "reserved_gib": 9.7}
+{"t": "04:11:19", "event": "JOB_END", "phase": "sens", "job": "sens_3065e07ca7bce501712e", "rc": 0, "start_s": 2314.2764310669154, "seconds": 486.04810329154134, "peak_rss_gib": 16.59615707397461, "timeout": false}
+{"t": "04:11:19", "event": "JOB_START", "phase": "sens", "job": "sens_23a7ae3744e1d747a82f", "running": 2, "pending": 11, "mem_available_gib": 228.9, "reserved_gib": 9.1}
+{"t": "04:12:37", "event": "JOB_END", "phase": "sens", "job": "sens_3649f02a34790581b198", "rc": 0, "start_s": 2414.2893284633756, "seconds": 464.0475058630109, "peak_rss_gib": 20.756240844726562, "timeout": false}
+{"t": "04:12:37", "event": "JOB_START", "phase": "sens", "job": "sens_fb3bb8711a30e72f293c", "running": 2, "pending": 10, "mem_available_gib": 229.9, "reserved_gib": 10.1}
+{"t": "04:18:03", "event": "JOB_END", "phase": "sens", "job": "sens_fb3bb8711a30e72f293c", "rc": 0, "start_s": 2878.3398040216416, "seconds": 326.030428012833, "peak_rss_gib": 11.8603515625, "timeout": false}
+{"t": "04:18:03", "event": "JOB_START", "phase": "sens", "job": "sens_4ca675fa44a2b941fd17", "running": 2, "pending": 9, "mem_available_gib": 230.3, "reserved_gib": 10.5}
+{"t": "04:18:51", "event": "JOB_END", "phase": "sens", "job": "sens_4ca675fa44a2b941fd17", "rc": 0, "start_s": 3204.3734725043178, "seconds": 48.00544203072786, "peak_rss_gib": 3.584320068359375, "timeout": false}
+{"t": "04:18:51", "event": "JOB_START", "phase": "sens", "job": "sens_eb91b5526721f7f18ce1", "running": 2, "pending": 8, "mem_available_gib": 229.1, "reserved_gib": 9.3}
+{"t": "04:20:13", "event": "JOB_END", "phase": "sens", "job": "sens_23a7ae3744e1d747a82f", "rc": 0, "start_s": 2800.328548343852, "seconds": 534.0601788982749, "peak_rss_gib": 21.38357925415039, "timeout": false}
+{"t": "04:20:13", "event": "JOB_START", "phase": "sens", "job": "sens_c4c9a2307dec47da3ebf", "running": 2, "pending": 7, "mem_available_gib": 228.7, "reserved_gib": 8.9}
+{"t": "04:28:01", "event": "JOB_END", "phase": "sens", "job": "sens_eb91b5526721f7f18ce1", "rc": 0, "start_s": 3252.381056983024, "seconds": 550.0572990048677, "peak_rss_gib": 28.002243041992188, "timeout": false}
+{"t": "04:28:01", "event": "JOB_START", "phase": "sens", "job": "sens_96f3a0c992d138eae04e", "running": 2, "pending": 6, "mem_available_gib": 229.4, "reserved_gib": 9.5}
+{"t": "04:28:39", "event": "JOB_END", "phase": "sens", "job": "sens_c4c9a2307dec47da3ebf", "rc": 0, "start_s": 3334.395208599046, "seconds": 506.0490022599697, "peak_rss_gib": 23.024551391601562, "timeout": false}
+{"t": "04:28:39", "event": "JOB_START", "phase": "sens", "job": "sens_777032cd21d247025fbe", "running": 2, "pending": 5, "mem_available_gib": 230.1, "reserved_gib": 10.3}
+{"t": "04:37:21", "event": "JOB_END", "phase": "sens", "job": "sens_777032cd21d247025fbe", "rc": 0, "start_s": 3840.447834685445, "seconds": 522.0447316337377, "peak_rss_gib": 22.90804672241211, "timeout": false}
+{"t": "04:37:21", "event": "JOB_START", "phase": "sens", "job": "sens_d601ca428d1d4aefcb94", "running": 2, "pending": 4, "mem_available_gib": 211.6, "reserved_gib": 0.0}
+{"t": "04:37:33", "event": "JOB_END", "phase": "sens", "job": "sens_96f3a0c992d138eae04e", "rc": 0, "start_s": 3802.4402430541813, "seconds": 572.0583383049816, "peak_rss_gib": 25.301959991455078, "timeout": false}
+{"t": "04:37:41", "event": "JOB_START", "phase": "sens", "job": "sens_ca39014e7b60ff4bcc1f", "running": 2, "pending": 3, "mem_available_gib": 233.2, "reserved_gib": 13.4}
+{"t": "04:40:59", "event": "JOB_END", "phase": "sens", "job": "sens_d601ca428d1d4aefcb94", "rc": 0, "start_s": 4362.496033405885, "seconds": 218.03265419602394, "peak_rss_gib": 8.277210235595703, "timeout": false}
+{"t": "04:40:59", "event": "JOB_START", "phase": "sens", "job": "sens_ae966810520765ba6ee2", "running": 2, "pending": 2, "mem_available_gib": 229.2, "reserved_gib": 9.4}
+{"t": "04:46:21", "event": "JOB_END", "phase": "sens", "job": "sens_ca39014e7b60ff4bcc1f", "rc": 0, "start_s": 4382.509795350954, "seconds": 520.0478546079248, "peak_rss_gib": 27.638347625732422, "timeout": false}
+{"t": "04:46:21", "event": "JOB_START", "phase": "sens", "job": "sens_0009404fceead3dc6370", "running": 2, "pending": 1, "mem_available_gib": 229.0, "reserved_gib": 9.1}
+{"t": "04:49:44", "event": "JOB_END", "phase": "sens", "job": "sens_ae966810520765ba6ee2", "rc": 0, "start_s": 4580.530209803954, "seconds": 524.0503442231566, "peak_rss_gib": 27.015480041503906, "timeout": false}
+{"t": "04:49:44", "event": "JOB_START", "phase": "sens", "job": "sens_24a37f4d54ac2eb7994e", "running": 2, "pending": 0, "mem_available_gib": 230.4, "reserved_gib": 10.5}
+{"t": "04:50:56", "event": "JOB_END", "phase": "sens", "job": "sens_24a37f4d54ac2eb7994e", "rc": 0, "start_s": 5104.583873804659, "seconds": 72.00606250204146, "peak_rss_gib": 3.9059524536132812, "timeout": false}
+{"t": "04:51:56", "event": "JOB_END", "phase": "sens", "job": "sens_0009404fceead3dc6370", "rc": 0, "start_s": 4902.5608262028545, "seconds": 334.03387543559074, "peak_rss_gib": 16.69329071044922, "timeout": false}
+{"t": "04:51:56", "k": 22, "C_exact": 87.10883081639071, "C_hat": 87.0888947703759, "surrogate_err": -0.00022886366201869008, "grad_rel_err": 0.0021931024893229764, "grad_cos": 0.9999981812354445, "comp_err_rel_to_max": {"median": 0.0006640741338098204, "p95": 0.0026018587501855585, "max": 0.002873056405161503}, "sign_agreement": 1.0, "kkt_exact": 0.4048552218058178, "kkt_lambda": 31.185755361255577, "exact_pcg": 340, "exact_true_residual": 8.759394831987655e-11, "times": {"make_T_s": 1868.6366826090962, "make_T_new": 24, "cellinfo_s": 460.7116816826165, "load_T_s": 29.98037995584309, "setup_s": 0.6786592397838831, "precond_s": 6.7604196928441525, "solve_s": 177.47239380143583, "sens_s": 5236.604165326804}}
+{"t": "04:51:56", "event": "DESIGN_DONE", "design": "plateB1_k022", "seconds": 7790.109316524118}
+{"t": "04:51:56", "event": "DESIGN", "design": "plateB2_k029", "cells": 24, "distinct": 24, "cfg": {"clamp": ["x", "min"], "load": ["x", "max"], "load_dir": "z", "tmin": 0.18, "tmax": 0.69, "max_cols": 16, "prec": "bnn:kpp:q1r", "nice_tol": 1e-06, "sens_route_of_run": "ad"}, "old_mode": null, "solve_pending": true, "sens_pending": true, "t_needed": true, "ci_needed": true}
+{"t": "04:51:56", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_8255c64ad520dc5ba4e2", "running": 1, "pending": 23, "mem_available_gib": 235.5, "reserved_gib": 0.0}
+{"t": "04:52:02", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_9c3b57312000ce86bb1c", "running": 2, "pending": 22, "mem_available_gib": 227.1, "reserved_gib": 0.0}
+{"t": "04:52:08", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_0eeab7848924d956b558", "running": 3, "pending": 21, "mem_available_gib": 221.9, "reserved_gib": 0.4}
+{"t": "04:52:14", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_c68a889de55ceee03399", "running": 4, "pending": 20, "mem_available_gib": 217.2, "reserved_gib": 1.0}
+{"t": "04:53:20", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_8255c64ad520dc5ba4e2", "rc": 0, "start_s": 0.0008261185139417648, "seconds": 84.02814817428589, "peak_rss_gib": 17.428955078125, "timeout": false}
+{"t": "04:53:20", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_51b2740837a409a93470", "running": 4, "pending": 19, "mem_available_gib": 222.2, "reserved_gib": 3.9}
+{"t": "04:53:28", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_9c3b57312000ce86bb1c", "rc": 0, "start_s": 6.006692696362734, "seconds": 86.02788049727678, "peak_rss_gib": 17.831451416015625, "timeout": false}
+{"t": "04:53:28", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_0b6b7b1a010daaeb2127", "running": 4, "pending": 18, "mem_available_gib": 228.6, "reserved_gib": 10.5}
+{"t": "04:53:28", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_c68a889de55ceee03399", "rc": 0, "start_s": 18.02200025692582, "seconds": 74.01691258698702, "peak_rss_gib": 12.311054229736328, "timeout": false}
+{"t": "04:53:34", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_c17ac362411acfcbdf99", "running": 4, "pending": 17, "mem_available_gib": 223.1, "reserved_gib": 6.9}
+{"t": "04:53:34", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_0eeab7848924d956b558", "rc": 0, "start_s": 12.014460671693087, "seconds": 86.03424892015755, "peak_rss_gib": 16.031444549560547, "timeout": false}
+{"t": "04:53:40", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_6b031d6b4e4f5346c3c5", "running": 4, "pending": 16, "mem_available_gib": 211.5, "reserved_gib": 0.0}
+{"t": "04:54:10", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_6b031d6b4e4f5346c3c5", "rc": 0, "start_s": 104.05819022655487, "seconds": 30.003703091293573, "peak_rss_gib": 6.52294921875, "timeout": false}
+{"t": "04:54:10", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_a105fbb0dadb60a2d2b2", "running": 4, "pending": 15, "mem_available_gib": 222.7, "reserved_gib": 4.3}
+{"t": "04:54:34", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_51b2740837a409a93470", "rc": 0, "start_s": 84.03251837566495, "seconds": 74.03631351143122, "peak_rss_gib": 12.311824798583984, "timeout": false}
+{"t": "04:54:34", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_889f5c099bfd5c320c59", "running": 4, "pending": 14, "mem_available_gib": 220.1, "reserved_gib": 2.1}
+{"t": "04:54:42", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_c17ac362411acfcbdf99", "rc": 0, "start_s": 98.04770083166659, "seconds": 68.02602704428136, "peak_rss_gib": 12.174854278564453, "timeout": false}
+{"t": "04:54:42", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_42d16232702f34a5391d", "running": 4, "pending": 13, "mem_available_gib": 212.1, "reserved_gib": 2.7}
+{"t": "04:54:44", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_0b6b7b1a010daaeb2127", "rc": 0, "start_s": 92.03794826753438, "seconds": 76.04117486812174, "peak_rss_gib": 12.311180114746094, "timeout": false}
+{"t": "04:54:48", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_37fd5b47d0827d388431", "running": 4, "pending": 12, "mem_available_gib": 215.9, "reserved_gib": 0.1}
+{"t": "04:55:38", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_a105fbb0dadb60a2d2b2", "rc": 0, "start_s": 134.06542367115617, "seconds": 88.02475802414119, "peak_rss_gib": 17.404518127441406, "timeout": false}
+{"t": "04:55:38", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_f4b134e0b128dda5ab40", "running": 4, "pending": 11, "mem_available_gib": 222.5, "reserved_gib": 4.1}
+{"t": "04:56:02", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_889f5c099bfd5c320c59", "rc": 0, "start_s": 158.0720937680453, "seconds": 88.02299027703702, "peak_rss_gib": 17.581562042236328, "timeout": false}
+{"t": "04:56:02", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_47e15ff61dd90faab655", "running": 4, "pending": 10, "mem_available_gib": 221.3, "reserved_gib": 7.5}
+{"t": "04:56:02", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_42d16232702f34a5391d", "rc": 0, "start_s": 166.0777925029397, "seconds": 80.02173134498298, "peak_rss_gib": 14.449699401855469, "timeout": false}
+{"t": "04:56:08", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_5a6486b2af17b34b5790", "running": 4, "pending": 9, "mem_available_gib": 216.8, "reserved_gib": 6.0}
+{"t": "04:56:08", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_37fd5b47d0827d388431", "rc": 0, "start_s": 172.08468442223966, "seconds": 80.02411522902548, "peak_rss_gib": 12.311481475830078, "timeout": false}
+{"t": "04:56:14", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_028ea952b4baa39ac7c9", "running": 4, "pending": 8, "mem_available_gib": 222.7, "reserved_gib": 6.2}
+{"t": "04:56:18", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_5a6486b2af17b34b5790", "rc": 0, "start_s": 252.10794083215296, "seconds": 10.009105322882533, "peak_rss_gib": 3.3540992736816406, "timeout": false}
+{"t": "04:56:20", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_dd2bf4d96fd96bbcdcfa", "running": 4, "pending": 7, "mem_available_gib": 219.9, "reserved_gib": 4.0}
+{"t": "04:56:48", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_47e15ff61dd90faab655", "rc": 0, "start_s": 246.098577497527, "seconds": 46.02698801457882, "peak_rss_gib": 8.455158233642578, "timeout": false}
+{"t": "04:56:48", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_2ef40040ed05e0b24c3a", "running": 4, "pending": 6, "mem_available_gib": 202.8, "reserved_gib": 1.6}
+{"t": "04:56:54", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_f4b134e0b128dda5ab40", "rc": 0, "start_s": 222.09242524392903, "seconds": 76.038105385378, "peak_rss_gib": 12.311912536621094, "timeout": false}
+{"t": "04:56:54", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_982b1a806f4417acca41", "running": 4, "pending": 5, "mem_available_gib": 206.1, "reserved_gib": 0.0}
+{"t": "04:57:40", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_028ea952b4baa39ac7c9", "rc": 0, "start_s": 258.11565434746444, "seconds": 86.02370883151889, "peak_rss_gib": 17.905555725097656, "timeout": false}
+{"t": "04:57:40", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_a9b30136629b65ad18e8", "running": 4, "pending": 4, "mem_available_gib": 223.6, "reserved_gib": 5.3}
+{"t": "04:57:48", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_dd2bf4d96fd96bbcdcfa", "rc": 0, "start_s": 264.1219940520823, "seconds": 88.0235576312989, "peak_rss_gib": 15.99911117553711, "timeout": false}
+{"t": "04:57:48", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_8be436c89f6a85161203", "running": 4, "pending": 3, "mem_available_gib": 221.9, "reserved_gib": 3.6}
+{"t": "04:58:10", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_2ef40040ed05e0b24c3a", "rc": 0, "start_s": 292.12905880995095, "seconds": 82.022928789258, "peak_rss_gib": 13.077957153320312, "timeout": false}
+{"t": "04:58:10", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_1bf6eb5fcce4d2a3b5e0", "running": 4, "pending": 2, "mem_available_gib": 222.0, "reserved_gib": 3.7}
+{"t": "04:58:12", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_a9b30136629b65ad18e8", "rc": 0, "start_s": 344.14289030991495, "seconds": 32.0138390250504, "peak_rss_gib": 7.248096466064453, "timeout": false}
+{"t": "04:58:14", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_982b1a806f4417acca41", "rc": 0, "start_s": 298.13409448973835, "seconds": 80.02636509016156, "peak_rss_gib": 13.36941909790039, "timeout": false}
+{"t": "04:58:16", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_083bd7fa7efab6eefbea", "running": 3, "pending": 1, "mem_available_gib": 211.9, "reserved_gib": 0.0}
+{"t": "04:58:22", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_1005c7032115dfcbea7c", "running": 4, "pending": 0, "mem_available_gib": 206.3, "reserved_gib": 0.0}
+{"t": "04:58:32", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_1005c7032115dfcbea7c", "rc": 0, "start_s": 386.1729475837201, "seconds": 10.002517476677895, "peak_rss_gib": 3.4108810424804688, "timeout": false}
+{"t": "04:59:10", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_083bd7fa7efab6eefbea", "rc": 0, "start_s": 380.1646800953895, "seconds": 54.01417024247348, "peak_rss_gib": 10.27694320678711, "timeout": false}
+{"t": "04:59:14", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_8be436c89f6a85161203", "rc": 0, "start_s": 352.1490532979369, "seconds": 86.030516481027, "peak_rss_gib": 17.475215911865234, "timeout": false}
+{"t": "04:59:34", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_1bf6eb5fcce4d2a3b5e0", "rc": 0, "start_s": 374.1556100640446, "seconds": 84.02600670792162, "peak_rss_gib": 16.017345428466797, "timeout": false}
+{"t": "04:59:34", "event": "JOB_START", "phase": "T", "job": "T_8255c64ad520dc5ba4e2", "running": 1, "pending": 23, "mem_available_gib": 235.5, "reserved_gib": 0.0}
+{"t": "05:00:34", "event": "JOB_START", "phase": "T", "job": "T_9c3b57312000ce86bb1c", "running": 2, "pending": 22, "mem_available_gib": 230.3, "reserved_gib": 42.5}
+{"t": "05:03:56", "event": "JOB_END", "phase": "T", "job": "T_8255c64ad520dc5ba4e2", "rc": 0, "start_s": 0.0006012450903654099, "seconds": 262.0829612389207, "peak_rss_gib": 40.0035285949707, "timeout": false}
+{"t": "05:03:56", "event": "JOB_START", "phase": "T", "job": "T_0eeab7848924d956b558", "running": 2, "pending": 21, "mem_available_gib": 201.4, "reserved_gib": 13.6}
+{"t": "05:04:38", "event": "JOB_END", "phase": "T", "job": "T_9c3b57312000ce86bb1c", "rc": 0, "start_s": 60.061629097908735, "seconds": 244.03145423531532, "peak_rss_gib": 36.09659957885742, "timeout": false}
+{"t": "05:04:56", "event": "JOB_START", "phase": "T", "job": "T_c68a889de55ceee03399", "running": 2, "pending": 20, "mem_available_gib": 230.3, "reserved_gib": 42.6}
+{"t": "05:06:44", "event": "JOB_END", "phase": "T", "job": "T_0eeab7848924d956b558", "rc": 0, "start_s": 262.08796354942024, "seconds": 168.02933858707547, "peak_rss_gib": 25.135269165039062, "timeout": false}
+{"t": "05:06:44", "event": "JOB_START", "phase": "T", "job": "T_51b2740837a409a93470", "running": 2, "pending": 19, "mem_available_gib": 221.5, "reserved_gib": 33.7}
+{"t": "05:06:50", "event": "JOB_END", "phase": "T", "job": "T_c68a889de55ceee03399", "rc": 0, "start_s": 322.10703182034194, "seconds": 114.01401844061911, "peak_rss_gib": 17.224395751953125, "timeout": false}
+{"t": "05:07:45", "event": "JOB_START", "phase": "T", "job": "T_0b6b7b1a010daaeb2127", "running": 2, "pending": 18, "mem_available_gib": 230.7, "reserved_gib": 42.9}
+{"t": "05:08:33", "event": "JOB_END", "phase": "T", "job": "T_51b2740837a409a93470", "rc": 0, "start_s": 430.11970688030124, "seconds": 108.05209036171436, "peak_rss_gib": 17.316497802734375, "timeout": false}
+{"t": "05:08:45", "event": "JOB_START", "phase": "T", "job": "T_c17ac362411acfcbdf99", "running": 2, "pending": 17, "mem_available_gib": 231.3, "reserved_gib": 43.6}
+{"t": "05:09:37", "event": "JOB_END", "phase": "T", "job": "T_0b6b7b1a010daaeb2127", "rc": 0, "start_s": 490.16649865731597, "seconds": 112.0248819515109, "peak_rss_gib": 17.143238067626953, "timeout": false}
+{"t": "05:09:45", "event": "JOB_START", "phase": "T", "job": "T_6b031d6b4e4f5346c3c5", "running": 2, "pending": 16, "mem_available_gib": 224.4, "reserved_gib": 36.6}
+{"t": "05:10:29", "event": "JOB_END", "phase": "T", "job": "T_c17ac362411acfcbdf99", "rc": 0, "start_s": 550.1858003456146, "seconds": 104.0196711588651, "peak_rss_gib": 16.605899810791016, "timeout": false}
+{"t": "05:10:31", "event": "JOB_END", "phase": "T", "job": "T_6b031d6b4e4f5346c3c5", "rc": 0, "start_s": 610.2004722245038, "seconds": 46.008832605555654, "peak_rss_gib": 7.362239837646484, "timeout": false}
+{"t": "05:10:31", "event": "JOB_START", "phase": "T", "job": "T_a105fbb0dadb60a2d2b2", "running": 1, "pending": 15, "mem_available_gib": 235.5, "reserved_gib": 0.0}
+{"t": "05:11:31", "event": "JOB_START", "phase": "T", "job": "T_889f5c099bfd5c320c59", "running": 2, "pending": 14, "mem_available_gib": 230.7, "reserved_gib": 43.0}
+{"t": "05:14:49", "event": "JOB_END", "phase": "T", "job": "T_a105fbb0dadb60a2d2b2", "rc": 0, "start_s": 656.2107011005282, "seconds": 258.07400632090867, "peak_rss_gib": 39.216285705566406, "timeout": false}
+{"t": "05:14:49", "event": "JOB_START", "phase": "T", "job": "T_42d16232702f34a5391d", "running": 2, "pending": 13, "mem_available_gib": 226.4, "reserved_gib": 38.6}
+{"t": "05:14:53", "event": "JOB_END", "phase": "T", "job": "T_889f5c099bfd5c320c59", "rc": 0, "start_s": 716.2653937488794, "seconds": 202.02294965088367, "peak_rss_gib": 31.609832763671875, "timeout": false}
+{"t": "05:15:49", "event": "JOB_START", "phase": "T", "job": "T_37fd5b47d0827d388431", "running": 2, "pending": 12, "mem_available_gib": 230.0, "reserved_gib": 42.2}
+{"t": "05:16:59", "event": "JOB_END", "phase": "T", "job": "T_42d16232702f34a5391d", "rc": 0, "start_s": 914.2871302869171, "seconds": 130.06446584686637, "peak_rss_gib": 21.30483627319336, "timeout": false}
+{"t": "05:16:59", "event": "JOB_START", "phase": "T", "job": "T_f4b134e0b128dda5ab40", "running": 2, "pending": 11, "mem_available_gib": 224.3, "reserved_gib": 36.5}
+{"t": "05:17:41", "event": "JOB_END", "phase": "T", "job": "T_37fd5b47d0827d388431", "rc": 0, "start_s": 974.3441803492606, "seconds": 112.01595523394644, "peak_rss_gib": 17.249736785888672, "timeout": false}
+{"t": "05:17:59", "event": "JOB_START", "phase": "T", "job": "T_47e15ff61dd90faab655", "running": 2, "pending": 10, "mem_available_gib": 230.2, "reserved_gib": 42.3}
+{"t": "05:18:49", "event": "JOB_END", "phase": "T", "job": "T_f4b134e0b128dda5ab40", "rc": 0, "start_s": 1044.35509092547, "seconds": 110.02715173922479, "peak_rss_gib": 17.316059112548828, "timeout": false}
+{"t": "05:18:59", "event": "JOB_START", "phase": "T", "job": "T_5a6486b2af17b34b5790", "running": 2, "pending": 9, "mem_available_gib": 227.9, "reserved_gib": 40.1}
+{"t": "05:19:13", "event": "JOB_END", "phase": "T", "job": "T_47e15ff61dd90faab655", "rc": 0, "start_s": 1104.3770318068564, "seconds": 74.0202667415142, "peak_rss_gib": 12.399654388427734, "timeout": false}
+{"t": "05:19:13", "event": "JOB_END", "phase": "T", "job": "T_5a6486b2af17b34b5790", "rc": 0, "start_s": 1164.395167272538, "seconds": 14.00398918054998, "peak_rss_gib": 3.359508514404297, "timeout": false}
+{"t": "05:19:13", "event": "JOB_START", "phase": "T", "job": "T_028ea952b4baa39ac7c9", "running": 1, "pending": 8, "mem_available_gib": 235.5, "reserved_gib": 0.0}
+{"t": "05:20:13", "event": "JOB_START", "phase": "T", "job": "T_dd2bf4d96fd96bbcdcfa", "running": 2, "pending": 7, "mem_available_gib": 229.7, "reserved_gib": 41.9}
+{"t": "05:22:45", "event": "JOB_END", "phase": "T", "job": "T_028ea952b4baa39ac7c9", "rc": 0, "start_s": 1178.4005121923983, "seconds": 212.06857829354703, "peak_rss_gib": 34.531890869140625, "timeout": false}
+{"t": "05:22:45", "event": "JOB_START", "phase": "T", "job": "T_2ef40040ed05e0b24c3a", "running": 2, "pending": 6, "mem_available_gib": 214.5, "reserved_gib": 26.6}
+{"t": "05:22:57", "event": "JOB_END", "phase": "T", "job": "T_dd2bf4d96fd96bbcdcfa", "rc": 0, "start_s": 1238.4541338849813, "seconds": 164.02036757953465, "peak_rss_gib": 25.411876678466797, "timeout": false}
+{"t": "05:23:45", "event": "JOB_START", "phase": "T", "job": "T_982b1a806f4417acca41", "running": 2, "pending": 5, "mem_available_gib": 230.5, "reserved_gib": 42.6}
+{"t": "05:24:43", "event": "JOB_END", "phase": "T", "job": "T_2ef40040ed05e0b24c3a", "rc": 0, "start_s": 1390.47239471972, "seconds": 118.05387884937227, "peak_rss_gib": 18.47723388671875, "timeout": false}
+{"t": "05:24:45", "event": "JOB_START", "phase": "T", "job": "T_a9b30136629b65ad18e8", "running": 2, "pending": 4, "mem_available_gib": 230.5, "reserved_gib": 42.7}
+{"t": "05:25:37", "event": "JOB_END", "phase": "T", "job": "T_a9b30136629b65ad18e8", "rc": 0, "start_s": 1510.5313635580242, "seconds": 52.00563599541783, "peak_rss_gib": 8.813079833984375, "timeout": false}
+{"t": "05:25:45", "event": "JOB_START", "phase": "T", "job": "T_8be436c89f6a85161203", "running": 2, "pending": 3, "mem_available_gib": 218.5, "reserved_gib": 30.7}
+{"t": "05:25:57", "event": "JOB_END", "phase": "T", "job": "T_982b1a806f4417acca41", "rc": 0, "start_s": 1450.519929099828, "seconds": 132.031069945544, "peak_rss_gib": 20.519466400146484, "timeout": false}
+{"t": "05:26:45", "event": "JOB_START", "phase": "T", "job": "T_1bf6eb5fcce4d2a3b5e0", "running": 2, "pending": 2, "mem_available_gib": 232.1, "reserved_gib": 44.4}
+{"t": "05:28:53", "event": "JOB_END", "phase": "T", "job": "T_8be436c89f6a85161203", "rc": 0, "start_s": 1570.5490370579064, "seconds": 188.05638621933758, "peak_rss_gib": 29.943191528320312, "timeout": false}
+{"t": "05:28:53", "event": "JOB_START", "phase": "T", "job": "T_083bd7fa7efab6eefbea", "running": 2, "pending": 1, "mem_available_gib": 216.3, "reserved_gib": 28.5}
+{"t": "05:29:29", "event": "JOB_END", "phase": "T", "job": "T_1bf6eb5fcce4d2a3b5e0", "rc": 0, "start_s": 1630.592033246532, "seconds": 164.0202893447131, "peak_rss_gib": 24.944129943847656, "timeout": false}
+{"t": "05:29:53", "event": "JOB_START", "phase": "T", "job": "T_1005c7032115dfcbea7c", "running": 2, "pending": 0, "mem_available_gib": 222.1, "reserved_gib": 34.3}
+{"t": "05:30:09", "event": "JOB_END", "phase": "T", "job": "T_1005c7032115dfcbea7c", "rc": 0, "start_s": 1818.6415306124836, "seconds": 16.00256028212607, "peak_rss_gib": 3.3923492431640625, "timeout": false}
+{"t": "05:30:33", "event": "JOB_END", "phase": "T", "job": "T_083bd7fa7efab6eefbea", "rc": 0, "start_s": 1758.6081532239914, "seconds": 100.03828817792237, "peak_rss_gib": 16.627212524414062, "timeout": false}
+{"t": "05:34:03", "event": "SOLVED", "design": "plateB2_k029", "C_exact": 1346.8540013987367, "C_hat": 1346.3535398140793, "pcg": 416, "true_residual": 1.982964522342975e-10, "energy_sum_rel": -4.625622896523699e-14, "times": {"setup_s": 0.6025620698928833, "precond_s": 5.692769942805171, "pcg_s": 172.39148894883692, "post_s": 0.5389357209205627, "solve_s": 172.93042466975749}}
+{"t": "05:34:04", "event": "DELETE_T", "fp": "8255c64ad520dc5ba4e2", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_000_o029_portview/T64.npy"}
+{"t": "05:34:04", "event": "DELETE_T", "fp": "9c3b57312000ce86bb1c", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_010_o029_portview/T64.npy"}
+{"t": "05:34:04", "event": "DELETE_T", "fp": "0eeab7848924d956b558", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_020_o029_portview/T64.npy"}
+{"t": "05:34:04", "event": "DELETE_T", "fp": "c68a889de55ceee03399", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_030_o029_portview/T64.npy"}
+{"t": "05:34:04", "event": "DELETE_T", "fp": "51b2740837a409a93470", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_040_o029_portview/T64.npy"}
+{"t": "05:34:05", "event": "DELETE_T", "fp": "0b6b7b1a010daaeb2127", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_050_o029_portview/T64.npy"}
+{"t": "05:34:05", "event": "DELETE_T", "fp": "c17ac362411acfcbdf99", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_060_o029_portview/T64.npy"}
+{"t": "05:34:05", "event": "DELETE_T", "fp": "6b031d6b4e4f5346c3c5", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_070_o029_portview/T64.npy"}
+{"t": "05:34:05", "event": "DELETE_T", "fp": "a105fbb0dadb60a2d2b2", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_100_o029_portview/T64.npy"}
+{"t": "05:34:06", "event": "DELETE_T", "fp": "889f5c099bfd5c320c59", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_110_o029_portview/T64.npy"}
+{"t": "05:34:06", "event": "DELETE_T", "fp": "42d16232702f34a5391d", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_120_o029_portview/T64.npy"}
+{"t": "05:34:06", "event": "DELETE_T", "fp": "37fd5b47d0827d388431", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_130_o029_portview/T64.npy"}
+{"t": "05:34:06", "event": "DELETE_T", "fp": "f4b134e0b128dda5ab40", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_140_o029_portview/T64.npy"}
+{"t": "05:34:06", "event": "DELETE_T", "fp": "47e15ff61dd90faab655", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_150_o029_portview/T64.npy"}
+{"t": "05:34:06", "event": "DELETE_T", "fp": "5a6486b2af17b34b5790", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_160_o029_portview/T64.npy"}
+{"t": "05:34:07", "event": "DELETE_T", "fp": "028ea952b4baa39ac7c9", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_200_o029_portview/T64.npy"}
+{"t": "05:34:07", "event": "DELETE_T", "fp": "dd2bf4d96fd96bbcdcfa", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_210_o029_portview/T64.npy"}
+{"t": "05:34:07", "event": "DELETE_T", "fp": "2ef40040ed05e0b24c3a", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_220_o029_portview/T64.npy"}
+{"t": "05:34:07", "event": "DELETE_T", "fp": "982b1a806f4417acca41", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_230_o029_portview/T64.npy"}
+{"t": "05:34:07", "event": "DELETE_T", "fp": "a9b30136629b65ad18e8", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_240_o029_portview/T64.npy"}
+{"t": "05:34:08", "event": "DELETE_T", "fp": "8be436c89f6a85161203", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_300_o029_portview/T64.npy"}
+{"t": "05:34:08", "event": "DELETE_T", "fp": "1bf6eb5fcce4d2a3b5e0", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_310_o029_portview/T64.npy"}
+{"t": "05:34:08", "event": "DELETE_T", "fp": "083bd7fa7efab6eefbea", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_320_o029_portview/T64.npy"}
+{"t": "05:34:08", "event": "DELETE_T", "fp": "1005c7032115dfcbea7c", "path": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body/plate841_330_o029_portview/T64.npy"}
+{"t": "05:34:08", "event": "JOB_START", "phase": "sens", "job": "sens_8255c64ad520dc5ba4e2", "running": 1, "pending": 23, "mem_available_gib": 235.0, "reserved_gib": 0.0}
+{"t": "05:34:28", "event": "JOB_START", "phase": "sens", "job": "sens_9c3b57312000ce86bb1c", "running": 2, "pending": 22, "mem_available_gib": 222.1, "reserved_gib": 3.0}
+{"t": "05:43:06", "event": "JOB_END", "phase": "sens", "job": "sens_8255c64ad520dc5ba4e2", "rc": 0, "start_s": 0.0006857048720121384, "seconds": 538.0673584714532, "peak_rss_gib": 32.60682678222656, "timeout": false}
+{"t": "05:43:06", "event": "JOB_START", "phase": "sens", "job": "sens_0eeab7848924d956b558", "running": 2, "pending": 21, "mem_available_gib": 228.6, "reserved_gib": 9.4}
+{"t": "05:44:14", "event": "JOB_END", "phase": "sens", "job": "sens_9c3b57312000ce86bb1c", "rc": 0, "start_s": 20.022045509889722, "seconds": 586.0568654723465, "peak_rss_gib": 30.336292266845703, "timeout": false}
+{"t": "05:44:14", "event": "JOB_START", "phase": "sens", "job": "sens_c68a889de55ceee03399", "running": 2, "pending": 20, "mem_available_gib": 229.3, "reserved_gib": 10.0}
+{"t": "05:52:20", "event": "JOB_END", "phase": "sens", "job": "sens_0eeab7848924d956b558", "rc": 0, "start_s": 538.0715528316796, "seconds": 554.0552132092416, "peak_rss_gib": 22.402713775634766, "timeout": false}
+{"t": "05:52:20", "event": "JOB_START", "phase": "sens", "job": "sens_51b2740837a409a93470", "running": 2, "pending": 19, "mem_available_gib": 230.1, "reserved_gib": 10.8}
+{"t": "05:53:44", "event": "JOB_END", "phase": "sens", "job": "sens_c68a889de55ceee03399", "rc": 0, "start_s": 606.0820965841413, "seconds": 570.0581132993102, "peak_rss_gib": 15.676326751708984, "timeout": false}
+{"t": "05:53:44", "event": "JOB_START", "phase": "sens", "job": "sens_0b6b7b1a010daaeb2127", "running": 2, "pending": 18, "mem_available_gib": 229.7, "reserved_gib": 10.3}
+{"t": "06:01:34", "event": "JOB_END", "phase": "sens", "job": "sens_51b2740837a409a93470", "rc": 0, "start_s": 1092.130772439763, "seconds": 554.0598976109177, "peak_rss_gib": 15.745296478271484, "timeout": false}
+{"t": "06:01:34", "event": "JOB_START", "phase": "sens", "job": "sens_c17ac362411acfcbdf99", "running": 2, "pending": 17, "mem_available_gib": 231.2, "reserved_gib": 12.0}
+{"t": "06:02:24", "event": "JOB_END", "phase": "sens", "job": "sens_0b6b7b1a010daaeb2127", "rc": 0, "start_s": 1176.143646389246, "seconds": 520.0560337677598, "peak_rss_gib": 15.764358520507812, "timeout": false}
+{"t": "06:02:24", "event": "JOB_START", "phase": "sens", "job": "sens_6b031d6b4e4f5346c3c5", "running": 2, "pending": 16, "mem_available_gib": 230.6, "reserved_gib": 11.4}
+{"t": "06:05:48", "event": "JOB_END", "phase": "sens", "job": "sens_6b031d6b4e4f5346c3c5", "rc": 0, "start_s": 1696.204651227221, "seconds": 204.02019544318318, "peak_rss_gib": 6.5231170654296875, "timeout": false}
+{"t": "06:05:48", "event": "JOB_START", "phase": "sens", "job": "sens_a105fbb0dadb60a2d2b2", "running": 2, "pending": 15, "mem_available_gib": 229.5, "reserved_gib": 10.3}
+{"t": "06:09:54", "event": "JOB_END", "phase": "sens", "job": "sens_c17ac362411acfcbdf99", "rc": 0, "start_s": 1646.1941827498376, "seconds": 500.05847504362464, "peak_rss_gib": 14.02463150024414, "timeout": false}
+{"t": "06:09:54", "event": "JOB_START", "phase": "sens", "job": "sens_889f5c099bfd5c320c59", "running": 2, "pending": 14, "mem_available_gib": 229.3, "reserved_gib": 9.9}
+{"t": "06:14:22", "event": "JOB_END", "phase": "sens", "job": "sens_a105fbb0dadb60a2d2b2", "rc": 0, "start_s": 1900.228274481371, "seconds": 514.0531747248024, "peak_rss_gib": 32.02650833129883, "timeout": false}
+{"t": "06:14:22", "event": "JOB_START", "phase": "sens", "job": "sens_42d16232702f34a5391d", "running": 2, "pending": 13, "mem_available_gib": 229.2, "reserved_gib": 9.9}
+{"t": "06:19:14", "event": "JOB_END", "phase": "sens", "job": "sens_889f5c099bfd5c320c59", "rc": 0, "start_s": 2146.2554663736373, "seconds": 560.0561841074377, "peak_rss_gib": 27.01197052001953, "timeout": false}
+{"t": "06:19:14", "event": "JOB_START", "phase": "sens", "job": "sens_37fd5b47d0827d388431", "running": 2, "pending": 12, "mem_available_gib": 228.7, "reserved_gib": 9.5}
+{"t": "06:23:00", "event": "JOB_END", "phase": "sens", "job": "sens_42d16232702f34a5391d", "rc": 0, "start_s": 2414.284806197509, "seconds": 518.0542342290282, "peak_rss_gib": 19.14120101928711, "timeout": false}
+{"t": "06:23:00", "event": "JOB_START", "phase": "sens", "job": "sens_f4b134e0b128dda5ab40", "running": 2, "pending": 11, "mem_available_gib": 229.4, "reserved_gib": 10.1}
+{"t": "06:28:46", "event": "JOB_END", "phase": "sens", "job": "sens_37fd5b47d0827d388431", "rc": 0, "start_s": 2706.316661087796, "seconds": 572.0567724779248, "peak_rss_gib": 15.657127380371094, "timeout": false}
+{"t": "06:28:46", "event": "JOB_START", "phase": "sens", "job": "sens_47e15ff61dd90faab655", "running": 2, "pending": 10, "mem_available_gib": 228.8, "reserved_gib": 9.6}
+{"t": "06:31:12", "event": "JOB_END", "phase": "sens", "job": "sens_f4b134e0b128dda5ab40", "rc": 0, "start_s": 2932.342295968905, "seconds": 492.04910714551806, "peak_rss_gib": 15.770477294921875, "timeout": false}
+{"t": "06:31:12", "event": "JOB_START", "phase": "sens", "job": "sens_5a6486b2af17b34b5790", "running": 2, "pending": 9, "mem_available_gib": 230.2, "reserved_gib": 10.9}
+{"t": "06:32:04", "event": "JOB_END", "phase": "sens", "job": "sens_5a6486b2af17b34b5790", "rc": 0, "start_s": 3424.394349642098, "seconds": 52.00559487566352, "peak_rss_gib": 3.5368995666503906, "timeout": false}
+{"t": "06:32:04", "event": "JOB_START", "phase": "sens", "job": "sens_028ea952b4baa39ac7c9", "running": 2, "pending": 8, "mem_available_gib": 230.5, "reserved_gib": 11.2}
+{"t": "06:34:52", "event": "JOB_END", "phase": "sens", "job": "sens_47e15ff61dd90faab655", "rc": 0, "start_s": 3278.377093888819, "seconds": 366.04123098403215, "peak_rss_gib": 9.745655059814453, "timeout": false}
+{"t": "06:34:52", "event": "JOB_START", "phase": "sens", "job": "sens_dd2bf4d96fd96bbcdcfa", "running": 2, "pending": 7, "mem_available_gib": 229.6, "reserved_gib": 10.2}
+{"t": "06:41:33", "event": "JOB_END", "phase": "sens", "job": "sens_028ea952b4baa39ac7c9", "rc": 0, "start_s": 3476.4025318920612, "seconds": 568.0525582898408, "peak_rss_gib": 29.213150024414062, "timeout": false}
+{"t": "06:41:33", "event": "JOB_START", "phase": "sens", "job": "sens_2ef40040ed05e0b24c3a", "running": 2, "pending": 6, "mem_available_gib": 228.7, "reserved_gib": 9.4}
+{"t": "06:44:09", "event": "JOB_END", "phase": "sens", "job": "sens_dd2bf4d96fd96bbcdcfa", "rc": 0, "start_s": 3644.4208423234522, "seconds": 556.0510589629412, "peak_rss_gib": 22.818939208984375, "timeout": false}
+{"t": "06:44:09", "event": "JOB_START", "phase": "sens", "job": "sens_982b1a806f4417acca41", "running": 2, "pending": 5, "mem_available_gib": 229.2, "reserved_gib": 10.0}
+{"t": "06:50:59", "event": "JOB_END", "phase": "sens", "job": "sens_2ef40040ed05e0b24c3a", "rc": 0, "start_s": 4044.4575126469135, "seconds": 566.0534481797367, "peak_rss_gib": 16.94029998779297, "timeout": false}
+{"t": "06:50:59", "event": "JOB_START", "phase": "sens", "job": "sens_a9b30136629b65ad18e8", "running": 2, "pending": 4, "mem_available_gib": 228.7, "reserved_gib": 9.5}
+{"t": "06:52:39", "event": "JOB_END", "phase": "sens", "job": "sens_982b1a806f4417acca41", "rc": 0, "start_s": 4200.475465932861, "seconds": 510.04882101900876, "peak_rss_gib": 16.191226959228516, "timeout": false}
+{"t": "06:52:39", "event": "JOB_START", "phase": "sens", "job": "sens_8be436c89f6a85161203", "running": 2, "pending": 3, "mem_available_gib": 230.4, "reserved_gib": 11.2}
+{"t": "06:54:33", "event": "JOB_END", "phase": "sens", "job": "sens_a9b30136629b65ad18e8", "rc": 0, "start_s": 4610.514711566269, "seconds": 214.0217821225524, "peak_rss_gib": 7.242877960205078, "timeout": false}
+{"t": "06:54:33", "event": "JOB_START", "phase": "sens", "job": "sens_1bf6eb5fcce4d2a3b5e0", "running": 2, "pending": 2, "mem_available_gib": 230.0, "reserved_gib": 10.7}
+{"t": "07:02:03", "event": "JOB_END", "phase": "sens", "job": "sens_8be436c89f6a85161203", "rc": 0, "start_s": 4710.526665078476, "seconds": 564.0558887124062, "peak_rss_gib": 26.008792877197266, "timeout": false}
+{"t": "07:02:03", "event": "JOB_START", "phase": "sens", "job": "sens_083bd7fa7efab6eefbea", "running": 2, "pending": 1, "mem_available_gib": 229.1, "reserved_gib": 9.9}
+{"t": "07:02:53", "event": "JOB_END", "phase": "sens", "job": "sens_1bf6eb5fcce4d2a3b5e0", "rc": 0, "start_s": 4824.538576543331, "seconds": 500.0526591222733, "peak_rss_gib": 22.27178955078125, "timeout": false}
+{"t": "07:02:53", "event": "JOB_START", "phase": "sens", "job": "sens_1005c7032115dfcbea7c", "running": 2, "pending": 0, "mem_available_gib": 230.6, "reserved_gib": 11.3}
+{"t": "07:03:45", "event": "JOB_END", "phase": "sens", "job": "sens_1005c7032115dfcbea7c", "rc": 0, "start_s": 5324.594706147909, "seconds": 52.005371887236834, "peak_rss_gib": 3.640972137451172, "timeout": false}
+{"t": "07:08:07", "event": "JOB_END", "phase": "sens", "job": "sens_083bd7fa7efab6eefbea", "rc": 0, "start_s": 5274.585473680869, "seconds": 364.0373181346804, "peak_rss_gib": 12.241931915283203, "timeout": false}
+{"t": "07:08:07", "k": 29, "C_exact": 1346.8540013987367, "C_hat": 1346.3535398140793, "surrogate_err": -0.0003715781993724984, "grad_rel_err": 0.003168359805790348, "grad_cos": 0.9999954364588811, "comp_err_rel_to_max": {"median": 0.0005164839074357952, "p95": 0.002587857355870603, "max": 0.003349125461273581}, "sign_agreement": 1.0, "kkt_exact": 0.5311883208156811, "kkt_lambda": 591.0947245000307, "exact_pcg": 416, "exact_true_residual": 1.982964522342975e-10, "times": {"make_T_s": 1858.726897245273, "make_T_new": 24, "cellinfo_s": 458.6299561560154, "load_T_s": 27.90875575505197, "setup_s": 0.6025620698928833, "precond_s": 5.692769942805171, "solve_s": 172.93042466975749, "sens_s": 5638.629917256534}}
+{"t": "07:08:07", "event": "DESIGN_DONE", "design": "plateB2_k029", "seconds": 8171.156174995005}
+=== STEP rc=0 2026-10-01 07:08:07
+=== STEP 3 START 2026-10-01 07:08:07
+{"t": "07:08:08", "event": "PLAN", "designs": ["hevalH_z_k000", "xstartH_z_k011"], "work": "/root/autodl-tmp/xc/plates_exact/exact_cpu"}
+{"t": "07:08:09", "event": "DESIGN", "design": "hevalH_z_k000", "cells": 24, "distinct": 24, "cfg": {"clamp": ["x", "min"], "load": ["x", "max"], "load_dir": "z", "tmin": 0.18, "tmax": 0.69, "max_cols": 16, "prec": "bnn:kpp:q1r", "nice_tol": 1e-06, "sens_route_of_run": "ad"}, "old_mode": null, "solve_pending": true, "sens_pending": false, "t_needed": true, "ci_needed": true}
+{"t": "07:08:09", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_cec064aa78bb289e934b", "running": 1, "pending": 23, "mem_available_gib": 237.3, "reserved_gib": 0.0}
+{"t": "07:08:15", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_59a7c0d7c0c44a519678", "running": 2, "pending": 22, "mem_available_gib": 229.0, "reserved_gib": 0.0}
+{"t": "07:08:21", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_a597adf5bed2f80211ac", "running": 3, "pending": 21, "mem_available_gib": 219.8, "reserved_gib": 0.0}
+{"t": "07:08:27", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_6e5078b71da1a250a81b", "running": 4, "pending": 20, "mem_available_gib": 215.2, "reserved_gib": 0.0}
+{"t": "07:09:31", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_cec064aa78bb289e934b", "rc": 0, "start_s": 0.0006328802555799484, "seconds": 82.02850028127432, "peak_rss_gib": 17.44361114501953, "timeout": false}
+{"t": "07:09:31", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_1070cbe23d60630fba77", "running": 4, "pending": 19, "mem_available_gib": 221.9, "reserved_gib": 1.8}
+{"t": "07:09:39", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_59a7c0d7c0c44a519678", "rc": 0, "start_s": 6.007464472204447, "seconds": 84.0270210634917, "peak_rss_gib": 17.65365982055664, "timeout": false}
+{"t": "07:09:39", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_cf2624c54af742d6665b", "running": 4, "pending": 18, "mem_available_gib": 224.0, "reserved_gib": 3.9}
+{"t": "07:09:43", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_a597adf5bed2f80211ac", "rc": 0, "start_s": 12.015595600008965, "seconds": 82.02308246865869, "peak_rss_gib": 16.532394409179688, "timeout": false}
+{"t": "07:09:45", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_80ecacd865a304a77942", "running": 4, "pending": 17, "mem_available_gib": 224.8, "reserved_gib": 6.8}
+{"t": "07:09:45", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_6e5078b71da1a250a81b", "rc": 0, "start_s": 18.023259757086635, "seconds": 78.02192311920226, "peak_rss_gib": 12.311210632324219, "timeout": false}
+{"t": "07:09:51", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_b3879af12d7630b1d2a8", "running": 4, "pending": 16, "mem_available_gib": 210.7, "reserved_gib": 0.0}
+{"t": "07:10:17", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_b3879af12d7630b1d2a8", "rc": 0, "start_s": 102.05086785368621, "seconds": 26.002569822594523, "peak_rss_gib": 6.5229949951171875, "timeout": false}
+{"t": "07:10:17", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_8750c5a47e5da2adcaf6", "running": 4, "pending": 15, "mem_available_gib": 226.7, "reserved_gib": 6.7}
+{"t": "07:10:45", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_1070cbe23d60630fba77", "rc": 0, "start_s": 82.03263162262738, "seconds": 74.02844509854913, "peak_rss_gib": 12.312156677246094, "timeout": false}
+{"t": "07:10:45", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_66f3fa6f6853c637b714", "running": 4, "pending": 14, "mem_available_gib": 214.3, "reserved_gib": 2.4}
+{"t": "07:10:51", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_cf2624c54af742d6665b", "rc": 0, "start_s": 90.03756696917117, "seconds": 72.02703249454498, "peak_rss_gib": 12.311229705810547, "timeout": false}
+{"t": "07:10:51", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_0c5bbeaf8a014e285b06", "running": 4, "pending": 13, "mem_available_gib": 208.2, "reserved_gib": 1.6}
+{"t": "07:10:59", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_80ecacd865a304a77942", "rc": 0, "start_s": 96.0441566426307, "seconds": 74.02453341335058, "peak_rss_gib": 12.17495346069336, "timeout": false}
+{"t": "07:10:59", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_40755aa16d95f5ca7147", "running": 4, "pending": 12, "mem_available_gib": 225.9, "reserved_gib": 5.8}
+{"t": "07:11:35", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_8750c5a47e5da2adcaf6", "rc": 0, "start_s": 128.05768353492022, "seconds": 78.01835012622178, "peak_rss_gib": 17.402503967285156, "timeout": false}
+{"t": "07:11:35", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_6c338995b6c8617d4e7e", "running": 4, "pending": 11, "mem_available_gib": 226.9, "reserved_gib": 6.9}
+{"t": "07:12:13", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_66f3fa6f6853c637b714", "rc": 0, "start_s": 156.0637671649456, "seconds": 88.02069351449609, "peak_rss_gib": 17.772377014160156, "timeout": false}
+{"t": "07:12:13", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_07f79bc1e23f0be10f30", "running": 4, "pending": 10, "mem_available_gib": 232.7, "reserved_gib": 13.2}
+{"t": "07:12:13", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_0c5bbeaf8a014e285b06", "rc": 0, "start_s": 162.06735413521528, "seconds": 82.02016071788967, "peak_rss_gib": 15.021488189697266, "timeout": false}
+{"t": "07:12:13", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_40755aa16d95f5ca7147", "rc": 0, "start_s": 170.07220187596977, "seconds": 74.01584271900356, "peak_rss_gib": 12.311092376708984, "timeout": false}
+{"t": "07:12:19", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_64cd5ee30a0dacf44761", "running": 3, "pending": 9, "mem_available_gib": 225.5, "reserved_gib": 1.4}
+{"t": "07:12:25", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_cdde2f51c4e1127f5a05", "running": 4, "pending": 8, "mem_available_gib": 228.1, "reserved_gib": 8.0}
+{"t": "07:12:29", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_64cd5ee30a0dacf44761", "rc": 0, "start_s": 250.0949997678399, "seconds": 10.008949059993029, "peak_rss_gib": 3.4212989807128906, "timeout": false}
+{"t": "07:12:31", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_ab3fcff7902a02549a1a", "running": 4, "pending": 7, "mem_available_gib": 217.2, "reserved_gib": 1.3}
+{"t": "07:12:45", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_6c338995b6c8617d4e7e", "rc": 0, "start_s": 206.08025951310992, "seconds": 70.02819616347551, "peak_rss_gib": 12.312358856201172, "timeout": false}
+{"t": "07:12:45", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_4255a6fccad460bae74a", "running": 4, "pending": 6, "mem_available_gib": 219.8, "reserved_gib": 2.6}
+{"t": "07:13:01", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_07f79bc1e23f0be10f30", "rc": 0, "start_s": 244.08701015636325, "seconds": 48.02703996375203, "peak_rss_gib": 8.45272445678711, "timeout": false}
+{"t": "07:13:01", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_013fb22c61457d2a5ffb", "running": 4, "pending": 5, "mem_available_gib": 202.6, "reserved_gib": 2.1}
+{"t": "07:13:53", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_ab3fcff7902a02549a1a", "rc": 0, "start_s": 262.10682492516935, "seconds": 82.01554709486663, "peak_rss_gib": 16.0147705078125, "timeout": false}
+{"t": "07:13:53", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_85878102c0d4ba244048", "running": 4, "pending": 4, "mem_available_gib": 223.0, "reserved_gib": 3.0}
+{"t": "07:13:59", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_cdde2f51c4e1127f5a05", "rc": 0, "start_s": 256.1026469487697, "seconds": 94.02516902424395, "peak_rss_gib": 17.80517578125, "timeout": false}
+{"t": "07:13:59", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_60676449f4c87030143b", "running": 4, "pending": 3, "mem_available_gib": 222.4, "reserved_gib": 2.5}
+{"t": "07:14:03", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_4255a6fccad460bae74a", "rc": 0, "start_s": 276.11190443113446, "seconds": 78.02078778482974, "peak_rss_gib": 13.077884674072266, "timeout": false}
+{"t": "07:14:05", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_ec323f07eb181c21815d", "running": 4, "pending": 2, "mem_available_gib": 223.2, "reserved_gib": 5.4}
+{"t": "07:14:15", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_013fb22c61457d2a5ffb", "rc": 0, "start_s": 292.1172113958746, "seconds": 74.02165450900793, "peak_rss_gib": 12.170124053955078, "timeout": false}
+{"t": "07:14:15", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_ae5b74e100cde23c0f9c", "running": 4, "pending": 1, "mem_available_gib": 219.1, "reserved_gib": 2.5}
+{"t": "07:14:23", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_85878102c0d4ba244048", "rc": 0, "start_s": 344.12596589140594, "seconds": 30.01831098459661, "peak_rss_gib": 6.523063659667969, "timeout": false}
+{"t": "07:14:23", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_f8dfd3d800c8193c477d", "running": 4, "pending": 0, "mem_available_gib": 217.0, "reserved_gib": 0.0}
+{"t": "07:14:33", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_f8dfd3d800c8193c477d", "rc": 0, "start_s": 374.1467970609665, "seconds": 10.001782849431038, "peak_rss_gib": 3.3581085205078125, "timeout": false}
+{"t": "07:15:09", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_ae5b74e100cde23c0f9c", "rc": 0, "start_s": 366.14238264784217, "seconds": 54.00931116193533, "peak_rss_gib": 10.276496887207031, "timeout": false}
+{"t": "07:15:25", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_60676449f4c87030143b", "rc": 0, "start_s": 350.13112990371883, "seconds": 86.02284571900964, "peak_rss_gib": 17.299755096435547, "timeout": false}
+{"t": "07:15:27", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_ec323f07eb181c21815d", "rc": 0, "start_s": 356.13700655288994, "seconds": 82.01749600283802, "peak_rss_gib": 16.045528411865234, "timeout": false}
+{"t": "07:15:28", "event": "JOB_START", "phase": "T", "job": "T_cec064aa78bb289e934b", "running": 1, "pending": 23, "mem_available_gib": 236.9, "reserved_gib": 0.0}
+{"t": "07:16:28", "event": "JOB_START", "phase": "T", "job": "T_59a7c0d7c0c44a519678", "running": 2, "pending": 22, "mem_available_gib": 232.1, "reserved_gib": 43.0}
+{"t": "07:20:02", "event": "JOB_END", "phase": "T", "job": "T_cec064aa78bb289e934b", "rc": 0, "start_s": 0.0006024874746799469, "seconds": 274.08615142665803, "peak_rss_gib": 40.0836296081543, "timeout": false}
+{"t": "07:20:02", "event": "JOB_START", "phase": "T", "job": "T_a597adf5bed2f80211ac", "running": 2, "pending": 21, "mem_available_gib": 201.9, "reserved_gib": 12.8}
+{"t": "07:20:40", "event": "JOB_END", "phase": "T", "job": "T_59a7c0d7c0c44a519678", "rc": 0, "start_s": 60.06625955179334, "seconds": 252.0269835293293, "peak_rss_gib": 37.17816925048828, "timeout": false}
+{"t": "07:21:02", "event": "JOB_START", "phase": "T", "job": "T_6e5078b71da1a250a81b", "running": 2, "pending": 20, "mem_available_gib": 232.5, "reserved_gib": 43.3}
+{"t": "07:22:58", "event": "JOB_END", "phase": "T", "job": "T_6e5078b71da1a250a81b", "rc": 0, "start_s": 334.1154188401997, "seconds": 116.01078670658171, "peak_rss_gib": 17.193824768066406, "timeout": false}
+{"t": "07:22:58", "event": "JOB_START", "phase": "T", "job": "T_1070cbe23d60630fba77", "running": 2, "pending": 19, "mem_available_gib": 234.3, "reserved_gib": 45.1}
+{"t": "07:23:00", "event": "JOB_END", "phase": "T", "job": "T_a597adf5bed2f80211ac", "rc": 0, "start_s": 274.08911263383925, "seconds": 178.04122794605792, "peak_rss_gib": 26.947559356689453, "timeout": false}
+{"t": "07:23:58", "event": "JOB_START", "phase": "T", "job": "T_cf2624c54af742d6665b", "running": 2, "pending": 18, "mem_available_gib": 231.3, "reserved_gib": 42.1}
+{"t": "07:24:48", "event": "JOB_END", "phase": "T", "job": "T_1070cbe23d60630fba77", "rc": 0, "start_s": 450.12927405908704, "seconds": 110.06123081408441, "peak_rss_gib": 17.292499542236328, "timeout": false}
+{"t": "07:24:58", "event": "JOB_START", "phase": "T", "job": "T_80ecacd865a304a77942", "running": 2, "pending": 17, "mem_available_gib": 232.5, "reserved_gib": 43.5}
+{"t": "07:25:52", "event": "JOB_END", "phase": "T", "job": "T_cf2624c54af742d6665b", "rc": 0, "start_s": 510.1852521430701, "seconds": 114.02376330085099, "peak_rss_gib": 17.317520141601562, "timeout": false}
+{"t": "07:25:58", "event": "JOB_START", "phase": "T", "job": "T_b3879af12d7630b1d2a8", "running": 2, "pending": 16, "mem_available_gib": 232.4, "reserved_gib": 43.2}
+{"t": "07:26:44", "event": "JOB_END", "phase": "T", "job": "T_b3879af12d7630b1d2a8", "rc": 0, "start_s": 630.2172599490732, "seconds": 46.00494475476444, "peak_rss_gib": 7.395732879638672, "timeout": false}
+{"t": "07:26:52", "event": "JOB_END", "phase": "T", "job": "T_80ecacd865a304a77942", "rc": 0, "start_s": 570.2031198721379, "seconds": 114.02785095199943, "peak_rss_gib": 16.822566986083984, "timeout": false}
+{"t": "07:26:52", "event": "JOB_START", "phase": "T", "job": "T_8750c5a47e5da2adcaf6", "running": 1, "pending": 15, "mem_available_gib": 236.9, "reserved_gib": 0.0}
+{"t": "07:27:52", "event": "JOB_START", "phase": "T", "job": "T_66f3fa6f6853c637b714", "running": 2, "pending": 14, "mem_available_gib": 231.4, "reserved_gib": 42.2}
+{"t": "07:31:12", "event": "JOB_END", "phase": "T", "job": "T_8750c5a47e5da2adcaf6", "rc": 0, "start_s": 684.2324095312506, "seconds": 260.07257407717407, "peak_rss_gib": 39.21425247192383, "timeout": false}
+{"t": "07:31:12", "event": "JOB_START", "phase": "T", "job": "T_0c5bbeaf8a014e285b06", "running": 2, "pending": 13, "mem_available_gib": 209.1, "reserved_gib": 19.9}
+{"t": "07:31:40", "event": "JOB_END", "phase": "T", "job": "T_66f3fa6f6853c637b714", "rc": 0, "start_s": 744.2862585838884, "seconds": 228.02543324790895, "peak_rss_gib": 32.7186279296875, "timeout": false}
+{"t": "07:32:12", "event": "JOB_START", "phase": "T", "job": "T_40755aa16d95f5ca7147", "running": 2, "pending": 12, "mem_available_gib": 231.8, "reserved_gib": 42.7}
+{"t": "07:33:46", "event": "JOB_END", "phase": "T", "job": "T_0c5bbeaf8a014e285b06", "rc": 0, "start_s": 944.3083411734551, "seconds": 154.04618114233017, "peak_rss_gib": 22.509212493896484, "timeout": false}
+{"t": "07:33:46", "event": "JOB_START", "phase": "T", "job": "T_6c338995b6c8617d4e7e", "running": 2, "pending": 11, "mem_available_gib": 225.4, "reserved_gib": 36.2}
+{"t": "07:34:04", "event": "JOB_END", "phase": "T", "job": "T_40755aa16d95f5ca7147", "rc": 0, "start_s": 1004.3454565964639, "seconds": 112.01401885226369, "peak_rss_gib": 17.268218994140625, "timeout": false}
+{"t": "07:34:46", "event": "JOB_START", "phase": "T", "job": "T_07f79bc1e23f0be10f30", "running": 2, "pending": 10, "mem_available_gib": 232.8, "reserved_gib": 43.7}
+{"t": "07:35:34", "event": "JOB_END", "phase": "T", "job": "T_6c338995b6c8617d4e7e", "rc": 0, "start_s": 1098.3573541715741, "seconds": 108.04588376916945, "peak_rss_gib": 17.323322296142578, "timeout": false}
+{"t": "07:35:46", "event": "JOB_START", "phase": "T", "job": "T_64cd5ee30a0dacf44761", "running": 2, "pending": 9, "mem_available_gib": 231.6, "reserved_gib": 42.4}
+{"t": "07:36:00", "event": "JOB_END", "phase": "T", "job": "T_64cd5ee30a0dacf44761", "rc": 0, "start_s": 1218.4176322165877, "seconds": 14.002112064510584, "peak_rss_gib": 3.3134193420410156, "timeout": false}
+{"t": "07:36:04", "event": "JOB_END", "phase": "T", "job": "T_07f79bc1e23f0be10f30", "rc": 0, "start_s": 1158.3987677451223, "seconds": 78.02546431310475, "peak_rss_gib": 12.46087646484375, "timeout": false}
+{"t": "07:36:04", "event": "JOB_START", "phase": "T", "job": "T_cdde2f51c4e1127f5a05", "running": 1, "pending": 8, "mem_available_gib": 236.9, "reserved_gib": 0.0}
+{"t": "07:37:04", "event": "JOB_START", "phase": "T", "job": "T_ab3fcff7902a02549a1a", "running": 2, "pending": 7, "mem_available_gib": 231.5, "reserved_gib": 42.5}
+{"t": "07:39:44", "event": "JOB_END", "phase": "T", "job": "T_cdde2f51c4e1127f5a05", "rc": 0, "start_s": 1236.4256169330329, "seconds": 220.07188753969967, "peak_rss_gib": 32.91529083251953, "timeout": false}
+{"t": "07:39:44", "event": "JOB_START", "phase": "T", "job": "T_4255a6fccad460bae74a", "running": 2, "pending": 6, "mem_available_gib": 229.9, "reserved_gib": 40.8}
+{"t": "07:39:46", "event": "JOB_END", "phase": "T", "job": "T_ab3fcff7902a02549a1a", "rc": 0, "start_s": 1296.482911027968, "seconds": 162.01781099662185, "peak_rss_gib": 24.93608856201172, "timeout": false}
+{"t": "07:40:44", "event": "JOB_START", "phase": "T", "job": "T_013fb22c61457d2a5ffb", "running": 2, "pending": 5, "mem_available_gib": 232.1, "reserved_gib": 43.0}
+{"t": "07:41:42", "event": "JOB_END", "phase": "T", "job": "T_4255a6fccad460bae74a", "rc": 0, "start_s": 1456.4997101910412, "seconds": 118.05830996111035, "peak_rss_gib": 18.504703521728516, "timeout": false}
+{"t": "07:41:44", "event": "JOB_START", "phase": "T", "job": "T_85878102c0d4ba244048", "running": 2, "pending": 4, "mem_available_gib": 233.2, "reserved_gib": 44.1}
+{"t": "07:42:28", "event": "JOB_END", "phase": "T", "job": "T_85878102c0d4ba244048", "rc": 0, "start_s": 1576.56422752887, "seconds": 44.00471415184438, "peak_rss_gib": 7.397228240966797, "timeout": false}
+{"t": "07:42:34", "event": "JOB_END", "phase": "T", "job": "T_013fb22c61457d2a5ffb", "rc": 0, "start_s": 1516.5519774649292, "seconds": 110.02407607063651, "peak_rss_gib": 16.808231353759766, "timeout": false}
+{"t": "07:42:34", "event": "JOB_START", "phase": "T", "job": "T_60676449f4c87030143b", "running": 1, "pending": 3, "mem_available_gib": 236.9, "reserved_gib": 0.0}
+{"t": "07:43:34", "event": "JOB_START", "phase": "T", "job": "T_ec323f07eb181c21815d", "running": 2, "pending": 2, "mem_available_gib": 231.9, "reserved_gib": 42.7}
+{"t": "07:45:38", "event": "JOB_END", "phase": "T", "job": "T_60676449f4c87030143b", "rc": 0, "start_s": 1626.577504929155, "seconds": 184.07686744071543, "peak_rss_gib": 28.763919830322266, "timeout": false}
+{"t": "07:45:38", "event": "JOB_START", "phase": "T", "job": "T_ae5b74e100cde23c0f9c", "running": 2, "pending": 1, "mem_available_gib": 224.4, "reserved_gib": 35.3}
+{"t": "07:46:18", "event": "JOB_END", "phase": "T", "job": "T_ec323f07eb181c21815d", "rc": 0, "start_s": 1686.643398264423, "seconds": 164.01880057156086, "peak_rss_gib": 24.682453155517578, "timeout": false}
+{"t": "07:46:38", "event": "JOB_START", "phase": "T", "job": "T_f8dfd3d800c8193c477d", "running": 2, "pending": 0, "mem_available_gib": 222.7, "reserved_gib": 33.5}
+{"t": "07:46:52", "event": "JOB_END", "phase": "T", "job": "T_f8dfd3d800c8193c477d", "rc": 0, "start_s": 1870.6833521518856, "seconds": 14.002271005883813, "peak_rss_gib": 3.3213577270507812, "timeout": false}
+{"t": "07:47:16", "event": "JOB_END", "phase": "T", "job": "T_ae5b74e100cde23c0f9c", "rc": 0, "start_s": 1810.658061567694, "seconds": 98.029670920223, "peak_rss_gib": 16.649089813232422, "timeout": false}
+{"t": "07:50:34", "event": "SOLVED", "design": "hevalH_z_k000", "C_exact": 1342.2988014268174, "C_hat": 1341.7836990701646, "pcg": 405, "true_residual": 1.8772722424957014e-10, "energy_sum_rel": 1.431356085137696e-12, "times": {"setup_s": 0.6156618408858776, "precond_s": 5.871798578649759, "pcg_s": 160.2898624818772, "post_s": 0.5699740424752235, "solve_s": 160.85983652435243}}
+{"t": "07:50:35", "event": "DELETE_T", "fp": "cec064aa78bb289e934b", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_000_o000_portview/T64.npy"}
+{"t": "07:50:35", "event": "DELETE_T", "fp": "59a7c0d7c0c44a519678", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_010_o000_portview/T64.npy"}
+{"t": "07:50:35", "event": "DELETE_T", "fp": "a597adf5bed2f80211ac", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_020_o000_portview/T64.npy"}
+{"t": "07:50:35", "event": "DELETE_T", "fp": "6e5078b71da1a250a81b", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_030_o000_portview/T64.npy"}
+{"t": "07:50:36", "event": "DELETE_T", "fp": "1070cbe23d60630fba77", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_040_o000_portview/T64.npy"}
+{"t": "07:50:36", "event": "DELETE_T", "fp": "cf2624c54af742d6665b", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_050_o000_portview/T64.npy"}
+{"t": "07:50:36", "event": "DELETE_T", "fp": "80ecacd865a304a77942", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_060_o000_portview/T64.npy"}
+{"t": "07:50:36", "event": "DELETE_T", "fp": "b3879af12d7630b1d2a8", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_070_o000_portview/T64.npy"}
+{"t": "07:50:36", "event": "DELETE_T", "fp": "8750c5a47e5da2adcaf6", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_100_o000_portview/T64.npy"}
+{"t": "07:50:37", "event": "DELETE_T", "fp": "66f3fa6f6853c637b714", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_110_o000_portview/T64.npy"}
+{"t": "07:50:37", "event": "DELETE_T", "fp": "0c5bbeaf8a014e285b06", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_120_o000_portview/T64.npy"}
+{"t": "07:50:37", "event": "DELETE_T", "fp": "40755aa16d95f5ca7147", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_130_o000_portview/T64.npy"}
+{"t": "07:50:37", "event": "DELETE_T", "fp": "6c338995b6c8617d4e7e", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_140_o000_portview/T64.npy"}
+{"t": "07:50:37", "event": "DELETE_T", "fp": "07f79bc1e23f0be10f30", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_150_o000_portview/T64.npy"}
+{"t": "07:50:37", "event": "DELETE_T", "fp": "64cd5ee30a0dacf44761", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_160_o000_portview/T64.npy"}
+{"t": "07:50:38", "event": "DELETE_T", "fp": "cdde2f51c4e1127f5a05", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_200_o000_portview/T64.npy"}
+{"t": "07:50:38", "event": "DELETE_T", "fp": "ab3fcff7902a02549a1a", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_210_o000_portview/T64.npy"}
+{"t": "07:50:38", "event": "DELETE_T", "fp": "4255a6fccad460bae74a", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_220_o000_portview/T64.npy"}
+{"t": "07:50:38", "event": "DELETE_T", "fp": "013fb22c61457d2a5ffb", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_230_o000_portview/T64.npy"}
+{"t": "07:50:38", "event": "DELETE_T", "fp": "85878102c0d4ba244048", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_240_o000_portview/T64.npy"}
+{"t": "07:50:38", "event": "DELETE_T", "fp": "60676449f4c87030143b", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_300_o000_portview/T64.npy"}
+{"t": "07:50:39", "event": "DELETE_T", "fp": "ec323f07eb181c21815d", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_310_o000_portview/T64.npy"}
+{"t": "07:50:39", "event": "DELETE_T", "fp": "ae5b74e100cde23c0f9c", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_320_o000_portview/T64.npy"}
+{"t": "07:50:39", "event": "DELETE_T", "fp": "f8dfd3d800c8193c477d", "path": "/root/autodl-tmp/xc/plates_exact/runs/hevalH_z/body/plate841_330_o000_portview/T64.npy"}
+{"t": "07:50:39", "k": 0, "C_exact": 1342.2988014268174, "C_hat": 1341.7836990701646, "surrogate_err": -0.00038374641779102895, "grad_rel_err": null, "grad_cos": null, "comp_err_rel_to_max": null, "sign_agreement": null, "kkt_exact": null, "kkt_lambda": null, "exact_pcg": 405, "exact_true_residual": 1.8772722424957014e-10, "times": {"make_T_s": 1908.766152376309, "make_T_new": 24, "cellinfo_s": 438.6369335372001, "load_T_s": 27.582041461020708, "setup_s": 0.6156618408858776, "precond_s": 5.871798578649759, "solve_s": 160.85983652435243, "sens_s": null}}
+{"t": "07:50:39", "event": "DESIGN_DONE", "design": "hevalH_z_k000", "seconds": 2550.0390831213444}
+{"t": "07:50:39", "event": "DESIGN", "design": "xstartH_z_k011", "cells": 24, "distinct": 24, "cfg": {"clamp": ["x", "min"], "load": ["x", "max"], "load_dir": "z", "tmin": 0.18, "tmax": 0.69, "max_cols": 16, "prec": "bnn:kpp:q1r", "nice_tol": 1e-06, "sens_route_of_run": "ad"}, "old_mode": null, "solve_pending": true, "sens_pending": false, "t_needed": true, "ci_needed": true}
+{"t": "07:50:39", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_688ba5f7f4a2cdba1e4e", "running": 1, "pending": 23, "mem_available_gib": 236.0, "reserved_gib": 0.0}
+{"t": "07:50:45", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_c576b103943aa83d0b8e", "running": 2, "pending": 22, "mem_available_gib": 227.6, "reserved_gib": 0.0}
+{"t": "07:50:51", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_9f99f5cdd9558d707d14", "running": 3, "pending": 21, "mem_available_gib": 222.5, "reserved_gib": 0.4}
+{"t": "07:50:57", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_c3df229bd1771af67aaa", "running": 4, "pending": 20, "mem_available_gib": 217.7, "reserved_gib": 1.0}
+{"t": "07:52:01", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_688ba5f7f4a2cdba1e4e", "rc": 0, "start_s": 0.00067877396941185, "seconds": 82.03146591037512, "peak_rss_gib": 17.443416595458984, "timeout": false}
+{"t": "07:52:01", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_d4b2a3ea6b02b51cca93", "running": 4, "pending": 19, "mem_available_gib": 221.8, "reserved_gib": 2.9}
+{"t": "07:52:11", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_c576b103943aa83d0b8e", "rc": 0, "start_s": 6.008777497336268, "seconds": 86.02854550816119, "peak_rss_gib": 17.80614471435547, "timeout": false}
+{"t": "07:52:11", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_f025c48251c4e9f856df", "running": 4, "pending": 18, "mem_available_gib": 218.7, "reserved_gib": 2.6}
+{"t": "07:52:17", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_c3df229bd1771af67aaa", "rc": 0, "start_s": 18.026032714173198, "seconds": 80.015411330387, "peak_rss_gib": 12.31201171875, "timeout": false}
+{"t": "07:52:17", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_a946327a22de3f314744", "running": 4, "pending": 17, "mem_available_gib": 221.0, "reserved_gib": 4.0}
+{"t": "07:52:21", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_9f99f5cdd9558d707d14", "rc": 0, "start_s": 12.016785314306617, "seconds": 90.03023905865848, "peak_rss_gib": 16.180313110351562, "timeout": false}
+{"t": "07:52:23", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_0e391af3a8f4a763cc2b", "running": 4, "pending": 16, "mem_available_gib": 212.3, "reserved_gib": 0.0}
+{"t": "07:52:53", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_0e391af3a8f4a763cc2b", "rc": 0, "start_s": 104.0537344776094, "seconds": 30.003617959097028, "peak_rss_gib": 6.5232391357421875, "timeout": false}
+{"t": "07:52:53", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_b3f666a38d2fe2a19eaa", "running": 4, "pending": 15, "mem_available_gib": 221.7, "reserved_gib": 2.9}
+{"t": "07:53:17", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_d4b2a3ea6b02b51cca93", "rc": 0, "start_s": 82.03519600629807, "seconds": 76.02807777933776, "peak_rss_gib": 12.312702178955078, "timeout": false}
+{"t": "07:53:17", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_24dffc18ffc896e7a05c", "running": 4, "pending": 14, "mem_available_gib": 223.4, "reserved_gib": 4.6}
+{"t": "07:53:23", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_f025c48251c4e9f856df", "rc": 0, "start_s": 92.03987475670874, "seconds": 72.02818744443357, "peak_rss_gib": 12.311775207519531, "timeout": false}
+{"t": "07:53:23", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_5b10606ddeef72fe0b5c", "running": 4, "pending": 13, "mem_available_gib": 211.4, "reserved_gib": 3.3}
+{"t": "07:53:27", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_a946327a22de3f314744", "rc": 0, "start_s": 98.04561210423708, "seconds": 70.02709732204676, "peak_rss_gib": 12.164196014404297, "timeout": false}
+{"t": "07:53:29", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_5d64ba69c9e2a04858cc", "running": 4, "pending": 12, "mem_available_gib": 203.7, "reserved_gib": 0.0}
+{"t": "07:54:17", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_b3f666a38d2fe2a19eaa", "rc": 0, "start_s": 134.06007761508226, "seconds": 84.02227940969169, "peak_rss_gib": 17.401065826416016, "timeout": false}
+{"t": "07:54:17", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_eada981d010af1bfa534", "running": 4, "pending": 11, "mem_available_gib": 221.4, "reserved_gib": 2.6}
+{"t": "07:54:43", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_24dffc18ffc896e7a05c", "rc": 0, "start_s": 158.06637535616755, "seconds": 86.02626640535891, "peak_rss_gib": 17.688472747802734, "timeout": false}
+{"t": "07:54:43", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_bafee3ba3fcfc2c22615", "running": 4, "pending": 10, "mem_available_gib": 217.1, "reserved_gib": 2.3}
+{"t": "07:54:49", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_5b10606ddeef72fe0b5c", "rc": 0, "start_s": 164.0714102163911, "seconds": 86.0247511677444, "peak_rss_gib": 14.682422637939453, "timeout": false}
+{"t": "07:54:49", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_0af0fd2f9b381222de42", "running": 4, "pending": 9, "mem_available_gib": 221.1, "reserved_gib": 3.9}
+{"t": "07:54:53", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_5d64ba69c9e2a04858cc", "rc": 0, "start_s": 170.07711823098361, "seconds": 84.02411490865052, "peak_rss_gib": 12.312728881835938, "timeout": false}
+{"t": "07:54:55", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_d17281ad52434d460441", "running": 4, "pending": 8, "mem_available_gib": 222.0, "reserved_gib": 4.7}
+{"t": "07:54:59", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_0af0fd2f9b381222de42", "rc": 0, "start_s": 250.09991928003728, "seconds": 10.005438107997179, "peak_rss_gib": 3.402385711669922, "timeout": false}
+{"t": "07:55:01", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_01cf3f0dbe9edb8826ac", "running": 4, "pending": 7, "mem_available_gib": 221.7, "reserved_gib": 5.2}
+{"t": "07:55:31", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_bafee3ba3fcfc2c22615", "rc": 0, "start_s": 244.09498485922813, "seconds": 48.02381129749119, "peak_rss_gib": 8.455223083496094, "timeout": false}
+{"t": "07:55:31", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_d04f80e7631556f7ea2d", "running": 4, "pending": 6, "mem_available_gib": 201.3, "reserved_gib": 1.5}
+{"t": "07:55:35", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_eada981d010af1bfa534", "rc": 0, "start_s": 218.0884877629578, "seconds": 78.03473939746618, "peak_rss_gib": 12.312004089355469, "timeout": false}
+{"t": "07:55:37", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_3f752e8d30b7199fef8c", "running": 4, "pending": 5, "mem_available_gib": 208.2, "reserved_gib": 0.5}
+{"t": "07:56:21", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_d17281ad52434d460441", "rc": 0, "start_s": 256.1045148167759, "seconds": 86.02709444798529, "peak_rss_gib": 17.899967193603516, "timeout": false}
+{"t": "07:56:21", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_ae3b4b3142b06ff116ce", "running": 4, "pending": 4, "mem_available_gib": 222.9, "reserved_gib": 3.0}
+{"t": "07:56:29", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_01cf3f0dbe9edb8826ac", "rc": 0, "start_s": 262.11354460939765, "seconds": 88.07878105342388, "peak_rss_gib": 16.019542694091797, "timeout": false}
+{"t": "07:56:29", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_25c56eea4335d176108b", "running": 4, "pending": 3, "mem_available_gib": 222.3, "reserved_gib": 3.4}
+{"t": "07:56:49", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_3f752e8d30b7199fef8c", "rc": 0, "start_s": 298.1274442188442, "seconds": 72.07152261212468, "peak_rss_gib": 12.180320739746094, "timeout": false}
+{"t": "07:56:49", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_7ceaaa621c33f113d41f", "running": 4, "pending": 2, "mem_available_gib": 224.4, "reserved_gib": 8.6}
+{"t": "07:56:49", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_ae3b4b3142b06ff116ce", "rc": 0, "start_s": 342.18988535553217, "seconds": 28.01343402080238, "peak_rss_gib": 6.523349761962891, "timeout": false}
+{"t": "07:56:51", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_d04f80e7631556f7ea2d", "rc": 0, "start_s": 292.1217737644911, "seconds": 80.08452458307147, "peak_rss_gib": 13.084217071533203, "timeout": false}
+{"t": "07:56:55", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_3dbca0b7f1e2ce6778ee", "running": 3, "pending": 1, "mem_available_gib": 213.1, "reserved_gib": 0.0}
+{"t": "07:57:01", "event": "JOB_START", "phase": "cellinfo", "job": "cellinfo_3c8e617806a183cd18ce", "running": 4, "pending": 0, "mem_available_gib": 208.4, "reserved_gib": 1.0}
+{"t": "07:57:11", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_3c8e617806a183cd18ce", "rc": 0, "start_s": 382.21712044626474, "seconds": 10.00140817090869, "peak_rss_gib": 3.3678970336914062, "timeout": false}
+{"t": "07:57:49", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_3dbca0b7f1e2ce6778ee", "rc": 0, "start_s": 376.2108280286193, "seconds": 54.01124259643257, "peak_rss_gib": 10.276134490966797, "timeout": false}
+{"t": "07:57:55", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_25c56eea4335d176108b", "rc": 0, "start_s": 350.19599997252226, "seconds": 86.02700771205127, "peak_rss_gib": 17.528995513916016, "timeout": false}
+{"t": "07:58:09", "event": "JOB_END", "phase": "cellinfo", "job": "cellinfo_7ceaaa621c33f113d41f", "rc": 0, "start_s": 370.2022977452725, "seconds": 80.02233053185046, "peak_rss_gib": 16.048686981201172, "timeout": false}
+{"t": "07:58:10", "event": "JOB_START", "phase": "T", "job": "T_688ba5f7f4a2cdba1e4e", "running": 1, "pending": 23, "mem_available_gib": 236.0, "reserved_gib": 0.0}
+{"t": "07:59:10", "event": "JOB_START", "phase": "T", "job": "T_c576b103943aa83d0b8e", "running": 2, "pending": 22, "mem_available_gib": 231.0, "reserved_gib": 42.7}
+{"t": "08:02:44", "event": "JOB_END", "phase": "T", "job": "T_688ba5f7f4a2cdba1e4e", "rc": 0, "start_s": 0.0006158016622066498, "seconds": 274.08774989657104, "peak_rss_gib": 40.07939529418945, "timeout": false}
+{"t": "08:02:44", "event": "JOB_START", "phase": "T", "job": "T_9f99f5cdd9558d707d14", "running": 2, "pending": 21, "mem_available_gib": 200.6, "reserved_gib": 12.2}
+{"t": "08:03:20", "event": "JOB_END", "phase": "T", "job": "T_c576b103943aa83d0b8e", "rc": 0, "start_s": 60.0648330450058, "seconds": 250.03123990818858, "peak_rss_gib": 36.32787322998047, "timeout": false}
+{"t": "08:03:44", "event": "JOB_START", "phase": "T", "job": "T_c3df229bd1771af67aaa", "running": 2, "pending": 20, "mem_available_gib": 231.3, "reserved_gib": 43.0}
+{"t": "08:05:34", "event": "JOB_END", "phase": "T", "job": "T_c3df229bd1771af67aaa", "rc": 0, "start_s": 334.11861975863576, "seconds": 110.01080941967666, "peak_rss_gib": 17.15750503540039, "timeout": false}
+{"t": "08:05:34", "event": "JOB_START", "phase": "T", "job": "T_d4b2a3ea6b02b51cca93", "running": 2, "pending": 19, "mem_available_gib": 228.9, "reserved_gib": 40.6}
+{"t": "08:05:36", "event": "JOB_END", "phase": "T", "job": "T_9f99f5cdd9558d707d14", "rc": 0, "start_s": 274.09109701775014, "seconds": 172.0417057517916, "peak_rss_gib": 25.85037612915039, "timeout": false}
+{"t": "08:06:34", "event": "JOB_START", "phase": "T", "job": "T_f025c48251c4e9f856df", "running": 2, "pending": 18, "mem_available_gib": 226.5, "reserved_gib": 38.2}
+{"t": "08:07:18", "event": "JOB_END", "phase": "T", "job": "T_d4b2a3ea6b02b51cca93", "rc": 0, "start_s": 444.1316683795303, "seconds": 104.06064653582871, "peak_rss_gib": 17.42211151123047, "timeout": false}
+{"t": "08:07:34", "event": "JOB_START", "phase": "T", "job": "T_a946327a22de3f314744", "running": 2, "pending": 17, "mem_available_gib": 232.1, "reserved_gib": 43.7}
+{"t": "08:08:32", "event": "JOB_END", "phase": "T", "job": "T_f025c48251c4e9f856df", "rc": 0, "start_s": 504.18770854361355, "seconds": 118.03041404858232, "peak_rss_gib": 17.189208984375, "timeout": false}
+{"t": "08:08:34", "event": "JOB_START", "phase": "T", "job": "T_0e391af3a8f4a763cc2b", "running": 2, "pending": 16, "mem_available_gib": 231.6, "reserved_gib": 43.3}
+{"t": "08:09:20", "event": "JOB_END", "phase": "T", "job": "T_0e391af3a8f4a763cc2b", "rc": 0, "start_s": 624.2228129282594, "seconds": 46.005253141745925, "peak_rss_gib": 7.4043121337890625, "timeout": false}
+{"t": "08:09:30", "event": "JOB_END", "phase": "T", "job": "T_a946327a22de3f314744", "rc": 0, "start_s": 564.2126148212701, "seconds": 116.0249649733305, "peak_rss_gib": 16.920146942138672, "timeout": false}
+{"t": "08:09:30", "event": "JOB_START", "phase": "T", "job": "T_b3f666a38d2fe2a19eaa", "running": 1, "pending": 15, "mem_available_gib": 236.0, "reserved_gib": 0.0}
+{"t": "08:10:30", "event": "JOB_START", "phase": "T", "job": "T_24dffc18ffc896e7a05c", "running": 2, "pending": 14, "mem_available_gib": 230.5, "reserved_gib": 42.2}
+{"t": "08:13:58", "event": "JOB_END", "phase": "T", "job": "T_24dffc18ffc896e7a05c", "rc": 0, "start_s": 740.3044929951429, "seconds": 208.02185897901654, "peak_rss_gib": 31.78323745727539, "timeout": false}
+{"t": "08:13:58", "event": "JOB_START", "phase": "T", "job": "T_5b10606ddeef72fe0b5c", "running": 2, "pending": 13, "mem_available_gib": 200.9, "reserved_gib": 12.6}
+{"t": "08:14:06", "event": "JOB_END", "phase": "T", "job": "T_b3f666a38d2fe2a19eaa", "rc": 0, "start_s": 680.2390040867031, "seconds": 276.0918106790632, "peak_rss_gib": 39.3819694519043, "timeout": false}
+{"t": "08:14:58", "event": "JOB_START", "phase": "T", "job": "T_5d64ba69c9e2a04858cc", "running": 2, "pending": 12, "mem_available_gib": 231.0, "reserved_gib": 42.7}
+{"t": "08:16:08", "event": "JOB_END", "phase": "T", "job": "T_5b10606ddeef72fe0b5c", "rc": 0, "start_s": 948.3294327706099, "seconds": 130.0675401929766, "peak_rss_gib": 21.629440307617188, "timeout": false}
+{"t": "08:16:08", "event": "JOB_START", "phase": "T", "job": "T_eada981d010af1bfa534", "running": 2, "pending": 11, "mem_available_gib": 225.1, "reserved_gib": 36.8}
+{"t": "08:16:50", "event": "JOB_END", "phase": "T", "job": "T_5d64ba69c9e2a04858cc", "rc": 0, "start_s": 1008.3894553892314, "seconds": 112.01590526476502, "peak_rss_gib": 17.161319732666016, "timeout": false}
+{"t": "08:17:08", "event": "JOB_START", "phase": "T", "job": "T_bafee3ba3fcfc2c22615", "running": 2, "pending": 10, "mem_available_gib": 231.3, "reserved_gib": 43.0}
+{"t": "08:18:02", "event": "JOB_END", "phase": "T", "job": "T_eada981d010af1bfa534", "rc": 0, "start_s": 1078.4005605299026, "seconds": 114.02947088330984, "peak_rss_gib": 17.251636505126953, "timeout": false}
+{"t": "08:18:08", "event": "JOB_START", "phase": "T", "job": "T_0af0fd2f9b381222de42", "running": 2, "pending": 9, "mem_available_gib": 231.0, "reserved_gib": 42.6}
+{"t": "08:18:20", "event": "JOB_END", "phase": "T", "job": "T_0af0fd2f9b381222de42", "rc": 0, "start_s": 1198.4386826865375, "seconds": 12.002031106501818, "peak_rss_gib": 3.391040802001953, "timeout": false}
+{"t": "08:18:28", "event": "JOB_END", "phase": "T", "job": "T_bafee3ba3fcfc2c22615", "rc": 0, "start_s": 1138.4241410456598, "seconds": 80.02809257619083, "peak_rss_gib": 12.354557037353516, "timeout": false}
+{"t": "08:18:28", "event": "JOB_START", "phase": "T", "job": "T_d17281ad52434d460441", "running": 1, "pending": 8, "mem_available_gib": 236.0, "reserved_gib": 0.0}
+{"t": "08:19:28", "event": "JOB_START", "phase": "T", "job": "T_01cf3f0dbe9edb8826ac", "running": 2, "pending": 7, "mem_available_gib": 231.3, "reserved_gib": 43.0}
+{"t": "08:22:06", "event": "JOB_END", "phase": "T", "job": "T_d17281ad52434d460441", "rc": 0, "start_s": 1218.4538495130837, "seconds": 218.0785493645817, "peak_rss_gib": 34.60606384277344, "timeout": false}
+{"t": "08:22:06", "event": "JOB_START", "phase": "T", "job": "T_d04f80e7631556f7ea2d", "running": 2, "pending": 6, "mem_available_gib": 214.3, "reserved_gib": 26.0}
+{"t": "08:22:20", "event": "JOB_END", "phase": "T", "job": "T_01cf3f0dbe9edb8826ac", "rc": 0, "start_s": 1278.517037825659, "seconds": 172.02042743563652, "peak_rss_gib": 25.378036499023438, "timeout": false}
+{"t": "08:23:06", "event": "JOB_START", "phase": "T", "job": "T_3f752e8d30b7199fef8c", "running": 2, "pending": 5, "mem_available_gib": 230.9, "reserved_gib": 42.6}
+{"t": "08:23:58", "event": "JOB_END", "phase": "T", "job": "T_d04f80e7631556f7ea2d", "rc": 0, "start_s": 1436.5354487840086, "seconds": 112.04918112978339, "peak_rss_gib": 18.53131103515625, "timeout": false}
+{"t": "08:24:06", "event": "JOB_START", "phase": "T", "job": "T_ae3b4b3142b06ff116ce", "running": 2, "pending": 4, "mem_available_gib": 225.4, "reserved_gib": 37.1}
+{"t": "08:24:54", "event": "JOB_END", "phase": "T", "job": "T_ae3b4b3142b06ff116ce", "rc": 0, "start_s": 1556.5975936166942, "seconds": 48.00584168545902, "peak_rss_gib": 7.463874816894531, "timeout": false}
+{"t": "08:24:56", "event": "JOB_END", "phase": "T", "job": "T_3f752e8d30b7199fef8c", "rc": 0, "start_s": 1496.5789611991495, "seconds": 110.02742314338684, "peak_rss_gib": 16.917346954345703, "timeout": false}
+{"t": "08:24:56", "event": "JOB_START", "phase": "T", "job": "T_25c56eea4335d176108b", "running": 1, "pending": 3, "mem_available_gib": 236.0, "reserved_gib": 0.0}
+{"t": "08:25:56", "event": "JOB_START", "phase": "T", "job": "T_7ceaaa621c33f113d41f", "running": 2, "pending": 2, "mem_available_gib": 230.9, "reserved_gib": 42.6}
+{"t": "08:28:10", "event": "JOB_END", "phase": "T", "job": "T_25c56eea4335d176108b", "rc": 0, "start_s": 1606.6078452542424, "seconds": 194.07153026759624, "peak_rss_gib": 30.09070587158203, "timeout": false}
+{"t": "08:28:10", "event": "JOB_START", "phase": "T", "job": "T_3dbca0b7f1e2ce6778ee", "running": 2, "pending": 1, "mem_available_gib": 212.5, "reserved_gib": 24.2}
+{"t": "08:28:34", "event": "JOB_END", "phase": "T", "job": "T_7ceaaa621c33f113d41f", "rc": 0, "start_s": 1666.6651350148022, "seconds": 158.02083561569452, "peak_rss_gib": 24.979427337646484, "timeout": false}
+{"t": "08:29:10", "event": "JOB_START", "phase": "T", "job": "T_3c8e617806a183cd18ce", "running": 2, "pending": 0, "mem_available_gib": 228.9, "reserved_gib": 40.5}
+{"t": "08:29:24", "event": "JOB_END", "phase": "T", "job": "T_3c8e617806a183cd18ce", "rc": 0, "start_s": 1860.7252621650696, "seconds": 14.002130756154656, "peak_rss_gib": 3.3464927673339844, "timeout": false}
+{"t": "08:29:44", "event": "JOB_END", "phase": "T", "job": "T_3dbca0b7f1e2ce6778ee", "rc": 0, "start_s": 1800.6825084853917, "seconds": 94.04701099731028, "peak_rss_gib": 16.689453125, "timeout": false}
+{"t": "08:33:05", "event": "SOLVED", "design": "xstartH_z_k011", "C_exact": 1335.1980189595088, "C_hat": 1334.696860429479, "pcg": 399, "true_residual": 1.934148712852427e-10, "energy_sum_rel": 1.5517016211971784e-12, "times": {"setup_s": 0.622190048918128, "precond_s": 5.720843769609928, "pcg_s": 163.33015672303736, "post_s": 0.5800953470170498, "solve_s": 163.9102520700544}}
+{"t": "08:33:05", "event": "DELETE_T", "fp": "688ba5f7f4a2cdba1e4e", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_000_o011_portview/T64.npy"}
+{"t": "08:33:06", "event": "DELETE_T", "fp": "c576b103943aa83d0b8e", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_010_o011_portview/T64.npy"}
+{"t": "08:33:06", "event": "DELETE_T", "fp": "9f99f5cdd9558d707d14", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_020_o011_portview/T64.npy"}
+{"t": "08:33:06", "event": "DELETE_T", "fp": "c3df229bd1771af67aaa", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_030_o011_portview/T64.npy"}
+{"t": "08:33:06", "event": "DELETE_T", "fp": "d4b2a3ea6b02b51cca93", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_040_o011_portview/T64.npy"}
+{"t": "08:33:06", "event": "DELETE_T", "fp": "f025c48251c4e9f856df", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_050_o011_portview/T64.npy"}
+{"t": "08:33:06", "event": "DELETE_T", "fp": "a946327a22de3f314744", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_060_o011_portview/T64.npy"}
+{"t": "08:33:07", "event": "DELETE_T", "fp": "0e391af3a8f4a763cc2b", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_070_o011_portview/T64.npy"}
+{"t": "08:33:07", "event": "DELETE_T", "fp": "b3f666a38d2fe2a19eaa", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_100_o011_portview/T64.npy"}
+{"t": "08:33:07", "event": "DELETE_T", "fp": "24dffc18ffc896e7a05c", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_110_o011_portview/T64.npy"}
+{"t": "08:33:08", "event": "DELETE_T", "fp": "5b10606ddeef72fe0b5c", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_120_o011_portview/T64.npy"}
+{"t": "08:33:08", "event": "DELETE_T", "fp": "5d64ba69c9e2a04858cc", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_130_o011_portview/T64.npy"}
+{"t": "08:33:08", "event": "DELETE_T", "fp": "eada981d010af1bfa534", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_140_o011_portview/T64.npy"}
+{"t": "08:33:08", "event": "DELETE_T", "fp": "bafee3ba3fcfc2c22615", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_150_o011_portview/T64.npy"}
+{"t": "08:33:08", "event": "DELETE_T", "fp": "0af0fd2f9b381222de42", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_160_o011_portview/T64.npy"}
+{"t": "08:33:08", "event": "DELETE_T", "fp": "d17281ad52434d460441", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_200_o011_portview/T64.npy"}
+{"t": "08:33:09", "event": "DELETE_T", "fp": "01cf3f0dbe9edb8826ac", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_210_o011_portview/T64.npy"}
+{"t": "08:33:09", "event": "DELETE_T", "fp": "d04f80e7631556f7ea2d", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_220_o011_portview/T64.npy"}
+{"t": "08:33:09", "event": "DELETE_T", "fp": "3f752e8d30b7199fef8c", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_230_o011_portview/T64.npy"}
+{"t": "08:33:09", "event": "DELETE_T", "fp": "ae3b4b3142b06ff116ce", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_240_o011_portview/T64.npy"}
+{"t": "08:33:09", "event": "DELETE_T", "fp": "25c56eea4335d176108b", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_300_o011_portview/T64.npy"}
+{"t": "08:33:10", "event": "DELETE_T", "fp": "7ceaaa621c33f113d41f", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_310_o011_portview/T64.npy"}
+{"t": "08:33:10", "event": "DELETE_T", "fp": "3dbca0b7f1e2ce6778ee", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_320_o011_portview/T64.npy"}
+{"t": "08:33:10", "event": "DELETE_T", "fp": "3c8e617806a183cd18ce", "path": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/body/plate841_330_o011_portview/T64.npy"}
+{"t": "08:33:10", "k": 11, "C_exact": 1335.1980189595088, "C_hat": 1334.696860429479, "surrogate_err": -0.00037534397363786704, "grad_rel_err": null, "grad_cos": null, "comp_err_rel_to_max": null, "sign_agreement": null, "kkt_exact": null, "kkt_lambda": null, "exact_pcg": 399, "exact_true_residual": 1.934148712852427e-10, "times": {"make_T_s": 1894.8127314615995, "make_T_new": 24, "cellinfo_s": 450.6574348974973, "load_T_s": 27.150357715785503, "setup_s": 0.622190048918128, "precond_s": 5.720843769609928, "solve_s": 163.9102520700544, "sens_s": null}}
+{"t": "08:33:10", "event": "DESIGN_DONE", "design": "xstartH_z_k011", "seconds": 2551.0382912363857}
+=== STEP rc=0 2026-10-01 08:33:10
+=== CHAIN DONE 2026-10-01 08:33:10

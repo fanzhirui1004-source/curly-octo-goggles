@@ -1,0 +1,32 @@
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{graphicx}
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{xcolor}
+\usepackage{pdflscape}
+\usepackage[hidelinks]{hyperref}
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{⁻}{\textsuperscript{-}}
+\newunicodechar{⁵}{\textsuperscript{5}}
+\newunicodechar{·}{\textperiodcentered}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{−}{\ensuremath{-}}
+\newunicodechar{⊗}{\ensuremath{\otimes}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{\sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}\else\usebox{\pandoc@box}\fi}
+\makeatother
+\def\LTcaptype{table}
+\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}
+\setlength{\emergencystretch}{3em}
+\journal{Computer Methods in Applied Mechanics and Engineering}

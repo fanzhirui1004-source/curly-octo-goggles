@@ -1,0 +1,48 @@
+{
+ "cellinfo_jobs": {
+  "new": 0,
+  "jobs": {},
+  "body_guard": {
+   "checked": 24,
+   "unchecked": 0,
+   "mismatches": []
+  }
+ },
+ "cellinfo": {
+  "seconds": 0.0010215826332569122,
+  "peak_rss_gib": 2.235912322998047,
+  "peak_is_lifetime": false,
+  "rss_gib": 2.235912322998047,
+  "mem_available_gib": 235.59949493408203
+ },
+ "T_jobs": {
+  "new": 0,
+  "jobs": {},
+  "seconds": 0
+ },
+ "T": {
+  "seconds": 0.002431850880384445,
+  "peak_rss_gib": 2.2359161376953125,
+  "peak_is_lifetime": false,
+  "rss_gib": 2.2359161376953125,
+  "mem_available_gib": 235.59949493408203
+ },
+ "solve_mem_plan": {
+  "T_distinct_gib": 30.681522108614445,
+  "mem_available_gib": 235.59949493408203
+ },
+ "load_T": {
+  "seconds": 14.381050473079085,
+  "peak_rss_gib": 32.9174690246582,
+  "peak_is_lifetime": false,
+  "rss_gib": 32.9174690246582,
+  "mem_available_gib": 204.91973876953125
+ },
+ "lattice_solve": {
+  "seconds": 82.83344823494554,
+  "peak_rss_gib": 40.26066970825195,
+  "peak_is_lifetime": false,
+  "rss_gib": 33.15129089355469,
+  "mem_available_gib": 204.68817138671875
+ }
+}

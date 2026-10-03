@@ -1,0 +1,44 @@
+{
+  "case": "fresh_train_0003_d0_v0",
+  "elements": "teacher",
+  "solver": "cudss",
+  "width": 8,
+  "reorder": "DEFAULT",
+  "dimensions": [
+    19548
+  ],
+  "stage_seconds": {
+    "E1_teacher_blocks_load": 0.18377594649791718,
+    "E4a_direct_scaled_upper": 0.11210846155881882,
+    "E4b_direct_plan": 0.41629040613770485,
+    "E4c_direct_factor": 0.034656740725040436
+  },
+  "encode_seconds": 1.1516542620956898,
+  "query_seconds": {
+    "1": 0.0022573955357074738,
+    "7": 0.002178136259317398,
+    "64": 0.016497820615768433
+  },
+  "original7_energy_ratio": [
+    1.0000000000000053,
+    0.9999999999999979,
+    1.0000000000000036,
+    1.0000000000000064,
+    1.0000000000000002,
+    0.9999999999999993,
+    1.0000000000000007
+  ],
+  "numerical_checks": {
+    "linearity": true,
+    "symmetry": true,
+    "power": true,
+    "energy_gradient": true,
+    "rigid_relative": true,
+    "two_history_extension_adjoint": true,
+    "full_variational": true
+  },
+  "witness": [
+    1.0000000000007774
+  ],
+  "scope": "finite witness only; teacher R whitening; elements=teacher"
+}

@@ -1,0 +1,40 @@
+{
+  "status": "READY",
+  "case": "fresh_development_0004_d1_v2",
+  "asset": "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/ASSETS_DEV/fresh_development_0004_d1_v2",
+  "physical_dimension": 21399,
+  "interior_nodes": 76867,
+  "reference": {
+    "h": 0.015625,
+    "levels": [
+      {
+        "level": "fine",
+        "nodes": 76867,
+        "row_norm_bound": 10.976331921598927,
+        "inverse_error": 6.661338147750939e-16
+      },
+      {
+        "level": 4,
+        "nodes": 1961,
+        "row_norm_bound": 3.1764548828443626,
+        "inverse_error": 6.661338147750939e-16
+      },
+      {
+        "level": 8,
+        "nodes": 347,
+        "row_norm_bound": 2.524272998606927,
+        "inverse_error": 5.551115123125783e-16
+      }
+    ],
+    "total_bound": 16.677059803050216,
+    "step_scale": 0.059962608026212214,
+    "setup_seconds": 10.405122436583042,
+    "source_sha256": "6513135e480b79c79d98b1baed1c44b866164d28c8599c890a5a8564065ab808"
+  },
+  "seconds": 13.755335945636034,
+  "output_sha256": {
+    "REFERENCE_STRUCTURE.json": "2b9f1c7e587d0c1da2da9b36da729f65e1bd2f3849e83a281070e9fdca628562",
+    "REFERENCE_STRUCTURE.npz": "8013104628698e5524c6884e2aa645df7a2e76acbf40517c46b2c9c8a357f266",
+    "VALIDATION_Z.npy": "0c3023b19bcbca8f7ee4a84ae14e25916cc9e55fa074c90db15fee04bcf1c49f"
+  }
+}

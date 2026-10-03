@@ -1,0 +1,60 @@
+{
+ "note": "Initial (uniform tau=0.40) design, k = 0 bodies of each scale run, counted read-only on the 5090 host by scale_dofs_remote.py (conv 0: node id = 4225*i + 65*j + k on the 65^3 node grid of a cell, i along the plate's short side). cell_dofs_summed counts face nodes shared by two cells twice; cutfem_dofs_assembled removes the duplicates of shared box nodes. Retained coordinates: assembled box nodes plus private cut-band nodes, times 3; free: without the clamped face x = min.",
+ "runs": {
+  "plateS24r4": {
+   "cells": 24,
+   "cell_dofs_summed": 6614460,
+   "retained_summed": 517998,
+   "cut_nodes": 41280,
+   "box_assembled": 290370,
+   "clamped_box": 26496,
+   "cutfem_dofs_assembled": 6510672,
+   "retained_assembled": 414210,
+   "retained_free": 387714
+  },
+  "plateS51r4": {
+   "cells": 51,
+   "cell_dofs_summed": 14827854,
+   "retained_summed": 1074453,
+   "cut_nodes": 61744,
+   "box_assembled": 634131,
+   "clamped_box": 39744,
+   "cutfem_dofs_assembled": 14572764,
+   "retained_assembled": 819363,
+   "retained_free": 779619
+  },
+  "plateS88": {
+   "cells": 88,
+   "cell_dofs_summed": 26319000,
+   "retained_summed": 1830876,
+   "cut_nodes": 82560,
+   "box_assembled": 1110660,
+   "clamped_box": 52992,
+   "cutfem_dofs_assembled": 25846464,
+   "retained_assembled": 1358340,
+   "retained_free": 1305348
+  },
+  "plateS110": {
+   "cells": 110,
+   "cell_dofs_summed": 33304938,
+   "retained_summed": 2283663,
+   "cut_nodes": 92802,
+   "box_assembled": 1399092,
+   "clamped_box": 59616,
+   "cutfem_dofs_assembled": 32698773,
+   "retained_assembled": 1677498,
+   "retained_free": 1617882
+  },
+  "plateS135": {
+   "cells": 135,
+   "cell_dofs_summed": 41080050,
+   "retained_summed": 2785395,
+   "cut_nodes": 103200,
+   "box_assembled": 1719525,
+   "clamped_box": 66240,
+   "cutfem_dofs_assembled": 40323780,
+   "retained_assembled": 2029125,
+   "retained_free": 1962885
+  }
+ }
+}

@@ -1,0 +1,48 @@
+PRE-REGISTERED RULE (E2): F = mean force_c(C+W)/mean force_c(A3) over 80 geometries = 1.2741 [95% CI 0.990, 1.352] -> downgrade contribution (ii): False
+reproduction A3 vs newval2_A3_2grid.json: n=710 max rel diff 3.679123731004097e-06 (ckpt step 15000 / 15000)
+reproduction BW vs newval2_B2grid.json: n=53 max rel diff 5.390042023822872e-07 (ckpt step 30000 / 30000)
+reproduction C vs newval2_A0_ctrl.json: n=53 max rel diff 3.5024435662833753e-07 (ckpt step 15000 / 15000)
+E5 A3 force_c all80: directions n=5120 mean=0.0737% p95=0.3306% p99=0.6925% max=1.2395%; per-geometry max: median=0.0477% max=1.2395%
+E5 A3 force_c held60: directions n=3840 mean=0.0767% p95=0.3547% p99=0.7339% max=1.2395%; per-geometry max: median=0.0507% max=1.2395%
+E5 BW force_c all80: directions n=384 mean=0.0447% p95=0.2351% p99=0.2820% max=0.3186%; per-geometry max: median=0.0374% max=0.3186%
+E5 C force_c all80: directions n=384 mean=3.3907% p95=16.0547% p99=19.2868% max=20.8723%; per-geometry max: median=3.2510% max=20.8723%
+E5 CW force_c all80: directions n=384 mean=0.0418% p95=0.2212% p99=0.2801% max=0.3070%; per-geometry max: median=0.0300% max=0.3070%
+E2b pairs (compliance max / sensitivity max, %): cell/conf  A3 | B+W | C+W
+  fresh_val_2000_full/x: 0.0061/0.598 | 0.0113/0.945 | missing
+  fresh_val_2000_full/y: 0.0068/0.669 | 0.0112/0.904 | missing
+  fresh_val_2001_full/x: 0.0012/0.082 | 0.0012/0.142 | missing
+  fresh_val_2001_full/y: 0.0016/0.073 | 0.0014/0.158 | missing
+  fresh_val_2005_d1_v0/x: 0.0076/0.098 | 0.0100/0.139 | missing
+  fresh_val_2005_d1_v0/y: 0.0110/0.097 | 0.0133/0.105 | missing
+  fresh_val_2006_d0_v1/x: 0.0060/0.136 | 0.0049/0.083 | missing
+  fresh_val_2006_d0_v1/y: 0.0047/0.154 | 0.0034/0.075 | missing
+  fresh_val_2003_d1_v1/x: 0.0562/0.161 | 0.0785/0.350 | missing
+  fresh_val_2003_d1_v1/y: 0.0480/0.206 | 0.0664/0.339 | missing
+  fresh_val_2004_d0_v2/x: 0.0020/0.101 | 0.0019/0.065 | missing
+  fresh_val_2004_d0_v2/y: 0.0020/0.078 | 0.0018/0.087 | missing
+  fresh_val_2002_d0_v0/x: 0.0064/0.124 | 0.0061/0.132 | missing
+  fresh_val_2002_d0_v0/y: 0.0103/0.196 | 0.0089/0.202 | missing
+  fresh_val_2010_d0_v0/x: missing | missing | missing
+  fresh_val_2010_d0_v0/y: nan/2119750725695.104 | missing | missing
+E6 held-out pairs (compliance max / sensitivity max, %; flags): cell_conf  A3 | B+W | C+W
+  fresh_val_2021_d1_v0_x: 0.0827/0.526 | - | -
+  fresh_val_2021_d1_v0_y: 0.0753/0.971 | - | -
+  fresh_val_2026_d0_v0_x: failed | - | -
+  fresh_val_2026_d0_v0_y: failed | - | -
+  fresh_val_2032_full_x: 0.0010/0.181 | - | -
+  fresh_val_2032_full_y: 0.0011/0.133 | - | -
+  fresh_val_2045_d1_v0_x: 0.1982/0.815 | - | -
+  fresh_val_2045_d1_v0_y: 0.1703/1.344 | - | -
+  fresh_val_2047_d1_v2_x: 0.0038/0.102 | - | -
+  fresh_val_2047_d1_v2_y: 0.0051/0.102 | - | -
+  fresh_val_2051_d1_v1_x: 0.2706/1.485 | - | -
+  fresh_val_2051_d1_v1_y: 0.2220/1.312 | - | -
+  fresh_val_2053_d1_v0_x: 0.0050/0.136 | - | -
+  fresh_val_2053_d1_v0_y: 0.0066/0.218 | - | -
+  fresh_val_2063_d1_v2_x: 0.0967/0.434 | - | -
+  fresh_val_2063_d1_v2_y: 0.0878/0.563 | - | -
+  fresh_val_2074_d0_v0_x: 0.1587/1.329 | - | -
+  fresh_val_2074_d0_v0_y: 0.2489/1.419 | - | -
+  fresh_val_2078_d0_v1_x: 0.0101/0.103 | - | -
+  fresh_val_2078_d0_v1_y: 0.0066/0.100 | - | -
+E6 A3: 18 well-posed configs, compliance max 0.2706%, sensitivity max 1.485%, excluded/failed: ['fresh_val_2026_d0_v0_x', 'fresh_val_2026_d0_v0_y']

@@ -1,0 +1,245 @@
+{
+ "layout": "hlat222",
+ "machine": "autodl-container-48244ca5f1-cc078caa",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 1,
+  "MKL_NUM_THREADS": "1",
+  "OMP_NUM_THREADS": "1",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "cgroup": "v1",
+   "memory_max_bytes": 128849018880,
+   "memory_high_bytes": 126701535232,
+   "anon_bytes": 665567232,
+   "file_bytes": 4439187456,
+   "cpu_quota_cores": 32.0,
+   "nproc": 32,
+   "os_cpu_count": 384,
+   "memory_max_GiB": 120.0,
+   "memory_high_GiB": 118.0,
+   "anon_GiB": 0.6198577880859375,
+   "file_GiB": 4.134315490722656
+  },
+  "loadavg": [
+   159.39306640625,
+   160.73583984375,
+   159.74609375
+  ],
+  "host": "autodl-container-48244ca5f1-cc078caa",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 1
+ },
+ "loadavg_start": [
+  159.39306640625,
+  160.73583984375,
+  159.74609375
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 96.71226370334625,
+   "assembly_s": 137.5245746821165,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424
+  },
+  "hlat222_001": {
+   "setup_s": 92.03639873862267,
+   "assembly_s": 138.64202699065208,
+   "dofs": 300012,
+   "retained": 18264,
+   "interior": 281748
+  },
+  "hlat222_010": {
+   "setup_s": 95.70757700502872,
+   "assembly_s": 147.5671521127224,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340
+  },
+  "hlat222_011": {
+   "setup_s": 92.00860473513603,
+   "assembly_s": 143.9049106091261,
+   "dofs": 302772,
+   "retained": 18444,
+   "interior": 284328
+  },
+  "hlat222_100": {
+   "setup_s": 59.65992943942547,
+   "assembly_s": 90.17061594128609,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510
+  },
+  "hlat222_101": {
+   "setup_s": 58.98122291266918,
+   "assembly_s": 96.10831502079964,
+   "dofs": 202029,
+   "retained": 27909,
+   "interior": 174120
+  },
+  "hlat222_110": {
+   "setup_s": 27.604077860713005,
+   "assembly_s": 51.06865708529949,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304
+  },
+  "hlat222_111": {
+   "setup_s": 26.653083384037018,
+   "assembly_s": 47.73748359084129,
+   "dofs": 97230,
+   "retained": 23532,
+   "interior": 73698
+  }
+ },
+ "cells_s": 1402.0922525525093,
+ "lattice_s": 0.12599653005599976,
+ "global_assembly_s": 26.68027837574482,
+ "global_dofs": 1833474,
+ "free_retained": 139002,
+ "interior": 1694472,
+ "nnz_upper": 258181146,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "front_end_peak_rss_GiB": 34.35070037841797,
+ "scaling_s": 12.518216460943222,
+ "rss_before_pardiso_GiB": 5.168735504150391,
+ "runs": [
+  {
+   "mtype": 2,
+   "nnz_stored": 258097297,
+   "iparm_requested": {
+    "1": 1,
+    "2": 3,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "8": 0,
+    "10": 8,
+    "11": 0,
+    "13": 0,
+    "18": -1,
+    "19": -1,
+    "24": 0,
+    "25": 0,
+    "27": 0,
+    "28": 0,
+    "34": 0,
+    "35": 1,
+    "36": 0,
+    "56": 0,
+    "60": 0
+   },
+   "loadavg_start": [
+    193.84326171875,
+    199.7265625,
+    191.27685546875
+   ],
+   "cpu_stat_start": {
+    "nr_periods": 206347,
+    "nr_throttled": 2853,
+    "throttled_time": 2994939973,
+    "throttled_usec": 2994939,
+    "usage_usec": 197823425567
+   },
+   "analysis_s": 254.49834674596786,
+   "analysis_peak_rss_GiB": 20.113845825195312,
+   "predicted_kB": {
+    "peak_analysis": 9012497,
+    "permanent": 8019863,
+    "factor_solve": 60659709
+   },
+   "predicted_GiB": {
+    "peak_analysis": 8.594986915588379,
+    "permanent": 7.648337364196777,
+    "factor_solve": 57.84960651397705,
+    "total": 65.49794387817383
+   },
+   "avail_before_factor_GiB": 103.38804244995117,
+   "cgroup_before_factor": {
+    "cgroup": "v1",
+    "memory_max_bytes": 128849018880,
+    "memory_high_bytes": 126701535232,
+    "anon_bytes": 15689469952,
+    "file_bytes": 4439539712,
+    "cpu_quota_cores": 32.0,
+    "nproc": 32,
+    "os_cpu_count": 384,
+    "memory_max_GiB": 120.0,
+    "memory_high_GiB": 118.0,
+    "anon_GiB": 14.611957550048828,
+    "file_GiB": 4.1346435546875
+   },
+   "factor_s": 4140.3135179281235,
+   "factor_peak_rss_GiB": 70.4161491394043,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 1,
+     "10": 8,
+     "15": 9012497,
+     "16": 8019863,
+     "17": 60631060,
+     "18": -1092096336,
+     "19": 81723672,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 9012497,
+     "62": 4419836
+    },
+    "nnz_factor": -1092096336,
+    "mflop_factor": 81723672,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 9012497,
+     "permanent": 8019863,
+     "factor_solve": 60631060
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 8.594986915588379,
+     "permanent": 7.648337364196777,
+     "factor_solve": 57.82228469848633,
+     "total": 65.4706220626831
+    }
+   },
+   "solve_s": 27.690116584300995,
+   "solve_peak_rss_GiB": 70.59981918334961,
+   "rel_residual": [
+    1.782991953437471e-10,
+    5.1049940245899805e-11,
+    1.2879081045750382e-10,
+    3.157167065677612e-12,
+    2.053084509698181e-12,
+    1.0026822029819019e-12
+   ],
+   "compliance": [
+    138.4183678616713,
+    24.593563166828766,
+    90.99452317389704,
+    78645.34841038867,
+    80961.74772014757,
+    82484.98255598341
+   ],
+   "loadavg_end": [
+    211.00927734375,
+    236.9814453125,
+    237.09912109375
+   ],
+   "throttled_s": 0.0,
+   "process_peak_rss_GiB": 70.59981918334961
+  }
+ ],
+ "process_peak_rss_GiB": 70.59981918334961
+}

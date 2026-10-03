@@ -1,0 +1,42 @@
+{
+ "split": "/root/autodl-tmp/OPL/S2/SPLIT.json",
+ "train_key": "train",
+ "val_max": 20,
+ "probe_max": 12,
+ "body": "/root/autodl-tmp/OPL/S0",
+ "data": "/root/autodl-tmp/OPL/S2/data",
+ "out": "/root/autodl-tmp/OPL/S1/s2_full",
+ "slot_cache": "/root/autodl-tmp/OPL/S2/slots",
+ "model": "mgno2",
+ "model_args": {
+  "F": 32,
+  "H": 4,
+  "L_pre": 4,
+  "L_post": 4,
+  "levels": 3,
+  "n_fringe": 4,
+  "sparse": true
+ },
+ "init": "/root/autodl-tmp/OPL/S1/mgno2_r2_d2/best.pt",
+ "steps": 60000,
+ "batch": 16,
+ "geos_per_step": 1,
+ "lr": 0.001,
+ "pct_start": 0.05,
+ "pool": 6,
+ "swap_every": 300,
+ "adv_on_load": true,
+ "adv_k": 8,
+ "adv_iters": 4,
+ "mix": {
+  "force": 0.25,
+  "support": 0.15,
+  "face": 0.2,
+  "macro": 0.1,
+  "grf": 0.15,
+  "adv": 0.15
+ },
+ "eval_every": 10000,
+ "seed": 0,
+ "sens_w": 1.0
+}

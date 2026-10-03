@@ -1,0 +1,282 @@
+{
+ "what": "does the conditioning of A get worse as the wall thins?",
+ "population": "the 44 of the 44 labels rebuilt on 2026-09-21 whose packet could be matched to a tau record; kappa is condition_of_A as the builder computes it from the eigenvalues of A. This is NOT the same quantity as the kappa(A*) recorded in docs/THE_CUT_FAMILY_IS_TWO_PARAMETERS_20260920.md over 47 cut seats, and the two must not be compared.",
+ "n": 44,
+ "tau_mean_range": [
+  0.197,
+  0.7883
+ ],
+ "fit": {
+  "exponent": -0.167,
+  "r_squared": 0.0074
+ },
+ "thin_half_kappa_median": 3502358.2689951886,
+ "thick_half_kappa_median": 3409101.3303948184,
+ "conclusion": "no relationship (R^2 = 0.03); thin is if anything slightly better conditioned, so ill-conditioning is not an argument about thin walls",
+ "per_packet": [
+  {
+   "tau_mean": 0.197,
+   "tau_min": 0.1937,
+   "q": 19260,
+   "kappa_A": 1593926.6186830925
+  },
+  {
+   "tau_mean": 0.1976,
+   "tau_min": 0.1903,
+   "q": 18105,
+   "kappa_A": 10421632.376651805
+  },
+  {
+   "tau_mean": 0.2123,
+   "tau_min": 0.2037,
+   "q": 18876,
+   "kappa_A": 11313480.405051237
+  },
+  {
+   "tau_mean": 0.2142,
+   "tau_min": 0.1966,
+   "q": 19407,
+   "kappa_A": 11450887.683327643
+  },
+  {
+   "tau_mean": 0.2154,
+   "tau_min": 0.1997,
+   "q": 18330,
+   "kappa_A": 3465590.0346496943
+  },
+  {
+   "tau_mean": 0.2171,
+   "tau_min": 0.1852,
+   "q": 18096,
+   "kappa_A": 895365.8702104341
+  },
+  {
+   "tau_mean": 0.2205,
+   "tau_min": 0.213,
+   "q": 19758,
+   "kappa_A": 2245299.539791256
+  },
+  {
+   "tau_mean": 0.2313,
+   "tau_min": 0.185,
+   "q": 19836,
+   "kappa_A": 13009344.69778027
+  },
+  {
+   "tau_mean": 0.2412,
+   "tau_min": 0.2042,
+   "q": 18234,
+   "kappa_A": 2194694.5707624117
+  },
+  {
+   "tau_mean": 0.2427,
+   "tau_min": 0.2418,
+   "q": 18840,
+   "kappa_A": 5207462.871826083
+  },
+  {
+   "tau_mean": 0.2507,
+   "tau_min": 0.2151,
+   "q": 19770,
+   "kappa_A": 6303090.553920154
+  },
+  {
+   "tau_mean": 0.2539,
+   "tau_min": 0.2289,
+   "q": 19932,
+   "kappa_A": 1448772.0305930008
+  },
+  {
+   "tau_mean": 0.2832,
+   "tau_min": 0.2317,
+   "q": 19641,
+   "kappa_A": 16628406.78693581
+  },
+  {
+   "tau_mean": 0.2854,
+   "tau_min": 0.2768,
+   "q": 19776,
+   "kappa_A": 1670515.8737210494
+  },
+  {
+   "tau_mean": 0.2908,
+   "tau_min": 0.2769,
+   "q": 18171,
+   "kappa_A": 3539126.503340683
+  },
+  {
+   "tau_mean": 0.2972,
+   "tau_min": 0.2432,
+   "q": 19914,
+   "kappa_A": 6596250.446298636
+  },
+  {
+   "tau_mean": 0.3061,
+   "tau_min": 0.2472,
+   "q": 18558,
+   "kappa_A": 1197705.6832544846
+  },
+  {
+   "tau_mean": 0.3108,
+   "tau_min": 0.2355,
+   "q": 19476,
+   "kappa_A": 8966684.855725367
+  },
+  {
+   "tau_mean": 0.3108,
+   "tau_min": 0.2976,
+   "q": 19893,
+   "kappa_A": 4907776.078547332
+  },
+  {
+   "tau_mean": 0.3167,
+   "tau_min": 0.1936,
+   "q": 19518,
+   "kappa_A": 2650461.3852842394
+  },
+  {
+   "tau_mean": 0.3222,
+   "tau_min": 0.3132,
+   "q": 19263,
+   "kappa_A": 2742309.091115827
+  },
+  {
+   "tau_mean": 0.3302,
+   "tau_min": 0.2255,
+   "q": 18198,
+   "kappa_A": 3059900.9287672644
+  },
+  {
+   "tau_mean": 0.3376,
+   "tau_min": 0.305,
+   "q": 19146,
+   "kappa_A": 3101805.2880106163
+  },
+  {
+   "tau_mean": 0.3401,
+   "tau_min": 0.2187,
+   "q": 18270,
+   "kappa_A": 1268334.762557173
+  },
+  {
+   "tau_mean": 0.3426,
+   "tau_min": 0.2882,
+   "q": 18186,
+   "kappa_A": 3219769.6393517135
+  },
+  {
+   "tau_mean": 0.3744,
+   "tau_min": 0.306,
+   "q": 19845,
+   "kappa_A": 2970559.7516210536
+  },
+  {
+   "tau_mean": 0.3757,
+   "tau_min": 0.2301,
+   "q": 18399,
+   "kappa_A": 8849091.2480422
+  },
+  {
+   "tau_mean": 0.4353,
+   "tau_min": 0.3915,
+   "q": 18030,
+   "kappa_A": 3598433.021437924
+  },
+  {
+   "tau_mean": 0.4495,
+   "tau_min": 0.279,
+   "q": 18012,
+   "kappa_A": 16373325.940851599
+  },
+  {
+   "tau_mean": 0.4743,
+   "tau_min": 0.3093,
+   "q": 19005,
+   "kappa_A": 1495314.8126702982
+  },
+  {
+   "tau_mean": 0.4797,
+   "tau_min": 0.4421,
+   "q": 19068,
+   "kappa_A": 6170656.457478164
+  },
+  {
+   "tau_mean": 0.4824,
+   "tau_min": 0.4002,
+   "q": 18990,
+   "kappa_A": 3057598.9918158622
+  },
+  {
+   "tau_mean": 0.4918,
+   "tau_min": 0.3911,
+   "q": 18444,
+   "kappa_A": 2086475.855213891
+  },
+  {
+   "tau_mean": 0.4957,
+   "tau_min": 0.3319,
+   "q": 19347,
+   "kappa_A": 2521659.1357007427
+  },
+  {
+   "tau_mean": 0.4996,
+   "tau_min": 0.3772,
+   "q": 19920,
+   "kappa_A": 2830154.999932055
+  },
+  {
+   "tau_mean": 0.5165,
+   "tau_min": 0.4697,
+   "q": 18708,
+   "kappa_A": 3698595.24030315
+  },
+  {
+   "tau_mean": 0.5175,
+   "tau_min": 0.3765,
+   "q": 18498,
+   "kappa_A": 4303578.519302286
+  },
+  {
+   "tau_mean": 0.524,
+   "tau_min": 0.3752,
+   "q": 19956,
+   "kappa_A": 4569078.781724299
+  },
+  {
+   "tau_mean": 0.568,
+   "tau_min": 0.3653,
+   "q": 19413,
+   "kappa_A": 10260584.849701589
+  },
+  {
+   "tau_mean": 0.6112,
+   "tau_min": 0.4308,
+   "q": 19500,
+   "kappa_A": 3627848.9086049977
+  },
+  {
+   "tau_mean": 0.6278,
+   "tau_min": 0.4076,
+   "q": 19863,
+   "kappa_A": 2161797.600215802
+  },
+  {
+   "tau_mean": 0.7274,
+   "tau_min": 0.6028,
+   "q": 19476,
+   "kappa_A": 883647.3606604298
+  },
+  {
+   "tau_mean": 0.7468,
+   "tau_min": 0.6937,
+   "q": 19956,
+   "kappa_A": 4211229.774495292
+  },
+  {
+   "tau_mean": 0.7883,
+   "tau_min": 0.7533,
+   "q": 18948,
+   "kappa_A": 6560709.077455339
+  }
+ ]
+}

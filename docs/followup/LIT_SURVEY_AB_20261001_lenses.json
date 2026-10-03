@@ -1,0 +1,898 @@
+[
+ {
+  "lens": "mapped_lattices",
+  "search": {
+   "summary": "【结论先行】如果只按“全局 B 样条或 NURBS 体映射 + 映射后的胞元做全尺度分析”这个口径来看，现有工作分成三条线，没有一条同时具备 NICE 的三个要素：学习得到的胞元算子、对任意输入成立的单侧谱界 S <= S_hat、可以处理 3D 的 cut TPMS 胞元。\n(1) 几何/样条复合线（Elber, Antolin, Buffa, Hirschler, Bouclier, Guillet; EPFL / Toulouse / Technion）。胞元由宏观样条映射复合参考 tile 得到。分析时把映射拉回参考域，等效张量 C^(s)=j·∂ξ/∂x·C·∂ξ/∂x，和方向 A 的 C~ 完全同构。Jacobian 的空间变化用多项式近似 + lookup table 精确处理（Hirschler 2022）。再用 ROM/EIM 选“主胞元”，构造非精确 FETI-DP（Hirschler 2024，2D/3D，但只适用于贴体参数化胞元，不能处理 TPMS 水平集）。2026 年 Bonilla Moreno–Guarino–Antolin（CMAME 119304）把这条线推进到“水平集 + unfitted p-FEM + 任意阶映射 + MDEIM-ROM + BDDC”，但只做了 2D。这两篇是方向 A 和方向 B 最直接的竞争者：它们的 ROM 误差没有符号保证，靠 α 稳定化和外层 Krylov 迭代吸收，没有条件数理论，没有设计灵敏度，也没有 ML。\n(2) 大连理工郭旭组的映射式梯度点阵线。起点是 Liu et al. 2017 JAM 的坐标扰动，理论基础是 Zhu et al. 2019 JMPS 的映射渐近均匀化（需要线性化和尺度分离）。随后是 Xu et al. 2023 CS 的 NURBS 分区坐标映射（PCM）：映射扰动系数本身就是设计变量，可以改变胞元形状和局部取向，也就是“扭曲/弯曲胞元”。再到 Xu et al. 2025 CS，用 PIML 子结构代理加速 3D 梯度点阵优化；以及 Liu et al. 2026 CMAME，CCM + B 样条 PCM 的曲面点阵。用户说的“B 样条拓扑优化、扭曲胞元”最可能指 Xu et al. 2023/2025 这条 NURBS-PCM 线。我没有找到标题里明确写 twisted 的论文，这个对应关系标为 UNVERIFIED。\n(3) Guo Yilin 等 2026 CMAME 118955 里的“三次 Bézier”是子结构边界位移的插值：DeepONet 的输入是用 Bézier 插值的边界位移，用来替代以往 PIML 的线性边界假设。它属于超单元内部的边界插值，不是全局体映射，两者要严格区分。另外，背景里给的 arXiv 2607.22019 实际是同组的 PIML-OFEM（重叠有限元 + U-Net），并不是这篇 Bézier 论文，引用时需要更正。\n\n【映射胞元怎么评估、Jacobian 怎么处理】\n- 均匀化路线：Zhu 2019；Allaire/Geoffroy-Donders 2019/2020；Li–Zhu–Guo 2022；Zhou–Tao–Sun 2025 CFGLS；Wu–Wang–Gao 2021。这些方法默认尺度分离，或者对映射做线性化/共形假设。\n- 全尺度 IGA + DD/ROM 路线：Hirschler 2022/2024，Guillet 2025，Bonilla Moreno 2026。精确拉回 Ĉ，用 EIM/MDEIM 压缩“映射到算子”的依赖，用 FETI-DP/BDDC/多层两级方法求解。\n- PIML 子结构代理：Xu et al. 2025。很可能是在物理空间固定网格上用密度场表示映射后的几何，映射本身不进入网络，这一点 UNVERIFIED。\n\n据我查到的范围，没有任何工作把 Jacobian 场作为神经网络的条件输入，并且同时给出单侧能量界或谱界。",
+   "papers": [
+    {
+     "citation": "G. Bonilla Moreno, G. Guarino, P. Antolin (2026). A ROM-based BDDC solver for unfitted p-FEM level-set-based two-dimensional lattice structures. Computer Methods in Applied Mechanics and Engineering, article 119304.",
+     "id": "doi:10.1016/j.cma.2026.119304; arXiv:2604.09113",
+     "what_it_does": "做什么：胞元由水平集定义（含 2D 化的 TPMS），每个胞元经任意阶参数映射（全局样条曲面经 Bézier 提取）放到物理空间。每个胞元用一个高阶 unfitted p-FEM 单元离散，用 α-stabilization 处理强切割。拉回后的等效本构是 Ĉ_ijkl = jΩ (∂ξ_j/∂x_m) C_imkn (∂ξ_l/∂x_n)。v3 勘误承认印刷版公式(20)的两个逆 Jacobian 因子写反了。组装时把“映射贡献”和“裁剪域积分”分开，裁剪积分用 MDEIM 离线训练；文中称该 ROM 对任意映射都可复用。每个胞元作为一个 BDDC 子域，显式组装局部 Schur 补，PCG 求解，粗空间取角点、边平均和边矩。算例：17000+ 胞元约 30 s（笔记本）。\n没做什么：只有 2D，没有 3D；没有条件数理论，只报告迭代次数；ROM 没有 SPD 或单侧界保证，作者自己说 ROM 误差会让迭代失控，需要靠稳定化压住，“solver 稳定性可能很微妙”；没有设计灵敏度，没有优化，没有 ML。",
+     "relevance": "同时与 A 和 B 高度重叠：全局映射 + 水平集胞元 + unfitted 离散 + 胞元级 BDDC + 局部算子近似。NICE 的差异化空间在于：3D cut TPMS（ghost-penalty CutFEM）、对任意输入成立的 S <= S_hat <= (1+eps)S（可以直接替代他们靠经验调的 ρ 稳定化）、GPU、厚度和映射的设计灵敏度。如果做方向 A/B，这篇必须作为主基线来对比。",
+     "threat": "high"
+    },
+    {
+     "citation": "T. Hirschler, R. Bouclier, P. Antolin, A. Buffa (2024). Reduced order modeling based inexact FETI-DP solver for lattice structures. International Journal for Numerical Methods in Engineering 125(8): e7419.",
+     "id": "doi:10.1002/nme.7419; arXiv:2308.11371",
+     "what_it_does": "做什么：点阵用样条复合（宏观样条映射 ∘ 参考 tile）生成，每个胞元是一个子域。把宏观映射 G^(s) 拉回参考域，得到 a^(s)(u,v)=∫ ε̂(u):Ĉ^(s):ε̂(v)，所有对映射的依赖都集中在张量场 Ĉ^(s) 里。用贪心/EIM 在宏观尺度挑出少量“主胞元”，其余胞元的局部刚度、局部解和 Dirichlet 预条件子都用主胞元的仿射组合近似，嵌入 Klawonn–Rheinbach 型非精确 FETI-DP，靠外层迭代补偿 ROM 误差。宏观映射为仿射时 ROM 精确，一步收敛。有 2D/3D 算例（直梁 BCC、NURBS 弯梁、刹车踏板），数百万 DOF，笔记本几分钟。\n没做什么：要求胞元是贴体参数化几何（Bonilla 2026 明确说不能处理 TPMS/水平集）；ROM 近似没有单侧谱界，没有条件数分析；只做了串行实现；没有优化，没有 ML；胞元变化大时（刹车踏板约 30 个主胞元）加速比会消失。",
+     "relevance": "同时覆盖方向 A（拉回材料 Ĉ 与 C~ 同构）和方向 B（非精确子域算子嵌入 FETI-DP）。是方向 B 的 condition-number 卖点最直接的对照：他们完全没有理论，NICE 的 S <= S_hat <= (1+eps)S 可以给出 κ 上界。",
+     "threat": "high"
+    },
+    {
+     "citation": "W. Xu, C. Liu, Y. Guo, M. Huang, X. Guo (2025). Problem-Independent Machine Learning (PIML) enhanced 3D lattice composite structures optimization via moving morphable components approach. Composite Structures 369: 119330. (SSRN preprint doi:10.2139/ssrn.4982664, 2024)",
+     "id": "doi:10.1016/j.compstruct.2025.119330",
+     "what_it_does": "做什么：3D 梯度点阵的 MMC 显式拓扑优化。基于 NURBS 的分区坐标映射（PCM）调节杆厚、胞元形状和局部取向，保证相邻胞元完美连接，也就是弯曲、扭转的胞元。用 PIML 子结构代理（网络从子结构内的材料分布预测数值形函数/内部位移）替代大规模 FE 分析。\n没做什么（根据摘要和同组前作判断，细节 UNVERIFIED）：PIML 很可能是在物理空间固定网格上用 ersatz 密度表示映射后的几何，Jacobian 并没有作为网络的条件输入；没有 S_hat >= S 这类单侧界，也没有平衡残差修正；不针对 TPMS 薄壳 cut 胞元。",
+     "relevance": "很可能就是用户想到的“B 样条映射 + 扭曲胞元 + ML”的那篇。它与方向 A 在叙事上几乎重合：全局 NURBS 映射、映射参数作为设计变量、ML 加速分析。差异在于 NICE 的可证明性质（PSD、刚体、单侧界）、cut TPMS，以及把 Jacobian 场作为条件输入而不是重新体素化。投稿前必须读全文，确认他们的 PIML 怎么处理映射。",
+     "threat": "high"
+    },
+    {
+     "citation": "W. Xu, C. Liu, Y. Guo, Z. Du, W. Zhang, X. Guo (2023). Graded infill lattice structures design based on the moving morphable component method and partitioned coordinate mapping technique. Composite Structures 326: 117613.",
+     "id": "doi:10.1016/j.compstruct.2023.117613",
+     "what_it_does": "做什么：MMC 描述胞元拓扑，NURBS 分区坐标映射（PCM）在不同子区域生成不同胞元并保证高阶光滑连接。设计变量只有组件的几何参数和映射函数的扰动系数，也就是映射控制点本身就是设计变量。\n没做什么：分析方式（全尺度 ersatz FE 还是均匀化）未能从可获取的元数据确认，UNVERIFIED；没有 ML；没有 Jacobian 条件化的胞元代理；只有柔度类目标。",
+     "relevance": "方向 A 的“映射控制点作为设计变量”这一点在这里已有先例，不能当作新颖性来主张。新颖性需要落在：全尺度、带证书的胞元算子，以及对映射控制点的精确或场估计灵敏度。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Y. Guo, C. Liu, Z. Du, Y. Jia, C. Jiang, X. Guo, C. Shen (2026). High-Generalization AI-Enhanced mechanical analysis and topology optimization via cubic Bézier interpolation of substructure boundary displacements. Computer Methods in Applied Mechanics and Engineering 456: 118955.",
+     "id": "doi:10.1016/j.cma.2026.118955",
+     "what_it_does": "做什么：子结构法 + DeepONet。用三次 Bézier 曲线插值子结构的边界位移，作为网络的低维输入（替代早期 PIML 的线性边界位移假设），网络学习从边界位移到子结构内部位移的映射，用于大规模分析和拓扑优化。\n没做什么：Bézier 只用于超单元边界的位移插值，不是几何体映射，也不涉及映射后的点阵胞元或 Jacobian；没有 S_hat >= S 型保证，也没有平衡修正（按摘要判断）。注意：背景中给的 arXiv 2607.22019 实际是同组的 'PIML-OFEM'（Guo Y. et al.，重叠有限元 + U-Net，已核实），不是这篇论文。",
+     "relevance": "这是 P1 的直接竞争者，但和方向 A 只是名字撞了“B 样条/Bézier”。写作时要明确区分“边界插值降维”和“全局体映射”，避免审稿人混淆。",
+     "threat": "medium"
+    },
+    {
+     "citation": "T. Hirschler, P. Antolin, A. Buffa (2022). Fast and multiscale formation of isogeometric matrices of microstructured geometric models. Computational Mechanics 69: 439–466.",
+     "id": "doi:10.1007/s00466-021-02098-y; arXiv:2107.09568",
+     "what_it_does": "做什么：针对样条复合的微结构，把拉回张量场 Ĉ^(s)(ξ) 在宏观尺度做多项式逼近，再和参考 tile 上预计算的积分查找表收缩，得到 K^(s)=T_ref ⊗ A^(s)。这样就把随空间变化的 Jacobian 精确、快速地并入每个胞元的刚度，也可以用来快速计算设计灵敏度。有理论误差分析。\n没做什么：只做组装加速，不处理求解（静力凝聚或代理）；不涉及 ML；只处理贴体参数化 tile。",
+     "relevance": "方向 A 中“Jacobian 场条件化”最强的非学习基线：Ĉ 的多项式系数 A^(s) 本身就是一个紧凑的、精确的 Jacobian 编码，可以直接借用为 NICE 的条件输入。审稿人会问 NICE 相比“查表组装 + 精确凝聚”的优势在哪里。",
+     "threat": "medium"
+    },
+    {
+     "citation": "C. Guillet, T. Hirschler, P. Jolivet, R. Bouclier (2025). Multilevel matrix-free method for high-performance isogeometric analysis of lattice structures. Journal of Computational Physics 537: 114136.",
+     "id": "doi:10.1016/j.jcp.2025.114136",
+     "what_it_does": "做什么：两级几何预条件子。细层用重叠 DD 光滑子，粗层用 AMG 修正，细层 matrix-free，转移算子基于样条 k-refinement；在子域局部解中用 ROM 利用胞元相似性。可扩展到数十万胞元、十亿级 DOF（超算）。后续有 Guillet et al. 2026 CMAME 461:119202，扩展到非线性超弹性点阵（细节 UNVERIFIED）。\n没做什么：没有 ML；没有单侧谱界；胞元同样是贴体样条复合几何。",
+     "relevance": "方向 B 的竞品：‘近似局部解 + 两级方法’用于点阵。NICE 的 K_PP + 刚体粗空间与此类似，差异在学习算子 + 证书 + cut TPMS。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Y. Zhu, S. Li, Z. Du, C. Liu, X. Guo, W. Zhang (2019). A novel asymptotic-analysis-based homogenisation approach towards fast design of infill graded microstructures. Journal of the Mechanics and Physics of Solids 124: 612–633.",
+     "id": "doi:10.1016/j.jmps.2018.11.008",
+     "what_it_does": "做什么：引入映射函数，把准周期的梯度微结构变换为空间周期构型，再用渐近分析解耦为宏观均匀化问题和代表性胞元问题；线性化之后计算量与普通渐近均匀化相当；证明应力和柔度与细尺度解一致（在尺度分离意义下）。\n没做什么：依赖尺度分离和映射线性化，不是全尺度胞元算子；胞元很大或 Jacobian 剧变时没有误差保证。",
+     "relevance": "这是郭旭组‘映射式梯度点阵’的理论根基，也是方向 A 必须对比的‘映射均匀化’基线。NICE 的卖点之一就是失去尺度分离时仍然有效（全尺度 + 单侧界）。",
+     "threat": "medium"
+    },
+    {
+     "citation": "C. Liu, W. Xu, W. Huo, Y. Guo, X. Guo (2026). Surface lattice structure design via computational conformal mapping and structural optimization. Computer Methods in Applied Mechanics and Engineering 451: 118680. (SSRN preprint doi:10.2139/ssrn.5367851)",
+     "id": "doi:10.1016/j.cma.2025.118680",
+     "what_it_does": "做什么：用计算共形映射（CCM）把曲面三角网格参数化到平面域，在平面域上定义 MMC 梯度点阵的拓扑描述函数，用 B 样条基构造的分区坐标映射实现非均匀胞元平滑过渡，给出封闭形式的伴随一致导数，同时优化曲面点阵的形状和尺寸。\n没做什么：对象是曲面（壳）点阵，不是 3D 体映射；分析方式 UNVERIFIED；没有 ML 代理。",
+     "relevance": "说明郭旭组正在把 B 样条映射点阵推向复杂曲面。方向 A 若做 3D 体映射的 TPMS 胞元，与这篇是互补关系，不是正面冲突。",
+     "threat": "low"
+    },
+    {
+     "citation": "C. Liu, Z. Du, W. Zhang, Y. Zhu, X. Guo (2017). Additive manufacturing-oriented design of graded lattice structures through explicit topology optimization. Journal of Applied Mechanics 84(8): 081008.",
+     "id": "doi:10.1115/1.4036941",
+     "what_it_does": "做什么：在 MMC/MMV 框架中对拓扑描述函数做坐标扰动（映射），通过优化扰动基函数的系数得到梯度/弯曲点阵。\n没做什么：没有显式的全局 B 样条体映射（后续工作才改用 NURBS-PCM）；只有 2D 为主（UNVERIFIED）；没有 ML。",
+     "relevance": "‘映射扰动系数作为设计变量’的最早来源，引用链起点。",
+     "threat": "low"
+    },
+    {
+     "citation": "S. Li, Y. Zhu, X. Guo (2022). Optimisation of spatially varying orthotropic porous structures based on conformal mapping. Computer Methods in Applied Mechanics and Engineering 391: 114589.",
+     "id": "doi:10.1016/j.cma.2022.114589; arXiv:2107.03899",
+     "what_it_does": "做什么：2D 共形映射生成空间变化的正交各向异性多孔结构，控制场是缩放因子的对数和旋转角（满足 Cauchy–Riemann 关系）；利用旋转对称，把胞元问题的数量压到最少；证明均匀化结果收敛到细尺度结果。后续有 Li–Zhu–Guo 2024 SMO 67:24（拟共形映射，doi:10.1007/s00158-023-03713-7）。\n没做什么：只限共形映射（局部只有缩放加旋转，没有剪切或扭转），是均匀化而非全尺度；只有 2D。",
+     "relevance": "展示了 Jacobian 受限（共形）时，胞元问题如何通过对称性复用。方向 A 的一般 B 样条 Jacobian 含剪切，没有这种便利，正好用来论证学习条件化的必要性。",
+     "threat": "low"
+    },
+    {
+     "citation": "P. Antolin, A. Buffa, E. Cohen, J.F. Dannenhoffer, G. Elber, S. Elgeti, R. Haimes, R. Riesenfeld (2019). Optimizing micro-tiles in micro-structures as a design paradigm. Computer-Aided Design 115: 23–33. (also G. Elber 2017, Precise construction of micro-structures and porous geometry via functional composition, LNCS MMCS, doi:10.1007/978-3-319-67885-6_6; F. Massarwi, J. Machchhar, P. Antolin, G. Elber 2018, CAD 102:148–159, doi:10.1016/j.cad.2018.04.017)",
+     "id": "doi:10.1016/j.cad.2019.05.020; arXiv:1907.02245",
+     "what_it_does": "做什么：提出‘全局三变量 B 样条映射 ∘ 微 tile’的函数复合造型，没有裁剪，tile 精确贴合自由形体。把逐 tile 调整几何、拓扑和材料作为一种设计范式，举了换热、轻量化等多个应用。\n没做什么：主要是几何和设计范式；分析多用标准 IGA 或全尺度求解，没有专门的快速胞元算子或 ML。",
+     "relevance": "方向 A 所说‘全局 B 样条体映射点阵’的几何源头，应在引言中引用，用来说明映射几何本身不是新东西。",
+     "threat": "low"
+    },
+    {
+     "citation": "Q. Hong, P. Antolin, G. Elber, M.-S. Kim (2024). Variable offsets and processing of implicit forms toward the adaptive synthesis and analysis of heterogeneous conforming microstructure. Computer Graphics Forum 43: e15224.",
+     "id": "doi:10.1111/cgf.15224; arXiv:2408.14068",
+     "what_it_does": "做什么：把隐式 tile（包括 TPMS）放进样条复合的贴合点阵，用可变偏置控制壁厚和杆厚，甚至在单个 tile 内渐变；让点阵随分析结果自适应，并保持相邻 tile 连续；有 3D TPMS 示例。\n没做什么：分析部分是一般性的（细节 UNVERIFIED）；没有快速求解器、没有 ML、没有灵敏度驱动的优化。",
+     "relevance": "与方向 A 的几何设定（映射后的 TPMS 壳、厚度场）最接近的几何工作，可以作为方向 A 几何生成器的引用依据。",
+     "threat": "low"
+    },
+    {
+     "citation": "S. Zhou, R. Tao, Q. Sun (2025). CFGLSs: Conformal filling gradient lattice structures designed by multiscale isogeometric topology optimization for 3D swept volume. Computer Methods in Applied Mechanics and Engineering 442: 118023. (related: IGLSSs preprint, SSRN doi:10.2139/ssrn.5072027)",
+     "id": "doi:10.1016/j.cma.2025.118023",
+     "what_it_does": "做什么：针对 3D 扫掠体，用修正水平集函数（MLSF）让点阵贴合曲形几何，用多项式插值 + 均匀化构造替代本构，嵌入多尺度等几何拓扑优化（MITO）求相对密度分布，再生成贴合梯度点阵；有制造和实验验证。\n没做什么：是均匀化方法，是否计入映射畸变（Jacobian）对等效张量的影响无法从摘要确认，UNVERIFIED；没有全尺度验证器或代理证书。",
+     "relevance": "代表‘NURBS/IGA 映射 + 均匀化代理’这一主流做法，可作为方向 A 中‘均匀化对比’的现成对手（类似 P1 第 6.11 节的均匀化对比）。",
+     "threat": "low"
+    },
+    {
+     "citation": "P. Geoffroy-Donders, G. Allaire, O. Pantz (2020). 3-d topology optimization of modulated and oriented periodic microstructures by the homogenization method. Journal of Computational Physics 401: 108994. (2D precursor: G. Allaire, P. Geoffroy-Donders, O. Pantz 2019, Computers & Mathematics with Applications 78: 2197–2229, doi:10.1016/j.camwa.2018.08.007)",
+     "id": "doi:10.1016/j.jcp.2019.108994",
+     "what_it_does": "做什么：先对均匀化公式做参数优化（胞元参数和取向随空间变化），再用一个全局微分同胚（映射）把最优微结构投影成有限尺度的真实点阵；2D 版本对取向做共形处理。\n没做什么：分析完全靠均匀化，映射只在后处理阶段用来生成几何；投影后的结构只做事后验证，不进入优化回路。",
+     "relevance": "映射点阵‘去均匀化’路线的经典代表。方向 A 可以定位为：在映射点阵上直接做全尺度、带证书的分析和优化，取代‘均匀化 + 投影’。",
+     "threat": "low"
+    },
+    {
+     "citation": "J. Wu, W. Wang, X. Gao (2021). Design and optimization of conforming lattice structures. IEEE Transactions on Visualization and Computer Graphics 27(1): 43–56.",
+     "id": "doi:10.1109/TVCG.2019.2938946; arXiv:1905.02902",
+     "what_it_does": "做什么：先对形状和正交各向异性点阵材料分布（取向、孔隙率、各向异性）做并发优化，再用场对齐参数化提取全局一致、与主应力方向和边界都贴合的点阵；2D/3D 都有。\n没做什么：分析基于均匀化材料；参数化不是 B 样条体映射；最终点阵只做验证。",
+     "relevance": "贴合点阵的代表性工作，可以作为背景引用。",
+     "threat": "low"
+    },
+    {
+     "citation": "J. Feng, J. Fu, C. Shang, Z. Lin, B. Li (2018). Porous scaffold design by solid T-splines and triply periodic minimal surfaces. Computer Methods in Applied Mechanics and Engineering 336: 333–352.",
+     "id": "doi:10.1016/j.cma.2018.03.007",
+     "what_it_does": "做什么：用实体 T 样条表示外形和内部 TPMS 参数（阈值、周期、单元类型非均匀），通过体映射直接提取异质 TPMS 支架（marching tetrahedra 到 STL），并做了打印。\n没做什么：只有几何造型，没有力学分析和优化。",
+     "relevance": "‘样条体映射的 TPMS’几何先例，说明方向 A 的几何设定已有成熟的造型手段。",
+     "threat": "low"
+    },
+    {
+     "citation": "Y. Wang, H. Xu, D. Pasini (2017). Multiscale isogeometric topology optimization for lattice materials. Computer Methods in Applied Mechanics and Engineering 316: 568–585.",
+     "id": "doi:10.1016/j.cma.2016.08.015",
+     "what_it_does": "做什么：在 IGA（NURBS）框架下做点阵材料的多尺度拓扑优化，宏观用均匀化的点阵性质（细节 UNVERIFIED）。\n没做什么：NURBS 用于分析和宏观描述，不是把胞元按全局映射扭曲；没有全尺度胞元分析，没有 ML。",
+     "relevance": "多尺度 IGA 点阵拓扑优化的早期代表，用于界定‘NURBS 作为分析基’与‘NURBS 作为胞元映射’的区别。",
+     "threat": "low"
+    },
+    {
+     "citation": "R. Rubio, A. Ferrer, J.A. Hernández, P. Antolin (2026). Accelerating structural optimization via EIFEM: a ROM-based preconditioner. arXiv preprint.",
+     "id": "arXiv:2609.20053",
+     "what_it_does": "做什么：用经验跨尺度有限元（EIFEM）+ DEIM 构造局部的、参数相关的降阶算子，作为结构优化中的预条件策略，用非精确梯度加速收敛。\n没做什么：根据摘要，没有理论收敛保证；是否针对映射点阵不确定，UNVERIFIED。",
+     "relevance": "Antolin 组正在把 ROM 局部算子用作优化或求解器预条件。和方向 B 的‘学习子域算子作为预条件子’叙事接近，需要关注后续版本。",
+     "threat": "low"
+    }
+   ],
+   "gaps": [
+    "3D 的 cut TPMS 胞元放在全局样条映射下做全尺度快速分析，目前没有工作做过：Bonilla Moreno 2026 只有 2D；Hirschler 2024 / Guillet 2025 只处理贴体参数化胞元，作者明确说不能处理 TPMS 或水平集。",
+    "所有基于 ROM、EIM 或 MDEIM 的胞元算子近似（Hirschler 2024、Bonilla Moreno 2026、Guillet 2025）都没有误差符号或谱界保证，只能靠经验稳定化参数 ρ 加外层迭代来吸收。NICE 的 S <= S_hat <= (1+eps)S 可以直接给出 FETI-DP/BDDC 的 κ 上界：用作预条件时 κ 至多增大 (1+eps) 倍，用作算子时有能量单侧误差界。这是方向 B 最清楚的理论空白。",
+    "没有任何学习型胞元算子以 Jacobian 场或拉回张量 C~ 作为条件输入。郭旭组的 PIML（Xu et al. 2025）很可能只在物理网格上看密度（UNVERIFIED）。可以借用 Hirschler 2022 的多项式系数 A^(s) 作为紧凑而精确的 Jacobian 编码，喂给网络。",
+    "在映射点阵上以映射控制点为设计变量、用全尺度（非均匀化）分析并给出可验证灵敏度的优化，目前缺失。郭旭组有映射参数作设计变量，但分析方式是代理或 ersatz；Antolin、Hirschler 线有快速分析，但没有做优化。",
+    "失去尺度分离时的定量对比也缺失：映射均匀化（Zhu 2019 的线性化，Allaire 的投影）在胞元大、Jacobian 剧变时误差多大，没有人用带证书的全尺度求解系统地标定过。NICE 可以直接给出这条误差曲线。",
+    "零样本鲁棒性还没有人系统讨论：对训练时没见过的各向异性拉回材料 C~（含剪切或扭转），学习算子会不会失稳。S_hat >= S 加上精确算子修正，恰好能把 OOD 的影响限制为‘只会变刚、不会出错方向’。这一点有新意，但需要实验证明，修正阶段 Chebyshev 区间对 C~ 谱的覆盖也必须重新估计。"
+   ]
+  },
+  "verify": {
+   "checks": [
+    {
+     "id": "1",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2604.09113 与 DOI 10.1016/j.cma.2026.119304 均存在，标题和作者（Gonzalo Bonilla Moreno, Giuliano Guarino, Pablo Antolin）一致。Crossref 显示 CMAME 第 463 卷、article 119304，卷期日期为 2027 年 1 月；在线年份 2026 可以接受，建议补上卷号 463。逐项核对 v3 全文：(1) 胞元由水平集定义，含 2D 化的 TPMS（Table 1/Fig.2）。(2) 映射为任意阶，样条曲面经 Bézier extraction 得到每个胞元的映射（Sec.2.1 末）。(3) 每个胞元是一个高阶 unfitted p-FEM 单元，用 α-stabilization 处理强切割。(4) 式(20a) 为 Ĉ_ijkl = jΩ (∂ξj/∂xm) C_imkn (∂ξl/∂xn)，与声明一致。v3 的 'Note added in version 3' 明确写道：印刷版式(20)第一式中两个逆 Jacobian 因子写反了，且不影响结果。(5) 快速组装把映射贡献与裁剪域积分分开，再用 MDEIM 离线训练。(6) 每个胞元是一个 BDDC 子域，显式组装局部 Schur 补，用 PCG 求解；粗自由度为 cross-point values、edge averages、edge moments。(7) 17,000 胞元约 30 s（笔记本，仅在线阶段）。(8) 原文说 ROM 下减小 ρ 会使迭代 'grow unbounded'，以及 'the stability of the solver can be delicate'。小修正：原文说 ROM 'valid for any geometric mapping for which the pulled-back coefficients satisfy the smoothness conditions'，也就是要求映射正则、拉回系数光滑，并非无条件对任意映射可复用。'没做什么'部分与全文一致：只有 2D，3D 列为未来工作；没有优化或灵敏度；文中另有一个并行研究原型，不影响声明。"
+    },
+    {
+     "id": "2",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "DOI 10.1002/nme.7419 与 arXiv:2308.11371 均存在。作者、IJNME 125(8) e7419 (2024) 均正确。全文核对：贪心算法在宏观尺度对 Ĉ^(s) 张量场做仿射分解来选主胞元（Algorithm 4，文中也提到可改用 EIM）；局部算子、局部解和 Dirichlet 预条件子都用主胞元近似，基于 Klawonn–Rheinbach 型 block-triangular inexact FETI-DP（另讨论了 Bosy et al. 的 block-diagonal 版本）。所有胞元相同（仿射宏观映射）时 ROM 精确，只需一次全局迭代。算例有 2D（矩形、NURBS 弯梁、刹车踏板）和 3D（BCC 直梁、弯梁），数百万 DOF，在笔记本上几分钟。原文写明 'Only serial computations'。刹车踏板约 30 个主胞元，耗时与标准 FETI-DP 相当。Bonilla 2026 引言确实说这类方法只限于可用贴体离散和参数映射描述的胞元，因此无法处理 TPMS 或任意变化的胞元。"
+    },
+    {
+     "id": "3",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认：Wu Xu, Chang Liu, Yilin Guo, Mengcheng Huang, Xu Guo，Composite Structures 369: 119330 (2025)。SSRN 预印本 10.2139/ssrn.4982664 存在（Crossref 记录创建于 2024 年），但标题略有不同：'...Enhanced 3D Graded Lattice Structures Optimization...'。摘要核实了以下内容：MMC 方法；基于 NURBS 的 PCM 调节杆厚、胞元形状和局部取向，并保证 perfect connectivity；用 PIML 模型替代大规模 FE 分析。'网络由子结构内材料分布预测数值形函数/内部位移'与该组 PIML 系列一致，但本文全文未读到。'没做什么'各项（ersatz 密度、Jacobian 未作为条件输入、无单侧界等）无法从摘要确认，原声明已标 UNVERIFIED，应保持该标注。"
+    },
+    {
+     "id": "4",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认：Wu Xu, Chang Liu, Yilin Guo, Zongliang Du, Weisheng Zhang, Xu Guo，Composite Structures 326: 117613 (2023)。摘要核实了以下内容：MMC 加上基于 NURBS 的分区坐标映射（PCM），用参数空间的控制点网格做局部控制；不同子区域生成不同胞元拓扑，保证高阶光滑连接；设计变量只有组件的显式几何参数和映射函数的扰动系数。'没有 ML'与摘要相符。分析方式、'只有柔度类目标'未能从摘要确认，原声明已标 UNVERIFIED，其中'只有柔度类目标'也应标为未核实。"
+    },
+    {
+     "id": "5",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认：Yilin Guo, Chang Liu, Zongliang Du, Yibo Jia, Chao Jiang, Xu Guo, Changyu Shen，CMAME 456: 118955（2026 年 7 月）。期刊标题中 Bézier 为小写 'cubic bézier'。摘要（检索摘要）核实了以下内容：子结构法与 DeepONet 结合；学习从三次 Bézier 插值的边界位移场到子结构内部位移场的映射；映射只依赖子结构内的材料分布；对比对象是假设线性边界位移的 ML 增强子结构法。'没做什么'按摘要判断合理。另已核实 arXiv 2607.22019 实为 'PIML-OFEM: A New Large-Scale Structural Analysis Method Based on Problem-Independent Machine Learning and Overlapping Finite Element Technique'（Guo Yilin 等，正文多处提到 U-Net），不是本文。"
+    },
+    {
+     "id": "6",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "DOI 10.1007/s00466-021-02098-y 与 arXiv:2107.09568 均存在。作者 Hirschler, Antolin, Buffa，Computational Mechanics 69(2): 439–466。Crossref 在线日期为 2021-10-30，卷期为 2022，均正确。摘要和正文核实：宏观尺度做多项式逼近（投影），微观信息存入预计算积分的 lookup tables；有理论分析，用 Strang 第一引理处理一致性误差；摘要明确提到可快速计算设计优化用的灵敏度。小修正：声明中'精确地并入 Jacobian'措辞过强，实为多项式投影近似，带可控的一致性误差。'只做组装、不处理求解、只针对贴体样条复合 tile'与原文一致。"
+    },
+    {
+     "id": "7",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认：C. Guillet, T. Hirschler, P. Jolivet, R. Bouclier，JCP 537: 114136（2025 年 9 月），开放获取，另有 HAL hal-04757522v3。摘要核实了以下内容：两级几何预条件子，细层为重叠 DD 光滑子，粗层为 AMG 修正；细层 matrix-free，转移算子基于样条 k-refinement；子域内用 ROM 做局部求解。规模：Table 9 弱扩展算例最大 202,612 个胞元、1.5B DOF、4096 进程；推力室算例 66,420 个胞元。'数十万胞元、十亿级 DOF'成立。后续论文 CMAME 461: 119202 存在：'Efficient fine-scale simulation of nonlinear hyperelastic lattice structures'，作者 Guillet, Hirschler, Jolivet, Antolin, Bouclier（注意多了 Antolin），对应 arXiv 2603.10741，内容为非线性超弹性点阵加 inexact FETI-DP。"
+    },
+    {
+     "id": "8",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 与 Semantic Scholar 确认：Yichao Zhu, Shaoshuai Li, Zongliang Du, Chang Liu, Xu Guo, Weisheng Zhang，JMPS 124: 612–633（2019 年 3 月）。摘要核实了以下内容：引入映射函数，把梯度微结构变换为空间周期构型；用渐近分析解耦为宏观均匀化问题和代表性胞元问题；从理论和数值两方面证明应力场和总体柔度与细尺度结果一致；线性化后计算量与常规渐近均匀化相当。'没做什么'（依赖尺度分离和线性化）属于方法本身的合理推论。"
+    }
+   ]
+  }
+ },
+ {
+  "lens": "learned_substructure_mapped",
+  "search": {
+   "summary": "【结论先行】以“学习/降阶子结构 + 几何变化”的视角看，至今（2026-10）没有找到哪一篇工作学习了经非仿射全局映射（B 样条体映射 / 样条复合）的胞元的凝聚算子（Schur 补），同时又对任意输入给出 SPD、刚体模态精确再现和单侧能量序 S ≤ Ŝ 三项结构保证。不过三条相邻路线都已经非常接近，A 方向的创新空间比想象中窄，必须精确定位。\n\n(1) 经典降阶路线（EPFL/Buffa–Antolin–Hirschler 组）在“映射胞元”上已经做得很成熟。Hirschler 等 (Comp Mech 2022; IJNME 2024) 对样条复合 (G∘T) 的点阵做了拉回：每个胞元等价于参考胞元加上各向异性、空间变化的张量场 Ĉ^(s)(ξ)。这正是方向 A 的出发点，是他们论文中的 Eq.(52)。他们用多项式插值 Ĉ^(s) 加查表做快速组装，再用 greedy 选出“主胞元”，把所有局部刚度表示成主胞元刚度的线性组合（系数可为负），放进 inexact FETI-DP 的预条件子里，最终由 Krylov 迭代保证精度。Bonilla Moreno–Guarino–Antolin (CMAME 2026, arXiv 2604.09113) 进一步做到 2D 非贴体 p-FEM 的水平集/TPMS 胞元加任意阶映射：映射贡献与 trimming 贡献分离，trimming 参数用 MDEIM 降阶，求解器是 BDDC，并加 α-稳定化保证可扩展性，代价是一致性误差。更关键的是，该文在结论里明确把“3D 用神经网络代理（避免维数灾难）”和“把 ROM 生成的子域刚度作为近似子域逆放进 Krylov 预条件子”列为下一步计划，这与 A+B 几乎完全重合，抢发风险高。这些工作的共同点是：无学习；近似算子不保证 SPD，也不保证 Ŝ ≥ S（线性组合与 MDEIM 都可能破坏，所以才需要稳定化）；没有条件数理论；都局限于 2D 或贴体 IGA。\n\n(2) 学习型子结构路线（郭旭组 PIML 系列）已经有三样东西：“能量形式”(K_s = Nᵀ K N，PIML-OFEM 的 Eq.8 明文写出，并引用 JMPS 2024)、刚体模态硬约束、以及“等参单元形状 → 数值形函数”的映射子结构 (EML 2024)。他们还有共形映射 / B 样条分区坐标映射的曲面点阵设计 (CMAME 2026)。因此“Galerkin/能量形式自动给出 SPD 和上界”本身不能当作创新点；SCRBE 的 RB-Galerkin 气泡近似同样天然满足 S_RB ≥ S。NICE 可以守住的差异在于：精确平衡残差的多层校正（对任意输入都不增大能量误差）、以 Jacobian/度量场为条件的 3D 非贴体 CutFEM 胞元、零样本鲁棒性的可验证论证，以及对映射控制点的灵敏度。\n\n(3) 神经算子“单元化”路线：NOEM (Nat Comput Sci 2026)、DIMON（微分同胚参考域）、Convex Neural Energy Elements (arXiv 2608.02036)。其中 CNEE 最危险：几何参数化的超网络输出 L(g)，K = LᵀL，即 PSD；提出“正则零空间必须包含刚体模态”的原则，并给出装配级的条件误差界。但它的几何是低维显式参数（椭圆孔的 a、b、θ），不是 Jacobian 场；线性单元是矩阵回归，没有单侧序 Ŝ ≥ S，也没有残差校正；问题规模很小（2D 不超过 2241 个未知量，3D 只有一个 2×2×2）；也不涉及 DD 求解器。Parish 等 (Comp Mech 2024) 和 Gaynutdinova 等 (EAAI 2025) 给出 SPSD/SPD 的学习凝聚刚度，但都没有连续几何映射。\n\n综合判断：方向 A 若要成立，卖点应定为“3D、非贴体、映射胞元、学习的凝聚算子加精确算子校正，对任意 Jacobian 输入都保持 SPD 与 Ŝ ≥ S，并以此支撑外推 / 零样本的可信度和对映射控制点的梯度”。必须正面对比 Hirschler 2024 / Bonilla 2026 的“拉回 + 插值/MDEIM”经典基线，否则审稿人会问“为什么不直接查表？”。方向 B 与 Bonilla 2026 的未来工作重合，宜尽快占位。",
+   "papers": [
+    {
+     "citation": "T. Hirschler, R. Bouclier, P. Antolin, A. Buffa (2024). Reduced order modeling based inexact FETI-DP solver for lattice structures. International Journal for Numerical Methods in Engineering 125(8): e7419.",
+     "id": "10.1002/nme.7419 ; arXiv:2308.11371",
+     "what_it_does": "点阵由样条复合 Ω(s)=(G(s)∘T)[Ω̃] 生成：T 是参考胞元的多片样条，G(s) 是各胞元的 Bézier 宏观映射。拉回到参考胞元后，每个胞元的双线性形式只差一个四阶张量场 Ĉ(s)(ξ)，其中编码了材料与宏观映射（文中 Eq.52）。Ĉ(s) 用多项式系数 A(s) 近似，配合查表快速组装；再用 greedy 选出少数“主胞元”，把所有局部刚度近似为主胞元刚度的线性组合（系数可正可负，见文中 Fig.4）。这一近似用在 inexact FETI-DP 的块预条件子里（GMRES），只需分解主胞元。不做的事：没有机器学习；近似局部刚度不保证 SPD，也没有 Ŝ ≥ S 之类的序；全文没有条件数或谱等价分析（全文检索未见 condition number）；只处理贴体 IGA，不处理 CutFEM/水平集胞元；没有对 G(s) 控制点的灵敏度或优化。",
+     "relevance": "方向 A 与 B 的最直接经典先例：A 的“映射胞元 = 参考胞元 + C̃(J)”拉回思想就是他们的 Eq.(52)；B 的“近似子域算子放进 FETI-DP”也已有人做。差异在于：NICE 是学习的、对任意输入有能量形式保证、带精确算子校正，并面向 3D 非贴体 TPMS；他们靠“主胞元线性组合”，没有任何谱序保证。论文必须把它作为基线对比。",
+     "threat": "high"
+    },
+    {
+     "citation": "G. Bonilla Moreno, G. Guarino, P. Antolin (2026). A ROM-based BDDC solver for unfitted p-FEM level-set-based two-dimensional lattice structures. Computer Methods in Applied Mechanics and Engineering, article 119304 (arXiv v3 注明 vol. 463 (2027))。",
+     "id": "10.1016/j.cma.2026.119304 ; arXiv:2604.09113",
+     "what_it_does": "2D 点阵，胞元由水平集（含 2D TPMS）定义，再经任意阶几何映射放入物理空间。离散用非贴体 p-FEM，每个胞元一个高阶单元；一胞元对应一子域做 BDDC。快速组装把几何映射贡献（拉回系数在胞元上用多项式插值，要求 Jacobian 非退化）与 trimming 贡献分离，trimming 参数用 MDEIM 降阶，对任意映射可复用。引入 α-稳定化保证 ROM 下求解器可扩展，代价是一致性误差。实测 17000 胞元约 30 s；弱扩展到 131072 子域，迭代 15–18 次。不做的事：只有 2D；没有神经网络；ROM 只近似刚度，局部求解仍是精确分解，并非 inexact 子域求解；没有 SPD/能量序保证，需要稳定化补救；没有条件数理论证明，只有数值可扩展性。结论明确把“3D 用神经网络代理”和“把 ROM 子域刚度作为近似子域逆用于 Krylov 预条件子”列为未来工作。",
+     "relevance": "与 A（映射 + 非贴体胞元 + 降阶）和 B（DD 中的近似子域算子）同时高度重叠，对方已公开计划用神经网络做 3D 和近似子域逆，抢发风险最高。差异在于：NICE 已是 3D CutFEM、学习算子，并且对任意输入有 SPD 与 Ŝ ≥ S 保证，不需要 α-稳定化。",
+     "threat": "high"
+    },
+    {
+     "citation": "H. Jiang, J. Zhan, C. Zhang, F. Wang (2026). Convex Neural Energy Elements: Monolithic Finite-Element Assembly of Geometry-Parameterized Neural Operators with Stability and Error Guarantees. arXiv preprint（未见期刊）。",
+     "id": "arXiv:2608.02036",
+     "what_it_does": "每个“神经单元”导出标量能量 E(g,U)，对边界自由度 U 架构性凸。线性情形由超网络从几何参数 g（如椭圆孔 a、b、cos2θ、sin2θ）生成 L(g)，K = LᵀL ⪰ 0；训练目标是精确静力凝聚 Schur 补 S_g（正则后取 sqrtm）。提出正则零空间原则：正则项零空间必须包含刚体模态，否则产生不可约偏差。给出条件误差界（能量到解、单元数缩放、几何泛化）。示例包括 2D 热传导与平面应变弹性，以及一个粗分辨率的 3D 2×2×2 装配。附录提到“固定内部为精确线性响应 A = −K_ii⁻¹K_ib 得到 Rayleigh–Ritz 上界、Newton 步收紧”的阶梯。不做的事：几何只是低维显式参数，不是 Jacobian/度量场，也没有非仿射映射；线性单元是矩阵回归，不保证 Ŝ ≥ S；没有残差/平衡校正；问题规模极小（2D 不超过 2241 个未知量）；没有非贴体胞元；不涉及 DD/预条件子。",
+     "relevance": "在“几何参数化的学习凝聚算子 + 结构保证”这一点上是最接近 NICE 的新竞品，会削弱“首个带 SPD 保证的几何条件化学习超单元”这类表述。NICE 的区别在于：以场为条件（Jacobian 场 / 切割几何）、单侧序 Ŝ ≥ S 对任意输入成立、带精确算子多层校正、规模（1.6M 保留自由度）与 3D CutFEM。",
+     "threat": "high"
+    },
+    {
+     "citation": "L. Zhang, M. Huang, C. Liu, Z. Du, T. Cui, X. Guo (2024). Problem-independent machine learning-enhanced structural topology optimization of complex design domains based on isoparametric elements. Extreme Mechanics Letters（卷号 UNVERIFIED）, 102237.",
+     "id": "10.1016/j.eml.2024.102237",
+     "what_it_does": "在 PIML 子结构框架中，用机器学习建立“子结构单元形状（等参单元几何）+ 内部材料分布 → 数值形函数”的映射，从而把 PIML 扩展到非矩形的复杂设计域；换几何或边界条件无需重新采样。不做的事（据摘要；全文未能获取，细节 UNVERIFIED）：几何似乎只是子结构角点决定的等参（双线性）映射，而不是全局 B 样条体映射或空间变化的 Jacobian 场；大概率是 2D；没有非贴体 / TPMS 薄壁；未见 Ŝ ≥ S 的显式论述或残差校正。",
+     "relevance": "这是“学习的映射子结构”的直接先例，与方向 A 的核心卖点（以几何变换为条件的学习凝聚算子）重叠。A 必须把差异讲清楚：全局非仿射映射（胞元内 J 变化）、3D 切割薄壁、对任意输入的谱序加校正，以及零样本外推的认证。",
+     "threat": "high"
+    },
+    {
+     "citation": "M. Huang, T. Cui, C. Liu, Z. Du, J. Zhang, C. He, X. Guo (2023). A Problem-Independent Machine Learning (PIML) enhanced substructure-based approach for large-scale structural analysis and topology optimization of linear elastic structures. Extreme Mechanics Letters 63: 102041.",
+     "id": "10.1016/j.eml.2023.102041",
+     "what_it_does": "离线训练的深度网络建立子结构内材料分布到数值形函数 N（内部位移 = N·边界位移）或凝聚刚度的映射，与边界条件和载荷无关，报告 10⁴–10⁵ 倍加速，并用于 3D 柔顺机构设计。按 arXiv:2607.22019 的复述，凝聚刚度写成 K_s = Nᵀ K N（能量 / Galerkin 形式），且形函数输出带刚体模态硬约束。不做的事：没有平衡残差校正；没有几何映射或切割几何（输入是密度/材料场）；没有对 Ŝ ≥ S 作误差认证或用于 PCG 预条件子。",
+     "relevance": "能量形式（因此 SPD 与上界 Ŝ ≥ S 自动成立）和刚体模态硬约束在 PIML 系列中已经存在，NICE 不能把这两点当作首创，只能把差异放在校正、任意输入保证的论证与利用、CutFEM 几何、Jacobian 条件化上。",
+     "threat": "high"
+    },
+    {
+     "citation": "T. Hirschler, P. Antolin, A. Buffa (2022). Fast and multiscale formation of isogeometric matrices of microstructured geometric models. Computational Mechanics 69(2): 439–466.",
+     "id": "10.1007/s00466-021-02098-y ; arXiv:2107.09568",
+     "what_it_does": "针对样条复合的微结构几何，把宏观映射相关量（如 Jacobian 等）投影或插值到样条/多项式空间，参考胞元积分预计算成查表，从而实现多尺度、无矩阵的刚度组装（这里 C̃ 的系数就是“映射系数”）。不做的事：不降低未知量数目（不做凝聚或降阶）；没有学习；没有求解器理论。",
+     "relevance": "方向 A 的“C̃ = det J J⁻¹ C J⁻ᵀ 拉回 + 参考胞元”的计算底座已被系统化。NICE-A 的网络输入（Jacobian 场）可直接用他们的多项式系数 A(s) 作为低维几何编码，这是可借用的现成接口，也是审稿人会要求的对比基线。",
+     "threat": "medium"
+    },
+    {
+     "citation": "C. Liu, W. Xu, W. Huo, Y. Guo, X. Guo (2026). Surface lattice structure design via computational conformal mapping and structural optimization. Computer Methods in Applied Mechanics and Engineering 451: 118680.",
+     "id": "10.1016/j.cma.2025.118680",
+     "what_it_does": "在曲壳表面上设计梯度点阵：计算共形映射把网格曲面参数化到平面，用 B 样条基构造分区坐标映射，使相邻胞元平滑过渡；用 MMC 少量几何变量同时优化点阵的形状与尺寸。arXiv:2607.22019 把它列为“PIML 应用于点阵结构”的例子，但其分析是否采用 PIML 学习子结构 UNVERIFIED。不做的事（据摘要）：未见以 Jacobian 为条件的学习凝聚算子，也未见结构性误差保证。",
+     "relevance": "说明郭旭组已同时掌握“B 样条/共形映射点阵 + PIML 学习子结构”两块拼图，是方向 A 最可能的直接竞争者。A 需尽早发表，并强调保证与 3D 非贴体。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Y. Guo, C. Liu, Z. Du, Y. Jia, C. Jiang, X. Guo, C. Shen (2026). High-Generalization AI-Enhanced mechanical analysis and topology optimization via cubic Bézier interpolation of substructure boundary displacements. Computer Methods in Applied Mechanics and Engineering 456: 118955.",
+     "id": "10.1016/j.cma.2026.118955",
+     "what_it_does": "在 PIML 子结构框架中，用三次 Bézier 插值表示子结构边界位移（保留更多边界控制自由度，以提升复杂局部变形与载荷点附近的表示能力），并处理内部或节点载荷。按 2607.22019 的引述，形函数补全过程保证刚体模态。不做的事（全文未获取，细节 UNVERIFIED）：Bézier 用于边界位移插值，不是几何映射；未见映射胞元、切割几何或残差校正。",
+     "relevance": "这是用户已知的竞品。它的 Bézier 作用于“边界运动学的降维”，与方向 A 的“几何映射”是不同层面。可在论文中明确区分两者，避免审稿人混淆。",
+     "threat": "medium"
+    },
+    {
+     "citation": "M. Huang, C. Liu, Y. Guo, L. Zhang, Z. Du, X. Guo (2024). A mechanics-based data-free Problem Independent Machine Learning (PIML) model for large-scale structural analysis and design optimization. Journal of the Mechanics and Physics of Solids 193: 105893.",
+     "id": "10.1016/j.jmps.2024.105893",
+     "what_it_does": "以力学能量作为损失，无需数据集，训练轻量网络映射子结构材料分布到连续多尺度形函数，用于线弹性分析与刚度相关优化。不做的事：没有几何映射、切割几何或残差校正，也没有显式的误差认证。",
+     "relevance": "无数据（能量最小化）训练一旦与 Jacobian 条件化结合，就能直接覆盖映射胞元（拉回后的 C̃ 能量可直接写出）。这是 A 的一条潜在快速竞争路线；NICE 若在 A 中采用能量训练，需要引用并区分。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Y. Guo, C. Liu, Z. Du, J. Liu, J. Feng, X. Zhang, Y. Li, T. Yang, C. Shen, X. Guo (2026). PIML-OFEM: A New Large-Scale Structural Analysis Method Based on Problem-Independent Machine Learning and Overlapping Finite Element Technique. arXiv preprint（投 Acta Mechanica Sinica）。",
+     "id": "arXiv:2607.22019",
+     "what_it_does": "用 U-Net 学习“过采样区域杨氏模量分布 → 过采样数值形函数（只保留角点自由度）”，用重叠有限元（单位分解）解决子结构间位移不协调，整体凝聚刚度为 Φᵀ K^OV Φ（Galerkin 投影），形函数带刚体模态硬约束。只做 2D。不做的事：没有几何映射；没有残差校正；没有误差界；没有 3D 切割几何。",
+     "relevance": "确认了 PIML 族“能量投影 + 刚体约束”的标准做法，并展示了他们用过采样/重叠来提升精度的新方向。对方向 B 的启示是：他们走的是“降维 + 投影”，不是“学习算子作为精确求解器的预条件子”。",
+     "threat": "medium"
+    },
+    {
+     "citation": "E. Parish, P. Lindsay, T. Shelton, J. Mersch (2024). Embedded symmetric positive semi-definite machine-learned elements for reduced-order modeling in finite-element simulations with application to threaded fasteners. Computational Mechanics 74(6): 1357–1381.",
+     "id": "10.1007/s00466-024-02481-5 ; arXiv:2307.05434",
+     "what_it_does": "把计算域分为外部粗尺度 FEM 区与内部细尺度区，学习“界面（虚）位移 → 内部区贡献力”的映射，并强制学习刚度 SPSD，从而保证耦合粗问题适定；应用于螺纹紧固件，包括接触。证明 SPSD 约束对精度和鲁棒性至关重要。不做的事：只有单个嵌入子结构，没有几何参数化或映射，也没有 Ŝ ≥ S 序与残差校正。",
+     "relevance": "证明了“学习凝聚算子的 SPD 性是可装配性的关键”。NICE 在此基础上给出更强的单侧序，并可组成多胞元点阵。可作为 A/B 中 SPD 保证的文献支撑。",
+     "threat": "low"
+    },
+    {
+     "citation": "L. Gaynutdinova, M. Doškář, I. Pultarová, O. Rokoš (2025). Symmetric positive definite convolutional network for surrogate modeling and optimization of modular structures. Engineering Applications of Artificial Intelligence 154: 110906.",
+     "id": "10.1016/j.engappai.2025.110906",
+     "what_it_does": "用卷积网络预测模块化结构的降阶刚度矩阵（与 Schur 补降阶表示一致），并以物理引导结构保证输出 SPD；与域形状、边界条件、载荷无关；用随机梯度对模块类型做优化，报告约 1000 倍加速。不做的事：设计变量是离散模块类型，没有连续几何映射或 Jacobian；没有 Ŝ ≥ S；没有残差校正；没有 DD 理论。",
+     "relevance": "这是“学习 SPD 凝聚刚度 + 模块化结构优化”的近邻，但几何变化是离散的。A 中“以映射控制点为设计变量的连续梯度”是它没有的。",
+     "threat": "low"
+    },
+    {
+     "citation": "M. Chasapi, P. Antolin, A. Buffa (2024). Reduced order modelling of nonaffine problems on parameterized NURBS multipatch geometries. In: Lecture Notes in Computational Science and Engineering (Springer)。",
+     "id": "10.1007/978-3-031-55060-7_4 ; arXiv:2211.07348",
+     "what_it_does": "在 IGA 多片 NURBS 几何上处理几何参数化的非仿射问题：用 EIM 恢复仿射参数依赖，用 SCRBE 耦合样条片，片内用 RB（greedy/POD），示例为 3D 多维几何参数。不做的事：没有学习；参数是少量几何参数而非全局体映射场；没有非贴体切割胞元；没有为 DD 迭代设计的预条件子理论。",
+     "relevance": "这是“静力凝聚 RB 元 + 非仿射几何映射（EIM）”的直接先例，对应关键词中的 SCRBE + EIM。Galerkin RB 气泡近似天然满足 S_RB ≥ S，所以单侧序本身是经典性质；NICE 的新意必须落在“学习 + 任意输入 + 校正 + 高维场条件化”上。",
+     "threat": "medium"
+    },
+    {
+     "citation": "D.B.P. Huynh, D.J. Knezevic, A.T. Patera (2013). A static condensation reduced basis element method: approximation and a posteriori error estimation. ESAIM: Mathematical Modelling and Numerical Analysis 47(1): 213–251.",
+     "id": "10.1051/m2an/2012022",
+     "what_it_does": "SCRBE 奠基作：离线建立组件库，在线实例化；接口用特征函数“端口”表示，组件内部用 RB 近似 FE 气泡函数，在组件间做静力凝聚；给出稳定性和严格的后验误差界。不做的事：几何参数化主要靠（分片）仿射映射，非仿射需 EIM，本文本身未重点处理非仿射映射（WebFetch 摘要如此，UNVERIFIED）；没有学习。",
+     "relevance": "NICE 的“精确凝聚的能量上界 + 后验认证”在 RB 社区有成熟对应物（RB 凝聚 Schur 补 ≥ 真值，以及残差型后验界）。A 与 B 都应引用，并说明学习算子如何达到或超越 RB 的认证能力（例如 NICE 的校正可视为对任意输入的残差驱动改进）。",
+     "threat": "medium"
+    },
+    {
+     "citation": "W. Ouyang, Y. Shin, S.-W. Liu, L. Lu (2026). NOEM: efficient and scalable finite element method enabled by reusable neural operators. Nature Computational Science 6: 417–429.",
+     "id": "10.1038/s43588-026-00974-2 ; arXiv:2506.18427",
+     "what_it_does": "在需要细网格的子域内用神经算子构造单个“神经算子单元”(NOE)，通过变分框架与标准有限元耦合；单孔子域训练的算子可复用到多孔域，覆盖非线性 PDE、多尺度、复杂几何、间断系数。不做的事：没有架构级的 SPD/凸性保证（CNEE 指出值回归训练的 NOE 会诱导装配 Hessian 不定）；没有映射胞元的 Jacobian 条件化；没有 DD 预条件子理论。",
+     "relevance": "这是神经子结构/超单元的高影响力代表作，审稿人会要求对比。NICE 的优势是精确线性性加能量形式带来的保证，以及 3D 大规模点阵。",
+     "threat": "medium"
+    },
+    {
+     "citation": "M. Yin, N. Charon, R. Brody, L. Lu, N. Trayanova, M. Maggioni (2024). A scalable framework for learning the geometry-dependent solution operators of partial differential equations (DIMON). Nature Computational Science 4: 928–940.",
+     "id": "10.1038/s43588-024-00732-2 ; arXiv:2402.07250",
+     "what_it_does": "把一族微分同胚域上的 PDE 问题通过映射搬到统一参考域，在参考域上学习（经变换后的）解算子，再映回原域，从而实现跨几何泛化。不做的事：学的是整体解算子而不是子结构凝聚算子；没有 SPD、能量界或刚体模态保证；不与 FEM/DD 装配。",
+     "relevance": "这是“参考域 + 映射”的神经算子代表，即 A 中“以 Jacobian 为条件”的 ML 同类思想。差别在于 NICE 学的是局部、线性、带保证的延拓/凝聚算子，可在全局 B 样条映射下逐胞元复用。",
+     "threat": "low"
+    },
+    {
+     "citation": "C. Guillet, T. Hirschler, P. Jolivet, P. Antolin, R. Bouclier (2026). Efficient Fine-Scale Simulation of Nonlinear Hyperelastic Lattice Structures. arXiv preprint.",
+     "id": "arXiv:2603.10741",
+     "what_it_does": "把 ROM-inexact FETI-DP 扩展到超弹性大变形点阵：用类 EIM 方法挑出少量代表胞元，把局部切线算子表示为其组合，构成近乎无矩阵的 inexact FETI-DP 预条件子；运行时间从数小时降到数十分钟，内存约省 3 倍。不做的事：没有学习；没有谱保证；没有非贴体胞元。",
+     "relevance": "说明 EPFL/Grenoble 组在“映射点阵 + 近似局部算子 + FETI-DP”路线上持续推进（线性 → 非线性），与 B 的叙事直接竞争。NICE-B 需突出单侧谱序带来的条件数界，这是他们所没有的。",
+     "threat": "medium"
+    },
+    {
+     "citation": "K. Smetana, A.T. Patera (2016). Optimal local approximation spaces for component-based static condensation procedures. SIAM Journal on Scientific Computing 38(5): A3318–A3356.",
+     "id": "10.1137/15M1009603",
+     "what_it_does": "在双组件系统上构造从端口到共享端口的紧传递算子，通过其与伴随复合的特征问题得到最优端口空间；配合谱 greedy，使任意组件配置下的静力凝聚误差低于容差，示例包括含裂纹的工字梁等非规则几何。不做的事：没有学习，没有非仿射映射胞元，没有 DD 迭代求解器。",
+     "relevance": "若 NICE 在 A 或 B 中想压缩保留坐标（端口降维），这是理论基线，并提供了与“S ≤ Ŝ”配套的端口误差分析工具。",
+     "threat": "low"
+    },
+    {
+     "citation": "S. McBane, Y. Choi (2021). Component-wise reduced order model lattice-type structure design. Computer Methods in Applied Mechanics and Engineering 381: 113813（卷号与文章号 UNVERIFIED）。",
+     "id": "arXiv:2010.10770",
+     "what_it_does": "在点阵型结构拓扑优化中使用组件级降阶模型 (CWROM，SCRBE 类)，组件为参考组件，报告相对全阶 FEM 约 1000 倍加速、约 1% 误差；后续 2022 年有应力约束版本。不做的事：没有几何映射胞元或连续映射设计变量；没有学习；没有 DD 迭代理论。",
+     "relevance": "这是“降阶组件 + 点阵优化”的经典基线。A 中的“映射控制点作为设计变量”可以引用它作为离散组件型优化的对照。",
+     "threat": "low"
+    },
+    {
+     "citation": "P. Secchi, D.S. Balint, M. Maurizi (2026). Neural-Schwarz Tiling for Geometry-Universal PDE Solving at Scale (NEST). arXiv preprint.",
+     "id": "arXiv:2605.12343",
+     "what_it_does": "在 3×3×3 体素小块上学习局部神经算子，推理时把重叠小块平铺，通过迭代 Schwarz 耦合实现全局一致；用于可压缩 neo-Hookean 固体的非线性静力平衡，可泛化到不同域尺寸、形状与边界条件。不做的事：没有子结构凝聚或能量形式保证；没有收敛或条件数理论；没有几何映射胞元。",
+     "relevance": "这是“学习局部求解器嵌入 Schwarz 型 DD”的最新实例，与方向 B 同类。NICE-B 的区别在于非重叠子结构（BDDC/FETI-DP），学习算子带单侧谱序，并且能给出可证明的条件数界。",
+     "threat": "medium"
+    }
+   ],
+   "gaps": [
+    "没有任何工作学习过“全局非仿射映射（B 样条体映射 / 样条复合）下胞元”的凝聚算子并对任意 Jacobian 输入保证 SPD、刚体再现和 Ŝ ≥ S。经典路线（Hirschler 2024、Bonilla 2026）用多项式插值/查表与主胞元线性组合或 MDEIM，不保证 SPD 和序，需要 α-稳定化。学习路线（PIML 等参版、CNEE）只有低维几何参数或角点等参映射。“以 Jacobian/度量场为条件、3D、非贴体薄壁”这一格仍是空的。",
+    "机会窗口很紧：Bonilla Moreno–Guarino–Antolin (CMAME 2026) 在结论中明确把“3D 用神经网络代理”和“把 ROM 子域刚度作为近似子域逆用于 Krylov 预条件子”列为未来工作，与 A+B 几乎重合，建议尽快以预印本占位。",
+    "若把水平集/TPMS 定义在参考坐标（样条复合思路），切割几何在所有映射胞元间完全相同，只有 C̃(J) 变化。这时 NICE-A 的网络只需以 J 场（或其多项式系数，如 Hirschler 的 A(s)）为条件，固定的几何专属多层校正可以全局复用，这是经典 ROM 没有利用的结构。反之，若切割在物理坐标中定义，则需要同时条件化 J 与切割，与 Bonilla 的“映射/trimming 分离”可形成直接对照。",
+    "Ŝ ≥ S 本身并非新颖（SCRBE 的 RB-Galerkin、PIML 的 Nᵀ K N、CNEE 的 Rayleigh–Ritz 阶梯都天然或部分具备）。可以创新的是：(i) 对“任意输入”成立加上精确算子校正“不增大能量误差”的单调性，用于零样本外推（例如强扭曲、接近退化的 J）的认证；(ii) 把 S ≤ Ŝ ≤ (1+ε)S 的可计算 ε（后验）转成 BDDC/FETI-DP 条件数界，即 κ 至多被 (1+ε) 倍放大。Hirschler/Bonilla/NEST 都没有任何谱理论。B 方向应与经典 inexact BDDC/FETI-DP 理论（Li–Widlund、Dohrmann、Klawonn–Rheinbach 等，不在本视角内，待另行核实）显式衔接。",
+    "没有工作给出“对映射控制点的灵敏度”在学习子结构框架下的高效计算（经典 ROM 文献只说“容易求导”）。NICE 已有基于场的厚度灵敏度，推广到 ∂Ŝ/∂(控制点)，经 J → C̃ 的链式法则，是可做的独立贡献。",
+    "缺少同一映射点阵上的公平对比：学习凝聚算子 vs 拉回系数插值/查表加 MDEIM/主胞元 RB（精度、在线代价、外推鲁棒性、SPD 违例率）。A 方向论文若提供这一基准，会显著增强说服力，也能回答“为什么不直接查表”这一必然的审稿问题。",
+    "CNEE 指出的“正则零空间必须包含刚体模态”问题，在映射胞元中会变成“映射后刚体模态 = 参考胞元上的 J 变换模态”。NICE 的精确线性加能量形式可自动处理这一点，值得在 A 中作为与 CNEE 的显式区分点给出证明或数值验证。"
+   ]
+  },
+  "verify": {
+   "checks": [
+    {
+     "id": "1",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 与 arXiv 均核实：IJNME 125(8) e7419 (2024)，作者 Hirschler、Bouclier、Antolin、Buffa；arXiv:2308.11371 题名一致。读了全文 PDF：Eq.(51) Ω(s)=(G(s)∘T)[Ω̃]，其中 G(s) 为 Bézier 多元映射；Eq.(52) 为拉回后的双线性形式，四阶张量场 Ĉ(s) 编码材料与宏观映射；Eq.(53) 用多项式系数 A(s) 近似，Eq.(54) 查表组装；Algorithm 4 用 greedy 选主胞元；Fig.4 的 RB 系数有负值（如 -0.03、-0.14）；用的是 GMRES 加块预条件子，即 inexact FETI-DP。全文检索没有 condition number，也没有机器学习方法。各项均与声称一致。"
+    },
+    {
+     "id": "2",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2604.09113 的 DOI 字段为 10.1016/j.cma.2026.119304。Crossref 记为 CMA vol.463，article 119304，issue 日期 2027-01，正式卷年份应写 2027。作者 Gonzalo Bonilla Moreno、Giuliano Guarino、Pablo Antolin。全文核实：胞元为水平集（Table 1 为 2D TPMS），经任意阶映射放入物理空间；非贴体 p-FEM，每胞元一个单元；BDDC 中一胞元对应一子域；快速组装要求 Jacobian 非退化（GLL 多项式插值）；trimming 用 MDEIM；α-稳定化带来一致性误差；17000 胞元约 30 s；Table 4 弱扩展到 131072 子域，迭代 15–18 次。结论明确把基于神经网络的 3D 代理，以及把 ROM 刚度作为近似子域逆用于 Krylov 预条件子，列为未来工作。"
+    },
+    {
+     "id": "3",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2608.02036 存在（2026-08-03），作者 Jiang、Zhan、Zhang、Wang，未见期刊。全文核实：超网络生成 L(g)，K=LᵀL+λ(I−Pc)；几何编码为 [a,b,cos2θ,sin2θ]；训练目标为 sqrtm(S_g−λ(I−Pc))；正则零空间原则；条件误差界有三类（能量到解、单元数、几何泛化）；有平面应变弹性算例；3D 为一个粗分辨率的 2×2×2 配置；2D 最多 2241 个未知量。有一处小误：『A=−K_ii⁻¹K_ib，Rayleigh–Ritz 上界，Newton 步收紧』这一阶梯出现在正文第 5 节（非线性 / Beyond quadratic energies，Table 3），不在附录，建议把『附录』改为『正文第 5 节』。另外正文还有非线性反应扩散算例，声称未提及，但不影响结论。"
+    },
+    {
+     "id": "4",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 核实：Extreme Mechanics Letters，卷号为 72，article 102237，2024-11，作者无误。请把『卷号 UNVERIFIED』改为 72。摘要（据检索）：用神经网络建立『等参子结构的单元形状与内部材料分布 → 数值形函数』的隐式映射，改变几何或边界条件时无需重新生成样本，拓扑优化效率提升约一个数量级。与声称一致。全文未获取，『双线性等参、2D、无 Ŝ≥S 论述』等不做事项仍属推断。"
+    },
+    {
+     "id": "5",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": false,
+     "note": "Crossref 核实：EML 63，102041（2023-09），作者 Huang、Cui、Liu、Du、Zhang、He、Guo 无误。摘要（ADS/检索摘录）：用离线深度网络建立子结构材料分布参数到凝聚刚度矩阵 / 数值形函数的隐式映射，加速 10⁴–10⁵ 倍，并用于 3D 柔顺机构设计，与声称一致。问题在于归属错误。我读了 arXiv:2607.22019 全文：凝聚刚度 K_s=(N)ᵀK N（Eq.8）引的是 [29]，即 JMPS 2024 data-free 那篇（本列表第 9 条）；刚体模态补全硬约束引的是 [37]，即 CMA 2026 Bézier 那篇（本列表第 8 条），都不是本文 [28]。所以『按 2607.22019 的复述』这句不能归给本文，应删除或改挂到第 9 条和第 8 条。"
+    },
+    {
+     "id": "6",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 核实：Computational Mechanics 69(2):439–466，在线 2021-10-30，卷期属 2022；arXiv:2107.09568 题名、作者一致。全文核实：宏观 Jacobian 行列式等量投影到样条 / Bernstein 多项式空间，参考胞元积分预计算成查表（lookup table），实现多尺度组装，摘要还提到可用于灵敏度。需要说明的是，本文实际组装的是矩阵；『无矩阵』只在第 4.2 节『Toward a matrix-free approach』作为展望讨论，建议措辞改为『并讨论了 matrix-free 方向』。本文无学习，也不做降阶，与声称一致。"
+    },
+    {
+     "id": "7",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 核实：CMA 451，118680，作者 Liu、Xu、Huo、Guo、Guo；Crossref 的 issue 日期为 2026-04，DOI 前缀是 2025（文章 2025 年在线）。摘要（据检索）：在曲壳表面上用计算共形映射，B 样条基构造分区坐标映射，使相邻胞元平滑过渡；在 MMC 框架下用少量几何变量同时优化形状与尺寸。与声称一致。2607.22019 第 174 行确实把它列为『PIML 应用于 lattice structures [34]』。该文是否用 PIML 做分析，仍未核实（UNVERIFIED）。"
+    },
+    {
+     "id": "8",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 核实：CMA 456，118955（2026-07），作者 Guo、Liu、Du、Jia、Jiang、Guo、Shen 无误。2607.22019 引用该文 [37]，用于三点：更高阶边界插值 / 保留更多边界控制自由度；处理内部或节点载荷（『see Reference [37]』）；刚体模态补全（『completion procedure can be found in [37]』）。三点均与声称一致。全文未获取，摘要细节未能直接核实。检索摘要提到该文可能用 DeepONet 学习『Bézier 边界位移 → 内部位移』，这一点未经证实，仅供参考。"
+    },
+    {
+     "id": "9",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 核实：JMPS 193，105893（2024-12），作者 Huang、Liu、Guo、Zhang、Du、Guo 无误。摘要（据检索）：用新的基于力学的损失函数，无需准备数据集，训练轻量网络，把子结构内材料分布映射到连续多尺度形函数，适用于任意尺寸、多种边界条件的线弹性分析与设计优化。与声称一致。另外，2607.22019 的 Eq.8 K_s=NᵀKN 引的正是本文 [29]，可以把第 5 条里的这一复述移到这里。"
+    },
+    {
+     "id": "10",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2607.22019 存在（2026-07-24），作者为 Guo、Liu、Du、Liu、Feng、Zhang、Li、Yang、Shen、Guo 共 10 人，注明 Submitted to Acta Mechanica Sinica。全文核实：U-Net 学习杨氏模量分布到过采样数值基函数的映射，只保留角点自由度（2D 中 8 个）；用重叠有限元 / 单位分解拼接；刚体模态补全与角点归一化为硬约束；全文为 2D 算例。没有几何映射、残差校正或误差界，与『不做的事』一致。"
+    }
+   ]
+  }
+ },
+ {
+  "lens": "inexact_ddm",
+  "search": {
+   "summary": "【结论先行】我检索了 inexact BDDC/FETI-DP 理论、ML 粗空间、学习型子域/粗求解器、GNN 预条件子等方向，没有找到符合下述描述的已发表工作：在 BDDC/FETI-DP（或两层 Schwarz）中使用学习得到的 extension/子域算子，并且对任意输入在确定性意义下证明了 S <= S_hat（或 S <= S_hat <= (1+eps)S）的单侧谱序，再由此推出条件数界。下面按\"严格程度\"列出最接近的几类工作。\n(1) 经典 inexact DD 理论。Li & Widlund 2007（TR2005-871 原文已读）的 Theorem 2 写成 1 <= lambda(M_k^{-1}A) <= Phi_k(H,h)。其中 Phi 是平均算子 E_D 在分片能量范数下的稳定性常数：精确 Dirichlet 扩展时 Phi_2 = C(1+log(H/h))^2；trivial extension（即 lumped，零内部扩展）时 Phi_1 = C(H/h)(1+log(H/h))。Theorem 3 处理的是用多重网格近似 K_II 和部分子装配矩阵 K~ 的情形：只要多重网格的收敛率与 H、h 无关（eta* < 1），就得到谱等价常数 c、C，从而 c <= lambda <= C*Phi_2。原文另有一个 remark：若用谱等价的 A_hat^(i) 替换子域矩阵，二者必须有公共零空间，且 A_hat 的子装配矩阵与 A~ 谱等价。Dohrmann 2007 同样要求近似求解器满足\"子结构零空间\"性质（定理细节 UNVERIFIED）。Klawonn & Rheinbach 2007 的 inexact FETI-DP 采用鞍点块三角预条件；只要局部和粗问题的近似求解器足够好（谱等价），得到的界与精确 FETI-DP 同阶。Toselli-Widlund 抽象 Schwarz 框架给出 kappa <= C0^2 * omega * (rho(E)+1)，其中非精确局部求解器通过 omega 进入，条件为 a(R^T u, R^T u) <= omega * a~(u,u)，乘法型方法要求 omega < 2。Haase-Langer-Meyer 1991 的 approximate Dirichlet DD 则把非精确调和扩展 E 的能量稳定性 |Eu|_A^2 <= c_E |Hu|_A^2 作为假设，c_E 直接放大条件数（具体常数形式 UNVERIFIED）。\n关键观察：任何扩展 E 都满足 E^T K E >= S，这就是调和扩展的能量最小性。而且有 Pythagoras 恒等式 u^T(S_E - S)u = ||(E-H)u||_K^2 = ||内部误差||_{K_II}^2。所以\"S <= S_hat\"本身是任意 extension 都具有的经典性质，lumped/trivial extension 就是 eps ~ H/h 的极端情形。NICE 真正新的地方有三点：eps 很小（约 1e-3 量级）；对任意输入在构造上保证 PSD、刚体模态（公共零空间）和单侧序；eps 可由内部残差 r^T K_II^{-1} r 做后验估计。\n(2) 数据驱动/ROM 子域算子嵌入 FETI-DP/BDDC，与方向 B 最接近：\n- Hirschler-Bouclier-Antolin-Buffa 2024（IJNME）：把 ROM 近似的胞元局部算子（primal/Neumann/Dirichlet Schur 补和局部解）作为 inexact FETI-DP 的块预条件。外层用 GMRES 求解精确鞍点系统，用于 spline composition 生成的晶格。没有条件数定理，也没有谱序保证。\n- Bonilla Moreno-Guarino-Antolin 2026（CMAME 2027）：在二维 TPMS 晶格上做 unfitted p-FEM + BDDC，用 MDEIM 近似带几何映射的单元刚度，误差通过 Strang 引理控制。局部 Schur 补由近似刚度精确凝聚得到；没有学习型 extension，也没有条件数理论。\n- Tu & Zhang 2025（arXiv）：stochastic BDDC 用 PC 代理 Schur 补，证明了双侧扰动 |u^T(S~ - S~_F)u| <= gamma * ||u||^2，以及\"以概率趋于 1\"成立的条件数界。这是我找到的唯一一篇\"代理 Schur 补 + BDDC 条件数定理\"，但它是双侧、概率性的，不是单侧、确定性的。\n- Dimola-Vitullo-Zunino 2026（arXiv）：神经代理嵌入 DD 迭代，在参考构型上训练；理论只到\"扰动不动点、全局误差受代理误差控制\"。\n(3) ML 改进 DD 的其它工作：\n- Heinlein/Klawonn/Lanser/Weber 2019-2026：学习自适应约束的位置、粗基函数、粗空间维数。学到的是粗空间，子域求解仍精确，鲁棒性依赖原有 adaptive BDDC/FETI-DP 理论。\n- Melchers-Dolean-Abdelmalik 2026：用 NGO 替代两层预条件中的粗求解，对称性由构造保证，但没有谱界定理。\n- Taghibakhshi et al. 2022/2023：用 GNN 学习 optimized Schwarz 的界面条件，以及多层 DD。\n- Sun-Xu-Yi：用神经网络 extension 算子做 Dirichlet-Neumann 迭代，属于 PINN/deep Ritz 类求解器，没有 Schur 序。\n- DeepONet 混合预条件（Kopanicakova-Karniadakis、HINTS）、Neural-Schwarz tiling（Secchi 2026，晶格式体素 patch + Schwarz，无保证）。\n- GNN-AMG/学习型分解（Luz 2020、NeuralIF、Li et al. 2023）：后两者靠 L L^T 形式保证 SPD，但不涉及与精确算子的谱序。\n(4) 对方向 B 可直接写出的定理形状（以下是基于上述框架的推导，不是文献原文，需要自行严格证明）。设每个子域满足 S_i <= S_hat_i <= (1+eps) S_i，且二者有公共零空间（NICE 保证刚体模态可再现）：\n(a) 把 NICE 作为算子（求解扰动问题），BDDC 由 S_hat_i 构造。平均算子满足 ||E_D w||_{S_hat}^2 <= (1+eps) * Phi * ||w||_{S_hat}^2，所以 kappa <= (1+eps) * C(1+log(H/h))^2。同时有柔度夹逼 f^T S_hat^{-1} f <= f^T S^{-1} f <= (1+eps) f^T S_hat^{-1} f，即 P1 中 compliance 误差的来源。\n(b) 把 NICE 仅作为求解精确 S 的预条件：1/(1+eps) <= lambda(M_hat^{-1} S) <= (1+eps) * Phi，所以 kappa <= (1+eps)^2 * C(1+log(H/h))^2。\n(c) FETI-DP：S_hat >= S 推出 F_hat = B S_hat~^{-1} B^T <= F，序方向翻转。Dirichlet 预条件 B_D S_hat B_D^T 则增大。夹逼后同样得到 (1+eps)^2 因子；若算子与预条件都用 S_hat，则由 Mandel-Dohrmann-Tezaur 理论得到与 BDDC 相同的谱。\n(d) 在 Li-Widlund M3 型算法中把 NICE 当作非精确 Dirichlet 扩展：||E u||_K^2 = u^T S_hat u <= (1+eps) ||H u||_K^2，恰好满足 HLM/Li-Widlund 所需的扩展稳定性；预期 Phi_2 只被放大到约 (1+eps)*Phi_2（UNVERIFIED，需证明）。\n(e) 在抽象 Schwarz 中，S_hat >= S 给出 omega <= 1（满足乘法型所需的 omega < 2），代价是稳定分解常数 C0^2 放大 (1+eps)。\n单侧序相对双侧谱等价的优势不在于界的形状（它只是 c = 1 的特例），而在于三点：下界对任意（包括分布外、zero-shot）输入都确定性成立，没有 Tu-Zhang 式的失败概率；eps 可后验计算，可据此做\"认证式\"自适应回退到精确求解；它与 Dohrmann/Li-Widlund 要求的零空间条件天然一致。",
+   "papers": [
+    {
+     "citation": "Jing Li, Olof B. Widlund (2007). On the use of inexact subdomain solvers for BDDC algorithms. Computer Methods in Applied Mechanics and Engineering 196(8):1415-1428. Preprint NYU Courant TR2005-871.",
+     "id": "NYU TR2005-871；DOI 10.1016/j.cma.2006.03.011（DOI 本身 UNVERIFIED；期刊卷期页已核实）",
+     "what_it_does": "已读原文。证明 BDDC 等价于部分子装配模型上的预条件。Theorem 2：1 <= lambda(M_k^{-1}A) <= Phi_k(H,h)，其中 Phi 是平均算子 E_D 的能量稳定常数（Assumption 1）。分三种情形：精确 Dirichlet 扩展 Phi_2 = C(1+log)^2；trivial extension（等价于 FETI-DP lumped）Phi_1 = C(H/h)(1+log)。Theorem 3：用多重网格近似 K~ 和 K_II，只要收敛因子 eta* < 1 与 H、h 无关，就得到谱等价常数 c、C，从而 c <= lambda <= C*Phi_2。另有 remark：用谱等价且有公共零空间的 A_hat^(i) 替换子域矩阵，同样可得强结果。",
+     "relevance": "方向 B 理论推导的直接模板：NICE 的 S <= S_hat <= (1+eps)S 正好介于 Dirichlet（eps=0）与 trivial extension（eps ~ H/h）之间，预期 Phi -> (1+eps)Phi。它没有做的事：没有学习型扩展；只用双侧谱等价常数 c、C，没有利用单侧序，也没有后验 eps 认证。审稿人可能认为'条件数界只是本文的推论'，因此新意必须放在构造性保证、后验认证和实际 eps 很小上。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Thibaut Hirschler, Robin Bouclier, Pablo Antolin, Annalisa Buffa (2024). Reduced order modeling based inexact FETI-DP solver for lattice structures. International Journal for Numerical Methods in Engineering 125(8):e7419.",
+     "id": "DOI 10.1002/nme.7419；arXiv 2308.11371",
+     "what_it_does": "已读预印本。每个晶格胞元是一个子域。利用胞元之间的几何/力学相似性，挑选少量 principal cells，构造 ROM 来近似其它胞元的 primal/Neumann/Dirichlet Schur 补和局部解，作为 Klawonn-Rheinbach 型块三角 inexact FETI-DP 预条件的子块。外层用 GMRES 求解精确鞍点系统，界面问题用 ROM 近似 F 后做内层 PCG。几何由 spline composition（全局样条映射下的晶格）生成，采用 IGA。",
+     "relevance": "同时覆盖方向 A（样条复合映射晶格）和方向 B（近似局部算子嵌入 FETI-DP），是最强竞争者。它没有做的事：没有学习的几何条件网络；ROM 近似没有 S <= S_hat 或 SPD/零空间的构造性保证；没有条件数定理（只有数值迭代数）；没有 CutFEM；没有设计灵敏度和优化。",
+     "threat": "high"
+    },
+    {
+     "citation": "Gonzalo Bonilla Moreno, Giuliano Guarino, Pablo Antolin (2026/2027). A ROM-based BDDC solver for unfitted p-FEM level-set-based two-dimensional lattice structures. Computer Methods in Applied Mechanics and Engineering 463 (2027) 119304.",
+     "id": "arXiv 2604.09113（期刊 DOI UNVERIFIED）",
+     "what_it_does": "已读预印本关键段。对二维 TPMS 类 level-set 晶格做 unfitted p-FEM（带稳定化），每个胞元是一个 BDDC 子域。用 MDEIM ROM 分离几何映射与 trimmed 域的贡献，以加速胞元刚度装配。局部 Schur 补由近似刚度显式凝聚得到；BDDC 本身是标准 PCG+BDDC。插值误差经 Strang 引理控制；数值上研究了映射畸变参数和 trimmed 面积比。",
+     "relevance": "与 P1 在问题上高度重合（TPMS、cut 单元、胞元即子域、映射畸变），且发表在 CMAME。区别：只做二维；近似发生在装配层，凝聚是精确的，因此没有 extension 层面的近似，也没有 S <= S_hat 序；没有学习型 GNN；没有条件数分析（只观察到迭代数温和增长）；没有灵敏度优化。审稿人很可能把它作为对照要求比较。",
+     "threat": "high"
+    },
+    {
+     "citation": "Xuemin Tu, Jinjin Zhang (2025). Stochastic BDDC algorithms. arXiv preprint.",
+     "id": "arXiv 2510.05993",
+     "what_it_does": "已读预印本定理部分。在离线阶段用子域局部参数化和局部 PC 展开，构造 BDDC 各组件（代理 Schur 补、平均和 primal 部分）的随机代理；在线阶段对每个样本廉价组装 BDDC。Lemma 5.4 证明双侧扰动 |u^T(S~ - S~_F)u| <= gamma_FS * ||u||^2_S~，gamma 由各块误差范数组合而成。Theorem 5.11 给出条件数界在 KL/PC 截断趋于无穷时'以概率 1'成立，常数含 1/(1-gamma) 型因子。",
+     "relevance": "是我找到的唯一一篇'代理 Schur 补 + BDDC + 条件数定理'，也是方向 B 理论创新性的直接参照。区别：误差是双侧的，并以概率和渐近形式给出；当 gamma >= 1 时下界失效；没有单侧序，没有任意输入下的确定性保证，没有神经网络，不涉及弹性晶格或 cut 单元。NICE 的单侧确定性序可以明确写成对它的改进。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Clark R. Dohrmann (2007). An approximate BDDC preconditioner. Numerical Linear Algebra with Applications 14(2):149-168.",
+     "id": "DOI 10.1002/nla.514",
+     "what_it_does": "用预条件子（如 AMG）近似 BDDC 中两类子结构直接解和粗问题，同时保持 BDDC 的数值性质。关键要求是某些近似必须满足与子结构零空间相关的性质（弹性问题中即刚体模态）。定理的确切形式未能读到全文：UNVERIFIED。",
+     "relevance": "NICE 在构造上再现刚体运动（公共零空间），正好满足 Dohrmann 条件；可以引用来说明'NICE 满足 approximate BDDC 所需的结构条件'。它没有做的事：没有学习方法，近似子是通用 AMG/ILU，没有单侧能量序。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Axel Klawonn, Oliver Rheinbach (2007). Inexact FETI-DP methods. International Journal for Numerical Methods in Engineering 69(2):284-307.",
+     "id": "DOI 10.1002/nme.1758",
+     "what_it_does": "把 FETI-DP 写成鞍点问题，用块三角/块对角预条件，从而允许粗问题和局部 Neumann 问题非精确求解（如 AMG）。在局部和粗近似求解器足够好（谱等价）时，得到与精确 FETI-DP 同阶的收敛界。定理中常数如何依赖谱等价常数：UNVERIFIED。",
+     "relevance": "Hirschler 2024 的框架基础，是方向 B 的 FETI-DP 版本模板。注意：S_hat >= S 意味着 F_hat <= F，序方向翻转，需要单独分析。它没有做的事：没有学习方法，没有单侧序，没有针对 extension 的分析。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Nunzio Dimola, Piermario Vitullo, Paolo Zunino (2026). Multiscale Mixed-Dimensional Simulation via Domain Decomposition and Non-Intrusive Neural Model Order Reduction. arXiv preprint.",
+     "id": "arXiv 2607.15171",
+     "what_it_does": "把子问题映射到公共参考构型后，训练神经代理来替代 DD 子问题中的细尺度局部运算，并嵌入迭代求解器。理论上把方法解释为扰动不动点迭代，全局误差受代理误差控制。",
+     "relevance": "与方向 A（参考构型 pull-back）和方向 B（神经子域算子嵌入 DD）都有交集。区别：分析是两侧误差传播（扰动不动点），没有 Krylov 条件数界、SPD 或单侧序；问题是混合维多尺度，不是弹性晶格优化。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Hugo Melchers, Victorita Dolean, Michael Abdelmalik (2026). When can a neural operator replace a coarse solve? Architectural principles for two-level preconditioning. arXiv preprint.",
+     "id": "arXiv 2605.19867",
+     "what_it_does": "系统比较四类 DeepONet-like 架构替代两层预条件中的精确粗求解 E^{-1}（deflation/balancing Neumann-Neumann）。结论是：对源项线性、积分型输入离散（Neural Green's Operator）的架构可以构造对称变体 (C+C^T)/2，谱聚集在 [1,2] 附近；其它架构会导致谱不对称、PCG 崩溃。没有正式条件数定理。",
+     "relevance": "同样强调'对输入精确线性 + 结构保证对称'，与 NICE 的设计理念相近，但它学的是粗求解而不是子域 extension。它没有做的事：没有单侧序或谱等价证明，没有弹性、cut 单元或晶格。可作为'目前 ML-DD 缺乏可证谱保证'的证据。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Axel Klawonn, Martin Lanser, Janine Weber (2024). Learning adaptive coarse basis functions of FETI-DP. Journal of Computational Physics 496:112587.（另见同组 2026 arXiv 2607.06261：用可迁移 NN 学习重叠 DD 的自适应粗空间）",
+     "id": "DOI 10.1016/j.jcp.2023.112587；arXiv 2607.06261",
+     "what_it_does": "用深度前馈网络直接回归 adaptive FETI-DP 的粗约束（基函数），跳过最昂贵的局部广义特征值问题。2026 年的续作用回归网络预测粗基、分类网络预测粗基个数，并零样本迁移到弹性和 p-Laplace 问题。",
+     "relevance": "代表 ML-DD 的主流路线：学粗空间，子域求解保持精确。与 NICE（学子域 extension）互补，可组合成'学习约束 + 学习扩展'。它没有做的事：不近似子域 Schur 补或扩展，因此不涉及 S <= S_hat。",
+     "threat": "low"
+    },
+    {
+     "citation": "Alexander Heinlein, Axel Klawonn, Martin Lanser, Janine Weber (2019). Machine learning in adaptive domain decomposition methods - predicting the geometric location of constraints. SIAM J. Sci. Comput. 41(6):A3887-A3912；以及同作者 (2021). Combining machine learning and adaptive coarse spaces - a hybrid approach for robust FETI-DP methods in three dimensions. SIAM J. Sci. Comput. 43(5):S816-S838.",
+     "id": "DOI 10.1137/18M1205364；DOI 10.1137/20M1344913",
+     "what_it_does": "用 NN 分类器预测哪些边或面需要求解局部特征值问题来生成自适应约束，从而减少 setup 成本；鲁棒性仍由 adaptive FETI-DP 理论保证。",
+     "relevance": "是 ML 改进 BDDC/FETI-DP 的开创性工作，必须引用。它没有做的事：不学子域求解器或扩展，没有 Schur 补近似。",
+     "threat": "low"
+    },
+    {
+     "citation": "Gundolf Haase, Ulrich Langer, Arnd Meyer (1991). The approximate Dirichlet domain decomposition method. Part I: An algebraic approach; Part II: Applications to 2nd-order elliptic B.V.P.s. Computing 47:137-151 and 153-167.",
+     "id": "DOI 10.1007/BF02253431；DOI 10.1007/BF02253432",
+     "what_it_does": "在 Dirichlet DD 预条件中，用非精确（如多重网格或层次）扩展算子代替精确离散调和扩展；条件数由扩展算子的能量稳定常数和界面预条件的谱等价常数控制。定理具体形式：UNVERIFIED。",
+     "relevance": "'非精确扩展保持条件数界'的经典理论源头。NICE 满足的 ||Eu||_K^2 = u^T S_hat u <= (1+eps)||Hu||_K^2，正是这类扩展稳定性条件，且常数接近 1。它没有做的事：没有学习方法，没有利用 Ritz/Pythagoras 恒等式把 eps 与内部残差联系起来做后验认证。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Andrea Toselli, Olof B. Widlund (2005). Domain Decomposition Methods - Algorithms and Theory. Springer Series in Computational Mathematics 34.",
+     "id": "DOI 10.1007/b137868",
+     "what_it_does": "抽象 Schwarz 理论（稳定分解 C0^2、局部稳定性 omega、强 Cauchy-Schwarz 矩阵 rho(E)），给出 kappa <= C0^2 * omega * (rho(E)+1)；非精确局部求解器通过 omega 进入，乘法型方法要求 omega < 2。书中还系统处理了 Neumann-Neumann、FETI 和 BDDC 的界。",
+     "relevance": "方向 B 中两层 Schwarz 版本的定理模板：S_hat >= S 意味着 omega <= 1，代价是 C0^2 放大 (1+eps)。它是标准教材，本身不构成新意威胁。",
+     "threat": "low"
+    },
+    {
+     "citation": "Axel Klawonn, Martin Lanser, Oliver Rheinbach (2018). Nonlinear BDDC methods with approximate solvers. Electronic Transactions on Numerical Analysis 49:244-273；及 Klawonn, Lanser, Rheinbach (2018). Using algebraic multigrid in inexact BDDC domain decomposition methods. DD24, LNCSE 125:425-433.",
+     "id": "DOI 10.1553/etna_vol49s244；DOI 10.1007/978-3-319-93873-8_40",
+     "what_it_does": "在（非线性）BDDC 中用 AMG V-cycle 替代部分耦合刚度矩阵的逆，以及子域的非精确求解，在最多 131072 核上展示了弹性问题的可扩展性。",
+     "relevance": "inexact BDDC 的大规模实现参照，是 NICE 作为 GPU 子域求解器时的性能对照对象（AMG-inexact BDDC）。它没有做的事：没有学习方法，没有能量序。",
+     "threat": "low"
+    },
+    {
+     "citation": "Paolo Secchi, Daniel S. Balint, Marco Maurizi (2026). Neural-Schwarz Tiling for Geometry-Universal PDE Solving at Scale. arXiv preprint.",
+     "id": "arXiv 2605.12343",
+     "what_it_does": "在 3x3x3 最小体素 patch 上训练局部神经算子（覆盖多样局部几何和边界/界面数据），推理时逐 patch 平铺，用迭代 Schwarz 加 partition-of-unity 组装，求解远超训练尺度的可压 neo-Hookean 非线性静力问题。",
+     "relevance": "是'神经子域求解器 + Schwarz + 几何泛化 + 大尺度'的直接竞品，叙事与 NICE 相近。区别：没有收敛或谱保证；子域解是神经网络直接输出（不是对输入精确线性的能量型 Schur 补）；没有 Krylov 外层，也没有 S <= S_hat。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Ali Taghibakhshi, Nicolas Nytko, Tareq Uz Zaman, Scott MacLachlan, Luke Olson, Matthew West (2022). Learning interface conditions in domain decomposition solvers. NeurIPS 2022；后续 MG-GNN: Multigrid graph neural networks for learning multilevel domain decomposition methods (arXiv 2301.11378，会议 ICML 2023 UNVERIFIED)。",
+     "id": "arXiv 2205.09833；arXiv 2301.11378",
+     "what_it_does": "用 GNN 在非结构网格上学习 optimized Schwarz 的界面（Robin 型）修正，以及两层/多层 DD 参数；采用带理论动机的无监督损失（误差传播算子范数的代理），在小问题上训练、泛化到大问题。",
+     "relevance": "代表'学习 DD 组件 + GNN'的路线。它没有做的事：不学子域内部扩展；保证只是损失上界性质，没有 SPD 或谱序。",
+     "threat": "low"
+    },
+    {
+     "citation": "Qi Sun, Xuejun Xu, Haotian Yi (2024). Domain decomposition learning methods for solving elliptic problems. SIAM J. Sci. Comput.（卷期 UNVERIFIED）",
+     "id": "DOI 10.1137/22M1515392；arXiv 2207.10358",
+     "what_it_does": "在非重叠 DD（Dirichlet-Neumann 类）中用 compensated deep Ritz 方法求解子问题，并引入'神经网络扩展算子'来改进界面通量的传递。",
+     "relevance": "字面上最接近'学习型 extension 算子'，但这里神经网络本身就是 PDE 离散（PINN 型），不是 FE 子空间上对输入线性的扩展，没有 Schur 补序或条件数分析。可在引言中区分。",
+     "threat": "low"
+    },
+    {
+     "citation": "Alena Kopaničáková, George Em Karniadakis (2025). DeepONet based preconditioning strategies for solving parametric linear systems of equations. SIAM J. Sci. Comput. 47:C151-C181；另见 Kopaničáková, Youngkyu Lee, Karniadakis (2025). Leveraging operator learning to accelerate convergence of the preconditioned conjugate gradient method. Machine Learning for Computational Science and Engineering 1:39.",
+     "id": "arXiv 2401.02016；arXiv 2508.00101（期刊 DOI 10.1007/s44379-025-00039-7）",
+     "what_it_does": "把 DeepONet 与经典迭代/预条件混合（HINTS 型交替：DeepONet 处理低频，平滑器处理高频），以及用 DeepONet 生成 PCG 的 deflation 子空间。",
+     "relevance": "代表 Karniadakis 组'神经算子进入 Krylov'的路线。它没有做的事：不在 DD 框架内给出子域 Schur 补，没有 SPD 序证明（deflation 版本通过投影保持 PCG 可用）。",
+     "threat": "low"
+    },
+    {
+     "citation": "Santiago Badia, Francesc Verdugo (2018). Robust and scalable domain decomposition solvers for unfitted finite element methods. Journal of Computational and Applied Mathematics 344:740-759（卷页 UNVERIFIED）。",
+     "id": "DOI 10.1016/j.cam.2017.09.034；arXiv 1703.06323",
+     "what_it_does": "为 unfitted FEM 的小 cut cell 病态问题定制 BDDC：使用刚度加权算子和改进的粗自由度定义，三维实验显示鲁棒且算法可扩展。",
+     "relevance": "方向 B 在 cut 单元情形下的必要背景和基线（精确子域求解）。它没有做的事：没有学习型或非精确子域求解，不涉及 ghost penalty 下的学习 extension。",
+     "threat": "low"
+    },
+    {
+     "citation": "Ilay Luz, Meirav Galun, Haggai Maron, Ronen Basri, Irad Yavneh (2020). Learning algebraic multigrid using graph neural networks. ICML 2020, PMLR 119:6489-6499；以及 Paul Häusner, Ozan Öktem, Jens Sjölund (2024). Neural incomplete factorization: learning preconditioners for the conjugate gradient method. TMLR；Yichen Li, Peter Yichen Chen, Tao Du, Wojciech Matusik (2023). Learning preconditioners for conjugate gradient PDE solvers. ICML 2023, PMLR 202.",
+     "id": "arXiv 2003.05744；arXiv 2305.16368；proceedings.mlr.press/v202/li23e",
+     "what_it_does": "Luz：用 GNN 学习 AMG 的延拓算子 P（无监督损失，针对 SPD/SPSD 矩阵类）。Häusner、Li：用 GNN 输出稀疏 L，构造 M = L L^T，由此在构造上保证 SPD 预条件。",
+     "relevance": "是'学习型预条件 + SPD 构造保证'的代表，用于说明 ML 预条件文献中的 SPD 保证通常只到 M > 0，而没有 M 与精确算子之间的单侧谱序或能量界。它们都不是 DD 子域扩展。",
+     "threat": "low"
+    }
+   ],
+   "gaps": [
+    "学习型 extension 的确定性单侧谱序：现有 ML-DD 和 ROM-DD 工作都没有对任意输入在构造上保证 S <= S_hat（Hirschler 2024、Bonilla Moreno 2026 没有序也没有定理；Tu-Zhang 2025 只有双侧、概率性扰动界；Melchers 2026 只保证对称）。NICE 可以给出第一个'学习型子域扩展 + 确定性单侧序 + 公共零空间'的 inexact BDDC/FETI-DP，界形为 kappa <= (1+eps)*C(1+log(H/h))^2（作为算子时）或 (1+eps)^2*C(1+log(H/h))^2（作为预条件时），且下界对分布外输入仍然成立。",
+    "后验可计算的 eps 认证：由 Pythagoras 恒等式 u^T(S_hat - S)u = ||内部误差||_{K_II}^2 = r^T K_II^{-1} r，可以用已有的多层校正（Chebyshev+粗解）对每个子域估计 eps，再据此自适应地对少数子域回退到精确 Dirichlet 解，形成'certified inexact BDDC'。文献中没有这种逐子域、能量意义下的学习求解器认证。",
+    "FETI-DP 中序方向翻转（S_hat >= S 推出 F_hat <= F，而 Dirichlet 预条件增大）的系统分析，以及 BDDC 与 FETI-DP 在非精确学习算子下谱是否仍然相同（Mandel-Dohrmann-Tezaur 定理的推广）尚无人做。",
+    "把 NICE 作为 Li-Widlund M3 型算法中的非精确 Dirichlet 扩展（不仅作为算子），证明 Phi_2 只放大 (1+eps)。HLM 和 Li-Widlund 的扩展稳定性条件在这里由能量形式自动满足，可写成干净的推论，并与 trivial extension（eps ~ H/h）对照，说明学习只付出 O(eps) 的代价。",
+    "学习型 extension 与学习型粗空间（Heinlein/Klawonn/Lanser/Weber）的组合：可以在显式且廉价的 S_hat 上解 adaptive BDDC 广义特征值问题，在 S_hat 范数下保证界，再以 (1+eps) 因子转回 S 范数。这一组合没有人做过。",
+    "cut/unfitted 子域加学习型子域求解：Badia-Verdugo 的 cut-cell BDDC 使用精确局部解；Bonilla Moreno 只做了二维且在装配层近似；三维 CutFEM、ghost penalty 和学习扩展的 inexact BDDC 是空白。",
+    "在 DD 框架内通过 inexact BDDC 求伴随，从而得到形状/厚度灵敏度并做优化：所有 ROM-DD 和 ML-DD 竞品都没有灵敏度和设计优化闭环。",
+    "与方向 A 的交叉：Hirschler（spline composition + inexact FETI-DP）和 Bonilla Moreno（映射畸变 + BDDC）说明'全局样条映射晶格 + DD'已有人在做，但都依赖胞元相似性或 ROM 插值；以 Jacobian 场为条件的 NICE 加上 S <= S_hat 带来的 zero-shot 下界保证，是可以区分的卖点。不过对强畸变映射，eps 会变大，需要用后验认证来兜底。"
+   ]
+  },
+  "verify": {
+   "checks": [
+    {
+     "id": "1",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认 DOI 10.1016/j.cma.2006.03.011 正确对应 Li & Widlund，CMAME 196(8):1415-1428，2007，原先标的 UNVERIFIED 可以去掉。NYU TR2005-871 全文已核对（2005年7月14日）。Theorem 2 在 Assumption 1 下给出 <u,u>_A <= <M_k^{-1}Au,u>_A <= Phi_k(H,h)<u,u>_A。Phi_2 = C(1+log(H/h))^2。Phi_1 = C(H/h)(1+log(H/h))，这是只取顶点 primal 的情形；二维加上边平均 primal 时 Phi_1 = CH/h，引用时应注明。Theorem 3 基于 Assumption 2（多重网格收敛因子 eta* < 1，与 H、h 和子域数无关），结论为 c <= lambda <= C*Phi_2。'子域矩阵换成谱等价、零空间相同的 A_hat^(i)' 一段在 Theorem 3 之后的正文里，不是带编号的 Remark，但内容与声称一致。"
+    },
+    {
+     "id": "2",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认 DOI 10.1002/nme.7419，IJNME 125(8):e7419（2024），作者正确；arXiv 2308.11371 标题和作者一致。预印本已核对：每个胞元是一个子域；用贪心法选出 principal subdomains，再用 ROM 近似其它胞元的局部刚度、primal Schur 补、对偶/Dirichlet Schur 补和局部解；外层 GMRES（tol_GMRES = 1e-5），界面问题用 ROM 近似的 F 加 Dirichlet 预条件做内层 PCG；几何由 spline composition 生成，用 IGA。需要修正一点：本文的预条件 (44) 是完整的块 LDL^T 型，上下两侧都用 U 的近似，不是 Klawonn-Rheinbach 那种块三角（KR 型中 U = 0）。KR 块三角只是文中列出的一个对照选项，所以'KR 型块三角'这个说法不准确，应改为'inexact FETI-DP 块分解型预条件'。"
+    },
+    {
+     "id": "3",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv 2604.09113 的作者和标题一致。arXiv 的 journal-ref 为 CMAME 463 (2027) 119304，期刊 DOI 10.1016/j.cma.2026.119304 在 Crossref 可查到，原先标的 UNVERIFIED 可以去掉。正文已核对：二维 TPMS level-set 晶格，unfitted p-FEM，每个胞元是一个单元，同时也是一个 BDDC 子域；使用 alpha 稳定化；局部 Schur 补显式组装；PCG+BDDC；插值带来的一致性误差用 Strang 第一引理控制；数值上研究了畸变参数 a 和 trimmed area ratio。需要修正一点：把几何映射与 trimmed 域贡献分开的是 fast assembly 技术，MDEIM 是在此基础上再做的 ROM 近似，两者不是一回事。"
+    },
+    {
+     "id": "4",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv 2510.05993，Xuemin Tu 与 Jinjin Zhang，2025年10月7日提交，标题一致。摘要确认离线阶段构造 BDDC 各组件的 PC 展开（基于子域局部参数化），在线阶段对每个样本组装。Lemma 5.4 原文为 |u^T S~_Γ u - u^T S~_{Γ,F} u| <= gamma_FS ||u||^2_{S~}，gamma_FS 由各块误差范数组合而成，与声称一致。Theorem 5.11 给出当 M_KL、M_KL^(i)、d 趋于无穷时，条件数界成立的概率极限为 1，常数含 C_PF = (1-gamma_PS)(1-gamma_FS) 型因子，与声称一致。"
+    },
+    {
+     "id": "5",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认 DOI 10.1002/nla.514，NLAA 14(2):149-168，2007，作者 Dohrmann。摘要核对通过：用预条件子近似 BDDC 中每个子结构的两类直接解和粗问题直接解；为保留精确 BDDC 的数值性质，部分预条件子必须满足与子结构零空间相关的性质，文中给出了使其具备该性质的简单方法。'如 AMG'和'弹性中即刚体模态'是合理的举例，但摘要本身没有出现。定理具体形式仍为 UNVERIFIED。"
+    },
+    {
+     "id": "6",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认 DOI 10.1002/nme.1758，IJNME 69(2):284-307，作者 Klawonn 与 Rheinbach。2006年6月在线发表，2007年卷期，引用写 2007 没有问题。摘要核对通过：把 FETI-DP 写成鞍点问题并构造预条件，允许粗问题非精确求解；在原鞍点系统上迭代时，局部 Neumann 问题也可以非精确求解；只要局部和粗近似求解器足够好，就能得到与标准 FETI-DP 同等质量的收敛界；文中还给出正定重写形式，实验用 GMRES 和 CG。块三角形式与 AMG 的说法有 Hirschler 等人的引用为旁证。'块对角'一说在摘要中无法确认。常数如何依赖谱等价常数仍为 UNVERIFIED。"
+    },
+    {
+     "id": "7",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv 2607.15171，Dimola、Vitullo、Zunino，2026年7月16日提交，7月27日修订，标题一致。正文核对通过：引入参考域 Omega* = (0,1)^d，用映射 Phi_i 把局部解变换到参考域（local representability）；用非侵入式神经代理替代局部细尺度求解，嵌入两层 Robin-Robin DD 迭代；第2.3节把方法解释为 surrogate-perturbed fixed-point iteration；Proposition 1 证明当精确 DD 是收敛常数 q<1 的压缩映射时，误差收敛到一个与局部代理误差成正比的误差底（通过 q 和 C_DD）；Proposition 2 证明离散 Robin-Robin 迭代是压缩。"
+    },
+    {
+     "id": "8",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": false,
+     "note": "arXiv 2605.19867，Melchers、Dolean、Abdelmalik，2026年5月19日提交，7月15日修订，标题一致。属实的部分：比较了四种 DeepONet 类架构，两个对比轴是输入离散方式（采样 vs 积分）和源项线性；NGO 最优；对 NGO 构造了对称化预条件 P_NGO,sym（式9，取 C 的对称部分）；组合形式包括 AD、A-DEF1、A-DEF2、BNN；文中没有正式的条件数定理。有两处与原文不符。(1) '其它架构都会导致谱不对称、PCG 崩溃'不对：只有采样型的 DeepONet 和 VarMiON 谱不对称、PCG 不收敛；积分型的 RINO（非线性）谱基本是实的，PCG 也收敛，只是有时更慢。(2) '谱聚集在 [1,2] 附近'被张冠李戴：扩散问题中 RINO、VarMiON、NGO 的特征值落在 [0.8, 2.2]；'聚集在 [1,2] 附近'是 Helmholtz 低波数 k = 5 时的描述，并非对称化 NGO 特有的结果。"
+    },
+    {
+     "id": "9",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认两个 DOI：10.1007/BF02253431（Part I，Computing 47:137-151）和 10.1007/BF02253432（Part II，Computing 47:153-167），均为1991年6月第47卷第2期，作者 Haase、Langer、Meyer，标题正确。摘要核对：Part I 用一个变换矩阵把节点基变换为'近似离散调和基'，另外两个矩阵是子域 Dirichlet 问题和耦合边界上修正 Schur 补的块预条件，并估计了相对谱条件数；Part II 用多重网格和层次技术具体实现这些矩阵，所得 DD-PCCG 渐近几乎最优。整体机制与声称一致。'条件数由扩展算子的能量稳定常数控制'的具体形式没有读到全文，仍为 UNVERIFIED。"
+    },
+    {
+     "id": "10",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv 2605.12343，Secchi、Balint、Maurizi，2026年5月12日提交（cs.LG），标题一致，方法名 NEST。正文核对通过：在 3x3x3 体素 patch 上训练局部神经算子（GNO），训练数据覆盖多样的局部几何和边界/界面数据；推理时用重叠 patch 平铺，additive Schwarz 迭代加 partition-of-unity 组装；基准问题是可压缩 neo-Hookean 固体的非线性静力平衡，并测试了泛化到更大的域和不同形状。"
+    }
+   ]
+  }
+ },
+ {
+  "lens": "data_free",
+  "search": {
+   "summary": "从“无标签/数据无关训练子结构与 Schur 补”这个角度看，与 NICE 真正同类的只有一篇：Huang et al., JMPS 2024（data-free PIML）。它在由 10×10×5 个子结构拼成的 pseudo-structure 上，以最小势能为损失，训练 DeepONet 预测 3D 体素子结构（m=10，线性边界，24 个角点 DOF）的多尺度形函数，全程不用形函数标签。训练时随机生成 10^6 个密度场，并预存 2178 个正交边界位移基，在 CPU 台式机上约 2–3 天。精度方面：相对同一边界假设下的精确子结构（EMsFEM），柔度和位移误差约 6.2–6.3%；拓扑优化设计的柔度比全尺度偏低 4.7%。作者也观察到柔度单侧偏小，但没有给出界。上述细节来自仓库 docs/paper_p1/review_r1/GUO_SERIES_COMPARISON_CN.md 对全文的逐页摘录；本次 ScienceDirect、SSRN 均返回 403，未能重新核对原文。该组后续工作（EML 2023、CMAME 2026 Bézier、CS 2026 等变、IJMS 2026 PITL、arXiv 2607.22019 PIML-OFEM）全部回到监督 MSE，样本量为 10^4–10^6，3D 误差约 1–20%（参考解多为同一边界假设下的子结构，而不是细网格）。其他无标签方法大多是逐实例训练（energy-PINN 均匀化 JMPS 2026、变分 PI-GNN arXiv 2609.10983、Deep Ritz、DEM），或是 2D、低维参数族的算子（VINO、PI-GINOT）。报告的精度在 0.5–7% 量级，训练成本通常比单次 FE 求解高一个数量级以上。截至目前，没有任何无标签方法在 3D 薄壁或切割子结构族上报告过 <0.1% 的能量误差，也没有逐胞灵敏度误差。\n\n理论层面：Cao & Song（arXiv 2608.05437，2026-08）已经公开论证，对线弹性固定离散，离散势能就是精确的无标签目标，其极小点和梯度与刚度范数下的监督回归处处相同。这与 NICE 的 Ritz 恒等式 q^T Ŝ q − q^T S q = ||H q||_A^2 是同一结论在全场层面的表述，“能量损失等价于 A-范数监督”因此不能再作为新贡献。对 NICE 来说，直接最小化 Σ_j q_j^T Ŝ q_j 就是无标签的 Ritz 训练；能量项本身完全可以不要精确解。42 GPU-h 真正花在三处：(i) 力驱动、邻胞诱导等物理方向 q 的生成，需要精确的胞或格架解；(ii) 对数比损失用 q^T S q 做的归一化；(iii) 灵敏度标签。仓库内 2026-09-28 的 data-free 试点（10k 步，80 个几何均值）印证了这一点：只用免求解方向（macro、grf）训练时，consistent 力类误差为 1.86%，与有标签 CTRL 的 1.98% 相当；但节点力类误差为 8–12%，CTRL 只有 2.7–3.4%。可见瓶颈在 q 的分布，而不在标签。\n\n自监督预消除器一线中，NeuralIF 用 Frobenius 损失的随机估计；FCG-NO 用能量范数损失加 Krylov 随机向量；Luz/Greenfeld 用双网格误差算子的 Frobenius 上界；Taghibakhshi 的 NeurIPS 2022 和 MG-GNN 用收敛因子代理。这些方法都不需要解标签，但几乎都只做标量扩散/Poisson，没有一篇用到单侧谱序 S ≤ Ŝ ≤ (1+ε)S 来给出条件数界。DD 中的 ML 工作（Heinlein/Klawonn/Lanser/Weber）全部是监督学习，学的是自适应粗空间或约束位置，而不是子域延拓本身。Jiang et al.（CNEE，arXiv 2608.02036）是监督学习 Schur 补的最新强对手：回归 sqrtm(S)，保证 PSD；3D 只做到标量扩散，0.23%，总成本约 78 s。结论是：42 GPU-h 中能量项部分可以去掉，并有严格理论支撑。要保持 0.07% 级精度和灵敏度精度，还需要一个免精确解的方向生成器（自训练或自举格架解、残差驱动的对抗方向、NICE 校正场作为 teacher），以及免标签的归一化（q^T K_PP q 或调和延拓能量）。这一组合目前没有人发表过。",
+   "papers": [
+    {
+     "citation": "M. Huang, C. Liu, Y. Guo, L. Zhang, Z. Du, X. Guo (2024). A mechanics-based data-free Problem Independent Machine Learning (PIML) model for large-scale structural analysis and design optimization. J. Mech. Phys. Solids 193, 105893.",
+     "id": "10.1016/j.jmps.2024.105893",
+     "what_it_does": "以最小势能为损失（Eq.13–15），在 10×10×5 子结构的 pseudo-structure 上训练非堆叠 DeepONet：branch 输入单元密度，trunk 输入内部节点坐标，输出 3D 体素子结构（m=10，1000 个细单元，线性边界 24 个角点 DOF）的多尺度形函数，全程无标签。训练数据为 2000 次随机密度场生成的 10^6 个子结构密度，加上预存的 2178 个正交归一边界位移基，每次迭代更换。训练 40–50 epochs，台式机约 2–3 天。刚体约束作为硬约束。精度：随机材料悬臂梁柔度相对 EMsFEM 误差 6.20%，位移误差相对细网格 6.33%；优化设计柔度偏低 4.7%。最大算例 1.8×10^8 单元，加速 >230×（对比 Matlab 全尺度）。灵敏度用场基估计，忽略 ∂N/∂ρ。不做的事：不保留完整迹（边界插值误差在 m=10 时已达约 3%）；没有平衡残差校正；没有单侧界（只观察到柔度偏小）；没有逐胞灵敏度误差；材料不连通时精度显著下降（作者自述）。细节来自仓库对全文的逐页摘录，本次未能重新访问原文（403）。",
+     "relevance": "与 NICE 能量训练最直接的先例，也就是“用 Σ q^T Ŝ q 训练延拓”这一思路的已发表版本。差别在于：它是 2D/3D 体素随机密度、简化边界；NICE 是完整迹的切割薄壁胞，带校正和 S_hat ≥ S 证书。它表明无标签训练在 3D 子结构上可行，但只报告了约 6% 误差，比 NICE 的 0.07% 差约两个数量级（任务难度不同，不能直接比优劣）。它也给出了监督方案的成本对照：每个样本约 1 s，需要约 10^6 个样本。",
+     "threat": "high"
+    },
+    {
+     "citation": "R. Cao, X. Song (2026). Discrete energy as an exact label-free training objective for finite-element surrogates. arXiv preprint (submitted 2026-08-05).",
+     "id": "arXiv:2608.05437",
+     "what_it_does": "证明对固定离散的线弹性，组装后的离散势能与参考解的能量差等于刚度范数误差平方的一半，能量梯度等于刚度加权误差。因此无标签能量最小化与刚度范数监督回归的极小点和梯度处处相同。另给出能量间隙到位移误差的条件数引理、CG 后处理的 Chebyshev 界，指出该结论无法推广到弹性动力学，并做了 16 个验证实例的“可执行证伪检查”。不做的事：不涉及子结构、Schur 补、凝聚、几何条件化或格架；摘要中没有大规模 3D 精度和成本数字（UNVERIFIED：正文是否有）。",
+     "relevance": "相当于在全场层面提前发表了 NICE 的 Ritz 恒等式（Ŝ − S = H^T A H ⪰ 0）所蕴含的“能量损失等价于 A-范数监督”。P2 若主打无标签训练，必须引用它，并把新意放在凝聚层面：单侧序、方向分布、校正与证书。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Y. Guo, C. Liu, Z. Du, Y. Jia, C. Jiang, X. Guo, C. Shen (2026). High-generalization AI-enhanced mechanical analysis and topology optimization via cubic Bézier interpolation of substructure boundary displacements. Comput. Methods Appl. Mech. Eng. 456, 118955.",
+     "id": "10.1016/j.cma.2026.118955",
+     "what_it_does": "每个面一个 bicubic Bézier 曲面，共 56 个控制点、168 DOF，用 DeepONet 预测 5^3 或 10^3 体素子结构的形函数。训练为监督 MSE，标签是精确数值形函数，样本量 10^5（5^3）或 10^6（10^3），未报训练耗时。对照中测试了 Full Node Prediction（保留全部边界节点加学习内部）：5^3 误差 0.84%、10^3 误差 3.46%，因速度慢 7.3–7.5× 而放弃。不做的事：非 data-free，没有灵敏度公式，没有校正，没有能量界。",
+     "relevance": "同组在 data-free（JMPS24）之后又回到监督学习，说明在提高边界自由度时无标签训练没有被采用；其数据量收敛研究（Fig. 8）可作为“监督要多少样本”的外部参照。它与 NICE 的完整迹路线是正面竞争。",
+     "threat": "medium"
+    },
+    {
+     "citation": "M. Huang, T. Cui, C. Liu, Z. Du, J. Zhang, C. He, X. Guo (2023). A Problem-Independent Machine Learning (PIML) enhanced substructure-based approach for large-scale structural analysis and topology optimization of linear elastic structures. Extreme Mech. Lett. 63, 102041.",
+     "id": "10.1016/j.eml.2023.102041",
+     "what_it_does": "3D 体素子结构（m=5/10，线性边界 24 DOF）。用 FNN 预测形函数，再用 N^T K N 自洽形式得到刚度，刚体列补全。训练为监督 MSE 加一致性损失；m=5 用 4×10^5 个样本，m=10 时约 3 h 生成 10^5 个样本。最大算例 1.024×10^9 个单元（串行 9–10 天）；柔顺机构输出位移相对 EMsFEM 误差约 7.6%。不做的事：无标签训练、灵敏度公式、误差界都没有。",
+     "relevance": "JMPS24 的监督前身，用于对照标签成本（10^5–10^6 个样本）。它的 N^T K N 形式在受限迹上同样满足 Ŝ ≥ L^T S L。",
+     "threat": "low"
+    },
+    {
+     "citation": "Y. Guo, C. Liu, Z. Du, J. Liu, J. Feng, X. Zhang, Y. Li, T. Yang, C. Shen, X. Guo (2026). PIML-OFEM: A new large-scale structural analysis method based on problem-independent machine learning and overlapping finite element technique. arXiv preprint.",
+     "id": "arXiv:2607.22019",
+     "what_it_does": "2D 子结构只保留角点（8 DOF），在扩展域上解 oversampled 局部问题构造数值基，再用重叠有限元的单位分解拼成全局连续场；U-Net 从局部模量预测数值基。训练为监督：20,000 个样本（19,000 训练），Smooth-L1 加刚度保真项 L_K（λ_K=0.1），RTX 4090，第 897 个 epoch 早停。不做的事：非 data-free，只有 2D，没有误差界或证书。",
+     "relevance": "说明 PIML 系列的最新工作仍是监督学习；它用来降低边界误差的 oversampling 与 NICE 的完整迹是两种不同取舍。",
+     "threat": "low"
+    },
+    {
+     "citation": "H. Jiang, J. Zhan, C. Zhang, F. Wang (2026). Convex Neural Energy Elements: Monolithic finite-element assembly of geometry-parameterized neural operators with stability and error guarantees. arXiv preprint (2026-08-03).",
+     "id": "arXiv:2608.02036",
+     "what_it_does": "每个“神经单元”输出边界 DOF 的凸能量，用超网络按几何参数化。训练目标是精确 Schur 补的对称平方根 sqrtm(S_g − λ(I−P_c))，标签来自 FE 凝聚，每类 400 个几何；作者称直接回归能量差 2500×。构造上保证 PSD 和全局正定，并给出条件误差界。精度：2D 热传导 0.6–1.0%，平面应变弹性 0.20%，3D 立方块（椭球孔，标量扩散，不是弹性）2×2×2 装配 0.23%。一次性成本约 78 s（凝聚 13 s 加训练 65 s，弹性约 298 s）。非线性情形利用 Schur 补单调性证明修正项凸。不做的事：没有 3D 弹性，没有切割薄壁，没有无标签训练，没有内部场延拓或平衡校正，没有 Ŝ ≥ S 型单侧界（目标是逼近 S 本身）。",
+     "relevance": "监督学习 Schur 补并带稳定性保证的最强新对手。它示范了在低维几何族上，监督标签的成本可以很低（几十秒），这削弱了“必须 data-free”的动机，除非几何或映射空间维度很高（方向 A 的 Jacobian 场正属于这种情况）。",
+     "threat": "medium"
+    },
+    {
+     "citation": "C. Wu, C. Liu, Y. Guo, X. Guo (2026). DFENN: A penalty-free variational framework coupling finite elements and neural networks via interface condensation. J. Mech. Phys. Solids 215, 106703.",
+     "id": "10.1016/j.jmps.2026.106703",
+     "what_it_does": "把域划分为 FEM 子域和 NN 子域。W-DFENN 以最小势能为目标，把 FEM 子域静态凝聚到界面上，实现无罚参数的变分耦合；NN 子域按 PINN/DEM 方式逐问题训练。不做的事：不是可复用的子结构算子（逐问题优化），没有几何条件化，没有 Ŝ ≥ S 证书（UNVERIFIED：是否给出能量界）。",
+     "relevance": "“能量最小化加静态凝聚”在同一组的另一种组合，与方向 B（NN 作为子域部件、DD 框架）在概念上相邻；但它学的是逐问题的解，而不是延拓算子。",
+     "threat": "low"
+    },
+    {
+     "citation": "M.S. Eshaghi, C. Anitescu, M. Thombre, Y. Wang, X. Zhuang, T. Rabczuk (2025). Variational Physics-informed Neural Operator (VINO) for solving partial differential equations. Comput. Methods Appl. Mech. Eng. 437, 117785.",
+     "id": "arXiv:2411.06587",
+     "what_it_does": "在单元离散上最小化 PDE 的能量泛函，以此训练神经算子（FNO 类），不需要成对数据。作者称在较高分辨率下优于 PINO 等方法。不做的事：没有子结构或凝聚，没有对任意输入成立的能量序界；测试问题、维度和具体误差未能从摘要确认（UNVERIFIED：主要为 2D 标量和弹性例子）。",
+     "relevance": "无标签训练算子的通用模板，与 NICE 能量项形式相同。可作为方向 A 的佐证：Jacobian 条件化后，用拉回的各向异性刚度 C~ 直接计算离散能量，无需逐映射生成标签。",
+     "threat": "medium"
+    },
+    {
+     "citation": "A.R. Yadav, A.P. Das, R.K. Annabattula (2026). A variational physics-informed graph neural network for heterogeneous solid mechanics. arXiv preprint (2026-09-10).",
+     "id": "arXiv:2609.10983",
+     "what_it_does": "在自适应网格图上逐单元赋本构，最小化离散总势能，无标签。覆盖 2D/3D 线弹性和 Neo-Hookean。双材料界面算例 von Mises 误差 <3.58%（模量比 10^-2–10^2），位移误差 0.49%（强形式 PINN 为 7.66%）。作者明确说训练成本超过单次 FE 求解一个数量级以上。不做的事：没有跨几何泛化的算子，没有子结构或凝聚。",
+     "relevance": "说明 GNN 加离散能量的无标签训练在 3D 弹性上能达到约 0.5% 量级，但是逐实例训练、比 FE 更贵；NICE 的价值在于摊销后的跨几何复用。",
+     "threat": "low"
+    },
+    {
+     "citation": "H. Li, M. Li, J. Bai, Z. Sharif Khodaei, M.H. Aliabadi (2026). An energy-based physics-informed neural network framework for efficient mesh-free homogenisation of architected metamaterials. J. Mech. Phys. Solids 210 (April 2026). ScienceDirect PII S0022509626000426.",
+     "id": "PII:S0022509626000426 (DOI UNVERIFIED)",
+     "what_it_does": "在网络结构中嵌入周期均匀化边界条件，并用能量形式的残差训练无网格 PINN，求解 2D/3D 晶格、TPMS 和随机结构胞问题的线弹性及超弹性，预测等效弹性张量和局部场，与高分辨率 FEM 吻合。不做的事：应是逐胞训练而不是跨几何算子（UNVERIFIED）；具体误差数字未能核对（UNVERIFIED，原文 403）；没有子结构凝聚或证书。",
+     "relevance": "无标签能量训练用于 3D TPMS 胞，是与 NICE 几何最接近的无标签工作，但目标是均匀化，不是格架级凝聚。",
+     "threat": "low"
+    },
+    {
+     "citation": "A. Dean, B. Bahtiri (2026). PI-GINOT: Data-free geometry-informed neural operator learning for finite-strain hyperelasticity on parametric DogBone specimens. arXiv preprint (2026-07-25).",
+     "id": "arXiv:2607.23299",
+     "what_it_does": "以边界点云为几何编码，交叉注意力解码，在 4 参数 DogBone 族上无 FE 数据训练（平衡、自由边界、对称、内力一致性等物理损失）。2D 平面应力，位移误差 2.1–7.1%，峰值 von Mises 误差 0.9–13.3%。不做的事：没有 3D，没有子结构或凝聚，没有误差界。",
+     "relevance": "无标签几何条件化算子目前的精度水平（数个百分点）。对照之下，没有校正的纯网络无标签训练难以达到 NICE 的 0.07%。",
+     "threat": "low"
+    },
+    {
+     "citation": "W. E, B. Yu (2018). The Deep Ritz Method: A deep learning-based numerical algorithm for solving variational problems. Commun. Math. Stat. 6, 1–12.",
+     "id": "10.1007/s40304-018-0127-z",
+     "what_it_does": "用神经网络参数化试函数，以蒙特卡罗积分最小化变分能量，逐问题训练。不做的事：没有算子学习，没有子结构，没有离散一致的能量（积分误差使能量不再是严格上界）。",
+     "relevance": "Ritz 或能量训练的起点。NICE 的能量是离散一致的（同一 CutFEM 刚度），因此 Ŝ ≥ S 严格成立，这是相对 Deep Ritz 类方法的关键区别。",
+     "threat": "low"
+    },
+    {
+     "citation": "P. Häusner, O. Öktem, J. Sjölund (2024). Neural incomplete factorization: learning preconditioners for the conjugate gradient method. Transactions on Machine Learning Research (TMLR).",
+     "id": "arXiv:2305.16368",
+     "what_it_does": "GNN 输出稀疏不完全分解 LL^T。训练是自监督的：用只需矩阵-向量乘的 Frobenius 损失随机估计，不需要解标签。测试为合成问题和变域 Poisson，优于 IC。不做的事：没有弹性或刚体近零空间，没有子结构，没有谱序保证。",
+     "relevance": "方向 B 中“自监督预消除器”的代表。与 NICE 的差别：NICE 的 Ŝ 带有单侧谱序 S ≤ Ŝ，可以直接转成条件数界，而 NeuralIF 没有任何谱保证。",
+     "threat": "medium"
+    },
+    {
+     "citation": "A. Rudikov, V. Fanaskov, E. Muravleva, Y.M. Laevsky, I. Oseledets (2024). Neural operators meet conjugate gradients: The FCG-NO method for efficient PDE solving. Proc. ICML 2024, PMLR 235:42766–42782.",
+     "id": "arXiv:2402.05598",
+     "what_it_does": "把神经算子用作 flexible CG 的（非线性）预消除器。损失为能量范数，训练向量从 Krylov 子空间随机抽取，不需要解标签；可在低分辨率训练、高分辨率使用。不做的事：没有弹性或子结构（UNVERIFIED：测试主要为标量椭圆问题），没有单侧谱序。",
+     "relevance": "“能量范数损失加自生成方向”与 NICE 去标签化的设想同构，可借鉴它的 Krylov 随机方向来替代需要精确解的力驱动方向。",
+     "threat": "medium"
+    },
+    {
+     "citation": "Y. Li, P.Y. Chen, T. Du, W. Matusik (2023). Learning preconditioners for conjugate gradient PDE solvers. Proc. ICML 2023, PMLR 202:19425–19439.",
+     "id": "arXiv:2305.16432",
+     "what_it_does": "GNN 预测近似分解 L_θL_θ^T，损失为 Σ_i ||L_θL_θ^T x_i − b_i||^2，x_i 是数据集中的 PDE 解，相当于用解分布加权的条件数代理。覆盖 2D/3D 二阶线性 PDE。不做的事：不是无标签（需要参考解 x_i），没有弹性子结构或谱界。",
+     "relevance": "一个反例：说明部分“学习预消除器”的工作仍依赖解数据。NICE 若去掉标签，正好可以与它形成对比。",
+     "threat": "low"
+    },
+    {
+     "citation": "A. Taghibakhshi, N. Nytko, T.U. Zaman, S. MacLachlan, L. Olson, M. West (2022). Learning interface conditions in domain decomposition solvers. NeurIPS 35 (2022); 后续 MG-GNN: Multigrid graph neural networks for learning multilevel domain decomposition methods, ICML 2023 (arXiv:2301.11378).",
+     "id": "arXiv:2205.09833",
+     "what_it_does": "用 GCNN 无监督学习 optimized Schwarz 的界面条件（MG-GNN 推广到两层 DD）。损失为收敛因子或误差传播的代理，可在小问题上训练，再推广到大得多的非结构网格。不做的事：目前只做标量扩散/Poisson（UNVERIFIED：是否含弹性），不学子域延拓，没有凝聚刚度的单侧界。",
+     "relevance": "方向 B 中“无标签学习 DD 部件”的直接先例。差别在于：它学的是界面参数，NICE 提供的是带 S ≤ Ŝ ≤ (1+ε)S 证书的子域 Schur 近似，后者可以给出显式条件数界。",
+     "threat": "medium"
+    },
+    {
+     "citation": "I. Luz, M. Galun, H. Maron, R. Basri, I. Yavneh (2020). Learning algebraic multigrid using graph neural networks. Proc. ICML 2020, PMLR 119.",
+     "id": "arXiv:2003.05744",
+     "what_it_does": "GNN 预测 AMG 延拓算子 P。无监督损失为双网格误差传播矩阵的 Frobenius 范数（谱半径上界代理，继承自 Greenfeld et al., ICML 2019, arXiv:1902.10248）。测试为 2D 有限元扩散。不做的事：没有弹性，没有子结构，没有能量单侧界。",
+     "relevance": "“学习延拓或插值”的无标签训练先例。NICE 的内部延拓与 AMG 延拓在代数上同构（能量最小延拓）；P2 的方向 B 可以借鉴其以收敛率为目标的损失。",
+     "threat": "low"
+    },
+    {
+     "citation": "A. Heinlein, A. Klawonn, M. Lanser, J. Weber (2021). Combining machine learning and adaptive coarse spaces—A hybrid approach for robust FETI-DP methods in three dimensions. SIAM J. Sci. Comput. 43(5), S816–S838.",
+     "id": "10.1137/20M1344913",
+     "what_it_does": "监督网络预测哪些界面边或面需要自适应约束（广义特征值问题），从而只在必要处求解特征问题，用于 3D 异质扩散和弹性的 FETI-DP。不做的事：不近似子域求解器或 Schur 补，不是无标签训练。",
+     "relevance": "方向 B 的 ML-DD 基线：ML 被用来构造粗空间，而不是作为非精确子域求解器。NICE 填补的是后一种角色。",
+     "threat": "medium"
+    },
+    {
+     "citation": "A. Klawonn, M. Lanser, J. Weber-Hamacher (2026). Learning adaptive coarse spaces using transferable neural network models for linear and nonlinear overlapping domain decomposition methods. arXiv preprint (2026-07-07).",
+     "id": "arXiv:2607.06261",
+     "what_it_does": "回归网络预测自适应粗基函数，分类网络预测基函数个数，避免在线求解特征问题；先在高对比扩散上训练，再不重训迁移到线弹性和非线性问题。训练为监督。不做的事：不学子域延拓或 Schur 补，没有 S ≤ Ŝ 型保证（UNVERIFIED：维度和迭代数字）。",
+     "relevance": "方向 B 最新的 ML-Schwarz 工作，说明“学习粗空间”仍依赖监督标签；“自监督加有谱序保证的子域部件”仍是空白。",
+     "threat": "medium"
+    },
+    {
+     "citation": "J. Xu, L.T. Zikatanov (2004). On an energy minimizing basis for algebraic multigrid methods. Comput. Visual. Sci. 7, 121–127.",
+     "id": "10.1007/s00791-004-0147-y (DOI UNVERIFIED)",
+     "what_it_does": "在单位分解约束下最小化粗基函数能量之和（迹最小），并分析其与 AMG 收敛的关系。不做的事：没有 ML，没有参数化或几何泛化。",
+     "relevance": "在经典数值方法中，Σ_j q_j^T Ŝ q_j（能量迹）最小化的直接先例。P2 若写无标签 Ritz 训练，应把它和 Mandel–Brezina–Vaněk 的 energy-optimal bases 列为理论先例，并说明 NICE 是把同一目标摊销到几何族上。",
+     "threat": "low"
+    }
+   ],
+   "gaps": [
+    "“无标签 Ritz 训练 + 平衡校正 + 单侧证书”的组合尚未有人发表。JMPS24 只有能量训练，没有校正和界；Cao & Song 只给全场等价性，不涉及凝聚。NICE 可以把 min Σ q^T Ŝ q 与 Ŝ ≥ S 结合起来，作为“训练目标本身就是证书”的子结构框架。",
+    "免精确解的方向生成是去掉 42 GPU-h 的真正瓶颈。仓库内试点显示：只用 macro/grf 方向时，consistent 力类误差 1.86%，与有标签的 1.98% 相当，但节点力类为 8–12%（有标签 2.7–3.4%）。待做方向：用 NICE 自身在 pseudo-lattice 上的 PCG 解做自举（self-training），从残差最大或 Rayleigh 商最大方向做对抗采样，借鉴 FCG-NO 的 Krylov 随机方向；目前没有文献在 3D 弹性子结构上做过。",
+    "免标签归一化和免标签误差估计：可用 q^T K_PP q 或调和延拓能量替代 q^T S q 做对数比归一化，并用 r_I^T A_II^{-1} r_I（由多重网格校正 W 近似）作为无标签的能量误差估计或证书。现有无标签方法都没有给出不依赖参考解的 a-posteriori 能量间隙。",
+    "无标签灵敏度训练：现有工作（JMPS24 场基估计、IJMS26 反向传播）都没有在无标签条件下控制灵敏度误差。可以利用 NICE Eq.(14) 的残差项和固定 W 下的 autograd，构造无标签的灵敏度一致性损失。",
+    "方向 A 的契机：全局 B 样条映射使输入空间变为高维 Jacobian 场，监督标签成本随之暴涨，而能量损失只需用拉回刚度 C~ = det(J) J^-1 C J^-T 计算离散能量，零额外求解。目前没有无标签训练、Jacobian 条件化的子结构算子。CNEE（监督，78 s）只适用于低维几何参数，在高维映射空间中失去成本优势。",
+    "方向 B 的空白：自监督或学习型 DD 部件（NeuralIF、Taghibakhshi、MG-GNN、Luz）都没有谱序保证；ML-DD（Heinlein/Klawonn）只学粗空间，并且依赖监督。“带 S ≤ Ŝ ≤ (1+ε)S 证书的学习型非精确子域 Schur 或延拓，在 BDDC/FETI-DP 中给出显式条件数界”尚无人做过；3D 弹性的学习型 DD 也几乎没有无标签先例。",
+    "公开基准缺失：没有任何无标签方法在 3D 切割或薄壁弹性子结构族上报告 <0.1% 能量误差，以及与监督版相同几何、相同预算下的成本-精度曲线。NICE 可以给出第一组同口径对比（标签 GPU-h 对训练 GPU-h 对精度），回应“能否替代监督”的问题。"
+   ]
+  },
+  "verify": {
+   "checks": [
+    {
+     "id": "1",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认：JMPS 193 (2024) 105893，作者顺序 Huang, Liu, Guo, Zhang, Du, Guo 无误。对照全文（本地 guo/1-s2.0-S0022509624003594-main.txt）核对：最小势能损失、pseudo structure 为 10×10×5 子结构、非堆叠 DeepONet（branch 输入密度、trunk 输入坐标）、随机生成 2000 次密度场共 10^6 个子结构样本、2178 个归一化正交边界位移基（11×11×6×3）且每次迭代更换、训练 40–50 epochs、台式机约 2–3 天，都与原文一致。刚体条件通过约化形函数 N_sR 加 Eq.(11) 重构“严格保证”，确实是硬约束。数值也一致：柔度相对 EMsFEM 差 6.20%（89.46 对 83.89），对细网格位移误差 6.33%；50×25×25 子结构的优化设计柔度 321.81，细网格 337.76，偏低 4.7%。1.152×10^7 单元时加速 >230×（Matlab 2020b，原文表述里把两个时间数字写反了）；最大算例 1.8×10^8 单元，但该算例没有全尺度对比，>230× 不是在这个算例上测的。灵敏度沿用全尺度 SIMP 公式（式18），没有 ∂N/∂ρ 项。结论部分自述材料不连通（QR 图案）时精度显著下降。有一处要更正：约 3% 的误差出自 Table 2，指的是线性边界假设的子结构法在 10×5×5 子结构下的误差，不是“m=10 时的边界插值误差”，表述需修正。"
+    },
+    {
+     "id": "2",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2608.05437 存在，作者 Ruifeng Cao、Xidan Song，2026-08-05 提交，与引用一致（arXiv 注释称是 FE-JEPA 项目的理论短文，9 页）。摘要与全文确认：能量差等于刚度范数误差平方的一半；能量梯度等于刚度加权误差；无标签能量最小化与刚度范数回归的极小点相同、梯度处处相同；另有条件数引理、CG 后处理的 Chebyshev 界、不能直接推广到弹性动力学的说明；16 个验证集实例上做了可执行证伪检查。全文检索 Schur、substructure、condensation、3D、GPU 均无结果，说明不涉及子结构，也没有大规模 3D 数字。引用没提到 JEPA 潜空间分离命题和反例，属于遗漏，不算错误。"
+    },
+    {
+     "id": "3",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": false,
+     "note": "Crossref 确认：CMAME 456 (2026) 118955，7 位作者及顺序无误。对照全文（本地 1-s2.0-S0045782526002288-main.txt），大部分内容属实：每个面用一个 bicubic Bézier 曲面，56 个控制点、168 DOF；DeepONet；监督 MSE 损失；5^3 子结构约 10^5 个样本、10^3 子结构约 10^6 个样本；Full Node Prediction 误差 0.84% 和 3.46%。全文没找到自身的灵敏度公式（“sensitivities”只在介绍 Paulino 等人工作时出现），也不是 data-free。但有一处事实错误：Table 1 中的 ~7.5x 和 ~7.3x 是 Full Node Prediction 相对直接 FEM 的加速比，不是“比 Bézier 慢 7.3–7.5×”。按表中时间计算，FNP 比 Cubic Bézier 慢约 7.2×（40.76 s 对 5.64 s）和约 14.7×（42.14 s 对 2.87 s），原文的说法是“慢 1–2 个数量级”。另外，FNP 只是对照方案，不是先采用后因速度慢而放弃。训练耗时只以相对效率曲线（Fig.8b）给出，没有绝对时间，“未报训练耗时”基本成立。"
+    },
+    {
+     "id": "4",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2608.02036 存在，作者 Jiang, Zhan, Zhang, Wang，2026-08-03 提交，与引用一致。全文核对：超网络生成 PSD 二次型能量；训练目标为 M_g = sqrtm(S_g − λ(I−P_c))，S_g 由 FE 凝聚得到，每类 400 个训练几何；直接回归采样能量的精度约差 2,500×，装配误差 153.7%；有架构 PSD 定理和条件误差界；非线性情形用 Schur 补单调性证明修正项凸。精度：2D 热传导 0.6–1.0%，平面应变弹性 gauge3 为 0.20±0.10%；3D 是带椭球孔立方块的热传导（标量，不是弹性），2×2×2 装配 0.23±0.06%。一次性成本 78 s（凝聚 13 s 加训练 65 s），弹性训练 298 s。文中明确说内部场算子未训练，与“不做的事”一致。"
+    },
+    {
+     "id": "5",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2411.06587 存在；正式发表版经 Crossref 确认为 CMAME 437 (2025) 117785，DOI 10.1016/j.cma.2025.117785，6 位作者无误。全文确认：最小化 PDE 的变分（能量）泛函，在单元上解析积分，无需成对数据；与 FNO、PINO 比较，网格加密时优势更明显。测试问题为 1D 二阶反导数、2D Poisson、Darcy、多孔材料、超弹性、含任意孔的板，以 1D 和 2D 为主，包含（超）弹性例子，没找到 3D 算例。没有子结构和凝聚。骨干是 FNO 类神经算子，描述基本准确。"
+    },
+    {
+     "id": "6",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2305.16368 存在；v3 页眉写明 Published in TMLR (09/2024)，OpenReview id FozLrZ3CI5，元数据正确。全文确认：GNN 输出稀疏不完全分解；用只需矩阵-向量乘的 Frobenius 损失随机近似训练，文中自称 fully self-supervised，不需要解标签；测试为合成问题和变域 Poisson。小幅更正：“优于 IC”说过头了。合成问题上总时间比 IC(0) 快约 25%；Poisson 小问题上 NeuralIF(0) 为 0.52 s，IC(0) 为 0.53 s，基本持平；大问题上与 IC(0) 相当、优于 MIC；带 fill-in 时 MIC+ 略好。没有弹性或子结构内容。"
+    },
+    {
+     "id": "7",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": false,
+     "note": "arXiv:2402.05598 存在；ICML 2024，PMLR 235:42766–42782，经 PMLR 页面确认。“神经算子作 FCG 非线性预条件”“能量范数（Notay）损失”“从 Krylov 子空间抽取训练残差”“低分辨率训练、高分辨率使用”都属实。测试为 2D 标量 Poisson 和 Diffusion，没有弹性或子结构。但“不需要解标签”是错的：损失 (7)/(11) 需要 e = A^{-1} r = u_exact − u_i。作者为免去在线求逆，预先用精确解 A^{-1}f 构造训练目标（Fig.2 中训练输入为 A、r_iter、A^{-1}f − u_iter），所以训练依赖参考解。"
+    },
+    {
+     "id": "8",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2205.09833 存在，NeurIPS 35 (2022) 正式收录，已在 proceedings.neurips.cc 确认；MG-GNN 为 arXiv:2301.11378，ICML 2023（PMLR 202:33381–33395），作者一致。摘要与全文确认：GCNN 无监督学习 optimized Schwarz 的界面修正；损失是误差传播或谱半径的随机代理（附定理保证收敛到谱半径）；在小问题上训练，推广到大得多的非结构网格；MG-GNN 推广到两层 DD。测试为 2D Poisson（附录 D 含间断扩散系数），全文没有 elasticity，标量限定成立。"
+    },
+    {
+     "id": "9",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "Crossref 确认：SIAM J. Sci. Comput. 43(5), S816–S838 (2021)，DOI 10.1137/20M1344913，作者 Heinlein, Klawonn, Lanser, Weber 无误。摘要确认：把系数分布当作图像，用神经网络分类器预测是否需要求解局部广义特征值问题，从而只在必要处求解；目标是 3D 稳态扩散和线弹性的自适应 FETI-DP，最好情况可省去 97% 的特征值问题。属于监督分类，不近似子域求解器或 Schur 补，与描述一致。"
+    },
+    {
+     "id": "10",
+     "exists": true,
+     "metadata_ok": true,
+     "claim_ok": true,
+     "note": "arXiv:2607.06261 存在，作者 Klawonn, Lanser, Weber-Hamacher，2026-07-07 提交，与引用一致。摘要与全文确认：在 AGDSW 自适应粗空间中，用回归网络预测自适应粗基函数、分类网络预测基函数个数，在线阶段无需求解特征值问题；先在高对比扩散上训练，再不重训迁移到线弹性和非线性 p-Laplace（含非线性 Schwarz）；文中明确为监督回归，带符号不变损失和后处理。补充 UNVERIFIED 项：正文写明目前限于二维问题；PCG 迭代数在大问题上约 80 次以内（GDSW 超过 3000 次）。没有 S ≤ Ŝ 型保证。"
+    }
+   ]
+  }
+ }
+]

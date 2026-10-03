@@ -1,0 +1,39 @@
+{
+  "header": {
+    "seat": 100000,
+    "q_teacher": 711,
+    "nodal_dofs": 891,
+    "support_nodes": 297,
+    "box_coordinates": 95,
+    "pullback_frobenius": 0.21397345965159603,
+    "growth": 1.2532
+  },
+  "rows": [
+    {"label": "G01", "element": 1, "operation": "mirror z, diag(1,1,-1); the plane (1,b,0) is unchanged",
+     "proper": false, "q_teacher": 711, "nodal_dofs": 891, "support_nodes": 297,
+     "support_size_matches": true, "covariance_residual_relative": 9.510402643143928e-15,
+     "covariance_residual_absolute": 2.0349737562331897e-15, "frobenius_ratio": 1.0000000000000009,
+     "teacher_cut_coordinates": {"base": 142, "rotated": 142}, "status": "MEASURED"},
+    {"label": "G10", "element": 10, "operation": "90 deg about x; the plane becomes (1,0,b), a z-tilt the dataset does not contain",
+     "proper": true, "q_teacher": 711, "nodal_dofs": 891, "support_nodes": 297,
+     "support_size_matches": true, "covariance_residual_relative": 2.744884356445634e-14,
+     "covariance_residual_absolute": 5.87332402092217e-15, "frobenius_ratio": 1.0000000000000002,
+     "teacher_cut_coordinates": {"base": 142, "rotated": 142}, "status": "MEASURED"},
+    {"label": "G20", "element": 20, "operation": "90 deg about z; the plane becomes (-b,1,0)",
+     "proper": true, "q_teacher": 711, "nodal_dofs": 891, "support_nodes": 297,
+     "support_size_matches": true, "covariance_residual_relative": 8.586236119981063e-15,
+     "covariance_residual_absolute": 1.8372266479778445e-15, "frobenius_ratio": 1.000000000000001,
+     "teacher_cut_coordinates": {"base": 142, "rotated": 142}, "status": "MEASURED"}
+  ],
+  "claim": "S_tilde(g . cell) == (P_g (x) Q_g) S_tilde (P_g (x) Q_g)^T",
+  "basis_invariance": "exact: C -> V C and S_cc -> V^-T S_cc V^-1",
+  "pins": {
+    "seat": 100000,
+    "sample_sha256": "22c3d40e53a61b84286c5a63eb77e4af76195fe433d721648d4bc4dabced4a98",
+    "trace_cache_sha256": "e6b1e0a7fd298cf9a354b03b48d557123cfa8060c12a19e25803052d9a1cc009",
+    "s_upper_sha256": "ca9366a2e5e6d2e44aaac9b1c0f9235ef7215105112c5ecb844f31ea551863c4",
+    "numerical_commit": "6624dc86706bbd8e3cc16b4b3adbfb043eff08ec",
+    "wrapper_sha256": "04611f66bf801341c142a23d7fbd8ae659f51faad4284bb584d90e25b9653359"
+  },
+  "remote_outputs": "/root/autodl-tmp/CLAUDE_CUT_ROT_20260920/{ROT_100000,ROT_100000_NUM,COMPARE_100000}"
+}

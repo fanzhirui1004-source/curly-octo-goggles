@@ -1,0 +1,502 @@
+{
+  "schema_version": 1,
+  "scope": "Journal audit 2: integrated computational mechanics manuscript",
+  "rules": [
+    "Use the noun for the mathematical object; no global trace/interface/boundary replacement",
+    "Source identifiers, bibliography titles and neural coefficient gates remain literal",
+    "Preserve existing equation IDs",
+    "British spelling is used in authored prose; original bibliography titles and source identifiers remain unchanged."
+  ],
+  "sources": [
+    {
+      "title": "A static condensation reduced basis element method: Complex problems",
+      "journal": "CMAME",
+      "year": 2013,
+      "url": "https://doi.org/10.1016/j.cma.2013.02.013",
+      "inspected": "Publisher abstract",
+      "role": "Static condensation; distinction between interior approximation and interface port representation"
+    },
+    {
+      "title": "A component-based hybrid reduced basis/finite element method for solid mechanics with local nonlinearities",
+      "journal": "CMAME",
+      "year": 2018,
+      "url": "https://doi.org/10.1016/j.cma.2017.09.014",
+      "inspected": "Publisher abstract and visible introductory excerpts",
+      "role": "Component interiors, interface coupling, and port reduction terminology"
+    },
+    {
+      "title": "Mechanical and corrosion behavior of sheet-based 316L TPMS structures",
+      "journal": "IJMS",
+      "year": 2023,
+      "url": "https://doi.org/10.1016/j.ijmecsci.2023.108439",
+      "inspected": "Publisher abstract",
+      "role": "Sheet-based TPMS is a geometry designation"
+    },
+    {
+      "title": "Design, mechanical properties and energy absorption capability of graded-thickness triply periodic minimal surface structures fabricated by selective laser melting",
+      "journal": "IJMS",
+      "year": 2021,
+      "url": "https://doi.org/10.1016/j.ijmecsci.2021.106586",
+      "inspected": "Publisher abstract",
+      "role": "Graded-thickness describes geometry and does not prescribe a shell discretization"
+    }
+  ],
+  "terms": [
+    {
+      "id": "T01",
+      "preferred_en": "cell",
+      "preferred_cn": "胞",
+      "precise_definition_cn": "由隐式几何定义的一个TPMS实体单元；在组装中可担当子结构。",
+      "usage_context_cn": "几何、样本、厚度和切割描述。",
+      "replace_when_context_matches": [
+        "module（指几何时）"
+      ],
+      "distinctions_cn": "cell（胞）说明几何对象；substructure（子结构）说明力学分解角色。"
+    },
+    {
+      "id": "T02",
+      "preferred_en": "substructure",
+      "preferred_cn": "子结构",
+      "precise_definition_cn": "具有局部K、保留集合P和可独立消去内部I的离散力学组成部分。",
+      "usage_context_cn": "静力凝聚、局部刚度和全局组装。",
+      "replace_when_context_matches": [
+        "module（指局部力学系统时）"
+      ],
+      "distinctions_cn": "不因使用子结构一词就意味着端口或边界已经降阶。"
+    },
+    {
+      "id": "T03",
+      "preferred_en": "retained degrees of freedom",
+      "preferred_cn": "保留自由度",
+      "precise_definition_cn": "P内保留于Schur系统的位移系数，包括盒面及切割带；q=J_P u。",
+      "usage_context_cn": "全文P、p及组装输入输出。",
+      "replace_when_context_matches": [
+        "interface DOFs（泛指整个P时）",
+        "boundary DOFs（泛指整个P时）"
+      ],
+      "distinctions_cn": "部分切割带系数的节点离开实体表面；P不必是迹函数的最小独立基。"
+    },
+    {
+      "id": "T04",
+      "preferred_en": "full retained space",
+      "preferred_cn": "完整保留空间",
+      "precise_definition_cn": "本文选定P的全部坐标，未再施加边界插值或端口子空间约束。",
+      "usage_context_cn": "标题后的首次定义、摘要、结论和算法对象。",
+      "replace_when_context_matches": [
+        "full trace（泛指P而未定义时）",
+        "full interface（泛指P时）"
+      ],
+      "distinctions_cn": "完整相对于选定的离散P，不代表连续体无离散误差或训练覆盖所有方向。"
+    },
+    {
+      "id": "T05",
+      "preferred_en": "interface",
+      "preferred_cn": "界面",
+      "precise_definition_cn": "两个子结构共同连接并通过位移兼容/力平衡交换作用的区域。",
+      "usage_context_cn": "公共盒面、邻胞耦合、共享自由度。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "不与外边界、整胞边界或切割带互换。"
+    },
+    {
+      "id": "T06",
+      "preferred_en": "boundary",
+      "preferred_cn": "边界",
+      "precise_definition_cn": "实体或胞的几何边界，可包含外边界与公共界面。",
+      "usage_context_cn": "边界条件、表面载荷、盒面和切面。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "几何边界不是P内所有节点的集合。"
+    },
+    {
+      "id": "T07",
+      "preferred_en": "displacement trace",
+      "preferred_cn": "位移迹",
+      "precise_definition_cn": "位移场限制到指定表面后得到的函数。",
+      "usage_context_cn": "盒面多项式限制、Q2表面载荷及迹范数。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "保留系数表示迹，但可同时包含离面体场信息；same trace文中按已定义的same retained vector使用。"
+    },
+    {
+      "id": "T08",
+      "preferred_en": "retained cut-band coordinates",
+      "preferred_cn": "切割带保留坐标",
+      "precise_definition_cn": "具有正面积切面片的活动切割单元所保留的全部Q2节点位移系数。",
+      "usage_context_cn": "P构造、载荷虚功及胞内私有坐标。",
+      "replace_when_context_matches": [
+        "cut-surface nodes（指这些系数时）"
+      ],
+      "distinctions_cn": "节点不必位于切平面；非盒面坐标不自动成为相邻胞共享坐标。"
+    },
+    {
+      "id": "T09",
+      "preferred_en": "static condensation",
+      "preferred_cn": "静力凝聚",
+      "precise_definition_cn": "固定保留位移、通过内部静力平衡消去I并获得S的操作。",
+      "usage_context_cn": "标题、方法定位与式(2)。",
+      "replace_when_context_matches": [
+        "full-trace condensation（作为未定义类别时）"
+      ],
+      "distinctions_cn": "经典消元原理不是本文首创；本文研究学习延拓和内部修正的具体构造。"
+    },
+    {
+      "id": "T10",
+      "preferred_en": "condensed stiffness operator",
+      "preferred_cn": "凝聚刚度算子",
+      "precise_definition_cn": "作用于保留位移并返回功共轭保留力的线性算子；精确为S，近似为F^T K F。",
+      "usage_context_cn": "力学输出、作用算法、组装。",
+      "replace_when_context_matches": [
+        "readout（作为力学对象名）"
+      ],
+      "distinctions_cn": "近似算子是变分构造；F未平衡时不等于仅提取(KFq)_P。"
+    },
+    {
+      "id": "T11",
+      "preferred_en": "equilibrium displacement extension",
+      "preferred_cn": "平衡位移延拓",
+      "precise_definition_cn": "E_P=I、E_I=-A^{-1}K_IP，对给定q求唯一内部平衡场。",
+      "usage_context_cn": "精确参照E、教师场及能量最小化。",
+      "replace_when_context_matches": [
+        "exact lifting（不明确平衡时）"
+      ],
+      "distinctions_cn": "equilibrium（平衡）为本文三维弹性离散对象；不需要引入易混淆的标量调和含义。"
+    },
+    {
+      "id": "T12",
+      "preferred_en": "admissible displacement extension",
+      "preferred_cn": "可容许位移延拓",
+      "precise_definition_cn": "满足J_P F=I的延拓；固定几何时关于q线性，但未必满足内部平衡。",
+      "usage_context_cn": "学习场和修正场的F。",
+      "replace_when_context_matches": [
+        "displacement path（指F时）"
+      ],
+      "distinctions_cn": "lifting（提升）可作数学近义词，但本稿优先extension（延拓），不凭lifting推断平衡。"
+    },
+    {
+      "id": "T13",
+      "preferred_en": "rigid-body reconstruction",
+      "preferred_cn": "刚体运动重构",
+      "precise_definition_cn": "用R和R_P从保留刚体系数重建平移与转动，确保F R_P=R。",
+      "usage_context_cn": "式(B.3)、式(5)、图2–3与网络外围确定性操作。",
+      "replace_when_context_matches": [
+        "rigid lifting",
+        "rigid handling"
+      ],
+      "distinctions_cn": "刚体再现与K只有六个刚体零模态是两个条件。"
+    },
+    {
+      "id": "T14",
+      "preferred_en": "transpose of the complete extension",
+      "preferred_cn": "完整延拓的转置",
+      "precise_definition_cn": "在当前欧氏系数配对下对网络、刚体处理及内部修正完整转置得到F^T。",
+      "usage_context_cn": "式(7)、反向作用算法、附录E。",
+      "replace_when_context_matches": [
+        "complete adjoint（未指明离散配对时）"
+      ],
+      "distinctions_cn": "此处不是另求一个连续PDE伴随问题；设计导数的伴随法仍可称adjoint method（伴随法）。"
+    },
+    {
+      "id": "T15",
+      "preferred_en": "stabilised discrete energy",
+      "preferred_cn": "稳定化离散能量",
+      "precise_definition_cn": "二次泛函1/2 u^T K u，包含材料弹性能与规定的幽灵罚项。",
+      "usage_context_cn": "变分定义、能量超额与误差恒等式。",
+      "replace_when_context_matches": [
+        "physical strain energy（当K含幽灵罚时）",
+        "discrete elastic energy（易误认为仅物理项时）"
+      ],
+      "distinctions_cn": "physical strain energy（物理应变能）只能指材料弹性积分对应部分。"
+    },
+    {
+      "id": "T16",
+      "preferred_en": "compliance",
+      "preferred_cn": "柔度",
+      "precise_definition_cn": "固定力载荷下C=f_g^T U；平衡时等于u^T K u，为离散能量的两倍。",
+      "usage_context_cn": "全局响应与导数，式(A.2)、式(11)。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "与位移范数、1/2 u^T K u及局部能量参与率区分。"
+    },
+    {
+      "id": "T17",
+      "preferred_en": "relative directional energy excess",
+      "preferred_cn": "相对方向能量超额",
+      "precise_definition_cn": "epsilon(q)=q^T(Shat-S)q/(q^T S q)，参考能量非零。",
+      "usage_context_cn": "单个保留方向上的精度及其统计。",
+      "replace_when_context_matches": [
+        "operator error（仅指方向样本统计时）"
+      ],
+      "distinctions_cn": "无额外1/2；均值与百分位不能替代全方向上确界。"
+    },
+    {
+      "id": "T18",
+      "preferred_en": "relative operator error",
+      "preferred_cn": "相对算子误差",
+      "precise_definition_cn": "刚体补空间上归一化误差算子的谱范数，等价于最大广义Rayleigh商。",
+      "usage_context_cn": "理论最坏方向界与Ritz搜索解释。",
+      "replace_when_context_matches": [
+        "maximum error（实为几何方向均值最大值时）"
+      ],
+      "distinctions_cn": "Ritz搜索达到的商是上确界的下界；足够方向覆盖需另证。"
+    },
+    {
+      "id": "T19",
+      "preferred_en": "maximum of geometry-level direction means",
+      "preferred_cn": "几何方向均值的最大值",
+      "precise_definition_cn": "先对每个几何的一类方向取均值，再在几何间取最大。",
+      "usage_context_cn": "验证分布、ST01及图5。",
+      "replace_when_context_matches": [
+        "worst-case operator error（指该统计时）"
+      ],
+      "distinctions_cn": "不是单个最坏方向，也不按每个几何的方向数量加权。"
+    },
+    {
+      "id": "T20",
+      "preferred_en": "field-based sensitivity estimate",
+      "preferred_cn": "基于场的灵敏度估计",
+      "precise_definition_cn": "用重构场代入-sum uhat^T K_,c uhat，未加入延拓随设计变化的链式项。",
+      "usage_context_cn": "所有所报厚度灵敏度误差。",
+      "replace_when_context_matches": [
+        "surrogate gradient（指该量时）"
+      ],
+      "distinctions_cn": "不等于代理柔度完整导数；在精确平衡且固定载荷、映射时等于参考柔度导数。本文固定基准设计的离散载荷。"
+    },
+    {
+      "id": "T21",
+      "preferred_en": "complete design derivative of surrogate compliance",
+      "preferred_cn": "代理柔度的完整设计导数",
+      "precise_definition_cn": "式(14)含刚度导数项和残差加权F_,c项；涉及多胞时累加受影响胞。",
+      "usage_context_cn": "设计一致性分析和优化推论。",
+      "replace_when_context_matches": [
+        "sensitivity（未区分场估计时）"
+      ],
+      "distinctions_cn": "小函数值误差不自动给出小导数；共享全局设计还需参数映射链式法则。"
+    },
+    {
+      "id": "T22",
+      "preferred_en": "corner thickness parameter",
+      "preferred_cn": "角点厚度参数",
+      "precise_definition_cn": "tau_c通过非负Q1形函数定义隐式带半宽tau(x)。",
+      "usage_context_cn": "几何、八角点敏感度和嵌套增厚论证。",
+      "replace_when_context_matches": [
+        "wall thickness（直接称tau_c为物理长度时）"
+      ],
+      "distinctions_cn": "隐式场非距离函数，tau不是逐点物理壁厚；薄壁三维实体也不是壳单元模型。"
+    },
+    {
+      "id": "T23",
+      "preferred_en": "ghost-penalty stabilisation",
+      "preferred_cn": "幽灵惩罚稳定化",
+      "precise_definition_cn": "规定K中的跨背景单元面惩罚项，控制小切割区导致的不良离散性质。",
+      "usage_context_cn": "参照离散与A、S的定义。",
+      "replace_when_context_matches": [
+        "equilibrium correction（指幽灵罚时）"
+      ],
+      "distinctions_cn": "它定义参照K；内部平衡修正只改善F，不改变该K。"
+    },
+    {
+      "id": "T24",
+      "preferred_en": "equilibrium correction",
+      "preferred_cn": "平衡修正",
+      "precise_definition_cn": "固定保留值，利用内部残差r_I=(Ku)_I更新内部位移。",
+      "usage_context_cn": "平滑、粗空间校正及组合循环。",
+      "replace_when_context_matches": [
+        "wrapper（作为方法名）"
+      ],
+      "distinctions_cn": "修正作用于F的内部场；并非边界空间降阶或任意刚度稳定化。"
+    },
+    {
+      "id": "T25",
+      "preferred_en": "interior coarse-space correction",
+      "preferred_cn": "内部粗空间校正",
+      "precise_definition_cn": "以独立内部粗基V求解Galerkin方程并校正内部场；精确解给出A正交投影。",
+      "usage_context_cn": "式(16)–(17)、方法图及ST04。",
+      "replace_when_context_matches": [
+        "port reduction（指此修正时）"
+      ],
+      "distinctions_cn": "网络潜在层级、内部修正粗空间和全局预条件器粗空间是三个不同对象。相关生成列的数量不是独立维数；PU实例另核对秩与求解精度。"
+    },
+    {
+      "id": "T26",
+      "preferred_en": "Chebyshev smoothing",
+      "preferred_cn": "Chebyshev平滑",
+      "precise_definition_cn": "用固定多项式p_k(D^{-1}A)衰减内部误差，固定步数和几何系数。",
+      "usage_context_cn": "谱诊断与式(D.1)–(D.2)。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "估计上端点不自动保证谱包含；固定步数普通CG一般仍依赖右端而不构成线性映射。"
+    },
+    {
+      "id": "T27",
+      "preferred_en": "Jacobi-scaled interior mode",
+      "preferred_cn": "Jacobi缩放内部模态",
+      "precise_definition_cn": "广义本征问题A v=lambda diag(A) v的模态，保留位移固定为零。",
+      "usage_context_cn": "低模态累计能量图。",
+      "replace_when_context_matches": [
+        "bending mode（仅凭小lambda命名时）",
+        "soft Schur response（未证时）"
+      ],
+      "distinctions_cn": "和未缩放物理软模态、自由胞凝聚响应、式(B.7)的Rayleigh商不同。"
+    },
+    {
+      "id": "T28",
+      "preferred_en": "balanced two-level preconditioner",
+      "preferred_cn": "平衡两层预条件器",
+      "precise_definition_cn": "理想对称形式Q+(I-Q A_g) B(I-A_g Q)，本实现细层B取组装K_PP的逆。",
+      "usage_context_cn": "表4b、ST09及全局PCG成本。",
+      "replace_when_context_matches": [
+        "BNN-form（首次出现且未定义时）"
+      ],
+      "distinctions_cn": "保留原始代码标识BNN以便溯源；不得据名称宣称使用了局部Neumann Schur逆。"
+    },
+    {
+      "id": "T29",
+      "preferred_en": "consistent nodal traction load",
+      "preferred_cn": "一致节点牵引载荷",
+      "precise_definition_cn": "通过Q2迹形函数对表面牵引积分得到节点力，从而保存离散虚功。",
+      "usage_context_cn": "面载荷和切面载荷。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "一致积分不等于合力、合矩为零；self-equilibrated traction（自平衡牵引）另指后者。几何变化后重新积分牵引会产生载荷导数，区别于本文固定基准离散载荷的灵敏度。"
+    },
+    {
+      "id": "T30",
+      "preferred_en": "Boolean assembly map",
+      "preferred_cn": "布尔组装映射",
+      "precise_definition_cn": "B_m从自由全局向量提取该胞保留坐标，并包含齐次支承消元。",
+      "usage_context_cn": "式(3)与共享坐标。",
+      "replace_when_context_matches": [
+        "gather（正文力学定义时）"
+      ],
+      "distinctions_cn": "代码中的gather/scatter张量操作可保留在实现附录；不能改变实际排列或局部坐标约定。"
+    },
+    {
+      "id": "T31",
+      "preferred_en": "six-load accuracy criterion",
+      "preferred_cn": "六载荷精度准则",
+      "precise_definition_cn": "六个规定面载荷中柔度误差最大值和两胞灵敏度误差最大值均不超过3%。",
+      "usage_context_cn": "通过数量、表3及失败行。",
+      "replace_when_context_matches": [
+        "gate（科学正文）",
+        "certification（指3%准则时）"
+      ],
+      "distinctions_cn": "灵敏度准则在两个胞和六个载荷间取最大；仅目标胞的匹配载荷值另列。切面牵引不属于六载荷集合。"
+    },
+    {
+      "id": "T32",
+      "preferred_en": "reduced retained degrees of freedom",
+      "preferred_cn": "降阶后的保留自由度",
+      "precise_definition_cn": "Bernstein盒面坐标加未受限切割带坐标组成的Galerkin未知量。",
+      "usage_context_cn": "ST07、6.7节和图10。",
+      "replace_when_context_matches": [
+        "controlled DOFs"
+      ],
+      "distinctions_cn": "这些是代数广义坐标；不是由FE/Gmsh节点产生的几何控制节点。"
+    },
+    {
+      "id": "T33",
+      "preferred_en": "field-only / solution-only replacement",
+      "preferred_cn": "仅替换重构场／仅替换保留解",
+      "precise_definition_cn": "分别用Fq和E qhat评估局部响应，完整场为F qhat。",
+      "usage_context_cn": "图8、ST05、式(H.2)。",
+      "replace_when_context_matches": [
+        "nonlinear replacement diagnostics（易误认为非线性力学）"
+      ],
+      "distinctions_cn": "力学仍线性；灵敏度是位移的二次泛函，各范数不构成可加分量。"
+    },
+    {
+      "id": "T34",
+      "preferred_en": "exact discrete reference",
+      "preferred_cn": "精确离散参照",
+      "precise_definition_cn": "对固定K、P、I和组装映射求平衡所得的参照；数值求解精度另述。",
+      "usage_context_cn": "所有exact与误差分母。",
+      "replace_when_context_matches": [
+        "ground truth（暗示连续体或实验真值时）"
+      ],
+      "distinctions_cn": "未声称连续体收敛、实验验证或改变离散后仍同一参照。"
+    },
+    {
+      "id": "T35",
+      "preferred_en": "verification",
+      "preferred_cn": "数值核验",
+      "precise_definition_cn": "检验实现或代数与指定离散/恒等式相符。",
+      "usage_context_cn": "残差、算子对称、矩阵例子。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "80 unseen geometries的model validation（模型验证）指冻结模型在未训练几何的评价；不能改称实验验证。"
+    },
+    {
+      "id": "T36",
+      "preferred_en": "energy participation",
+      "preferred_cn": "能量参与率",
+      "precise_definition_cn": "在同一精确组装载荷下w_m=q_m^T S_m q_m/C。",
+      "usage_context_cn": "式(12)及匹配载荷解释。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "不是材料体积分数、几何保留体积分层或单胞误差。"
+    },
+    {
+      "id": "T37",
+      "preferred_en": "recomputed residual",
+      "preferred_cn": "重算残差",
+      "precise_definition_cn": "使用该次运行实际算子重新计算f-A_run U；区别递推Krylov残差。",
+      "usage_context_cn": "表4、ST09、式(18)。",
+      "replace_when_context_matches": [
+        "true residual（未说明参照算子时）"
+      ],
+      "distinctions_cn": "重算残差仍不是相对精确参照算子的响应误差；作用/能量不一致另有omega项。"
+    },
+    {
+      "id": "T38",
+      "preferred_en": "fixed discrete specification",
+      "preferred_cn": "固定离散定义",
+      "precise_definition_cn": "明确K、P、I、刚体场、装配及导数对象的确定性数学设定。",
+      "usage_context_cn": "科学正文首次对象说明。",
+      "replace_when_context_matches": [
+        "contract",
+        "guardrail",
+        "pipeline"
+      ],
+      "distinctions_cn": "原始元数据字段名、源文件名及神经网络coefficient gates（系数门控）保留原文。"
+    },
+    {
+      "id": "T39",
+      "preferred_en": "predictor S8; fixed-weight correction of predictor B",
+      "preferred_cn": "预测器S8；预测器B的固定权重修正",
+      "precise_definition_cn": "S8使用另行继续训练的权重并作八步评价修正；B固定权重修正从同一B预测场出发只改变数值修正。",
+      "usage_context_cn": "摘要、模型表、固定权重图和跨模型分布。",
+      "replace_when_context_matches": [
+        "A2_tail8 / A2 -> S8",
+        "v2L1 -> B",
+        "c_oh -> P0",
+        "A0_ctrl / A0 -> C",
+        "c_ctrl -> D"
+      ],
+      "distinctions_cn": "S8不能称B加八步；也不能由S8与B的差值单独识别八步修正的因果效果。模型标签使用正文直立字形，不改数学C、D、B_m。"
+    },
+    {
+      "id": "T40",
+      "preferred_en": "coefficient columns",
+      "preferred_cn": "系数列",
+      "precise_definition_cn": "粗空间生成矩阵经过支撑和对角能量筛选后剩余的列；其数量包含可能的线性相关。",
+      "usage_context_cn": "PU粗表示、ST04及S03B。",
+      "replace_when_context_matches": [
+        "coarse DOFs（尚未证实列独立的PU计数）"
+      ],
+      "distinctions_cn": "独立空间维数是矩阵的秩。Independent basis（独立基）与generating family（生成族）分别使用；不能把删去小对角列等同于揭示秩。这里的剩余列不指P中的机械保留坐标。"
+    },
+    {
+      "id": "T41",
+      "preferred_en": "geometry embedding width",
+      "preferred_cn": "几何嵌入宽度",
+      "precise_definition_cn": "网络几何分支隐含特征的分量数，当前冻结结构为64。",
+      "usage_context_cn": "网络结构及方法图。",
+      "replace_when_context_matches": [
+        "64 coarse channels（误指位移分支时）"
+      ],
+      "distinctions_cn": "几何分支对几何非线性，用于产生系数；这个宽度不等于位移通道数或力学自由度数。"
+    },
+    {
+      "id": "T42",
+      "preferred_en": "displacement feature channels",
+      "preferred_cn": "位移特征通道",
+      "precise_definition_cn": "线性位移传播分支的隐含分量，当前细/粗潜在层均为32。",
+      "usage_context_cn": "网络结构及方法图。",
+      "replace_when_context_matches": [],
+      "distinctions_cn": "通道是潜在表示维度；机械输入输出仍是同一保留坐标，不能用通道数表示保留空间降阶。"
+    }
+  ]
+}

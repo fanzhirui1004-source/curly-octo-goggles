@@ -1,0 +1,95 @@
+{
+ "schema": "R1_ACC_PREREG_V1",
+ "written": "2026-09-28 (before any E2/E5/E6 result existed; chain not yet launched)",
+ "rule_E2": "Pre-registered (author-approved): let F = mean_force_c(C+W) / mean_force_c(A3), the ratio of the population means of the geometry-mean energy error under consistent tractions (class force_c), identity view (view 0), over the 80 validation geometries (SPLIT_ARMS val_s3), C+W = the A0_ctrl checkpoint evaluated with the correction W applied at evaluation only, A3 = A3_2grid (NICE). If F <= 1.1 (C+W within 10% of A3), contribution (ii) ('training through the correction') is downgraded. The binding statistic is the point value F on all 80 geometries from the new E2a run; 95% paired-bootstrap CI over geometries (20,000 resamples, seed 0), the 60 non-selection geometries, the strata and the pair maxima are reported alongside but do not change the rule's outcome.",
+ "statistic": {
+  "numerator": "newval3_CW.json mean[0][force_c]",
+  "denominator": "newval3_A3.json mean[0][force_c] (fresh re-evaluation; archived newval2_A3_2grid 0.0007374530509589698 as cross-check)",
+  "threshold": 1.1,
+  "direction": "F <= 1.1 -> downgrade"
+ },
+ "secondary_reported_not_binding": [
+  "F with 95% bootstrap CI (VERIFY_T6: CI including 1 also argues against the attribution)",
+  "(B+W)/(C+W) = continuation share, (C+W)/A3 = training-through share, per class and stratum",
+  "pair maxima (compliance, sensitivity) for A3, B+W, C+W on all archived pair configurations"
+ ],
+ "arms": {
+  "A3": {
+   "ckpt": "/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt",
+   "override": null
+  },
+  "BW": {
+   "ckpt": "/root/autodl-tmp/OPL/S1/V2/v2L1/best.pt",
+   "override": {
+    "smooth_k": 8,
+    "smooth_alpha": 30.0,
+    "coarse_space": "Q1_17"
+   }
+  },
+  "C": {
+   "ckpt": "/root/autodl-tmp/OPL/S1/V2/A0_ctrl/best.pt",
+   "override": null
+  },
+  "CW": {
+   "ckpt": "/root/autodl-tmp/OPL/S1/V2/A0_ctrl/best.pt",
+   "override": {
+    "smooth_k": 8,
+    "smooth_alpha": 30.0,
+    "coarse_space": "Q1_17"
+   }
+  }
+ },
+ "W": {
+  "smooth_k": 8,
+  "smooth_alpha": 30.0,
+  "coarse_space": "Q1_17"
+ },
+ "W_note": "identical to A3_2grid cfg model_args (smooth_k 8, smooth_alpha 30.0, coarse_space Q1_17) and to the B+W override of chain_p1 / chain_p1c",
+ "E5": "per-direction energy errors for A3, BW, C, CW on the 80 geometries, view 0, validation banks (all directions stored)",
+ "E2b_pair_configs": [
+  "fresh_val_2000_full/x",
+  "fresh_val_2000_full/y",
+  "fresh_val_2001_full/x",
+  "fresh_val_2001_full/y",
+  "fresh_val_2005_d1_v0/x",
+  "fresh_val_2005_d1_v0/y",
+  "fresh_val_2006_d0_v1/x",
+  "fresh_val_2006_d0_v1/y",
+  "fresh_val_2003_d1_v1/x",
+  "fresh_val_2003_d1_v1/y",
+  "fresh_val_2004_d0_v2/x",
+  "fresh_val_2004_d0_v2/y",
+  "fresh_val_2002_d0_v0/x",
+  "fresh_val_2002_d0_v0/y",
+  "fresh_val_2010_d0_v0/x",
+  "fresh_val_2010_d0_v0/y"
+ ],
+ "E6": {
+  "selection": "9 test cells, all sel=false in evidence/valmeta.json: the 5 largest A3 force_c geometry means (VERIFY_T3: 2051, 2045, 2074, 2021, 2063) plus one cell per stratum (FULL; light vol>2/3; moderate 1/3<vol<=2/3; heavy vol<=1/3) drawn uniformly from the remaining sel=false cells of that stratum (sorted case ids) with numpy default_rng(20260928), one rng.choice per stratum in the order FULL, light, moderate, heavy",
+  "cells": {
+   "worst5": [
+    "fresh_val_2051_d1_v1",
+    "fresh_val_2045_d1_v0",
+    "fresh_val_2074_d0_v0",
+    "fresh_val_2021_d1_v0",
+    "fresh_val_2063_d1_v2"
+   ],
+   "random": {
+    "FULL": "fresh_val_2032_full",
+    "light": "fresh_val_2047_d1_v2",
+    "moderate": "fresh_val_2078_d0_v1",
+    "heavy": "fresh_val_2026_d0_v0"
+   }
+  },
+  "configs": "x and y for every cell (18 configurations), neighbour = the cell's own exact continuous-thickness packet <case>_nbmx / _nbmy (lat_full --nb-mode explicit --sets test)",
+  "arms": [
+   "A3",
+   "BW"
+  ],
+  "reporting": "every configuration is reported, including failures (exception recorded), PCG at the 400-iteration cap, negative energy share and non-finite errors; aggregates are given over well-posed configurations with the excluded ones listed"
+ },
+ "precision": "fp32 network forward with true-fp32 convolutions (OPL_CONV_FP32=1, cudnn.allow_tf32 False, matmul allow_tf32 False), fp64 energies, wrapper, reference and PCG; no TF32/fp16/bf16",
+ "revisions": [
+  "2026-09-28, before launch and before any result: E6 arms reduced to A3 and BW (as specified; C+W not run on held-out pairs to keep the GPU queue short)"
+ ]
+}

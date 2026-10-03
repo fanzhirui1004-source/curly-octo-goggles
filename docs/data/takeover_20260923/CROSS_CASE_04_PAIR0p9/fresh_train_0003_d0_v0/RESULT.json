@@ -1,0 +1,56 @@
+{
+  "status": "CROSS_CASE_FINITE_COMPLETE",
+  "case": "fresh_train_0003_d0_v0",
+  "pair_blocks": {
+    "theta": 0.9,
+    "blocks": 6469,
+    "nodes": 6516,
+    "size_histogram": [
+      0,
+      6422,
+      47
+    ],
+    "merged_nodes": 94,
+    "row_sum_bound": 10.133845716953326,
+    "omega0": 0.09867922089311652
+  },
+  "hierarchy_dimensions": [
+    19548,
+    2868,
+    621
+  ],
+  "summary": [
+    {
+      "cycles": 16,
+      "witness": 27.965734259610375,
+      "found_max": 27.965734259610375,
+      "found_min": 1.0028957676771422,
+      "action7_seconds": 0.7163189947605133,
+      "eligible": false
+    },
+    {
+      "cycles": 32,
+      "witness": 1.0461551129992193,
+      "found_max": 1.0461551129992193,
+      "found_min": 1.0000041119794167,
+      "action7_seconds": 1.3068755343556404,
+      "eligible": false
+    },
+    {
+      "cycles": 64,
+      "witness": 1.001536172687178,
+      "found_max": 1.001536172687178,
+      "found_min": 1.0000000324503004,
+      "action7_seconds": 2.5824622474610806,
+      "eligible": true
+    }
+  ],
+  "selected_full_spectrum_depth": 64,
+  "heavy_reproduction_control": null,
+  "seconds": 147.7874913699925,
+  "peak_rss_bytes": 2120331264,
+  "scientific_pass": false,
+  "full_spectrum": false,
+  "D_over_d": null,
+  "scope": "Finite witness only. Exact FE local matrices. Full spectrum is a separate stage."
+}

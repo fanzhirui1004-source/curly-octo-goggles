@@ -1,0 +1,18 @@
+{
+  "action_relative": 5.0536981098630825e-15,
+  "cholesky_info": 0,
+  "dimension": 12822,
+  "factor_sha256": "7ee508ff9c1019e8a59bae8bc159ff9cdc76c635850f912d15f51a506f96a453",
+  "inverse_relative_max": 6.329532897441829e-13,
+  "load_seconds": 0.3816639967262745,
+  "matrix_frobenius": 1.3265102352322404,
+  "minimum_diagonal": 0.0008233888050799377,
+  "peak_allocated_gib": 4.913221836090088,
+  "raw_congruence_relative_asymmetry": 2.050486721821741e-19,
+  "repair_applied": false,
+  "source_commit": "14301bc56b9032cb3c1c282ed9afc94b01300083",
+  "status": "FULL_SAVED_FACTOR_REFERENCE_PASS",
+  "teacher_sha256": "37eeddea111c5c6019b76eaab4e2b5b17a9cdf036b33ff573361882309c1d3cf",
+  "total_seconds": 4.647037874907255,
+  "trace_sha256": "76dfce8fce2d2cea5a4934c3e394d9eb9f19e87a892005a19ce27ccfd875dc66"
+}

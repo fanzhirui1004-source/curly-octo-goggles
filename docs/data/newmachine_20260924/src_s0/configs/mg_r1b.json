@@ -1,0 +1,4 @@
+{"cases": ["fresh_train_0020_cover01_r1"], "body": "/root/autodl-tmp/OPL/S0", "data": "/root/autodl-tmp/OPL/S0/data",
+ "out": "/root/autodl-tmp/OPL/S1/mgno_r1_b", "model": "mgno", "model_args": {"F": 32, "H": 4, "L_pre": 4, "L_post": 4, "levels": 3},
+ "steps": 20000, "batch": 16, "lr": 0.002, "mix": {"force": 0.3, "macro": 0.2, "grf": 0.3, "adv": 0.2},
+ "adv_start": 2000, "adv_every": 500, "adv_k": 16, "eval_every": 2000, "seed": 0}
