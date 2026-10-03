@@ -6,7 +6,7 @@
 - One linear, geometry-conditioned network serves every retained set, matrix-free（79）
 - A fixed two-grid correction improves the learned operator without retraining（76）
 - Accurate compliance does not imply accurate local thickness sensitivity（71）
-- On a cut-clamped plate, the NICE design is 2.4% stiffer than the homogenised one（80）
+- On a cut-clamped plate, the learned design is 2.4% stiffer than the homogenised one（83）
 
 ## 2. 生成式 AI 使用声明（必需；参考文献前单独一节）
 
