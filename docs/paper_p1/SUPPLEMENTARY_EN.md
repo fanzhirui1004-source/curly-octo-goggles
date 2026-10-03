@@ -61,7 +61,7 @@ Training settings, common to the variants of Table 2:
 - Model selection and evaluation use an exponential moving average (EMA) of the network parameters, with decay 0.9997 and zero-initialisation bias correction.
 - Eq. (18): \(10^{-12}\) lower clamp inside the logarithm of the energy term; the sensitivity term has unit weight.
 
-Measured to the last training step, the base network's training took 4.6 h and NICE's continuation 3.5 h on the GPU (Section 5.1), or 5.0 h and 4.8 h including all selection evaluations; peak GPU memory during training was 29.6 GiB. The base network was initialised from parameters obtained in three preceding training stages (7.5 GPU-hours together). Together with these stages, the two runs including their selection evaluations and the generation of the direction sets and exact sensitivities (about 42 GPU-hours, Section 5.1) make up the offline cost of NICE, about 60 GPU-hours.
+Measured to the last training step, the base network's training took 4.6 h and NICE's continuation 3.5 h on the GPU (Section 5.1), or 5.0 h and 4.8 h including all selection evaluations; peak GPU memory during training was 29.6 GiB. The base network was initialised from parameters obtained in three preceding training stages (7.5 GPU-hours together). Together with these stages, the two runs including their selection evaluations and the generation of the direction sets and exact sensitivities of the 691 geometries of the data split, its 591 training and 100 validation geometries (including the 80 of Table ST02), which took about 42 GPU-hours (Section 5.1), make up the offline cost of NICE, about 60 GPU-hours.
 
 For the base network, Uncorrected, Smoothing-trained and NICE, checkpoint selection uses the bias-corrected EMA parameters and both the identity orientation (\(v=0\)) and orientation 17 (\(v=17\)), although Table ST03 reports only the identity orientation. Within a geometry family \(f\) (the geometries of the training-time validation list generated from one thickness field; an independently generated validation cell forms a family of its own) and orientation \(v\), let \(\bar\varepsilon_{fv}\) be the mean energy error averaged over the selection classes, \(\bar e_{s,fv}\) the mean relative sensitivity-vector error over classes with labels, and \(\varepsilon^{(90)}_{fv}\) the class-average 90th percentile of directional energy error. Each class statistic is first averaged over the available geometries in that family. The selection score is
 
@@ -77,7 +77,7 @@ Families and the two orientations carry equal weight. The eight selection classe
 - Smoothing-trained used the same evaluation schedule and orientations; its selection scores were not recorded, and the parameters of its final step, 15,000, are used.
 - NICE was designated the principal variant after all variants had been compared on the 80 validation geometries and the two-cell configurations.
 
-Twenty of the 80 validation geometries (6 uncut, 14 cut) belong to the selection list; they include all eight detailed cells of Section R1.
+Twenty of the 80 validation geometries (6 uncut, 14 cut) belong to the selection list; they include all eight detailed cells of Supplementary Section R1.
 
 ## Table ST02. Validation geometry domain
 
@@ -92,7 +92,7 @@ Canonical cut normals are \((\cos\vartheta,\sin\vartheta,0)\). The generator str
 | Moderate cut | 20 | \((1/3,2/3)\) | 0.3437–0.6605 | 0.1867–0.6983 |
 | Heavy cut | 20 | \((0,1/3)\) | 0.01326–0.3195 | 0.1768–0.6946 |
 
-The cut volumes refer to the box before intersecting it with the TPMS band. No two validation geometries coincide up to a symmetry of the cube. The selected spectral and assembly cases are identified in the geometry key of Section R1; they are reported as test cases rather than a random sample for population inference.
+The cut volumes refer to the box before intersecting it with the TPMS band. No two validation geometries coincide up to a symmetry of the cube. At \(n=32\), the retained sets of the 80 geometries have a median of 23,604 DOFs and range from 2,679 to 45,900 DOFs; the active DOFs have a median of 221,442 and range from 2,757 to 439,092. The selected spectral and assembly cases are identified in the geometry key of Supplementary Section R1; they are reported as test cases rather than a random sample for population inference.
 
 ## Table ST03. Energy error by direction class (identity orientation)
 
@@ -242,10 +242,17 @@ On M1, from the base network, the same cycle with 2 and 4 steps per stage gives 
 
 ## Table ST08. Complete continuous-neighbour assembly results
 
-Maximum relative compliance and field-based sensitivity-vector errors (%) over the six face loads, compared with the 3% reference. Sensitivity maxima include both cells. The target cell uses the specified learned variant and its neighbour is exact. Cell labels abbreviate the validation identifiers (R1).
+Maximum relative compliance and field-based sensitivity-vector errors (%) over the six face loads, compared with the 3% reference. Sensitivity maxima include both cells. The target cell uses the specified learned variant and its neighbour is exact. Cell labels abbreviate the validation identifiers (Supplementary Section R1).
 
 | Target cell | Configuration | Variant | Max. compliance error (%) | Max. sensitivity error (%) |
 | --- | --- | --- | --- | --- |
+| U1 | x | Base network | 0.465 | 5.830 |
+| U1 | y | Base network | 0.427 | 5.390 |
+| U2 | x | Base network | 0.105 | 1.996 |
+| M1 | x | Base network | 4.384 | 12.153 |
+| H1 | x | Base network | 1.180 | 2.512 |
+| H1 | y | Base network | 1.379 | 1.820 |
+| M2 | x | Base network | 0.571 | 2.539 |
 | U1 | x | Uncorrected | 0.401 | 4.885 |
 | U1 | y | Uncorrected | 0.388 | 4.723 |
 | U2 | x | Uncorrected | 0.104 | 1.781 |
@@ -298,11 +305,11 @@ Maximum relative compliance and field-based sensitivity-vector errors (%) over t
 | L1 | x | NICE | 0.00202 | 0.101 |
 | L1 | y | NICE | 0.00197 | 0.078 |
 
-Combinations without a row were not evaluated. All cells in this table belong to the 20 validation geometries used for checkpoint selection (Section 5.1).
+Combinations without a row were not evaluated. All cells in this table belong to the 20 validation geometries used for checkpoint selection (Section 5.1). Cut-surface responses of the same configurations are in Table ST09. For the base network on U1/x under the neighbour-face z traction (Section 5.6, Figure 10b), the target cell carries 0.1274669% of the exact assembled energy and has a local energy error of 2.312168%; the product \(\beta=w\varepsilon\) is 0.002947249%, the compliance error 0.002827394% and the target-cell sensitivity error 5.82992%.
 
 #### ST08b. Held-out two-cell configurations (NICE)
 
-Cells outside checkpoint selection: the five validation geometries with NICE's largest single-cell errors and one random evaluable cell per stratum. Maximum relative errors (%) over the six face loads (compliance) and over both cells (thickness sensitivity); the neighbour is exact and the target learned, as in Table ST08. Cell labels are defined in R1.
+Cells outside checkpoint selection: the five validation geometries with NICE's largest single-cell errors and one random evaluable cell per stratum. Maximum relative errors (%) over the six face loads (compliance) and over both cells (thickness sensitivity); the neighbour is exact and the target learned, as in Table ST08. Cell labels are defined in Supplementary Section R1.
 
 | Cell | Selection | Retained volume | x: compliance | x: sensitivity | y: compliance | y: sensitivity |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -319,10 +326,14 @@ Cells outside checkpoint selection: the five validation geometries with NICE's l
 
 ## Table ST09. Responses under cut-surface tractions
 
-Maximum relative errors (%) over the three cut-surface traction directions, for the Uncorrected continuation and NICE in every configuration of Table ST08 with a cut target. Sensitivity maxima include both cells. The target is learned and the neighbour exact. Values above the common 3% line are marked in bold, as in the cut-surface-traction comparison of Section 5.6.
+Maximum relative errors (%) over the three cut-surface traction directions, for every variant and configuration of Table ST08 with a cut target; combinations without a row were not evaluated. Sensitivity maxima include both cells. The target is learned and the neighbour exact. Values above the common 3% line are marked in bold, as in the cut-surface-traction comparison of Section 5.6.
 
 | Variant | Cell | Configuration | Compliance error (%) | Sensitivity error (%) |
 | --- | --- | --- | --- | --- |
+| Base network | M1 | x | 2.880 | **9.924** |
+| Base network | H1 | x | 0.445 | 2.066 |
+| Base network | H1 | y | 0.651 | 1.275 |
+| Base network | M2 | x | 0.560 | **3.155** |
 | Uncorrected | M1 | x | 2.768 | **9.827** |
 | Uncorrected | M1 | y | **6.870** | **14.053** |
 | Uncorrected | H1 | x | 0.399 | 1.825 |
@@ -330,6 +341,24 @@ Maximum relative errors (%) over the three cut-surface traction directions, for 
 | Uncorrected | M2 | x | 0.574 | **3.252** |
 | Uncorrected | L1 | x | 0.355 | 1.660 |
 | Uncorrected | L1 | y | 1.141 | **3.702** |
+| Smoothing-trained | M1 | x | 0.713 | **3.228** |
+| Smoothing-trained | M1 | y | 2.417 | **5.191** |
+| Smoothing-trained | H1 | x | 0.062 | 0.356 |
+| Smoothing-trained | H1 | y | 0.130 | 0.587 |
+| Smoothing-trained | M2 | x | 0.200 | 1.664 |
+| Smoothing-trained | M2 | y | 1.117 | **3.924** |
+| Smoothing-trained | H3 | x | 0.052 | 0.689 |
+| Smoothing-trained | H3 | y | 0.237 | 1.354 |
+| Base network, corrected | M1 | x | 0.049 | 0.217 |
+| Base network, corrected | M1 | y | 0.124 | 0.305 |
+| Base network, corrected | H1 | x | 0.0044 | 0.096 |
+| Base network, corrected | H1 | y | 0.00709 | 0.022 |
+| Base network, corrected | M2 | x | 0.00468 | 0.053 |
+| Base network, corrected | M2 | y | 0.020 | 0.091 |
+| Base network, corrected | H3 | x | 0.00391 | 0.038 |
+| Base network, corrected | H3 | y | 0.011 | 0.042 |
+| Base network, corrected | L1 | x | 0.00479 | 0.039 |
+| Base network, corrected | L1 | y | 0.011 | 0.069 |
 | NICE | M1 | x | 0.035 | 0.161 |
 | NICE | M1 | y | 0.101 | 0.158 |
 | NICE | H1 | x | 0.00338 | 0.061 |
@@ -445,7 +474,7 @@ Route (a), the whole-lattice direct solution, assembles the full cut-cell stiffn
 
 Route (b), conventional exact condensation, processes the cells one at a time on the CPU with 16 threads: cell setup and assembly as in route (a), then the dense condensed matrix of the cell on its retained degrees of freedom by PARDISO's Cholesky factorisation with the Schur-complement option (iparm(36)), after which the cell is released. The condensed lattice system is solved exactly by a block Cholesky factorisation in substructuring order: for each cell, its private retained block is factorised and eliminated with dense kernels, the dense interface matrix over the retained DOFs shared by several cells is factorised and solved, and the private DOFs are recovered by back-substitution. The condensed cell matrices are held until their elimination.
 
-Route (c) runs one design iteration of the deployed implementation with NICE on the GPU: cell preparation (cell construction, stiffness and moment assembly, network input and encoding, and a first application that prepares the correction), assembly of the lattice and of \(\mathbb K_{PP}\), preconditioner setup (the balanced two-level action of Supplementary Note S4.1), conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(9.0\times10^{-7}\) to \(9.9\times10^{-7}\)), and the field-based sensitivities \(\widetilde s_c\) of Eq. (9) for the three loads, obtained by reverse-mode differentiation of the moment integrals at the fixed recovered fields. Its arithmetic is that of the timed route of Table 1: the network and the correction's smoothing and coarse solve in single precision, the stiffness products of the condensed action in double precision (Appendix F.2). The three routes read the same generated cell geometries; geometry generation is not timed.
+Route (c) runs one lattice analysis with sensitivities in the deployed implementation with NICE on the GPU: cell preparation (cell construction, stiffness and moment assembly, network input and encoding, and a first application that prepares the correction), assembly of the lattice and of \(\mathbb K_{PP}\), preconditioner setup (the balanced two-level action of Supplementary Note S4.1), conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(9.0\times10^{-7}\) to \(9.9\times10^{-7}\)), and the field-based sensitivities \(\widetilde s_c\) of Eq. (9) for the three loads, obtained by reverse-mode differentiation of the moment integrals at the fixed recovered fields. Its arithmetic is that of the timed route of Table 1: the network and the correction's smoothing and coarse solve in single precision, the stiffness products of the condensed action in double precision (Appendix F.2). The three routes read the same generated cell geometries; geometry generation is not timed.
 
 ### Table ST12. Whole-lattice direct solution, conventional exact condensation and learned route: dimensions, phases and memory
 
@@ -484,7 +513,7 @@ The total of Table 5 is the sum of these phases. With 32 threads, the whole dire
 
 Condensed solve: private elimination, interface factorisation and solution, and back-substitution for the six loads. The total of Table 5 also includes the per-cell lattice geometry, the matrix scaling and data movement between phases (17 to 35 s). Compliance vs. (a): largest relative difference over the six loads from the whole-lattice direct solution.
 
-#### ST12d. Route (c), learned route: phases of one design iteration (s)
+#### ST12d. Route (c), learned route: phases of one lattice analysis with sensitivities (s)
 
 | Lattice | Cell preparation | Lattice and \(\mathbb K_{PP}\) assembly | Preconditioner setup | Conjugate-gradient solve, 3 loads | Sensitivities |
 | --- | --- | --- | --- | --- | --- |
@@ -497,7 +526,7 @@ Total, iterations and memory: Table 5 (GPU memory: peak allocated by the process
 
 ### Table ST13. Per-cell cost of conventional condensation and NICE
 
-Four deployment cells, two cut and two uncut (R1). Cell preparation: geometry preprocessing plus cell setup, moment integration and stiffness assembly, on the GPU for NICE and on the CPU for the conventional route. Condensation: network encoding plus correction setup (smoothing interval and coarse factorisation) for NICE; symbolic analysis and Cholesky factorisation of the interior by MKL PARDISO (16 threads) for the conventional route. Memory, in GiB: GPU memory held by NICE's network state and correction, or PARDISO's factorisation storage (iparm(17)); neither includes the cell stiffness \(K\), which both routes hold (last column, GPU storage format).
+Four deployment cells, two cut and two uncut (Supplementary Section R1). Cell preparation: geometry preprocessing plus cell setup, moment integration and stiffness assembly, on the GPU for NICE and on the CPU for the conventional route. Condensation: network encoding plus correction setup (smoothing interval and coarse factorisation) for NICE; symbolic analysis and Cholesky factorisation of the interior by MKL PARDISO (16 threads) for the conventional route. Memory, in GiB: GPU memory held by NICE's network state and correction, or PARDISO's factorisation storage (iparm(17)); neither includes the cell stiffness \(K\), which both routes hold (last column, GPU storage format).
 
 | Cell | DOFs / retained | Cell preparation (s): NICE / conventional | Condensation (s): NICE / conventional | Memory (GiB): NICE state / PARDISO factor | \(K\) (GiB) |
 | --- | --- | --- | --- | --- | --- |
@@ -520,11 +549,11 @@ For a global coarse basis \(Z_g\) on the retained DOFs, the ideal coarse action 
 \mathcal M^{-1}=Q_g+(I-Q_g\mathbb A)\mathcal B_f(I-\mathbb A Q_g).
 \]
 
-The reported coarse basis multiplies the trilinear lattice-vertex functions by three translations and three rotations about each vertex, then restricts the resulting fields to the supported retained DOFs. This global coarse basis differs from the interior basis \(V\) used to correct local extensions. The lattice solves of Sections 5.8 and 5.9, exact and learned, and the learned solves of Section 5.10 use this balanced action with the stiffness-block fine action and this coarse basis.
+The reported coarse basis multiplies the trilinear lattice-vertex functions by three translations and three rotations about each vertex, then restricts the resulting fields to the supported retained DOFs. This global coarse basis differs from the interior basis \(V\) used to correct local extensions. The exact and learned lattice solves of Section 5.8, the learned route (c) of Section 5.9 and the learned solves of Section 5.10 use this balanced action with the stiffness-block fine action and this coarse basis.
 
 The coarse matrix \(A_g=Z_g^T\mathbb A Z_g\) is symmetrised and scaled by its diagonal. Eigenvectors whose scaled eigenvalues are positive and exceed \(10^{-10}\) times the largest are retained, and the corresponding normalised columns \(Y_g\) give \(Q_g=Y_gY_g^T\). The stored product \(\mathbb A Y_g\) supplies the two projections.
 
-On the GPU, \(\mathbb K_{PP}\) is factorised once per design iteration by a sparse Cholesky factorisation with NVIDIA cuDSS. The learned substructures are held on the GPU up to a memory budget for resident learned substructures; beyond it, the state of the remaining cells is held in CPU memory and streamed from there. The budget of each run is given in Tables ST12d and ST16 and in the caption of Table ST20.
+On the GPU, \(\mathbb K_{PP}\) is factorised once per design iteration by a sparse Cholesky factorisation with NVIDIA cuDSS. The learned substructures are held on the GPU up to a memory budget for resident learned substructures; beyond it, the state of the remaining cells is held in CPU memory and streamed from there. The resident cells or budget of each run are given in the note to Table ST12d, in Table ST16 and in the caption of Table ST20.
 
 ### S4.2. Two-cell test configuration
 
@@ -550,6 +579,8 @@ Face = the three consistent face loads; random = the three random loads. Gradien
 | \(3\times3\times1\) | \(2.5\times10^{-8}\) | \(1.4\times10^{-5}\) | \(7.0\times10^{-9}\) | 0.041–0.088 / 0.22–0.28 | 0.9999996 | 0.19 / 0.23 / 0.35 | 21–48 |
 
 On the lattices, \(D_{\mathrm{act}}\) grows as the step decreases, so the difference quotient does not resolve the complete derivative of the surrogate compliance. On the fourteen two-cell configurations of the selection cells (Section 5.6), the same records give \(|\bar U^T\rho|/C\le1.8\times10^{-8}\), a dual-norm bound of at most \(2.0\times10^{-5}\), \(|\omega|/C\le1.7\times10^{-8}\), field-based thickness sensitivity errors of 0.07–0.67% with cosines of at least 0.999998, and \(D_{\mathrm{act}}\) errors of 0.05–0.27% at \(h=10^{-3}\) that likewise do not decrease with the step.
+
+The accuracy of the two eight-cell lattices in these runs, reported in Section 5.8, is, for the \(2\times2\times2\) block / the \(3\times3\times1\) layer: compliance errors under the three face loads 0.0137, 0.0110 and 0.0094% / 0.0147, 0.0134 and 0.0103%, and at most 0.069% / 0.056% under the random loads; largest thickness-sensitivity error over all cells 0.144% / 0.144% under the face loads and 0.454% / 0.426% under the random loads; relative Euclidean difference between the learned and exact assembled retained solutions over all six loads 0.130% / 0.123%; cell energy errors \(\varepsilon_m\) at the exact traces 0.0061–0.026% / 0.0051–0.052% under the face loads and 0.027–0.123% / 0.023–0.077% under the random loads; and excess of \(\beta\) (Eq. (7)) over the lattice compliance error 0.13–0.28% / 0.21–0.33% of that error under the face loads and 4.4–5.1% / 4.2–5.0% under the random loads. The exact references, assembled from the dense exact condensed matrices, reach recomputed relative residuals of \(9.1\times10^{-11}\) / \(1.3\times10^{-10}\). The corner parameters of the block range from 0.2516 to 0.5350.
 
 One-corner sweeps test the smoothness of the surrogate compliance across these switches. In the two-cell configurations M1/x and U1/y, one corner parameter of the target cell, the largest- or the median-sensitivity corner, was varied over up to ±10% of its value, every design with its own regenerated geometry and learned substructure, and the compliance change between neighbouring designs was compared with the change predicted by the trapezoidal rule from the sensitivities at both ends; the same comparison was made for the exact discrete model at every tenth design. Every interval on M1/x and 24 of the 26 intervals on U1/y change at least one discrete choice, most of them the active elements, ghost faces and retained DOFs, which belong to the discrete model itself. There the surrogate compliance departs from the predicted change by up to 0.25% (M1/x), 0.17% and 0.085% (U1/y) of the compliance, and the exact model by the same amount: 0.230, 0.252 and 0.228% against 0.228, 0.249 and 0.225% on M1/x, and identical to three significant digits on U1/y. On the two U1/y intervals without a switch the departure is \(7\times10^{-8}\). At the reference designs the error of the surrogate compliance stays at its bound \(\beta\) (\(6.0\times10^{-4}\) on M1/x, \(7.2\times10^{-5}\) on U1/y). On the checked intervals the dominant departure of the surrogate objective is therefore also present in the exact discrete model, which an optimiser driven by exact condensation meets in the same way.
 
@@ -643,7 +674,7 @@ Case A is the \(2\times2\times2\) block of Section 5.8, loaded by the consistent
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0 | 24.59356 | 24.59081 | −0.0112 | 0.069 | 0.9999998 | 2.2e-04 / 5.1e-04 / 6.3e-04 | 1.000 | 178 / 9.1e-11 |
 | 12 | 26.00630 | 26.00158 | −0.0182 | 0.170 | 0.9999987 | 4.1e-04 / 1.2e-03 / 1.8e-03 | 1.000 | 244 / 9.0e-11 |
-| 23 | 24.11050 | 24.10378 | −0.0279 | 0.329 | 0.9999966 | 3.8e-04 / 2.8e-03 / 4.1e-03 | 1.000 | 262 / 9.9e-11 |
+| 23 | 24.11050 | 24.10377 | −0.0279 | 0.329 | 0.9999966 | 3.8e-04 / 2.8e-03 / 4.1e-03 | 1.000 | 262 / 9.9e-11 |
 
 Over the 18 free vertex parameters. Surrogate compliance error \((\widehat C-C)/C\); gradient error \(\lVert\widetilde{\boldsymbol s}_g-\boldsymbol s_g\rVert/\lVert\boldsymbol s_g\rVert\); component error \(\lvert\widetilde s_{g,i}-s_{g,i}\rvert/\max_j\lvert s_{g,j}\rvert\).
 
@@ -747,14 +778,14 @@ Minimum / median / maximum over the steps between consecutive iterations of the 
 
 **Scale demonstration.** Plates with the proportions of the plate of S6.3 (short side : long side 1 : 2, one cell thick) and its planar cut scaled with the plate were generated with 24, 51, 88 and 110 cells (Table ST20); all cut cells have the four retained volume fractions of S6.3. They are clamped on the uncut long side and loaded on the opposite face, which after the cut is two cells wide in the 24-cell plate, by a consistent traction of unit resultant in the plane along the long side; the 24-cell plate is the plate of S6.3 with this clamp and load. Each run starts from the uniform \(\tau=0.40\) with \(V^*=0.8\,V(\boldsymbol\tau^0)\) and the settings of Table ST16, and was stopped after four analyses (three MMA updates). Degrees of freedom are those of the initial design: the cut finite-element model of all cells, with nodes on shared faces counted once, and the retained DOFs of the assembled lattice without the clamped face.
 
-**Table ST20. Scale demonstration.** Plates with the proportions and cut of the plate of S6.3, clamped on the uncut long side and loaded in plane on the opposite face, uniform start, four analyses; GPU memory budget for resident learned substructures 4 GiB (Supplementary Note S4.1). DOFs: degrees of freedom of the cut finite-element model / free retained DOFs of the assembled lattice (initial design). Time: mean over the analyses (range), with mean phase times, in s, geometry generation included. Residual: largest recomputed relative residual / largest \(|\bar U^T\rho|/\widehat C\). CPU memory: peak resident memory of the main process, which holds the streamed state of the learned cells, per cell (total), GiB; the geometry generation runs in separate processes. GPU memory: largest memory in use on the device, sampled every 30 s with nvidia-smi, GiB; besides the resident learned cells it holds the assembled retained system: \(\mathbb K_{PP}\) and its cuDSS factor in the preconditioner and the vectors of the conjugate gradients.
+**Table ST20. Scale demonstration.** Plates with the proportions and cut of the plate of S6.3, clamped on the uncut long side and loaded in plane on the opposite face, uniform start, four analyses; GPU memory budget for resident learned substructures 4 GiB (Supplementary Note S4.1). DOFs: degrees of freedom of the cut finite-element model / free retained DOFs of the assembled lattice (initial design). Start \(\widehat C\): NICE compliance of the uniform start (first analysis). Time: mean over the analyses (range), with mean phase times, in s, geometry generation included. Residual: largest recomputed relative residual / largest \(|\bar U^T\rho|/\widehat C\). CPU memory: peak resident memory of the main process, which holds the streamed state of the learned cells, per cell (total), GiB; the geometry generation runs in separate processes. GPU memory: largest memory in use on the device, sampled every 30 s with nvidia-smi, GiB; besides the resident learned cells it holds the assembled retained system: \(\mathbb K_{PP}\) and its cuDSS factor in the preconditioner and the vectors of the conjugate gradients.
 
-| Cells / cut | DOFs: cut model / free retained | Design variables | Time per design iteration (s) and phases | PCG iterations | Residual / residual work | CPU memory per cell (total) | GPU memory in use |
-| --- | --- | ---: | --- | --- | --- | --- | ---: |
-| 24 / 8 | 6.51 M / 0.388 M | 64 | 242 (229–252): geometry 21, cell preparation 36, preconditioner 21, PCG 144, sensitivities 19 | 138–169 | 3.9e-04 / 2.3e-08 | 0.62 (15.0) | 14.9 |
-| 51 / 12 | 14.57 M / 0.780 M | 128 | 547 (539–559): geometry 37, cell preparation 83, preconditioner 45, PCG 334, sensitivities 43 | 156–171 | 6.6e-04 / 3.9e-08 | 0.69 (35.2) | 20.2 |
-| 88 / 16 | 25.85 M / 1.305 M | 212 | 962 (955–980): geometry 63, cell preparation 150, preconditioner 79, PCG 586, sensitivities 74 | 158–173 | 9.7e-04 / 6.9e-08 | 0.71 (62.8) | 26.1 |
-| 110 / 18 | 32.70 M / 1.618 M | 262 | 1,164 (1,119–1,214): geometry 71, cell preparation 185, preconditioner 99, PCG 698, sensitivities 95 | 142–172 | 1.2e-03 / 7.3e-08 | 0.73 (79.9) | 30.0 |
+| Cells / cut | DOFs: cut model / free retained | Design variables | Start \(\widehat C\) | Time per design iteration (s) and phases | PCG iterations | Residual / residual work | CPU memory per cell (total) | GPU memory in use |
+| --- | --- | ---: | ---: | --- | --- | --- | --- | ---: |
+| 24 / 8 | 6.51 M / 0.388 M | 64 | 94.34 | 242 (229–252): geometry 21, cell preparation 36, preconditioner 21, PCG 144, sensitivities 19 | 138–169 | 3.9e-04 / 2.3e-08 | 0.62 (15.0) | 14.9 |
+| 51 / 12 | 14.57 M / 0.780 M | 128 | 89.12 | 547 (539–559): geometry 37, cell preparation 83, preconditioner 45, PCG 334, sensitivities 43 | 156–171 | 6.6e-04 / 3.9e-08 | 0.69 (35.2) | 20.2 |
+| 88 / 16 | 25.85 M / 1.305 M | 212 | 86.75 | 962 (955–980): geometry 63, cell preparation 150, preconditioner 79, PCG 586, sensitivities 74 | 158–173 | 9.7e-04 / 6.9e-08 | 0.71 (62.8) | 26.1 |
+| 110 / 18 | 32.70 M / 1.618 M | 262 | 85.38 | 1,164 (1,119–1,214): geometry 71, cell preparation 185, preconditioner 99, PCG 698, sensitivities 95 | 142–172 | 1.2e-03 / 7.3e-08 | 0.73 (79.9) | 30.0 |
 
 **Table ST21. Exact checks of the plate designs.** The uniform start, the final NICE design and the homogenisation design of S6.3; the intermediate designs were not checked. Exact condensation of the 55 distinct cells with PARDISO's Schur-complement option, verified column-wise against interior solves; assembled solve, with every cut-band DOF of the cut cells fixed, to a recursive relative residual of \(10^{-10}\). Surrogate compliance error: \(\widehat C/C-1\). Gradient: vertex gradient with exact sensitivities (central moment differences, Eq. (H.3)) against the field-based NICE estimate, over the 64 free vertex parameters. Exact solves: 136 / 9.4e-11, 190 / 8.8e-11, 191 / 9.5e-11 conjugate-gradient iterations / recomputed residual, in the order of the rows.
 
