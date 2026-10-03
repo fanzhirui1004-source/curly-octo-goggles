@@ -1,0 +1,12 @@
+hlat221a
+   old: fe 5.47 lat+kpp 0.07 prec 3.53 solve 27.41 pcg 114 sens 1.88 total 38.65 peak 6.34 rss 2.36 stream 0.00 C [302.1486, 51.6874, 635.7085]
+   new: fe 7.50 lat+kpp 0.08 prec 3.78 solve 25.63 pcg 114 sens 2.12 total 39.43 peak 6.34 rss 2.37 stream 0.00 C [302.1486, 51.6874, 635.7085]
+hlat221b
+   old: fe 5.14 lat+kpp 0.11 prec 3.45 solve 26.96 pcg 119 sens 1.85 total 37.74 peak 6.09 rss 2.34 stream 0.00 C [404.7993, 68.5981, 833.1795]
+   new: fe 6.49 lat+kpp 0.08 prec 3.39 solve 25.23 pcg 119 sens 1.87 total 37.34 peak 6.09 rss 2.36 stream 0.00 C [404.7993, 68.5981, 833.1794]
+hlat222
+   old: fe 9.73 lat+kpp 0.13 prec 6.62 solve 60.66 pcg 129 sens 3.69 total 81.24 peak 8.50 rss 3.79 stream 1.28 C [138.399, 24.5908, 90.9857]
+   new: fe 11.82 lat+kpp 0.17 prec 6.57 solve 56.37 pcg 129 sens 3.80 total 79.20 peak 8.50 rss 3.79 stream 1.28 C [138.399, 24.5908, 90.9857]
+hlat331
+   old: fe 11.03 lat+kpp 0.10 prec 7.38 solve 87.08 pcg 165 sens 4.11 total 110.12 peak 9.19 rss 4.58 stream 2.09 C [254.9599, 44.3478, 1393.0878]
+   new: fe 12.66 lat+kpp 0.14 prec 7.25 solve 80.85 pcg 164 sens 4.07 total 105.46 peak 9.19 rss 4.59 stream 2.09 C [254.9599, 44.3478, 1393.0878]

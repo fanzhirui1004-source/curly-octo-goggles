@@ -1,8 +1,9 @@
 """Summary of the scale demonstration on the final route (runs/ copied read-only from R1/FINAL2: <run>/history.jsonl,
-<run>.log, rss_<run>.tsv).  Plates of 24, 51, 88, 110 and 135 cells (layouts of R1/SCALE), clamp x = min, in-plane load on
+<run>.log, rss_<run>.tsv).  Plates of 24, 51, 88 and 110 cells (layouts of R1/SCALE), clamp x = min, in-plane load on
 x = max in y, four analyses each, learned substructures resident on the GPU up to 4 GiB and streamed beyond (packed).
 Degrees of freedom depend on the geometry only and are taken from ../../X6_opt/scale/scale_dofs.json (same layouts and
-initial design).  Writes scale_summary.json next to this script."""
+initial design).  The 135-cell run (plateS135) stayed in the set-up of its first analysis for 84 min with the
+GPU idle and was stopped; it is not reported.  Writes scale_summary.json next to this script."""
 import json, re, os
 HERE = os.path.dirname(os.path.abspath(__file__)); H = os.path.join(HERE, 'runs')
 DOFS = json.load(open(os.path.join(HERE, '..', '..', 'X6_opt', 'scale', 'scale_dofs.json')))['runs']
@@ -18,7 +19,7 @@ def sampler(run):
                 sampler_gpu_used_max_gib=round(max(int(r[2]) for r in R) / 1024, 2), sampler_samples=len(R))
 
 
-for run in ['plateS24', 'plateS51', 'plateS88', 'plateS110', 'plateS135']:
+for run in ['plateS24', 'plateS51', 'plateS88', 'plateS110']:
     hf = f'{H}/{run}/history.jsonl'
     log = open(f'{H}/{run}.log').read() if os.path.exists(f'{H}/{run}.log') else ''
     starts = [json.loads(l) for l in log.splitlines() if l.startswith('{') and '"event": "START"' in l]

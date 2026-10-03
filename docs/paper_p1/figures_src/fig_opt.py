@@ -13,7 +13,7 @@ Main Figure 13 -> figures/F14_designs_scale.{svg,pdf,png}
   (a,b) corner thickness parameters of the final NICE design and of the homogenisation design on the plate, drawn with the
       long side horizontal: internal y horizontal, internal x vertical; layer z = 0 (the z = 1 difference is printed);
       vertices in the removed region are corners of cut cells; clamp along the cut, in-plane traction on the end face.
-  (c) scale demonstration (X6_opt/scale/scale_summary.json): time per design iteration (mean, range bars), peak CPU memory
+  (c) scale demonstration (X6_final/scale/scale_summary.json): time per design iteration (mean, range bars), peak CPU memory
       of the main process and peak device memory in use (nvidia-smi, includes the cuDSS factor) against the number of
       cells, for plates of 24, 51, 88 and 110 cells; 135 cells failed (K_PP factor on the GPU).
 Supplementary Figure S06 -> figures/S06_homogenised_law.{svg,pdf,png}
@@ -325,8 +325,8 @@ def draw_scale(fig, gs_e, letter='e', wide=False):
     """Scale demonstration: time and CPU/GPU memory per design iteration against the number of cells.  `wide`: the
     panel of the split figure (labels placed where nothing else is drawn)."""
     axe = fig.add_subplot(gs_e)
-    S = json.loads((D / 'scale' / 'scale_summary.json').read_text())
-    runs = ['plateS24r4', 'plateS51r4', 'plateS88', 'plateS110']
+    S = json.loads((DC / 'scale' / 'scale_summary.json').read_text())
+    runs = ['plateS24', 'plateS51', 'plateS88', 'plateS110']
     n = np.array([S[r]['cells'] for r in runs])
     t = [np.array(S[r]['iter_s']) / 60 for r in runs]
     tm = np.array([x.mean() for x in t])
@@ -335,7 +335,7 @@ def draw_scale(fig, gs_e, letter='e', wide=False):
     axe.errorbar(n, tm, yerr=err, color=TIME, marker=NICE_MK, ms=3.2, lw=.9, capsize=1.5, elinewidth=.6, zorder=4)
     axe.set_xlabel('cells'); axe.set_ylabel('time per design iteration (min)', color=TIME, fontsize=7)
     axe.tick_params(axis='y', colors=TIME)
-    axe.set_xlim(0, 150); axe.set_ylim(0, 55); axe.set_xticks([0, 24, 51, 88, 110, 135])
+    axe.set_xlim(0, 132); axe.set_ylim(0, 25); axe.set_xticks([0, 24, 51, 88, 110])
     axe.tick_params(axis='x', labelsize=6)
     axm = axe.twinx()
     hp = np.array([S[r]['host_peak_gb'] for r in runs])                  # GiB (ru_maxrss / 2**20, main process)
@@ -346,19 +346,14 @@ def draw_scale(fig, gs_e, letter='e', wide=False):
     axm.axhline(cap, color=MEM, lw=.5, ls='-', alpha=.5)
     axm.set_ylim(0, 110); axm.set_ylabel('peak memory (GiB)', color=MEM, fontsize=7)
     axm.tick_params(axis='y', colors=MEM, labelsize=6.5)
-    axe.axvline(135, color=FS.MUTED, lw=.6, ls=':')
     if wide:
-        axm.text(132.5, cap + 1.2, 'GPU capacity', fontsize=5.8, color=MEM, ha='right', va='bottom')
-        axm.text(n[-1] + 3.5, hp[-1], 'CPU', fontsize=6, color=MEM, ha='left', va='center')
-        axm.text(n[-1] + 3.5, gp[-1] - .5, 'GPU', fontsize=6, color=MEM, ha='left', va='top')
-        axe.text(132.5, 11.0, 'out of GPU\nmemory at\n135 cells', ha='right', va='top', fontsize=5.8, color=FS.MUTED,
-                 linespacing=1.05)
+        axm.text(64, cap + 1.2, 'GPU capacity', fontsize=5.8, color=MEM, ha='left', va='bottom')
+        axm.text(n[-1] + 5, hp[-1] - 3, 'CPU', fontsize=6, color=MEM, ha='left', va='center')
+        axm.text(n[-1] + 5, gp[-1] - .5, 'GPU', fontsize=6, color=MEM, ha='left', va='top')
     else:
-        axm.text(62, cap + 1.2, 'GPU capacity', fontsize=5.6, color=MEM, va='bottom')
+        axm.text(4, cap + 1.2, 'GPU capacity', fontsize=5.6, color=MEM, va='bottom')
         axm.text(n[-1] + 3, hp[-1], 'CPU', fontsize=5.8, color=MEM, ha='left', va='center')
         axm.text(n[-1] + 3, gp[-1] - 1, 'GPU', fontsize=5.8, color=MEM, ha='left', va='top')
-        axe.text(142.5, 27.5, '135 cells: out of GPU memory', ha='center', va='center', rotation=90, fontsize=5.6,
-                 color=FS.MUTED)
     axe.grid(True, color=FS.GRID, lw=.4)
     print('scale: cells', n.tolist(), 'time/iter (min)', np.round(tm, 2).tolist(), 'CPU peak GiB', np.round(hp, 1).tolist(), 'GPU in use GiB', np.round(gp, 1).tolist())
     FS.panel(axe, letter, 'Scale demonstration')
