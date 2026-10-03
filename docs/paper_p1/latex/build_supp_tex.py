@@ -25,6 +25,15 @@ def main():
     tex += B.pandoc(B.tables(B.figures(sp))) + '\n\\end{document}\n'
     tex = tex.replace('\\hypertarget', '%\\hypertarget')
 
+    def widths_after(tex, caption_start, widths):                          # caption paragraph precedes its table
+        i = tex.index(caption_start)
+        s_ = tex.index('\\begin{longtable}', i)
+        e_ = tex.index('\\end{longtable}', s_)
+        it = iter(widths)
+        block = re.sub(r'\\real\{[0-9.]+\}', lambda m: '\\real{%.3f}' % next(it), tex[s_:e_], count=len(widths))
+        return tex[:s_] + block + tex[e_:]
+    tex = widths_after(tex, 'Table ST25. Scale demonstration.', (.07, .10, .07, .06, .26, .08, .11, .10, .08))
+
     def shrink(m):                                                         # wide tables: smaller type (as build_tex)
         cols = m.group(1).count('p{')
         size = '\\scriptsize' if cols >= 8 else ('\\footnotesize' if cols >= 6 else '\\small')
