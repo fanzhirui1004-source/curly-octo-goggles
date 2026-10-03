@@ -491,16 +491,20 @@ Times in s. Memory in GiB (\(2^{30}\) bytes): PARDISO memory is its permanent pl
 
 Total and free retained DOFs: Table 5.
 
-#### ST12b. Route (a), direct solution on the CPU (Cholesky, 16 threads): phases (s) and memory (GiB)
+#### ST12b. Route (a), direct solution on the CPU (Cholesky, 16 threads and one thread): phases (s) and memory (GiB)
 
-| Lattice | Cells: setup + assembly | Global assembly and scaling | Analysis | Factorisation | Solution, 6 loads | PARDISO memory | Max. relative residual |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 2×2×1, z=0 | 229.9 | 21.9 | 26.0 | 193.1 | 13.5 | 32.0 | 3.3e-10 |
-| 2×2×1, z=1 | 184.2 | 17.6 | 20.2 | 116.9 | 10.4 | 28.8 | 4.5e-10 |
-| 2×2×2 | 379.5 | 36.0 | 53.1 | 368.2 | 31.0 | 66.4 | 1.5e-10 |
-| 3×3×1 | 431.3 | 42.3 | 50.4 | 481.5 | 36.0 | 80.9 | 2.6e-09 |
+| Lattice | Threads | Cells: setup + assembly | Global assembly and scaling | Analysis | Factorisation | Solution, 6 loads | Total | PARDISO memory | Max. relative residual |
+| --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2×2×1, z=0 | 16 | 229.9 | 21.9 | 26.0 | 193.1 | 13.5 | 484.4 | 32.0 | 3.3e-10 |
+| 2×2×1, z=0 | 1 | 777.3 | 19.8 | 115.8 | 1,500.0 | 12.1 | 2,425.0 | 31.4 | 4.0e-10 |
+| 2×2×1, z=1 | 16 | 184.2 | 17.6 | 20.2 | 116.9 | 10.4 | 349.2 | 28.8 | 4.5e-10 |
+| 2×2×1, z=1 | 1 | 685.6 | 18.8 | 106.1 | 1,309.4 | 11.3 | 2,131.3 | 28.3 | 5.2e-10 |
+| 2×2×2 | 16 | 379.5 | 36.0 | 53.1 | 368.2 | 31.0 | 867.8 | 66.4 | 1.5e-10 |
+| 2×2×2 | 1 | 1,402.1 | 39.3 | 254.5 | 4,140.3 | 27.7 | 5,863.9 | 65.5 | 1.8e-10 |
+| 3×3×1 | 16 | 431.3 | 42.3 | 50.4 | 481.5 | 36.0 | 1,041.6 | 80.9 | 2.6e-09 |
+| 3×3×1 | 1 | 1,669.9 | 45.4 | 324.4 | 6,059.1 | 32.4 | 8,131.0 | 79.8 | 2.8e-09 |
 
-The total of Table 5 is the sum of these phases. With 32 threads, the whole direct solution takes 378.5, 341.1, 823.4 and 955.5 s instead of 484.4, 349.2, 867.8 and 1,041.6 s, because cell setup and assembly do not speed up.
+Total: sum of the phases; the 16-thread totals are those of Table 5. With 32 threads, the whole direct solution takes 378.5, 341.1, 823.4 and 955.5 s instead of 484.4, 349.2, 867.8 and 1,041.6 s, because cell setup and assembly do not speed up.
 
 #### ST12c. Route (b), conventional exact condensation on the CPU (16 threads): phases (s) and memory (GiB)
 
