@@ -2,7 +2,7 @@
 
 ## 1. Highlights（3–5 条，每条 ≤85 字符含空格；单独文件，文件名含 "highlights"）
 
-- NICE keeps all box-face and cut-band DOFs of cut cells, tens of thousands（73）
+- Learned condensation keeps every box-face and cut-band degree of freedom（72）
 - One linear, geometry-conditioned network serves every retained set, matrix-free（79）
 - A fixed two-grid correction improves the learned operator without retraining（76）
 - Accurate compliance does not imply accurate local thickness sensitivity（71）
