@@ -94,6 +94,7 @@ def main(argv):
     ap.add_argument('--eval_every', type=int, default=1000); ap.add_argument('--id_frac', type=float, default=0.25)
     ap.add_argument('--classes', default='force,macro,grf,force_c,face_c'); ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--clip', type=float, default=1.0)
+    ap.add_argument('--accum', type=int, default=1)                          # micro-batches per step (memory)
     ap.add_argument('--freeze_base', type=int, default=0)                    # train only u_in: similarity maps stay A3 exactly
     ap.add_argument('--l2sp', type=float, default=0.0)                       # lam * sum (theta - theta_A3)^2 over A3 parameters
     ap.add_argument('--ema', type=float, default=0.0)                        # EMA of the weights for evaluation / saving
@@ -174,11 +175,15 @@ def main(argv):
             if k:
                 Qc = s.g.banks['train'][c]; cols.append(Qc[:, torch.as_tensor(rng.choice(Qc.shape[1], k, replace=False), device=dev)])
         Q = torch.cat(cols, 1)
-        e = TL.energy(s.g.field(model, Q), s.C.K)
-        loss = torch.log(e.clamp_min(1e-12)).mean()
+        opt.zero_grad(set_to_none=True)
+        loss = 0.0
+        for Qm in torch.tensor_split(Q, a.accum, dim=1):                       # same mean over the batch, less memory
+            e = TL.energy(s.g.field(model, Qm), s.C.K)
+            lm = torch.log(e.clamp_min(1e-12)).sum() / Q.shape[1]
+            lm.backward(); loss = loss + lm.detach()
         if theta0 is not None:
-            loss = loss + a.l2sp * sum(((p - p0) ** 2).sum() for p, p0 in zip(base, theta0))
-        opt.zero_grad(set_to_none=True); loss.backward()
+            reg = a.l2sp * sum(((p - p0) ** 2).sum() for p, p0 in zip(base, theta0))
+            reg.backward(); loss = loss + reg.detach()
         gn = float(torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], a.clip))
         opt.step(); sched.step()
         if ema is not None:
