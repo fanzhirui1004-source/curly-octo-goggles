@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>后续工作推进路线</title>
+<style>
+:root{--ink:#1d2330;--mute:#5b6476;--line:#d7dce5;--accent:#1f5fa8;--warn:#a8471f;--ok:#2d7a46;--bg:#ffffff;--soft:#f3f6fa;}
+@page{size:A4;margin:16mm 15mm 16mm 15mm;}
+*{box-sizing:border-box}
+body{font-family:"WenQuanYi Zen Hei","Noto Sans CJK SC",sans-serif;color:var(--ink);background:var(--bg);font-size:10.2pt;line-height:1.62;margin:0;}
+h1{font-size:20pt;margin:0 0 4pt;color:var(--accent);letter-spacing:.5pt}
+h2{font-size:13.5pt;margin:20pt 0 6pt;padding-bottom:3pt;border-bottom:1.5pt solid var(--accent);color:var(--accent);break-after:avoid}
+h3{font-size:11.2pt;margin:12pt 0 4pt;break-after:avoid}
+p{margin:4pt 0 6pt}
+ul,ol{margin:3pt 0 6pt;padding-left:18pt}
+li{margin:1.5pt 0}
+table{border-collapse:collapse;width:100%;margin:6pt 0 10pt;font-size:9pt;break-inside:auto}
+th,td{border:.6pt solid var(--line);padding:3.5pt 5pt;vertical-align:top;text-align:left}
+th{background:var(--soft);font-weight:bold}
+tr{break-inside:avoid}
+.meta{color:var(--mute);font-size:9.2pt;margin-bottom:10pt}
+.box{background:var(--soft);border-left:3pt solid var(--accent);padding:7pt 10pt;margin:8pt 0 10pt;break-inside:avoid}
+.warn{border-left-color:var(--warn)}
+.ok{border-left-color:var(--ok)}
+.tag{display:inline-block;font-size:8pt;padding:0 4pt;border-radius:3pt;border:.6pt solid var(--line);color:var(--mute)}
+.hi{color:var(--warn);font-weight:bold}
+.small{font-size:8.6pt;color:var(--mute)}
+pre{font-family:"WenQuanYi Zen Hei Mono",monospace;font-size:8.2pt;background:var(--soft);padding:7pt;line-height:1.35;white-space:pre;overflow:hidden;break-inside:avoid}
+.pb{break-before:page}
+.gantt{break-inside:avoid}
+.gantt td{height:15pt}
+</style>
+</head>
+<body>
+
+<h1>后续工作推进路线</h1>
+<div class="meta">存档日期：2026-10-03 ｜ 依据：P1 定稿（正文 63 页，补充材料 37 页）、10-01 路线图（<code>docs/followup/ROADMAP_20261001_CN.md</code>）、A–B 方向文献调研（<code>LIT_SURVEY_AB_20261001_CN.md</code>）、映射单胞第 0 步结果（<code>A/full16/SUMMARY.md</code>）、PIML 系列对照（<code>docs/paper_p1/review_r1/GUO_SERIES_COMPARISON_CN.md</code>），以及 10-01 至 10-03 关于后续方向、投稿去向和 NC 可能性的讨论。<br>
+本文件取代 10-01 路线图中的论文排序部分。10-01 的竞品监控、防抢发做法和低投入论文清单仍然有效，已并入下文。时间为估计值，M0 = 2026 年 10 月。</div>
+
+<div class="box">
+<b>一页摘要</b>
+<ol>
+<li><b>P1 投 CMAME，同时挂 arXiv。</b>对这篇论文来说，CMAME 是最对口、也是最高的目标。想冲更高的期刊，靠改写不够，需要新工作。</li>
+<li><b>后续定位：不比加速比，比"可行与不可行"。</b>直接法的 Cholesky 因子随规模超线性增长（四胞 29–32 GiB，八胞 66–81 GiB），NICE 每胞内存约 0.7 GiB、线性增长。在别人算不动的规模上，做出带局部量和灵敏度的设计，再加实验，才是高影响期刊要的故事。</li>
+<li><b>推荐序列：</b>
+  <ul>
+  <li>P2：带误差控制的局部量（应力）设计，并入后验误差，规模作为支撑能力；</li>
+  <li>P3：跨胞族泛化，加上 B 样条拉扭单胞；</li>
+  <li>备选：动力学的 Rayleigh–Ritz 频率上界；</li>
+  <li>低投入并行：数据集、CutFEM 方法、均匀化失效定量研究加实测、综述。</li>
+  </ul></li>
+<li><b>NC 主线：</b>局部量驱动的有限尺寸格栅设计，加打印和破坏试验。前置条件有五项：K_PP 多层粗解、第二胞族、实验条件、质量/几何刚度凝聚、后验误差估计。</li>
+<li><b>先做共享前置：</b>K_PP 多层粗解、后验估计、质量/几何刚度凝聚、最坏方向诊断。它们被三篇以上的工作共用。</li>
+</ol>
+</div>
+
+<h2>1. 出发点：P1 的现状</h2>
+<table>
+<tr><th style="width:24%">项目</th><th>现状</th></tr>
+<tr><td>方法</td><td>学习的内部延拓 Ê（几何条件化，潜在层级 65/33/17/9，约 6×10⁵ 个参数），加固定的两层校正 𝒲（Chebyshev 8 / Q₁(17) / 8），凝聚刚度取 Ŝ = FᵀKF。保留每胞的全部盒面和切割带自由度：2,679–45,900 个，中位数 23,604。</td></tr>
+<tr><td>理论</td><td>
+  <ul>
+  <li>Ritz 恒等式 Ŝ − S = HᵀAH，故 S ⪯ Ŝ ⪯ Ŝ_net；</li>
+  <li>份额加权的柔度界 Eq. (7)；</li>
+  <li>场基灵敏度中有一次项 Eq. (9)，并给出完整导数 Eq. (10)；</li>
+  <li>能量误差分解为 ε = δ²κ。</li>
+  </ul></td></tr>
+<tr><td>精度</td><td>
+  <ul>
+  <li>单胞平均能量误差 0.074%；</li>
+  <li>两胞装配：柔度 ≤0.28%，灵敏度 ≤1.5%；</li>
+  <li>八胞格栅（面载）：柔度 ≤0.015%，灵敏度 ≤0.14%；</li>
+  <li>优化：梯度误差 ≤0.33%。</li>
+  </ul></td></tr>
+<tr><td>成本</td><td>
+  <ul>
+  <li>八胞分析（含灵敏度）79–105 s，16 线程 PARDISO 直接解需其约 10 倍时间，单线程需其 57–77 倍；</li>
+  <li>110 胞（3270 万 DOF）每次设计迭代 19 min，每胞约 10.7 s；</li>
+  <li>CPU 内存每胞约 0.7 GiB。</li>
+  </ul></td></tr>
+<tr><td>应用</td><td>八胞 case A 与精确凝聚的孪生优化，最终角点参数最多相差 0.0051。切割固支板上，均匀化低估柔度 27%，NICE 设计比均匀化设计刚 2.4%。</td></tr>
+<tr><td>投稿</td><td>CMAME，同时挂 arXiv。作者待办：作者信息、各项声明（含 AI 使用声明）、通读。可选：先给 Nature Computational Science 发预投稿咨询，一两周回复，预期会建议转投专业期刊。</td></tr>
+</table>
+
+<h3>1.1 审稿风险与已备答复</h3>
+<table>
+<tr><th style="width:28%">可能的质疑</th><th>答复要点</th></tr>
+<tr><td>加速只有约 10 倍，PIML 动辄 10²×</td><td>三点（见 <code>RESPONSE_PREP_SPEEDUP_CN.md</code>）：
+  <ol>
+  <li>精度层级不同：他们的 10²× 来自每个子结构 24 个角点 DOF，误差 2–20%；</li>
+  <li>同精度档对照：他们的全节点方案只有 7.3–7.5×，位移误差 0.84–3.46%，作者自称"no longer counted as an effective acceleration method"；</li>
+  <li>基准强度不同：我们的单线程口径是 57–77×。</li>
+  </ol>
+  答复时只陈述事实，不下"更优"的结论。</td></tr>
+<tr><td>只有一种胞族、一种离散</td><td>构造和误差关系对任何对称半正定、内部块正定的离散模型都成立。网络的适用范围在 6.4 节写明。</td></tr>
+<tr><td>只有一个随机种子；Eq. (18) 灵敏度项的作用未单独分离</td><td>6.4 节已如实写出。被要求时可补做多种子实验（GPU 约 1–2 天）。</td></tr>
+<tr><td>没有与 AMG/BDDC 比较</td><td>6.4 节已写明。这是 P2 和"NICE 作为精确求解器加速器"方向的内容。</td></tr>
+<tr><td>6 个载荷对 3 个载荷的计时公平性</td><td>按作者决定，正文不加说明，审稿人提出时再答。</td></tr>
+</table>
+
+<h2>2. 竞品态势（更新）</h2>
+<table>
+<tr><th style="width:20%">组 / 工作</th><th style="width:38%">已做到</th><th>对我们的意义</th></tr>
+<tr><td>郭旭、刘畅组：PIML 系列（EML 2023、JMPS 2024、CMAME 2026、OFEM 2026、CS 2026、IJMS 2026；另有 Xu 2023、Xu 2025 的映射、扭转胞点阵）</td><td>每个子结构保留少量边界 DOF，形函数加 NᵀKN；无数据训练、Bézier 边界、等变、等参迁移；串行 10⁹ 单元，并行 10¹⁰ DOF（Ma et al.）</td><td>
+  <ul>
+  <li>弱点（均已核对页码）：
+    <ul>
+    <li>边界误差与网络无关；</li>
+    <li>集中载荷下柔度误差 15–63%；</li>
+    <li>应力约低估 5.3 倍；</li>
+    <li>经细网格复核的柔度全部偏刚，但没有界；</li>
+    <li>整个系列未报告任何灵敏度误差；</li>
+    <li>全节点方案被作者自己放弃。</li>
+    </ul></li>
+  <li>强项：应用广、规模大。</li>
+  <li>威胁：映射胞、大规模、无数据训练。</li>
+  </ul></td></tr>
+<tr><td>Antolin、Hirschler、Bouclier 组</td><td>2D 映射 TPMS 的 unfitted 方法加胞元级 BDDC（Bonilla Moreno 2026/27 CMAME）；3D 贴体 tile 的 ROM-FETI-DP（Hirschler 2024）；1.5×10⁹ DOF matrix-free</td><td>论文结论写明下一步"3D 用神经网络"。<span class="hi">威胁映射胞方向和精确求解器方向，风险高。</span></td></tr>
+<tr><td>Jiang H. et al. 2026（CNEE，arXiv:2608.02036）</td><td>几何参数化学习 Schur 补，保证 PSD 与刚体零空间，用 Newton 细化</td><td>与 P1 定位最接近的非 PIML 工作，P1 已引用并区分</td></tr>
+<tr><td>Tu &amp; Zhang 2025（arXiv:2510.05993）</td><td>代理 Schur 补加 BDDC，概率性的双侧条件数界</td><td>"NICE 作为非精确子域求解器"方向的直接对手</td></tr>
+<tr><td>Cao &amp; Song 2026（arXiv:2608.05437）</td><td>证明离散能量损失等价于刚度范数监督</td><td>免标签训练的原理已被占，只能做在"切割、大保留空间"上的实现</td></tr>
+<tr><td>Chen &amp; Li 2026（CAD）</td><td>unfitted 粗单元上的条件数控制数值形函数，不含 ML</td><td>切割面限制边界时可借用其处理方法</td></tr>
+<tr><td>Heinlein、Klawonn 组</td><td>机器学习自适应粗空间</td><td>精确求解器加速方向需与之区分</td></tr>
+</table>
+<p class="small">监控：建议每月检索一次上述作者在 arXiv 和 CMAME、IJNME、JCP、CS、EML、JMPS 上的新文，是否设自动任务由作者决定。</p>
+
+<h2 class="pb">3. P1 留下的限制与对应方向</h2>
+<p>P1 在 6.4 节写出的每一条局限，基本都对应一个后续方向。下表的字母只在本文件内使用，与 10-01 路线图的线名不同。</p>
+<table>
+<tr><th style="width:15%">方向</th><th style="width:27%">P1 的限制</th><th style="width:27%">后续获得的能力</th><th>已有基础</th></tr>
+<tr><td><b>A. 规模</b></td><td>上限由 GPU 上 K_PP 的直接分解决定；24 胞以上没有精度核对</td><td>千胞级格栅，分析和设计都不需要整体直接分解</td><td>流式存储、稀疏粗空间；24–110 胞规模数据</td></tr>
+<tr><td><b>B. 后验误差与自适应校正</b></td><td>只有可计算的残差，没有认证界；所有胞的校正预算相同</td><td>按胞自适应分配校正步数，给出柔度和灵敏度的误差估计</td><td>第 3 节误差链、Eq. (5) 残差、附录 I 的无标签下界、早期 certificate 代码</td></tr>
+<tr><td><b>C. 胞族与几何泛化</b></td><td>一个 TPMS 族、单平面切割、一种离散；网络不等变</td><td>多胞族、映射或曲面边界、多处切割；对称性由构造保证</td><td>gyroid 零样本与微调；映射胞 16 胞 × 24 种映射的评估；对称增强实验</td></tr>
+<tr><td><b>D. 完整导数与设计应用</b></td><td>灵敏度省略延拓的设计导数；只做柔度；没有实物</td><td>完整导数、应力约束、打印加实测</td><td>Eq. (10) 推导、MMA 优化框架、切割面支撑能力</td></tr>
+<tr><td><b>E. 免标签训练</b></td><td>需要精确延拓作标签，数据约 42 GPU-h</td><td>能量最小化训练，不需要精确解</td><td>DF / CTRL / DF+W 小规模试点</td></tr>
+<tr><td><b>F. 非线性</b></td><td>只有线弹性</td><td>屈曲、几何非线性；学到的延拓作为 Newton 初值</td><td>无，但能量形式框架可沿用</td></tr>
+</table>
+
+<h2>4. 框架结构带来的独有能力</h2>
+<div class="box warn"><b>前提：</b>下面的"别人难做到"都是从框架结构推出来的。写进论文之前，每一条都要针对性地筛查文献，并写清楚"在什么条件下别人做不到"。</div>
+<table>
+<tr><th style="width:4%">#</th><th style="width:26%">能力</th><th style="width:22%">来自哪个结构特点</th><th>为什么别人难做</th></tr>
+<tr><td>1</td><td><b>在切割面上施加真实边界条件</b>：支撑、载荷、接触；格栅与实体件在斜切边界上粘接</td><td>保留完整切割带</td><td>均匀化只能另加罚约束，本例中低估 27%；缩减边界方法的保留坐标里没有切割带；降基法依赖固定离散。<b>证据最强，P1 的切割板已是雏形。</b></td></tr>
+<tr><td>2</td><td><b>不做分解就得到壁面级局部场</b>：可做应力约束和局部屈曲指标</td><td>内部延拓本身就是场</td><td>均匀化给不出壁面应力；Jiang H. 恢复内部场需要分解；PIML 有场，但边界 DOF 太少，应力约低估 5.3 倍。风险：局部量误差不受能量误差控制，必须单独验证。</td></tr>
+<tr><td>3</td><td><b>精度在使用中可调</b>：优化早期用小校正预算，收敛时加大</td><td>固定校正加单侧界</td><td>其他学习模型训练完精度就固定了。如果再配一个可计算的上界（余能或平衡残差），就有双侧界，可以做有认证的约束满足。</td></tr>
+<tr><td>4</td><td><b>频率的 Rayleigh–Ritz 上界</b>：M̂ = FᵀMF 与 Ŝ = FᵀKF 用同一个 F</td><td>延拓是同一个线性映射</td><td>这是经典组件模态综合的性质；带变分界的学习子结构动力学很少见，需核实文献。</td></tr>
+<tr><td>5</td><td><b>有限尺寸效应与非经典耦合</b>（拉扭）</td><td>全分辨率组装，不依赖尺度分离</td><td>Cauchy 均匀化给不出尺寸依赖，需要微极或应变梯度理论。</td></tr>
+<tr><td>6</td><td><b>对零件边界形状的灵敏度</b>：同时优化外形和格栅</td><td>网络以离散几何为条件</td><td>难点是离散模型切换（3.3 节），放到长期。</td></tr>
+</table>
+
+<h2>5. 方向全清单与评估</h2>
+<table>
+<tr><th style="width:22%">方向</th><th style="width:24%">招牌</th><th style="width:20%">依托的结构特点</th><th style="width:16%">已有基础</th><th>难度 / 风险</th></tr>
+<tr><td>后验误差 + 局部量设计（B+D）</td><td>算到哪里，信到哪里</td><td>单侧界、可改进校正</td><td>中</td><td>中</td></tr>
+<tr><td>学习/精确混合模型</td><td>误差驱动的胞级切换：坏胞换成精确或细网格模型，接口完全协调</td><td>完整接口</td><td>中</td><td>中</td></tr>
+<tr><td>NICE 作为精确求解器的局部解算器</td><td>放进 BDDC/FETI，收敛到精确解；同时补上与 AMG/BDDC 的比较</td><td>线性、可组装、单侧谱序</td><td>预条件器代码</td><td>中高（Tu &amp; Zhang、Heinlein 在旁边）</td></tr>
+<tr><td>免标签训练（E）</td><td>不需要精确解</td><td>能量形式</td><td>小试点</td><td>中（原理已被 Cao &amp; Song 占）</td></tr>
+<tr><td>胞族泛化（C）</td><td>一网多族，对称性内建</td><td>几何条件化</td><td>零样本、微调、映射胞</td><td>中</td></tr>
+<tr><td>B 样条拉扭超材料</td><td>超越尺度分离的非经典效应</td><td>全分辨率组装</td><td>作者那边的工作</td><td>中（具体形式待定）</td></tr>
+<tr><td>CT 数字孪生</td><td>打印即分析：缺陷格栅的胞级学习凝聚</td><td>输入是离散几何（材料矩），不是设计参数</td><td>无</td><td>中到高（需 CT 数据；缺陷可能超出训练分布）</td></tr>
+<tr><td>分辨率迁移</td><td>n = 32 训练，n = 64 部署</td><td>局部算子</td><td>无</td><td>中（潜在层级要改）</td></tr>
+<tr><td>动力学</td><td>频率上界、振动设计</td><td>Rayleigh–Ritz</td><td>无</td><td>低到中</td></tr>
+<tr><td>线性屈曲</td><td>临界载荷上界 FᵀK_GF</td><td>Rayleigh–Ritz</td><td>无</td><td>中；薄壁 TPMS 常由屈曲控制，工程意义大</td></tr>
+<tr><td>多物理场</td><td>换热、热弹性（gyroid 换热器）</td><td>构造的一般性</td><td>无</td><td>低到中</td></tr>
+<tr><td>非线性（F）</td><td>延拓作为 Newton 初值</td><td>能量形式</td><td>无</td><td>高</td></tr>
+<tr><td>数据集论文</td><td>公开约 1000 个切割胞的精确凝聚数据与评测协议</td><td>—</td><td>已有（约 1 TB）</td><td>低；可早投占位</td></tr>
+<tr><td>CutFEM 方法论文</td><td>材料支撑的严格判定、小切割稳定、矩导数灵敏度</td><td>P1 参考解代码</td><td>基本现成</td><td>低（IJNME / FEAD）</td></tr>
+<tr><td>均匀化失效定量研究 + 实测</td><td>误差随切割体积分数、层数、载荷、厚度梯度的变化</td><td>NICE 便宜</td><td>27% 的结论</td><td>低到中；也是 NC 实验的预演</td></tr>
+<tr><td>理论论文</td><td>任意学习粗空间或延拓的一般误差理论（Ritz 二次误差、校正单调性、灵敏度一次项、δ²κ）</td><td>误差链</td><td>P1 第 3 节</td><td>中；需能脱离 NICE 独立成立（M2AN / SINUM）</td></tr>
+<tr><td>综述</td><td>学习型子结构与超单元在点阵结构中的应用</td><td>—</td><td>竞品筛查和 PIML 对照已做大半</td><td>低到中（可能有人先写）</td></tr>
+</table>
+
+<h2>6. 推荐论文序列</h2>
+<table>
+<tr><th style="width:9%">篇</th><th style="width:28%">内容</th><th style="width:30%">招牌（独立的新能力）</th><th style="width:16%">目标期刊</th><th>关键依赖</th></tr>
+<tr><td><b>P1</b></td><td>当前论文</td><td>完整保留空间上可组装、可改进的学习凝聚，加误差链</td><td>CMAME</td><td>—</td></tr>
+<tr><td><b>P2</b></td><td>B + D，规模按需并入：应力约束和切割面耦合设计，配后验误差估计与自适应校正</td><td>带误差控制的局部量设计，"算到哪里，信到哪里"</td><td>CMAME；做成实验版可冲更高</td><td>后验估计；应力恢复精度验证；K_PP 多层粗解（规模）</td></tr>
+<tr><td><b>P3</b></td><td>C + B 样条拉扭单胞：一网多族、映射几何、对称内建；有限尺寸拉扭响应</td><td>超越尺度分离的非经典超材料结构分析与设计</td><td>CMAME / JMPS</td><td>新胞族数据（或免标签训练）；拉扭单胞的具体形式</td></tr>
+<tr><td>备选</td><td>动力学：质量凝聚，频率上界与振动设计</td><td>有保证的单侧频率界 + 有限尺寸设计</td><td>JSV / CMAME；做成实验版见 NC 方向 2</td><td>质量凝聚；特征值求解</td></tr>
+<tr><td>并行</td><td>数据集；CutFEM 方法；均匀化失效 + 实测；综述</td><td>各自独立</td><td>Sci. Data / IJNME / Addit. Manuf. / ACME</td><td>写作为主，GPU 需求小</td></tr>
+</table>
+<p>规模（方向 A）不建议单独成篇。只是"更快、更大"，在 CMAME 立不住，而且没有与 AMG/BDDC 比过。它更适合作为 P2 和 NC 的支撑能力出现。</p>
+
+<h2>7. 冲 NC 的路线</h2>
+<div class="box">
+<b>判断标准。</b>NC 不会因为"方法更快更准"收稿。它要的是"有了这个方法，才看到、做成了以前做不到的事"，而且最好有实验。所以衍生工作的目标不是"更好的 NICE"，而是用 NICE 的三项独特能力去解决公认解决不了的问题：
+<ul>
+<li>在没有尺度分离的地方给出精确级的可组装算子；</li>
+<li>给出局部场和局部灵敏度；</li>
+<li>有单侧界，且部署时可改进。</li>
+</ul>
+</div>
+<table>
+<tr><th style="width:17%">方向</th><th style="width:30%">问题与展示</th><th style="width:30%">差距</th><th>评估</th></tr>
+<tr><td><b>1. 局部量驱动的有限尺寸格栅设计</b>（最推荐）</td><td>均匀化在边界、切口、支承处给不出局部应力，梯度格栅设计基本只能优化柔度；但真实零件坏在局部，比如应力集中、疲劳、局部屈曲。展示：一个真实外形的零件（带孔或曲面边界的支架、植入物），上千个胞；均匀化设计和 NICE 设计都打印出来做破坏试验。</td><td>K_PP 多层粗解（上千胞）；应力/强度目标及其灵敏度（场已有，主要是推导和实现）；打印与力学测试条件</td><td>柔度设计我们只比均匀化好 2.4%，这对 NC 不够；应力类目标的差距应该大得多，<span class="hi">要先用数值验证</span>。估计 4–6 个月。</td></tr>
+<tr><td><b>2. 有限尺寸超材料的振动设计</b></td><td>声学和弹性超材料几乎都用 Bloch 周期分析，默认结构无限大；有限器件的边界模态和局部共振，周期分析给不出。展示：有限尺寸、带边界的 TPMS 板，指定频带内无模态，或把振动局域到指定区域，再打印并用激光测振验证。</td><td>质量阵凝聚；特征值问题的组装求解；测振实验</td><td>超材料是 NC 高频题材；"有保证的上界 + 有限尺寸设计 + 实测"组合较新。可作为同一套基础设施的第二篇。</td></tr>
+<tr><td><b>3. 带误差保证的 ML 力学替代模型</b></td><td>ML 替代模型最大的信任问题，是不知道什么时候错、错多少。如果能用平衡通量或对偶构造补上可计算的上界，就是"可认证精度的学习型结构算子"。</td><td>可计算的上界（数学难度最高）</td><td>更可能成为方向 1 或 2 的"信任"卖点，不宜独立成一篇 NC。</td></tr>
+</table>
+<h3>7.1 NC 前置条件（与 P2/P3 共用）</h3>
+<ol>
+<li><b>K_PP 多层粗解或迭代粗解。</b>替换 GPU 上的直接分解，目标上千胞。</li>
+<li><b>第二胞族。</b>gyroid 已有零样本和微调结果，需做成正式结果；或者用 B 样条拉扭胞充当第二族。</li>
+<li><b>实验。</b>打印对照件（NICE 设计对均匀化设计），做拉压或破坏试验，最好有 DIC；动力学方向需要激光测振。</li>
+<li><b>质量和几何刚度凝聚。</b>M̂ = FᵀMF、K̂_G = FᵀK_GF，动力学和屈曲共用。</li>
+<li><b>后验误差估计。</b>大规模时做不了精确核对，必须用它证明精度。</li>
+</ol>
+<h3>7.2 叙事</h3>
+<p>主线是"均匀化在边界失效，全分辨率在零件尺度算不动，NICE 让边界解析的设计变得可行，而且实物验证了它"。加速比在这个叙事里不重要。重要的是内存和成本的增长方式：直接法超线性，NICE 线性，再加上局部场和灵敏度。</p>
+
+<h2 class="pb">8. 已有前期结果（可直接接上的）</h2>
+<table>
+<tr><th style="width:22%">结果</th><th>内容</th><th style="width:22%">对后续的意义</th></tr>
+<tr><td>映射单胞第 0 步（16 胞 × 24 种映射，384 对全部成功）</td><td>
+  <ul>
+  <li>Ŝ ⪰ S 与对称半正定在所有映射下都成立，最小能量误差 +3.1×10⁻⁷。</li>
+  <li>刚体基必须在物理坐标里分离：按参考坐标分离时，旋转 30° 后刚体延拓能量达 0.14。</li>
+  <li>共转拉回是必需的：整胞转 30° 时误差从 3.72% 降到 0.074%；扭转 10°/胞为 0.089%，弯曲 R/L = 5 为 0.097%，扭转 30° 为 0.27%。</li>
+  <li><b>拉伸是唯一明显的失效</b>（cond J = 2：2.7–3.9%）。</li>
+  <li>只用校正、不用网络时误差 350–930%，网络仍承担几乎全部精度。</li>
+  </ul></td><td>P3 主线可以定为"物理刚体基 + 共转拉回 + 校正"；只有存在明显拉伸时，才需要用右伸长张量 U 条件化</td></tr>
+<tr><td><span class="hi">最坏方向（待查）</span></td><td>block power 迭代 25 步（只是下界）：恒等映射下重切胞 2012_d0_v2 的 μ−1 ≥ 44.5%，2014 胞 ≥ 8.8%，其余 ≤3.4%。P1 的物理载荷采样方向最大只有 1.24%，两者不矛盾，但最坏方向没有被控制。映射下最坏方向随畸变增长得比均值快得多（twist30 中位数约 18%）。</td><td>B（后验与认证）和"精确求解器加速"方向的第一个问题；需查清这些方向是否集中在弱支撑节点或切割带碎片上</td></tr>
+<tr><td>gyroid 零样本与微调</td><td>做过单胞、格栅零样本，以及 G+P 联合微调</td><td>第二胞族的底子</td></tr>
+<tr><td>免标签训练试点</td><td>DF / CTRL / DF+W 三臂，各 10k 步</td><td>E 方向能否降成本的依据</td></tr>
+<tr><td>规模与求解器</td><td>流式学习胞、fp32 状态、24–110 胞计时，每胞内存线性增长</td><td>A 方向的起点；瓶颈已定位在 K_PP</td></tr>
+<tr><td>均匀化工具链</td><td>周期均匀化、宏观模型、切割面固支</td><td>均匀化失效研究和 NC 方向 1 的对照组</td></tr>
+</table>
+
+<h2>9. 共享前置与时间线</h2>
+<table>
+<tr><th style="width:34%">共享前置（先做）</th><th>服务于</th></tr>
+<tr><td>K_PP 多层或迭代粗解</td><td>P2 的规模支撑，NC 方向 1（上千胞）</td></tr>
+<tr><td>后验误差估计，加最坏方向诊断</td><td>P2，学习/精确混合模型，CT 数字孪生，NC 的精度证明</td></tr>
+<tr><td>质量和几何刚度凝聚</td><td>动力学，屈曲，NC 方向 2</td></tr>
+<tr><td>第二胞族（gyroid 或 B 样条胞）</td><td>P3，NC 的通用性</td></tr>
+<tr><td>打印批次 1（均匀化失效对照件，板设计对照件）</td><td>并行篇，NC 实验预演</td></tr>
+</table>
+<table class="gantt"><tr><th style="width:24%">工作</th><th style="text-align:center;padding:2pt">M0</th><th style="text-align:center;padding:2pt">M1</th><th style="text-align:center;padding:2pt">M2</th><th style="text-align:center;padding:2pt">M3</th><th style="text-align:center;padding:2pt">M4</th><th style="text-align:center;padding:2pt">M5</th><th style="text-align:center;padding:2pt">M6</th><th style="text-align:center;padding:2pt">M7</th><th style="text-align:center;padding:2pt">M8</th><th style="text-align:center;padding:2pt">M9</th><th style="text-align:center;padding:2pt">M10</th><th style="text-align:center;padding:2pt">M11</th><th style="text-align:center;padding:2pt">M12</th><th style="text-align:center;padding:2pt">M13–18</th></tr>
+<tr><td>P1 投稿 + arXiv</td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td></tr>
+<tr><td>共享前置</td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0;background:#c9d8ec"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td></tr>
+<tr><td>并行篇（数据集、CutFEM、综述）</td><td style="padding:0"></td><td style="padding:0;background:#c9d8ec"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td></tr>
+<tr><td>P2 局部量设计 + 后验误差</td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0;background:#c9d8ec"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#a8471f"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td></tr>
+<tr><td>打印批次 1</td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td></tr>
+<tr><td>P3 胞族泛化 + 拉扭胞</td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0;background:#c9d8ec"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#a8471f"></td><td style="padding:0"></td></tr>
+<tr><td>NC 方向 1（打印批次 2：零件级）</td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0"></td><td style="padding:0;background:#c9d8ec"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#1f5fa8"></td><td style="padding:0;background:#a8471f"></td></tr>
+</table>
+<p class="small">浅蓝：准备；深蓝：主要工作；橙：投稿。时间为粗估，主要取决于实验条件和 GPU 数量。</p>
+
+<h2>10. 原则</h2>
+<ol>
+<li><b>每篇都有自己独立的招牌</b>，不能只是同一方法换个算例或换个物理场。把 P1 拆薄，或者换个包装重复发表，会伤害整个系列的信誉。</li>
+<li><b>共享前置排在前面</b>（第 9 节），后面每篇都能复用。</li>
+<li><b>"别人做不到"先查文献</b>：每个选定方向先做一轮针对性筛查，写清楚在什么条件下别人做不到。</li>
+<li><b>不用 "Part I / Part II" 标题</b>：各篇独立成文，用统一的术语和记号串起来。</li>
+<li><b>开工前做算力预算</b>：P2、P3 都需要较多 GPU 时间，P3 还要生成新数据。目前只有一台 RTX 5090，是否增租由作者决定。</li>
+<li><b>P1 先投、先挂 arXiv</b>：后续每篇都引用它作方法基础。</li>
+<li><b>数据和代码各发各的</b>：引用前作时写清复用了什么、新做了什么。</li>
+<li><b>实验统一规划</b>：一个打印批次同时服务均匀化失效和板设计对照；NC 的零件级试件另外设计，避免与前面几篇重复。</li>
+<li><b>对 PIML 的批评只放在答复信和内部讨论</b>：正文不比数值，不把自己定位为 PIML 的升级，不写"first"。</li>
+</ol>
+
+<h2>11. 主要风险</h2>
+<table>
+<tr><th style="width:30%">风险</th><th>应对</th></tr>
+<tr><td>Antolin 组发 3D 神经网络版；郭旭组发 Jacobian 条件化或大规模版本</td><td>P1 尽快挂 arXiv；映射胞方向先出最小可发表结果（零样本 + 映射 CutFEM 正确性）；每月监控</td></tr>
+<tr><td>应力类目标上，NICE 设计相对均匀化的优势不够大</td><td>NC 方向 1 开工前先做纯数值的验证，结果不够就转向方向 2</td></tr>
+<tr><td>局部量（应力）精度不达标</td><td>加大校正预算，或在关键胞切换为精确模型（混合模型）；这正是 P2 要解决的问题</td></tr>
+<tr><td>最坏方向的误差很大，而且在装配中会被激发</td><td>先诊断（第 8 节）；后验估计加自适应校正；必要时 P1 在 6.4 节补一句</td></tr>
+<tr><td>没有实验条件</td><td>NC 时间表顺延；先投 npj Comput. Mater. 或 CMAME 级别</td></tr>
+<tr><td>GPU 不够</td><td>按第 9 节错开；是否增租由作者决定</td></tr>
+</table>
+
+<h2>12. 需要作者决定的事项</h2>
+<ol>
+<li><b>实验条件</b>：能否打印金属或聚合物 TPMS 试件？能否做拉压、破坏试验（是否有 DIC）？能否做激光测振？这一项基本决定 NC 能不能走。</li>
+<li><b>B 样条拉扭单胞</b>：做等效性质预测，还是结构设计？几何是薄壳、杆件还是实体？这决定它和 NICE 怎么接，以及能否作为第二胞族。</li>
+<li><b>方向选择</b>：两年内的 3–4 条主线（建议 P2 = B+D、P3 = C + 拉扭胞、NC 方向 1，再加一篇低投入并行篇）。</li>
+<li><b>时间窗口</b>：NC 方向 1 约需 4–6 个月（在前置完成之后），能否接受？</li>
+<li><b>投稿</b>：直接投 CMAME，还是先给 Nat. Comput. Sci. 发预投稿咨询？</li>
+<li><b>算力与监控</b>：是否增租 GPU？是否开启每月的竞品自动检索？</li>
+</ol>
+
+</body>
+</html>
