@@ -187,3 +187,8 @@ c 随 κ 增大（比 (ln κ)² 增长略快）；压缩比拉伸差，一般方
 - 停止点：gen2 第 52 / 96 个胞 `fresh_train_2241_full`（`src/a0_maps_gen2/CASES.json` 下标 51），已完成 id、st1、st2、st3；st4 计算中被中断，st4、bz 无记录。前 51 个胞全部完成。gen2 有效 310 / 576 对。
 - 记录：`A0/runs/gen2/RESULTS.jsonl`（每对一行）；数据：`A0/runs/gen2/data/<map>/<case>/`（2241 的 st4 目录可能不完整，续跑时会重写）。
 - 续跑：删除 `queue/STOP`；把 `queue/done/070_gen2.sh` 和 `queue_hold/080_trainA4.sh`、`queue_hold/090_evalA4.sh` 放回 `queue/`；启动 `setsid nohup bash queue_runner.sh`（它等的 night1 ALLDONE 早已满足）。a0_eval 跳过已成功的 (胞, 映射)，从 2241 的 st4 接着算。须等作者通知。
+
+## 7. 恢复（10-03 16:33，作者通知继续）
+- 续跑前 GPU 空闲（2 MiB，无其它 python 进程）。按第 6 节步骤恢复队列。
+- gen2 完成：576 / 576 对全部成功（10-03 19:26）。
+- trainA4 19:26 开始（gen1 + gen2，共 768 个训练对）；显存峰值约 29.5 GB（池 1 个胞），接近上限，留意 OOM。
