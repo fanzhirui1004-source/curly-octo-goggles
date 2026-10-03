@@ -1,4 +1,4 @@
-"""Figure 4: supports and loading of the two-cell assembly examples (schematic, no data). Two oblique projections of
+"""Figure 8: supports and loading of the two-cell assembly examples (schematic, no data). Two oblique projections of
 the neighbour cell N (exact condensation, grey) and the target cell T (learned, light blue):
 (a) configuration x: N translated by (-1,0,0), face x=-1 clamped, face tractions on the y=0 faces of both cells;
 (b) configuration y: N translated by (0,-1,0), face y=-1 clamped, face tractions on the x=0 faces of both cells.

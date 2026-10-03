@@ -32,7 +32,7 @@ Supplementary Notes, Tables and Figures are numbered in the order in which they 
 | RM (Table ST09b) | Moderately cut | fresh_val_2078_d0_v1 |
 | RH (Table ST09b) | Heavily cut | fresh_val_2053_d1_v0 |
 
-In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) that contains the cut angle \(\vartheta\), and v0, v1 and v2 give the heavy, moderate and light retained-volume strata (Tables ST02 and ST03b). In configuration labels such as U1/x, x and y give the neighbour configuration of Figure 4. The deployment geometries use the G1–G4 labels of Table ST18; the table below gives their identifiers in the data archive.
+In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) that contains the cut angle \(\vartheta\), and v0, v1 and v2 give the heavy, moderate and light retained-volume strata (Tables ST02 and ST03b). In configuration labels such as U1/x, x and y give the neighbour configuration of Figure 8. The deployment geometries use the G1–G4 labels of Table ST18; the table below gives their identifiers in the data archive.
 
 | Benchmark label | Geometry stratum | Geometry identifier in the data archive |
 | --- | --- | --- |
@@ -222,7 +222,7 @@ Energy and sensitivity errors are directional means (%). The first-order share i
 | H2 | force_c | 15.216 / 12.681 / 19.023 | 4.705 / 1.983 / 6.199 |
 | H2 | force | 21.837 / 13.953 / 34.960 | 4.877 / 2.383 / 6.832 |
 
-The two fractions use their respective interior-energy denominators. Their cumulative curves are shown in Figure 6. The eigenvalues can be compared with the smoothing interval of the fixed-parameter study of Section 5.5:
+The two fractions use their respective interior-energy denominators. Their cumulative curves are shown in Figure 5. The eigenvalues can be compared with the smoothing interval of the fixed-parameter study of Section 5.5:
 
 | Cell | \(\lambda_1\) | \(\lambda_{200}\) | Lower smoothing endpoint \(a=b/30\) | Modes below \(a\) (of the lowest 200) |
 | --- | --- | --- | --- | --- |
@@ -634,7 +634,7 @@ The comparison evaluates exact local Schur operators within this restricted trac
 
 ### S4.2. Conditions
 
-- Pairs in configuration x (Figure 4; Supplementary Note S6), each target with its exact continuous-thickness neighbour, for U1, M1, M2 and H1; the interface-only variant was run for U1, M1 and M2.
+- Pairs in configuration x (Figure 8; Supplementary Note S6), each target with its exact continuous-thickness neighbour, for U1, M1, M2 and H1; the interface-only variant was run for U1, M1 and M2.
 - One cell per substructure, the fine-scale consistent face tractions used throughout, and no oversampling.
 - Loads: the three target-face tractions, the three neighbour-face tractions and, for cut targets, the three cut-surface tractions.
 - The non-box cut-band DOFs remain unrestricted, which favours the restricted model: at \(r=1\) the restricted M1 pair still controls 15,423 DOFs, whereas the uncut U1 pair controls only its 24 corner DOFs, against 28,206 free DOFs of the full retained space.

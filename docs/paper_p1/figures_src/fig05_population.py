@@ -1,4 +1,4 @@
-"""Figure 5: directional energy error across the 80 validation geometries (identity view), five variants. Source:
+"""Figure 4: directional energy error across the 80 validation geometries (identity view), five variants. Source:
 evidence/newval2_<run>.json (eval_views.py --data S2/data_v2, all classes) and evidence/valmeta.json (cut stratum,
 model-selection membership)."""
 import json

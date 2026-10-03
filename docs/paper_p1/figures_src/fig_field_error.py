@@ -1,4 +1,4 @@
-"""Figure 7: retained / interior partition and the spatial distribution of the extension error on M1 (fresh_val_2003_d1_v1)
+"""Figure 6: retained / interior partition and the spatial distribution of the extension error on M1 (fresh_val_2003_d1_v1)
 under one consistent-traction direction. Source: evidence/p1_field_M1_small.npz, reduced from p1_checks.py --dump
 (bulk element energies x_e^T K_e x_e of the exact field and of the errors of B and A3, 32 validation directions' first 4).
 
