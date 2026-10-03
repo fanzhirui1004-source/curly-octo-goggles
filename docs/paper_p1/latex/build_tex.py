@@ -144,7 +144,7 @@ def main():
         return block
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
     tex = set_widths(tex, 'Cost of one lattice analysis with sensitivities', (.12, .17, .16, .16, .13, .12, .14))
-    tex = set_widths(tex, 'Thickness optimisation cases', (.11, .07, .17, .07, .10, .10, .24, .08))   # five rows: portrait
+    tex = set_widths(tex, 'Thickness optimisation cases', (.11, .09, .17, .07, .10, .10, .22, .08))   # five rows: portrait
     (HERE / 'main.tex').write_text(tex)
     print('main.tex', len(tex))
 

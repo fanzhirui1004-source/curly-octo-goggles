@@ -61,6 +61,8 @@ Suppose additionally that \(\ker K=\operatorname{range}R\), \(R_P\) has rank six
 \tag{B.2}
 \]
 
+The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate extension therefore cannot add zero-energy modes to the condensed operator; a mode beyond the retained rigid-body modes could only be one of the discrete model itself, which the connectivity check of Appendix A.1 addresses. For the lattices of Table 5, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
+
 Rigid reproduction and symmetry give
 
 \[

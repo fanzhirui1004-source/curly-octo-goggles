@@ -108,7 +108,7 @@ def main_cn():
                  r'(\\begin\{longtable\}.*?\\end\{longtable\})\n\}', r'\1', tex, flags=re.S)
     tex = shrink(tex, True)
     tex = B.set_widths(tex, '一次含灵敏度的格栅分析的成本', (.12, .17, .16, .16, .13, .12, .14))
-    tex = B.set_widths(tex, '厚度优化算例', (.11, .07, .17, .07, .10, .10, .24, .08))
+    tex = B.set_widths(tex, '厚度优化算例', (.11, .09, .17, .07, .10, .10, .22, .08))
     (HERE / 'main_cn.tex').write_text(tex)
     print('main_cn.tex', len(tex))
 
