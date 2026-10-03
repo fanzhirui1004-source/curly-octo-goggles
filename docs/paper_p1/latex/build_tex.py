@@ -9,7 +9,7 @@ The Markdown files remain the editing source. This script:
   - inserts authors.tex (author block) into the front matter and endmatter.tex (declarations) after the main text; the
     manuscript's 'Code and data availability' section is set unnumbered and serves as the data-availability statement;
   - orders the document as main text, declarations, appendices, references (Elsevier convention);
-  - sets Table 5 (lattice-level cost comparison) and Table 6 (thickness optimisation cases), eight columns each, on landscape pages;
+  - sets Table 5 (lattice-level cost comparison) and Table 6 (thickness optimisation cases) on portrait pages with set column widths;
   - sets the reference list as an unnumbered section in author-year form.
 Usage: python3 build_tex.py   (writes main.tex next to this file; compile with pdflatex twice)"""
 import re, subprocess
@@ -144,8 +144,7 @@ def main():
         return block
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
     tex = set_widths(tex, 'Cost of one design iteration of the lattices', (.12, .17, .16, .16, .13, .12, .14))
-    tex = landscape(tex, 'Thickness optimisation cases',
-                    widths=(.12, .08, .16, .08, .13, .13, .20, .10))
+    tex = set_widths(tex, 'Thickness optimisation cases', (.11, .07, .17, .07, .10, .10, .24, .08))   # five rows: portrait
     (HERE / 'main.tex').write_text(tex)
     print('main.tex', len(tex))
 
