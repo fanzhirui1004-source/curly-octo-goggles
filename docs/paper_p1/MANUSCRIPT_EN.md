@@ -73,7 +73,7 @@ E=\begin{bmatrix}I_p\\-A^{-1}K_{IP}\end{bmatrix},\\
 \tag{2}
 \]
 
-We assume \(K\succeq0\) and \(A\succ0\), so prescribing \(q\) removes every interior zero-energy motion. The equilibrium displacement extension \(u=Eq\) uniquely minimises the discrete energy over \(J_Pu=q\), and \(Sq\) is its work-conjugate retained force. For a connected free substructure, we additionally assume that \(K\) has exactly six rigid-body modes, the columns of \(R\in\mathbb R^{n_a\times6}\), whose restriction \(R_P=J_PR\) has rank six. Geometry generation checks the connectivity on which this rests: a cell is accepted only if its active background elements form a single face-connected set carrying retained box-face DOFs (Appendix A.1). This check establishes connectivity of the stabilised discrete model, in which material connected only through partially filled elements is coupled through shared basis functions and the ghost penalty.
+We assume \(K\succeq0\) and \(A\succ0\), so prescribing \(q\) removes every interior zero-energy motion. The equilibrium displacement extension \(u=Eq\) uniquely minimises the discrete energy over \(J_Pu=q\), and \(Sq\) is its work-conjugate retained force. For a connected free substructure, we additionally assume that \(K\) has exactly six rigid-body modes, the columns of \(R\in\mathbb R^{n_a\times6}\), whose restriction \(R_P=J_PR\) has rank six; the geometry generator accepts only cells whose active elements form a single face-connected set, which establishes the connectivity of the stabilised discrete model on which this rests (Appendix A.1).
 
 ### 2.3. Assembly and response measures
 
@@ -91,7 +91,7 @@ Here \(\widehat S_m\) is the approximate condensed stiffness of Section 4 and \(
 
 Compliance is \(C=f_g^TU\), with \(\widehat C=f_g^T\widehat U\) and relative error \(e_C=|\widehat C/C-1|\). The local accuracy of the condensed stiffness is measured by the relative directional energy error of Section 3.1. Thickness sensitivities use the eight-component vector of Section 3.3, with relative Euclidean error \(e_s=\|\widetilde{\boldsymbol s}-\boldsymbol s\|_2/\|\boldsymbol s\|_2\).
 
-An approximate condensed stiffness \(\widehat S_m\) that is to replace \(S_m\) in Eq. (3) for analysis and design must satisfy four requirements. It must be symmetric and positive semidefinite with the retained rigid-body modes as its only null space, so that the supported assembled matrix is positive definite. It must be applicable without the interior factorisation of the exact operator, for every new geometry of a design iteration, including one whose active elements and retained set change with the cut. Its error must be traceable to the assembled compliance and to the thickness sensitivity, since the two weight it differently. And it should admit improvement at deployment, for a given geometry, without retraining. Section 3 derives what any admissible extension gives towards the first and third requirements; Section 4 constructs a condensed stiffness that meets all four.
+Of the requirements stated in Section 1, two can now be made precise. \(\widehat S_m\) must be symmetric and positive semidefinite with the retained rigid-body modes as its only null space, so that the supported \(\widehat{\mathbb K}\) of Eq. (3) is positive definite; and its error must be traceable to \(e_C\) and \(e_s\), which weight it differently. Section 3 derives what any admissible extension gives towards these two; Section 4 constructs a condensed stiffness that meets all four.
 
 ## 3. Error of an approximate extension in analysis and design
 
