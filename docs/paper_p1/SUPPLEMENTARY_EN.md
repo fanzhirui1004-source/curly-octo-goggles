@@ -1150,13 +1150,13 @@ Minimum / median / maximum over the steps between consecutive iterations of the 
 
 **Exact verification of the plate designs.** Three designs of the plate of S9.3 were analysed with exact condensation as in Table ST22b, each with the exact vertex gradient (central moment differences, Eq. (H.6)): the uniform start, the final NICE design and the homogenisation design (Table ST26). The dense exact condensed matrices of the 55 distinct cells were formed with PARDISO's Schur-complement option and verified column-wise against interior solves; the assembled systems, with every cut-band DOF of the cut cells fixed, were solved to a recursive relative residual of \(10^{-10}\). The surrogate compliance error is negative in all three designs, −0.0105%, −0.0296% and −0.0317%, against −0.011% to −0.028% in case A. The gradient errors, 0.029%, 0.30% and 0.32%, and the component errors (95th percentile at most 0.32% of the largest component) are at most those of case A, and every one of the 64 components has the exact sign in all three designs. Relative to the exact compliance of the uniform start, the macroscale model underestimates the compliance by 26.99%, as relative to NICE. In the exact model the homogenisation design lies 2.44% above the final NICE design (NICE: 2.44%), and the final NICE design 3.55% above the uniform start with 20% less material (NICE: 3.54%). The intermediate designs were not checked.
 
-**Table ST26. Exact checks of the plate designs.** Exact condensation of every cell (Schur-complement route, column-verified), assembled solve to a recursive relative residual of \(10^{-10}\). Surrogate compliance error: \(\widehat C/C-1\). Gradient: vertex gradient with exact sensitivities (central moment differences) against the field-based NICE estimate, over the 64 free vertex parameters.
+**Table ST26. Exact checks of the plate designs.** Exact condensation of every cell (Schur-complement route, column-verified), assembled solve to a recursive relative residual of \(10^{-10}\). Surrogate compliance error: \(\widehat C/C-1\). Gradient: vertex gradient with exact sensitivities (central moment differences) against the field-based NICE estimate, over the 64 free vertex parameters. Exact solves: 136 / 9.4e-11, 190 / 8.8e-11, 191 / 9.5e-11 conjugate-gradient iterations / recomputed residual, in the order of the rows.
 
-| Design | Iteration | Exact \(C\) | \(\widehat C\) | Surrogate compliance error (%) | Gradient error (%) | Cosine | Component error / \(\max\lvert g\rvert\) (%): median / 95th percentile / max | Sign agreement (variables) | Exact PCG iterations / recomputed residual |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| NICE run | 0 (uniform start) | 75.599 | 75.591 | −0.0105 | 0.029 | 0.99999997 | 0.003 / 0.027 / 0.043 | 1.000 (64) | 136 / 9.4e-11 |
-| NICE run | 23 (final) | 78.287 | 78.264 | −0.0296 | 0.301 | 0.99999652 | 0.057 / 0.273 / 0.315 | 1.000 (64) | 190 / 8.8e-11 |
-| Homogenisation design | final macroscale iteration | 80.198 | 80.172 | −0.0317 | 0.320 | 0.99999596 | 0.052 / 0.322 / 0.335 | 1.000 (64) | 191 / 9.5e-11 |
+| Design | Exact \(C\) | \(\widehat C\) | Surrogate compliance error (%) | Gradient error (%) | Cosine | Component error / \(\max\lvert g\rvert\) (%): median / 95th percentile / max | Sign agreement (64 variables) |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| NICE run, iteration 0 (start) | 75.599 | 75.591 | −0.0105 | 0.029 | 0.99999997 | 0.003 / 0.027 / 0.043 | 1.000 |
+| NICE run, iteration 23 (final) | 78.287 | 78.264 | −0.0296 | 0.301 | 0.99999652 | 0.057 / 0.273 / 0.315 | 1.000 |
+| Homogenisation design | 80.198 | 80.172 | −0.0317 | 0.320 | 0.99999596 | 0.052 / 0.322 / 0.335 | 1.000 |
 
 ## Supplementary figures
 
