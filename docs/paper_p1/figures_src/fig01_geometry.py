@@ -36,6 +36,7 @@ CUT = {'U1': None,                                                      # uncut
 PCT = {'U1': '100%', 'M1': '64.8%', 'H1': '8.6%', 'H2': '2.67%'}       # remaining box volume, as in the figure
 VOL = {'M1': 0.6478160496334634, 'H1': 0.08604416938804589, 'H2': 0.026660923780561247}   # evidence/valmeta.json 'vol'
 BAND, SECTION, BOX = '#7FA6C4', '#C9B48A', '#9AA5B1'               # section: neutral sand (no vermillion / gold)
+BOXCAP, GHOST = '#3F6E96', '#B8BEC6'                                # wall section on the box faces; part removed by the cut
 
 
 def plane_from_volume(theta, v):
@@ -67,8 +68,10 @@ def tau_field(X, Y, Z, t):
     return out
 
 
-def surface(t, cut):
-    """Marching-cubes surface of the material domain; per-face flag of the cut-plane section."""
+def surface(t, cut, keep=+1):
+    """Closed marching-cubes surface of the material domain (walls capped on the box faces by a padding layer outside the
+    box); keep = -1 gives the part removed by the cut instead.  Returns the triangles and per-face flags of the cut-plane
+    section and of the box-face section."""
     g = np.linspace(0, 1, N)
     X, Y, Z = np.meshgrid(g, g, g, indexing='ij')
     g1 = np.abs(np.cos(2 * np.pi * X) + np.cos(2 * np.pi * Y) + np.cos(2 * np.pi * Z)) - tau_field(X, Y, Z, t)
@@ -76,28 +79,46 @@ def surface(t, cut):
         G = g1
     else:
         n, b = cut
-        G = np.maximum(g1, n[0] * X + n[1] * Y + n[2] * Z - b)
-    verts, faces, _, _ = measure.marching_cubes(G, level=0.0, spacing=(g[1],) * 3)
-    cen = verts[faces].mean(1)
+        G = np.maximum(g1, keep * (n[0] * X + n[1] * Y + n[2] * Z - b))
+    h = g[1]
+    Gp = np.pad(G, 1, constant_values=50.0)                             # outside the box: no material -> walls are capped
+    verts, faces, _, _ = measure.marching_cubes(Gp, level=0.0, spacing=(h,) * 3)
+    verts = np.clip(verts - h, 0.0, 1.0)                                # caps land on the box faces
+    tri = verts[faces]; cen = tri.mean(1)
     if cut is None:
         is_cut = np.zeros(len(faces), bool)
     else:
         n, b = cut
         tc = tau_field(cen[:, 0], cen[:, 1], cen[:, 2], t)
         g1c = np.abs(np.cos(2 * np.pi * cen).sum(1)) - tc
-        is_cut = (cen @ n - b) > g1c
-    return verts, faces, is_cut
+        is_cut = keep * (cen @ n - b) > g1c
+    on_box = np.zeros(len(faces), bool)
+    for a in range(3):
+        for v in (0.0, 1.0):
+            on_box |= np.all(np.abs(tri[:, :, a] - v) < 1e-9, axis=1)
+    return verts, faces, is_cut & ~on_box, on_box
 
 
-def draw(ax, verts, faces, is_cut, light=(-.35, -.8, .55)):
-    tri = verts[faces]
+def shaded(tri, base, light=(-.35, -.8, .55)):
     nrm = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
     nrm /= np.linalg.norm(nrm, axis=1, keepdims=True) + 1e-30
     l = np.asarray(light, float); l /= np.linalg.norm(l)
-    lam = np.abs(nrm @ l)
-    shade = (.45 + .55 * lam)[:, None]
-    base = np.where(is_cut[:, None], np.array(plt.matplotlib.colors.to_rgb(SECTION)), np.array(plt.matplotlib.colors.to_rgb(BAND)))
-    cols = np.clip(base * shade + .12 * (1 - shade), 0, 1)
+    shade = (.45 + .55 * np.abs(nrm @ l))[:, None]
+    return np.clip(base * shade + .12 * (1 - shade), 0, 1)
+
+
+def draw(ax, verts, faces, is_cut, on_box, ghost=None):
+    rgb = lambda c: np.array(plt.matplotlib.colors.to_rgb(c))
+    tri = verts[faces]
+    if ghost is not None:                                              # part removed by the cut: faint, for context
+        gv, gf = ghost
+        gt = gv[gf]
+        gc = np.concatenate([shaded(gt, rgb(GHOST)), np.full((len(gt), 1), .12)], 1)
+        cg = Poly3DCollection(gt, facecolors=gc, edgecolors='none', linewidths=0, zsort='average')
+        cg.set_rasterized(True)
+        ax.add_collection3d(cg)
+    base = np.where(is_cut[:, None], rgb(SECTION), np.where(on_box[:, None], rgb(BOXCAP), rgb(BAND)))
+    cols = shaded(tri, base)
     coll = Poly3DCollection(tri, facecolors=cols, edgecolors=cols, linewidths=.08, zsort='average')
     coll.set_rasterized(True)
     ax.add_collection3d(coll)
@@ -109,7 +130,7 @@ def draw(ax, verts, faces, is_cut, light=(-.35, -.8, .55)):
         for t in (0, 1):
             ax.plot([s, s], [t, t], [0, 1], color=BOX, lw=.5)
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_zlim(0, 1)
-    ax.set_proj_type('ortho'); ax.view_init(elev=26, azim=-128)            # faces x = 0 and y = 0 in front (cut cells)
+    ax.set_proj_type('ortho'); ax.view_init(elev=24, azim=40)              # cut sections (normals towards +x, +y) in front
     ax.set_box_aspect((1, 1, 1), zoom=1.18); ax.set_axis_off()
 
 
@@ -144,13 +165,18 @@ def main():
     for i, c in enumerate(CELLS):
         ax = fig.add_subplot(2, 2, i + 1, projection='3d')
         cut = None if cuts[c] is None else (np.asarray(cuts[c][0], float), float(cuts[c][1]))
-        verts, faces, is_cut = surface(TAU[c], cut)
-        print(f"{c}: {len(faces)} triangles, {int(is_cut.sum())} on the cut section")
-        draw(ax, verts, faces, is_cut)
+        verts, faces, is_cut, on_box = surface(TAU[c], cut)
+        ghost = None
+        if cut is not None:
+            gv, gf, _, _ = surface(TAU[c], cut, keep=-1)
+            ghost = (gv, gf)
+        print(f"{c}: {len(faces)} triangles, {int(is_cut.sum())} on the cut section, {int(on_box.sum())} on the box faces")
+        draw(ax, verts, faces, is_cut, on_box, ghost)
         ax.text2D(.02, .97, f'({"abcd"[i]}) {c}', transform=ax.transAxes, fontweight='bold', fontsize=8.5, va='top')
         ax.text2D(.02, .02, f'remaining box volume: {PCT[c]}', transform=ax.transAxes, fontsize=7.5, va='bottom')
-    fig.legend(handles=[Patch(fc=BAND, ec='none', label='material surface'), Patch(fc=SECTION, ec='none', label='cut-plane section')],
-               loc='upper center', bbox_to_anchor=(.5, .995), ncol=2, frameon=False, fontsize=7.5, columnspacing=2.5)
+    fig.legend(handles=[Patch(fc=BAND, ec='none', label='material surface'), Patch(fc=BOXCAP, ec='none', label='wall section on the box faces'),
+                        Patch(fc=SECTION, ec='none', label='cut-plane section'), Patch(fc=GHOST, ec='none', alpha=.4, label='part removed by the cut')],
+               loc='upper center', bbox_to_anchor=(.5, .995), ncol=4, frameon=False, fontsize=7.5, columnspacing=2.5)
     fig.subplots_adjust(left=.01, right=.99, bottom=.01, top=.955, wspace=.04, hspace=.06)
     if test:
         fig.text(.5, .5, 'PREVIEW: cut planes of M1, H1, H2 are placeholders', ha='center', va='center', fontsize=11,
