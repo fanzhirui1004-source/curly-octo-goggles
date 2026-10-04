@@ -12,15 +12,16 @@ fit residual is checked; --check builds one non-representative cell and compares
 Operators: dense port matrices per class representative (exact S~, learned S_hat per field as in lat_mapped.py), applied
 to the cells of the class through T_R. K_PP of a cell = the representative's K_PP rotated node block by node block.
 Supports and loads: clamp face and load face (default z = min / z = max for twist, x = min / x = max for bend); lattice3
-consistent weights of the reference face (exact physical weights when the faces are mapped rigidly, as for the end faces of
-twist and bend: the area element is 1), unit total force in x, y, z; + n_random random loads.
+consistent weights of the reference face times the physical area factor det J |J^-T N| at each port node (1 when the face
+is mapped rigidly, as for the end faces of twist and bend), unit total force in x, y, z; + n_random random loads.
+--fast 1: the learned dense operators through mapped_fast.MappedFastOp (explicit adjoint, 64 columns per application).
 Homogenised macro model (Q1 isoparametric on the mapped box, m elements per cell and axis, Richardson from the two finest m):
   homog_cell   per-cell tensor: periodic C^H of the AFFINE cell with A = J at the centre of the class representative,
                rotated by the class rotation (local homogenisation at cell resolution, re-solved per class)
   homog_push   reference C^H pushed forward by J(x) at every Gauss point
   homog_rot    reference C^H rotated by the polar factor of J(x) at every Gauss point
 Usage: lat_global.py <out.json> <ckpt> <body_dir> <case> --map '<global map json>' --shape 2x2x4 [--clamp z,min]
-       [--load z,max] [--fields c1,c2w] [--m 2,4] [--check 1] [--p1 homog_cells.json] [--work dir]
+       [--load z,max] [--fields c1,c2w] [--m 2,4] [--check 1] [--p1 homog_cells.json] [--work dir] [--fast 1]
        lat_global.py --selftest     (CPU: macro solver on mapped meshes; Procrustes; K_PP block rotation)"""
 import argparse, gc, json, sys, time
 from pathlib import Path
@@ -54,6 +55,13 @@ def procrustes(a, b):
     R = Vh.T @ D @ U.T
     t = cb - ca @ R.T
     return R, t, float(np.abs(a @ R.T + t - b).max())
+
+
+def area_factor(phi, X, axis):
+    """Physical area element of the reference face x_axis = const per reference area at X: det J |J^-T e_axis|."""
+    J = jac(phi, X)
+    cof = np.linalg.det(J)[:, None, None] * np.transpose(np.linalg.inv(J), (0, 2, 1))
+    return np.linalg.norm(cof[:, :, axis], axis=1)
 
 
 def class_key(gspec, p):
@@ -308,7 +316,7 @@ def main(argv):
     ap.add_argument('--maxit', type=int, default=4000); ap.add_argument('--n-random', type=int, default=2)
     ap.add_argument('--m', default='2,4'); ap.add_argument('--p1', default=''); ap.add_argument('--check', type=int, default=1)
     ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutweakbox')
-    ap.add_argument('--chunk', type=int, default=16)
+    ap.add_argument('--chunk', type=int, default=16); ap.add_argument('--fast', type=int, default=0)
     a = ap.parse_args(argv)
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     G = json.loads(a.map); shape = tuple(int(v) for v in a.shape.split('x'))
@@ -384,7 +392,13 @@ def main(argv):
                 rr['weakpatch'] = WP.setup(C, g.nd, dil=a.wp_dil, seed=a.wp_seed)
             g.set_budget(base, cyc, wrap, wp=fname.endswith('w'))
             t = time.perf_counter()
-            S[(fname, rep)] = LMP._dense(lambda E: g.s_hat_apply(model, E), C.np_, a.chunk, dev, dt).cpu()
+            if a.fast:
+                import mapped_fast as MF
+                mop = MF.MappedFastOp(g, model, cyc, wrap, patch=fname.endswith('w'))
+                S[(fname, rep)] = LMP._dense(mop.s_hat, C.np_, 64, dev, dt).cpu()
+                del mop
+            else:
+                S[(fname, rep)] = LMP._dense(lambda E: g.s_hat_apply(model, E), C.np_, a.chunk, dev, dt).cpu()
             rr[f'{fname}_dense_s'] = time.perf_counter() - t
             torch.cuda.empty_cache()
         model.caches.pop(g.case, None)
@@ -431,23 +445,36 @@ def main(argv):
             log(dict(event='CHECK', **chk))
     # ------------------------------------------------ the lattice
     layout = {}
+    la_ = AX[load[0]]
+    afac = []
     for p in positions:
         rep, R = rot[p]
         geom0, (r0, c0, v0) = geoms[rep]
         kr = rotate_kpp(r0, c0, v0, R, torch) if not np.allclose(R, np.eye(3)) else (r0, c0, v0)
+        face = {}
+        for key_, (w, out) in geom0['face'].items():
+            w = np.asarray(w, float).copy()
+            if key_[0] == la_:
+                on = np.flatnonzero(w != 0)
+                n_ = geom0['n']
+                Xp = np.stack(np.unravel_index(geom0['port_node_ids'][on], (2 * n_ + 1,) * 3), 1) / (2 * n_) + np.asarray(p)
+                af = area_factor(gphi, Xp, la_)
+                w[on] *= af; afac.append(af)
+            face[key_] = (w, out)
         gp_ = LM.CellGeom(a.case, geom0['n'], geom0['port_node_ids'], np.zeros(len(geom0['port_node_ids']), bool),
-                          geom0['priv'], kpp_fn=(lambda kr=kr: kr),
-                          face_w_fn=(lambda ax_, val, f=geom0['face']: f[(ax_, float(val))]))
+                          geom0['priv'], kpp_fn=(lambda kr=kr: kr), face_w_fn=(lambda ax_, val, f=face: f[(ax_, float(val))]))
         layout[p] = gp_
+    if afac:
+        afac = np.concatenate(afac)
+        res_['load_area_factor'] = dict(min=float(afac.min()), max=float(afac.max()), mean=float(afac.mean()))
     lat = LM.MultiLattice(layout, clamp=clamp, load=load, loads='consistent', n_random=a.n_random, device=dev,
                           log=lambda s_: None)
     kpp_l = lat.assemble_kpp()
     res_['free_dofs'] = int(lat.nfree); res_['labels'] = lat.labels
     order = [tuple(int(v) for v in pp) for pp in lat.positions]
     Xref = None
-    exact_dev = {rep: S[('exact', rep)].to(dev) for rep in reps}
     for fname in ['exact'] + [f for f in a.fields.split(',') if f]:
-        dense = exact_dev if fname == 'exact' else {rep: S[(fname, rep)].to(dev) for rep in reps}
+        dense = {rep: S[(fname, rep)].to(dev) for rep in reps}
         ops = [RotOp(dense[rot[p][0]], rot[p][1]) for p in order]
         fac = PR.Factory(lat, ops, shared={'kpp_triplets': kpp_l, 'kpp_triplets_s': 0.0}, kpp_backend='auto', log=lambda d_: None)
         pc, st, _ = fac.build(a.prec)
@@ -465,7 +492,7 @@ def main(argv):
             for i, p in enumerate(order):
                 q = lat.gather(Xref, i)
                 ex = ex + (q * ops[i].apply(q)).sum(0)
-                sx = sx + (q * RotOp(exact_dev[rot[p][0]], rot[p][1]).apply(q)).sum(0)
+                sx = sx + (q.cpu() * RotOp(S[('exact', rot[p][0])], rot[p][1]).apply(q.cpu())).sum(0).to(dev)
             row['bound'] = (ex / sx - 1).cpu().numpy().tolist()
         res_['fields'][fname] = row
         log(dict(event='LAT', field=fname, it=row['iterations'], err=row.get('compliance_rel_err'), res=row['true_residual']))
