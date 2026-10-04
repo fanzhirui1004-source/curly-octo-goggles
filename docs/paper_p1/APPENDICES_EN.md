@@ -61,7 +61,7 @@ Suppose additionally that \(\ker K=\operatorname{range}R\), \(R_P\) has rank six
 \tag{B.2}
 \]
 
-The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate extension therefore cannot add zero-energy modes to the condensed operator; a mode beyond the retained rigid-body modes could only be one of the discrete model itself, which the connectivity check of Appendix A.1 addresses. For the lattices of Table 5, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
+The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate extension therefore cannot add zero-energy modes to the condensed operator; a mode beyond the retained rigid-body modes could only be one of the discrete model itself, which the connectivity check of Appendix A.1 addresses. For the lattices of Table 6, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
 
 Rigid reproduction and symmetry give
 
@@ -70,7 +70,7 @@ Rigid reproduction and symmetry give
 \tag{B.3}
 \]
 
-For the construction in Eq. (17), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat ER_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(FR_P=R\) and Eq. (B.3) holds for the corrected extension.
+For the construction in Eq. (14), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat ER_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(FR_P=R\) and Eq. (B.3) holds for the corrected extension.
 
 Let \(Z\in\mathbb R^{p\times(p-6)}\) have orthonormal columns spanning the retained rigid complement, and define \(S_*=Z^TSZ\succ0\). The all-direction energy error on this space is
 
@@ -129,7 +129,7 @@ For nonzero field error and nonzero reference energy, cancellation of \(d^T\math
 
 Section 5.4 and Table ST04 use \(\mathsf W=\operatorname{diag}(0,D)\) with \(D=\operatorname{diag}(K_{II})\), i.e. a Jacobi-weighted interior norm. This weighting is only positive semidefinite, but the identity still holds because \(d\) vanishes on the retained DOFs, provided \(d_I\ne0\) and \(u_I\ne0\), and the rigid gauge is then not needed. The factor \(\kappa_{\mathsf W}\) compares the stiffness content of the error and the equilibrium response; it is not a matrix condition number. An error concentrated in stiffer deformation than the loaded response has a large \(\kappa_{\mathsf W}\), making even a small relative displacement error mechanically significant.
 
-The denominator of \(\kappa_{\mathsf W}\) measures the physical response in the chosen trace direction, whereas the smoothing acts on the spectrum of \(Av=\lambda Dv\) with the trace fixed, so the two notions of softness are distinct: \(A=\operatorname{diag}(\epsilon_0,1)\) with \(0<\epsilon_0\ll1\), for example, has a very soft unscaled direction, while \(D^{-1/2}AD^{-1/2}=I\). Cumulative Jacobi-scaled low-mode error energy (Eq. (13)) therefore identifies components that the smoothing reduces slowly, but does not determine the measured \(\kappa\).
+The denominator of \(\kappa_{\mathsf W}\) measures the physical response in the chosen trace direction, whereas the smoothing acts on the spectrum of \(Av=\lambda Dv\) with the trace fixed, so the two notions of softness are distinct: \(A=\operatorname{diag}(\epsilon_0,1)\) with \(0<\epsilon_0\ll1\), for example, has a very soft unscaled direction, while \(D^{-1/2}AD^{-1/2}=I\). Cumulative Jacobi-scaled low-mode error energy (Eq. (15)) therefore identifies components that the smoothing reduces slowly, but does not determine the measured \(\kappa\).
 
 ## Appendix C. Assembly and compliance ordering
 
@@ -255,7 +255,7 @@ For a full-column-rank coarse basis \(V\), with \(A_c=V^TAV\succ0\), define \(Q_
 \tag{D.5}
 \]
 
-This proves Eq. (14). Applying Eq. (D.2) before and after this projection yields \(\|\Phi_kC_V\Phi_kd\|_A\le\psi_k^2\|d\|_A\). Because \(\psi_k<1\) whenever the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering of Eq. (15) (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, the energy contraction factor \(\psi_8^4\) of the cycle is 0.97–0.99, so the estimate guarantees little more than non-expansion; it uses no approximation property of the coarse space, and the reductions by one to three orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
+This proves Eq. (16). Applying Eq. (D.2) before and after this projection yields \(\|\Phi_kC_V\Phi_kd\|_A\le\psi_k^2\|d\|_A\). Because \(\psi_k<1\) whenever the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering of Eq. (17) (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, the energy contraction factor \(\psi_8^4\) of the cycle is 0.97–0.99, so the estimate guarantees little more than non-expansion; it uses no approximation property of the coarse space, and the reductions by one to three orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
 
 ### D.1. Corrections, orderings and approximate coarse inverses
 
@@ -279,7 +279,7 @@ Consequently \(2G-GA_cG\succeq0\) suffices for nonexpansiveness. A nonnegative s
 
 ## Appendix E. Transpose of the complete extension
 
-All transposes below use the Euclidean pairing of the stored displacement and nodal-force vectors. Write \(M_I=J_I^TJ_I\). Transposing Eq. (17) gives
+All transposes below use the Euclidean pairing of the stored displacement and nodal-force vectors. Write \(M_I=J_I^TJ_I\). Transposing Eq. (14) gives
 
 \[
 \widehat E^Ty=J_Py+C_R^TR^TM_Iy
@@ -335,17 +335,17 @@ The coarse matrix \(V^TAV\) is recovered from coloured stiffness probes. With a 
 
 ### F.2. Arithmetic
 
-The learned displacement extension, rigid-body reconstruction and prescribed retained entries use single precision (float32); quadratic energies and sparse stiffness products use double precision (float64), and convolutions use true float32 arithmetic, without TF32 or lower precisions. The correction, smoothing and coarse algebra alike, runs in double precision in training and in the accuracy studies of Sections 5.2–5.8, and in single precision in the timed lattice route of Table 5 and in the optimisations of Section 5.10. The fixed-network correction studies of Section 5.5 (Table 3 and Supplementary Tables ST05a, ST06 and ST07) apply the same correction in double precision to the single-precision network field; for the base network they estimate the smoothing interval from their own power-iteration start, which is also the interval compared with the spectrum in Section 5.4 (Supplementary Table ST05b). Sensitivity contractions use float32 element products with float64 accumulation. These arithmetic choices approximate the real linear maps of the preceding derivations.
+The learned displacement extension, rigid-body reconstruction and prescribed retained entries use single precision (float32); quadratic energies and sparse stiffness products use double precision (float64), and convolutions use true float32 arithmetic, without TF32 or lower precisions. The correction, smoothing and coarse algebra alike, runs in double precision in training and in the accuracy studies of Sections 5.2–5.8, and in single precision in the timed lattice route of Table 6 and in the optimisations of Section 5.10. The fixed-network correction studies of Section 5.5 (Table 4 and Supplementary Tables ST05a, ST06 and ST07) apply the same correction in double precision to the single-precision network field; for the base network they estimate the smoothing interval from their own power-iteration start, which is also the interval compared with the spectrum in Section 5.4 (Supplementary Table ST05b). Sensitivity contractions use float32 element products with float64 accumulation. These arithmetic choices approximate the real linear maps of the preceding derivations.
 
 ## Appendix G. Network coefficients and directional training
 
 ### G.1. Geometry features and displacement maps
 
-The architecture in Figure 3 separates geometry-dependent coefficient generation from displacement propagation. The displacement features carry 32 latent channels per node on the fine grid (level \(k=0\), 65 positions per axis) and on the coarse latent levels \(k=1,2,3\) (33, 17 and 9 positions per axis), for each of the simultaneous displacement directions; geometry embeddings, the 64-component element and node feature vectors of Section 4.4 (Figure 3a), carry no displacement-direction dimension. Element, face, retained-node and grid-transfer incidences are constructed before the network is evaluated.
+The architecture in Figure 3 separates geometry-dependent coefficient generation from displacement propagation. The displacement features carry 32 latent channels per node on the fine grid (level \(k=0\), 65 positions per axis) and on the coarse latent levels \(k=1,2,3\) (33, 17 and 9 positions per axis), for each of the simultaneous displacement directions; geometry embeddings, the 64-component element and node feature vectors of Section 4.2 (Figure 3a), carry no displacement-direction dimension. Element, face, retained-node and grid-transfer incidences are constructed before the network is evaluated.
 
 **Geometry encoding.** Each element has 126 input features: material volume fraction, its logarithm, and the remaining 124 moments normalised by material volume. The 11 node features contain retained, box, cut-band and weak-support indicators, a normalised logarithmic stiffness diagonal, and six sine/cosine coordinate entries. The stiffness summary is the Frobenius norm of the node's diagonal \(3\times3\) block. A node is designated weakly supported when this norm is less than 0.01 times its median over active nodes.
 
-The element encoder maps 126 inputs to a 64-component embedding. Mean aggregation of incident element embeddings, concatenated with the 11 node features, supplies the 75-input node encoder. Two residual message-passing rounds (the two rounds of exchange in Section 4.4) then update elements from the mean embeddings of their 27 nodes and update nodes from their incident elements. Each update uses the current embedding and the aggregated neighbouring embedding as a 128-component input. A ghost-face embedding is formed from the two adjacent element embeddings and a three-component indicator of the face axis. All encoders and coefficient heads use two affine layers separated by GELU, with hidden width 64.
+The element encoder maps 126 inputs to a 64-component embedding. Mean aggregation of incident element embeddings, concatenated with the 11 node features, supplies the 75-input node encoder. Two residual message-passing rounds (the two rounds of exchange in Section 4.2) then update elements from the mean embeddings of their 27 nodes and update nodes from their incident elements. Each update uses the current embedding and the aggregated neighbouring embedding as a 128-component input. A ghost-face embedding is formed from the two adjacent element embeddings and a three-component indicator of the face axis. All encoders and coefficient heads use two affine layers separated by GELU, with hidden width 64.
 
 **Local linear interactions.** The three retained displacement components are lifted by a shared matrix \(W_{\rm in}\in\mathbb R^{3\times32}\), while interior features are initially zero. Denote this initial feature field by \(X^0(q)\), with its dependence on \(q\) occurring through \(q_d\). For each element or face stencil \(t\), local node slot \(s\) and head \(h\), the interaction first gathers and mixes channels:
 
@@ -356,7 +356,7 @@ Z_{th}=\left(\sum_{s=1}^{27}a_{tsh}(\eta)X_{i(t,s)}\right)W_{\ell h},
 \omega_{ts}\,b_{tsh}(\eta)Z_{th}.
 \]
 
-Here \(W_{\ell h}\in\mathbb R^{32\times32}\) is a shared learned channel map for layer \(\ell\) and head \(h\). The scalar gather and scatter coefficients \(a\) and \(b\) are generated separately from the element or face embedding, the incident node embedding and an eight-dimensional slot embedding, a learned \(27\times8\) table indexed by the local slot (one table for element stencils and one for face stencils). Their 136-component concatenation identifies both the local material context and the position within the stencil. The four heads provide distinct gather--mix--scatter contributions on the same fixed incidence. Equation (16) adds their update to the incoming state and restores the prescribed retained features after every local interaction.
+Here \(W_{\ell h}\in\mathbb R^{32\times32}\) is a shared learned channel map for layer \(\ell\) and head \(h\). The scalar gather and scatter coefficients \(a\) and \(b\) are generated separately from the element or face embedding, the incident node embedding and an eight-dimensional slot embedding, a learned \(27\times8\) table indexed by the local slot (one table for element stencils and one for face stencils). Their 136-component concatenation identifies both the local material context and the position within the stencil. The four heads provide distinct gather--mix--scatter contributions on the same fixed incidence. Equation (13) adds their update to the incoming state and restores the prescribed retained features after every local interaction.
 
 The element stencil contains all 27 \(Q_2\) nodes. The learned ghost-face stencil contains 18 owner-side nodes and nine neighbour-side nodes, ordered consistently by face direction. It defines a learned communication map on a face neighbourhood; the full mechanical ghost-penalty contribution remains in \(K\).
 
@@ -377,7 +377,7 @@ The face weights use the corresponding ghost-contribution diagonal blocks and fa
 \[
 (\mathcal R X)_a=\frac{\sum_i t_{ia}r_iX_i}{\sum_i t_{ia}r_i},
 \qquad
-(\mathcal P X_c)_i=p_i\frac{\sum_a t_{ia}X_{c,a}}{\sum_a t_{ia}}.
+(\mathcal I X_c)_i=p_i\frac{\sum_a t_{ia}X_{c,a}}{\sum_a t_{ia}}.
 \]
 
 Only coarse vertices reached by the stored trilinear incidences participate. The denominators depend on geometry alone, so both maps are linear in displacement. Restriction and prolongation are separately parameterised. The network transpose \(\mathcal N_\theta(\eta)^T\) in Eq. (E.1), and hence the condensed action of Eq. (12), is therefore obtained by transposing the complete composition of operations, not by identifying one transfer map with the transpose of the other.
@@ -403,7 +403,7 @@ The full displacement sequence is specified below. Grid sizes count background p
 | Upward, 33 grid | Apply two residual convolutions; prolong 33→65; add \(Y^{(0)}\). |
 | Fine output, 65 grid | Restore retained features; apply four element-then-face interaction pairs, then four weak-region element-then-face pairs; project 32→3. |
 
-At the upward step that returns to level \(k\in\{0,1,2\}\), the combination is \(X=Y^{(k)}+\sigma^{(k)}\mathcal P^{(k)}X_c\), where \(X_c\) is the field on level \(k+1\) and \(\sigma^{(k)}\) is a learned scalar. Thus convolution precedes prolongation, the skips are additive, and the 9-position grid receives two downward and two upward convolutions. There are twelve coarse convolution updates in total. The fine retained values are restored after the hierarchy returns to the active nodes.
+At the upward step that returns to level \(k\in\{0,1,2\}\), the combination is \(X=Y^{(k)}+\sigma^{(k)}\mathcal I^{(k)}X_c\), where \(X_c\) is the field on level \(k+1\) and \(\sigma^{(k)}\) is a learned scalar. Thus convolution precedes prolongation, the skips are additive, and the 9-position grid receives two downward and two upward convolutions. There are twelve coarse convolution updates in total. The fine retained values are restored after the hierarchy returns to the active nodes.
 
 **Coefficient bounds and output.** The local heads produce separate gather/scatter values for eight ordinary element layers, twelve face layers and four additional weak-region element layers, each with four heads and 27 slots. Raw head outputs are multiplied by 0.2. For a finite positive group bound \(a_{\max}\), the coefficient map is
 
@@ -416,9 +416,9 @@ z,&|z|\le k_ba_{\max},\\
 \end{cases}
 \]
 
-All variants of Table 2 set \(k_b=0.5\); each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST15 (Supplementary Note S5) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
+All variants of Table 3 set \(k_b=0.5\); each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST15 (Supplementary Note S5) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
 
-A bias-free matrix \(W_{\rm out}\in\mathbb R^{32\times3}\) returns the fine features to nodal displacement in the prescribed coordinate order. Rigid reconstruction and retained-value restoration then produce Eq. (17).
+A bias-free matrix \(W_{\rm out}\in\mathbb R^{32\times3}\) returns the fine features to nodal displacement in the prescribed coordinate order. Rigid reconstruction and retained-value restoration then produce Eq. (14).
 
 **Frame consistency.** Geometry augmentation in training samples the 48 cube symmetries. For an orthogonal cube transformation, the deterministic signed permutation maps satisfy
 
