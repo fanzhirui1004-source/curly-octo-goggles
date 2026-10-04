@@ -528,16 +528,16 @@ Condensed solve: private elimination, interface factorisation and solution, and 
 | 2×2×2 | 11.82 | 0.17 | 6.57 | 56.37 | 3.80 |
 | 3×3×1 | 12.66 | 0.14 | 7.25 | 80.85 | 4.07 |
 
-Total, iterations and memory: Table 6 (GPU memory: peak allocated by the process; CPU memory: resident set size after cell preparation). Learned substructures resident on the GPU (Supplementary Note S4.1): all cells of the four-cell lattices and four cells of each eight-cell lattice.
+Total, iterations and memory: Table 6; the phases sum to 0.2–0.5 s less than the totals, the remainder being bookkeeping between phases (GPU memory: peak allocated by the process; CPU memory: resident set size after cell preparation). Learned substructures resident on the GPU (Supplementary Note S4.1): all cells of the four-cell lattices and four cells of each eight-cell lattice.
 
 #### ST12e. Whole-lattice iterative solvers on the CPU (16 MPI processes): setup, conjugate gradients and BDDC factorisations (s)
 
-| Lattice | GAMG: setup | GAMG to \(10^{-4}\): iterations / time per load | GAMG to \(10^{-4}\), with setup: 3 loads / 6 loads | GAMG at \(10^{-4}\): max. compliance / energy difference | BoomerAMG: setup / iterations / time per load | BDDC factorisations: Dirichlet + Neumann |
+| Lattice | GAMG: setup | GAMG to \(10^{-4}\): iterations / time per load | GAMG to \(10^{-4}\), with setup: 3 loads / 6 loads | GAMG at \(10^{-4}\): max. compliance / energy difference | BoomerAMG: setup / iterations to \(10^{-4}\) / time per load | BDDC factorisations: Dirichlet + Neumann |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2×2×2 | 35.3 | 90–134 / 52–72 | 221 / 432 | 4.6e-10 / 2.1e-5 | 88.0 / indefinite preconditioner | 207.9 + 241.3 = 449.2 |
-| 3×3×1 | 39.2 | 98–123 / 66–84 | 278 / 478 | 1.4e-10 / 1.2e-5 | 96.6 / 329–336 / 535–615 | 245.3 + 277.9 = 523.1 |
+| 3×3×1 | 39.2 | 98–123 / 66–84 | 278 / 478 | 1.4e-10 / 1.2e-5 | 96.6 / 250–260 / 405–481 | 245.3 + 277.9 = 523.1 |
 
-Differences relative to the iterate at a relative residual of \(10^{-9}\), reached in 235–274 (2×2×2) and 204–220 (3×3×1) GAMG iterations. Loads: three consistent tractions, then three random loads, as in route (a). Cell setup and assembly, common to all exact routes, are not included (Table ST12b: 416 and 474 s).
+Differences relative to the iterate at a relative residual of \(10^{-9}\), reached in 235–274 (2×2×2) and 204–220 (3×3×1) GAMG iterations. Loads: three consistent tractions, then three random loads, as in route (a). Cell setup and assembly and the global assembly and scaling, taken from route (a) and common to all fine-scale routes, are not included (Table ST12b: 416 and 474 s).
 
 ### Table ST13. Per-cell cost of conventional condensation and NICE
 
