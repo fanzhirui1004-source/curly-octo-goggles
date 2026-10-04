@@ -128,7 +128,7 @@ for j in range(min(a.loads, b_all.shape[1])):
     ksp.solve(bv, x)
     comm.tompi4py().Barrier()
     ts = time.perf_counter() - t0[0]
-    ksp.cancelMonitor()
+    ksp.monitorCancel()
     r = bv.duplicate(); A.mult(x, r); r.axpy(-1.0, bv)
     Kx = bv.duplicate(); A.mult(x, Kx)
     ex = x.dot(Kx)

@@ -1,0 +1,91 @@
+{
+ "layout": "hlat331",
+ "cells": {
+  "hlat331_000": {
+   "setup_s": 37.54174459539354,
+   "assembly_s": 29.380233353935182,
+   "dofs": 304902,
+   "retained": 18606,
+   "interior": 286296,
+   "kept": 301926,
+   "local_nnz": 85058226
+  },
+  "hlat331_010": {
+   "setup_s": 39.06766325607896,
+   "assembly_s": 27.93686225079,
+   "dofs": 318498,
+   "retained": 19548,
+   "interior": 298950,
+   "kept": 318498,
+   "local_nnz": 88772654
+  },
+  "hlat331_020": {
+   "setup_s": 37.621774594299495,
+   "assembly_s": 27.12647228874266,
+   "dofs": 308802,
+   "retained": 18942,
+   "interior": 289860,
+   "kept": 308802,
+   "local_nnz": 86854350
+  },
+  "hlat331_100": {
+   "setup_s": 35.25436063203961,
+   "assembly_s": 20.89672196470201,
+   "dofs": 327816,
+   "retained": 20124,
+   "interior": 307692,
+   "kept": 324588,
+   "local_nnz": 89394634
+  },
+  "hlat331_110": {
+   "setup_s": 31.629449982196093,
+   "assembly_s": 21.49658676236868,
+   "dofs": 336162,
+   "retained": 20958,
+   "interior": 315204,
+   "kept": 336162,
+   "local_nnz": 91774890
+  },
+  "hlat331_120": {
+   "setup_s": 29.245499364100397,
+   "assembly_s": 19.639753297902644,
+   "dofs": 277323,
+   "retained": 33717,
+   "interior": 243606,
+   "kept": 277323,
+   "local_nnz": 76761717
+  },
+  "hlat331_200": {
+   "setup_s": 18.797756819054484,
+   "assembly_s": 11.813910471275449,
+   "dofs": 198147,
+   "retained": 27933,
+   "interior": 170214,
+   "kept": 194937,
+   "local_nnz": 52547533
+  },
+  "hlat331_210": {
+   "setup_s": 6.720487874001265,
+   "assembly_s": 7.233462735079229,
+   "dofs": 83220,
+   "retained": 25116,
+   "interior": 58104,
+   "kept": 83220,
+   "local_nnz": 22150768
+  }
+ },
+ "cells_s": 401.41243500448763,
+ "global_assembly_s": 34.312771772034466,
+ "global_dofs": 2113611,
+ "free_retained": 143685,
+ "nnz_upper": 296791896,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "nnz_full": 591325107
+}

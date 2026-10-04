@@ -1,0 +1,610 @@
+{
+ "layout": "hlat222",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/ITERCMP/penv/lib/libmkl_rt.so.3",
+  "python": "3.11.16",
+  "numpy": "2.4.6",
+  "cgroup": {
+   "memory_max_bytes": 64424509440,
+   "memory_high_bytes": 62277025792,
+   "anon_bytes": 378839040,
+   "file_bytes": 20063567872,
+   "cpu_quota_cores": 32.0,
+   "nproc": 32,
+   "os_cpu_count": 192,
+   "memory_max_GiB": 60.0,
+   "memory_high_GiB": 58.0,
+   "anon_GiB": 0.35282135009765625,
+   "file_GiB": 18.685653686523438
+  },
+  "loadavg": [
+   53.685546875,
+   48.57763671875,
+   43.623046875
+  ],
+  "host": "autodl-container-a469459104-fb5a5260",
+  "scipy": "1.17.1"
+ },
+ "iparm": {
+  "1": 1,
+  "2": 3,
+  "4": 0,
+  "5": 0,
+  "6": 0,
+  "8": 0,
+  "10": 8,
+  "11": 0,
+  "13": 0,
+  "18": -1,
+  "19": -1,
+  "24": 1,
+  "25": 1,
+  "27": 0,
+  "28": 0,
+  "34": 0,
+  "35": 1,
+  "36": 0,
+  "56": 0,
+  "60": 0
+ },
+ "cells": [
+  {
+   "cell": 0,
+   "dofs": 325404,
+   "dirichlet_dofs": 308424,
+   "dirichlet_analysis_s": 23.73293859511614,
+   "dirichlet_factor_s": 18.10710709542036,
+   "neumann_analysis_s": 24.881523691117764,
+   "neumann_factor_s": 21.890661045908928,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 2084848,
+     "16": 2081119,
+     "17": 7308265,
+     "18": 913124368,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1312260
+    },
+    "nnz_factor": 913124368,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 2084848,
+     "permanent": 2081119,
+     "factor_solve": 7308265
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.9882659912109375,
+     "permanent": 1.9847097396850586,
+     "factor_solve": 6.969704627990723,
+     "total": 8.954414367675781
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 2225088,
+     "16": 2221159,
+     "17": 7844104,
+     "18": 980786640,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1400867
+    },
+    "nnz_factor": 980786640,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 2225088,
+     "permanent": 2221159,
+     "factor_solve": 7844104
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 2.12200927734375,
+     "permanent": 2.11826229095459,
+     "factor_solve": 7.480720520019531,
+     "total": 9.598982810974121
+    }
+   }
+  },
+  {
+   "cell": 1,
+   "dofs": 297132,
+   "dirichlet_dofs": 281748,
+   "dirichlet_analysis_s": 20.856531240046024,
+   "dirichlet_factor_s": 15.094693824648857,
+   "neumann_analysis_s": 23.154047653079033,
+   "neumann_factor_s": 16.638542778789997,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 1949213,
+     "16": 1945817,
+     "17": 6305705,
+     "18": 786722156,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1230360
+    },
+    "nnz_factor": 786722156,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1949213,
+     "permanent": 1945817,
+     "factor_solve": 6305705
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.8589143753051758,
+     "permanent": 1.8556756973266602,
+     "factor_solve": 6.013588905334473,
+     "total": 7.869264602661133
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 2078512,
+     "16": 2074935,
+     "17": 6844022,
+     "18": 853950372,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1313183
+    },
+    "nnz_factor": 853950372,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 2078512,
+     "permanent": 2074935,
+     "factor_solve": 6844022
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.9822235107421875,
+     "permanent": 1.9788122177124023,
+     "factor_solve": 6.526968002319336,
+     "total": 8.505780220031738
+    }
+   }
+  },
+  {
+   "cell": 2,
+   "dofs": 328464,
+   "dirichlet_dofs": 308340,
+   "dirichlet_analysis_s": 25.581405520439148,
+   "dirichlet_factor_s": 18.83112132549286,
+   "neumann_analysis_s": 25.24138406664133,
+   "neumann_factor_s": 22.74394603073597,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 2087168,
+     "16": 2083440,
+     "17": 7236168,
+     "18": 904532772,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1313558
+    },
+    "nnz_factor": 904532772,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 2087168,
+     "permanent": 2083440,
+     "factor_solve": 7236168
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.990478515625,
+     "permanent": 1.9869232177734375,
+     "factor_solve": 6.900947570800781,
+     "total": 8.887870788574219
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 2254866,
+     "16": 2250902,
+     "17": 8172461,
+     "18": 1022390587,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1419398
+    },
+    "nnz_factor": 1022390587,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 2254866,
+     "permanent": 2250902,
+     "factor_solve": 8172461
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 2.1504077911376953,
+     "permanent": 2.146627426147461,
+     "factor_solve": 7.793866157531738,
+     "total": 9.9404935836792
+    }
+   }
+  },
+  {
+   "cell": 3,
+   "dofs": 302772,
+   "dirichlet_dofs": 284328,
+   "dirichlet_analysis_s": 21.711618274450302,
+   "dirichlet_factor_s": 14.822044044733047,
+   "neumann_analysis_s": 22.9491475969553,
+   "neumann_factor_s": 18.35997049510479,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 1963859,
+     "16": 1960430,
+     "17": 6362057,
+     "18": 793908637,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1238898
+    },
+    "nnz_factor": 793908637,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1963859,
+     "permanent": 1960430,
+     "factor_solve": 6362057
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.8728818893432617,
+     "permanent": 1.8696117401123047,
+     "factor_solve": 6.067330360412598,
+     "total": 7.936942100524902
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 2118666,
+     "16": 2115021,
+     "17": 7052675,
+     "18": 880560651,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 1338138
+    },
+    "nnz_factor": 880560651,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 2118666,
+     "permanent": 2115021,
+     "factor_solve": 7052675
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 2.020517349243164,
+     "permanent": 2.0170412063598633,
+     "factor_solve": 6.725955009460449,
+     "total": 8.742996215820312
+    }
+   }
+  },
+  {
+   "cell": 4,
+   "dofs": 213561,
+   "dirichlet_dofs": 186510,
+   "dirichlet_analysis_s": 12.003914944827557,
+   "dirichlet_factor_s": 6.753340654075146,
+   "neumann_analysis_s": 15.65163154155016,
+   "neumann_factor_s": 9.0808040574193,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 1206982,
+     "16": 1204718,
+     "17": 3397879,
+     "18": 424801816,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 754958
+    },
+    "nnz_factor": 424801816,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1206982,
+     "permanent": 1204718,
+     "factor_solve": 3397879
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.1510677337646484,
+     "permanent": 1.1489086151123047,
+     "factor_solve": 3.2404699325561523,
+     "total": 4.389378547668457
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 1425274,
+     "16": 1422689,
+     "17": 4123188,
+     "18": 516317857,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 891940
+    },
+    "nnz_factor": 516317857,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1425274,
+     "permanent": 1422689,
+     "factor_solve": 4123188
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.3592472076416016,
+     "permanent": 1.3567819595336914,
+     "factor_solve": 3.932178497314453,
+     "total": 5.2889604568481445
+    }
+   }
+  },
+  {
+   "cell": 5,
+   "dofs": 198909,
+   "dirichlet_dofs": 174120,
+   "dirichlet_analysis_s": 13.190758436918259,
+   "dirichlet_factor_s": 5.885370098054409,
+   "neumann_analysis_s": 14.412160277366638,
+   "neumann_factor_s": 7.858487404882908,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 1162850,
+     "16": 1160743,
+     "17": 3192270,
+     "18": 398826973,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 728663
+    },
+    "nnz_factor": 398826973,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1162850,
+     "permanent": 1160743,
+     "factor_solve": 3192270
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.1089801788330078,
+     "permanent": 1.1069707870483398,
+     "factor_solve": 3.0443859100341797,
+     "total": 4.1513566970825195
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 1365593,
+     "16": 1363192,
+     "17": 3748868,
+     "18": 469854258,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 857457
+    },
+    "nnz_factor": 469854258,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1365593,
+     "permanent": 1363192,
+     "factor_solve": 3748868
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.3023309707641602,
+     "permanent": 1.3000411987304688,
+     "factor_solve": 3.5751991271972656,
+     "total": 4.875240325927734
+    }
+   }
+  },
+  {
+   "cell": 6,
+   "dofs": 102786,
+   "dirichlet_dofs": 77304,
+   "dirichlet_analysis_s": 4.323693141341209,
+   "dirichlet_factor_s": 1.438957929611206,
+   "neumann_analysis_s": 6.5651028379797935,
+   "neumann_factor_s": 2.9329561442136765,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 471748,
+     "16": 470808,
+     "17": 1037932,
+     "18": 126385951,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 297037
+    },
+    "nnz_factor": 126385951,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 471748,
+     "permanent": 470808,
+     "factor_solve": 1037932
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 0.4498939514160156,
+     "permanent": 0.44899749755859375,
+     "factor_solve": 0.9898490905761719,
+     "total": 1.4388465881347656
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 684451,
+     "16": 683210,
+     "17": 1678912,
+     "18": 206930180,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 431202
+    },
+    "nnz_factor": 206930180,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 684451,
+     "permanent": 683210,
+     "factor_solve": 1678912
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 0.6527433395385742,
+     "permanent": 0.6515598297119141,
+     "factor_solve": 1.60113525390625,
+     "total": 2.252695083618164
+    }
+   }
+  },
+  {
+   "cell": 7,
+   "dofs": 97230,
+   "dirichlet_dofs": 73698,
+   "dirichlet_analysis_s": 4.2848284766077995,
+   "dirichlet_factor_s": 1.2571601271629333,
+   "neumann_analysis_s": 6.548783153295517,
+   "neumann_factor_s": 2.42425574362278,
+   "dirichlet_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 460803,
+     "16": 459910,
+     "17": 981465,
+     "18": 119622517,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 290785
+    },
+    "nnz_factor": 119622517,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 460803,
+     "permanent": 459910,
+     "factor_solve": 981465
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 0.4394559860229492,
+     "permanent": 0.43860435485839844,
+     "factor_solve": 0.9359979629516602,
+     "total": 1.3746023178100586
+    }
+   },
+   "neumann_info": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "10": 8,
+     "15": 661292,
+     "16": 660120,
+     "17": 1568896,
+     "18": 193329996,
+     "19": -1,
+     "24": 1,
+     "25": 1,
+     "35": 1,
+     "63": 417362
+    },
+    "nnz_factor": 193329996,
+    "mflop_factor": -1,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 661292,
+     "permanent": 660120,
+     "factor_solve": 1568896
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 0.6306571960449219,
+     "permanent": 0.6295394897460938,
+     "factor_solve": 1.4962158203125,
+     "total": 2.1257553100585938
+    }
+   }
+  }
+ ],
+ "sum_s": 449.20888824760914,
+ "process_peak_rss_GiB": 11.299030303955078
+}

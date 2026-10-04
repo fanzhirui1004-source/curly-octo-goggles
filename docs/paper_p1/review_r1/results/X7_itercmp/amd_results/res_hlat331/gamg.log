@@ -1,0 +1,15 @@
+BUILT {"method": "gamg", "n": 2113611, "ranks": 16, "s": 1.3962154388427734, "blocked": true}
+SETUP 39.194236911833286
+  Linear solve converged due to CONVERGED_RTOL iterations 216
+LOAD {"load": 0, "its": 216, "reason": 2, "solve_s": 155.27072759717703, "rel_residual": 9.794342610324816e-10, "compliance": 254.999268393496}
+  Linear solve converged due to CONVERGED_RTOL iterations 206
+LOAD {"load": 1, "its": 206, "reason": 2, "solve_s": 138.18954523652792, "rel_residual": 9.172750807485788e-10, "compliance": 44.35385143410371}
+  Linear solve converged due to CONVERGED_RTOL iterations 220
+LOAD {"load": 2, "its": 220, "reason": 2, "solve_s": 146.28544794768095, "rel_residual": 1.0934195964414423e-09, "compliance": 1393.2987313374044}
+  Linear solve converged due to CONVERGED_RTOL iterations 204
+LOAD {"load": 3, "its": 204, "reason": 2, "solve_s": 135.49824495613575, "rel_residual": 9.733938010257762e-10, "compliance": 80104.55280822623}
+  Linear solve converged due to CONVERGED_RTOL iterations 206
+LOAD {"load": 4, "its": 206, "reason": 2, "solve_s": 137.96059880405664, "rel_residual": 9.577425265998389e-10, "compliance": 80941.19256858328}
+  Linear solve converged due to CONVERGED_RTOL iterations 207
+LOAD {"load": 5, "its": 207, "reason": 2, "solve_s": 139.00718430429697, "rel_residual": 8.98120018852584e-10, "compliance": 85415.80962919035}
+DONE 891.4059857577085

@@ -1,0 +1,4 @@
+BUILT {"method": "gamg", "n": 1833474, "ranks": 16, "s": 1.4587655365467072, "blocked": true}
+SETUP 36.06934351939708
+LOAD {"load": 0, "its": 248, "reason": 2, "solve_s": 71.61390333715826, "rel_residual": 9.437494001583203e-10, "compliance": 138.4183678784727}
+DONE 107.68324685655534

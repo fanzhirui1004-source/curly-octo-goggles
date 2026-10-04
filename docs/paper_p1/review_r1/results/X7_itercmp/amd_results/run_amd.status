@@ -1,0 +1,12 @@
+14:27:58 hlat222 build_K rc=0
+16:04:48 hlat222 quiet: 30.31 31.52 32.03 35/6653 7811
+16:19:41 hlat222 gamg rc=0
+16:24:11 hlat222 hypre rc=0
+16:33:07 hlat222 bddc_lb rc=0
+16:33:07 hlat222 DONE
+16:34:11 hlat331 build_K rc=0
+16:34:11 hlat331 quiet: 34.94 38.69 40.82 31/6651 7978
+16:49:13 hlat331 gamg rc=0
+17:49:23 hlat331 hypre rc=0
+17:59:53 hlat331 bddc_lb rc=0
+17:59:53 hlat331 DONE

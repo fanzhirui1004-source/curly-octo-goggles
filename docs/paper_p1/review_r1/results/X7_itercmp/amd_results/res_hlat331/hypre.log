@@ -1,0 +1,15 @@
+BUILT {"method": "hypre", "n": 2113611, "ranks": 16, "s": 1.4693263694643974, "blocked": true}
+SETUP 96.55092971026897
+  Linear solve converged due to CONVERGED_RTOL iterations 336
+LOAD {"load": 0, "its": 336, "reason": 2, "solve_s": 615.3346724435687, "rel_residual": 8.945882163476052e-10, "compliance": 254.99926839355004}
+  Linear solve converged due to CONVERGED_RTOL iterations 336
+LOAD {"load": 1, "its": 336, "reason": 2, "solve_s": 571.8617961257696, "rel_residual": 9.09695073659702e-10, "compliance": 44.353851434110126}
+  Linear solve converged due to CONVERGED_RTOL iterations 334
+LOAD {"load": 2, "its": 334, "reason": 2, "solve_s": 600.6655085384846, "rel_residual": 1.147832388900217e-09, "compliance": 1393.298731338692}
+  Linear solve converged due to CONVERGED_RTOL iterations 329
+LOAD {"load": 3, "its": 329, "reason": 2, "solve_s": 606.3811785578728, "rel_residual": 9.72839674338944e-10, "compliance": 80104.55280822625}
+  Linear solve converged due to CONVERGED_RTOL iterations 329
+LOAD {"load": 4, "its": 329, "reason": 2, "solve_s": 574.584092117846, "rel_residual": 9.283060011163793e-10, "compliance": 80941.1925685828}
+  Linear solve converged due to CONVERGED_RTOL iterations 331
+LOAD {"load": 5, "its": 331, "reason": 2, "solve_s": 535.1798919662833, "rel_residual": 8.675084583241345e-10, "compliance": 85415.80962919041}
+DONE 3600.558069460094

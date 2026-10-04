@@ -1,0 +1,15 @@
+BUILT {"method": "hypre", "n": 1833474, "ranks": 16, "s": 1.2245856150984764, "blocked": true}
+SETUP 87.9539280757308
+  Linear solve did not converge due to DIVERGED_INDEFINITE_PC iterations 21
+LOAD {"load": 0, "its": 21, "reason": -8, "solve_s": 36.28830033540726, "rel_residual": 1.7434177837304046, "compliance": 83.05605272671067}
+  Linear solve did not converge due to DIVERGED_INDEFINITE_PC iterations 21
+LOAD {"load": 1, "its": 21, "reason": -8, "solve_s": 32.82237236946821, "rel_residual": 0.39349653284034686, "compliance": 18.90303847510408}
+  Linear solve did not converge due to DIVERGED_INDEFINITE_PC iterations 23
+LOAD {"load": 2, "its": 23, "reason": -8, "solve_s": 35.84076243638992, "rel_residual": 1.3800726514368917, "compliance": 68.08959326548722}
+  Linear solve did not converge due to DIVERGED_INDEFINITE_PC iterations 14
+LOAD {"load": 3, "its": 14, "reason": -8, "solve_s": 21.69496939331293, "rel_residual": 0.1971057539544521, "compliance": 77723.14931687}
+  Linear solve did not converge due to DIVERGED_INDEFINITE_PC iterations 16
+LOAD {"load": 4, "its": 16, "reason": -8, "solve_s": 25.560328856110573, "rel_residual": 0.29941857220232926, "compliance": 79602.85405735602}
+  Linear solve did not converge due to DIVERGED_INDEFINITE_PC iterations 16
+LOAD {"load": 5, "its": 16, "reason": -8, "solve_s": 24.862337686121464, "rel_residual": 0.16908174001032886, "compliance": 81959.69862439946}
+DONE 265.02299915254116
