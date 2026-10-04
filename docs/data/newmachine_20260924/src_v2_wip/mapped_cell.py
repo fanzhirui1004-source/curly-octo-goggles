@@ -102,7 +102,64 @@ def make_map(spec):
             B = [bern(X[:, d]) for d in range(3)]
             return X + np.einsum('ni,nj,nk,ijkd->nd', B[0], B[1], B[2], P)
         return phi
+    if k == 'global':                                                          # one cell of a lattice-scale map
+        g = make_global(spec['map'])
+        off = np.asarray(spec['offset'], float)
+        return lambda X: g(np.asarray(X, float) + off)
     raise ValueError(f'MAP_KIND:{k}')
+
+
+def make_global(spec):
+    """Lattice-scale maps of the lattice reference coordinates (cell units: the cell at integer position p occupies
+    p + [0, 1]^3); used by make_map kind 'global' {map: <this spec>, offset: p}. Neighbouring cells evaluate the same
+    map at their shared face points, so the mapped lattice stays conforming. kinds:
+      affine  A (3 x 3) about center (3)
+      twist   deg: rotation per cell length about the axis e_axis (default z) through center (the other two coordinates),
+              zero at axis coordinate z0
+      bend    R: radius (cell units) of the reference plane z = zc after bending about an axis parallel to y; x = xc stays
+              (arc length along the plane z = zc is preserved)
+      bezier  box (3): lattice size; amp (cell units), seed: cubic Bezier volume displacement over the box"""
+    k = spec['kind']
+    if k == 'affine':
+        A = np.asarray(spec['A'], float); c = np.asarray(spec.get('center', [0, 0, 0]), float)
+        if np.linalg.det(A) <= 0:
+            raise ValueError('MAP_NOT_ORIENTATION_PRESERVING')
+        return lambda X: c + (np.asarray(X, float) - c) @ A.T
+    if k == 'twist':
+        rate = np.deg2rad(spec['deg']); ax = int(spec.get('axis', 2))
+        c = np.asarray(spec['center'], float); z0 = float(spec.get('z0', 0.0))
+        i, j = [d for d in range(3) if d != ax]
+
+        def phi(X):
+            X = np.asarray(X, float); th = rate * (X[:, ax] - z0)
+            u, v = X[:, i] - c[i], X[:, j] - c[j]
+            Y = X.copy()
+            Y[:, i] = c[i] + np.cos(th) * u - np.sin(th) * v
+            Y[:, j] = c[j] + np.sin(th) * u + np.cos(th) * v
+            return Y
+        return phi
+    if k == 'bend':
+        R = float(spec['R']); xc = float(spec.get('xc', 0.0)); zc = float(spec.get('zc', 0.0))
+
+        def phi(X):
+            X = np.asarray(X, float); rho = R + (X[:, 2] - zc); a = (X[:, 0] - xc) / R
+            return np.stack([xc + rho * np.sin(a), X[:, 1], zc - R + rho * np.cos(a)], 1)
+        return phi
+    if k == 'bezier':
+        L = np.asarray(spec['box'], float)
+        rng = np.random.default_rng(int(spec.get('seed', 0)))
+        P = float(spec['amp']) * rng.uniform(-1, 1, (4, 4, 4, 3))
+        from math import comb
+
+        def bern(t):
+            return np.stack([comb(3, i) * t ** i * (1 - t) ** (3 - i) for i in range(4)], -1)
+
+        def phi(X):
+            X = np.asarray(X, float); T = X / L
+            B = [bern(T[:, d]) for d in range(3)]
+            return X + np.einsum('ni,nj,nk,ijkd->nd', B[0], B[1], B[2], P)
+        return phi
+    raise ValueError(f'GLOBAL_MAP_KIND:{k}')
 
 
 def node_xyz(node_ids, n, phi):

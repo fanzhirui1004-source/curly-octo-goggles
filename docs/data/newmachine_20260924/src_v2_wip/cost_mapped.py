@@ -13,8 +13,11 @@ Same measurements as bench_deploy.per_cell, on mapped cells. Per (cell, map):
   fastnet    (map 'id' only) P1's deployed operator (fastnet.FastNet, explicit adjoint) on the same cell: S_hat q for
              B = 1, 16, 64. For the identity map V0R = V0, so its ratio to the autograd S_hat converts the autograd
              timings of the mapped fields into deployed estimates.
+Device memory: mem_get_info deltas are distorted by cuDSS's own memory pool after the first factorisation in a process;
+--factor_only fp32|fp64 measures one factorisation per process (run one process per cell). learned_state_alloc_GB is the
+torch allocation held by the learned route (excludes the cuDSS factor of a sparse weak patch).
 Usage: cost_mapped.py <out.jsonl> <ckpt> <case@body_dir>[,...] <maps.json[,...]> --maps id,strx2,twist30
-       [--fields c1,c2w] [--work dir] [--p1base 1]"""
+       [--fields c1,c2w] [--work dir] [--p1base 1] [--factor_only fp32]"""
 import argparse, gc, json, sys, time
 from pathlib import Path
 import numpy as np
@@ -65,6 +68,7 @@ def main(argv):
     ap.add_argument('--maps', default='id,strx2,twist30'); ap.add_argument('--fields', default='c1,c2w')
     ap.add_argument('--work', default='/root/autodl-tmp/OPL/A0/work_cost'); ap.add_argument('--p1base', type=int, default=1)
     ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutweakbox')
+    ap.add_argument('--factor_only', default='')
     a = ap.parse_args(argv)
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     specs = {}
@@ -87,7 +91,14 @@ def main(argv):
                 C, rec['mapped_setup_s'] = timed(lambda: MC.MappedCell(case, body, specs[mname], log=lambda s_: None))
                 _, rec['mapped_assemble_s'] = timed(lambda: C.assemble())
                 rec.update(dofs=int(C.nb), ports=int(C.np_), interior=int(C.ni), elements=int(len(C.cells)),
-                           K_nnz_upper=int(C.vals.numel()), map_stats=C.map_stats)
+                           K_nnz_upper=int(C.vals.numel()), map_stats=C.map_stats,
+                           K_alloc_GB=torch.cuda.memory_allocated() / 2 ** 30)
+                if a.factor_only:
+                    fb = free_gb()
+                    _, rec[f'factor_{a.factor_only}_s'] = timed(lambda: C.factor(neumann=False, fp32=a.factor_only == 'fp32'))
+                    rec[f'factor_{a.factor_only}_GB'] = fb - free_gb()
+                    C._free()
+                    raise StopIteration
                 gen = torch.Generator(device=dev).manual_seed(0)
                 Q = torch.randn((C.np_, 64), dtype=dt, device=dev, generator=gen)
                 Q = Q - C.Q @ (C.Q.T @ Q); Q = Q / Q.norm(dim=0)
@@ -102,7 +113,7 @@ def main(argv):
                         e_ex = (Q * C.apply(Q)).sum(0)
                     C._free()
                 # ------------------------------------------------ learned route (V0R + co-rotated Jacobi)
-                fb = free_gb()
+                fb = free_gb(); al0 = torch.cuda.memory_allocated()
                 d = Path(a.work) / mname
                 _, rec['netdata_s'] = timed(lambda: AE.write_data(C, d / case, {}, (), body))
                 g, rec['geo_s'] = timed(lambda: AB.BudgetGeo(case, body, d, neumann=False, log=lambda s_: None, cell=C,
@@ -137,6 +148,7 @@ def main(argv):
                     r['energy_ratio'] = dict(mean=float(ratio.mean()), min=float(ratio.min()), max=float(ratio.max()))
                     log(dict(event='FIELD', case=case, map=mname, field=fname, **r))
                 rec['learned_state_GB'] = fb - free_gb()
+                rec['learned_state_alloc_GB'] = (torch.cuda.memory_allocated() - al0) / 2 ** 30
                 model.caches.pop(g.case, None)
                 # ------------------------------------------------ P1's deployed operator (identity map)
                 if mname == 'id':
@@ -160,6 +172,8 @@ def main(argv):
                         import traceback
                         rec['fastnet_error'] = repr(e)[:300]; rec['fastnet_trace'] = traceback.format_exc()[-1500:]
                 rec['total_GB_used'] = f0 - free_gb()
+            except StopIteration:
+                pass
             except Exception as e:                                               # noqa: BLE001
                 import traceback
                 rec['error'] = repr(e)[:400]; rec['trace'] = traceback.format_exc()[-2000:]
