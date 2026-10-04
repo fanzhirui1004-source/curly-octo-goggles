@@ -1,0 +1,128 @@
+[
+ {
+  "case": "fresh_val_2000_full",
+  "map": "id",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "mapped_setup_s": 2.774277093820274,
+  "mapped_assemble_s": 19.02735618967563,
+  "dofs": 273816,
+  "ports": 16608,
+  "interior": 257208,
+  "elements": 9226,
+  "K_nnz_upper": 40043514,
+  "map_stats": {
+   "det_t_min": 3.8146972656246815e-06,
+   "cond_J_max": 1.000000000000101,
+   "points": 347534232,
+   "det_X_min": 0.9999999999999165
+  },
+  "K_alloc_GB": 2.265439510345459,
+  "factor_fp32_s": 6.281456088647246,
+  "factor_fp32_GB": 4.533203125
+ },
+ {
+  "case": "fresh_val_2000_full",
+  "map": "id",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "mapped_setup_s": 2.79478766862303,
+  "mapped_assemble_s": 19.055522399954498,
+  "dofs": 273816,
+  "ports": 16608,
+  "interior": 257208,
+  "elements": 9226,
+  "K_nnz_upper": 40043514,
+  "map_stats": {
+   "det_t_min": 3.8146972656246815e-06,
+   "cond_J_max": 1.000000000000101,
+   "points": 347534232,
+   "det_X_min": 0.9999999999999165
+  },
+  "K_alloc_GB": 2.265439510345459,
+  "factor_fp64_s": 8.722583555616438,
+  "factor_fp64_GB": 7.69921875
+ },
+ {
+  "case": "fresh_val_2004_d0_v2",
+  "map": "id",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "mapped_setup_s": 2.7007568115368485,
+  "mapped_assemble_s": 15.563428468070924,
+  "dofs": 322548,
+  "ports": 42012,
+  "interior": 280536,
+  "elements": 11528,
+  "K_nnz_upper": 42657348,
+  "map_stats": {
+   "det_t_min": 3.8146972656246777e-06,
+   "cond_J_max": 1.0000000000001001,
+   "points": 280660327,
+   "det_X_min": 0.9999999999999155
+  },
+  "K_alloc_GB": 2.328176975250244,
+  "factor_fp32_s": 6.081905698403716,
+  "factor_fp32_GB": 4.376953125
+ },
+ {
+  "case": "fresh_val_2004_d0_v2",
+  "map": "id",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "mapped_setup_s": 2.774321813136339,
+  "mapped_assemble_s": 15.545931342057884,
+  "dofs": 322548,
+  "ports": 42012,
+  "interior": 280536,
+  "elements": 11528,
+  "K_nnz_upper": 42657348,
+  "map_stats": {
+   "det_t_min": 3.8146972656246777e-06,
+   "cond_J_max": 1.0000000000001001,
+   "points": 280660327,
+   "det_X_min": 0.9999999999999155
+  },
+  "K_alloc_GB": 2.328176975250244,
+  "factor_fp64_s": 8.530757364816964,
+  "factor_fp64_GB": 7.4609375
+ },
+ {
+  "case": "homogP_t02200",
+  "map": "id",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "mapped_setup_s": 2.0182784348726273,
+  "mapped_assemble_s": 19.037213417701423,
+  "dofs": 248484,
+  "ports": 14400,
+  "interior": 234084,
+  "elements": 8176,
+  "K_nnz_upper": 36262032,
+  "map_stats": {
+   "det_t_min": 3.814697265624671e-06,
+   "cond_J_max": 1.000000000000104,
+   "points": 349336560,
+   "det_X_min": 0.9999999999999137
+  },
+  "K_alloc_GB": 2.060964584350586,
+  "factor_fp32_s": 5.331997127272189,
+  "factor_fp32_GB": 3.865234375
+ },
+ {
+  "case": "homogP_t02200",
+  "map": "id",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "mapped_setup_s": 1.9856941597536206,
+  "mapped_assemble_s": 19.021200054325163,
+  "dofs": 248484,
+  "ports": 14400,
+  "interior": 234084,
+  "elements": 8176,
+  "K_nnz_upper": 36262032,
+  "map_stats": {
+   "det_t_min": 3.814697265624671e-06,
+   "cond_J_max": 1.000000000000104,
+   "points": 349336560,
+   "det_X_min": 0.9999999999999137
+  },
+  "K_alloc_GB": 2.060964584350586,
+  "factor_fp64_s": 7.179361438378692,
+  "factor_fp64_GB": 6.396484375
+ }
+]
