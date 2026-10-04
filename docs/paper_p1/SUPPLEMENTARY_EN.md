@@ -476,6 +476,8 @@ Route (b), conventional exact condensation, processes the cells one at a time on
 
 Route (c) runs one lattice analysis with sensitivities in the deployed implementation with NICE on the GPU: cell preparation (cell construction, stiffness and moment assembly, network input and encoding, and a first application that prepares the correction), assembly of the lattice and of \(\mathbb K_{PP}\), preconditioner setup (the balanced two-level action of Supplementary Note S4.1), conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(9.0\times10^{-7}\) to \(9.9\times10^{-7}\)), and the field-based sensitivities \(\widetilde s_c\) of Eq. (9) for the three loads, obtained by reverse-mode differentiation of the moment integrals at the fixed recovered fields. Its arithmetic is that of the timed route of Table 1: the network and the correction's smoothing and coarse solve in single precision, the stiffness products of the condensed action in double precision (Appendix F.2). The three routes read the same generated cell geometries; geometry generation is not timed.
 
+Whole-lattice iterative solvers (Table ST12e) use the global matrix, load vectors, clamp and numbering of route (a), exported once and solved with PETSc 3.26 [Balay et al. (2026)](https://petsc.org/release/manual/) on the CPU of routes (a) and (b) with 16 MPI processes. Conjugate gradients run on the unscaled system and stop on the unpreconditioned relative residual \(\|Ku-f\|/\|f\|\le10^{-9}\); the iterate is recorded where the residual first falls below \(10^{-3}, 10^{-4}, \dots\), with its compliance and energy-norm difference from the final iterate. GAMG (smoothed aggregation, PETSc defaults) uses block size 3 and the six rigid-body modes of the DOF positions as near-null space; BoomerAMG uses HMIS coarsening, extended+i interpolation, nodal coarsening, strong threshold 0.5 and its default relaxation. For BDDC with exact local solvers and one subdomain per cell, the Dirichlet matrix of a cell is its stiffness on the DOFs it shares with no other cell and its Neumann matrix the whole cell stiffness on its free DOFs. Each is factorised once, cell after cell, with the PARDISO configuration of route (a) (symmetric Jacobi scaling, real SPD Cholesky, tuned iparm, 16 threads); the singular Neumann matrices of floating cells are shifted by \(10^{-10}\) on the diagonal of the scaled matrix. The sum of these factorisations bounds the cost of BDDC per geometry from below; its constrained Neumann solves, coarse problem and iterations are not included. With MUMPS for the local and coarse problems on eight processes, BDDC with all local factors resident exceeded 90 GiB during its setup.
+
 ### Table ST12. Whole-lattice direct solution, conventional exact condensation and learned route: dimensions, phases and memory
 
 Times in s. Memory in GiB (\(2^{30}\) bytes): PARDISO memory is its permanent plus factorisation storage (iparm(16) + iparm(17)) reported by the analysis phase, with kilobytes taken as 1024 bytes. Totals, iteration counts, peak process memory and the memory of route (c) are given in Table 5.
@@ -527,6 +529,15 @@ Condensed solve: private elimination, interface factorisation and solution, and 
 | 3×3×1 | 12.66 | 0.14 | 7.25 | 80.85 | 4.07 |
 
 Total, iterations and memory: Table 5 (GPU memory: peak allocated by the process; CPU memory: resident set size after cell preparation). Learned substructures resident on the GPU (Supplementary Note S4.1): all cells of the four-cell lattices and four cells of each eight-cell lattice.
+
+#### ST12e. Whole-lattice iterative solvers on the CPU (16 MPI processes): setup, conjugate gradients and BDDC factorisations (s)
+
+| Lattice | GAMG: setup | GAMG to \(10^{-4}\): iterations / time per load | GAMG to \(10^{-4}\), with setup: 3 loads / 6 loads | GAMG at \(10^{-4}\): max. compliance / energy difference | BoomerAMG: setup / iterations / time per load | BDDC factorisations: Dirichlet + Neumann |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2×2×2 | 35.3 | 90–134 / 52–72 | 221 / 432 | 4.6e-10 / 2.1e-5 | 88.0 / indefinite preconditioner | 207.9 + 241.3 = 449.2 |
+| 3×3×1 | 39.2 | 98–123 / 66–84 | 278 / 478 | 1.4e-10 / 1.2e-5 | 96.6 / 329–336 / 535–615 | 245.3 + 277.9 = 523.1 |
+
+Differences relative to the iterate at a relative residual of \(10^{-9}\), reached in 235–274 (2×2×2) and 204–220 (3×3×1) GAMG iterations. Loads: three consistent tractions, then three random loads, as in route (a). Cell setup and assembly, common to all exact routes, are not included (Table ST12b: 416 and 474 s).
 
 ### Table ST13. Per-cell cost of conventional condensation and NICE
 
