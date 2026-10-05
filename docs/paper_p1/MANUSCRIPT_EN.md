@@ -1,4 +1,4 @@
-# Neural-initialised static condensation with equilibrium correction for the analysis and thickness design of cut thin-walled TPMS lattices
+# NICE: learning the interior extension of static condensation, with application to the thickness design of cut TPMS lattices
 
 ## Abstract
 

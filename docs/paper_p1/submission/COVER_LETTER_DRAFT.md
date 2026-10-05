@@ -10,7 +10,7 @@ Editor-in-Chief
 
 Dear Editor,
 
-We submit the manuscript "Neural-initialised static condensation with equilibrium correction for the analysis and thickness design of cut thin-walled TPMS lattices" for consideration as a research article in *Computer Methods in Applied Mechanics and Engineering*.
+We submit the manuscript "NICE: learning the interior extension of static condensation, with application to the thickness design of cut TPMS lattices" for consideration as a research article in *Computer Methods in Applied Mechanics and Engineering*.
 
 Lattices of geometrically varying components, such as graded or cut thin-walled TPMS lattices, are too large to resolve at every design change, yet lose the scale separation on which homogenisation rests. Static condensation reduces each cell to the degrees of freedom it shares with its surroundings, but it factorises the interior of every geometry, and a cut cell retains tens of thousands of degrees of freedom on its box faces and cut band. The manuscript approximates the condensed stiffness on this complete retained space by neural-initialised static condensation with equilibrium correction (NICE): a geometry-conditioned network, exactly linear in the retained displacement, supplies the interior extension, and a fixed two-grid correction reduces its equilibrium residual inside the energy form.
 
