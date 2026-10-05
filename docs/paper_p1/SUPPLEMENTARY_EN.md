@@ -151,7 +151,7 @@ Columns: the maximum relative asymmetry \(\max_{i,j}|G_{ij}-G_{ji}|/\sqrt{|G_{ii
 
 ### ST05a. Energy and sensitivity errors
 
-Directional means (%) at fixed retained displacement. \(k\) is the number of Jacobi-preconditioned Chebyshev steps applied to the base network's field (\(a=b/30\); Section 5.5, Figure 7a,b); smoothed values are tabulated for the base network under consistent tractions, and — marks entries not tabulated. The first-order share is the Frobenius norm of the linear error array divided by the sum of the Frobenius norms of the linear and quadratic arrays (%), at \(k=0\); each array includes all eight corners and all evaluated directions in that cell and class.
+Directional means (%) at fixed retained displacement. \(k\) is the number of Jacobi-preconditioned Chebyshev steps applied to the base network's field (\(a=b/30\); Section 5.5, Figure 8a,b); smoothed values are tabulated for the base network under consistent tractions, and — marks entries not tabulated. The first-order share is the Frobenius norm of the linear error array divided by the sum of the Frobenius norms of the linear and quadratic arrays (%), at \(k=0\); each array includes all eight corners and all evaluated directions in that cell and class.
 
 | Variant | Cell | Class | Energy error, \(k=0\) | Energy error, \(k=8\) / \(32\) | Sensitivity error, \(k=0\) | Sensitivity error, \(k=8\) / \(32\) | First-order share |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -305,7 +305,7 @@ Maximum relative compliance and field-based sensitivity-vector errors (%) over t
 | L1 | x | NICE | 0.00202 | 0.101 |
 | L1 | y | NICE | 0.00197 | 0.078 |
 
-Combinations without a row were not evaluated. All cells in this table belong to the 20 validation geometries used for checkpoint selection (Section 5.1). Cut-surface responses of the same configurations are in Table ST09. For the base network on U1/x under the neighbour-face z traction (Section 5.6, Figure 10b), the target cell carries 0.1274669% of the exact assembled energy and has a local energy error of 2.312168%; the product \(\beta=w\varepsilon\) is 0.002947249%, the compliance error 0.002827394% and the target-cell sensitivity error 5.82992%.
+Combinations without a row were not evaluated. All cells in this table belong to the 20 validation geometries used for checkpoint selection (Section 5.1). Cut-surface responses of the same configurations are in Table ST09. For the base network on U1/x under the neighbour-face z traction (Section 5.6, Figure 11b), the target cell carries 0.1274669% of the exact assembled energy and has a local energy error of 2.312168%; the product \(\beta=w\varepsilon\) is 0.002947249%, the compliance error 0.002827394% and the target-cell sensitivity error 5.82992%.
 
 #### ST08b. Held-out two-cell configurations (NICE)
 
@@ -739,7 +739,7 @@ In iterations 0–3, while the volume bound is violated, the macroscale and NICE
 | Recomputed residual | 3.5e-04–5.8e-04 | — | 3.9e-04 |
 | \(\max\lvert\bar U^T\rho\rvert/\widehat C\) | 5.2e-08 | — | 5.4e-08 |
 
-Every fine-scale value is a NICE value; exact checks in Table ST21. Iterations and first and last compliances: Table 6. Figure 13a,b draws the corner parameters in the layer \(z=0\); those in the layer \(z=1\) differ from them by at most 1.1e-03 (NICE) and 6.3e-13 (homogenisation design).
+Every fine-scale value is a NICE value; exact checks in Table ST21. Iterations and first and last compliances: Table 6. Figure 15a,b draws the corner parameters in the layer \(z=0\); those in the layer \(z=1\) differ from them by at most 1.1e-03 (NICE) and 6.3e-13 (homogenisation design).
 
 #### ST18b. Homogenised law of the uniform-thickness cell
 
