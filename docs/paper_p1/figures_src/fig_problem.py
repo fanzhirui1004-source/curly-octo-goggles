@@ -114,6 +114,8 @@ def panel_b(ax, D):
     ax.scatter(*P[box & ~cut].T, s=.9, c=E.BOXCAP, marker='.', linewidths=0, depthshade=False, rasterized=True, clip_on=False)
     ax.scatter(*P[cut].T, s=.9, c=E.CLAMP, marker='.', linewidths=0, depthshade=False, rasterized=True)
     E.setup(ax, (-.02, -.02, -.02), (1.02, 1.02, 1.02), elev=ELEV, azim=AZIM, zoom=1.0)
+    text3(ax, np.r_[p0, 1.0], 'cut plane', xytext=(3, 3), fontsize=7, color=E.CLAMP, ha='left', va='bottom',
+          textcoords='offset points')
     nret = int((box | cut).sum())
     print(f'cell {tuple(D["cell"])}: {len(g)} nodes, {int(box.sum())} box-face, {int(cut.sum())} cut-band, '
           f'{int((box & cut).sum())} both, retained {nret} ({100 * nret / len(g):.1f}%), interior {len(g) - nret}')
