@@ -1,4 +1,4 @@
-# NICE: learning the interior extension of static condensation, with application to the thickness design of cut TPMS lattices
+# NICE: neural-initialised static condensation with equilibrium correction, with application to the thickness design of cut TPMS lattices
 
 ## Abstract
 
