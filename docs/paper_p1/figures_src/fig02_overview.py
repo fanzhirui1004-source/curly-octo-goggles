@@ -5,7 +5,7 @@ equilibrium correction), drawn with matplotlib boxes and arrows in the house sty
       added back, q restored on P -> E^ q -> fixed equilibrium correction W (Chebyshev, Q1 coarse solve, Chebyshev at fixed
       q) -> u^ = F q -> K -> F^T (the transpose of the complete extension) -> S^ q, with the three roles under the
       blocks (learning: trial field; correction: improvability; variational form: structure), the by-construction
-      properties of the extension (Eq. 17) and the properties of S^ = F^T K F (Sections 4.1, 3.1, 4.3).
+      properties of the extension (Eq. 14) and the properties of S^ = F^T K F (Sections 4.1, 3.1, 4.4).
   (b) Assembly and design: cell operators -> assembled K^ -> global solve -> field recovery -> compliance and field-based
       thickness sensitivity, with the design update closing the loop (Section 6.11).
 No data; mathtext only (no LaTeX installation needed).  Usage: python3 fig02_overview.py
@@ -108,7 +108,7 @@ for (x0, x1, lab, col) in ((bN[0], bN[0] + bN[2], 'learning: trial field', LEARN
 
 # call-outs: by-construction properties of the extension (left), properties of the condensed operator (right)
 YC, HC = 39.0, 13.0
-box(11.0, YC, 73.0, HC, [('by construction (Eq. 17)', 6.6, FS.MUTED),
+box(11.0, YC, 73.0, HC, [('by construction (Eq. 14)', 6.6, FS.MUTED),
                          (r'$J_P\widehat{E}=I_p$ (admissible), $\widehat{E}R_P=R$ (rigid-body motion reproduced)', 6.6),
                          (r'$\widehat{E}$ linear in $q$ at fixed geometry;', 6.6), (r'network parameters $\theta$ shared by all cells', 6.6)],
     kind='note', lw=.6)
