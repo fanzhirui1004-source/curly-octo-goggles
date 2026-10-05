@@ -1,6 +1,6 @@
 # P1 提升方案：具体改法与中英改稿（2026-10-05）
 
-依据 `CMAME_BENCHMARK_CN.md` 的诊断。本文件只是改稿草案，**尚未写入源稿**，逐条确认后再落稿。
+依据 `CMAME_BENCHMARK_CN.md` 的诊断。2026-10-05 已按作者决定落稿：A–J、K1 已写入中英文源稿；K2（成本账）取消；L–P 在服务器上推进；标题保留 NICE，候选待定。
 
 ## 总原则
 
@@ -266,11 +266,7 @@
 
 后面接一句共享变量梯度的装配公式。3.3 节和 5.10 节引用这个式号。
 
-**2. 在 6.2（原 6.3）加两三句成本账**
-
-> EN: The offline cost, about 60 GPU-hours for data generation, training and model selection, is paid once per cell family and discretisation; each subsequent lattice analysis with sensitivities saves about 760–940 s against the direct route (Section 5.9), so the training is repaid after roughly 250 such analyses, a few design optimisations of the size of Section 5.10.
-
-具体数字需按表 5 核算后再定。其中 "60 GPU-hours vs. CPU seconds" 是不同资源，要说清楚口径；口径说不清就只陈述两项成本，不算回本点。
+**2. 成本账：已取消（作者决定，正文不写离线/数据集成本）。**
 
 ---
 
