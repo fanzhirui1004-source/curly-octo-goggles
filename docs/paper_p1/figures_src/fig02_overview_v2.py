@@ -1,4 +1,4 @@
-"""Figure 2 -> figures/F01_method_overview.{svg,pdf,png}: method overview of NICE (neural-initialised condensation with
+"""Figure 2 -> figures/F01_method_overview.{svg,pdf,png}, two-row layout of the same content as fig02_overview.py: method overview of NICE (neural-initialised condensation with
 equilibrium correction), drawn with matplotlib boxes and arrows in the house style (figstyle), 178 mm wide.
 
   (a) Condensed operator of one cell: the chain q -> rigid split -> learned extension (trial interior field) -> rigid field
@@ -8,13 +8,14 @@ equilibrium correction), drawn with matplotlib boxes and arrows in the house sty
       properties of the extension (Eq. 14) and the properties of S^ = F^T K F (Sections 4.1, 3.1, 4.4).
   (b) Assembly and design: cell operators -> assembled K^ -> global solve -> field recovery -> compliance and field-based
       thickness sensitivity, with the design update closing the loop (Section 6.11).
-No data; mathtext only (no LaTeX installation needed).  Usage: python3 fig02_overview.py
+No data; mathtext only (no LaTeX installation needed).  Usage: python3 fig02_overview_v2.py [--preview]
 """
 from matplotlib.patches import FancyBboxPatch, Rectangle
+import sys
 import figstyle as FS
 plt = FS.plt
 
-W, H = 178.0, 66.0                                                     # figure size in mm (data units of the canvas axes)
+W, H = 178.0, 140.0                                                     # figure size in mm (data units of the canvas axes)
 LEARN, CORR, VAR = '#0072B2', '#D55E00', '#53616F'                      # learned block, correction block, variational blocks
 FILL = {'plain': ('#F3F5F7', '#8E99A4'), 'learn': ('#EAF3FA', LEARN), 'corr': ('#FDF1E8', CORR), 'var': ('#F3F5F7', VAR),
         'note': ('#FBFCFD', '#C5CDD4')}
@@ -49,59 +50,107 @@ def bracket(x0, x1, y, color, d=1.0):
     ax.plot([x0, x0, x1, x1], [y + d, y, y, y + d], color=color, lw=.6, solid_joinstyle='miter', zorder=4)
 
 
-
 # ------------------------------------------------------------------------------------------------ (a) one cell
-YA, HA = 41.0, 13.0
-ym = YA + HA / 2
-fig.text(3.5 / W, 61.0 / H, '(a) Condensed operator of one cell', fontweight='bold', fontsize=8.5, color=FS.TEXT,
-         va='bottom', ha='left')
-ax.text(6.5, ym, '$q$', ha='center', va='center', fontsize=9)
-arrow(9.0, 15.0, ym)
-bN = box(15.0, YA, 40.0, HA, [(r'learned extension $\widehat{E}$', 8.0), ('geometry-conditioned network,', 7.0, FS.MUTED),
-                              ('linear in $q$, admissible', 7.0, FS.MUTED)], kind='learn', lw=1.0)
-arrow(55.0, 67.0, ym, label=r'$\widehat{E}q$', size=7.5)
-bC = box(67.0, YA, 40.0, HA, [(r'two-grid cycle $\mathcal{W}$', 8.0), (r'8 / $Q_1(17)$ / 8,', 7.0, FS.MUTED),
-                              ('linear, fixed per geometry', 7.0, FS.MUTED)], kind='corr', lw=1.0)
-arrow(107.0, 119.0, ym, label=r'$\hat{u}=Fq$', size=7.5)
-bV = box(119.0, YA, 40.0, HA, [(r'energy form $F^{T}K$', 8.0), ('transpose of the', 7.0, FS.MUTED),
-                               ('complete extension', 7.0, FS.MUTED)], kind='var', lw=1.0)
-arrow(159.0, 165.0, ym)
-ax.text(170.0, ym, r'$\widehat{S}q$', ha='center', va='center', fontsize=9)
-yl = YA - 1.4
-for (b, lab, sub, col) in ((bN, 'learning: trial field', r'$J_P\widehat{E}=I_p,\ \widehat{E}R_P=R$', LEARN),
-                           (bC, 'correction: improvability', r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$', CORR),
-                           (bV, 'variational form: structure', r'$\widehat{S}=F^{T}KF$, $\ \widehat{S}-S=H^{T}AH\succeq0$', VAR)):
-    x0, x1 = b[0], b[0] + b[2]
-    bracket(x0, x1, yl, col)
-    ax.text((x0 + x1) / 2, yl - .9, lab, ha='center', va='top', fontsize=7.5, color=col, fontweight='bold')
-    ax.text((x0 + x1) / 2, yl - 5.0, sub, ha='center', va='top', fontsize=7.5, color=FS.TEXT)
+fig.text(3.5 / W, 135.0 / H, '(a) Condensed operator of one cell', fontweight='bold', fontsize=8.5,
+         color=FS.TEXT, va='bottom', ha='left')
+# row 1: the extension E^ (rigid split, learned extension, rigid field restored)
+Y1, H1 = 107.0, 18.0
+y1 = Y1 + H1 / 2
+ax.text(6.5, y1, '$q$', ha='center', va='center', fontsize=9)
+arrow(9.0, 14.0, y1)
+bS = box(14.0, Y1, 34.0, H1, [('rigid split', 7.5), (r'$C_Rq\ \,|\,\ \Pi_Pq$', 7.5),
+                              ('rigid part | deformation', 7.0, FS.MUTED)])
+arrow(48.0, 56.0, y1)
+bN = box(56.0, Y1, 50.0, H1, [('learned extension', 7.5), (r'$\mathcal{N}_\theta(\eta)\,\Pi_Pq$', 8.0),
+                              ('trial interior field', 7.0), ('geometry-conditioned, linear in $q$', 7.0, FS.MUTED)],
+         kind='learn', lw=.9)
+arrow(106.0, 114.0, y1)
+bR = box(114.0, Y1, 40.0, H1, [('rigid field $+\\,RC_Rq$', 7.5), ('restore $q$ on $P$', 7.5)])
+arrow(154.0, 164.0, y1)
+ax.text(170.0, y1, r'$\widehat{E}q$', ha='center', va='center', fontsize=9)
+# rigid bypass above row 1
+yb = Y1 + H1 + 3.0
+ax.plot([31.0, 31.0, 134.0, 134.0], [Y1 + H1, yb, yb, Y1 + H1], color=FS.MUTED, lw=.6, zorder=1)
+ax.annotate('', (134.0, Y1 + H1 + .05), (134.0, yb), arrowprops=dict(arrowstyle='-|>', color=FS.MUTED, lw=.6, shrinkA=0,
+            shrinkB=0, mutation_scale=5))
+ax.text(82.5, yb + .7, 'rigid coefficients $C_Rq$ and prescribed $q$ bypass the network', ha='center', va='bottom',
+        fontsize=7.0, color=FS.MUTED)
+bracket(bN[0], bN[0] + bN[2], Y1 - 1.4, LEARN)
+ax.text(bN[0] + bN[2] / 2, Y1 - 2.2, 'learning: trial field', ha='center', va='top', fontsize=7.5, color=LEARN,
+        fontweight='bold')
+box(14.0, 86.0, 160.0, 12.0, [('by construction (Eq. 14)', 7.0, FS.MUTED),
+                              (r'$J_P\widehat{E}=I_p$ (admissible),   $\widehat{E}R_P=R$ (rigid-body motion reproduced)', 7.0),
+                              (r'$\widehat{E}$ linear in $q$ at fixed geometry;   network parameters $\theta$ shared by all cells', 7.0)],
+    kind='note', lw=.6)
+
+# row 2: the correction W and the variational form F^T K
+Y2, H2 = 56.0, 22.0
+y2 = Y2 + H2 / 2
+ax.text(6.5, y2, r'$\widehat{E}q$', ha='center', va='center', fontsize=9)
+arrow(11.0, 16.0, y2)
+xC, wC = 16.0, 72.0
+box(xC, Y2, wC, H2, [], kind='corr', lw=.9)
+ax.text(xC + wC / 2, Y2 + H2 - 3.2, r'equilibrium correction $\mathcal{W}$', ha='center', va='center', fontsize=7.5, zorder=3)
+sub = [('Chebyshev', 19.0), ('$Q_1$ coarse', 19.0), ('Chebyshev', 19.0)]
+gap = 4.0
+xs, ys, hs_ = xC + (wC - sum(w for _, w in sub) - 2 * gap) / 2, Y2 + 8.4, 6.0
+for i, (s, w_) in enumerate(sub):
+    ax.add_patch(FancyBboxPatch((xs, ys), w_, hs_, boxstyle='round,pad=0,rounding_size=.8', fc='white', ec=CORR, lw=.6,
+                                zorder=3))
+    ax.text(xs + w_ / 2, ys + hs_ / 2, s, ha='center', va='center', fontsize=7.0, color=CORR, zorder=4)
+    if i < 2:
+        arrow(xs + w_, xs + w_ + gap, ys + hs_ / 2, lw=.6, color=CORR, ms=5, zorder=5)
+    xs += w_ + gap
+ax.text(xC + wC / 2, Y2 + 4.6, '$q$ held fixed; fixed, linear;', ha='center', va='center', fontsize=7.0, zorder=3)
+ax.text(xC + wC / 2, Y2 + 2.0, 'coefficients set once per geometry', ha='center', va='center', fontsize=7.0, zorder=3)
+arrow(88.0, 102.0, y2, label=r'$\hat{u} = Fq$', size=8)
+bK = box(102.0, Y2, 14.0, H2, [('$K$', 9.0)], kind='var', lw=.9)
+arrow(116.0, 122.0, y2)
+bT = box(122.0, Y2, 32.0, H2, [('$F^{T}$', 9.0), ('transpose of the', 7.0), ('complete extension', 7.0)],
+         kind='var', lw=.9)
+arrow(154.0, 164.0, y2)
+ax.text(170.0, y2, r'$\widehat{S}q$', ha='center', va='center', fontsize=9)
+for (x0, x1, lab, col) in ((xC, xC + wC, 'correction: improvability', CORR),
+                           (bK[0], bT[0] + bT[2], 'variational form: structure', VAR)):
+    bracket(x0, x1, Y2 - 1.4, col)
+    ax.text((x0 + x1) / 2, Y2 - 2.2, lab, ha='center', va='top', fontsize=7.5, color=col, fontweight='bold')
+box(14.0, 34.0, 160.0, 12.0, [(r'$\widehat{S}=F^{T}KF$: symmetric, $\succeq0$, rigid-body kernel', 7.0),
+                              (r'$\widehat{S}-S=H^{T}AH\succeq0$ (error quadratic in the field error $H$)', 7.0),
+                              (r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$ (exact coarse solve, spectrum in $(0,b]$)', 7.0)],
+    kind='note', lw=.6)
+ax.plot([170.0, 170.0], [y2 - 3.0, 46.0], color=FS.MUTED, lw=.6, zorder=1)
+ax.plot([170.0], [46.0], marker='o', ms=2.2, color=FS.MUTED, zorder=1)
 
 # ------------------------------------------------------------------------------------------------ (b) assembly and design
-YB, HB = 9.0, 11.0
+YB, HB = 5.5, 16.0
 ymb = YB + HB / 2
-fig.text(3.5 / W, 24.5 / H, '(b) Assembly and design', fontweight='bold', fontsize=8.5, color=FS.TEXT, va='bottom', ha='left')
+fig.text(3.5 / W, 25.5 / H, '(b) Assembly and design', fontweight='bold', fontsize=8.5, color=FS.TEXT, va='bottom', ha='left')
+# stack of cell operators
 for k in (2, 1):
-    ax.add_patch(FancyBboxPatch((6.0 + 1.0 * k, YB + 1.0 * k), 27.0, HB, boxstyle='round,pad=0,rounding_size=1.2',
+    ax.add_patch(FancyBboxPatch((6.0 + 1.2 * k, YB + 1.2 * k), 30.0, HB, boxstyle='round,pad=0,rounding_size=1.2',
                                 fc='#F3F5F7', ec='#8E99A4', lw=.6, zorder=1))
-cols = [(6.0, 27.0, [('cell operators', 7.5), (r'$\widehat{S}_m$', 8.0)]),
-        (41.0, 30.0, [('assembly', 7.5), (r'$\widehat{\mathbb{K}}=\Sigma_m B_m^{T}\widehat{S}_mB_m$', 8.0)]),
-        (79.0, 26.0, [('solve', 7.5), (r'$\widehat{\mathbb{K}}\,\widehat{U}=f_g$', 8.0)]),
-        (113.0, 26.0, [('field recovery', 7.5), (r'$\hat{u}_m=F_mB_m\widehat{U}$', 8.0)]),
-        (147.0, 27.0, [(r'compliance $\widehat{C}$', 7.5), (r'sensitivity $\tilde{s}_c$', 7.5)])]
-for i, (x, w, lines) in enumerate(cols):
-    box(x, YB, w, HB, lines)
-    if i < len(cols) - 1:
-        arrow(x + w + (2.4 if i == 0 else 0), cols[i + 1][0], ymb)
-yd = YB - 3.2
-ax.plot([160.5, 160.5, 19.5, 19.5], [YB, yd, yd, YB - .05], color=FS.MUTED, lw=.6, zorder=1)
-ax.annotate('', (19.5, YB - .05), (19.5, yd), arrowprops=dict(arrowstyle='-|>', color=FS.MUTED, lw=.6, shrinkA=0, shrinkB=0,
+box(6.0, YB, 30.0, HB, [('cells $m$', 7.0), (r'$\widehat{S}_m=F_m^{T}K_mF_m$', 7.5), ('operators of row (a)', 7.0, FS.MUTED)])
+arrow(38.4, 43.0, ymb)
+box(43.0, YB, 36.0, HB, [('assembly', 7.0), (r'$\widehat{\mathbb{K}}=\Sigma_m\,B_m^{T}\,\widehat{S}_m B_m$', 7.5),
+                         ('shared box-face DOFs', 7.0, FS.MUTED)])
+arrow(79.0, 83.5, ymb)
+box(83.5, YB, 25.0, HB, [('global solve', 7.0), (r'$\widehat{\mathbb{K}}\,\widehat{U}=f_g$', 7.5),
+                         ('actions of row (a)', 7.0, FS.MUTED)])
+arrow(108.5, 113.0, ymb)
+box(113.0, YB, 26.0, HB, [('field recovery', 7.0), (r'$\hat{u}_m=F_mB_m\widehat{U}$', 7.5), ('every cell', 7.0, FS.MUTED)])
+arrow(139.0, 143.5, ymb)
+box(143.5, YB, 30.5, HB, [(r'compliance $\widehat{C}=f_g^{T}\widehat{U}$', 7.0), ('thickness sensitivity', 7.0),
+                          (r'$\tilde{s}_c=-\hat{u}_m^{T}K_{,c}\,\hat{u}_m$', 7.5)])
+# design loop
+yd = YB - 3.4
+ax.plot([158.75, 158.75, 21.0, 21.0], [YB, yd, yd, YB - .05], color=FS.MUTED, lw=.6, zorder=1)
+ax.annotate('', (21.0, YB - .05), (21.0, yd), arrowprops=dict(arrowstyle='-|>', color=FS.MUTED, lw=.6, shrinkA=0, shrinkB=0,
             mutation_scale=5))
-ax.text(90.0, yd - .6, r'design iteration: new corner parameters $\tau_c$, same network, $\mathcal{W}$ recomputed',
-        ha='center', va='top', fontsize=7.0, color=FS.MUTED)
+ax.text(90.0, yd - .7, r'design iteration: update of the corner parameters $\tau_c$ (new geometry $\eta$, same network '
+        r'parameters $\theta$; correction coefficients recomputed)', ha='center', va='top', fontsize=7.0, color=FS.MUTED)
 
-import sys
 if '--preview' in sys.argv:
-    fig.savefig('_preview_F01.png', dpi=220)
+    fig.savefig(FS.Path(__file__).resolve().parent / '_preview_F01.png', dpi=220, bbox_inches='tight')
     print('preview written')
 else:
     FS.save(fig, 'F01_method_overview')
