@@ -319,7 +319,7 @@ def main(argv):
     ap.add_argument('--m', default='2,4'); ap.add_argument('--p1', default=''); ap.add_argument('--check', type=int, default=1)
     ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutweakbox')
     ap.add_argument('--chunk', type=int, default=16); ap.add_argument('--fast', type=int, default=0)
-    ap.add_argument('--layout', default='')
+    ap.add_argument('--layout', default=''); ap.add_argument('--rigid64', type=int, default=0)
     a = ap.parse_args(argv)
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     G = json.loads(a.map); shape = tuple(int(v) for v in a.shape.split('x'))
@@ -407,7 +407,7 @@ def main(argv):
             t = time.perf_counter()
             if a.fast:
                 import mapped_fast as MF
-                mop = MF.MappedFastOp(g, model, cyc, wrap, patch=fname.endswith('w'))
+                mop = MF.MappedFastOp(g, model, cyc, wrap, patch=fname.endswith('w'), rigid64=bool(a.rigid64))
                 S[(fname, rep)] = LMP._dense(mop.s_hat, C.np_, 64, dev, dt).cpu()
                 del mop
             else:
