@@ -372,7 +372,7 @@ Maximum relative errors (%) over the three cut-surface traction directions, for 
 
 ## Supplementary Note S1. Verification of the reference and of the thickness derivative
 
-Figure S01 and Table ST10 verify the CutFEM reference against background refinement and the ghost-penalty coefficient; the last paragraph of this note verifies the numerical thickness derivative.
+Figure S01 and Table ST10 verify the CutFEM reference against background refinement and the ghost-penalty coefficient, and Table ST10b compares it with a body-fitted discretisation on uncut cells; the last paragraph of this note verifies the numerical thickness derivative.
 
 For U1, M1 and M2, the compliance at \(n=32\) differs from the finest level of Figure S01(a) by at most 0.057% and the thickness sensitivity by at most 0.11%. H1 is clamped on \(x=0\) and loaded on \(y=0\), because its retained part carries no material on its \(z\)-faces; at \(n=32\) it differs from \(n=48\) by up to 0.99% in compliance, for the load normal to the loaded face, and by 0.97% in sensitivity, but from \(n=64\) by only 0.07% and 0.08%, while \(n=48\) differs from \(n=64\) by 1.08%: H1 does not converge monotonically (Figure S01(d), Table ST10). On U1, M1, M2 and H1, varying the ghost-penalty coefficient between \(10^{-5}\) and \(10^{-3}\) changes the compliance by at most 0.053% and the sensitivities by at most 0.12% (penalty energy \(1.2\times10^{-4}\) to \(5.6\times10^{-4}\) of the total at \(\gamma=10^{-3}\)), and refining the volume integration changes both by at most 0.010%.
 
@@ -386,6 +386,16 @@ Single cells clamped on one box face and loaded by unit consistent tractions in 
 | H2 | -1.58 / 5.60 | -0.93 / 3.59 | -0.52 / 2.16 | -0.27 / 1.24 | — |
 | Validation cell with the largest NICE error | -0.32 / 0.57 | -0.14 / 0.23 | +0.08 / 0.09 | -0.14 / 0.15 | -0.02 / 0.03 |
 | Validation cell with the thinnest walls | -0.66 / 1.02 | -0.28 / 0.44 | -0.16 / 0.24 | -0.09 / 0.20 | +0.17 / 0.16 |
+
+On uncut cells, the discrete model was also compared with an independent body-fitted discretisation that meshes the same implicit geometry with quadratic tetrahedra and shares no geometry, quadrature or stabilisation code with it (Table ST10b).
+
+### Table ST10b. Comparison with a body-fitted quadratic-tetrahedral discretisation on uncut cells
+
+| Configuration | Loads | CutFEM vs finer body-fitted mesh: max. compliance difference (%) | Body-fitted discretisation: change between its two mesh levels (%) |
+| --- | --- | ---: | ---: |
+| Four single uncut cells | Six fixture load cases | 0.084–0.101 | 0.130–0.273 |
+| One uncut cell | Twelve local tractions on finite areas | 0.253 | 0.502 |
+| Assemblies of uncut cells: two cells, 2×2×2, 1×1×4 | Fixture load cases | 0.052–0.090 | 0.108–0.190 |
 
 Figure S01(c) reports a step-refinement study of the numerical thickness derivative on four cells: relative to the production step \(10^{-5}\tau_c\), the sensitivity changes by at most \(2.6\times10^{-7}\) at \(10^{-3}\tau_c\), \(2.5\times10^{-9}\) at \(10^{-4}\tau_c\) and \(1.6\times10^{-10}\) at \(10^{-6}\tau_c\); the hundredfold reduction per decade is the second-order truncation of the central difference, consistent with a derivative that is smooth within \(\pm10^{-3}\tau_c\) at the fixed active set on these cells. On the same cells, the central-difference stiffness derivative agrees with differences of the compliance recomputed at the perturbed designs to \(4\times10^{-8}\). An element-level check over the partially filled elements of the eight detailed cells shows that the discrete moments do not preserve the nesting behind Eq. (H.6) everywhere. The element stiffnesses are positive semidefinite to rounding, but the exact derivative of the discrete moments at fixed clipping topology gives element derivative matrices with negative eigenvalues: in the uncut cells the smallest ratio \(\lambda_{\min}/\max|\lambda|\) is \(-2.3\times10^{-3}\), and in four of the six cut cells between 2 and 11 partially filled elements (of 762 to 6,033) have a uniform-thickening derivative whose most negative eigenvalue exceeds \(10^{-6}\) of its largest in magnitude; these derivatives are indefinite, with a largest eigenvalue of at least \(10^{-3}\) of the largest magnitude. The production central difference agrees with this exact discrete derivative to \(2\times10^{-8}\).
 
