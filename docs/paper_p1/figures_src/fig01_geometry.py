@@ -37,6 +37,7 @@ PCT = {'U1': '100%', 'M1': '64.8%', 'H1': '8.6%', 'H2': '2.67%'}       # remaini
 VOL = {'M1': 0.6478160496334634, 'H1': 0.08604416938804589, 'H2': 0.026660923780561247}   # evidence/valmeta.json 'vol'
 BAND, SECTION, BOX = '#7FA6C4', '#C9B48A', '#9AA5B1'               # section: neutral sand (no vermillion / gold)
 BOXCAP, GHOST = '#3F6E96', '#B8BEC6'                                # wall section on the box faces; part removed by the cut
+BOX_EDGES = [(a, b) for a in np.ndindex(2, 2, 2) for b in np.ndindex(2, 2, 2) if a < b and sum(x != y for x, y in zip(a, b)) == 1]
 
 
 def plane_from_volume(theta, v):
@@ -122,16 +123,13 @@ def draw(ax, verts, faces, is_cut, on_box, ghost=None):
     coll = Poly3DCollection(tri, facecolors=cols, edgecolors=cols, linewidths=.08, zsort='average')
     coll.set_rasterized(True)
     ax.add_collection3d(coll)
-    # unit box
-    for s in (0, 1):
-        for a, b in (((0, s), (1, s)), ((s, 0), (s, 1))):
-            ax.plot([a[0], b[0]], [a[1], b[1]], [0, 0], color=BOX, lw=.5)
-            ax.plot([a[0], b[0]], [a[1], b[1]], [1, 1], color=BOX, lw=.5)
-        for t in (0, 1):
-            ax.plot([s, s], [t, t], [0, 1], color=BOX, lw=.5)
+    # unit box: all twelve edges; the three meeting at the corner hidden from the view (0, 0, 0) are dashed
+    for e0, e1 in BOX_EDGES:
+        hidden = (0, 0, 0) in (e0, e1)
+        ax.plot(*zip(e0, e1), color=BOX, lw=.6, ls=(0, (2.5, 2)) if hidden else '-', zorder=10)
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_zlim(0, 1)
     ax.set_proj_type('ortho'); ax.view_init(elev=24, azim=40)              # cut sections (normals towards +x, +y) in front
-    ax.set_box_aspect((1, 1, 1), zoom=1.18); ax.set_axis_off()
+    ax.set_box_aspect((1, 1, 1), zoom=1.0); ax.set_axis_off()
 
 
 def retained_fraction(cut):
@@ -161,9 +159,9 @@ def main():
     tau0 = tau_field(np.zeros_like(Y), Y, Z, t)
     print(f"H2: material fraction of the face x = 0: {(np.abs(1 + np.cos(2 * np.pi * Y) + np.cos(2 * np.pi * Z)) <= tau0).mean():.5f} (archived 0.15525)")
 
-    fig = plt.figure(figsize=(178 * FS.MM, 150 * FS.MM))
+    fig = plt.figure(figsize=(178 * FS.MM, 62 * FS.MM))
     for i, c in enumerate(CELLS):
-        ax = fig.add_subplot(2, 2, i + 1, projection='3d')
+        ax = fig.add_subplot(1, 4, i + 1, projection='3d')
         cut = None if cuts[c] is None else (np.asarray(cuts[c][0], float), float(cuts[c][1]))
         verts, faces, is_cut, on_box = surface(TAU[c], cut)
         ghost = None
@@ -172,12 +170,12 @@ def main():
             ghost = (gv, gf)
         print(f"{c}: {len(faces)} triangles, {int(is_cut.sum())} on the cut section, {int(on_box.sum())} on the box faces")
         draw(ax, verts, faces, is_cut, on_box, ghost)
-        ax.text2D(.02, .97, f'({"abcd"[i]}) {c}', transform=ax.transAxes, fontweight='bold', fontsize=8.5, va='top')
-        ax.text2D(.02, .02, f'remaining box volume: {PCT[c]}', transform=ax.transAxes, fontsize=7.5, va='bottom')
+        ax.text2D(.5, 1.0, f'({"abcd"[i]}) {c}', transform=ax.transAxes, fontweight='bold', fontsize=8, ha='center', va='bottom')
+        ax.text2D(.5, -.02, f'remaining box volume {PCT[c]}', transform=ax.transAxes, fontsize=7, ha='center', va='top')
     fig.legend(handles=[Patch(fc=BAND, ec='none', label='material surface'), Patch(fc=BOXCAP, ec='none', label='wall section on the box faces'),
                         Patch(fc=SECTION, ec='none', label='cut-plane section'), Patch(fc=GHOST, ec='none', alpha=.4, label='part removed by the cut')],
-               loc='upper center', bbox_to_anchor=(.5, .995), ncol=4, frameon=False, fontsize=7.5, columnspacing=2.5)
-    fig.subplots_adjust(left=.01, right=.99, bottom=.01, top=.955, wspace=.04, hspace=.06)
+               loc='upper center', bbox_to_anchor=(.5, 1.0), ncol=4, frameon=False, fontsize=7, columnspacing=2.0)
+    fig.subplots_adjust(left=.0, right=1.0, bottom=.1, top=.84, wspace=.0)
     if test:
         fig.text(.5, .5, 'PREVIEW: cut planes of M1, H1, H2 are placeholders', ha='center', va='center', fontsize=11,
                  color='#C0392B', alpha=.7, rotation=20, zorder=10)
