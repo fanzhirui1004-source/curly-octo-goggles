@@ -238,7 +238,7 @@ def main(argv):
         C._free()
         rec['exact_dense_s'] = time.perf_counter() - t
         run('exact', S)
-        Sx = S; del S
+        Sx = S.cpu(); del S                                             # host: frees device memory for the learned runs
         # learned
         d = Path(a.work) / mname
         AE.write_data(C, d / a.case, {}, (), a.body)
@@ -274,7 +274,7 @@ def main(argv):
                 X = lr['_X']; ex, sx = [], []
                 for i in range(len(lat.geoms)):
                     q = lat.gather(X, i)
-                    ex.append((q * (Sh @ q)).sum(0)); sx.append((q * (Sx @ q)).sum(0))
+                    ex.append((q * (Sh @ q)).sum(0)); qc = q.cpu(); sx.append((qc * (Sx @ qc)).sum(0).to(q.device))
                 ex, sx = torch.stack(ex), torch.stack(sx)
                 lr['fields'][fname]['cell_eps_max'] = (ex / sx.clamp_min(1e-300) - 1).max(0).values.cpu().numpy().tolist()
                 lr['fields'][fname]['bound'] = ((ex - sx).sum(0) / sx.sum(0)).cpu().numpy().tolist()
