@@ -1,0 +1,119 @@
+{
+ "cell": [
+  3,
+  2,
+  0
+ ],
+ "case": "plate841_320_o023",
+ "design": "final NICE design, iteration 23",
+ "load": "consistent traction of unit resultant on the end face y = min, direction x",
+ "clamp": "every cut-band DOF of every cut cell",
+ "nice_solve": {
+  "C_hat": 78.2636324248177,
+  "pcg": 127,
+  "true_residual": 0.00036770298984448136
+ },
+ "rel_energy_norm": 0.010409703094240646,
+ "rel_l2": 0.007629210538867331,
+ "rel_l2_interior": 0.007962869208204569,
+ "rel_l2_retained": 0.0005424004825107169,
+ "rel_max_magnitude": 0.06325279265642217,
+ "local_extension_rel_energy_norm": 0.010410367627820492,
+ "local_extension_rel_l2": 0.0076157688930976,
+ "max_magnitude_exact": 12.912971115907013,
+ "max_magnitude_nice": 12.908189037621685,
+ "surface_max_magnitude_nice": 12.855169296264648,
+ "surface_max_magnitude_exact": 12.859902381896973,
+ "surface_max_difference": 0.037502262741327286,
+ "plate": {
+  "rel_energy_norm": 0.01719871435220512,
+  "rel_l2": 0.0009513708010668534,
+  "local_rel_energy_norm": 0.017237357665266424,
+  "energy_exact_sum": 78.28678762788067,
+  "energy_nice_sum": 78.26363352212927
+ },
+ "plate_energy_identity": {
+  "rel_energy_norm_squared": 0.0002957957753687464,
+  "compliance_gap_rel": 0.00029577823854914725,
+  "note": "sum over cells of the error energy relative to the exact compliance, against (C - C_hat)/C of the NICE solve of this script"
+ },
+ "cut_cells": {
+  "plate841_060_o023": {
+   "position": [
+    0,
+    6,
+    0
+   ],
+   "rel_energy_norm": 0.039940106001571184,
+   "rel_l2": 0.00821778384885727
+  },
+  "plate841_070_o023": {
+   "position": [
+    0,
+    7,
+    0
+   ],
+   "rel_energy_norm": 0.05069953728421527,
+   "rel_l2": 0.028417381138031297
+  },
+  "plate841_150_o023": {
+   "position": [
+    1,
+    5,
+    0
+   ],
+   "rel_energy_norm": 0.03834800712764526,
+   "rel_l2": 0.014637480072832032
+  },
+  "plate841_160_o023": {
+   "position": [
+    1,
+    6,
+    0
+   ],
+   "rel_energy_norm": 0.035880010549479396,
+   "rel_l2": 0.14036346518400525
+  },
+  "plate841_230_o023": {
+   "position": [
+    2,
+    3,
+    0
+   ],
+   "rel_energy_norm": 0.023018004379201755,
+   "rel_l2": 0.006449117591638075
+  },
+  "plate841_240_o023": {
+   "position": [
+    2,
+    4,
+    0
+   ],
+   "rel_energy_norm": 0.04159175615806726,
+   "rel_l2": 0.02933254914799167
+  },
+  "plate841_320_o023": {
+   "position": [
+    3,
+    2,
+    0
+   ],
+   "rel_energy_norm": 0.010409703094240646,
+   "rel_l2": 0.007629210538867331
+  },
+  "plate841_330_o023": {
+   "position": [
+    3,
+    3,
+    0
+   ],
+   "rel_energy_norm": 0.01638995468309349,
+   "rel_l2": 0.08089175255659731
+  }
+ },
+ "definitions": {
+  "rel_energy_norm": "sqrt((u_hat-u)^T K_m (u_hat-u) / u^T K_m u), K_m the stabilised cell stiffness",
+  "rel_l2": "||u_hat-u||_2/||u||_2 over all nodal displacement DOFs of the cell",
+  "local_extension": "the same with u_hat replaced by F_m q_m, q_m the exact retained displacements"
+ }
+}

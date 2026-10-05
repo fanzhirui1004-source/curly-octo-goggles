@@ -48,7 +48,7 @@ def plate(ax, D, name):
     E.collection(ax, parts, lw=.04)
     t = (p1 - p0) / np.linalg.norm(p1 - p0); L_ = np.linalg.norm(p1 - p0)
     hs = []
-    for s in np.linspace(.1, L_, 26):                                    # support symbol on the cut, top edge
+    for s in np.linspace(.3, L_ - .1, 24):                                    # support symbol on the cut, top edge
         a0 = p0 + s * t
         hs.append([np.r_[a0, 1.0], np.r_[a0 + .22 * n[:2] - .12 * t, 1.0]])
     E.lines(ax, hs, colors=E.CLAMP, linewidths=.5)
@@ -56,7 +56,7 @@ def plate(ax, D, name):
                  [np.r_[p1, 0.0], np.r_[p1, 1.0]]], colors=E.CLAMP, linewidths=.9)
     c = np.asarray(D['cell'], float)
     E.lines(ax, E.box_edges(c, c + 1), colors=FS.TEXT, linewidths=.6, linestyles=(0, (2, 1.5)))
-    E.setup(ax, (-.3, -.6, -.25), (nx + .3, ny + .3, nz + .3), elev=ELEV, azim=AZIM, zoom=1.42)
+    E.setup(ax, (-.3, -.6, -.25), (nx + .3, ny + .3, nz + .3), elev=ELEV, azim=AZIM, zoom=1.6)
     for x in (.5, 1.5, 2.5, 3.5):
         arrow2d(ax, E.to_plot((x - .4, -.3, .5)), E.to_plot((x + .4, -.3, .5)), color=FS.TEXT, lw=.8, mutation_scale=6)
     print(f'{name}: tau on the surface {m["tau"].min():.3f}-{m["tau"].max():.3f}')
@@ -76,7 +76,7 @@ def cell(ax, m, val, norm, cmap, ghost=True):
     E.lines(ax, [[np.r_[p0, 0], np.r_[p1, 0]], [np.r_[p0, 1], np.r_[p1, 1]], [np.r_[p0, 0], np.r_[p0, 1]],
                  [np.r_[p1, 0], np.r_[p1, 1]]], colors=E.CLAMP, linewidths=.8)
     E.lines(ax, E.box_edges((0, 0, 0), (1, 1, 1)), colors='#A3ADB8', linewidths=.5)
-    E.setup(ax, (-.02, -.02, -.02), (1.02, 1.02, 1.02), elev=CELL_VIEW[0], azim=CELL_VIEW[1], zoom=1.0)
+    E.setup(ax, (-.02, -.02, -.02), (1.02, 1.02, 1.02), elev=CELL_VIEW[0], azim=CELL_VIEW[1], zoom=1.12)
 
 
 def main():
@@ -87,17 +87,17 @@ def main():
     m = E.load('cell320_k023.npz')
     un, ue = np.linalg.norm(m['u_nice'], axis=1), np.linalg.norm(m['u_exact'], axis=1)
     du = np.linalg.norm(m['u_nice'] - m['u_exact'], axis=1)
-    fig = plt.figure(figsize=(178 * FS.MM, 128 * FS.MM))
+    fig = plt.figure(figsize=(178 * FS.MM, 132 * FS.MM))
     # (a), (b): plates
-    axa = fig.add_axes([-.04, .50, .56, .44], projection='3d', computed_zorder=False)
-    axb = fig.add_axes([.46, .50, .56, .44], projection='3d', computed_zorder=False)
+    axa = fig.add_axes([.0, .55, .49, .40], projection='3d', computed_zorder=False)
+    axb = fig.add_axes([.50, .55, .49, .40], projection='3d', computed_zorder=False)
     plate(axa, D, 'plate_k000.npz'); plate(axb, D, 'plate_k023.npz')
     chk = {0: (D['C0'], D['C0_exact']), D['k_final']: (D['C_final'], D['C_final_exact'])}   # exact C: Table ST21
     fig.text(.01, .975, '(a) Uniform start, τ = 0.40', fontweight='bold', fontsize=8.5, va='top')
-    fig.text(.505, .975, f'(b) Final NICE design (iteration {D["k_final"]})', fontweight='bold', fontsize=8.5, va='top')
-    for x, k in ((.25, 0), (.745, D['k_final'])):
-        fig.text(x, .535, f'NICE $C$ = {chk[k][0]:.2f}, exact $C$ = {chk[k][1]:.2f}', ha='center', fontsize=7, color=FS.TEXT)
-    cax = fig.add_axes([.30, .505, .40, .014])
+    fig.text(.51, .975, f'(b) Final NICE design (iteration {D["k_final"]})', fontweight='bold', fontsize=8.5, va='top')
+    for x, k in ((.25, 0), (.75, D['k_final'])):
+        fig.text(x, .575, f'NICE $C$ = {chk[k][0]:.2f}, exact $C$ = {chk[k][1]:.2f}', ha='center', fontsize=7, color=FS.TEXT)
+    cax = fig.add_axes([.30, .545, .40, .012])
     cb = fig.colorbar(ScalarMappable(Normalize(TAU_LO, TAU_HI), TAU_CMAP), cax=cax, orientation='horizontal',
                       ticks=[.18, .3, .4, .5, .6, .69])
     cb.set_label(r'local thickness parameter $\tau(x)$ on the walls', fontsize=7, labelpad=2)
@@ -106,26 +106,28 @@ def main():
     vmax = float(max(un.max(), ue.max()))
     nu = Normalize(0, vmax)
     w = .27
-    axs = [fig.add_axes([.02 + i * .315, .07, w, .36], projection='3d', computed_zorder=False) for i in range(3)]
+    axs = [fig.add_axes([.03 + i * .325, .125, w, .28], projection='3d', computed_zorder=False) for i in range(3)]
     cell(axs[0], m, un, nu, U_CMAP); cell(axs[1], m, ue, nu, U_CMAP)
     nd = Normalize(0, float(du.max()))
     cell(axs[2], m, du, nd, 'magma_r')
     fig.text(.01, .455, f'(c) Cut cell {tuple(D["cell"])} at the final design, design load: displacement magnitude on the walls',
              fontweight='bold', fontsize=8.5, va='top')
-    for ax, t in zip(axs, ('NICE, $|F_m B_m \\widehat U|$', 'exact condensation, $|E_m B_m U|$',
+    for x_, t in zip((.03 + w / 2, .355 + w / 2, .68 + w / 2), ('NICE, $|F_m B_m \\widehat U|$', 'exact condensation, $|E_m B_m U|$',
                            'difference $|F_m B_m \\widehat U - E_m B_m U|$')):
-        ax.text2D(.5, .98, t, transform=ax.transAxes, ha='center', va='top', fontsize=7.5)
-    c1 = fig.add_axes([.10, .065, .44, .012])
+        fig.text(x_, .415, t, ha='center', va='center', fontsize=7.5)
+    c1 = fig.add_axes([.12, .108, .44, .011])
     cb1 = fig.colorbar(ScalarMappable(nu, U_CMAP), cax=c1, orientation='horizontal')
     cb1.set_label('displacement magnitude $|u|$ (shared scale)', fontsize=7, labelpad=2)
-    c2 = fig.add_axes([.69, .065, .21, .012])
-    cb2 = fig.colorbar(ScalarMappable(nd, 'magma_r'), cax=c2, orientation='horizontal')
-    cb2.set_label('$|u_{\\rm NICE}-u_{\\rm exact}|$', fontsize=7, labelpad=2)
+    c2 = fig.add_axes([.72, .108, .21, .011])
+    cb2 = fig.colorbar(ScalarMappable(nd, 'magma_r'), cax=c2, orientation='horizontal',
+                       format=plt.matplotlib.ticker.FormatStrFormatter('%.2f'))
+    cb2.set_label('$|u_{\\rm NICE}-u_{\\rm exact}|$ (own scale)', fontsize=7, labelpad=2)
     for c_ in (cb1, cb2):
         c_.ax.tick_params(labelsize=6.5, length=2); c_.outline.set_linewidth(.5)
-        c_.formatter.set_powerlimits((-2, 3)); c_.ax.xaxis.get_offset_text().set_fontsize(6.5); c_.update_ticks()
-    fig.text(.795, .135, f'relative difference of the cell field:\nenergy norm {100 * R["rel_energy_norm"]:.2f}%, '
-             f'nodal $\\ell_2$ {100 * R["rel_l2"]:.2f}%', ha='center', va='top', fontsize=7, color=FS.TEXT)
+    fig.text(.5, .0, f'Relative difference of the cell field, NICE vs exact: {100 * R["rel_energy_norm"]:.2f}% in the energy norm, '
+             f'{100 * R["rel_l2"]:.2f}% in the nodal $\\ell_2$ norm;\nlargest difference on the walls '
+             f'{100 * du.max() / ue.max():.2f}% of the largest $|u|$ on the walls', ha='center', va='bottom', fontsize=7,
+             color=FS.TEXT, linespacing=1.3)
     FS.save(fig, 'F14_plate_design3d')
     cap = dict(cell=list(D['cell']), case=case, design=f"final NICE design, iteration {D['k_final']}",
                load=S['load'], clamp=S['clamp'], nice_solve=dict(C_hat=S['C_hat'], pcg=S['pcg'], true_residual=S['true_residual']),
@@ -135,6 +137,10 @@ def main():
                max_magnitude_exact=R['max_magnitude_exact'], max_magnitude_nice=R['max_magnitude_nice'],
                surface_max_magnitude_nice=float(un.max()), surface_max_magnitude_exact=float(ue.max()),
                surface_max_difference=float(du.max()), plate=S.get('plate'),
+               plate_energy_identity=dict(rel_energy_norm_squared=S['plate']['rel_energy_norm'] ** 2,
+                                          compliance_gap_rel=(D['C_final_exact'] - S['C_hat']) / D['C_final_exact'],
+                                          note='sum over cells of the error energy relative to the exact compliance, against '
+                                               '(C - C_hat)/C of the NICE solve of this script'),
                cut_cells={c: dict(position=r['position'], rel_energy_norm=r['rel_energy_norm'], rel_l2=r['rel_l2'])
                           for c, r in S['cells'].items() if r['kind'] != 'FULL'},
                definitions=dict(rel_energy_norm='sqrt((u_hat-u)^T K_m (u_hat-u) / u^T K_m u), K_m the stabilised cell stiffness',
