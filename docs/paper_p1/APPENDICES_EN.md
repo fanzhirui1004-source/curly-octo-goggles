@@ -61,7 +61,7 @@ Suppose additionally that \(\ker K=\operatorname{range}R\), \(R_P\) has rank six
 \tag{B.2}
 \]
 
-The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate extension therefore cannot add zero-energy modes to the condensed operator; a mode beyond the retained rigid-body modes could only be one of the discrete model itself, which Appendix A.1 excludes under its connectivity condition and the assumption that the numerically integrated element matrices keep the rigid-body kernel. For the lattices of Table 6, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
+The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate extension therefore cannot add zero-energy modes to the condensed operator; a mode beyond the retained rigid-body modes could only be one of the discrete model itself, which Appendix A.1 excludes under its connectivity condition and the assumption that the numerically integrated element matrices keep the rigid-body kernel. For the lattices of Table 5, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
 
 Rigid reproduction and symmetry give
 
@@ -335,7 +335,7 @@ The coarse matrix \(V^TAV\) is recovered from coloured stiffness probes. With a 
 
 ### F.2. Arithmetic
 
-The learned displacement extension, rigid-body reconstruction and prescribed retained entries use single precision (float32); quadratic energies and sparse stiffness products use double precision (float64), and convolutions use true float32 arithmetic, without TF32 or lower precisions. The correction, smoothing and coarse algebra alike, runs in double precision in training and in the accuracy studies of Sections 5.2–5.8, and in single precision in the timed lattice route of Table 6 and in the optimisations of Section 5.10. The fixed-network correction studies of Section 5.5 (Table 4 and Supplementary Tables ST05a, ST06 and ST07) apply the same correction in double precision to the single-precision network field; for the base network they estimate the smoothing interval from their own power-iteration start, which is also the interval compared with the spectrum in Section 5.4 (Supplementary Table ST05b). Sensitivity contractions use float32 element products with float64 accumulation. These arithmetic choices approximate the real linear maps of the preceding derivations.
+The learned displacement extension, rigid-body reconstruction and prescribed retained entries use single precision (float32); quadratic energies and sparse stiffness products use double precision (float64), and convolutions use true float32 arithmetic, without TF32 or lower precisions. The correction, smoothing and coarse algebra alike, runs in double precision in training and in the accuracy studies of Sections 5.2–5.8, and in single precision in the timed lattice route of Table 5 and in the optimisations of Section 5.10. The fixed-network correction studies of Section 5.5 (Table 3 and Supplementary Tables ST05a, ST06 and ST07) apply the same correction in double precision to the single-precision network field; for the base network they estimate the smoothing interval from their own power-iteration start, which is also the interval compared with the spectrum in Section 5.4 (Supplementary Table ST05b). Sensitivity contractions use float32 element products with float64 accumulation. These arithmetic choices approximate the real linear maps of the preceding derivations.
 
 ## Appendix G. Network coefficients and directional training
 
@@ -416,7 +416,7 @@ z,&|z|\le k_ba_{\max},\\
 \end{cases}
 \]
 
-All variants of Table 3 set \(k_b=0.5\); each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST15 (Supplementary Note S5) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
+All variants of Table 2 set \(k_b=0.5\); each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST15 (Supplementary Note S5) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
 
 A bias-free matrix \(W_{\rm out}\in\mathbb R^{32\times3}\) returns the fine features to nodal displacement in the prescribed coordinate order. Rigid reconstruction and retained-value restoration then produce Eq. (14).
 

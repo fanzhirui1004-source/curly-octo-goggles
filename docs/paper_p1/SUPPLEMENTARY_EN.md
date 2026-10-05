@@ -1,6 +1,6 @@
 # Supplementary material
 
-Supplementary Notes, Tables and Figures are numbered in the order in which they appear in this supplement. Variant labels follow the main text (Table 3); the key below also gives each variant's record identifier in the data archive.
+Supplementary Notes, Tables and Figures are numbered in the order in which they appear in this supplement. Variant labels follow the main text (Table 2); the key below also gives each variant's record identifier in the data archive.
 
 ## R1. Variant and geometry key
 
@@ -53,7 +53,7 @@ In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) tha
 
 All variants are evaluated on the 80 validation geometries of Table ST02. Orientation 17 is one of the 48 cube-symmetry transformations of Appendix G (Eq. (G.2)), applied to the geometry and to the retained directions; orientation 0 is the identity. The training set of 591 comprises 304 of the base network's 305 geometries (one cell that behaved as a near-mechanism was removed) and 287 further training geometries. By the geometry rotation described below, each 15,000-step continuation visits at most 153 of its 591 training geometries; the base network visited all 305 of its own over 40,000 training steps. Uncorrected, Smoothing-trained and NICE use the same seed and split, so they draw their geometries in the same order.
 
-Training settings, common to the variants of Table 3:
+Training settings, common to the variants of Table 2:
 
 - Batches of 16 directions; the geometry changes at every step. Three geometries of the training set are held on the GPU and one of them is replaced every 100 steps, so a run of \(N_{\rm st}\) training steps visits at most \(N_{\rm st}/100+3\) distinct training geometries.
 - Nominal class weights, in the order `force`, `force_c`, `support`, `support_k`, `face`, `face_c`, `macro`, `grf`, `glued`, `adv`: \(0.10,0.10,0.075,0.075,0.10,0.10,0.10,0.125,0.075,0.15\), renormalised over the available classes and assigned by systematic quotas.
@@ -213,7 +213,7 @@ Mean energy error (%) under consistent tractions after eight smoothing steps, on
 
 ## Table ST07. Energy error of different starting fields under the same correction
 
-Mean directional energy error (%) under consistent tractions (32 validation directions, fixed retained displacement) after the correction with \(k\) smoothing steps before and after the \(Q_1(17)\) coarse-grid correction, for three starting fields and six detailed cells; the 8-step entries of M1, M2, H1, H2 and U2 are those of Table 4. Harmonic and zero starting fields receive the exact rigid-body split.
+Mean directional energy error (%) under consistent tractions (32 validation directions, fixed retained displacement) after the correction with \(k\) smoothing steps before and after the \(Q_1(17)\) coarse-grid correction, for three starting fields and six detailed cells; the 8-step entries of M1, M2, H1, H2 and U2 are those of Table 3. Harmonic and zero starting fields receive the exact rigid-body split.
 
 The harmonic starting field is the graph-harmonic extension of the deformation part of the retained displacement. The graph has the active nodes of the cell as vertices and joins every pair of the 27 nodes of each active element, with the element's material volume as weight (summed over the elements that share a pair); \(L=D_W-W\) is its Laplacian. With the retained values prescribed, each displacement component is extended separately by \(L_{II}u_I=-L_{IP}q\). As for the zero field, the retained displacement is first split as \(q=R_Pc+(q-R_Pc)\) with \(c=R_P^{+}q\); only the second part is extended, the rigid field \(Rc\) is added, and the retained values are restored. The extension has no trainable parameters and uses only the element connectivity and volumes.
 
@@ -478,19 +478,19 @@ The supported systems on the full retained space have 28,206 (U1), 39,996 (M1), 
 
 ## Supplementary Note S3. Cost records: whole-lattice direct solution and per-cell condensation
 
-This note defines the three routes of Table 6 and records their phases (Table ST12), together with a per-cell cost comparison of conventional condensation and NICE (Table ST13). The four-cell lattices are the two layers \(z=0\) and \(z=1\) of the \(2\times2\times2\) block of Section 5.8, taken with their thickness corners unchanged: each layer holds two uncut cells and two cut cells with retained volume fractions 0.616 and 0.252. All lattices are clamped on the face \(y=\min\) and loaded by unit consistent tractions on the face \(y=\max\) in the three Cartesian directions; routes (a) and (b) additionally solve three random loads.
+This note defines the three routes of Table 5 and records their phases (Table ST12), together with a per-cell cost comparison of conventional condensation and NICE (Table ST13). The four-cell lattices are the two layers \(z=0\) and \(z=1\) of the \(2\times2\times2\) block of Section 5.8, taken with their thickness corners unchanged: each layer holds two uncut cells and two cut cells with retained volume fractions 0.616 and 0.252. All lattices are clamped on the face \(y=\min\) and loaded by unit consistent tractions on the face \(y=\max\) in the three Cartesian directions; routes (a) and (b) additionally solve three random loads.
 
 Route (a), the whole-lattice direct solution, assembles the full cut-cell stiffness of every cell, retained and interior degrees of freedom, into one global matrix. The retained degrees of freedom are numbered and coupled exactly as in the learned lattice, with the same clamp, free set and load vectors, and the interior degrees of freedom of each cell follow the free retained ones. The matrix is scaled symmetrically by its diagonal and factorised by MKL PARDISO 2026.1 on the CPU as a symmetric positive definite Cholesky factorisation of the upper triangle (mtype 2), with nested-dissection ordering (iparm(2) = 3) and 16 threads; the PARDISO phases are called directly with explicitly set parameters, and all six loads are solved at once. Relative residuals \(\|Ku-f\|/\|f\|\) are recomputed with the unscaled matrix.
 
 Route (b), conventional exact condensation, processes the cells one at a time on the CPU with 16 threads: cell setup and assembly as in route (a), then the dense condensed matrix of the cell on its retained degrees of freedom by PARDISO's Cholesky factorisation with the Schur-complement option (iparm(36)), after which the cell is released. The condensed lattice system is solved exactly by a block Cholesky factorisation in substructuring order: for each cell, its private retained block is factorised and eliminated with dense kernels, the dense interface matrix over the retained DOFs shared by several cells is factorised and solved, and the private DOFs are recovered by back-substitution. The condensed cell matrices are held until their elimination.
 
-Route (c) runs one lattice analysis with sensitivities in the deployed implementation with NICE on the GPU: cell preparation (cell construction, stiffness and moment assembly, network input and encoding, and a first application that prepares the correction), assembly of the lattice and of \(\mathbb K_{PP}\), preconditioner setup (the balanced two-level action of Supplementary Note S4.1), conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(9.0\times10^{-7}\) to \(9.9\times10^{-7}\)), and the field-based sensitivities \(\widetilde s_c\) of Eq. (9) for the three loads, obtained by reverse-mode differentiation of the moment integrals at the fixed recovered fields. Its arithmetic is that of the timed route of Table 2: the network and the correction's smoothing and coarse solve in single precision, the stiffness products of the condensed action in double precision (Appendix F.2). The three routes read the same generated cell geometries; geometry generation is not timed.
+Route (c) runs one lattice analysis with sensitivities in the deployed implementation with NICE on the GPU: cell preparation (cell construction, stiffness and moment assembly, network input and encoding, and a first application that prepares the correction), assembly of the lattice and of \(\mathbb K_{PP}\), preconditioner setup (the balanced two-level action of Supplementary Note S4.1), conjugate gradients for the three consistent loads to a recursive relative residual of \(10^{-6}\) (reached at \(9.0\times10^{-7}\) to \(9.9\times10^{-7}\)), and the field-based sensitivities \(\widetilde s_c\) of Eq. (9) for the three loads, obtained by reverse-mode differentiation of the moment integrals at the fixed recovered fields. Its arithmetic is that of the timed route of Table 1: the network and the correction's smoothing and coarse solve in single precision, the stiffness products of the condensed action in double precision (Appendix F.2). The three routes read the same generated cell geometries; geometry generation is not timed.
 
 Whole-lattice iterative solvers (Table ST12e) use the global matrix, load vectors, clamp and numbering of route (a), exported once and solved with PETSc 3.26 [Balay et al. (2026)](https://petsc.org/release/manual/) on the CPU of routes (a) and (b) with 16 MPI processes. Conjugate gradients run on the unscaled system and stop on the unpreconditioned relative residual \(\|Ku-f\|/\|f\|\le10^{-9}\); the iterate is recorded where the residual first falls below \(10^{-3}, 10^{-4}, \dots\), with its compliance and energy-norm difference from the final iterate. GAMG (smoothed aggregation, PETSc defaults) uses block size 3 and the six rigid-body modes of the DOF positions as near-null space; BoomerAMG uses HMIS coarsening, extended+i interpolation, nodal coarsening, strong threshold 0.5 and its default relaxation. For BDDC with exact local solvers and one subdomain per cell, the Dirichlet matrix of a cell is its stiffness on the DOFs it shares with no other cell and its Neumann matrix the whole cell stiffness on its free DOFs. Each is factorised once, cell after cell, with the PARDISO configuration of route (a) (symmetric Jacobi scaling, real SPD Cholesky, tuned iparm, 16 threads); the singular Neumann matrices of floating cells are shifted by \(10^{-10}\) on the diagonal of the scaled matrix. The sum of these factorisations is a reference for the local factorisation cost of BDDC with exact local solvers in this configuration; the treatment of the primal constraints and the null space in the local Neumann problems, the coarse problem and the iterations are not included. With MUMPS for the local and coarse problems on eight processes, BDDC with all local factors resident exceeded 90 GiB during its setup.
 
 ### Table ST12. Whole-lattice direct solution, conventional exact condensation and learned route: dimensions, phases and memory
 
-Times in s. Memory in GiB (\(2^{30}\) bytes): PARDISO memory is its permanent plus factorisation storage (iparm(16) + iparm(17)) reported by the analysis phase, with kilobytes taken as 1024 bytes. Totals, iteration counts, peak process memory and the memory of route (c) are given in Table 6.
+Times in s. Memory in GiB (\(2^{30}\) bytes): PARDISO memory is its permanent plus factorisation storage (iparm(16) + iparm(17)) reported by the analysis phase, with kilobytes taken as 1024 bytes. Totals, iteration counts, peak process memory and the memory of route (c) are given in Table 5.
 
 #### ST12a. Lattice dimensions
 
@@ -501,7 +501,7 @@ Times in s. Memory in GiB (\(2^{30}\) bytes): PARDISO memory is its permanent pl
 | 2×2×2 | 8 (4) | 69,156 (50%) |
 | 3×3×1 | 8 (3) | 53,085 (37%) |
 
-Total and free retained DOFs: Table 6.
+Total and free retained DOFs: Table 5.
 
 #### ST12b. Route (a), direct solution on the CPU (Cholesky, 16 threads and one thread): phases (s) and memory (GiB)
 
@@ -516,7 +516,7 @@ Total and free retained DOFs: Table 6.
 | 3×3×1 | 16 | 431.3 | 42.3 | 50.4 | 481.5 | 36.0 | 1,041.6 | 80.9 | 2.6e-09 |
 | 3×3×1 | 1 | 1,669.9 | 45.4 | 324.4 | 6,059.1 | 32.4 | 8,131.0 | 79.8 | 2.8e-09 |
 
-Total: sum of the phases; the 16-thread totals are those of Table 6. With 32 threads, the whole direct solution takes 378.5, 341.1, 823.4 and 955.5 s instead of 484.4, 349.2, 867.8 and 1,041.6 s, because cell setup and assembly do not speed up.
+Total: sum of the phases; the 16-thread totals are those of Table 5. With 32 threads, the whole direct solution takes 378.5, 341.1, 823.4 and 955.5 s instead of 484.4, 349.2, 867.8 and 1,041.6 s, because cell setup and assembly do not speed up.
 
 #### ST12c. Route (b), conventional exact condensation on the CPU (16 threads): phases (s) and memory (GiB)
 
@@ -527,7 +527,7 @@ Total: sum of the phases; the 16-thread totals are those of Table 6. With 32 thr
 | 2×2×2 | 393.6 | 392.5 | 133.9 | 32.8 | 2e-10 |
 | 3×3×1 | 462.0 | 555.0 | 165.7 | 33.4 | 7e-10 |
 
-Condensed solve: private elimination, interface factorisation and solution, and back-substitution for the six loads. The total of Table 6 also includes the per-cell lattice geometry, the matrix scaling and data movement between phases (17 to 35 s). Compliance vs. (a): largest relative difference over the six loads from the whole-lattice direct solution.
+Condensed solve: private elimination, interface factorisation and solution, and back-substitution for the six loads. The total of Table 5 also includes the per-cell lattice geometry, the matrix scaling and data movement between phases (17 to 35 s). Compliance vs. (a): largest relative difference over the six loads from the whole-lattice direct solution.
 
 #### ST12d. Route (c), learned route: phases of one lattice analysis with sensitivities (s)
 
@@ -538,7 +538,7 @@ Condensed solve: private elimination, interface factorisation and solution, and 
 | 2×2×2 | 11.82 | 0.17 | 6.57 | 56.37 | 3.80 |
 | 3×3×1 | 12.66 | 0.14 | 7.25 | 80.85 | 4.07 |
 
-Total, iterations and memory: Table 6; the phases sum to 0.2–0.5 s less than the totals, the remainder being bookkeeping between phases (GPU memory: peak allocated by the process; CPU memory: resident set size after cell preparation). Learned substructures resident on the GPU (Supplementary Note S4.1): all cells of the four-cell lattices and four cells of each eight-cell lattice.
+Total, iterations and memory: Table 5; the phases sum to 0.2–0.5 s less than the totals, the remainder being bookkeeping between phases (GPU memory: peak allocated by the process; CPU memory: resident set size after cell preparation). Learned substructures resident on the GPU (Supplementary Note S4.1): all cells of the four-cell lattices and four cells of each eight-cell lattice.
 
 #### ST12e. Whole-lattice iterative solvers on the CPU (16 MPI processes): setup, conjugate gradients and BDDC factorisations (s)
 
@@ -630,7 +630,7 @@ This note gives the settings (S6.1, Table ST16) and the records of the thickness
 
 ### S6.1. Optimiser and constraints
 
-Table ST16 lists the settings. The method of moving asymptotes builds one convex separable approximation per analysis from the field-based gradient estimate and never tests the decrease of \(\widehat C\) along a search direction, where the inconsistency discussed in Section 6.2 would matter. Neither the gradient norm nor a KKT residual is used for stopping, since the estimate is not the gradient of \(\widehat C\) and \(\widehat C\) changes its discrete model between iterations (S6.4). A design iteration differs from an analysis of Table 6 in that it regenerates every cell's geometry and solves for one load instead of three: for case A, a NICE design iteration takes 74 s on average (Table ST17c) against 79 s for the analysis of the same block in Table 6, which needs no geometry generation but solves for three loads.
+Table ST16 lists the settings. The method of moving asymptotes builds one convex separable approximation per analysis from the field-based gradient estimate and never tests the decrease of \(\widehat C\) along a search direction, where the inconsistency discussed in Section 6.2 would matter. Neither the gradient norm nor a KKT residual is used for stopping, since the estimate is not the gradient of \(\widehat C\) and \(\widehat C\) changes its discrete model between iterations (S6.4). A design iteration differs from an analysis of Table 5 in that it regenerates every cell's geometry and solves for one load instead of three: for case A, a NICE design iteration takes 74 s on average (Table ST17c) against 79 s for the analysis of the same block in Table 5, which needs no geometry generation but solves for three loads.
 
 ### Table ST16. Optimiser, constraints and analysis settings
 
@@ -649,7 +649,7 @@ Table ST16 lists the settings. The method of moving asymptotes builds one convex
 | Move limit | 0.05 of the variable range, 0.0255 per iteration |
 | Stopping rule | \(\max\lvert\Delta\tau\rvert<10^{-3}\), or relative objective change below \(10^{-4}\) in three consecutive iterations, or 60 iterations |
 | Geometry | Every iteration regenerates the geometry of every cell from its current corner parameters with the geometry generator used for all cells of this study, in parallel processes on the CPU (8 for case A, 12 for the plate), and rebuilds every learned substructure |
-| Lattice solve | Preconditioned conjugate gradients with the balanced two-level preconditioner of Supplementary Note S4.1 to a recursive relative residual of \(10^{-6}\) (at most 3,000 iterations), in the arithmetic of the timed route of Table 6, with the coarse-factor pivot rule of Appendix F.1; a run stops if a solve reaches 3,000 iterations or a recomputed relative residual above \(10^{-2}\). Exact twin: dense exact condensed matrices of every cell, assembled solve to \(10^{-10}\) |
+| Lattice solve | Preconditioned conjugate gradients with the balanced two-level preconditioner of Supplementary Note S4.1 to a recursive relative residual of \(10^{-6}\) (at most 3,000 iterations), in the arithmetic of the timed route of Table 5, with the coarse-factor pivot rule of Appendix F.1; a run stops if a solve reaches 3,000 iterations or a recomputed relative residual above \(10^{-2}\). Exact twin: dense exact condensed matrices of every cell, assembled solve to \(10^{-10}\) |
 | Warm start | From the previous iteration's solution, matched DOF by DOF on absolute grid position, displacement component and private cut-band flag; unmatched DOFs start at zero; the start is scaled by the energy-optimal factor \(f_g^TX_0/(X_0^T\widehat{\mathbb K}X_0)\); the stopping criterion, relative to \(\lVert f_g\rVert\), is unchanged. At iteration 0 of every run the solve started from zero. Exact twin: cold start |
 | GPU memory budget for resident learned substructures (Supplementary Note S4.1) | Case A: all cells resident; plate: cells resident while the allocated GPU memory stays below 22 GiB; scale demonstration: 4 GiB (Table ST20) |
 | Geometry-generation fallback | If generation fails for some cells, the free vertices of those cells are multiplied by \(1+\epsilon\), \(\epsilon=10^{-4},-10^{-4},10^{-3},-10^{-3},3\times10^{-3},-3\times10^{-3}\) in turn (clipped to the bounds), every cell sharing them is regenerated, and the perturbed design is analysed and continued from. Applied four times over all runs (Table ST19a) |
@@ -713,7 +713,7 @@ Over the 18 free vertex parameters. Surrogate compliance error \((\widehat C-C)/
 | Time per iteration, mean (range) (s) | 74 (62–120) | 469 (455–534) |
 | Mean phases (s) | geometry 20.8, cell preparation 10.1, lattice and \(\mathbb K_{PP}\) assembly 0.1, preconditioner 5.9, PCG 31.6, sensitivities and volume gradient 5.5, MMA 0.006 | — |
 
-Final designs: exact compliance of the NICE design relative to that of the twin's design −1.25e-05; corner parameters differ by at most 0.0051 (root mean square 0.0011). Iterations and first and last compliances of both runs: Table 7. Mean phases over all iterations; the geometry phase is zero at iteration 0.
+Final designs: exact compliance of the NICE design relative to that of the twin's design −1.25e-05; corner parameters differ by at most 0.0051 (root mean square 0.0011). Iterations and first and last compliances of both runs: Table 6. Mean phases over all iterations; the geometry phase is zero at iteration 0.
 
 ### S6.3. Plate supported on its cut and homogenisation design
 
@@ -739,7 +739,7 @@ In iterations 0–3, while the volume bound is violated, the macroscale and NICE
 | Recomputed residual | 3.5e-04–5.8e-04 | — | 3.9e-04 |
 | \(\max\lvert\bar U^T\rho\rvert/\widehat C\) | 5.2e-08 | — | 5.4e-08 |
 
-Every fine-scale value is a NICE value; exact checks in Table ST21. Iterations and first and last compliances: Table 7. Figure 13a,b draws the corner parameters in the layer \(z=0\); those in the layer \(z=1\) differ from them by at most 1.1e-03 (NICE) and 6.3e-13 (homogenisation design).
+Every fine-scale value is a NICE value; exact checks in Table ST21. Iterations and first and last compliances: Table 6. Figure 13a,b draws the corner parameters in the layer \(z=0\); those in the layer \(z=1\) differ from them by at most 1.1e-03 (NICE) and 6.3e-13 (homogenisation design).
 
 #### ST18b. Homogenised law of the uniform-thickness cell
 
