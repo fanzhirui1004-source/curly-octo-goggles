@@ -99,9 +99,9 @@ Of the four properties named in Section 1, two can now be made precise. \(\wideh
 
 ## 3. Error of an approximate extension in analysis and design
 
-With the retained DOFs fixed, the local approximation lies in the interior field. For any admissible linear extension we relate its departure from equilibrium to the condensed stiffness and examine how assembly and thickness differentiation weight it; the relations are stated for a single substructure and apply to every cell of an assembly. Appendix B.1 collects the assumptions. The Ritz identity (4), the residual form (5), the energy orthogonality behind Eq. (6), the residual-corrected functional underlying Eq. (8) and the self-adjoint compliance sensitivity are classical [Fraeijs de Veubeke (1965)](https://doi.org/10.1002/nme.339), [Toselli & Widlund (2005)](https://doi.org/10.1007/b137868), [Becker & Rannacher (2001)](https://doi.org/10.1017/S0962492901000010), [Haftka & Gürdal (1992)](https://doi.org/10.1007/978-94-011-2550-5), [Bendsøe & Sigmund (2004)](https://doi.org/10.1007/978-3-662-05086-6); the share-weighted bounds of Eq. (7) and Appendix C.1 and the sensitivity relations (9)–(10) with their bounds (Appendices H.1 and H.2) are derived here for approximate extensions; Appendix B.3 rearranges the energy error as \(\varepsilon=\delta^2\kappa\) (applied in Section 5.4).
+With the retained DOFs fixed, the local approximation lies in the interior field. This section follows the error of any admissible linear extension through the condensed stiffness to the two quantities that design uses, and arrives at three results. First, the condensed stiffness exceeds the exact Schur complement by the energy of the interior error: the error is one-sided, quadratic and computable from the interior residual (Section 3.1). Second, this error reaches the assembled compliance weighted by the share of the energy that each cell carries (Section 3.2). Third, it reaches the thickness sensitivity through the stiffness derivative, with a term linear in the interior error, so that an accurate compliance does not imply an accurate local sensitivity (Section 3.3). The relations are stated for a single substructure and apply to every cell of an assembly; Appendix B.1 collects the assumptions. The Ritz identity, the residual form and the self-adjoint compliance sensitivity are classical [Fraeijs de Veubeke (1965)](https://doi.org/10.1002/nme.339), [Toselli & Widlund (2005)](https://doi.org/10.1007/b137868), [Becker & Rannacher (2001)](https://doi.org/10.1017/S0962492901000010), [Haftka & Gürdal (1992)](https://doi.org/10.1007/978-94-011-2550-5), [Bendsøe & Sigmund (2004)](https://doi.org/10.1007/978-3-662-05086-6); the share-weighted bound and the sensitivity relations are derived here for approximate extensions.
 
-### 3.1. Variational energy error
+### 3.1. Condensed stiffness: a one-sided error quadratic in the interior error
 
 For the specified symmetric stiffness \(K\succeq0\), with \(A=K_{II}\succ0\) and zero interior body loads, \(Eq\) minimises the energy at prescribed \(q\). Any admissible linear extension \(F\), with \(J_PF=J_PE=I_p\), differs from it only in the interior DOFs. Writing \(H=J_I(F-E)\), interior equilibrium \(J_IKE=0\) eliminates the cross terms in the condensed stiffness \(\widehat S=F^TKF\) of \(F\) and gives the discrete Ritz identity
 
@@ -110,7 +110,7 @@ For the specified symmetric stiffness \(K\succeq0\), with \(A=K_{II}\succ0\) and
 \tag{4}
 \]
 
-An approximate extension therefore adds stiffness in proportion to the energy of its interior error; the absence of a first-order term follows from equilibrium of the reference field. For \(u=Eq\), \(\widehat u=Fq\) and \(d_I=Hq\), the interior residual \(r_I=(K\widehat u)_I\) satisfies \(r_I=Ad_I\). The relative directional energy error \(\varepsilon(q)=q^T(\widehat S-S)q/(q^TSq)\), which measures the excess of the condensed strain energy over the exact one and is nonnegative by Eq. (4), can consequently be written as
+An approximate extension therefore adds stiffness in proportion to the energy of its interior error; the absence of a first-order term follows from equilibrium of the reference field. For \(u=Eq\), \(\widehat u=Fq\) and \(d_I=Hq\), the interior residual \(r_I=(K\widehat u)_I\) satisfies \(r_I=Ad_I\), so the relative directional energy error \(\varepsilon(q)=q^T(\widehat S-S)q/(q^TSq)\), nonnegative by Eq. (4), is
 
 \[
 \varepsilon(q)=\frac{d_I^TAd_I}{q^TSq}
@@ -118,70 +118,68 @@ An approximate extension therefore adds stiffness in proportion to the energy of
 \tag{5}
 \]
 
-The interior residual is available without the reference extension, and its squared \(A^{-1}\)-norm, which needs one interior solve per direction, is the stiffness-error measure. Appendix B gives the all-direction energy error \(\varepsilon_*\) (Eq. (B.4)). The largest error over a finite direction set bounds it from below; an upper bound follows only from the coverage of the direction set (Appendix G.4).
+The residual is available without the reference extension; evaluating its \(A^{-1}\)-norm needs one interior solve per direction. A bound over all directions follows only from the coverage of the sampled directions (Appendices B and G.4).
 
-### 3.2. Assembled compliance and energy share
+### 3.2. Compliance: the error weighted by the energy share
 
-Consider the exact equilibria of the two supported systems in Eq. (3), with the same local matrices, assembly maps and homogeneous supports, and the same nonzero retained load. Writing \(u_m=E_mB_mU\), \(\widehat u_m=F_mB_m\widehat U\) and \(a(v,v)=\sum_m v_m^TK_mv_m\), global equilibrium and local energy orthogonality give (Appendix C)
+Consider the exact equilibria of the two supported systems in Eq. (3), with the same local matrices, assembly maps, homogeneous supports and nonzero retained load. Writing \(u_m=E_mB_mU\), \(\widehat u_m=F_mB_m\widehat U\) and \(a(v,v)=\sum_m v_m^TK_mv_m\), global equilibrium and local energy orthogonality give (Appendix C)
 
 \[
-\boxed{C-\widehat C
+C-\widehat C
 =a(\widehat u-u,\widehat u-u)
 =\|\widehat U-U\|_{\mathbb K}^{2}
-+\sum_m\|H_mB_m\widehat U\|_{A_m}^{2}.}
++\sum_m\|H_mB_m\widehat U\|_{A_m}^{2}.
 \tag{6}
 \]
 
-Compliance underestimation is therefore the total reconstructed error energy, with orthogonal contributions from the changed retained solution and from the interior departure from equilibrium at that solution.
-
-The influence of a local approximation depends on how much energy that substructure carries under the applied load. At the exact assembled traces \(q_m=B_mU\), define the energy shares \(w_m=q_m^TS_mq_m/C\) and \(\beta=\sum_mw_m\varepsilon_m(q_m)\), with contributions of zero-energy rigid-body responses defined as zero. The energy shares \(w_m\) sum to one, and
+Compliance underestimation is the total reconstructed error energy, with orthogonal contributions from the changed retained solution and from the interior departure from equilibrium at that solution. How much of a cell's error reaches it depends on how much energy the cell carries. At the exact assembled traces \(q_m=B_mU\), define the energy shares \(w_m=q_m^TS_mq_m/C\), which sum to one, and \(\beta=\sum_mw_m\varepsilon_m(q_m)\), with zero-energy rigid-body responses contributing zero. Then (Appendix C.1)
 
 \[
-0\le\frac{C-\widehat C}{C}\le\frac{\beta}{1+\beta}\le\beta.
+\boxed{0\le\frac{C-\widehat C}{C}\le\frac{\beta}{1+\beta}\le\beta.}
 \tag{7}
 \]
 
-A small energy share can thus attenuate a substructure's effect on compliance even when its local field remains inaccurate (Appendix C.1).
+A cell with a small energy share can thus leave the compliance accurate even when its own field is not.
 
-The energy relation (6) also separates the operator error from the error of an incomplete assembled solve. For an approximate solution \(\bar U\), define the recomputed residual \(\rho=f_g-\widehat{\mathbb K}\bar U\) using the stated variational operator and the recovered fields \(\bar u_m=F_mB_m\bar U\). Then
+For the numerical checks of Section 5.8, Eq. (6) also separates the operator error from that of an incomplete assembled solve. For an approximate solution \(\bar U\), with the recomputed residual \(\rho=f_g-\widehat{\mathbb K}\bar U\) and the recovered fields \(\bar u_m=F_mB_m\bar U\),
 
 \[
-C-f_g^T\bar U=a(\bar u-u,\bar u-u)+\bar U^T\rho.
+C-f_g^T\bar U=a(\bar u-u,\bar u-u)+\bar U^T\rho,
 \tag{8}
 \]
 
-The signed residual work \(\bar U^T\rho\) determines how an incomplete solution affects the compliance comparison. Appendix C.2 gives the residual-corrected functional and the additional consistency term required when the numerical action differs from the energy operator.
+so the signed residual work \(\bar U^T\rho\) measures the effect of stopping the solve early (Appendix C.2).
 
-### 3.3. Field-based sensitivity and the complete design derivative
+### 3.3. Sensitivity: a linear term through the stiffness derivative
 
-On a differentiable design interval with fixed active and retained DOFs, assembly maps, homogeneous supports and a design-independent load, the exact compliance sensitivity is \(s_c=-u^TK_{,c}u\), where \(K_{,c}=\partial K/\partial\tau_c\); contributions are summed over affected substructures. Interior equilibrium gives \(S_{,c}=E^TK_{,c}E\), eliminating the design derivative of the exact extension from the force-controlled compliance derivative [Giles & Pierce (2000)](https://doi.org/10.1023/a:1011430410075), [Haftka & Gürdal (1992)](https://doi.org/10.1007/978-94-011-2550-5).
-
-The field-based sensitivity estimate \(\widetilde s_c=-\widehat u^TK_{,c}\widehat u\) uses the same stiffness derivative with the reconstructed field. Over the eight corners these form the thickness sensitivity vectors \(\boldsymbol s=(s_c)_{c=1}^8\) and \(\widetilde{\boldsymbol s}=(\widetilde s_c)_{c=1}^8\). At the same retained displacement,
+On a differentiable design interval with fixed active and retained DOFs, assembly maps, homogeneous supports and a design-independent load, the exact compliance sensitivity is \(s_c=-u^TK_{,c}u\), where \(K_{,c}=\partial K/\partial\tau_c\), summed over the affected substructures; interior equilibrium removes the design derivative of the exact extension [Giles & Pierce (2000)](https://doi.org/10.1023/a:1011430410075), [Haftka & Gürdal (1992)](https://doi.org/10.1007/978-94-011-2550-5). The field-based sensitivity estimate \(\widetilde s_c=-\widehat u^TK_{,c}\widehat u\) uses the same stiffness derivative with the reconstructed field; over the eight corners these form the vectors \(\boldsymbol s\) and \(\widetilde{\boldsymbol s}\). At the same retained displacement,
 
 \[
-\widetilde s_c-s_c=-2d^TK_{,c}u-d^TK_{,c}d,
-\qquad u=Eq,\quad d=Fq-Eq.
+\boxed{\widetilde s_c-s_c=-2d^TK_{,c}u-d^TK_{,c}d,
+\qquad u=Eq,\quad d=Fq-Eq.}
 \tag{9}
 \]
 
-Interior equilibrium sets \((Ku)_I=0\) but generally leaves \((K_{,c}u)_I\ne0\), so the linear cross term survives, and decreasing energy error need not decrease sensitivity error monotonically. Because the trilinear shape functions are nonnegative, thickening a corner enlarges the material domain monotonically; with basis, material and ghost contribution held fixed, the exact stiffness derivative is therefore positive semidefinite, \(K_{,c}\succeq0\) (Eq. (H.6)). The quadratic term of Eq. (9) is then nonpositive, but the cross term can have either sign (Appendix H.2). A numerical derivative inherits \(K_{,c}\succeq0\) only while its quadrature preserves the nesting (Appendix H.2).
+Interior equilibrium sets \((Ku)_I=0\) but generally leaves \((K_{,c}u)_I\ne0\), so the linear cross term survives. The energy error therefore bounds the sensitivity error only at the order \(\sqrt\varepsilon\), with constants that vary between cells and directions (Eq. (H.4)), and a decrease of the energy error need not decrease the sensitivity error monotonically. Because thickening a corner enlarges the material domain, \(K_{,c}\succeq0\) under exact integration (Eq. (H.6)); the quadratic term of Eq. (9) is then nonpositive, while the linear term can have either sign (Appendix H.2).
 
-The derivative of the surrogate compliance also contains the design dependence of the extension. For a parameter affecting one substructure, differentiation at fixed retained DOFs gives
+The field-based estimate is not the derivative of the surrogate compliance, which also contains the design dependence of the extension. For a parameter affecting one substructure, differentiation at fixed retained DOFs gives
 
 \[
 \widehat C_{,c}
 =-\widehat u^TK_{,c}\widehat u
  -2\widehat q^TF_{,c}^TK\widehat u
 =\widetilde s_c-2(F_{I,c}\widehat q)^Tr_I,
-\qquad\widehat u=F\widehat q.
+\qquad\widehat u=F\widehat q,
 \tag{10}
 \]
 
-Here \(\widehat q\) is the assembled retained solution obtained with \(\widehat S\), \(r_I=(KF\widehat q)_I\) and \(F_{I,c}=J_I\partial F/\partial\tau_c\); affected-substructure contributions are summed. The second term couples the extension's design dependence to its interior imbalance and vanishes for an equilibrated extension. All sensitivities reported in this paper are the field-based estimates \(\widetilde s_c\), the first term: they estimate the exact sensitivity and are not the derivative of the surrogate compliance. Energy accuracy alone does not control the complete derivative (Appendix H.2, Section 6.2). Appendix H specifies the numerical stiffness derivatives.
+where \(\widehat q\) is the assembled retained solution obtained with \(\widehat S\), \(r_I=(KF\widehat q)_I\) and \(F_{I,c}=J_I\partial F/\partial\tau_c\). The second term vanishes for an equilibrated extension, but energy accuracy alone does not control it (Appendix H.2, Section 6.2). All sensitivities reported in this paper are the field-based estimates \(\widetilde s_c\), which estimate the exact sensitivity. Both derivatives hold on intervals where the discrete choices of Appendix B.1 are fixed. Across a switch of the discrete model the reference compliance itself can jump, and any jump that the surrogate adds is bounded by its own error level, since \(0\le C-\widehat C\le\beta C\) at every design (Eq. (7); Supplementary Note S4.3). Appendix H specifies the numerical stiffness derivatives.
 
-These derivatives hold on intervals where the discrete choices listed in Appendix B.1 (active elements, ghost faces, retained DOFs, the network's binary node indicators and the correction's discrete choices) are fixed; a change of any of them is a switch of the discrete model. Across a switch the discrete reference compliance itself can jump, as it does for exact condensation on the same background mesh; because \(0\le C-\widehat C\le\beta C\) at every design (Eq. (7)), any jump that the surrogate compliance adds is bounded by its own error level (Supplementary Note S4.3).
+For the construction of Section 4, these results become three conditions on the extension:
 
-For the construction of Section 4, these relations turn the properties sought in Sections 1 and 2.3 into three conditions on the extension: its interior error energy must be small in the directions that the assembled solution selects, which Eq. (5) expresses through the interior residual; a correction applied at deployment must not increase that energy, so that Eq. (4) places the corrected condensed stiffness between the uncorrected one and the exact Schur complement (Section 4.4); and, since the energy error bounds the sensitivity error of Eq. (9) only at the order \(\sqrt\varepsilon\), with constants that vary between cells and directions (Eq. (H.4)), the sensitivity must be verified independently of the compliance (Sections 5.6 and 5.10).
+1. its interior error energy must be small in the directions that the assembled solution selects, which Eq. (5) expresses through the interior residual (Section 4.2);
+2. a correction applied at deployment must not increase that energy, so that Eq. (4) places the corrected condensed stiffness between the uncorrected one and the exact Schur complement (Section 4.4);
+3. the local sensitivity must be verified independently of the compliance (Sections 5.6 and 5.10).
 
 ## 4. Neural-initialised static condensation with equilibrium correction
 
