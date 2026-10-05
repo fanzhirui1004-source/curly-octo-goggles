@@ -9,7 +9,8 @@ Geometry (Eq. (1)), in internal lattice coordinates x in [0, 4] (short side), y 
 Surfaces by marching cubes of g = max(|phi| - tau, n . x - b) on a grid of R points per cell axis, padded outside the plate so
 that the walls are capped on the outer faces, then decimated (fast_simplification, quadric edge collapse); tau is evaluated
 again at the decimated vertices, and faces are flagged as cut-plane section (all three vertices on the plane) or as box-face
-section (all three on one outer face of the plate or of the cell).
+section (all three on one outer face of the plate or of the cell); 'in_band': the face centroid lies in a background
+element (h = 1/32) intersected by the cut plane, i.e. in the cut band (Section 2.2).
 Field of the cut cell: nodal displacements of the Q2 model (nodes on the 65^3 grid of half the element size, x-fastest index
 order (x, y, z)) interpolated trilinearly on that grid at the surface vertices; written for the NICE field F_m B_m U_hat, the
 exact field E_m B_m U and the NICE extension of the exact retained displacements.
@@ -44,7 +45,9 @@ def design():
              cells=[dict(position=c['position'], kind=c['kind'], retained=c['retained']) for c in L['cells']],
              vkeys=M['vkeys'], fixed=[bool(f) for f in M['fixed']], tv0=h0['tv'], tv_final=hk['tv'], k_final=hk['k'],
              C0=h0['C'], C_final=hk['C'], cell=list(CELL), case=CASE,
-             source='review_r1/results/X6_final: plate841.json, cplateN/meta.json, cplateN/history.jsonl (k = 0 and k = 23)')
+             C0_exact=json.loads((X6 / 'cplateN' / 'check_exact_000.json').read_text())['C_exact'],
+             C_final_exact=json.loads((X6 / 'cplateN' / f"check_exact_{hk['k']:03d}.json").read_text())['C_exact'],
+             source='review_r1/results/X6_final: plate841.json, cplateN/meta.json, cplateN/history.jsonl (k = 0 and k = 23), cplateN/check_exact_000.json and _023.json (exact C)')
     (DATA / 'plate_design.json').write_text(json.dumps(D, indent=1))
     return D
 
@@ -91,14 +94,26 @@ def decimate(v, f, target):
     return np.asarray(v2), np.asarray(f2, np.int64)
 
 
-def flags(v, f, n, b, lo, hi, tol):
+def in_cut_band(P, n, b, shift=(0, 0, 0), ne=32):
+    """Point P lies in a background element (size 1/ne, aligned with the cell grid) that the cut plane intersects."""
+    Q = P + np.asarray(shift, float)
+    e = np.floor(Q * ne - 1e-9)
+    d = []
+    for c in np.ndindex(2, 2, 2):
+        d.append(((e + np.array(c)) / ne) @ n - (b + np.dot(n, shift)))
+    d = np.stack(d, 1)
+    return (d.min(1) < 0) & (d.max(1) > 0)
+
+
+def flags(v, f, n, b, lo, hi, tol, shift=(0, 0, 0)):
     tri = v[f]
     on_cut = np.all(np.abs(tri @ n - b) < tol, axis=1)
     on_box = np.zeros(len(f), bool)
     for a in range(3):
         for w in (lo[a], hi[a]):
             on_box |= np.all(np.abs(tri[:, :, a] - w) < tol, axis=1)
-    return on_cut & ~on_box, on_box
+    band = in_cut_band(tri.mean(1), n, b, shift)
+    return on_cut & ~on_box, on_box, band
 
 
 def plate_mesh(D, tv, R, target, keep=+1):
@@ -128,9 +143,11 @@ def plate_mesh(D, tv, R, target, keep=+1):
     v = np.clip(v, 0, [nx, ny, nz])
     nf0 = len(f)
     v, f = decimate(v, f, target)
-    cut, box = flags(v, f, n, b, (0, 0, 0), (nx, ny, nz), 1.5e-3)
-    print(f'plate keep={keep:+d} R={R}: {nf0} -> {len(f)} triangles, {cut.sum()} on the cut, {box.sum()} on outer faces')
-    return dict(v=v.astype(np.float32), f=f.astype(np.int32), tau=tau_at(v, T).astype(np.float32), on_cut=cut, on_box=box)
+    cut, box, band = flags(v, f, n, b, (0, 0, 0), (nx, ny, nz), 1.5e-3)
+    print(f'plate keep={keep:+d} R={R}: {nf0} -> {len(f)} triangles, {cut.sum()} on the cut, {box.sum()} on outer faces, '
+          f'{band.sum()} in the cut band')
+    return dict(v=v.astype(np.float32), f=f.astype(np.int32), tau=tau_at(v, T).astype(np.float32), on_cut=cut, on_box=box,
+                in_band=band)
 
 
 def cell_mesh(D, tv, R, target, field=None):
@@ -145,9 +162,9 @@ def cell_mesh(D, tv, R, target, field=None):
     v, f = mc(G, h, (0, 0, 0)); v = np.clip(v, 0, 1)
     nf0 = len(f)
     v, f = decimate(v, f, target)
-    cut, box = flags(v, f, n, b, (0, 0, 0), (1, 1, 1), 1.5e-3)
+    cut, box, band = flags(v, f, n, b, (0, 0, 0), (1, 1, 1), 1.5e-3)
     out = dict(v=v.astype(np.float32), f=f.astype(np.int32), tau=tau_at(v + np.asarray(CELL), T).astype(np.float32),
-               on_cut=cut, on_box=box, normal=n, offset=b)
+               on_cut=cut, on_box=box, in_band=band, normal=n, offset=b)
     # removed part of the cell (beyond the cut), for context
     Gr = np.maximum((np.abs(phi(P)) - tau_at(P + np.asarray(CELL), T)).reshape(X.shape), -(n[0] * X + n[1] * Y - b))
     vr, fr = mc(Gr, h, (0, 0, 0)); vr = np.clip(vr, 0, 1)
