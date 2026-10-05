@@ -163,6 +163,7 @@ def main(argv):
     ap.add_argument('--m', default='4,8'); ap.add_argument('--p1', default='')
     ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutweakbox')
     ap.add_argument('--chunk', type=int, default=16, help='columns per learned adjoint application')
+    ap.add_argument('--fast', type=int, default=0, help='learned dense operators through mapped_fast.MappedFastOp (64 columns)')
     a = ap.parse_args(argv)
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     specs = {}
@@ -257,7 +258,13 @@ def main(argv):
                 rec['weakpatch'] = WP.setup(C, g.nd, dil=a.wp_dil, seed=a.wp_seed)
             g.set_budget(base, cyc, wrap, wp=fname.endswith('w'))
             t = time.perf_counter()
-            Sh = _dense(lambda E: g.s_hat_apply(model, E), C.np_, a.chunk, dev, dt)
+            if a.fast:
+                import mapped_fast as MF
+                mop = MF.MappedFastOp(g, model, cyc, wrap, patch=fname.endswith('w'))
+                Sh = _dense(mop.s_hat, C.np_, 64, dev, dt)
+                del mop
+            else:
+                Sh = _dense(lambda E: g.s_hat_apply(model, E), C.np_, a.chunk, dev, dt)
             rec.setdefault('learned_dense_s', {})[fname] = time.perf_counter() - t
             # cell-level: lambda_max of (S_hat, S~) restricted away from rigid modes is not formed; record the
             # energy excess at the exact lattice traces instead (per lattice, mean over cells)
