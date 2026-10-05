@@ -425,3 +425,5 @@ The paper does not state the matching rule. The code answers the question:
 
 ---
 **Coordinator note:** the gyroid (G-cell) zero-shot and fine-tune results are, by standing author decision, reserved for the next paper and are NOT to enter P1. For I-05 the scope is therefore handled by "Schwarz-P-type" wording and the Limitations subsection (other TPMS families not tested), without citing the in-house G-cell data.
+
+> **Superseded 2026-10-05:** the author decided to include the gyroid transfer test in P1 as Supplementary Note S7 (Limitations, Section 6.3, points to it); multi-family training (train on two families, test on a third) is planned as future work.
