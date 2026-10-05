@@ -1,15 +1,16 @@
 """Figure F14_plate_design3d (Section 5.10): designs of the plate supported on its cut in 3D, and the recovered field of one cut
 cell at the final design.
-(a) uniform start tau = 0.40 and (b) final NICE design (design iteration 23, checked with exact condensation in Table ST21):
-    walls coloured by the local thickness parameter tau(x) of Eq. (1) (trilinear in each cell from the corner parameters;
-    cividis on [0.18, 0.69], the bounds of the design, as in Figure 13); same view as Figure 1 (F00_problem); the clamped cut
-    band is outlined by the support plane, the loaded end face by arrows.
+(a) final NICE design (design iteration 23, checked with exact condensation in Table ST21): walls coloured by the local
+    thickness parameter tau(x) of Eq. (1) (trilinear in each cell from the corner parameters; cividis on [0.18, 0.69], the
+    bounds of the design, as in Figure F14_designs_scale), NICE and exact compliance underneath; the clamped cut band is
+    outlined by the support on the cut, the loaded end face by arrows; 3D view (elevation 34 deg, azimuth -118 deg).
+(b) the change from the uniform start, tau(x) - 0.40, on the same view (BrBG, symmetric about 0: brown thinner, teal thicker).
 (c) cut cell (3, 2, 0), next to the support and closest to the loaded end, at the final design under the design load (unit
     in-plane traction on the end face): displacement magnitude |u| on its walls from NICE (recovered field F_m B_m U_hat of
     the NICE lattice solve) and from exact condensation (E_m B_m U, exact lattice solve of the exact check), on one colour
     scale, and the magnitude of their difference; the relative differences are those of data_elev/cellfield_summary.json
     (energy norm of the cell's stiffness, Euclidean norm of the nodal displacements), copied to data_elev/F14_caption.json.
-Data: data_elev/plate_design.json, plate_k000.npz, plate_k023.npz, cell320_k023.npz, cellfield_summary.json
+Data: data_elev/plate_design.json, plate_k023.npz, cell320_k023.npz, cellfield_summary.json
 (elev_prep_meshes.py; server scripts data_elev/nice_cell_field.py and exact_cell_field.py).
 """
 import json
@@ -25,6 +26,7 @@ ELEV, AZIM = 34, -118
 TAU_LO, TAU_HI = .18, .69
 TAU_CMAP = 'cividis'                                                     # as Figure 13 (fig_opt.py)
 U_CMAP, D_CMAP = 'viridis', 'Greys'
+DEL_CMAP = 'BrBG'                                                        # diverging: thinner brown, thicker teal
 CELL_VIEW = (28, -118)
 
 
@@ -35,12 +37,14 @@ def arrow2d(ax, p0, p1, **kw):
                 arrowprops=dict(arrowstyle='-|>', shrinkA=0, shrinkB=0, **kw))
 
 
-def plate(ax, D, name):
+def plate(ax, D, name, shift=0.0, norm=None, cmap=TAU_CMAP, zoom=1.6):
+    """Plate coloured by tau - shift (shift = 0: tau; shift = 0.40: change from the uniform start)."""
     m = E.load(name)
     tri = m['v'][m['f']]
-    tf = m['tau'][m['f']].mean(1)
-    cm = plt.get_cmap(TAU_CMAP)
-    rgb = E.shade(cm(Normalize(TAU_LO, TAU_HI)(tf))[:, :3], tri, amb=.62)
+    tf = m['tau'][m['f']].mean(1) - shift
+    cm = plt.get_cmap(cmap)
+    norm = Normalize(TAU_LO, TAU_HI) if norm is None else norm
+    rgb = E.shade(cm(norm(tf))[:, :3], tri, amb=.62)
     parts = [(E.to_plot(tri), np.c_[rgb, np.ones(len(tri))])]
     n, b = np.asarray(D['normal']), D['b_global']
     nx, ny, nz = D['shape']
@@ -56,10 +60,10 @@ def plate(ax, D, name):
                  [np.r_[p1, 0.0], np.r_[p1, 1.0]]], colors=E.CLAMP, linewidths=.9)
     c = np.asarray(D['cell'], float)
     E.lines(ax, E.box_edges(c, c + 1), colors=FS.TEXT, linewidths=.6, linestyles=(0, (2, 1.5)))
-    E.setup(ax, (-.3, -.6, -.25), (nx + .3, ny + .3, nz + .3), elev=ELEV, azim=AZIM, zoom=1.6)
+    E.setup(ax, (-.3, -.6, -.25), (nx + .3, ny + .3, nz + .3), elev=ELEV, azim=AZIM, zoom=zoom)
     for x in (.5, 1.5, 2.5, 3.5):
         arrow2d(ax, E.to_plot((x - .4, -.3, .5)), E.to_plot((x + .4, -.3, .5)), color=FS.TEXT, lw=.8, mutation_scale=6)
-    print(f'{name}: tau on the surface {m["tau"].min():.3f}-{m["tau"].max():.3f}')
+    print(f'{name}: tau - {shift} on the surface {m["tau"].min() - shift:.3f} to {m["tau"].max() - shift:.3f}')
 
 
 def cell(ax, m, val, norm, cmap, ghost=True):
@@ -76,7 +80,7 @@ def cell(ax, m, val, norm, cmap, ghost=True):
     E.lines(ax, [[np.r_[p0, 0], np.r_[p1, 0]], [np.r_[p0, 1], np.r_[p1, 1]], [np.r_[p0, 0], np.r_[p0, 1]],
                  [np.r_[p1, 0], np.r_[p1, 1]]], colors=E.CLAMP, linewidths=.8)
     E.lines(ax, E.box_edges((0, 0, 0), (1, 1, 1)), colors='#A3ADB8', linewidths=.5)
-    E.setup(ax, (-.02, -.02, -.02), (1.02, 1.02, 1.02), elev=CELL_VIEW[0], azim=CELL_VIEW[1], zoom=1.12)
+    E.setup(ax, (-.02, -.02, -.02), (1.02, 1.02, 1.02), elev=CELL_VIEW[0], azim=CELL_VIEW[1], zoom=1.05)
 
 
 def main():
@@ -88,20 +92,29 @@ def main():
     un, ue = np.linalg.norm(m['u_nice'], axis=1), np.linalg.norm(m['u_exact'], axis=1)
     du = np.linalg.norm(m['u_nice'] - m['u_exact'], axis=1)
     fig = plt.figure(figsize=(178 * FS.MM, 132 * FS.MM))
-    # (a), (b): plates
-    axa = fig.add_axes([.0, .55, .49, .40], projection='3d', computed_zorder=False)
-    axb = fig.add_axes([.50, .55, .49, .40], projection='3d', computed_zorder=False)
-    plate(axa, D, 'plate_k000.npz'); plate(axb, D, 'plate_k023.npz')
-    chk = {0: (D['C0'], D['C0_exact']), D['k_final']: (D['C_final'], D['C_final_exact'])}   # exact C: Table ST21
-    fig.text(.01, .975, '(a) Uniform start, τ = 0.40', fontweight='bold', fontsize=8.5, va='top')
-    fig.text(.51, .975, f'(b) Final NICE design (iteration {D["k_final"]})', fontweight='bold', fontsize=8.5, va='top')
-    for x, k in ((.25, 0), (.75, D['k_final'])):
-        fig.text(x, .575, f'NICE $C$ = {chk[k][0]:.2f}, exact $C$ = {chk[k][1]:.2f}', ha='center', fontsize=7, color=FS.TEXT)
-    cax = fig.add_axes([.30, .545, .40, .012])
+    # (a) final design, coloured by tau; (b) change from the uniform start, tau - 0.40 (diverging, symmetric about 0)
+    axa = fig.add_axes([-.03, .50, .60, .47], projection='3d', computed_zorder=False)
+    axb = fig.add_axes([.555, .555, .45, .38], projection='3d', computed_zorder=False)
+    plate(axa, D, 'plate_k023.npz', zoom=1.55)
+    m23 = E.load('plate_k023.npz')
+    dmax = float(np.ceil(100 * np.abs(m23['tau'] - .40).max()) / 100)
+    ndel = Normalize(-dmax, dmax)
+    plate(axb, D, 'plate_k023.npz', shift=.40, norm=ndel, cmap=DEL_CMAP, zoom=1.6)
+    fig.text(.01, .975, f'(a) Final NICE design (iteration {D["k_final"]})', fontweight='bold', fontsize=8.5, va='top')
+    fig.text(.585, .975, '(b) Change from the uniform start', fontweight='bold', fontsize=8.5, va='top')
+    fig.text(.285, .565, f'NICE $C$ = {D["C_final"]:.2f}, exact $C$ = {D["C_final_exact"]:.2f}', ha='center', fontsize=7,
+             color=FS.TEXT)
+    cax = fig.add_axes([.07, .535, .43, .012])
     cb = fig.colorbar(ScalarMappable(Normalize(TAU_LO, TAU_HI), TAU_CMAP), cax=cax, orientation='horizontal',
                       ticks=[.18, .3, .4, .5, .6, .69])
     cb.set_label(r'local thickness parameter $\tau(x)$ on the walls', fontsize=7, labelpad=2)
-    cb.ax.tick_params(labelsize=6.5, length=2); cb.outline.set_linewidth(.5)
+    cax2 = fig.add_axes([.63, .535, .31, .012])
+    cb2_ = fig.colorbar(ScalarMappable(ndel, DEL_CMAP), cax=cax2, orientation='horizontal',
+                        ticks=[-dmax, -.15, 0, .15, dmax])
+    cb2_.ax.set_xticklabels([f'{v:+.2f}'.replace('+0.00', '0').replace('-', '\u2212') for v in (-dmax, -.15, 0, .15, dmax)])
+    cb2_.set_label(r'change of thickness parameter, $\tau - 0.40$', fontsize=7, labelpad=2)
+    for c_ in (cb, cb2_):
+        c_.ax.tick_params(labelsize=6.5, length=2); c_.outline.set_linewidth(.5)
     # (c): cut cell (3, 2, 0) at the final design
     vmax = float(max(un.max(), ue.max()))
     nu = Normalize(0, vmax)
