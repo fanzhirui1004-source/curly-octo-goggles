@@ -22,6 +22,8 @@ Homogenised macro model (Q1 isoparametric on the mapped box, m elements per cell
   homog_rot    reference C^H rotated by the polar factor of J(x) at every Gauss point
 Usage: lat_global.py <out.json> <ckpt> <body_dir> <case> --map '<global map json>' --shape 2x2x4 [--clamp z,min]
        [--load z,max] [--fields c1,c2w] [--m 2,4] [--check 1] [--p1 homog_cells.json] [--work dir] [--fast 1]
+       --layout <gen_cutglob.py layout json>: per-position cases (full and trimmed cells; <case> and <body_dir> as given
+       are then ignored in favour of the layout's), rotation classes per (case, position class), no homogenisation
        lat_global.py --selftest     (CPU: macro solver on mapped meshes; Procrustes; K_PP block rotation)"""
 import argparse, gc, json, sys, time
 from pathlib import Path
@@ -317,6 +319,7 @@ def main(argv):
     ap.add_argument('--m', default='2,4'); ap.add_argument('--p1', default=''); ap.add_argument('--check', type=int, default=1)
     ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutweakbox')
     ap.add_argument('--chunk', type=int, default=16); ap.add_argument('--fast', type=int, default=0)
+    ap.add_argument('--layout', default='')
     a = ap.parse_args(argv)
     log = lambda d: print(json.dumps(d, default=float), flush=True)
     G = json.loads(a.map); shape = tuple(int(v) for v in a.shape.split('x'))
@@ -325,10 +328,18 @@ def main(argv):
     load = tuple(a.load.split(',')) if a.load else dflt[1]
     gphi = MC.make_global(G)
     spec_at = lambda p: {'kind': 'global', 'map': G, 'offset': [int(v) for v in p]}
-    positions = [(i, j, k) for i in range(shape[0]) for j in range(shape[1]) for k in range(shape[2])]
+    if a.layout:
+        LY = json.loads(Path(a.layout).read_text())
+        if tuple(LY['shape']) != shape:
+            raise ValueError('LAYOUT_SHAPE')
+        case_of = {tuple(c['position']): c['case'] for c in LY['cells']}
+        a.body = LY['body']
+    else:
+        case_of = {(i, j, k): a.case for i in range(shape[0]) for j in range(shape[1]) for k in range(shape[2])}
+    positions = sorted(case_of)
     classes = {}
     for p in positions:
-        classes.setdefault(class_key(G, p), []).append(p)
+        classes.setdefault((case_of[p],) + class_key(G, p), []).append(p)
     Xs = np.random.default_rng(0).uniform(0, 1, (64, 3))
     rot = {}                                                            # p -> (representative, R)
     for key, ps in classes.items():
@@ -354,7 +365,7 @@ def main(argv):
     for rep in reps:
         t0 = time.perf_counter()
         rr = res_['reps'][str(rep)] = {}
-        C = MC.MappedCell(a.case, a.body, spec_at(rep), log=lambda s_: None); C.assemble()
+        C = MC.MappedCell(case_of[rep], a.body, spec_at(rep), log=lambda s_: None); C.assemble()
         rr.update(map_stats=C.map_stats, ports=int(C.np_), dofs=int(C.nb), setup_s=time.perf_counter() - t0)
         geom = LM.from_teacher(C)
         face = {}                                                       # consistent face weights depend on the case only
@@ -366,9 +377,11 @@ def main(argv):
         # homogenised tensor of the affine cell with A = J at the representative's centre
         Jc = jac(gphi, (np.asarray(rep, float) + 0.5)[None])[0]
         rr['J_centre'] = Jc.tolist(); sv = np.linalg.svd(Jc, compute_uv=False); rr['kappa_centre'] = float(sv[0] / sv[-1])
-        Ca = MC.MappedCell(a.case, a.body, {'kind': 'affine', 'A': Jc.tolist()}, log=lambda s_: None); Ca.assemble()
-        CHa, _ = HM.periodic_CH(Ca); CHrep[rep] = CHa / np.linalg.det(Jc)
-        Ca._free(); del Ca; gc.collect(); torch.cuda.empty_cache()
+        if not a.layout:
+            Ca = MC.MappedCell(a.case, a.body, {'kind': 'affine', 'A': Jc.tolist()}, log=lambda s_: None); Ca.assemble()
+            CHa, _ = HM.periodic_CH(Ca); CHrep[rep] = CHa / np.linalg.det(Jc)
+            Ca._free(); del Ca; gc.collect(); torch.cuda.empty_cache()
+        rr['case'] = case_of[rep]
         # exact
         t = time.perf_counter()
         C.factor(neumann=False, fp32=False)
@@ -376,9 +389,9 @@ def main(argv):
         C._free(); rr['exact_dense_s'] = time.perf_counter() - t
         # learned
         d = Path(a.work) / ('rep_' + '_'.join(map(str, rep)))
-        AE.write_data(C, d / a.case, {}, (), a.body)
-        g = AB.BudgetGeo(a.case, a.body, d, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
-        g.case = f'{a.case}@{rep}'
+        AE.write_data(C, d / case_of[rep], {}, (), a.body)
+        g = AB.BudgetGeo(case_of[rep], a.body, d, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
+        g.case = f'{case_of[rep]}@{rep}'
         if model is None:
             model = MD.build(cfg['model'], [g], **dict(cfg.get('model_args', {}))).to(dev)
             MD.load_compat(model, ck['model']); model.eval()
@@ -414,7 +427,7 @@ def main(argv):
         others = [p for p in positions if rot[p][0] != p]
         if others:
             p = others[-1]; rep, R = rot[p]
-            C = MC.MappedCell(a.case, a.body, spec_at(p), log=lambda s_: None); C.assemble()
+            C = MC.MappedCell(case_of[p], a.body, spec_at(p), log=lambda s_: None); C.assemble()
             C.factor(neumann=False, fp32=False)
             gen = torch.Generator(device=dev).manual_seed(1)
             Q = torch.randn((C.np_, 16), dtype=dt, device=dev, generator=gen)
@@ -422,9 +435,9 @@ def main(argv):
             Sr = RotOp(S[('exact', rep)].to(dev), R).apply(Q)
             chk = dict(cell=list(p), rep=list(rep), exact_rel=float((Se - Sr).norm() / Se.norm()))
             d = Path(a.work) / ('chk_' + '_'.join(map(str, p)))
-            AE.write_data(C, d / a.case, {}, (), a.body)
-            g = AB.BudgetGeo(a.case, a.body, d, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
-            g.case = f'{a.case}@{p}'; model.add_geo(g)
+            AE.write_data(C, d / case_of[p], {}, (), a.body)
+            g = AB.BudgetGeo(case_of[p], a.body, d, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
+            g.case = f'{case_of[p]}@{p}'; model.add_geo(g)
             wrap = AE._Wrap(model)
             CR.set_corot(C, AE.nodal_rotations(C))
             for fname in [f for f in a.fields.split(',') if f]:
@@ -461,7 +474,7 @@ def main(argv):
                 af = area_factor(gphi, Xp, la_)
                 w[on] *= af; afac.append(af)
             face[key_] = (w, out)
-        gp_ = LM.CellGeom(a.case, geom0['n'], geom0['port_node_ids'], np.zeros(len(geom0['port_node_ids']), bool),
+        gp_ = LM.CellGeom(case_of[p], geom0['n'], geom0['port_node_ids'], np.zeros(len(geom0['port_node_ids']), bool),
                           geom0['priv'], kpp_fn=(lambda kr=kr: kr), face_w_fn=(lambda ax_, val, f=face: f[(ax_, float(val))]))
         layout[p] = gp_
     if afac:
@@ -499,6 +512,9 @@ def main(argv):
         fac.free(); del pc, r, ops, dense; gc.collect(); torch.cuda.empty_cache()
         Path(a.out).write_text(json.dumps(res_, indent=1, default=float))
     # ------------------------------------------------ homogenised macro models
+    if a.layout:
+        print('DONE', flush=True)
+        return
     ce = np.asarray(res_['fields']['exact']['compliance'][:3])
     ms = sorted(int(v) for v in a.m.split(','))
     tens = {'homog_cell': lambda X, c: np.stack([_rotV(CHrep[rot[tuple(cc)][0]], rot[tuple(cc)][1])[0] for cc in c])}
