@@ -32,7 +32,7 @@ Supplementary Notes, Tables and Figures are numbered in the order in which they 
 | RM (Table ST08b) | Moderately cut | fresh_val_2078_d0_v1 |
 | RH (Table ST08b) | Heavily cut | fresh_val_2053_d1_v0 |
 
-In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) that contains the cut angle \(\vartheta\), and v0, v1 and v2 give the heavy, moderate and light retained-volume strata. In configuration labels such as U1/x, x and y give the neighbour configuration of Figure 8. The deployment geometries use the G1–G4 labels of Table ST13; the table below gives their identifiers in the data archive.
+In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) that contains the cut angle \(\vartheta\), and v0, v1 and v2 give the heavy, moderate and light retained-volume strata. In configuration labels such as U1/x, x and y give the neighbour configuration of Figure 9. The deployment geometries use the G1–G4 labels of Table ST13; the table below gives their identifiers in the data archive.
 
 | Benchmark label | Geometry stratum | Geometry identifier in the data archive |
 | --- | --- | --- |
@@ -180,7 +180,7 @@ Directional means (%) at fixed retained displacement. \(k\) is the number of Jac
 
 ### ST05b. Energy fractions in the lowest 200 generalised interior modes
 
-Base network, mean over consistent-traction directions; each fraction uses its own interior-energy denominator (Eq. (15)). Cumulative curves, nodal-force results and directional percentiles are shown in Figure 5.
+Base network, mean over consistent-traction directions; each fraction uses its own interior-energy denominator (Eq. (15)). Cumulative curves, nodal-force results and directional percentiles are shown in Figure 6.
 
 | Cell | Error fraction (%) | Exact-field fraction (%) |
 | --- | --- | --- |
@@ -419,7 +419,7 @@ Boundary restriction and the interior correction \(\mathcal W\) act on different
 
 ### S2.2. Conditions
 
-- Pairs in configuration x (Figure 8; Supplementary Note S4), each target with its exact continuous-thickness neighbour, for U1, M1, M2 and H1; the interface-only variant was run for U1, M1 and M2.
+- Pairs in configuration x (Figure 9; Supplementary Note S4), each target with its exact continuous-thickness neighbour, for U1, M1, M2 and H1; the interface-only variant was run for U1, M1 and M2.
 - One cell per substructure, the fine-scale consistent face tractions used throughout, and no oversampling.
 - Loads: the three target-face tractions and the three neighbour-face tractions.
 - The non-box cut-band DOFs remain unrestricted, which favours the restricted model (controlled DOFs in Table ST11).
@@ -582,7 +582,7 @@ On the GPU, \(\mathbb K_{PP}\) is factorised once per design iteration by a spar
 
 ### S4.2. Two-cell test configuration
 
-In both configurations of Figure 8, the six face loads are the three Cartesian traction directions applied to the target face and the same three directions applied to the neighbour face. The consistent-load implementation integrates the Q2 surface shape functions, normalises each nodal load to unit resultant before support elimination, and then eliminates clamped entries. Three similarly normalised consistent tractions on the target cut surface are reported separately when present. The neighbour is an uncut cell; where the target's cut plane meets the shared face, the pair is therefore a test configuration rather than a physically cut specimen.
+In both configurations of Figure 9, the six face loads are the three Cartesian traction directions applied to the target face and the same three directions applied to the neighbour face. The consistent-load implementation integrates the Q2 surface shape functions, normalises each nodal load to unit resultant before support elimination, and then eliminates clamped entries. Three similarly normalised consistent tractions on the target cut surface are reported separately when present. The neighbour is an uncut cell; where the target's cut plane meets the shared face, the pair is therefore a test configuration rather than a physically cut specimen.
 
 The pair solves use conjugate gradients preconditioned by the Cholesky factor of the exact assembled reference stiffness, with a relative recursive-residual tolerance of \(10^{-10}\) and at most 400 iterations.
 

@@ -129,7 +129,7 @@ def main():
     axb = fig.add_axes([.67, .17, .33, .76], projection='3d', computed_zorder=False)
     p0, p1 = panel_a(axa, D)
     nret, nall = panel_b(axb, D)
-    fig.text(.01, .965, '(a) Schwarz-P lattice trimmed by a plane: 16 uncut and 8 cut cells', fontweight='bold', fontsize=8.5, va='top')
+    fig.text(.01, .965, '(a) A lattice trimmed to a part: cut cells carry the support', fontweight='bold', fontsize=8.5, va='top')
     fig.text(.665, .965, '(b) Cut cell next to the support', fontweight='bold', fontsize=8.5, va='top')
     # annotations of (a)
     kw = dict(fontsize=7, color=FS.TEXT, textcoords='offset points', ha='center', va='center')
