@@ -1,6 +1,9 @@
 """Direction A: where the random-load error of the corrected learned operator lives, and which patch / cycle variant removes
 it (new script; runs on the GPU server). One mapped cell, explicit-adjoint operator (mapped_fast, float64 rigid split).
-Random port loads: 64 Gaussian port vectors with the rigid part removed (the lattice's random loads act on every port).
+Random port loads (--qmode): 'gauss' = 64 Gaussian port vectors with the rigid part removed; 'force' = the free-floating cell's
+response q = S~^+ f to 64 Gaussian equilibrated port forces f (the cell counterpart of the lattice's random loads, which are
+forces: their traces are dominated by soft modes, where the relative error is largest; Gaussian displacements are dominated by
+stiff high-frequency modes).
 Per variant (cycles N, weak-patch seed and radius, or no patch):
   ratio      q^T S_hat q / q^T S~ q - 1 over the 64 vectors (mean, p90, max)
   where      error field du = E_hat q - E q (8 vectors), its energy du^T K du split by node class: weak nodes (diag3 norm below
@@ -46,7 +49,7 @@ def main(argv):
     ap.add_argument('out'); ap.add_argument('ckpt'); ap.add_argument('cases'); ap.add_argument('mapsjson')
     ap.add_argument('--maps', default='strz0.5')
     ap.add_argument('--variants', default='c2w=2:cutweakbox:2,c2w3=2:cutweakbox:3,c2wall=2:weak:2,c4w=4:cutweakbox:2,c2=2:none:0')
-    ap.add_argument('--work', default='/root/autodl-tmp/OPL/A0/work_diag')
+    ap.add_argument('--work', default='/root/autodl-tmp/OPL/A0/work_diag'); ap.add_argument('--qmode', default='gauss,force')
     a = ap.parse_args(argv)
     specs = {}
     for f in a.mapsjson.split(','):
@@ -72,16 +75,21 @@ def main(argv):
             CR.set_corot(C, AE.nodal_rotations(C))
             cls = node_classes(C, g.nd)
             clsT = {k: torch.as_tensor(np.repeat(v, 3), device=dev) for k, v in cls.items()}
-            C.factor(neumann=False, fp32=False)
+            C.factor(neumann=True, fp32=False)
             gen = torch.Generator(device=dev).manual_seed(0)
-            Q = torch.randn((C.np_, 64), dtype=dt, device=dev, generator=gen)
-            Q = Q - C.Q @ (C.Q.T @ Q); Q = Q / Q.norm(dim=0)
-            e_ex = (Q * C.apply(Q)).sum(0)
-            U_ex = C.extend(Q[:, :8])
-            for vname, cyc, seed, dil in variants:
+            QS = {}
+            for qm in a.qmode.split(','):
+                X = torch.randn((C.np_, 64), dtype=dt, device=dev, generator=gen)
+                X = X - C.Q @ (C.Q.T @ X)
+                if qm == 'force':
+                    X = C.neumann(X); X = X - C.Q @ (C.Q.T @ X)
+                X = X / X.norm(dim=0)
+                QS[qm] = (X, (X * C.apply(X)).sum(0), C.extend(X[:, :8]))
+            for (vname, cyc, seed, dil), qm in [(v, m) for v in variants for m in QS]:
+                Q, e_ex, U_ex = QS[qm]
                 cyc, dil = int(cyc), int(dil)
                 WP.free(C); C._wp = None
-                rec = dict(case=case, map=mname, variant=vname, cycles=cyc, seed=seed, dil=dil)
+                rec = dict(case=case, map=mname, variant=vname, cycles=cyc, seed=seed, dil=dil, qmode=qm)
                 if seed != 'none':
                     rec['patch'] = WP.setup(C, g.nd, dil=dil, seed=seed)
                 g.set_budget('V0R', cyc, wrap, wp=seed != 'none')
