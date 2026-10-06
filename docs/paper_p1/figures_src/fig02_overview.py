@@ -135,7 +135,7 @@ role(bK[0], bT[0] + bT[2], Y2 - 1.4, 'variational form: structure', VAR)
 note(35.0, 12.5, 'condensed\noperator', VAR,
      [(55.5, r'$\widehat{S}=F^{T}KF$', r'symmetric, $\succeq0$, rigid-body kernel'),
       (100.5, r'$\widehat{S}-S=H^{T}AH\succeq0$', 'error quadratic in the field error $H$'),
-      (148.0, r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$', 'exact coarse solve, spectrum in $(0,b]$')])
+      (148.0, r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$', 'exact or shifted coarse solve, spectrum in $(0,b]$')])
 ax.plot([170.0, 170.0], [y2 - 3.2, 47.5], color=FS.MUTED, lw=.6, zorder=1)
 ax.plot([170.0], [47.5], marker='o', ms=2.2, color=FS.MUTED, zorder=1)
 

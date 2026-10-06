@@ -6,9 +6,8 @@ Canvas 130 x 52 mm; PNG at 300 dpi (1535 x 614 px); saved without a tight boundi
   middle  the NICE division of tasks of Figure 2(a) (fig02_overview.py colours): learned extension -> two-grid
           correction -> energy form F^T K F; learning: trial field / correction: improvability / variational form: structure
   right   headline: clamped cut layer, homogenised model underestimates the compliance by 27% (Section 5.10: 27.0% of the
-          exact compliance of the uniform start); NICE within 0.04% (compliance 0.011-0.030% below exact at the checked plate
-          designs, at most 0.028% in case A) and gradient 0.33% (largest checked vertex-gradient error: case A, iteration 23;
-          plate 0.30%).
+          exact compliance of the uniform start); NICE matches exact condensation to 0.03% in compliance and 0.3% in gradient
+          (plate checks of the NICE run: compliance 0.011% and 0.030% below exact, gradient errors 0.029% and 0.30%).
 """
 import numpy as np
 from matplotlib.patches import FancyBboxPatch
@@ -103,9 +102,9 @@ def main():
     ax.text(xr, 49.0, 'Clamped cut layer', fontsize=8, fontweight='bold', color=FS.TEXT, va='top')
     ax.text(xr, 41.5, 'homogenisation under-\nestimates compliance by', fontsize=7, color=FS.TEXT, va='top', linespacing=1.15)
     ax.text(xr + 18.0, 29.0, '27%', fontsize=14, fontweight='bold', color=HOM, va='center', ha='center')
-    ax.text(xr, 21.0, 'NICE within', fontsize=7, color=FS.TEXT, va='top')
-    ax.text(xr + 18.0, 12.5, '0.04%', fontsize=14, fontweight='bold', color=FS.C['corrected'], va='center', ha='center')
-    ax.text(xr + 18.0, 5.0, '(gradient within 0.33%)', fontsize=7, color=FS.TEXT, va='center', ha='center')
+    ax.text(xr, 21.0, 'NICE matches exact to', fontsize=7, color=FS.TEXT, va='top')
+    ax.text(xr + 18.0, 12.5, '0.03%', fontsize=14, fontweight='bold', color=FS.C['corrected'], va='center', ha='center')
+    ax.text(xr + 18.0, 5.0, '(gradient 0.3%)', fontsize=7, color=FS.TEXT, va='center', ha='center')
     out = FS.OUT
     for ext, kw in (('svg', {}), ('pdf', {}), ('png', dict(dpi=300))):
         fig.savefig(out / f'GA_nice.{ext}', **kw)

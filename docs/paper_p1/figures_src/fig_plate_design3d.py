@@ -123,7 +123,7 @@ def main():
     cell(axs[0], m, un, nu, U_CMAP); cell(axs[1], m, ue, nu, U_CMAP)
     nd = Normalize(0, float(du.max()))
     cell(axs[2], m, du, nd, 'magma_r')
-    fig.text(.01, .455, f'(c) Cut cell {tuple(D["cell"])} at the final design, design load: displacement magnitude on the walls',
+    fig.text(.01, .455, '(c) Cut cell next to the support (Figure 1b) at the final design, design load: displacement magnitude on the walls',
              fontweight='bold', fontsize=8.5, va='top')
     for x_, t in zip((.03 + w / 2, .355 + w / 2, .68 + w / 2), ('NICE, $|F_m B_m \\widehat U|$', 'exact condensation, $|E_m B_m U|$',
                            'difference $|F_m B_m \\widehat U - E_m B_m U|$')):
