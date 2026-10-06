@@ -9,11 +9,11 @@ on the cell); then the weak-node patch if requested):
 with ext / ext_T the frozen network map of fastnet.FastNet and its explicit adjoint. S_hat q = E^T (K E q), the K product
 in float64. Peak memory of one application is that of FastNet (no stored graph), against ~15 GB per 16 columns through
 autograd (Geo.s_hat_apply).
-rigid64 (default off): the rigid split c = RP^+ q, the rigid part RA c and the port values in float64 (the network still sees
+rigid64 (default on since 10-06, author's decision; rigid64=False reproduces the earlier runs): the rigid split c = RP^+ q, the rigid part RA c and the port values in float64 (the network still sees
 the float32 deformation part qd). With float32 rigid parts the rounding of a large rigid component (slender, soft
 structures: cell traces dominated by rigid motion) enters the energy through its cross term with the small deformation,
 ~1e-7 |q| / |q_def| relative, and can make q^T (S_hat - S~) q slightly negative (seen: twisted trimmed beam, -5e-4).
-Usage: op = MappedFastOp(g, model, cycles=2, wrap=a0_eval._Wrap(model), patch=True, rigid64=False)  (g: a0_budget.BudgetGeo set to V0R,
+Usage: op = MappedFastOp(g, model, cycles=2, wrap=a0_eval._Wrap(model), patch=True, rigid64=True)  (g: a0_budget.BudgetGeo set to V0R,
        model caches built for g.case, corot set on g.C if wanted, weak_patch.setup(g.C, ...) done if patch);
        op.s_hat(q), op.field(q), op.apply(q) (= s_hat, the lattice operator interface)."""
 import torch
@@ -55,7 +55,7 @@ def patch_apply_T(C, y):
 
 
 class MappedFastOp:
-    def __init__(self, g, model, cycles, wrap, patch=False, rigid64=False):
+    def __init__(self, g, model, cycles, wrap, patch=False, rigid64=True):
         if getattr(g, 'variant', None) not in ('V0R', 'V0Rc'):
             raise ValueError('MAPPED_FAST_NEEDS_V0R')
         self.g, self.model, self.cycles, self.wrap, self.patch = g, model, int(cycles), wrap, bool(patch)
