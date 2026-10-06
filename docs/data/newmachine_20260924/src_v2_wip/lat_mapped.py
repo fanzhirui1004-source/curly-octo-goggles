@@ -161,7 +161,7 @@ def main(argv):
     ap.add_argument('--prec', default='bnn:kpp:q1r'); ap.add_argument('--tol', type=float, default=1e-10)
     ap.add_argument('--maxit', type=int, default=3000); ap.add_argument('--n-random', type=int, default=2)
     ap.add_argument('--m', default='4,8'); ap.add_argument('--p1', default='')
-    ap.add_argument('--wp_dil', type=int, default=2); ap.add_argument('--wp_seed', default='cutweakbox')
+    ap.add_argument('--wp_dil', type=int, default=3)                    # 2 before 10-06 (NIGHT_LOG 15); ap.add_argument('--wp_seed', default='cutweakbox')
     ap.add_argument('--chunk', type=int, default=16, help='columns per learned adjoint application')
     ap.add_argument('--fast', type=int, default=0, help='learned dense operators through mapped_fast.MappedFastOp (64 columns)')
     ap.add_argument('--rigid64', type=int, default=1, help='with --fast: float64 rigid split (mapped_fast)')
