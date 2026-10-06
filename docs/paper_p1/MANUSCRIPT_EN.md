@@ -190,7 +190,7 @@ On a differentiable design interval with fixed active and retained DOFs, assembl
 \tag{9}
 \]
 
-Interior equilibrium sets \((Ku)_I=0\) but generally leaves \((K_{,c}u)_I\ne0\), so the linear cross term survives. The energy error therefore bounds the sensitivity error only at the order \(\sqrt\varepsilon\), with constants that vary between cells and directions (Eq. (H.4)), and a decrease of the energy error need not decrease the sensitivity error monotonically. Because thickening a corner enlarges the material domain, \(K_{,c}\succeq0\) under exact integration (Eq. (H.6)); the quadratic term of Eq. (9) is then nonpositive, while the linear term can have either sign (Appendix H.2).
+Interior equilibrium sets \((Ku)_I=0\) but generally leaves \((K_{,c}u)_I\ne0\), so the linear cross term survives. The energy error therefore bounds the sensitivity error only at the order \(\sqrt\varepsilon\), with constants that vary between cells and directions (Eq. (H.4)), and a decrease of the energy error need not decrease the sensitivity error monotonically. Because thickening a corner enlarges the material domain, \(K_{,c}\succeq0\) under exact integration (Eq. (H.7)); the quadratic term of Eq. (9) is then nonpositive, while the linear term can have either sign (Appendix H.2).
 
 The field-based estimate is not the derivative of the surrogate compliance, which also contains the design dependence of the extension. For a parameter affecting one substructure, differentiation at fixed retained DOFs gives
 
