@@ -1,0 +1,241 @@
+{
+ "N": {
+  "reference_designs": {
+   "nice_final": {
+    "C_exact": 78.28678795306013,
+    "C_hat": 78.26363035900165,
+    "surrogate_err": -0.0002958046263484429,
+    "grad_rel_err": 0.0030094636969937856
+   },
+   "nice_start": {
+    "C_exact": 75.59927875751792,
+    "C_hat": 75.59131829304997,
+    "surrogate_err": -0.00010529815361716876,
+    "grad_rel_err": 0.00029310266148243973
+   },
+   "homog_design": {
+    "C_exact": 80.19759144152417,
+    "C_hat": 80.17215136265071,
+    "surrogate_err": -0.00031721749264762046,
+    "grad_rel_err": 0.0031991375094695546
+   }
+  },
+  "uniform_all": {
+   "tau_u": 0.320083609521,
+   "bracket": [
+    0.32008360952138903,
+    0.3200836103409529
+   ],
+   "bisection_evals": 30,
+   "Vstar": 3.655259164261379,
+   "V": 3.655259156469464,
+   "V_over_Vstar_minus_1": -2.131699816665389e-09,
+   "C_nice": 113.25872684133162,
+   "nice_pcg": 99,
+   "nice_true_residual": 0.0004060350700351798,
+   "nice_iter_s": 172.98372374568135,
+   "body_perturb": [],
+   "exact": {
+    "C_exact": 113.27897429322425,
+    "C_hat": 113.25872684133162,
+    "surrogate_err": -0.00017873971775396395,
+    "grad_rel_err": 0.0005532489805844012,
+    "grad_cos": 0.9999999532170737,
+    "comp_err_rel_to_max": {
+     "median": 8.912472890711529e-05,
+     "p95": 0.00043295844993586813,
+     "max": 0.000770118670465873
+    },
+    "sign_agreement": 1.0,
+    "n_free": 64,
+    "exact_pcg": 154,
+    "exact_true_residual": 9.482613174720254e-11,
+    "distinct_cells": 7,
+    "lattice": {
+     "free_dofs": 252606,
+     "glued_dofs": 356202,
+     "cells": 24,
+     "face_load_outside": [
+      2.220446049250313e-16,
+      2.220446049250313e-16,
+      2.220446049250313e-16,
+      2.220446049250313e-16
+     ]
+    },
+    "solve_peak_rss_gib": 28.104412078857422,
+    "phase_seconds": {
+     "cellinfo": 0.3,
+     "T_jobs": 732.1,
+     "T": 732.1,
+     "load_T": 0.0,
+     "lattice_solve": 65.3,
+     "sens_jobs": 2106.2,
+     "sens": 1142.1
+    }
+   },
+   "improvement_of_nice_final_over_uniform_exact": 0.30890274703217513,
+   "improvement_of_nice_final_over_uniform_nice": 0.30898366473213057,
+   "improvement_of_homog_design_over_uniform_exact": 0.29203462564966776,
+   "improvement_of_homog_design_over_uniform_nice": 0.29213268064573195
+  },
+  "uniform_free": {
+   "tau_u": 0.31119776696,
+   "bracket": [
+    0.31119776695966717,
+    0.311197767779231
+   ],
+   "bisection_evals": 30,
+   "Vstar": 3.655259164261379,
+   "V": 3.655259161825719,
+   "V_over_Vstar_minus_1": -6.663439799936555e-10,
+   "C_nice": 115.33521047890657,
+   "nice_pcg": 100,
+   "nice_true_residual": 0.0004866947953832835,
+   "nice_iter_s": 176.97553465608507,
+   "body_perturb": [],
+   "exact": {
+    "C_exact": 115.35728923431807,
+    "C_hat": 115.33521047890657,
+    "surrogate_err": -0.00019139454089157706,
+    "grad_rel_err": 0.0006388148426542635,
+    "grad_cos": 0.999999945520565,
+    "comp_err_rel_to_max": {
+     "median": 9.659570326819828e-05,
+     "p95": 0.0004887452249992522,
+     "max": 0.0009173513002658451
+    },
+    "sign_agreement": 1.0,
+    "n_free": 64,
+    "exact_pcg": 156,
+    "exact_true_residual": 9.478093150643521e-11,
+    "distinct_cells": 8,
+    "lattice": {
+     "free_dofs": 255390,
+     "glued_dofs": 357738,
+     "cells": 24,
+     "face_load_outside": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "solve_peak_rss_gib": 30.22177505493164,
+    "phase_seconds": {
+     "cellinfo": 134.3,
+     "T_jobs": 910.1,
+     "T": 910.1,
+     "load_T": 0.0,
+     "lattice_solve": 50.5,
+     "sens_jobs": 2658.4,
+     "sens": 1566.3
+    }
+   },
+   "improvement_of_nice_final_over_uniform_exact": 0.32135378290624483,
+   "improvement_of_nice_final_over_uniform_nice": 0.3214246539801032,
+   "improvement_of_homog_design_over_uniform_exact": 0.3047895631577837,
+   "improvement_of_homog_design_over_uniform_nice": 0.3048770533321805
+  }
+ },
+ "O": {
+  "plateS110_k0": {
+   "C_nice": 85.38240932720933,
+   "nice_pcg": 172,
+   "nice_iter_s": 1213.7060369970277,
+   "exact": null
+  },
+  "plateS88_k0": {
+   "C_nice": 86.74556076166014,
+   "nice_pcg": 172,
+   "nice_iter_s": 979.4967571087182,
+   "exact": null
+  },
+  "plateS51_k0": {
+   "C_nice": 89.11893096128892,
+   "nice_pcg": 168,
+   "nice_iter_s": 543.8650215175003,
+   "exact": {
+    "C_exact": 89.1289653249755,
+    "C_hat": 89.11893096128892,
+    "surrogate_err": -0.00011258252185454036,
+    "grad_rel_err": 0.00046955502731353465,
+    "grad_cos": 0.9999999403726086,
+    "comp_err_rel_to_max": {
+     "median": 8.632198725432656e-05,
+     "p95": 0.0003443774904118789,
+     "max": 0.0006274010976075297
+    },
+    "sign_agreement": 1.0,
+    "n_free": 128,
+    "exact_pcg": 261,
+    "exact_true_residual": 9.55041612918937e-11,
+    "distinct_cells": 10,
+    "lattice": {
+     "free_dofs": 770118,
+     "glued_dofs": 809862,
+     "cells": 51,
+     "face_load_outside": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0
+     ]
+    },
+    "solve_peak_rss_gib": 74.6226806640625,
+    "phase_seconds": {
+     "cellinfo": 94.6,
+     "T_jobs": 750.1,
+     "T": 750.1,
+     "load_T": 0.0,
+     "lattice_solve": 206.8,
+     "sens_jobs": 3160.3,
+     "sens": 1714.2
+    }
+   }
+  },
+  "plateS24_k0": {
+   "C_nice": 94.3406591901844,
+   "nice_pcg": 169,
+   "nice_iter_s": 243.3527537342161,
+   "exact": {
+    "C_exact": 94.35315275204977,
+    "C_hat": 94.3406591901844,
+    "surrogate_err": -0.00013241276524379852,
+    "grad_rel_err": 0.00045271117346510557,
+    "grad_cos": 0.9999999283351275,
+    "comp_err_rel_to_max": {
+     "median": 0.00011106979109828279,
+     "p95": 0.0004761304820201483,
+     "max": 0.0005902194950249882
+    },
+    "sign_agreement": 1.0,
+    "n_free": 64,
+    "exact_pcg": 243,
+    "exact_true_residual": 9.792244929417914e-11,
+    "distinct_cells": 7,
+    "lattice": {
+     "free_dofs": 381348,
+     "glued_dofs": 407844,
+     "cells": 24,
+     "face_load_outside": [
+      0.0,
+      0.0,
+      1.0,
+      1.0
+     ]
+    },
+    "solve_peak_rss_gib": 39.692874908447266,
+    "phase_seconds": {
+     "cellinfo": 58.5,
+     "T_jobs": 176.0,
+     "T": 176.0,
+     "load_T": 0.0,
+     "lattice_solve": 91.2,
+     "sens_jobs": 756.1,
+     "sens": 558.1
+    }
+   }
+  }
+ }
+}
