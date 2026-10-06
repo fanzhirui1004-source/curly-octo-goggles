@@ -360,19 +360,6 @@ Geometry-dependent quantities are prepared once per geometry and reused across r
 
 The examples show three things. On single cells, the corrected learned extension reaches a mean energy error of 0.074% on 80 validation geometries, and the network and the correction each remove error that the other leaves (Sections 5.3–5.5). After assembly, compliance follows the share-weighted relation of Proposition 2, whereas the local sensitivity has to be checked on its own (Sections 5.6–5.8). In design, an eight-cell analysis with sensitivities is about ten times faster than direct solution, and the optimised designs agree with exact condensation in compliance and gradient (Sections 5.9 and 5.10). Table 3 collects the accuracy against exact condensation in every assembled example. Sections 5.1 and 5.2 first state the settings and verify the discrete reference.
 
-
-**Table 3. Accuracy of NICE against exact condensation in the assembled examples.** Compliance error \(|\widehat C/C-1|\); sensitivity error: largest relative error \(e_s\) of a cell's eight-component thickness-sensitivity vector; gradient error: relative error of the lattice gradient over the shared vertex parameters. Maxima or ranges over the loads and designs listed. In the two-cell assemblies only the target cell is learned; in all other examples every cell is.
-
-| Example | Section | Cells (cut) | Loads or designs | Compliance error (%) | Sensitivity or gradient error (%) |
-| --- | --- | --- | --- | ---: | --- |
-| Two-cell assemblies, seven selection cells | 5.6 | 2, 14 configurations | six face loads each | ≤ 0.056 | sensitivity ≤ 0.67 |
-| Two-cell assemblies, cut-face tractions | 5.6 | 2, 7 configurations | three cut-face tractions each | ≤ 0.10 | sensitivity ≤ 0.16 |
-| Two-cell assemblies, nine held-out cells | 5.6 | 2, 18 configurations | six face loads each | ≤ 0.27 | sensitivity ≤ 1.49 |
-| Lattices with every cell learned | 5.8 | 8 (4), 8 (3) | three face loads; three random loads | ≤ 0.015; ≤ 0.069 | sensitivity ≤ 0.14; ≤ 0.45; gradient 0.04–0.09; 0.22–0.28 |
-| Case A, thickness optimisation | 5.10 | 8 (4) | designs at iterations 0, 12, 23 | 0.011–0.028 | gradient 0.069–0.33 |
-| Plate clamped through its cut band | 5.10 | 24 (8) | start, final, homogenisation and two uniform designs | 0.011–0.032 | gradient 0.029–0.32 |
-| Plates of the scale study | 5.10 | 24 (8), 51 (12) | first design | 0.013, 0.011 | gradient 0.045, 0.047 |
-
 ### 5.1. Geometries, variants and loading conditions
 
 The 80 validation geometries comprise 20 uncut, 20 lightly, 20 moderately and 20 heavily cut cells, with uniform, affine or mixed trilinear thickness fields and corner parameters from 0.1762 to 0.6983 (Table ST02). Each carries at most one planar cut with normal \((\cos\vartheta,\sin\vartheta,0)\), \(0<\vartheta<\pi/4\); heavy cuts retain less than one third of the volume of the cell box, moderate cuts between one and two thirds, and light cuts more than two thirds. U, L, M and H identify the uncut, lightly, moderately and heavily cut cells used for detailed comparisons (U1, U2, L1, M1, M2 and H1–H3; Supplementary R1). Table 1 lists the discretisation and correction settings, and Figure 4 shows four of the cells used for detailed comparisons.
@@ -418,6 +405,19 @@ The base network with the correction \(\mathcal W\) applied at deployment, witho
 All variants share the architecture of Section 4 (about \(6\times10^5\) trainable parameters; Table ST15). The three continuations draw from the same set of 591 geometries, which contains 304 of the base network's 305 training geometries, and see the same geometries in the same order, at most 153 of the 591 in their 15,000 steps (Table ST01).
 
 Twenty of the 80 validation geometries (6 uncut, 14 cut) were used for checkpoint selection (Table ST01); statistics are therefore also given for the 60 geometries outside checkpoint selection. The target cells of the two-cell assemblies of Section 5.6 belong to these 20 selection geometries; nine further cells outside checkpoint selection are assembled there as an additional check. The principal variant was designated after all variants had been compared on the 80 validation geometries and the two-cell configurations (Table ST01); the sixteen cells of the lattices of Section 5.8 entered no selection step. Population statistics average the directional energy error within each geometry and loading class and weight geometries equally (Appendix A.1), so the population maximum is the largest geometry mean.
+
+**Table 3. Accuracy of NICE against exact condensation in the assembled examples.** Compliance error \(|\widehat C/C-1|\); sensitivity error: largest relative error \(e_s\) of a cell's eight-component thickness-sensitivity vector; gradient error: relative error of the lattice gradient over the shared vertex parameters. Maxima or ranges over the loads and designs listed. In the two-cell assemblies only the target cell is learned; in all other examples every cell is.
+
+| Example | Section | Cells (cut) | Loads or designs | Compliance error (%) | Sensitivity or gradient error (%) |
+| --- | --- | --- | --- | ---: | --- |
+| Two-cell assemblies, seven selection cells | 5.6 | 2, 14 configurations | six face loads each | ≤ 0.056 | sensitivity ≤ 0.67 |
+| Two-cell assemblies, cut-face tractions | 5.6 | 2, 7 configurations | three cut-face tractions each | ≤ 0.10 | sensitivity ≤ 0.16 |
+| Two-cell assemblies, nine held-out cells | 5.6 | 2, 18 configurations | six face loads each | ≤ 0.27 | sensitivity ≤ 1.49 |
+| Lattices with every cell learned, face loads | 5.8 | 8 (4), 8 (3) | three face loads | ≤ 0.015 | sensitivity ≤ 0.14; gradient 0.04–0.09 |
+| Lattices with every cell learned, random loads | 5.8 | 8 (4), 8 (3) | three random loads | ≤ 0.069 | sensitivity ≤ 0.45; gradient 0.22–0.28 |
+| Case A, thickness optimisation | 5.10 | 8 (4) | designs at iterations 0, 12, 23 | 0.011–0.028 | gradient 0.069–0.33 |
+| Plate clamped through its cut band | 5.10 | 24 (8) | start, final, homogenisation and two uniform designs | 0.011–0.032 | gradient 0.029–0.32 |
+| Plates of the scale study | 5.10 | 24 (8), 51 (12) | first design | 0.013, 0.011 | gradient 0.045, 0.047 |
 
 ### 5.2. Verification of the discrete reference and of the corrected operator
 
