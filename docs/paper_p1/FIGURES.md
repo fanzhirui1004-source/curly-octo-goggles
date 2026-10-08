@@ -6,17 +6,17 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ### Figure 1
 
-![Figure 1](figures/F08_geometry.png)
+![Figure 1](figures/F00_problem.png)
 
-**Figure 1. Representative validation geometries.** The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Blue denotes the material surface and sand the section on the cut plane. Percentages indicate the box volume remaining after the cut, relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) (Supplementary Note S1).
+**Figure 1. A lattice trimmed to a part, whose cut cells carry the support.** (a) Plan view of a single layer of \(8\times4\) Schwarz-P cells (Eq. (1), uniform \(\tau=0.40\)) trimmed by a plane: 16 uncut cells (light) and eight cut cells (dark); the part removed by the cut is drawn pale with a dashed outline. The plate is clamped through its cut: every degree of freedom of the cut band of every cut cell is fixed (hatched line). The end face carries an in-plane traction of unit resultant (arrows). (b) The cut cell outlined in (a), with translucent walls and the cut plane: of the 72,631 nodes of its \(Q_2\) model, the 9,674 on the box faces (blue) and in the cut band (sand) are retained; all others are interior and are eliminated by condensation. Surfaces are reconstructed from Eq. (1) for visualisation.
 
-[PNG](figures/F08_geometry.png) · [PDF](figures/F08_geometry.pdf)
+[PNG](figures/F00_problem.png) · [PDF](figures/F00_problem.pdf)
 
 ### Figure 2
 
 ![Figure 2](figures/F01_method_overview.png)
 
-**Figure 2. Learned displacement extension, equilibrium correction and variational assembly.** (a) Rigid-body motion is separated from the retained displacement before the deformation is extended by the network. The rigid field is reconstructed and the prescribed retained values are restored; the correction \(\mathcal W\) then reduces interior imbalance at fixed retained displacement, and applying the local stiffness and the transpose \(F^T\) of the complete extension gives the work-conjugate retained force. The ordering in (a) assumes an exact coarse-grid correction and a smoothing interval whose upper end bounds the spectrum; it orders the energy error, not the sensitivity error. (b) The cell operators are assembled on the shared box-face DOFs and the assembled system is solved; the assembled solution supplies the inputs for local field recovery, the compliance and the field-based thickness sensitivity. A design iteration updates the corner thickness parameters and so regenerates every cell's geometry; the network parameters stay the same and the coefficients of \(\mathcal W\) are recomputed. The neural extension is detailed in Figure 3 and Section 4.4; Sections 4.2 and 4.3 define the correction \(\mathcal W\).
+**Figure 2. Learned displacement extension, equilibrium correction and variational assembly.** (a) Rigid-body motion is separated from the retained displacement before the deformation is extended by the network. The rigid field is reconstructed and the prescribed retained values are restored; the correction \(\mathcal W\) then reduces interior imbalance at fixed retained displacement, and applying the local stiffness and the transpose \(F^T\) of the complete extension gives the work-conjugate retained force. The ordering in (a) is that of Proposition 4; it concerns the energy error, not the sensitivity error. (b) The cell operators are assembled on the shared box-face DOFs and the assembled system is solved; the assembled solution supplies the inputs for local field recovery, the compliance and the field-based thickness sensitivity. A design iteration updates the corner thickness parameters and so regenerates every cell's geometry; the network parameters stay the same and the coefficients of \(\mathcal W\) are recomputed.
 
 [PNG](figures/F01_method_overview.png) · [PDF](figures/F01_method_overview.pdf)
 
@@ -24,17 +24,17 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ![Figure 3](figures/F11_network_architecture.png)
 
-**Figure 3. Geometry-conditioned neural displacement architecture.** (a) Element and node encoders produce 64-channel geometry feature vectors, followed by two rounds of residual exchange; coefficient heads condition the local interactions, grid transfers and convolutions. (b) The displacement branch propagates the nonrigid retained input through four local interaction pairs, the multilevel block, four further local pairs and four pairs on weakly supported stencils; linear maps connect the three displacement components to 32 latent channels, and deterministic bypasses reconstruct rigid-body motion and restore the retained values. (c) Restriction and prolongation connect grids with 65, 33, 17 and 9 background positions per axis; each coarse level has two residual convolutions on each pass. (d) A local interaction uses geometry-weighted gathering, four channel-mixing heads and scattering, followed by residual addition and retained-value restoration. E and G denote element and ghost-face interactions. Blue dashed arrows carry geometry-dependent coefficients; solid arrows carry features or displacement states. For fixed geometry, the complete displacement path is linear.
+**Figure 3. Geometry-conditioned neural displacement architecture.** (a) Element and node encoders produce 64-channel geometry feature vectors, followed by two rounds of residual exchange; coefficient heads condition the local interactions, grid transfers and convolutions. (b) The displacement branch propagates the nonrigid retained input through four local interaction pairs, the multilevel block, four further local pairs and four pairs on weakly supported stencils; linear maps connect the three displacement components to 32 latent channels, and deterministic bypasses reconstruct rigid-body motion and restore the retained values. (c) Restriction and prolongation connect grids with 65, 33, 17 and 9 background positions per axis; each coarse level has two residual convolutions on each pass. (d) A local interaction uses geometry-weighted gathering, four channel-mixing heads and scattering, followed by residual addition and retained-value restoration. E and G denote element and ghost-face interactions. Blue dashed arrows carry geometry-dependent coefficients; solid arrows carry features or displacement states. For fixed geometry, the complete displacement path is linear. \(\mathcal R\) and \(\mathcal I\) in (c) denote restriction and prolongation.
 
 [PNG](figures/F11_network_architecture.png) · [PDF](figures/F11_network_architecture.pdf)
 
 ### Figure 4
 
-![Figure 4](figures/F09_assembly_loads.png)
+![Figure 4](figures/F08_geometry.png)
 
-**Figure 4. Supports and loading of the two-cell examples.** (a) Configuration x: the neighbour is translated by \((-1,0,0)\), the face \(x=-1\) is clamped, and face tractions act at \(y=0\). (b) Configuration y: the translation is \((0,-1,0)\), the face \(y=-1\) is clamped, and tractions act at \(x=0\). Each target (T) and neighbour (N) face carries separate x-, y- and z-directed consistent-traction loads. Coincident box-node DOFs are shared across the interface; non-box cut-band DOFs remain local. Cut targets also receive three cut-surface tractions, analysed separately.
+**Figure 4. Representative validation geometries.** The same unit-box scale and viewing direction are used for (a) uncut U1, (b) moderately cut M1, and (c,d) heavily cut H1 and H2. Light blue denotes the material surface, dark blue the wall section on the box faces and sand the section on the cut plane; the part removed by the cut is drawn translucent grey, and the cells are viewed from the side of the cut. Percentages indicate the box volume remaining after the cut, relative to the unit box, before intersection with the thin-wall material. Surfaces are reconstructed from Eq. (1) on a grid of 129 positions per axis, for visualisation only.
 
-[PNG](figures/F09_assembly_loads.png) · [PDF](figures/F09_assembly_loads.pdf)
+[PNG](figures/F08_geometry.png) · [PDF](figures/F08_geometry.pdf)
 
 ### Figure 5
 
@@ -70,41 +70,57 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ### Figure 9
 
-![Figure 9](figures/F05_assembly.png)
+![Figure 9](figures/F09_assembly_loads.png)
 
-**Figure 9. Compliance and thickness sensitivity in assembled cell pairs.** The target cell is represented by a learned substructure and the neighbour by exact condensation. (a,b) Maximum errors over the six face loads in each configuration; the sensitivity error is also maximised over both cells. (c,d) Compliance and target-cell sensitivity errors of the individual face loads on M1/x and U1/x; filled markers denote target-face loads and open markers neighbour-face loads. Dashed lines mark the 3% lines. The base network is not shown, and not every variant was evaluated on every configuration; all results are in Table ST09. Variants as in Table 2; 'Base network, corrected' is the base network with the correction applied at deployment, without retraining.
+**Figure 9. Supports and loading of the two-cell assemblies.** (a) Configuration x: the neighbour is translated by \((-1,0,0)\), the face \(x=-1\) is clamped, and face tractions act at \(y=0\). (b) Configuration y: the translation is \((0,-1,0)\), the face \(y=-1\) is clamped, and tractions act at \(x=0\). Each target (T) and neighbour (N) face carries separate x-, y- and z-directed consistent-traction loads. Coincident box-node DOFs are shared across the interface; non-box cut-band DOFs remain local. Cut targets also receive three cut-surface tractions, analysed separately.
 
-[PNG](figures/F05_assembly.png) · [PDF](figures/F05_assembly.pdf)
+[PNG](figures/F09_assembly_loads.png) · [PDF](figures/F09_assembly_loads.pdf)
 
 ### Figure 10
 
-![Figure 10](figures/F10_energy_share.png)
+![Figure 10](figures/F05_assembly.png)
 
-**Figure 10. Share-weighted compliance error and local sensitivity.** Each point is one load of one variant–configuration combination of Tables ST09 (face loads) and ST10 (cut-surface loads). Filled markers denote face loads and open markers cut-surface loads. (a) Compliance error against \(\beta=\sum_mw_m\varepsilon_m\), with the energy shares \(w_m=q_m^TS_mq_m/C\) and energy errors \(\varepsilon_m=q_m^T(\widehat S_m-S_m)q_m/(q_m^TS_mq_m)\), evaluated at the exact assembled retained displacement; only the learned target contributes to \(\beta\). (b) Compliance and target-cell sensitivity errors under the same loads; the annotation identifies the base network on U1/x under the neighbour-z load. Dashed lines denote equality. (c,d) The two response errors versus the target's exact energy share. Variants as in Table 2 and Figure 9.
+**Figure 10. Compliance and thickness sensitivity in two-cell assemblies.** The target cell is represented by a learned substructure and the neighbour by exact condensation. (a,b) Maximum errors over the six face loads in each configuration; the sensitivity error is also maximised over both cells. (c,d) Compliance and target-cell sensitivity errors of the individual face loads on M1/x and U1/x; filled markers denote target-face loads and open markers neighbour-face loads. Dashed lines mark the 3% lines. The base network is not shown, and not every variant was evaluated on every configuration; all results are in Table ST08. Variants as in Table 2; 'Base network, corrected' is the base network with the correction applied at deployment, without retraining.
 
-[PNG](figures/F10_energy_share.png) · [PDF](figures/F10_energy_share.pdf)
+[PNG](figures/F05_assembly.png) · [PDF](figures/F05_assembly.pdf)
 
 ### Figure 11
 
-![Figure 11](figures/F06_bernstein.png)
+![Figure 11](figures/F10_energy_share.png)
 
-**Figure 11. Response errors caused by restricting box-face displacements.** Both cells of H1/x use exact operators and Bernstein degree \(r\) on every box face, with unrestricted non-box cut-band DOFs. (a) Number of retained DOFs; the dashed line denotes the 32,991 DOFs of the full representation. (b,c) Maximum compliance and target-cell sensitivity errors over the three target-face loads or all six target- and neighbour-face loads; cut-surface tractions are excluded. Errors are relative to the full retained-space solution; horizontal lines mark 3%.
+**Figure 11. The target's energy share scales down the compliance error but not the sensitivity error.** NICE in the fourteen configurations of the seven selection cells, one point per load: 84 face loads (filled markers) and 30 cut-surface loads (open markers); the maxima over the loads are given in Tables ST08 and ST09. (a) Compliance error against \(\beta=\sum_mw_m\varepsilon_m\), with the energy shares \(w_m=q_m^TS_mq_m/C\) and energy errors \(\varepsilon_m=q_m^T(\widehat S_m-S_m)q_m/(q_m^TS_mq_m)\), evaluated at the exact assembled retained displacement; only the learned target contributes to \(\beta\). The line denotes equality. For every load the compliance error lies between 0.963 and 1.004 times \(\beta\); the five ratios above 1 correspond to at most \(7.8\times10^{-10}\) of the compliance, whereas the residual work of the pair solves reaches \(1.8\times10^{-8}\) of the compliance (Supplementary Note S4.3). (b) Compliance error and (c) target-cell sensitivity error against the target's exact energy share \(w\); solid lines are least-squares fits in logarithmic coordinates. The circled load is U1/x under the neighbour-face z traction (Table 5). The other four variants are shown in Figure S04.
 
-[PNG](figures/F06_bernstein.png) · [PDF](figures/F06_bernstein.pdf)
+[PNG](figures/F10_energy_share.png) · [PDF](figures/F10_energy_share.pdf)
 
 ### Figure 12
 
-![Figure 12](figures/F13_optimisation.png)
+![Figure 12](figures/F06_bernstein.png)
 
-**Figure 12. Thickness optimisation with NICE.** (a) Case A: compliance histories of the NICE optimisation and of the twin optimisation with exact condensation, with the exact compliance of the NICE designs at iterations 0, 12 and 23 (open circles); the compliance first rises while the volume is reduced from \(1.25V^*\) to \(V^*\) (shading, iterations 0–3). Lower strip: NICE compliance relative to the twin run at the same design iteration (line; the designs of the two runs coincide at iterations 0–4 and differ afterwards) and to the exact compliance of the same design (circles: −0.011%, −0.018%, −0.028%); at iterations 16 and 19 (labelled 'perturbed designs') the geometry-generation fallback had perturbed the NICE design (Supplementary Note S9.4, Table ST24a). (b) Plate supported on its cut: NICE compliance from the uniform start, compliance of the homogenised macroscale model along its own optimisation (dashed), the homogenisation design analysed with NICE on the cut geometry (star, at the last macroscale iteration) and the exact compliance of the uniform start, the final NICE design and the homogenisation design (open circles). Shading: design iterations with \(V>V^*\). Lower strip: the range marked by the bracket, enlarged, from iteration 15.
+**Figure 12. Response errors caused by restricting box-face displacements.** Both cells of H1/x use exact operators and Bernstein degree \(r\) on every box face, with unrestricted non-box cut-band DOFs. (a) Number of retained DOFs; the dashed line denotes the 32,991 DOFs of the full representation. (b,c) Maximum compliance and target-cell sensitivity errors over the three target-face loads or all six target- and neighbour-face loads; cut-surface tractions are excluded. Errors are relative to the full retained-space solution; horizontal lines mark 3%.
 
-[PNG](figures/F13_optimisation.png) · [PDF](figures/F13_optimisation.pdf)
+[PNG](figures/F06_bernstein.png) · [PDF](figures/F06_bernstein.pdf)
 
 ### Figure 13
 
-![Figure 13](figures/F14_designs_scale.png)
+![Figure 13](figures/F14_plate_design3d.png)
 
-**Figure 13. Plate designs and scale demonstration.** (a,b) Corner thickness parameters of the final NICE design and of the homogenisation design, drawn with the long side horizontal, layer \(z=0\); circles: design variables; squares: vertices in the plane of the loaded face, held fixed; vertices drawn in the removed region are corners of cut cells. Thick line with hatching: the clamped cut band; arrows: load face and direction of the in-plane traction. (c) Scale demonstration on plates with the proportions and cut of the plate in (a,b), clamped along the uncut long side and loaded in plane on the opposite face: time per design iteration (mean; bars: range over the timed iterations), peak CPU memory of the main process and peak GPU memory in use, against the number of cells. Compliances in (a,b): NICE and exact values of the same design (Table ST27).
+**Figure 13. Thickness design of the plate clamped through its cut band.** (a) Final NICE design, walls coloured by the local thickness parameter, with the NICE and exact compliances (Table ST21). (b) Change from the uniform start, \(\tau-0.40\): material moves into the cells next to the support near the loaded end (up to \(+0.29\)), and the cells far from the load are thinned (down to \(-0.22\)). (c) The cut cell of Figure 1b at the final design under the design load: displacement magnitude on the walls from the NICE recovered field \(F_mB_m\widehat U\) and from exact condensation \(E_mB_mU\) on one scale, and their difference on its own scale. The two fields differ by 1.04% in the energy norm of the cell and by 0.76% in the Euclidean norm of the nodal displacements; the same extension applied to the exact retained displacements also gives 1.04%, so the difference comes from the local extension. Over the plate the energy-norm difference is 1.72%, whose square equals the relative compliance gap of \(2.96\times10^{-4}\) (Eq. (6)).
+
+[PNG](figures/F14_plate_design3d.png) · [PDF](figures/F14_plate_design3d.pdf)
+
+### Figure 14
+
+![Figure 14](figures/F13_optimisation.png)
+
+**Figure 14. Thickness optimisation with NICE.** (a) Case A: compliance histories of the NICE optimisation and of the twin optimisation with exact condensation, with the exact compliance of the NICE designs at iterations 0, 12 and 23 (open circles); the compliance first rises while the volume is reduced from \(1.25V^*\) to \(V^*\) (shading, iterations 0–3). Lower strip: NICE compliance relative to the twin run at the same design iteration (line; the designs of the two runs coincide at iterations 0–4 and differ afterwards) and to the exact compliance of the same design (circles: −0.011%, −0.018%, −0.028%); at iterations 16 and 19 (labelled 'perturbed designs') the geometry-generation fallback had perturbed the NICE design (Supplementary Note S6.4, Table ST19a). (b) Plate supported on its cut: NICE compliance from the uniform start, compliance of the homogenised macroscale model along its own optimisation (dashed), the homogenisation design analysed with NICE on the cut geometry (star, at the last macroscale iteration) and the exact compliance of the uniform start, the final NICE design and the homogenisation design (open circles). Shading: design iterations with \(V>V^*\). Lower strip: the range marked by the bracket, enlarged, from iteration 15.
+
+[PNG](figures/F13_optimisation.png) · [PDF](figures/F13_optimisation.pdf)
+
+### Figure 15
+
+![Figure 15](figures/F14_designs_scale.png)
+
+**Figure 15. Plate designs and scale demonstration.** (a,b) Corner thickness parameters of the final NICE design and of the homogenisation design, drawn with the long side horizontal, layer \(z=0\); circles: design variables; squares: vertices in the plane of the loaded face, held fixed; vertices drawn in the removed region are corners of cut cells. Thick line with hatching: the clamped cut band; arrows: load face and direction of the in-plane traction. (c) Scale demonstration on plates with the proportions and cut of the plate in (a,b), clamped along the uncut long side and loaded in plane on the opposite face: time per design iteration (mean; bars: range over the timed iterations) against the number of cells; dashed: proportionality at the mean time per cell; memory in Table ST20. Compliances in (a,b): NICE and exact values of the same design (Table ST21).
 
 [PNG](figures/F14_designs_scale.png) · [PDF](figures/F14_designs_scale.pdf)
 
@@ -114,7 +130,7 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ![Figure S01](figures/S06_reference_verification.png)
 
-**Figure S01. Verification of the CutFEM reference.** Single cells U1, M1, M2 and H1, clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. (a) Largest relative change over the three loads of compliance (filled, solid) and thickness sensitivity (open, dashed) against the finest background resolution (\(n=40\) for U1, 48 otherwise); the reference used throughout has \(n=32\). On H1 the successive compliance increments do not yet decrease between \(n=40\) and 48; refinement to \(n=64\) (Table ST14) shows that H1 does not converge monotonically, so the difference from \(n=48\) is not an estimate of the \(n=32\) error. (b) The same quantities when the ghost-penalty coefficient is changed from the value \(10^{-4}\) used throughout. (c) Largest relative change of the sensitivity when the finite-difference step of the moment derivatives is changed from the value \(h_c=10^{-5}\tau_c\) used throughout (filled), and largest relative difference between central compliance differences and the sensitivity at that step (open). The relative change is at most \(2.6\times10^{-5}\)% at \(10^{-3}\tau_c\) and falls a hundredfold from \(10^{-3}\tau_c\) to \(10^{-4}\tau_c\). Refinement to \(n=64\) of H1, H2 and two further validation cells: Table ST14.
+**Figure S01. Verification of the CutFEM reference.** Single cells clamped on one box face and loaded by unit consistent tractions on another face in the three Cartesian directions. In (a), (b) and (d), solid lines with filled markers give the compliance and dashed lines with open markers the thickness sensitivity, each as the largest relative change over the three loads. (a) Change against the finest background resolution computed for U1 (\(n=40\)) and for M1 and M2 (\(n=48\)); the reference used throughout has \(n=32\). (b) Change when the ghost-penalty coefficient is varied from the value \(10^{-4}\) used throughout. (c) Filled: largest relative change of the sensitivity when the finite-difference step of the moment derivatives is varied from the value \(h_c=10^{-5}\tau_c\) used throughout, at most \(2.6\times10^{-5}\)% at \(10^{-3}\tau_c\) and a hundredfold smaller at \(10^{-4}\tau_c\); open: largest relative difference between central compliance differences and the sensitivity at the step used. (d) Refinement to \(n=64\) of H1, H2 and the validation cells with the largest NICE error (W1) and the thinnest walls (W3), the data of Table ST10; H2 has no \(n=56\) solution.
 
 [PNG](figures/S06_reference_verification.png) · [PDF](figures/S06_reference_verification.pdf)
 
@@ -130,30 +146,14 @@ Index of the figures in the manuscript and the supplementary material (generated
 
 ![Figure S03](figures/S03_sensitivity_diagnostics.png)
 
-**Figure S03. Field-based sensitivity-error diagnostics.** (a) Paired mean energy and sensitivity errors for consistent-traction and nodal-force responses, using six cells of the base network and five of Uncorrected. (b) Consistent-traction linear-term norm share \(\|D_1\|_F/(\|D_1\|_F+\|D_2\|_F)\), where \(D_1+D_2\) is the sensitivity-error matrix over all eight design components and evaluated directions. (c,d) Shares of absolute elementwise sensitivity-error contributions and element counts in four mutually exclusive material-volume-fraction groups for the base network under consistent tractions. Each error group sums absolute contributions over its elements, design components and directions before normalisation by the total. Filled markers identify the base network and open markers and hatched bars in (a,b) Uncorrected; Uncorrected is shown for U1, U2, M1, H1 and M2 (Table ST05).
+**Figure S03. Field-based sensitivity-error diagnostics.** (a) Paired mean energy and sensitivity errors for consistent-traction and nodal-force responses, using six cells of the base network and five of Uncorrected. (b) Consistent-traction linear-term norm share \(\|D_1\|_F/(\|D_1\|_F+\|D_2\|_F)\), where \(D_1+D_2\) is the sensitivity-error matrix over all eight design components and evaluated directions. (c,d) Shares of absolute elementwise sensitivity-error contributions and element counts in four mutually exclusive material-volume-fraction groups for the base network under consistent tractions. Each error group sums absolute contributions over its elements, design components and directions before normalisation by the total. Filled markers identify the base network and open markers and hatched bars in (a,b) Uncorrected; Uncorrected is shown for U1, U2, M1, H1 and M2 (Table ST05a).
 
 [PNG](figures/S03_sensitivity_diagnostics.png) · [PDF](figures/S03_sensitivity_diagnostics.pdf)
 
 ### Figure S04
 
-![Figure S04](figures/S02A_smoothing.png)
+![Figure S04](figures/S07_energy_share_variants.png)
 
-**Figure S04. Smoothing from learned and zero interior fields.** (a,b) Mean directional energy error for consistent-traction and nodal-force responses; (c,d) corresponding field-based sensitivity errors. Both initialisations prescribe the same retained displacement. Solid curves with filled markers start from the base network; dashed curves with open markers start from zero interior displacement. Zero-start sensitivity is recorded only at 32 steps. All corrections use \(a=b/30\). The step axis is linear between zero and one and logarithmic thereafter.
+**Figure S04. The other four variants follow the relations of Figure 11.** The counterpart of Figure 11 for (a–c) the base network, (d–f) Uncorrected, (g–i) Smoothing-trained and (j–l) the base network with the correction applied at deployment. One point per load in the configurations evaluated for each variant (54, 87, 96 and 114 loads; Tables ST08 and ST09); filled markers denote face loads and open markers cut-surface loads. Top row: compliance error against \(\beta\); lines denote equality. The ratio of compliance error to \(\beta\) lies between 0.80 and 0.98, 0.79 and 0.99, 0.92 and 0.99, and 0.96 and 1.006 for the four variants; the six ratios above 1 correspond to at most \(1.3\times10^{-9}\) of the compliance. Middle and bottom rows: compliance error and target-cell sensitivity error against the target's exact energy share \(w\); lines are least-squares fits in logarithmic coordinates, with the slope given in each panel. All panels share the error axis. The circled load in (a–c) is U1/x under the neighbour-face z traction; its values are given in the note to Table ST08.
 
-[PNG](figures/S02A_smoothing.png) · [PDF](figures/S02A_smoothing.pdf)
-
-### Figure S05
-
-![Figure S05](figures/S02B_coarse_spaces.png)
-
-**Figure S05. Coarse representations and correction sequences.** Rows correspond to U1, M1 and M2; columns use consistent-traction and nodal-force responses. "Network" denotes the base network. Six coarse representations are compared under four initialisation and smoothing sequences, with eight steps in each pre- or post-smoothing stage. Dots indicate directional means and caps the 90th percentile. Dashed and dotted references denote the base network alone and the base network followed by one smoothing stage. \(Q_1\), \(Q_2\) and PU denote trilinear, quadratic and linearly enriched partition-of-unity generating families. The first label number identifies grid resolution and the lower number is the number of surviving coarse basis columns after restriction to the interior DOFs and screening. Appendix F.1 and Supplementary Note S3 explain the rank and solve conditions; Table ST07 gives all statistics. Coarse-grid corrections preserve every retained DOF.
-
-[PNG](figures/S02B_coarse_spaces.png) · [PDF](figures/S02B_coarse_spaces.pdf)
-
-### Figure S06
-
-![Figure S06](figures/S06_homogenised_law.png)
-
-**Figure S06. Homogenised law of the uniform-thickness cell.** (a) Effective elasticity tensor \(C^H_{11}\), \(C^H_{12}\), \(C^H_{44}\) (Voigt notation, engineering shear strains, \(E_Y=1\), \(\nu=0.3\)), cubic to \(3.1\times10^{-13}\); (b) material volume fraction \(V^H\), the material volume of the unit cell from the zeroth element moments. Markers: periodic homogenisation on the discrete model (\(n=32\), Q2 elements, ghost penalty) at 12 thicknesses from 0.18 to 0.70 (Table ST23b); lines: the cubic splines in \(\tau\) used by the macroscale model. Data: Table ST23b.
-
-[PNG](figures/S06_homogenised_law.png) · [PDF](figures/S06_homogenised_law.pdf)
+[PNG](figures/S07_energy_share_variants.png) · [PDF](figures/S07_energy_share_variants.pdf)
