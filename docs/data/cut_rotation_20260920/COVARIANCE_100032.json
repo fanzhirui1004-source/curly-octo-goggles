@@ -1,0 +1,24 @@
+{
+  "header": {"seat": 100032, "q_teacher": 10812, "nodal_dofs": 13200, "support_nodes": 4400,
+             "box_coordinates": 2168, "pullback_frobenius": 1.4527418447861211, "growth": 1.2209,
+             "active_cells": 3651, "body_dimension": 115476},
+  "rows": [
+    {"label": "G01", "element": 1, "operation": "mirror z", "proper": false,
+     "covariance_residual_relative": 1.8527491807341318e-14, "frobenius_ratio": 0.9999999999999997,
+     "teacher_cut_coordinates": {"base": 1436, "rotated": 1436}},
+    {"label": "G10", "element": 10, "operation": "90 deg about x, plane tilts into z", "proper": true,
+     "covariance_residual_relative": 2.2024679007970405e-14, "frobenius_ratio": 1.0000000000000127,
+     "teacher_cut_coordinates": {"base": 1436, "rotated": 1436}},
+    {"label": "G19", "element": 19, "operation": "S4 improper rotoreflection, order 4", "proper": false,
+     "covariance_residual_relative": 1.7288714977217668e-14, "frobenius_ratio": 1.0000000000000189,
+     "teacher_cut_coordinates": {"base": 1436, "rotated": 1436}},
+    {"label": "G20", "element": 20, "operation": "90 deg about z", "proper": true,
+     "covariance_residual_relative": 1.859663840509247e-14, "frobenius_ratio": 1.0000000000000382,
+     "teacher_cut_coordinates": {"base": 1436, "rotated": 1436}},
+    {"label": "G32", "element": 32, "operation": "3-fold about the body diagonal", "proper": true,
+     "covariance_residual_relative": 1.3651132546613198e-14, "frobenius_ratio": 1.000000000000028,
+     "teacher_cut_coordinates": {"base": 1436, "rotated": 1436}}
+  ],
+  "numeric_seconds_per_element": "203-207",
+  "remote_outputs": "/root/autodl-tmp/CLAUDE_CUT_ROT_20260920/{ROT_100032,ROT_100032_NUM,COMPARE_100032}"
+}

@@ -1,0 +1,381 @@
+{
+ "layout": "hlat221a",
+ "machine": "autodl-container-2f9845b53b-a1297f04",
+ "route": "conventional exact condensation (dense S_i by PARDISO Schur option; sparse Cholesky of the assembled condensed matrix, substructuring order)",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "memory_max_bytes": 64424509440,
+   "memory_high_bytes": 62277025792,
+   "anon_bytes": 639557632,
+   "file_bytes": 3570831360,
+   "cpu_quota_cores": 32.0,
+   "nproc": 32,
+   "os_cpu_count": 192,
+   "memory_max_GiB": 60.0,
+   "memory_high_GiB": 58.0,
+   "anon_GiB": 0.5956344604492188,
+   "file_GiB": 3.3255958557128906
+  },
+  "loadavg": [
+   68.15576171875,
+   69.18212890625,
+   69.19091796875
+  ],
+  "host": "autodl-container-2f9845b53b-a1297f04",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 16
+ },
+ "iparm": {
+  "1": 1,
+  "2": 3,
+  "4": 0,
+  "5": 0,
+  "6": 0,
+  "8": 0,
+  "10": 8,
+  "11": 0,
+  "13": 0,
+  "18": -1,
+  "19": -1,
+  "24": 0,
+  "25": 0,
+  "27": 0,
+  "28": 0,
+  "34": 0,
+  "35": 1,
+  "36": 0,
+  "56": 0,
+  "60": 0
+ },
+ "loadavg_start": [
+  68.15576171875,
+  69.18212890625,
+  69.19091796875
+ ],
+ "cpu_stat_start": {
+  "usage_usec": 51237286298,
+  "user_usec": 37577752542,
+  "system_usec": 13659533755,
+  "nr_periods": 57043,
+  "nr_throttled": 0,
+  "throttled_usec": 0
+ },
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 56.84260764718056,
+   "assembly_s": 31.277626045048237,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424,
+   "front_end_peak_rss_GiB": 17.666458129882812,
+   "schur": {
+    "schur_rows": 20184,
+    "build_s": 4.525543540716171,
+    "analysis_s": 15.101220227777958,
+    "predicted_GiB": {
+     "peak_analysis": 2.6442527770996094,
+     "permanent": 2.4476003646850586,
+     "factor_solve": 12.529306411743164,
+     "total": 14.976906776428223
+    },
+    "avail_GiB": 49.712589263916016,
+    "factor_schur_s": 71.72330419719219,
+    "seconds": 86.82452442497015,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 2772700,
+      "16": 2566495,
+      "17": 13116531,
+      "18": 1536752472,
+      "19": 17760144,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 308424,
+      "48": 20184,
+      "57": -1,
+      "61": 2772700,
+      "62": 1930715
+     },
+     "nnz_factor": 1536752472,
+     "mflop_factor": 17760144,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 2772700,
+      "permanent": 2566495,
+      "factor_solve": 13116531
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 2.6442527770996094,
+      "permanent": 2.4476003646850586,
+      "factor_solve": 12.508898735046387,
+      "total": 14.956499099731445
+     }
+    },
+    "peak_rss_GiB": 22.863868713378906,
+    "symmetry_rel": 3.9818737924457314e-17,
+    "dense_S_GiB": 3.03532075881958
+   }
+  },
+  "hlat222_010": {
+   "setup_s": 57.16890433430672,
+   "assembly_s": 34.713420398533344,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340,
+   "front_end_peak_rss_GiB": 21.11359405517578,
+   "schur": {
+    "schur_rows": 20124,
+    "build_s": 4.531471461057663,
+    "analysis_s": 15.188965015113354,
+    "predicted_GiB": {
+     "peak_analysis": 2.648953437805176,
+     "permanent": 2.4504127502441406,
+     "factor_solve": 12.59532356262207,
+     "total": 15.045736312866211
+    },
+    "avail_GiB": 46.603546142578125,
+    "factor_schur_s": 76.63344419747591,
+    "seconds": 91.82240921258926,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 2777629,
+      "16": 2569444,
+      "17": 13185757,
+      "18": 1545292221,
+      "19": 17935812,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 308340,
+      "48": 20124,
+      "57": -1,
+      "61": 2777629,
+      "62": 1933371
+     },
+     "nnz_factor": 1545292221,
+     "mflop_factor": 17935812,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 2777629,
+      "permanent": 2569444,
+      "factor_solve": 13185757
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 2.648953437805176,
+      "permanent": 2.4504127502441406,
+      "factor_solve": 12.574917793273926,
+      "total": 15.025330543518066
+     }
+    },
+    "peak_rss_GiB": 26.05258560180664,
+    "symmetry_rel": 4.273779373417748e-17,
+    "dense_S_GiB": 3.0173016786575317
+   }
+  },
+  "hlat222_100": {
+   "setup_s": 34.25292071700096,
+   "assembly_s": 21.809744514524937,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510,
+   "front_end_peak_rss_GiB": 17.97277069091797,
+   "schur": {
+    "schur_rows": 30561,
+    "build_s": 2.886912539601326,
+    "analysis_s": 8.493146322667599,
+    "predicted_GiB": {
+     "peak_analysis": 1.736684799194336,
+     "permanent": 1.5790700912475586,
+     "factor_solve": 9.831256866455078,
+     "total": 11.410326957702637
+    },
+    "avail_GiB": 46.20988464355469,
+    "factor_schur_s": 56.13563774526119,
+    "seconds": 64.62878406792879,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 1821046,
+      "16": 1655775,
+      "17": 10289162,
+      "18": 1198404868,
+      "19": 16878840,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 186510,
+      "48": 30561,
+      "57": -1,
+      "61": 1821046,
+      "62": 1461679
+     },
+     "nnz_factor": 1198404868,
+     "mflop_factor": 16878840,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 1821046,
+      "permanent": 1655775,
+      "factor_solve": 10289162
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 1.736684799194336,
+      "permanent": 1.5790700912475586,
+      "factor_solve": 9.812509536743164,
+      "total": 11.391579627990723
+     }
+    },
+    "peak_rss_GiB": 27.862838745117188,
+    "symmetry_rel": 3.128234121605952e-17,
+    "dense_S_GiB": 6.958653934299946
+   }
+  },
+  "hlat222_110": {
+   "setup_s": 15.014358319342136,
+   "assembly_s": 11.854158915579319,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304,
+   "front_end_peak_rss_GiB": 20.270771026611328,
+   "schur": {
+    "schur_rows": 25482,
+    "build_s": 1.4114456251263618,
+    "analysis_s": 3.5082824155688286,
+    "predicted_GiB": {
+     "peak_analysis": 0.8425664901733398,
+     "permanent": 0.7608518600463867,
+     "factor_solve": 4.966155052185059,
+     "total": 5.727006912231445
+    },
+    "avail_GiB": 41.596431732177734,
+    "factor_schur_s": 23.652264036238194,
+    "seconds": 27.160546451807022,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 883495,
+      "16": 797811,
+      "17": 5189522,
+      "18": 588703634,
+      "19": 7371853,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 77304,
+      "48": 25482,
+      "57": -1,
+      "61": 883495,
+      "62": 860166,
+      "63": 87083
+     },
+     "nnz_factor": 588703634,
+     "mflop_factor": 7371853,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 883495,
+      "permanent": 797811,
+      "factor_solve": 5189522
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 0.8425664901733398,
+      "permanent": 0.7608518600463867,
+      "factor_solve": 4.949113845825195,
+      "total": 5.709965705871582
+     }
+    },
+    "peak_rss_GiB": 25.74514389038086,
+    "symmetry_rel": 8.826804965558421e-17,
+    "dense_S_GiB": 4.837902814149857
+   }
+  }
+ },
+ "held_S_GiB": 17.849179185926914,
+ "cells_s": 555.6609310433269,
+ "dense_S_total_GiB": 17.849179185926914,
+ "rss_after_cells_GiB": 19.103443145751953,
+ "lattice_s": 0.027758799493312836,
+ "free_retained": 77310,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "solver": "block",
+ "solver_description": "exact block Cholesky of the block-sparse condensed matrix in the substructuring order (cell-private retained DOFs eliminated per cell, then the dense shared-DOF interface), dense MKL kernels (dpotrf, dtrsm, dsyrk, dgemm)",
+ "n_shared": 12327,
+ "n_private": 64983,
+ "interface_dense_GiB": 1.132152445614338,
+ "private_elimination_s": 85.30772130936384,
+ "held_factor_GiB": 11.450246885418892,
+ "interface_factor_solve_s": 2.2335192263126373,
+ "back_substitution_s": 3.016671195626259,
+ "block_peak_rss_GiB": 22.085063934326172,
+ "condensed_s": 91.46652749180794,
+ "compliance": [
+  302.1934843551455,
+  51.693455233042414,
+  635.773881811865,
+  90846.45315318857,
+  81897.44774451094,
+  85365.45259615332
+ ],
+ "reference": {
+  "file": "/root/autodl-tmp/OPL/S1/V2/lat_direct_hlat221a_m11.json",
+  "mtype": 11,
+  "compliance": [
+   302.19348447507167,
+   51.69345524370899,
+   635.773882264183,
+   90846.45315316597,
+   81897.44774450839,
+   85365.45259651908
+  ],
+  "rel_diff": [
+   3.9685232877673116e-10,
+   2.0634283171006018e-10,
+   7.114449029899106e-10,
+   2.4868995751603507e-13,
+   3.108624468950438e-14,
+   4.284683718935867e-12
+  ]
+ },
+ "front_end_s": 262.9337408915162,
+ "schur_s": 270.4362641572952,
+ "total_s": 647.1565125212073,
+ "process_peak_rss_GiB": 27.862838745117188,
+ "loadavg_end": [
+  65.794921875,
+  68.0224609375,
+  68.66748046875
+ ],
+ "throttled_s": 0.0
+}

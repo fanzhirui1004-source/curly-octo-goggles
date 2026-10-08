@@ -1,0 +1,98 @@
+{
+ "layout": "hlatsmoke1",
+ "machine": "autodl-container-2f9845b53b-a1297f04",
+ "route": "scipy.sparse.linalg.splu (SuperLU), factor once + solve 6 loads, full symmetric unscaled CSC, single thread",
+ "threads": {
+  "OMP": "1",
+  "MKL": "1"
+ },
+ "loadavg_start": [
+  46.55810546875,
+  51.28857421875,
+  55.79150390625
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 187.73750273138285,
+   "assembly_s": 194.95679493248463,
+   "dofs": 328608
+  }
+ },
+ "cells_s": 382.6954961195588,
+ "global_assembly_s": 12.52226161211729,
+ "global_dofs": 325404,
+ "nnz_full": 89655524,
+ "matrix": "full symmetric CSC, unscaled (no Jacobi scaling)",
+ "save_s": 2.547566831111908,
+ "npz": "/root/autodl-tmp/OPL/S1/V2/R1/cpu3/host1/npz/hlatsmoke1_K.npz",
+ "npz_GiB": 1.0177388675510883,
+ "solves": {
+  "colamd": {
+   "status": "MemoryError",
+   "machine": "autodl-container-2f9845b53b-a1297f04",
+   "scipy": "1.18.1",
+   "pid": 3478,
+   "rlimit_as": [
+    53687091200,
+    53687091200
+   ],
+   "variant": "colamd",
+   "splu_kwargs": {
+    "permc_spec": "COLAMD"
+   },
+   "solver": "SuperLU bundled with SciPy 1.18.1 (scipy.sparse.linalg.splu; sequential, single thread)",
+   "load_s": 0.8272505104541779,
+   "n": 325404,
+   "nnz": 89655524,
+   "rss_after_load_GiB": 1.0725059509277344,
+   "wall_limit_s": 7200,
+   "detail": "MemoryError()",
+   "seconds": 57.7471756413579,
+   "peak_rss_GiB": 4.2111968994140625,
+   "returncode": 0,
+   "parent_wall_s": 59.00236574560404,
+   "parent_backstop_kill": false,
+   "child_peak_rss_GiB": 4.2111968994140625,
+   "as_limit_GiB": 50.0,
+   "watchdog_GiB": 50.0
+  },
+  "mmd": {
+   "status": "MemoryError",
+   "machine": "autodl-container-2f9845b53b-a1297f04",
+   "scipy": "1.18.1",
+   "pid": 3480,
+   "rlimit_as": [
+    53687091200,
+    53687091200
+   ],
+   "variant": "mmd",
+   "splu_kwargs": {
+    "permc_spec": "MMD_AT_PLUS_A",
+    "diag_pivot_thresh": 0.0,
+    "options": {
+     "SymmetricMode": true
+    }
+   },
+   "solver": "SuperLU bundled with SciPy 1.18.1 (scipy.sparse.linalg.splu; sequential, single thread)",
+   "load_s": 0.8471569046378136,
+   "n": 325404,
+   "nnz": 89655524,
+   "rss_after_load_GiB": 1.0726509094238281,
+   "wall_limit_s": 7200,
+   "detail": "MemoryError()",
+   "seconds": 14.67578936368227,
+   "peak_rss_GiB": 4.2111968994140625,
+   "returncode": 0,
+   "parent_wall_s": 15.960485734045506,
+   "parent_backstop_kill": false,
+   "child_peak_rss_GiB": 4.2111968994140625,
+   "as_limit_GiB": 50.0,
+   "watchdog_GiB": 50.0
+  }
+ },
+ "loadavg_end": [
+  38.4169921875,
+  45.10400390625,
+  51.17724609375
+ ]
+}

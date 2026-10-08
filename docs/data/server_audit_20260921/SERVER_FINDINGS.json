@@ -1,0 +1,66 @@
+{
+ "what": "numbers read directly off the box on 2026-09-21 for a fresh analysis of the last ten days; the ones marked unreported appear in no docs/*.md",
+ "sources": ["/root/autodl-tmp/CLAUDE_EQUI_20260918/*/EVAL_*/{RESULT,SPECTRUM}.json + EIGENVALUES.npy", "*/SPLIT.json", "*/TRAIN.jsonl", "LATTICE/*/ASSEMBLE_LATTICE.json", "RANK/AVG/TWO/ASSEMBLE_TWO.json", "/root/_rank.sh", "CLAUDE_AUGCOST_20260920/GATE/*/SWEEP.jsonl"],
+
+ "1_presented_versus_never_presented": {
+  "how": "EVAL seats joined to SPLIT.json never_presented; medians over seats of SPECTRUM factor_relative, e_A, mu_max and the response-gate face median",
+  "rows": [
+   {"arm": "MULTI_AUGMENT", "kind": "box", "presented": {"n": 4, "factor_rel": 0.0360, "e_A": 0.35, "mu_max": 3},   "held_out": {"n": 8, "factor_rel": 0.0356, "e_A": 0.34, "mu_max": 3}},
+   {"arm": "WIDE_BOX",      "kind": "box", "presented": {"n": 4, "factor_rel": 0.0345, "e_A": 0.32, "mu_max": 3},   "held_out": {"n": 8, "factor_rel": 0.0315, "e_A": 0.31, "mu_max": 2, "face_med": 0.0133}},
+   {"arm": "CUTONLY_NOAUG", "kind": "cut", "presented": {"n": 4, "factor_rel": 0.1554, "e_A": 300, "mu_max": 288924},  "held_out": {"n": 4, "factor_rel": 1.0294, "e_A": 5323, "mu_max": 163078340, "face_med": 2.0020}},
+   {"arm": "CUTMIX_FULLAUG","kind": "cut", "presented": {"n": 2, "factor_rel": 0.1362, "e_A": 6.1, "mu_max": 20210},   "held_out": {"n": 8, "factor_rel": 0.4831, "e_A": 9.2, "mu_max": 83038, "face_med": 0.3568}},
+   {"arm": "ROT_CUT",       "kind": "cut", "presented": {"n": 3, "factor_rel": 0.1936, "e_A": 3687, "mu_max": 3127572}, "held_out": {"n": 11, "factor_rel": 0.3943, "e_A": 423, "mu_max": 808758, "face_med": 0.1602}},
+   {"arm": "WIDE_CUT",      "kind": "cut", "presented": {"n": 3, "factor_rel": 0.1694, "e_A": 166, "mu_max": 143698},  "held_out": {"n": 11, "factor_rel": 0.5328, "e_A": 1079, "mu_max": 2690075, "face_med": 0.2045}},
+   {"arm": "NCUT_59",       "kind": "cut", "presented": {"n": 3, "factor_rel": 0.3122, "e_A": 1450, "mu_max": 33140019},"held_out": {"n": 11, "factor_rel": 0.5642, "e_A": 72, "mu_max": 751747, "face_med": 0.1954}}
+  ],
+  "reading": "box arms have NO generalisation gap (held-out equals presented at 0.03). Cut arms have a 2-7x gap AND a presented error already 4-9x the box arms'. Two problems at once: they do not fit, and what they fit does not transfer."
+ },
+
+ "2_ncut_ladder_as_a_scaling_law": {
+  "status": "UNREPORTED as a law; NCUT_59 appears as one table row in CUT_CELL_ACCURACY_IS_ALL_CANCELLATION_20260919.md",
+  "held_out_seat_115_factor_rel": {"NCUT_02": 0.900, "NCUT_04": 0.768, "NCUT_08": 0.838, "NCUT_08_60K": 0.723, "NCUT_16": 0.723, "NCUT_59": 0.446},
+  "presented_seat_100032_factor_rel_at_20k": {"NCUT_02": 0.033, "NCUT_04": 0.064, "NCUT_08": 0.127, "NCUT_16": 0.218, "NCUT_08_at_60k": 0.048},
+  "fit": "held-out error ~ n_seats^-0.21 between n=2 and n=59 (log(0.900/0.446)/log(59/2))",
+  "extrapolation": "to reach 0.03 from 0.446 at n=59 needs n ~ 59 * (0.446/0.03)^(1/0.21) ~ 2.5e7 seats; even at an exponent of -0.5 it is ~1.3e4 seats, 40x the whole 296-cell pool",
+  "presented_error_RISES_with_seats": "0.033 -> 0.218 from 2 to 16 seats at 20k steps: the model cannot memorise more cut seats; 60k steps at 8 seats recovers 0.127 -> 0.048",
+  "reading": "the observed data-scaling exponent makes the data route infeasible by three to five orders of magnitude. More geometries reduce memorisation and buy generalisation slowly; they cannot reach the contract."
+ },
+
+ "3_where_the_error_sits_in_the_spectrum": {
+  "how": "mu = eig(R^-T A_hat R^-1); mu > 1 is predicted too stiff",
+  "held_out_cut_seat_115_under_CUTMIX_FULLAUG": {"d": 12078, "mu_min": 6.86e-4, "mu_max": 8.64e6, "modes_over_100x_too_stiff": 480, "modes_over_100x_too_soft": 155, "modes_off_by_more_than_2x": "28.8 % + 27.9 %"},
+  "memorised_cut_seat_100032_under_NOAUG_100032": {"d": 10806, "mu_min": 0.027, "mu_max": 275, "modes_over_100x_too_stiff": 5, "modes_over_10x": 35, "modes_off_by_more_than_2x": "7.6 % + 9.2 %"},
+  "box_seat_347_under_MULTI_AUGMENT": {"d": 15702, "mu_min": 0.41, "mu_max": 2.53, "modes_over_3x": 0, "modes_off_by_more_than_2x": "2.2 % + 1.3 %"},
+  "reading": "a box cell's error is a narrow band around 1; a cut cell's is heavy-tailed over seven orders of magnitude, in both directions. Even the memorised single seat keeps five directions 100x too stiff. This is the near-mechanism story made concrete: the network does not produce the cut cell's soft modes."
+ },
+
+ "4_training_losses_and_convergence": {
+  "final_training_loss_60k": {"MULTI_AUGMENT": 0.0099, "WIDE_BOX": 0.0035, "CUTONLY_NOAUG": 0.0146, "CUTMIX_FULLAUG": 0.0339, "ROT_CUT": 0.0256, "WIDE_CUT": 0.0138, "NCUT_59_at_20k": 0.1017, "DOSE_00": 0.0199, "DOSE_00B": 0.0200, "DOSE_24": 0.1008, "DOSE_48": 0.0914},
+  "mean_loss_last10k_over_previous10k": {"MULTI_AUGMENT": 0.63, "WIDE_BOX": 0.56, "CUTONLY_NOAUG": 0.83, "CUTMIX_FULLAUG": 0.89, "ROT_CUT": 0.78, "WIDE_CUT": 0.73, "DOSE_00": 0.82, "DOSE_24": 0.83, "DOSE_48": 0.83},
+  "checkpoint_sweep_cut_arm_CUTMIX_60K_seats_115_885": {"e_factor_by_step": {"4096": 0.632, "16384": 0.730, "28672": 0.488, "40960": 0.415, "53248": 0.422}},
+  "checkpoint_sweep_box_arm_seats_347_100051": {"e_factor_by_step": {"2048": 0.386, "10240": 0.146, "34816": 0.095, "43008": 0.050, "59392": 0.035}},
+  "reading": "nothing has plateaued in training loss (every arm still falls 10-45 % per 10k steps), and the augmented dose arms sit 5x higher in-sample than the unaugmented. But the cut arm's operator error (e_factor) plateaued at 0.42 by 40k while its loss kept falling: the loss is being reduced on entries that do not carry the Frobenius error, i.e. the sampled block-pair loss does not weight the large soft-mode entries."
+ },
+
+ "5_lattice_size_and_the_per_module_sensitivity_tail": {
+  "status": "UNREPORTED: B444_100051 appears in docs only as a cost estimate (HANDOVER_20260920_0130.md:77), never as a result",
+  "seat_100051_box_MULTI_AUGMENT_per_module_abs_sensitivity_error_over_all_loads": [
+   {"modules": 2,  "grid": [2,1,1], "n": 8,   "median": 0.0118, "p90": 0.0144, "max": 0.0161},
+   {"modules": 4,  "grid": [4,1,1], "n": 16,  "median": 0.0118, "p90": 0.0170, "max": 0.0223},
+   {"modules": 8,  "grid": [2,2,2], "n": 32,  "median": 0.0087, "p90": 0.0135, "max": 0.0149},
+   {"modules": 64, "grid": [4,4,4], "n": 256, "median": 0.0110, "p90": 0.0482, "max": 0.0908}
+  ],
+  "B444_100051_worst": {"compliance": 0.0112, "sensitivity": 0.0908, "split": 0.0855},
+  "B222_100186_hard_box_seat": {"modules": 8, "median": 0.0315, "p90": 0.0601, "max": 0.0703, "worst_compliance": 0.0352},
+  "reading": "compliance stays inside contract at 64 cells (1.12 %) and the MEDIAN per-module sensitivity error is flat at ~1.1 %, but the TAIL widens: p90 goes 1.4-1.7 % at 2-8 cells to 4.8 % at 64, max to 9.1 %. p90 is a quantile, not a max statistic, so this is the distribution broadening, not more samples of the same one. Topology optimisation reads per-module sensitivities, so in a 64-cell lattice one module in ten gets a gradient off by more than 5 %, on the best-behaved seat. Sizes 2-8 are small samples; the 64-cell point is the only one with a real tail."
+ },
+
+ "6_the_one_averaging_attempt_on_a_cut_cell": {
+  "what_it_was": "/root/_rank.sh: 'the free control: average the two single-seat cut models' M_q' = (NOAUG_100032 + SOLO_100032)/2 on seat 100032, then the two-cell self-glue",
+  "result": {"e_A": 9.22, "worst_compliance": 0.0283, "worst_sensitivity": 0.0787},
+  "against": {"NOAUG_100032_alone": {"worst_compliance": 0.01256, "worst_sensitivity": 0.01473, "e_A": 3.70}, "SOLO_100032_alone": {"e_A": 1604}},
+  "reading": "this averaged the best single-seat model with the worst one (e_A 3.7 with e_A 1604) and came out 2.2x worse than the best alone. It is not the like-for-like two-model ensemble that bought the box cells a factor of two (ENSEMBLE_MW, whose 12 evaluation seats are all box). A proper ensemble on a cut cell has not been run."
+ },
+
+ "7_what_exists_that_the_repo_docs_do_not_mention": ["the 64-cell lattice result and its sensitivity tail", "the NCUT ladder as a scaling law", "the presented-versus-held-out split as a table", "that RANK/AVG mixed the best and worst model"]
+}

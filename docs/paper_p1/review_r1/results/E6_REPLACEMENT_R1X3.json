@@ -1,0 +1,43 @@
+{
+ "schema": "R1_ACC_E6_REPLACEMENT_V1",
+ "written_by": "X3 (R1EXT chain)",
+ "reason": "fresh_val_2026_d0_v0 (heavy stratum, retained volume 0.046) failed in both configurations: x EMPTY_LOAD (no material on the loaded face), y LATTICE_CHOLESKY_INFO (singular reference lattice: ill-posed); its failure records are kept",
+ "procedure": "continuation of the pre-registered generator default_rng(20260928) after the four stratum draws, over the remaining sel=false heavy cells (sorted), excluding all used cells; the first draw whose x and y configurations are both non-empty-loaded (lattice3 EMPTY_LOAD condition on the cell and its neighbour packets) and whose gates did not both fail in an earlier attempt is taken (<= 8 draws); PREREG_R1ACC.json unchanged",
+ "prereg_reproduced": true,
+ "prereg_draw": {
+  "FULL": "fresh_val_2032_full",
+  "light": "fresh_val_2047_d1_v2",
+  "moderate": "fresh_val_2078_d0_v1",
+  "heavy": "fresh_val_2026_d0_v0"
+ },
+ "tries": [
+  {
+   "case": "fresh_val_2058_d0_v0",
+   "vol": 0.0403939833124664,
+   "loaded": {
+    "x": false,
+    "y": true
+   },
+   "gates_failed": false
+  },
+  {
+   "case": "fresh_val_2042_d0_v0",
+   "vol": 0.04551894843629362,
+   "loaded": {
+    "x": false,
+    "y": true
+   },
+   "gates_failed": false
+  },
+  {
+   "case": "fresh_val_2053_d1_v0",
+   "vol": 0.07794666866839299,
+   "loaded": {
+    "x": true,
+    "y": true
+   },
+   "gates_failed": false
+  }
+ ],
+ "replacement": "fresh_val_2053_d1_v0"
+}

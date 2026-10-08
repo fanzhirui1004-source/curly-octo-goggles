@@ -1,0 +1,172 @@
+{
+ "angle": "Topology optimisation with lattice/graded unit cells: required accuracy of unit-cell effective stiffness or condensed (Schur-complement) operators; effect of surrogate error on TO convergence and sensitivity consistency; inexact sensitivities in TO; multiscale TO with substructuring / superelements / component-based reduced models; adaptive or error-controlled surrogates inside optimisation loops.",
+ "papers": [
+  {
+   "title": "Efficient stress-constrained topology optimization using inexact design sensitivities",
+   "authors": "Oded Amir",
+   "year": "2021",
+   "venue_or_arxiv": "Int. J. Numer. Methods Eng. (IJNME), doi:10.1002/nme.6662",
+   "url": "https://onlinelibrary.wiley.com/doi/abs/10.1002/nme.6662 (code: https://github.com/odedamir/topopt-stress-inexact-sensitivities)",
+   "what_it_does": "Solves state and adjoint problems of stress-constrained TO with multigrid-preconditioned CG and terminates the Krylov iterations early; the stopping criterion is not the force residual but the convergence of the design sensitivities with respect to Krylov iterations. Optimised designs, objective values and max stress agree very well with a direct-solver run; 80% of Krylov iterations saved. (Abstract verified via Crossref; code README fetched.)",
+   "relevance_to_goal": "Directly addresses 'how inexact may the state/adjoint be before TO is affected'. The answer given is task-level: monitor the sensitivity vector itself, not the operator/solve residual. This supports the project's observation that task-level derivatives (6-D end-load compliance, [GEOMETRY SENSITIVITY]) are stable while the operator is not, and it is exactly deployment mode (B): inexact solves of the exact operator, where a learned Shat serves as preconditioner.",
+   "transferable_idea": "Define the accuracy contract on the change of the design-sensitivity vector between successive refinement levels (or between Shat-only and Shat+refinement solves), and terminate/accept when that change is below a tolerance, rather than gating on eps_op of the module.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Approximate reanalysis in topology optimization",
+   "authors": "Oded Amir, Martin P. Bendsøe, Ole Sigmund",
+   "year": "2009",
+   "venue_or_arxiv": "IJNME 78(12):1474-1491, doi:10.1002/nme.2536",
+   "url": "https://orbit.dtu.dk/en/publications/approximate-reanalysis-in-topology-optimization-2/",
+   "what_it_does": "Replaces the exact FE solve in each TO iteration with a combined-approximations reanalysis (few basis vectors from a previously factorised stiffness). Crucially, the nested problem is re-formulated in terms of the approximate displacement and the design sensitivities are derived for that reformulated problem, so gradients are consistent with what is actually computed. 'Relatively rough approximations are acceptable since the errors are taken into account in the sensitivity analysis.' (DTU Orbit abstract page fetched.)",
+   "relevance_to_goal": "Shows the field's established principle: a rough operator/solution is tolerable if the optimiser's gradient is the exact gradient of the surrogate-defined objective (consistent sensitivities). For the project this means the question 'is eps_op = 0.15 acceptable' cannot be answered without fixing whether the TO gradient will be the derivative of the Shat-based compliance (consistent, mode A) or an inconsistent mix of exact state and surrogate adjoint.",
+   "transferable_idea": "Whatever Shat is deployed, differentiate the assembled Shat-compliance end-to-end (through the network) so the optimiser sees a consistent surrogate problem; treat the teacher only as the outer check.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "One-shot procedures for efficient minimum compliance topology optimization",
+   "authors": "Oded Amir",
+   "year": "2024",
+   "venue_or_arxiv": "Struct. Multidisc. Optim., doi:10.1007/s00158-024-03763-5",
+   "url": "https://link.springer.com/article/10.1007/s00158-024-03763-5",
+   "what_it_does": "Performs a single step of a multigrid-preconditioned iterative state solver per design cycle. For convex variable-thickness-sheet problems this converges to the same solution as an accurate procedure; for SIMP it yields designs with the same primary load-transferring features, differing only in thin features that have minor influence on the objective. The multigrid preconditioner is credited with generating accurate sensitivities on a coarse scale. (Abstract verified via Crossref.)",
+   "relevance_to_goal": "Quantifies the TO-level consequence of very inexact state solves: primary load paths are robust, thin features are not. The project's softest whitened modes are PHYSICAL thin-material modes ([STRUCTURE OF S]); these are precisely the features an inexact operator will misplace. It also motivates mode B: a good coarse/approximate operator (Shat) used as a preconditioner already gives useful sensitivities after one cycle.",
+   "transferable_idea": "Test the 2-cell/2x2x2 harness in a mini-TO loop with Shat as preconditioner and 1-3 refinement cycles, and measure which design features (thin vs primary) differ from the exact run — a direct analogue of this paper's experiment.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A trust region framework for managing the use of approximation models in optimization",
+   "authors": "Natalia M. Alexandrov, J. E. Dennis Jr., Robert Michael Lewis, Virginia Torczon",
+   "year": "1998",
+   "venue_or_arxiv": "Structural Optimization 15:16-23 (ICASE report; PDF at author site)",
+   "url": "https://www.cs.wm.edu/~vjtorc/research/adlt.pdf",
+   "what_it_does": "Provably convergent management of arbitrary-fidelity approximation models in optimisation. Requirements on the model a_k at the current iterate: a_k(x_k)=f(x_k) and grad a_k(x_k)=grad f(x_k) (first-order consistency); step accepted/trust radius updated from the ratio of actual to predicted decrease. Notes the gradient condition can be weakened to inexact gradients (Carter 1991) and that zero-order models can also be handled. (PDF fetched and read.)",
+   "relevance_to_goal": "Gives the classical answer to 'what surrogate accuracy is required': none a priori, provided the surrogate is corrected to match the truth (value and gradient) at the current design and a trust region guards steps. For the project this is the only rigorous route for mode A with a biased Shat: periodic recourse to the teacher (31.85 s/cell) at trust-region centres.",
+   "transferable_idea": "Use a multiplicative/additive correction of the Shat-based compliance so that value and gradient match teacher evaluations at the current design (first-order consistency), then let the trust-region ratio decide step size; this replaces a hard eps_op gate by an adaptive one.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Progressive construction of a parametric reduced-order model for PDE-constrained optimization",
+   "authors": "Matthew J. Zahr, Charbel Farhat",
+   "year": "2015 (arXiv 2014)",
+   "venue_or_arxiv": "IJNME 102(5):1111-1135; arXiv:1407.7618",
+   "url": "https://arxiv.org/abs/1407.7618",
+   "what_it_does": "A sequence of ROM-constrained optimisation problems, each equipped with a nonlinear trust region defined by a residual-based error indicator so that the trajectory stays where the ROM is accurate; the ROM is enriched from HDM samples at previous solutions. Also proposes computing ROM sensitivities that minimise the distance to HDM sensitivities in a suitable norm. Reduces HDM queries 4-5x with <0.1% error in the optimum. (arXiv abstract fetched.)",
+   "relevance_to_goal": "Two ideas map directly: (1) a trust region sized by an error indicator of the surrogate rather than by a fixed accuracy gate; (2) surrogate sensitivities engineered to be close to true sensitivities, i.e. sensitivity consistency as a training/selection objective rather than operator accuracy.",
+   "transferable_idea": "Add a residual-based indicator r = ||S_true-action residual|| computed on the few cells where the teacher is available, and adapt the allowed design step to it; and include a sensitivity-matching term (task-level compliance derivatives, which are stable per [GEOMETRY SENSITIVITY]) in training.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A non-conforming dual approach for adaptive Trust-Region Reduced Basis approximation of PDE-constrained optimization",
+   "authors": "Tim Keil, Luca Mechelli, Mario Ohlberger, Felix Schindler, Stefan Volkwein",
+   "year": "2020/2021",
+   "venue_or_arxiv": "ESAIM: M2AN 55 (2021); arXiv:2006.09297",
+   "url": "https://arxiv.org/abs/2006.09297",
+   "what_it_does": "Adaptive trust-region reduced-basis optimisation with no offline phase: the RB surrogate is enriched during the outer loop; rigorous a posteriori error bounds for the cost functional (and improved bounds via a non-conforming dual correction) are used to define the trust region and to prove convergence of the overall algorithm. (arXiv abstract fetched.)",
+   "relevance_to_goal": "Represents the 'error-controlled surrogate in the loop' state of the art: the trust radius is characterised directly by an a posteriori estimator of the surrogate's cost-functional error, and convergence is proven. It highlights what the project lacks: a computable, certified error estimator for a learned Shat.",
+   "transferable_idea": "Design a cheap estimator for the cost-functional error of an assembled Shat (e.g. from teacher residuals on a sparse sample of cells plus the measured displacement ~ eps_op/4 law) and let it control the design step; enrich (re-label with the teacher) only where the estimator is large.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Stress-constrained topology optimization of lattice-like structures using component-wise reduced order models",
+   "authors": "Sean McBane, Youngsoo Choi, Karen Willcox",
+   "year": "2022",
+   "venue_or_arxiv": "Comput. Methods Appl. Mech. Eng. 400:115525; arXiv:2205.09629",
+   "url": "https://arxiv.org/abs/2205.09629",
+   "what_it_does": "TO on a ground structure of lattice components using port-reduced static condensation (PRSC): per-component Schur-complement contributions from lifted port modes plus RB bubbles, SIMP density per component, adjoint sensitivities differentiated through the reduced Schur complement (eq. 37-39). Speedup ~150x over full-order static condensation. Table 2: with port modes capturing 99% of total energy, max-stress errors of 100-200% and L2 displacement errors 20-55%; at 99.9% energy, max-stress error <5-13%, displacement 2-5%; at 99.99%, ~2%. Full PDF read.",
+   "relevance_to_goal": "Closest existing 'TO with condensed lattice cells' work. It gives a concrete data point on how derived quantities respond to reduced-operator truncation: a cliff between 99% and 99.9% retained energy, and stress (a derivative-like quantity) is much more sensitive than displacement. Sensitivities are computed consistently from the reduced Schur complement (dK_tilde/drho), i.e. mode A with consistent gradients. Their reduction is a projection of the true operator (never worse than the truth in energy), unlike a learned Shat that can be both softer and stiffer.",
+   "transferable_idea": "Report the project's gates not only as eps_op but as 'retained energy fraction of the interface response under the actual load set', and check design-sensitivity error (not just compliance) in the 2-cell harness — expect stress/sensitivity errors to be an order of magnitude larger than compliance errors, as in Table 2.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A static condensation reduced basis element method: approximation and a posteriori error estimation",
+   "authors": "Dinh Bao Phuong Huynh, David J. Knezevic, Anthony T. Patera",
+   "year": "2013",
+   "venue_or_arxiv": "ESAIM: M2AN 47(1):213-251",
+   "url": "https://www.esaim-m2an.org/articles/m2an/pdf/2013/01/m2an120022.pdf",
+   "what_it_does": "Component-based reduction for parametrised coercive elliptic PDEs: static condensation at the interdomain level, conforming eigenfunction 'port' representation on interfaces, RB approximation of intra-component bubble functions; each component contributes an approximate local Schur complement. Provides an a posteriori bound on the error of the port (interface) solution in the energy norm, computed from component residuals and stability constants, with numerical effectivities reported for heat transfer and elasticity. (PDF fetched.)",
+   "relevance_to_goal": "The canonical 'learned/compressed per-cell Schur complement assembled into a global system' framework, with certified error control. It establishes that the right accuracy statement for a condensed operator in a many-query setting is an energy-norm bound on the assembled interface solution, and that the bound needs per-component residuals — which for a learned Shat would require the teacher action.",
+   "transferable_idea": "Adopt the SCRBE structure for evaluation: measure error of the assembled interface solution in the energy norm under the deployed load set (a per-assembly estimator), and store, per seat, the stability constants needed for a bound.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "A port-reduced static condensation reduced basis element method for large component-synthesized structures: approximation and a posteriori error estimation",
+   "authors": "Jens L. Eftang, Anthony T. Patera",
+   "year": "2014",
+   "venue_or_arxiv": "Advanced Modeling and Simulation in Engineering Sciences 1:3, doi:10.1186/2213-7467-1-3",
+   "url": "https://link.springer.com/article/10.1186/2213-7467-1-3",
+   "what_it_does": "Extends SCRBE with port reduction using empirical port modes (pairwise-training of component pairs), reducing the port degrees of freedom and hence the size of the Schur-complement system for large 3D component-synthesised structures; provides a posteriori error estimation for the port-reduced approximation. (Title/authors/venue verified via Crossref; abstract seen only in search snippet.)",
+   "relevance_to_goal": "Shows that interface (trace) spaces of a cell can be compressed empirically and that the compression error can be certified — a systematic counterpart of the project's empirical finding that far-field face-face blocks are rank-8 dominated. It also suggests learning in a reduced port basis rather than in the full 12,798-dof trace.",
+   "transferable_idea": "Pre-compute empirical port modes for the TPMS cell faces (pairwise training over the 1024-geometry batch), and let the network predict S in that reduced port basis, which removes the SVD gauge non-uniqueness problem noted in [REPRESENTATIONS TRIED](a).",
+   "confidence_real": "search-result-only"
+  },
+  {
+   "title": "Optimal local approximation spaces for component-based static condensation procedures (and follow-up: Static condensation optimal port/interface reduction and error estimation for structural health monitoring)",
+   "authors": "Kathrin Smetana, Anthony T. Patera (2016); Kathrin Smetana (2018)",
+   "year": "2016 / 2018",
+   "venue_or_arxiv": "SIAM J. Sci. Comput. 38(5):A3318-A3356, doi:10.1137/15M1009603; arXiv:1808.02946",
+   "url": "https://research.utwente.nl/en/publications/optimal-local-approximation-spaces-for-component-based-static-con/ ; https://arxiv.org/abs/1808.02946",
+   "what_it_does": "Defines a compact transfer operator (traces on outer ports -> trace on the shared port via harmonic extension) whose left singular vectors give Kolmogorov-optimal port spaces; singular values decay exponentially, so few port modes suffice; a spectral greedy builds quasi-optimal spaces; the 2018 paper shows port spaces built on one geometry can be reused on significantly different geometries and adds error estimation. (Twente abstract page and arXiv abstract fetched.)",
+   "relevance_to_goal": "Theoretical backing for the low-rank far-field structure the project measured (top-8 singular values >= 99.5% of far-field block energy). It also gives a principled way to choose fixed ranks per level for a learnable H-matrix (the project noted ranks were chosen adaptively). Caveat: optimality is for the interface *solution* space under exterior loads, not for the worst whitened direction of S; near/far cancellation modes are not addressed.",
+   "transferable_idea": "Compute the transfer-operator singular values for the TPMS cell pairs to set fixed per-level ranks and to quantify how many modes the whitened soft directions need, before training a hierarchical predictor.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Topology optimization of hierarchical lattice structures with substructuring",
+   "authors": "Zijun Wu, Liang Xia, Shuting Wang, Tielin Shi",
+   "year": "2019",
+   "venue_or_arxiv": "Comput. Methods Appl. Mech. Eng. 345:602-617, doi:10.1016/j.cma.2018.11.003",
+   "url": "https://www.sciencedirect.com/science/article/abs/pii/S0045782518305589",
+   "what_it_does": "Approximation of Reduced Substructure with Penalization (ARSP): each lattice cell is a substructure statically condensed to its boundary; POD reduces the condensed operator over a sampled family of cell designs; projection coefficients are interpolated over the substructure design variable by diffuse approximation; density is penalised. Avoids homogenisation's scale-separation and connectivity issues. (Crossref metadata verified; abstract from search snippet.)",
+   "relevance_to_goal": "A direct precedent for 'condensed cell stiffness as a smooth function of a cell design parameter inside TO', i.e. a low-dimensional learned map design -> superelement. Their map is a POD/diffuse-approximation interpolation over one scalar design variable; the project's map is over a 9-parameter geometry with a CutFEM teacher whose operator derivative is discontinuous.",
+   "transferable_idea": "Fit S over the 1024-geometry batch as POD coefficients of condensed operators (matrix-valued POD) with a smooth regressor in geometry space; this yields sensitivities dS/dgeometry that are smooth by construction, side-stepping the unstable teacher derivative.",
+   "confidence_real": "search-result-only"
+  },
+  {
+   "title": "Machine-learning-assisted multiscale topology optimization of functionally graded superimposed lattice structures",
+   "authors": "Prashant Kumar Gupta, Jonathan Stollberg, Dominik Schillinger, Mohammad Ashraf Iqbal",
+   "year": "2026",
+   "venue_or_arxiv": "arXiv:2608.28513",
+   "url": "https://arxiv.org/abs/2608.28513",
+   "what_it_does": "Homogenised stiffness of BCC/FCC/SC superimposed lattices predicted by a Cholesky-constrained NN (outputs lower-triangular G with softplus diagonal, C = G G^T, tetragonal symmetry -> 6 outputs); 1,926 samples; test aggregate relative L2 error 9.2% (components 6.3-13%), R^2 0.974; sensitivities via forward-mode AD; used in SIMP/MMA TO. Explicitly states that quantitative assessment of surrogate error propagation into the optimised design is left for future work. (arXiv HTML fetched.)",
+   "relevance_to_goal": "Representative of the current 'NN unit-cell surrogate in TO' practice: ~10% stiffness error is accepted, SPD is enforced by a factor parameterisation, and the effect on TO outcome is NOT quantified. It confirms the gap the project is confronting and supports the project's choice to learn a factor (multiplicative error not amplified by cond(A)).",
+   "transferable_idea": "Keep the factor parameterisation but replace the averaged L2 loss with a worst-direction (spectral) objective — the field's 9% aggregate error would translate to catastrophic eps_op in the project's whitened metric.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Neural Network Layers for Prediction of Positive Definite Elastic Stiffness Tensors",
+   "authors": "Charles F. Jekel, Kenneth E. Swartz, Daniel A. White, Daniel A. Tortorelli, Seth E. Watts",
+   "year": "2022",
+   "venue_or_arxiv": "arXiv:2203.13938",
+   "url": "https://arxiv.org/abs/2203.13938",
+   "what_it_does": "Abstracts Cholesky and eigendecomposition SPD constructions as output layers so predicted homogenised stiffness tensors are SPD by construction; reports that a single SPD layer improves average prediction accuracy over unconstrained outputs in tabulated experiments. (arXiv abstract fetched.)",
+   "relevance_to_goal": "Confirms, at the 6x6 scale, the project's decision to parameterise the operator through a factor (R^T R) and that structure-preserving output layers help accuracy, not just admissibility. Also reflects that the eigen-parameterisation carries gauge (sign/rotation) freedom — the same non-uniqueness the project found for SVD factors.",
+   "transferable_idea": "Use a Cholesky-type (triangular, positive diagonal) rather than eigen/SVD-type parameterisation for learnable low-rank blocks to avoid gauge ambiguity in labels; supervise products rather than factors where a triangular form is not available.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Multiscale topology optimization using neural network surrogate models",
+   "authors": "Daniel A. White, William J. Arrighi, Jun Kudo, Seth E. Watts",
+   "year": "2019",
+   "venue_or_arxiv": "Comput. Methods Appl. Mech. Eng. 346:1118-1135, doi:10.1016/j.cma.2018.09.007 (LLNL-JRNL-760619)",
+   "url": "https://www.osti.gov/servlets/purl/1557076",
+   "what_it_does": "Macroscale TO whose design variables are the parameters of a spatially varying truss metamaterial; the microscale elastic response is a single-layer Gaussian-basis-function network trained on highly resolved continuum FE homogenisation (beam theory is 5% off already at 1% volume fraction). Because surrogate derivatives drive the macroscale sensitivities, the network is trained in a Sobolev norm (values and derivatives), which narrows the error histogram. (LLNL preprint PDF fetched and read.)",
+   "relevance_to_goal": "The first paper to treat surrogate *derivative* accuracy as the relevant quantity for TO and to train for it (Sobolev training). This is the surrogate-side counterpart to Amir's sensitivity-based stopping. For the project, derivative labels of the full operator are unavailable/unstable ([GEOMETRY SENSITIVITY]: 87% disagreement between h=1e-4 and 1e-3), but task-level derivatives are stable (0.023%).",
+   "transferable_idea": "Sobolev-train on stable task-level derivatives (d compliance / d geometry for the 6 end loads, and for the 48-symmetry-augmented copies) rather than on dS/d geometry.",
+   "confidence_real": "verified"
+  },
+  {
+   "title": "Direct Schur complement method by domain decomposition based on H-matrix approximation",
+   "authors": "Wolfgang Hackbusch, Boris N. Khoromskij, Ronald Kriemann",
+   "year": "2005",
+   "venue_or_arxiv": "Computing and Visualization in Science 8:179-188, doi:10.1007/s00791-005-0008-3",
+   "url": "https://doi.org/10.1007/s00791-005-0008-3",
+   "what_it_does": "Builds a direct domain-decomposition solver in which the interface Schur complements of subdomains are computed and stored in H-matrix format with hierarchical (admissibility-based) low-rank blocks, with almost linear complexity in the number of interface unknowns; proves/observes that Schur complements of elliptic operators admit such low-rank off-diagonal approximations. (Crossref metadata verified; content known from the DD literature, not fetched.)",
+   "relevance_to_goal": "Provides the theoretical justification for the project's H-matrix result ([REPRESENTATIONS TRIED](a): 15% of dense entries at +-3%) and shows the representation is standard for exactly this object. It also implies the ranks are set by the admissibility/eta parameter and desired accuracy, not learned — useful for fixing per-level ranks for a learnable version.",
+   "transferable_idea": "Use the H-matrix admissibility theory to fix ranks per level a priori (from the eta and target eps), then learn only the block contents; and evaluate compression in the whitened operator norm rather than Frobenius, since H-arithmetic truncation is Frobenius-based and blind to soft modes.",
+   "confidence_real": "search-result-only"
+  }
+ ],
+ "synthesis": "1. The TO community has a settled answer to 'how inexact may the analysis be': inexactness is tolerated when (a) sensitivities are consistent with whatever approximate quantity is actually computed (Amir-Bendsøe-Sigmund 2009: reformulate the objective in the approximate displacement and differentiate that), or (b) the inexact quantity is an iterative solve of the exact operator and the stopping test is on the sensitivity vector, not on the residual or the operator (Amir 2021: 80% Krylov savings with unchanged designs; Amir 2024: even one multigrid cycle preserves primary load paths, only thin features differ). Both routes correspond to the project's deployment mode (B): Shat as a preconditioner with the exact operator's action. In that mode, the relevant gate is not eps_op of the module but the convergence of design sensitivities under refinement — a task-level contract (open decision 1).\n\n2. For a *biased fixed surrogate* used as the operator (mode A), the only convergence guarantees come from trust-region model management (Alexandrov-Dennis-Lewis-Torczon 1998; Zahr-Farhat 2015; Keil et al. 2021; Kouri et al. 2014, Wen-Zahr 2024 for inexact gradients): the surrogate must be corrected to first-order consistency at the current design (or have a certified a posteriori error bound), and the trust radius is set by an error indicator. None of these need a fixed operator accuracy; they need periodic access to the truth and a computable error estimate. Given the teacher costs 31.85 s/cell, a periodic teacher evaluation on a subset of cells is affordable in an outer loop.\n\n3. Component-based static condensation with reduced basis (Huynh-Knezevic-Patera 2013; Eftang-Patera 2014; Smetana-Patera 2016; McBane-Choi-Willcox 2022) is the mature framework for exactly the deliverable: per-cell approximate Schur complements assembled into an interface system, with (i) energy-norm a posteriori error bounds on the interface solution and (ii) exponential decay of port-mode spectra, which explains the project's rank-8 far-field blocks and the H-matrix success (Hackbusch et al. 2005). The field measures accuracy of a condensed operator as an energy-norm error of the assembled *solution under the actual loads*, not as a worst-direction operator error; a projection-based reduction is always stiffer than truth (one-sided), whereas a learned Shat is two-sided. McBane's Table 2 is the closest quantitative precedent: retained interface energy 99% -> 100-200% error in max stress, 99.9% -> <5-13%, 99.99% -> ~2%; derivative-like outputs (stress) are ~10x more sensitive than displacements, which matches the project's observation that displacement ~ eps_op/4 while compliance is second-order-lucky. Design sensitivities should be expected to behave like stress, not like compliance.\n\n4. NN unit-cell surrogates in multiscale TO (White et al. 2019; Watts et al. 2019; Jekel et al. 2022; Gupta et al. 2026; Najmon-Tovar 2025; Vijayakumaran et al. 2025) uniformly (a) enforce SPD by a factor/Cholesky output layer, (b) accept aggregate errors of several to ~10% on the 6x6 homogenised tensor, (c) differentiate the surrogate by AD for consistent sensitivities, and (d) at best train derivatives too (Sobolev training in White 2019). None quantifies how surrogate error propagates into the optimised design (Gupta 2026 explicitly defers it). The project's factor parameterisation and consistent-differentiation plan are in line with practice; its whitened worst-direction metric is stricter than anything the field uses, and Amir 2024 suggests why that strictness is necessary only for thin-feature (soft-mode) fidelity, not for primary load paths.\n\n5. Substructuring-based TO (Wu-Xia-Wang-Shi 2019; Fu et al. 2019) already treats a lattice cell as a superelement whose condensed operator is a smooth reduced function of a cell design variable (POD + diffuse approximation), giving smooth dS/d(design) by construction — a way around the project's non-differentiable CutFEM/GP teacher derivative.",
+ "gaps": "1. No published work states or measures the accuracy a *learned* condensed unit-cell operator needs for TO in a worst-direction (energy/whitened) norm; all existing evidence is on projection-based ROMs (one-sided error, McBane 2022) or on 6x6 homogenised tensors with aggregate losses. The project's finding that averaged metrics mislead by ~100x has no counterpart in the literature, and the relation between eps_op and design-sensitivity error (as opposed to compliance error) is untested anywhere, including in this project.\n\n2. Inexact-sensitivity TO theory (Amir 2009/2021/2024) assumes the exact operator is available for residuals or one-step refinement (mode B). There is no theory or experiment for a fixed, biased surrogate operator with no residual (mode A) other than generic trust-region model management, which requires periodic truth evaluations and a computable error indicator; no cheap certified error estimator exists for a learned Schur complement (SCRBE estimators need per-component residuals, i.e. the elimination being avoided).\n\n3. Component-based RB methods parametrise geometry through smooth affine/mapped components on a fixed reference mesh; nobody has built a condensed-operator surrogate for CutFEM/ghost-penalty cells where the operator's geometry derivative is discontinuous (project: 87% disagreement of central differences; 1e-12 classifier threshold flips mu_max to 1.25). Sobolev training (White 2019) and TR sensitivity matching (Zahr-Farhat) presuppose stable derivative labels, which only exist here at task level.\n\n4. Port reduction (Eftang-Patera, Smetana-Patera) certifies interface-solution accuracy under exterior loads but does not address soft modes arising from near/far-field cancellation of ratio 1e3-1e4; whether Kolmogorov-optimal port spaces capture the ~200 damaged whitened modes is unknown and directly testable with the project's transfer-operator data.\n\n5. Nobody has verified that TO with an assembled learned-cell operator converges to the same design as TO with the teacher; the field reports compliance mismatches of optimised designs (2-10%) but never sensitivity consistency or design-feature agreement (thin vs primary features per Amir 2024). This is the experiment the project should run first on its 2-cell/2x2x2 harness before choosing between modes A and B."
+}

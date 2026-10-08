@@ -1,0 +1,6 @@
+assembled 210021 30.365007400512695
+face areas {'(0, 0.0)': 0.1149, '(0, 1.0)': 0.0, '(1, 0.0)': 0.1585, '(1, 1.0)': 0.0632, '(2, 0.0)': 0.1165, '(2, 1.0)': 0.1164}
+neu factor 88.61410808563232
+load on non-port dofs (rel): consistent 7.93e-18 nodal 3.96e-17
+dir factor 125.04254078865051
+Neumann field == Dirichlet extension of its trace: rel diff 1.96e-12

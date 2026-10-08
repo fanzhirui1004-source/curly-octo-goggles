@@ -1,0 +1,17 @@
+{
+  "status": "REEVALUATION_COMPLETE",
+  "step": 20000,
+  "head": "sqrt",
+  "evaluations": {
+    "253": {
+      "e_A": 0.026548911022524106,
+      "D_per_mode": 0.12722415545886634,
+      "mu_min": 0.00032703219928066255,
+      "mu_max": 49.02848798512618,
+      "eps_op": 48.02848798512618,
+      "factor_relative": 0.18932651141558168,
+      "root_determinant_sign": -1.0,
+      "numerical_gate_pass": true
+    }
+  }
+}

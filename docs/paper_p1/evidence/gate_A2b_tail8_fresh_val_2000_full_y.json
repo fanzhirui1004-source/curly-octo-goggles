@@ -1,0 +1,166 @@
+{
+ "args": {
+  "out": "/root/autodl-tmp/OPL/S1/V2/gate_A2b_tail8_fresh_val_2000_full_y.json",
+  "pairs": "",
+  "configs": "y",
+  "sets": "test",
+  "s1": "/root/autodl-tmp/OPL/S1",
+  "r2_run": "mgno2_r2_d2",
+  "r1_run": "mgno_r1_e",
+  "full_run": "mgno_full_c",
+  "r2_case": "fresh_train_0020_cover01_r2",
+  "r1_case": "fresh_train_0020_cover01_r1",
+  "full_case": "fresh_train_0020_full",
+  "custom": "/root/autodl-tmp/OPL/S1/V2/A2b_tail8/best.pt:fresh_val_2000_full:/root/autodl-tmp/OPL/S1/V2/A2b_tail8/best.pt:",
+  "maxit": 400,
+  "nb_mode": "explicit"
+ },
+ "results": [
+  {
+   "test": {
+    "gate_compliance_max": 0.0011116906135485438,
+    "gate_sens_max": 0.03166235694198823,
+    "gate_pass": false,
+    "gate_sens_max_per_cell": [
+     0.03166235694198823,
+     9.288050812712793e-05
+    ],
+    "compliance_rel_err": [
+     0.0004007470246497613,
+     0.0011116906135485438,
+     0.0002803036832644823,
+     3.424014257968899e-05,
+     2.1799129940158757e-05,
+     1.0888055860580614e-05
+    ],
+    "sens_vec_rel_err": [
+     [
+      0.009789224421298483,
+      0.010222767632115512,
+      0.008250216922944245,
+      0.008727502409962853,
+      0.01483953168825863,
+      0.03166235694198823
+     ],
+     [
+      7.568630400769744e-05,
+      7.58368143373645e-05,
+      9.288050812712793e-05,
+      5.2070668628597274e-05,
+      2.411460901289915e-05,
+      1.2827988743553302e-05
+     ]
+    ],
+    "eps": [
+     [
+      0.0029691401931919437,
+      0.003320172866812854,
+      0.002203470299835919,
+      0.0031838042790925947,
+      0.005128222297408502,
+      0.007887196419815723
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "w": [
+     [
+      0.13843647983527854,
+      0.3431903043567857,
+      0.13023230273675077,
+      0.011003686505309068,
+      0.004360229559999421,
+      0.0014178853414261049
+     ],
+     [
+      0.8615635201646626,
+      0.6568096956430113,
+      0.8697676972631223,
+      0.9889963134946183,
+      0.9956397704399018,
+      0.9985821146584795
+     ]
+    ],
+    "bound": [
+     0.00041103731648293155,
+     0.001139451136678645,
+     0.0002869630111596704,
+     3.503358418139645e-05,
+     2.2360226451408694e-05,
+     1.1183140188605168e-05
+    ],
+    "bound_holds": true,
+    "eps_gate_max_per_cell": [
+     0.007887196419815723,
+     0.0
+    ],
+    "cut_compliance_max": null,
+    "cut_sens_max": null,
+    "pcg_iterations": 7,
+    "seconds": 15.051315404474735
+   },
+   "loads": [
+    "test_facex0_x_cons",
+    "test_facex0_y_cons",
+    "test_facex0_z_cons",
+    "nbr_facex0_x_cons",
+    "nbr_facex0_y_cons",
+    "nbr_facex0_z_cons"
+   ],
+   "gate": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ],
+   "energy_share": [
+    [
+     0.13843647983527854,
+     0.3431903043567857,
+     0.13023230273675077,
+     0.011003686505309068,
+     0.004360229559999421,
+     0.0014178853414261049
+    ],
+    [
+     0.8615635201646626,
+     0.6568096956430113,
+     0.8697676972631223,
+     0.9889963134946183,
+     0.9956397704399018,
+     0.9985821146584795
+    ]
+   ],
+   "pair": "custom0",
+   "config": "y",
+   "test_cell": {
+    "case": "fresh_val_2000_full",
+    "run": "A2b_tail8",
+    "ckpt": "/root/autodl-tmp/OPL/S1/V2/A2b_tail8/best.pt",
+    "missing_keys": 0,
+    "ckpt_conv_fp32": true
+   },
+   "nbr_cell": {
+    "case": "fresh_val_2000_full_nbmy",
+    "run": "A2b_tail8",
+    "ckpt": "/root/autodl-tmp/OPL/S1/V2/A2b_tail8/best.pt",
+    "missing_keys": null,
+    "ckpt_conv_fp32": true
+   },
+   "seconds": 55.450877875089645,
+   "conv_tf32": false
+  }
+ ],
+ "conv": {
+  "conv_tf32": false,
+  "OPL_CONV_FP32": "1"
+ }
+}

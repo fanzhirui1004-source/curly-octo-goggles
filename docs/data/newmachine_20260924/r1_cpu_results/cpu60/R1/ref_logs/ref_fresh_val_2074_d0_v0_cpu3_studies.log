@@ -1,0 +1,27 @@
+/root/autodl-tmp/OPL/src_v2/teacher.py:337: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  self.U = torch.sparse_csr_tensor(self.crow.int(), self.cu, vals, size=(self.nb, self.nb))
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8840643092989922, "factor_s": 0.8929677233099937, "solve_s": 0.4767460525035858}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8724739626049995, "factor_s": 0.9281352758407593, "solve_s": 0.46291588991880417}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8351141214370728, "factor_s": 0.9009529054164886, "solve_s": 0.4429621696472168}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8613724112510681, "factor_s": 0.9169945195317268, "solve_s": 0.4350689724087715}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8101636320352554, "factor_s": 0.883668340742588, "solve_s": 0.4282337874174118}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.7961178869009018, "factor_s": 0.8993386700749397, "solve_s": 0.43741730600595474}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8409279510378838, "factor_s": 0.91831074655056, "solve_s": 0.47215260565280914}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.80848628282547, "factor_s": 0.9185039326548576, "solve_s": 0.44213151931762695}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8450942784547806, "factor_s": 0.9463171809911728, "solve_s": 0.4605971798300743}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.86713557690382, "factor_s": 0.931180939078331, "solve_s": 0.43028927594423294}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8250672370195389, "factor_s": 0.9285198152065277, "solve_s": 0.45778366178274155}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.851925402879715, "factor_s": 0.9474603310227394, "solve_s": 0.4602491110563278}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8069264888763428, "factor_s": 0.9295065924525261, "solve_s": 0.438908226788044}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.823963701725006, "factor_s": 0.9264920130372047, "solve_s": 0.48780984431505203}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.775775633752346, "factor_s": 0.9049621820449829, "solve_s": 0.43869099020957947}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.7994957715272903, "factor_s": 0.9122703969478607, "solve_s": 0.43091142922639847}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.7778065577149391, "factor_s": 0.8991539180278778, "solve_s": 0.4819377437233925}}
+{"case": "fresh_val_2074_d0_v0", "fd": {"0.001": [6.367461907136042e-08, 5.3953766796841665e-08, 4.6820946522642505e-08], "0.0001": [6.340225636560447e-10, 5.399704115197448e-10, 4.695709281657186e-10], "1e-05": [0.0, 0.0, 0.0], "1e-06": [2.1106915999692023e-10, 2.7139302832480544e-10, 1.4622420468021728e-10]}, "direct": [6.7343389673767e-07, 4.5020432391246207e-07, 7.831849555601279e-08]}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.6692149490118027, "factor_s": 0.8690011128783226, "solve_s": 0.4121711105108261}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.7291827127337456, "factor_s": 0.9100961461663246, "solve_s": 0.4445646405220032}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8175733238458633, "factor_s": 0.9154346212744713, "solve_s": 0.4462609738111496}}
+{"case": "fresh_val_2074_d0_v0", "gamma": {"1e-05": [[0.000301, 0.000216, 0.000213], [4.3e-05, 3e-05, 2.9e-05]], "0.0001": [[0.0, 0.0, 0.0], [0.000294, 0.000215, 0.000215]], "0.001": [[0.002037, 0.001566, 0.001581], [0.001954, 0.001552, 0.001566]]}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.8373060524463654, "factor_s": 0.9033538177609444, "solve_s": 0.42516110092401505}}
+{"solve": {"case": "fresh_val_2074_d0_v0", "n": 32, "free": 73233, "analysis_s": 1.6491473987698555, "factor_s": 0.9080198779702187, "solve_s": 0.49517250061035156}}
+{"case": "fresh_val_2074_d0_v0", "integ": {"4:2": [8.31e-05, 9.83e-05, 9.27e-05], "6:1": [6.19e-05, 7.28e-05, 6.87e-05]}}

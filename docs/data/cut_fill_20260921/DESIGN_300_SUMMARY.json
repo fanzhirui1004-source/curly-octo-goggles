@@ -1,0 +1,56 @@
+{
+ "batch": "F300",
+ "seed": 20260921,
+ "requested": 300,
+ "generated": 300,
+ "unreachable": 84,
+ "existing_points": 185,
+ "q_budget": 19500.0,
+ "q_floor": 2000.0,
+ "volume_fraction": [
+  0.1,
+  0.4
+ ],
+ "tau_range": [
+  "175511/1000000",
+  "699267/1000000"
+ ],
+ "achieved_volume_fraction": {
+  "min": 0.10000324249267578,
+  "median": 0.25750064849853516,
+  "max": 0.40000057220458984
+ },
+ "coverage_space": "(angle/45deg, retained volume, volume fraction), 3-D maximin",
+ "affordable_map": {
+  "resolution": 11,
+  "probed": 1089,
+  "affordable": 960,
+  "fraction": 0.8815426997245179
+ },
+ "volume_range": [
+  0.02,
+  0.98
+ ],
+ "unreachable_reasons": {
+  "RETAINS_ALMOST_NO_MATERIAL": 35,
+  "TRACE_EXCEEDS_BUDGET_AT_THIS_DENSITY": 49
+ },
+ "predicted_q": {
+  "min": 2016.0,
+  "median": 12072.0,
+  "max": 19488.0
+ },
+ "largest_hole_existing": 0.5888072268913153,
+ "largest_hole_combined": 0.14361369019777126,
+ "candidates_left": 56385,
+ "splits": {
+  "train": 237,
+  "holdout": 63
+ },
+ "thickness_class": {
+  "AFFINE": 144,
+  "MIXED": 133,
+  "UNIFORM_ANCHOR": 23
+ },
+ "seconds": 126.80158948898315
+}

@@ -1,0 +1,41 @@
+{
+ "what": "reconciling tonight's geometry counts against docs/data/unused_packets_20260921/FINDINGS.json, which disagreed with them",
+ "why": "three of the handover's counts depended on a cut/box split that two committed files state differently, and on a phrase, 'in domain', that two sessions used with different meanings",
+ "cut_versus_box": {
+  "measured_2026_09_21": {"cut": 607, "box": 313},
+  "tested_three_independent_ways": {
+   "offset_less_than_2": {"cut": 607, "box": 313},
+   "plane_meets_the_box_0_lt_d_lt_1_plus_b": {"cut": 607, "box": 313},
+   "retained_volume_strictly_below_1": {"cut": 607, "box": 313}
+  },
+  "packets_on_which_the_three_disagree": 0,
+  "previously_filed": {"file": "docs/data/unused_packets_20260921/FINDINGS.json", "cut": 603, "box": 317},
+  "verdict": "the filed 603/317 is wrong by four packets; 607/313 stands, confirmed three ways. The script behind the 603 figure was never committed, only its output, so the cause is unrecoverable.",
+  "downstream_corrections": {
+   "V2_LABELS cut/box": {"filed": [184, 89], "measured": [185, 88]},
+   "cut packets outside the manifest": {"filed": 419, "measured": 422}
+  }
+ },
+ "in_domain_means_two_different_things": {
+  "tau_mean_le_0.45": {"all_cut": 241, "outside_the_manifest": 101,
+   "note": "this is the rule behind the filed 'cut_in_domain_tau_le_0.45: 239' and the '100 unused in-domain cut geometries' of commit b5e4bcb; it re-measures to 241 and 101 under the corrected split"},
+  "q_le_23000": {"all_cut": 296, "outside_the_manifest": 111,
+   "note": "this is the rule used on 2026-09-21, and it is the one that matters, because q is what the label builder is limited by. The two rules overlap on 202 cut packets."},
+  "lesson": "never write 'in domain' again without the predicate beside it"
+ },
+ "V2_LABELS": {
+  "rows": 273, "cut": 185, "box": 88,
+  "with_MQ_UPPER": {"total": 197, "cut": 140, "box": 57, "splits": {"train": 197}},
+  "lacking_MQ_UPPER": {"total": 76, "cut": 45, "box": 31,
+   "splits": {"train": 69, "holdout": 6, "validation": 1},
+   "built_2026_09_21_but_not_registered": 44,
+   "still_to_build": 32,
+   "still_to_build_seats": [122, 181, 196, 220, 226, 240, 257, 328, 366, 399, 401, 415, 434, 483, 575, 636, 713, 725, 810, 825, 849, 866, 895, 995, 100191, 100194, 100199, 100200, 100204, 100206, 100213, 100232]}
+ },
+ "ceiling_with_no_new_geometry": {
+  "arithmetic": "140 with a label + 45 lacking one in the manifest + 111 outside it under q <= 23000",
+  "cut_cells": 296,
+  "today": 140,
+  "caveat": "this raises the COUNT and not the COVERAGE: those 111 were selected by the same q ceiling, so they lean shallow and thin exactly as the current set does"
+ }
+}

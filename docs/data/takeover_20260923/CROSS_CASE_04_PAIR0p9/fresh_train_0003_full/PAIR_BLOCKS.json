@@ -1,0 +1,13 @@
+{
+  "theta": 0.9,
+  "blocks": 87420,
+  "nodes": 87536,
+  "size_histogram": [
+    0,
+    87304,
+    116
+  ],
+  "merged_nodes": 232,
+  "row_sum_bound": 9.38335905683306,
+  "omega0": 0.10657164390099616
+}

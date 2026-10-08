@@ -1,0 +1,24 @@
+{
+  "purpose": "the cross-seat form of the coordinate-resolution hypothesis, and a coverage metric that turned out not to be diagnostic",
+  "cross_seat_pairs": {
+    "pool": {"cut_seats": [100000, 100001, 100003, 185, 100006, 100009],
+             "box_seats": [220, 257, 882, 895, 181, 120]},
+    "cut": {"coordinates": 5805, "cross_seat_pairs": 145,
+            "closest_aggregate_relative": 0.1350642692466558,
+            "target_relative_at_the_closest_20": {"median": 0.9600055760212738, "max": 64.3704914812118},
+            "pullback_relative_of_the_closest_pair": 1.499390024565448},
+    "box": {"coordinates": 37988, "cross_seat_pairs": 10984,
+            "closest_aggregate_relative": 0.0015684799904750828,
+            "target_relative_at_the_closest_20": {"median": 2.8416556324395466e-05, "max": 0.00041091909693952784},
+            "pullback_relative_of_the_closest_pair": 0.0},
+    "no_ambiguity_found": "in neither family is there a cross-seat pair that is close in the input and far in the target",
+    "CONFOUND": "the 85x gap between 0.0016 and 0.135 is NOT a cut-vs-box effect: the box arm of this pool is box-ONLY seats carrying 5388-7004 coordinates that tile the whole cube surface, against cut seats carrying 142-1834 cut coordinates.  The coverage run below controls for it and the gap disappears."
+  },
+  "coverage_same_seats_three_bases": {
+    "seats": [100000, 100001, 100003, 185, 100006, 100009],
+    "teacher_basis_cut_rows": {"coordinates": 5805, "cross_seat_nearest_relative": {"min": 0.1350642692466558, "p05": 0.16327099638868284, "median": 0.209697015840246, "p95": 0.310880628578473, "max": 0.4474021008232453}},
+    "teacher_basis_box_rows": {"coordinates": 2142, "cross_seat_nearest_relative": {"min": 0.19670629458254385, "p05": 0.2120356266461492, "median": 0.24556538801693717, "p95": 0.6176718151143451, "max": 0.6653311116310654}},
+    "nodal_pullback_all_coordinates": {"coordinates": 10743, "cross_seat_nearest_relative": {"min": 0.19670629458254385, "p05": 0.2163293545957371, "median": 0.24774976099344148, "p95": 0.3809329096776819, "max": 0.5258025565197612}},
+    "reading": "on the SAME seats the three bases agree (0.21, 0.25, 0.25), so this metric measures only that two seats have different tau and a different plane - true by construction and identical for box and cut.  It is not diagnostic, the predicted collapse under the pullback does not happen, and no conclusion about the cut family may be drawn from it."
+  }
+}

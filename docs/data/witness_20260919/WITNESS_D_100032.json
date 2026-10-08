@@ -1,0 +1,264 @@
+{
+ "seat": 100032,
+ "n": 32,
+ "elements": [
+  5,
+  13
+ ],
+ "case": {
+  "case_id": "seat100032",
+  "tau_corners": [
+   "46204775557770643/250000000000000000",
+   "22998722873331667/125000000000000000",
+   "46152193540636469/250000000000000000",
+   "1148621593238229/6250000000000000",
+   "1159025713011771/6250000000000000",
+   "46153698709363531/250000000000000000",
+   "23154223251668333/125000000000000000",
+   "46101116692229357/250000000000000000"
+  ],
+  "normal": [
+   "1",
+   "1225339/15625000",
+   "0"
+  ],
+  "offset": "136264537/250000000"
+ },
+ "scope": "1.6d: a covariant, geometric basis for the cut-surface trace, on our side, measured.",
+ "base": {
+  "label": "base",
+  "cut_patches": 157,
+  "candidates": 11794,
+  "kind1": 1436,
+  "box_nodes": 2168,
+  "columns": 2382,
+  "picked": 1436,
+  "left_after_last_pick": 3.680580240723526e-16,
+  "margin_min": 0.0,
+  "margin_median": 0.0,
+  "margins_below_1e6": 1228,
+  "margins_below_1e3": 1333,
+  "pivot_norm_last_over_first": 3.4370825862368977e-07,
+  "span_equals_teacher": {
+   "ours_onto_teacher": 3.788841063870435e-15,
+   "teacher_onto_ours": 3.904168754560336e-10,
+   "rank_teacher": 1436,
+   "rank_ours": 1436
+  },
+  "teacher_basis_singular": {
+   "max": 2.563355382595259,
+   "min": 0.5111487229223548,
+   "cond": 5.014891493692808
+  },
+  "our_basis_singular": {
+   "max": 2.068436428738753,
+   "min": 1.8085726453229085e-07,
+   "cond": 11436844.597245622
+  },
+  "C11": {
+   "residual": 4.055339293158773e-15,
+   "cond": 22379988.596150137
+  },
+  "C_full_cond": 22398148.921772536,
+  "point_functional_signed_sum": {
+   "min": 0.9999999999999998,
+   "max": 1.0000000000000002
+  },
+  "selected_nnz": {
+   "min": 3,
+   "max": 27,
+   "mean": 6.217270194986073
+  },
+  "seconds": 383.4
+ },
+ "elements_detail": {
+  "5": {
+   "proper": true,
+   "node_sets_match": true,
+   "analysis": {
+    "label": "g=5",
+    "cut_patches": 157,
+    "candidates": 11794,
+    "kind1": 1436,
+    "box_nodes": 2168,
+    "columns": 2382,
+    "picked": 1436,
+    "left_after_last_pick": 3.680580240723533e-16,
+    "margin_min": 0.0,
+    "margin_median": 0.0,
+    "margins_below_1e6": 1228,
+    "margins_below_1e3": 1333,
+    "pivot_norm_last_over_first": 3.4370825862363535e-07,
+    "span_equals_teacher": {
+     "ours_onto_teacher": 1.6298972188753962e-15,
+     "teacher_onto_ours": 3.9043100678722194e-10,
+     "rank_teacher": 1436,
+     "rank_ours": 1436
+    },
+    "teacher_basis_singular": {
+     "max": 2.9285718071450546,
+     "min": 0.440875098746416,
+     "cond": 6.642633742463918
+    },
+    "our_basis_singular": {
+     "max": 2.068436428738752,
+     "min": 1.8085726452411648e-07,
+     "cond": 11436844.59776254
+    },
+    "C11": {
+     "residual": 4.852863072237198e-15,
+     "cond": 26845679.11294326
+    },
+    "C_full_cond": 26864874.237958476,
+    "point_functional_signed_sum": {
+     "min": 0.9999999999999998,
+     "max": 1.0000000000000002
+    },
+    "selected_nnz": {
+     "min": 3,
+     "max": 27,
+     "mean": 6.217270194986073
+    },
+    "seconds": 364.6
+   },
+   "our_candidates_match": true,
+   "our_candidates_symmetric_difference": 0,
+   "our_selected_set_match": true,
+   "our_selected_sequence_match": false,
+   "our_selected_symmetric_difference": 0,
+   "our_margins_max_abs_diff": 2.6930679908332422e-12,
+   "teacher_candidates_match": false,
+   "teacher_candidates_symmetric_difference": 2316,
+   "teacher_selected_set_match": false,
+   "teacher_selected_symmetric_difference": 1848,
+   "teacher_basis_rows_match": false,
+   "teacher_basis_rows_in_common": 144
+  },
+  "13": {
+   "proper": false,
+   "node_sets_match": true,
+   "analysis": {
+    "label": "g=13",
+    "cut_patches": 157,
+    "candidates": 11794,
+    "kind1": 1436,
+    "box_nodes": 2168,
+    "columns": 2382,
+    "picked": 1436,
+    "left_after_last_pick": 3.680580240723526e-16,
+    "margin_min": 0.0,
+    "margin_median": 0.0,
+    "margins_below_1e6": 1228,
+    "margins_below_1e3": 1333,
+    "pivot_norm_last_over_first": 3.4370825862368977e-07,
+    "span_equals_teacher": {
+     "ours_onto_teacher": 1.9995082442315966e-15,
+     "teacher_onto_ours": 3.904168754560336e-10,
+     "rank_teacher": 1436,
+     "rank_ours": 1436
+    },
+    "teacher_basis_singular": {
+     "max": 2.4836462683028606,
+     "min": 0.5181587026307779,
+     "cond": 4.793215390753789
+    },
+    "our_basis_singular": {
+     "max": 2.068436428738753,
+     "min": 1.8085726453229085e-07,
+     "cond": 11436844.597245622
+    },
+    "C11": {
+     "residual": 4.3571675154064695e-15,
+     "cond": 21562819.23689807
+    },
+    "C_full_cond": 21586146.058780853,
+    "point_functional_signed_sum": {
+     "min": 0.9999999999999998,
+     "max": 1.0000000000000002
+    },
+    "selected_nnz": {
+     "min": 3,
+     "max": 27,
+     "mean": 6.217270194986073
+    },
+    "seconds": 393.7
+   },
+   "our_candidates_match": true,
+   "our_candidates_symmetric_difference": 0,
+   "our_selected_set_match": true,
+   "our_selected_sequence_match": true,
+   "our_selected_symmetric_difference": 0,
+   "our_margins_max_abs_diff": 2.220446049250313e-16,
+   "teacher_candidates_match": false,
+   "teacher_candidates_symmetric_difference": 2316,
+   "teacher_selected_set_match": false,
+   "teacher_selected_symmetric_difference": 856,
+   "teacher_basis_rows_match": false,
+   "teacher_basis_rows_in_common": 325
+  }
+ },
+ "tau_perturbation": {
+  "active_cells": [
+   3651,
+   3651
+  ],
+  "node_sets_match": true,
+  "kind1": [
+   1436,
+   1436
+  ],
+  "analysis": {
+   "label": "tau0+1/500",
+   "cut_patches": 157,
+   "candidates": 11794,
+   "kind1": 1436,
+   "box_nodes": 2168,
+   "columns": 2382,
+   "picked": 1436,
+   "left_after_last_pick": 3.680580240723526e-16,
+   "margin_min": 0.0,
+   "margin_median": 0.0,
+   "margins_below_1e6": 1228,
+   "margins_below_1e3": 1333,
+   "pivot_norm_last_over_first": 3.4370825862368977e-07,
+   "span_equals_teacher": {
+    "ours_onto_teacher": 3.788841063870435e-15,
+    "teacher_onto_ours": 3.904168754560336e-10,
+    "rank_teacher": 1436,
+    "rank_ours": 1436
+   },
+   "teacher_basis_singular": {
+    "max": 2.563355382595259,
+    "min": 0.5111487229223548,
+    "cond": 5.014891493692808
+   },
+   "our_basis_singular": {
+    "max": 2.068436428738753,
+    "min": 1.8085726453229085e-07,
+    "cond": 11436844.597245622
+   },
+   "C11": {
+    "residual": 4.055339293158773e-15,
+    "cond": 22379988.596150137
+   },
+   "C_full_cond": 22398148.921772536,
+   "point_functional_signed_sum": {
+    "min": 0.9999999999999998,
+    "max": 1.0000000000000002
+   },
+   "selected_nnz": {
+    "min": 3,
+    "max": 27,
+    "mean": 6.217270194986073
+   },
+   "seconds": 377.5
+  },
+  "our_candidates_match": true,
+  "our_selected_sequence_match": true,
+  "teacher_selected_set_match": true,
+  "teacher_basis_rows_match": true
+ },
+ "our_rule_covariant": true,
+ "teacher_rows_covariant": false,
+ "seconds": 1977.0724184513092
+}

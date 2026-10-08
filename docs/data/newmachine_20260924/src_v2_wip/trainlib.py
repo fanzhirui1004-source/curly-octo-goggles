@@ -1,0 +1,945 @@
+"""Step 1 training scaffold for a learned extension (architecture-agnostic).
+
+A model is any torch.nn.Module with forward(geo, qd) -> field on all active DOFs (nb, B), float32, LINEAR in qd, where
+qd (np, B) is the deformation part of the port data (rigid part removed). The wrapper enforces what must be exact:
+  u = RA c + model(geo, qd) with u[P] overwritten by q      (exact port values, exact rigid motion; still linear)
+Energy readout in fp64 with the exact K: e_hat(q) = u^T K u >= q^T S q; the banks are normalized to q^T S q = 1, so
+the per-sample loss e_hat - 1 >= 0 is the relative energy error of the extension in that direction (= mu - 1).
+Adversarial directions: block power iteration on the pencil (S_hat, S): q <- S^+ S_hat q, S-normalized, Rayleigh-Ritz.
+"""
+import json, time, gc, math, os, contextlib
+from pathlib import Path
+import time
+import numpy as np
+import torch
+import teacher as TE
+import fastidx as FI
+import ops as OP
+
+dev, dt = TE.dev, TE.dt
+CLASSES = ('force', 'macro', 'grf')
+ALL_CLASSES = ('force', 'macro', 'grf', 'support', 'face')
+ALL_CLASSES += ('force_c', 'face_c', 'support_k', 'glued')         # C1 lattice-context classes (prep_geo2); absent files stay absent
+ALL_CLASSES += ('support64',)       # prep_geo2 --out: the recomputed (finite) support bank under its own name; 'support' is untouched
+SPLITS = ('train', 'val', 'test')
+
+
+class _Energy(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, u, K):
+        u64 = u.to(dt)
+        Ku = K @ u64
+        ctx.save_for_backward(Ku)
+        ctx.in_dtype = u.dtype
+        return (u64 * Ku).sum(0)
+
+    @staticmethod
+    def backward(ctx, g):
+        (Ku,) = ctx.saved_tensors
+        return (2 * Ku * g[None, :]).to(ctx.in_dtype), None
+
+
+def energy(u, K):
+    return _Energy.apply(u, K)
+
+
+class _KMat(torch.autograd.Function):
+    """y = K x with the symmetric CutFEM stiffness (fp64); backward K g."""
+
+    @staticmethod
+    def forward(ctx, x, K):
+        ctx.K = K
+        return K @ x
+
+    @staticmethod
+    def backward(ctx, g):
+        return ctx.K @ g, None
+
+
+def _Kc(C):
+    """Stiffness used inside the equilibrium correction: C._Kc (teacher.Cell.lean(correction_fp32=True)) or C.K."""
+    k = getattr(C, '_Kc', None)
+    return C.K if k is None else k
+
+
+def tail_bounds(C, alpha):
+    """Chebyshev interval [lmax / alpha, lmax] of D^-1 K_II (lmax by 40 power steps, x1.05), cached on the cell."""
+    t = getattr(C, '_tail_bounds', None)
+    if t is not None and t[0] == alpha:
+        return t[1], t[2]
+    g = torch.Generator(device=dev); g.manual_seed(0)
+    dinv = (1 / C.dK[C.I])[:, None]
+    v = torch.randn((C.ni, 1), dtype=dt, device=dev, generator=g); x = torch.zeros((C.nb, 1), dtype=dt, device=dev)
+    lam = 1.0
+    hold = C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()
+    with torch.no_grad(), hold:
+        for _ in range(40):
+            v = v / v.norm(); x[C.I] = v
+            w = dinv * (C.K @ x)[C.I]
+            lam = float((v * w).sum()); v = w
+    lmax = 1.05 * lam
+    C._tail_bounds = (alpha, lmax / alpha, lmax)
+    return lmax / alpha, lmax
+
+
+def _cheb(C, z0, b, k, alpha):
+    """Chebyshev iteration on A z = b, A = D^-1 K_II (interior vectors), from z0; returns p_k(A) z0 + s_k(A) b."""
+    lmin, lmax = tail_bounds(C, alpha)
+    theta, delta = (lmax + lmin) / 2, (lmax - lmin) / 2
+    sigma = theta / delta; rho = 1 / sigma
+    dinv = (1 / C.dK[C.I])[:, None]
+    full = torch.zeros((C.nb, z0.shape[1]), dtype=dt, device=z0.device)
+
+    def A(z):
+        full.zero_(); full[C.I] = z
+        return dinv * FI.rows(_Kc(C) @ full, C.I)
+    z = z0.clone()
+    d = (b - A(z)) / theta
+    for i in range(k):
+        z = z + d
+        if i == k - 1:
+            break
+        rho_n = 1 / (2 * sigma - rho)
+        d = rho_n * rho * d + (2 * rho_n / delta) * (b - A(z))
+        rho = rho_n
+    return z
+
+
+@torch.no_grad()
+def smooth_tail_T(C, y, k, alpha=30.0):
+    """Explicit adjoint of smooth_tail (no autograd graph): with w = D^-1 y_I,
+    (T^T y)_I = D p_k(A) w,  (T^T y)_P = y_P - K_PI s_k(A) w."""
+    y = y.to(dt)
+    dK = C.dK[C.I][:, None]
+    w = FI.rows(y, C.I) / dK
+    zero = torch.zeros_like(w)
+    out = y.clone()
+    if os.environ.get('OPL_TAILT_FUSED') == '1':                        # both recurrences in one pass on 2B columns
+        B = w.shape[1]
+        z = _cheb(C, torch.cat([w, zero], 1), torch.cat([zero, w], 1), k, alpha)
+        out[C.I] = dK * z[:, :B]
+        sw = z[:, B:]
+    else:
+        out[C.I] = dK * _cheb(C, w, zero, k, alpha)
+        sw = _cheb(C, zero, w, k, alpha)
+    full = torch.zeros_like(y); full[C.I] = sw
+    out[C.P] = FI.rows(y, C.P) - FI.rows(_Kc(C) @ full, C.P)
+    return out
+
+
+COARSE_SPACES = {'Q1_9': (1, 8, False), 'Q1_17': (1, 16, False), 'Q2_17': (2, 8, False), 'PU_9': (1, 8, True)}
+
+
+def coarse_prolong(C, space, with_meta=False):
+    """Interior-restricted prolongation (scipy CSC, ni x nc) of a tensor Lagrange space on the unit cell (Q1 / Q2 over
+    ne^3 coarse elements, or PU-linear: translation + 3x3 slopes per Q1 vertex); columns without interior support dropped.
+    with_meta: also (vertex integer coordinates (nc, 3), slot index (nc,)) of every kept column."""
+    import scipy.sparse as sp
+    order, ne, pu = COARSE_SPACES[space]
+    n2 = 2 * C.n + 1
+    nodes = C.nodes.cpu().numpy() if torch.is_tensor(C.nodes) else np.asarray(C.nodes)
+    xyz = np.stack(np.unravel_index(nodes, (n2,) * 3), 1).astype(float) / (n2 - 1)
+    I = C.I.cpu().numpy()
+    nn = order * ne + 1
+    e = np.minimum(np.floor(xyz * ne).astype(int), ne - 1); t = xyz * ne - e
+    sh = (lambda s_: np.stack([1 - s_, s_], -1)) if order == 1 else \
+         (lambda s_: np.stack([(2 * s_ - 1) * (s_ - 1), 1 - (2 * s_ - 1) ** 2, s_ * (2 * s_ - 1)], -1))
+    W = [sh(t[:, d]) for d in range(3)]
+    rows, cols, vals = [], [], []
+    N = len(xyz)
+    ns = 12 if pu else 3
+    for a in range(order + 1):
+        for b in range(order + 1):
+            for c in range(order + 1):
+                vid = ((order * e[:, 0] + a) * nn + order * e[:, 1] + b) * nn + order * e[:, 2] + c
+                w = W[0][:, a] * W[1][:, b] * W[2][:, c]
+                if pu:
+                    dx = xyz - np.stack([order * e[:, 0] + a, order * e[:, 1] + b, order * e[:, 2] + c], 1) / (order * ne)
+                for comp in range(3):
+                    rows.append(3 * np.arange(N) + comp); cols.append(ns * vid + comp); vals.append(w)
+                    if pu:
+                        for j in range(3):
+                            rows.append(3 * np.arange(N) + comp); cols.append(ns * vid + 3 + 3 * comp + j); vals.append(w * dx[:, j])
+    Pd = sp.csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(3 * N, ns * nn ** 3))
+    PI = Pd[I]
+    used = np.flatnonzero(np.abs(PI).sum(0).A1 > 1e-14)
+    V = PI[:, used].tocsc()
+    if not with_meta:
+        return V
+    vid, slot = used // ns, used % ns
+    return V, np.stack(np.unravel_index(vid, (nn,) * 3), 1), slot
+
+
+def _chol_jitter(A):
+    """Cholesky of a symmetric unit-diagonal (Jacobi-scaled) matrix, with a growing diagonal shift when it is only
+    semi-definite (coarse columns that are nearly dependent on the interior); returns (L, shift)."""
+    for eps in (0.0, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4):
+        L, info = torch.linalg.cholesky_ex(A + eps * torch.eye(A.shape[0], dtype=A.dtype, device=A.device) if eps else A)
+        if int(info) == 0:
+            return L, eps
+    raise ValueError('COARSE_CHOLESKY_FAILED')
+
+
+def _gather_blocks(crow, col, val, R):
+    """Rows R (nb x L, long) of a CSR matrix (crow, col, val) as dense blocks: Vb (nb x L x w) and the block columns
+    cols (nb x w, padded with column 0 and zero entries), w = the largest number of distinct columns in a block."""
+    nbk, L = R.shape
+    r = R.reshape(-1)
+    s, e = crow[r], crow[r + 1]
+    cnt = e - s
+    tot = int(cnt.sum())
+    rid = torch.repeat_interleave(torch.arange(len(r), device=R.device), cnt)
+    idx = torch.arange(tot, device=R.device) - torch.repeat_interleave(torch.cumsum(cnt, 0) - cnt, cnt) \
+        + torch.repeat_interleave(s, cnt)
+    blk, lr, cc, vv = rid // L, rid % L, col[idx], val[idx]
+    nc = int(col.max()) + 1 if len(col) else 1
+    key, inv = torch.unique(blk * nc + cc, return_inverse=True)
+    kb = key // nc
+    first = torch.searchsorted(key, kb * nc)                                   # rank of a column within its block
+    rank = torch.arange(len(key), device=R.device) - first
+    w = int(rank.max()) + 1 if len(rank) else 1
+    cols = torch.zeros((nbk, w), dtype=torch.long, device=R.device)
+    cols[kb, rank] = key % nc
+    Vb = torch.zeros((nbk, L, w), dtype=val.dtype, device=R.device)
+    Vb[blk, lr, rank[inv]] = vv
+    return Vb, cols
+
+
+def coarse_galerkin_elem(C, V, chunk=2048):
+    """A_c = V^T K_II V (V: ni x nc, scipy) summed over elements (K_e = M_e T, float64) and ghost faces (gamma B^T B,
+    teacher.GhostFaces): the same matrix as the probing of coarse_setup, reassociated (OPL_COARSE_ELEM=1, deployment cells)."""
+    dvc = C.dK.device
+    Vc = V.tocsr()
+    nc = V.shape[1]
+    # prolongation on all DOFs (port rows empty): CSR over nb rows
+    cnt = np.zeros(C.nb + 1, np.int64)
+    rI = C.I.cpu().numpy()
+    cnt[rI + 1] = np.diff(Vc.indptr)
+    crow = torch.as_tensor(np.cumsum(cnt), device=dvc)
+    col = torch.as_tensor(Vc.indices.astype(np.int64), device=dvc)
+    val = torch.as_tensor(Vc.data, dtype=dt, device=dvc)
+    A = torch.zeros((nc, nc), dtype=dt, device=dvc)
+
+    def acc(Vb, cols, KV):
+        Ab = Vb.transpose(1, 2) @ KV                                             # blocks x w x w
+        w = cols.shape[1]
+        A.index_put_((cols[:, :, None].expand(-1, w, w).reshape(-1), cols[:, None, :].expand(-1, w, w).reshape(-1)),
+                     Ab.reshape(-1), accumulate=True)
+    Tf = C.Tm.reshape(125, 81 * 81)
+    for lo in range(0, len(C.M), chunk):
+        Vb, cols = _gather_blocks(crow, col, val, C.dofs[lo:lo + chunk])
+        Ke = (C.M[lo:lo + chunk] @ Tf).reshape(-1, 81, 81)
+        acc(Vb, cols, torch.bmm(Ke, Vb))
+        del Vb, cols, Ke
+    GF = C.GF64
+    for idx, B in zip(GF.idx, GF.B):
+        BtB = C.gamma * (B.t() @ B)
+        for lo in range(0, len(idx), chunk):
+            Vb, cols = _gather_blocks(crow, col, val, idx[lo:lo + chunk].long())
+            acc(Vb, cols, BtB @ Vb)
+            del Vb, cols
+    return A
+
+
+def coarse_galerkin_tpl(C, space, vc, slot, nc, chunk=4096):
+    """A_c = V^T K_II V for a Q1 coarse space (OPL_COARSE_ELEM=1, deployment cells), summed over elements (K_e = M_e T,
+    float64) and ghost faces (gamma B^T B): the prolongation entries of an element's (face's) nodes are the Q1 hats of
+    the corners of its coarse element(s), evaluated from the grid coordinates (the same exact binary fractions as
+    coarse_prolong); port rows are zero; columns without interior support are dropped (as in coarse_prolong).
+    The same matrix as the probing of coarse_setup, reassociated."""
+    order, ne, pu = COARSE_SPACES[space]
+    if order != 1 or pu or C.n % ne:
+        raise ValueError(f'COARSE_TPL_UNSUPPORTED:{space}')
+    dvc = C.dK.device
+    r2 = 2 * (C.n // ne)                                                         # grid units per coarse element
+    nn = ne + 1
+    col_of = torch.full((3 * nn ** 3 + 1,), nc, dtype=torch.long, device=dvc)      # dropped / out of range -> nc (dummy)
+    vid = torch.as_tensor((vc[:, 0] * nn + vc[:, 1]) * nn + vc[:, 2], device=dvc)
+    col_of[3 * vid + torch.as_tensor(slot, device=dvc)] = torch.arange(nc, device=dvc)
+    n2 = 2 * C.n + 1
+    nodes = torch.as_tensor(np.asarray(C.nodes), device=dvc)
+    grid = torch.stack([nodes // (n2 * n2), (nodes // n2) % n2, nodes % n2], 1).to(dt)   # (N, 3) grid coordinates
+    pm = torch.zeros(C.nb, dtype=torch.bool, device=dvc); pm[C.P] = True
+    A = torch.zeros((nc + 1, nc + 1), dtype=dt, device=dvc)
+    eye3 = torch.eye(3, dtype=dt, device=dvc)
+
+    def block(dofs, base, offs):
+        """dofs (b, 3m) node-major; base (b, 3) coarse vertex coords; offs (s, 3) slot offsets -> Vb (b, 3m, 3s), cols (b, 3s)."""
+        g = grid[dofs[:, 0::3] // 3]                                              # b x m x 3
+        v = (base[:, None, :] + offs[None]).to(dt)                                # b x s x 3
+        w = torch.clamp(1 - (g[:, :, None, :] - r2 * v[:, None, :, :]).abs() / r2, min=0).prod(-1)   # b x m x s
+        bsz, m, sl = w.shape
+        Vb = (w[:, :, None, :, None] * eye3[None, None, :, None, :]).reshape(bsz, 3 * m, 3 * sl)
+        Vb = Vb.masked_fill(pm[dofs][:, :, None], 0.0)
+        inb = ((v >= 0) & (v <= ne)).all(-1)                                      # b x s
+        vv = v.long().clamp(0, ne)
+        cid = 3 * ((vv[..., 0] * nn + vv[..., 1]) * nn + vv[..., 2])
+        cols = col_of[(cid[..., None] + torch.arange(3, device=dvc)).reshape(bsz, -1)]
+        cols = torch.where(inb.repeat_interleave(3, 1), cols, torch.full_like(cols, nc))
+        return Vb, cols
+
+    def acc(Ab, cols):
+        w = cols.shape[1]
+        A.index_put_((cols[:, :, None].expand(-1, w, w).reshape(-1), cols[:, None, :].expand(-1, w, w).reshape(-1)),
+                     Ab.reshape(-1), accumulate=True)
+    cells = torch.as_tensor(np.asarray(C.cells), device=dvc)
+    offs8 = torch.tensor([[a, b, c] for a in (0, 1) for b in (0, 1) for c in (0, 1)], device=dvc)
+    Tf = C.Tm.reshape(125, 81 * 81)
+    held = getattr(C, '_ke64_tmp', None)
+    for j, lo in enumerate(range(0, len(C.M), C._lean_chunk)):
+        hi = min(len(C.M), lo + C._lean_chunk)
+        Ke = held[j] if held is not None else (C.M[lo:hi] @ Tf).reshape(-1, 81, 81)
+        for s0 in range(lo, hi, chunk):
+            s1 = min(hi, s0 + chunk)
+            Vb, cols = block(C.dofs[s0:s1], cells[s0:s1] // (C.n // ne), offs8)
+            acc(Vb.transpose(1, 2) @ torch.bmm(Ke[s0 - lo:s1 - lo], Vb), cols)
+            del Vb, cols
+        del Ke
+    GF = C.GF64
+    for idx, B in zip(GF.idx, GF.B):
+        span = None
+        for s0 in range(0, len(idx), chunk):
+            dd = idx[s0:s0 + chunk].long()
+            g = grid[dd[:, 0::3] // 3]
+            gmin = g.min(1).values
+            if span is None:                                                      # long axis of this face template
+                span = (g.max(1).values - gmin)[0]
+                offs = torch.tensor([[a, b, c] for a in range(1 + int(span[0] > r2 // 2 + 0) + 1)
+                                     for b in range(1 + int(span[1] > r2 // 2 + 0) + 1)
+                                     for c in range(1 + int(span[2] > r2 // 2 + 0) + 1)], device=dvc)
+            base = torch.div(gmin, r2, rounding_mode='floor').long()
+            Vb, cols = block(dd, base, offs)
+            BV = B @ Vb                                                            # b x 54 x 3s
+            acc(C.gamma * (BV.transpose(1, 2) @ BV), cols)
+            del Vb, cols, BV
+    return A[:nc, :nc].contiguous()
+
+
+def coarse_setup(C, space, reach=4, chunk=None):
+    """Galerkin coarse operator A_c = V^T K_II V on C's device by probing: columns are coloured by vertex coordinates mod
+    s = 2R + 1 (R = 2 + ceil(reach / h), h = node spacings per coarse vertex spacing, reach = K's stencil radius in node
+    spacings incl. ghost-penalty coupling) and slot, so one K product per colour yields every entry within distance R.
+    Jacobi-scaled, Cholesky (fp64) with a jitter fallback. Stores _cV (sparse COO ni x nc, scaled), _cL, _c_space,
+    _c_seconds, _c_shift on the cell (tensors move with it)."""
+    if getattr(C, '_c_space', None) == space:
+        return
+    chunk = chunk or int(os.environ.get('OPL_COARSE_CHUNK', '128'))            # probing columns per K product (memory)
+    order, ne, pu = COARSE_SPACES[space]
+    if order != 1:
+        raise ValueError(f'coarse_setup probing supports Q1 / PU spaces, not {space}')
+    t0 = time.perf_counter()
+    dvc = C.dK.device
+    V, vc, slot = coarse_prolong(C, space, with_meta=True)
+    nc = V.shape[1]
+    if os.environ.get('OPL_COARSE_ELEM') == '1' and getattr(C, 'GF64', None) is not None:
+        Vc = V.tocoo()
+        Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
+        with (C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()):
+            A = coarse_galerkin_tpl(C, space, vc, slot, nc)
+        return _coarse_finish(C, space, A, Vt, dvc, t0)
+    h = (2 * C.n) / ne
+    R = 2 + int(math.ceil(reach / h))
+    s = 2 * R + 1
+    color = ((vc[:, 0] % s) * s + (vc[:, 1] % s)) * s + (vc[:, 2] % s)
+    color = color * (12 if pu else 3) + slot
+    ucol, cidx = np.unique(color, return_inverse=True)
+    Vc = V.tocoo()
+    Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
+    VtT = Vt.t().coalesce()
+    Y = torch.zeros((nc, len(ucol)), dtype=dt, device=dvc)
+    hold = C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()
+    hold.__enter__()
+    for c0 in range(0, len(ucol), chunk):
+        c1 = min(len(ucol), c0 + chunk)
+        sel = np.flatnonzero((cidx >= c0) & (cidx < c1))
+        oh = torch.sparse_coo_tensor(np.stack([sel, cidx[sel] - c0]), np.ones(len(sel)), (nc, c1 - c0), dtype=dt, device=dvc)
+        probe = torch.sparse.mm(Vt, oh.to_dense())                              # ni x chunk
+        full = torch.zeros((C.nb, c1 - c0), dtype=dt, device=dvc); full[C.I] = probe
+        Y[:, c0:c1] = torch.sparse.mm(VtT, FI.rows(C.K @ full, C.I))
+        del probe, full
+    hold.__exit__(None, None, None)
+    vct = torch.as_tensor(vc, dtype=torch.int16, device=dvc)
+    cix = torch.as_tensor(cidx, device=dvc)
+    A = torch.zeros((nc, nc), dtype=dt, device=dvc)
+    for r0 in range(0, nc, 1024):                                                 # row blocks: no nc x nc x 3 temporary
+        r1 = min(nc, r0 + 1024)
+        near = (vct[r0:r1, None, :] - vct[None, :, :]).abs().amax(2) <= R
+        A[r0:r1] = torch.where(near, Y[r0:r1][:, cix], torch.zeros((), dtype=dt, device=dvc))
+        del near
+    del Y
+    return _coarse_finish(C, space, A, Vt, dvc, t0)
+
+
+def _coarse_finish(C, space, A, Vt, dvc, t0):
+    """Jacobi scaling, Cholesky with jitter, scaled prolongation; stores the coarse caches on C."""
+    d = torch.sqrt(torch.diagonal(A).clamp_min(1e-300))                          # symmetric up to rounding; Cholesky reads
+    A.div_(d[:, None]).div_(d[None, :])                                           # the lower triangle only
+    L, shift = _chol_jitter(A)
+    del A
+    if dvc.type == 'cuda':
+        torch.cuda.empty_cache()
+    dcol = (1 / d)[Vt.indices()[1]]
+    C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, Vt.shape, dtype=dt, device=dvc).coalesce()
+    C._cL = L
+    C._c_space, C._c_shift, C._c_seconds = space, shift, time.perf_counter() - t0
+
+
+def coarse_correct(C, x):
+    """x_I <- x_I + V A_c^-1 V^T r_I, r_I = -(K x)_I (ports held); linear in x, differentiable."""
+    xx = x.to(dt)
+    r = -FI.rows(_KMat.apply(xx, _Kc(C)), C.I)
+    c = _coarse_solve(C, r)
+    return xx.index_add(0, C.I, c)
+
+
+def _coarse_solve(C, r):
+    """V A_c^-1 V^T r (interior vectors); float32 factor and prolongation when OPL_COARSE_FP32=1 and the cell has a
+    float32 correction stiffness (teacher.Cell.lean(correction_fp32=True)); otherwise float64 as before."""
+    if os.environ.get('OPL_COARSE_FP32') == '1' and getattr(C, '_Kc', None) is not None:
+        if getattr(C, '_cL', None) is not None:                             # a fresh float64 factor from coarse_setup
+            C._cL32, C._cV32, C._cV32t = C._cL.to(torch.float32), C._cV.to(torch.float32), \
+                C._cV.t().coalesce().to(torch.float32)
+            if getattr(C, '_deploy', False):
+                C._cL = C._cV = None                                            # float32 copies only (deployment memory)
+            else:
+                C._cL32_keep = C._cL
+            C._cAi32 = None
+            if os.environ.get('OPL_COARSE_INV') == '1':                        # explicit float32 inverse from the float32
+                C._cAi32 = torch.cholesky_inverse(C._cL32)                      # factor: one GEMM per solve instead of two
+                C._cL32 = None                                                  # latency-bound triangular solves (same memory)
+        r32 = r.to(torch.float32)
+        if getattr(C, '_cAi32', None) is not None:
+            return torch.sparse.mm(C._cV32, C._cAi32 @ torch.sparse.mm(C._cV32t, r32)).to(r.dtype)
+        return torch.sparse.mm(C._cV32, torch.cholesky_solve(torch.sparse.mm(C._cV32t, r32), C._cL32)).to(r.dtype)
+    return torch.sparse.mm(C._cV, torch.cholesky_solve(torch.sparse.mm(C._cV.t(), r), C._cL))
+
+
+@torch.no_grad()
+def coarse_correct_T(C, y):
+    """Adjoint of coarse_correct: y - K[:, I] V A_c^-1 V^T y_I."""
+    y = y.to(dt)
+    g = _coarse_solve(C, FI.rows(y, C.I))
+    full = torch.zeros_like(y); full[C.I] = g
+    return y - _Kc(C) @ full
+
+
+def _held(C):
+    k = getattr(C, '_Kc', None)
+    return k.hold() if hasattr(k, 'hold') else contextlib.nullcontext()
+
+
+def wrap(C, u, model):
+    """Physics wrapper after the network (default off): tail (smooth_k sweeps); with coarse_space also a Galerkin coarse
+    correction and a second tail (tail - coarse - tail). Linear in u; S_hat = E^T K E stays symmetric and >= S."""
+    k, cs = getattr(model, 'smooth_k', 0), getattr(model, 'coarse_space', None)
+    if not k and not cs:
+        return u
+    with _held(C):
+        x = smooth_tail(C, u, k, model.smooth_alpha) if k else u.to(dt)
+        if cs:
+            coarse_setup(C, cs)
+            x = coarse_correct(C, x)
+            if k:
+                x = smooth_tail(C, x, k, model.smooth_alpha)
+    return x.to(u.dtype)
+
+
+@torch.no_grad()
+def wrap_T(C, y, model):
+    k, cs = getattr(model, 'smooth_k', 0), getattr(model, 'coarse_space', None)
+    if not k and not cs:
+        return y
+    y = y.to(dt)
+    with _held(C):
+        if cs:
+            coarse_setup(C, cs)
+            if k:
+                y = smooth_tail_T(C, y, k, model.smooth_alpha)
+            y = coarse_correct_T(C, y)
+        if k:
+            y = smooth_tail_T(C, y, k, model.smooth_alpha)
+    return y
+
+
+def smooth_tail(C, u, k, alpha=30.0):
+    """k Jacobi-preconditioned Chebyshev sweeps on the interior equilibrium K_II u_I = -K_IP u_P (ports held), from u.
+    Linear in u, energy-norm contractive: S_hat stays symmetric and >= S. Differentiable (fp64); returns u.dtype."""
+    lmin, lmax = tail_bounds(C, alpha)
+    theta, delta = (lmax + lmin) / 2, (lmax - lmin) / 2
+    sigma = theta / delta; rho = 1 / sigma
+    dinv = (1 / C.dK[C.I])[:, None]
+    x = u.to(dt)
+    r = -FI.rows(_KMat.apply(x, _Kc(C)), C.I)
+    d = dinv * r / theta
+    for i in range(k):
+        x = x.index_add(0, C.I, d)
+        if i == k - 1:
+            break
+        r = -FI.rows(_KMat.apply(x, _Kc(C)), C.I)
+        rho_n = 1 / (2 * sigma - rho)
+        d = rho_n * rho * d + (2 * rho_n / delta) * dinv * r
+        rho = rho_n
+    return x.to(u.dtype)
+
+
+class _Sens(torch.autograd.Function):
+    """s[c, b] = -u_b^T (dK/dtau_c) u_b from element moments derivatives (chunked, float32 products, float64 sums)."""
+
+    @staticmethod
+    def forward(ctx, u, dofs, Tm, dM, chunk):
+        B = u.shape[1]
+        s = torch.zeros((dM.shape[0], B), dtype=dt, device=dev)
+        for lo in range(0, dofs.shape[0], chunk):
+            ue = u[dofs[lo:lo + chunk]]                                              # c x 81 x B
+            z = torch.einsum('mij,ejb->emib', Tm, ue)
+            g = torch.einsum('emib,eib->emb', z, ue)
+            s -= torch.einsum('cem,emb->cb', dM[:, lo:lo + chunk], g).to(dt)
+        ctx.save_for_backward(u); ctx.dofs, ctx.Tm, ctx.dM, ctx.chunk = dofs, Tm, dM, chunk
+        return s
+
+    @staticmethod
+    def backward(ctx, gs):
+        (u,) = ctx.saved_tensors
+        grad = torch.zeros_like(u)
+        gs = gs.to(u.dtype)
+        for lo in range(0, ctx.dofs.shape[0], ctx.chunk):
+            dd = ctx.dofs[lo:lo + ctx.chunk]
+            ue = u[dd]
+            W = torch.einsum('cb,cem->emb', gs, ctx.dM[:, lo:lo + ctx.chunk])
+            z = torch.einsum('mij,ejb->emib', ctx.Tm, ue)
+            v = torch.einsum('emb,emib->eib', W, z)
+            grad.index_add_(0, dd.reshape(-1), (-2 * v).reshape(-1, u.shape[1]))
+        return grad, None, None, None, None
+
+
+class _Sens2(torch.autograd.Function):
+    """Same as _Sens, reassociated: per element chunk A_ce = sum_m dM_cem Tm_m (8 x 81 x 81, float32), then
+    s[c, b] = -sum_e u_eb^T A_ce u_eb (8 instead of 125 contractions per field; A rebuilt per chunk, not stored)."""
+
+    @staticmethod
+    def forward(ctx, u, dofs, Tm, dM, chunk):
+        B = u.shape[1]
+        s = torch.zeros((dM.shape[0], B), dtype=dt, device=dev)
+        for lo in range(0, dofs.shape[0], chunk):
+            A = torch.einsum('cem,mij->ceij', dM[:, lo:lo + chunk], Tm)
+            ue = u[dofs[lo:lo + chunk]]                                              # c x 81 x B
+            z = torch.einsum('ceij,ejb->ceib', A, ue)
+            s -= (z * ue[None]).sum((1, 2)).to(dt)
+        ctx.save_for_backward(u); ctx.dofs, ctx.Tm, ctx.dM, ctx.chunk = dofs, Tm, dM, chunk
+        return s
+
+    @staticmethod
+    def backward(ctx, gs):
+        (u,) = ctx.saved_tensors
+        grad = torch.zeros_like(u)
+        gs = gs.to(u.dtype)
+        for lo in range(0, ctx.dofs.shape[0], ctx.chunk):
+            dd = ctx.dofs[lo:lo + ctx.chunk]
+            A = torch.einsum('cem,mij->ceij', ctx.dM[:, lo:lo + ctx.chunk], ctx.Tm)
+            ue = u[dd]
+            z = torch.einsum('ceij,ejb->ceib', A, ue)                                 # A symmetric
+            v = torch.einsum('cb,ceib->eib', gs, z)
+            grad.index_add_(0, dd.reshape(-1), (-2 * v).reshape(-1, u.shape[1]))
+        return grad, None, None, None, None
+
+
+class Geo:
+    """Everything one geometry contributes to training: exact K, ports, rigid split, banks, network input data."""
+
+    def __init__(self, case, body_dir, data_root, neumann=True, log=print, cell=None, load_banks=True):
+        t0 = time.perf_counter()
+        self.case = case
+        C = cell if cell is not None else TE.Cell(case, body_dir, log=lambda s_: None)
+        if cell is None:
+            C.assemble()
+        if neumann:
+            C.factor(neumann=True, interior=False, fp32_neumann=True)   # only an approximate S^+ (adversarial search)
+        self.C = C
+        d = Path(data_root) / case
+        self.nd = dict(np.load(d / 'NETDATA.npz'))
+        ports = json.loads((d / 'PORTS.json').read_text())
+        if not np.array_equal(np.asarray(ports['port_node_ids']), C.port_node_ids):
+            raise ValueError('PORT_ORDER')
+        self.classes = [c for c in ALL_CLASSES if (d / f'train_{c}.npy').exists()]
+        self.banks = {s: {c: torch.as_tensor(np.load(d / f'{s}_{c}.npy'), device=dev).T.contiguous() for c in self.classes}
+                      for s in ('train', 'val', 'test')} if load_banks else None
+        g = np.stack(np.unravel_index(C.port_node_ids, (2 * C.n + 1,) * 3), 1) / (2 * C.n)
+        ctr = g.mean(0)
+        self.RP = OP.rigid_raw(C.port_node_ids, C.n, ctr); self.RA = OP.rigid_raw(C.nodes, C.n, ctr)
+        self.RPpinv = torch.linalg.pinv(self.RP)
+        self.P, self.I = C.P, C.I
+        self.np_, self.nb = C.np_, C.nb
+        self.adv = None
+        self.sens = None
+        if load_banks and (d / 'train_force_sens.npy').exists():
+            self.sens = {s_: {c: torch.as_tensor(np.load(d / f'{s_}_{c}_sens.npy'), device=dev).T.contiguous() for c in self.classes
+                              if (d / f'{s_}_{c}_sens.npy').exists()}
+                         for s_ in ('train', 'val', 'test')}
+            C.dmoments()
+            self.dM32 = C.dM.to(torch.float32); self.Tm32 = C.Tm.to(torch.float32)
+        self.setup_seconds = time.perf_counter() - t0
+        log(json.dumps(dict(event='GEO', case=case, ports=self.np_, dofs=self.nb, seconds=self.setup_seconds)))
+
+    def field(self, model, q):
+        """Full extension (fp32 network part, rigid part and port values exact)."""
+        q32 = q.to(torch.float32)
+        c = (self.RPpinv.to(torch.float32) @ q32)
+        qd = q32 - self.RP.to(torch.float32) @ c
+        u = model(self, qd)
+        u = u + self.RA.to(torch.float32) @ c
+        u = u.index_copy(0, self.P, q32)                                  # exact port values
+        return wrap(self.C, u, model)                                     # physics wrapper (default off: identity)
+
+    def sens_hat(self, u, chunk=256):
+        import os
+        if os.environ.get('SENS_REASSOC') == '1':
+            return _Sens2.apply(u, self.C.dofs, self.Tm32, self.dM32, chunk)
+        return _Sens.apply(u, self.C.dofs, self.Tm32, self.dM32, chunk)
+
+    def sample_with_sens(self, B, gen, mix):
+        """Like sample(), plus exact sensitivities (8, B) where available (NaN columns for adversarial directions)."""
+        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or self.adv is not None) and (k == 'adv' or k in self.classes)]
+        w = np.asarray([mix[k] for k in names], float)
+        counts = gen.multinomial(B, w / w.sum())
+        cols, sc = [], []
+        for i, k in enumerate(names):
+            m = int(counts[i])
+            if m == 0:
+                continue
+            bank = self.adv if k == 'adv' else self.banks['train'][k]
+            j = torch.as_tensor(gen.integers(0, bank.shape[1], m), device=dev)
+            cols.append(bank[:, j].to(torch.float32))
+            if k == 'adv' or self.sens is None or k not in self.sens['train']:
+                sc.append(torch.full((8, m), float('nan'), dtype=dt, device=dev))
+            else:
+                sc.append(self.sens['train'][k][:, j])
+        q = torch.cat(cols, 1); s = torch.cat(sc, 1)
+        sg = torch.as_tensor(gen.choice([-1.0, 1.0], q.shape[1]), dtype=torch.float32, device=dev)
+        return q * sg[None, :], s                                               # sensitivities are even in q
+
+    def sample(self, B, gen, mix):
+        """Batch of B training directions: class mix (dict class -> weight, incl. 'adv'); gen: numpy Generator."""
+        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or self.adv is not None) and (k == 'adv' or k in self.classes)]
+        w = np.asarray([mix[k] for k in names], float)
+        counts = gen.multinomial(B, w / w.sum())
+        cols = []
+        for i, k in enumerate(names):
+            m = int(counts[i])
+            if m == 0:
+                continue
+            bank = self.adv if k == 'adv' else self.banks['train'][k]
+            j = torch.as_tensor(gen.integers(0, bank.shape[1], m), device=dev)
+            cols.append(bank[:, j].to(torch.float32))
+        q = torch.cat(cols, 1)
+        s = torch.as_tensor(gen.choice([-1.0, 1.0], q.shape[1]), dtype=torch.float32, device=dev)
+        return q * s[None, :]
+
+    def s_hat_apply(self, model, q):
+        """S_hat q = E_hat^T K E_hat q (fp64) through the autograd adjoint of the linear model."""
+        qq = q.detach().to(torch.float32).requires_grad_(True)
+        with torch.enable_grad():
+            u = self.field(model, qq)
+            e = energy(u, self.C.K)
+            g = torch.autograd.grad(e.sum(), qq)[0]
+        return 0.5 * g.to(dt)
+
+    @torch.no_grad()
+    def evaluate(self, model, split='val', chunk=32):
+        out = {}
+        for c in self.classes:
+            Q = self.banks[split][c]
+            errs = torch.cat([energy(self.field(model, Q[:, j:j + chunk]), self.C.K) - 1 for j in range(0, Q.shape[1], chunk)])
+            e = errs.cpu().numpy()
+            out[c] = dict(mean=float(e.mean()), p90=float(np.quantile(e, .9)), max=float(e.max()), min=float(e.min()))
+            if self.sens is not None and c in self.sens[split]:
+                S = self.sens[split][c]
+                se = []
+                for j in range(0, Q.shape[1], chunk):
+                    sh = self.sens_hat(self.field(model, Q[:, j:j + chunk]))
+                    s0 = S[:, j:j + chunk]
+                    se.append((sh - s0).norm(dim=0) / s0.norm(dim=0))
+                se = torch.cat(se).cpu().numpy()
+                out[c].update(sens_mean=float(se.mean()), sens_p90=float(np.quantile(se, .9)), sens_max=float(se.max()))
+        return out
+
+    def adversarial(self, model, k=16, iters=8, gen=None, start=None):
+        """Worst directions of S^-1 S_hat by block power iteration with S-orthonormalization (Rayleigh-Ritz)."""
+        C = self.C
+        X = start if start is not None else torch.randn((self.np_, k), dtype=dt, device=dev, generator=gen)
+        X = X - C.Q @ (C.Q.T @ X)
+        ritz = None
+        for _ in range(iters):
+            Y = self.s_hat_apply(model, X)                                # S_hat X
+            X = C.neumann(Y)                                              # S^+ S_hat X
+            # S-orthonormalize via the exact energy Gram matrix: G = X^T S X, with S X = S S^+ S_hat X_prev = Y_eq
+            G = X.T @ (Y - C.Q @ (C.Q.T @ Y))
+            G = 0.5 * (G + G.T)
+            ev, V = torch.linalg.eigh(G)
+            keep = ev > ev.max() * 1e-12
+            X = X @ (V[:, keep] / torch.sqrt(ev[keep])[None, :])
+            H = X.T @ self.s_hat_apply(model, X)
+            H = 0.5 * (H + H.T)
+            ritz, W = torch.linalg.eigh(H)
+            X = X @ W
+        order = torch.argsort(ritz, descending=True)
+        return X[:, order], ritz[order]
+
+    def worst_ratio(self, model, k=8, tol=1e-3, max_iters=30, gen=None, start=None):
+        """mu = top Ritz value of (S_hat, S) (worst direction of S^-1 S_hat): adversarial() one iteration at a time from start
+        (np, k) or a random block (gen) until the top value changes by less than tol (relative) or max_iters; needs the
+        Neumann factor. Returns (mu, iterations, X)."""
+        X, prev, mu, it = start, None, float('nan'), 0
+        for it in range(1, max_iters + 1):
+            X, ritz = self.adversarial(model, k=k, iters=1, gen=gen, start=X)
+            mu = float(ritz[0])
+            if prev is not None and abs(mu - prev) <= tol * abs(mu):
+                break
+            prev = mu
+        return mu, it, X
+
+    @torch.no_grad()
+    def bank_ritz(self, model, Q, F, top=8, floor=1e-3, chunk=16):
+        """Factorization-free worst directions in the span of bank samples with known reactions ('bank-span Ritz'):
+        Q (np, R) at unit exact energy, F = S Q. G_hat = U^T K U (U = field(Q)), G = Q^T F (exact, symmetrised; eigenvalues
+        floored at floor lambda_max against near-dependent samples); the top generalized eigenvectors c of (G_hat, G) give
+        X = Q c, rescaled to unit exact energy c^T G c = 1 with the unfloored G. Returns X (np, top) fp64 and its Rayleigh
+        quotients X^T S_hat X / X^T S X (descending)."""
+        Q = Q.to(dt)
+        U = torch.cat([self.field(model, Q[:, j:j + chunk]) for j in range(0, Q.shape[1], chunk)], 1)
+        Gh = gram(U, self.C.K); Gh = 0.5 * (Gh + Gh.T)
+        G = Q.T @ F.to(dt); G = 0.5 * (G + G.T)
+        ev, V = torch.linalg.eigh(G)
+        W = V * ev.clamp_min(floor * ev.max()).rsqrt()[None, :]
+        H = W.T @ Gh @ W
+        lam, Z = torch.linalg.eigh(0.5 * (H + H.T))
+        C = W @ Z[:, torch.argsort(lam, descending=True)[:top]]
+        C = C / torch.sqrt((C * (G @ C)).sum(0).clamp_min(1e-300))[None, :]
+        ritz = (C * (Gh @ C)).sum(0)
+        o = torch.argsort(ritz, descending=True)
+        return Q @ C[:, o], ritz[o]
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Trainer v2 pieces (train3.py; sens_loss also train1.py). Additive: Geo and the functions above are unchanged.
+# ---------------------------------------------------------------------------------------------------------------------
+def sens_loss(sh, s0, kind='sq', delta=0.003):
+    """Sensitivity loss of a batch, rho_b = |s_hat_b - s_b| / |s_b| over the 8 corners:
+    'sq' mean rho^2 (train1 / train2);  'smoothl1' mean(sqrt(rho^2 + delta^2) - delta) (C2: gradient ~ rho / delta near 0)."""
+    r2 = ((sh - s0) ** 2).sum(0) / (s0 ** 2).sum(0)
+    if kind == 'sq':
+        return r2.mean()
+    if kind == 'smoothl1':
+        return (torch.sqrt(r2 + delta ** 2) - delta).mean()
+    raise ValueError(f'sens_loss {kind!r}')
+
+
+class _Gram(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, u, K):
+        u64 = u.to(dt)
+        Ku = K @ u64
+        ctx.save_for_backward(Ku)
+        ctx.in_dtype = u.dtype
+        return u64.T @ Ku
+
+    @staticmethod
+    def backward(ctx, g):
+        (Ku,) = ctx.saved_tensors
+        return (Ku @ (g + g.T)).to(ctx.in_dtype), None
+
+
+def gram(u, K):
+    """G_hat = u^T K u (B x B, fp64; the energies on the diagonal), differentiable in u: dG_hat -> K u (g + g^T)."""
+    return _Gram.apply(u, K)
+
+
+def tail_loss(Gh, G, tau=0.1, floor=1e-3):
+    """C3 Ritz tail term tau logsumexp_i(log max(lambda_i, 1) / tau) (a soft max of log mu over the batch span):
+    lambda = generalized eigenvalues of (G_hat, G), G_hat = U^T K U (differentiable), G = Q^T F the exact Gram (F = S Q),
+    fp64, via eigh of W^T G_hat W, W = V diag(max(ev, floor ev_max))^-1/2 (G = V diag(ev) V^T). Returns (term, lambda)."""
+    G = 0.5 * (G + G.T).detach()
+    ev, V = torch.linalg.eigh(G)
+    W = V * ev.clamp_min(floor * ev.max()).rsqrt()[None, :]
+    H = W.T @ Gh @ W
+    lam = torch.linalg.eigvalsh(0.5 * (H + H.T))
+    return tau * torch.logsumexp(torch.log(lam.clamp_min(1.0)) / tau, 0), lam.detach()
+
+
+def quota_counts(B, w, gen, systematic=False):
+    """Fixed class quota of a batch: floor(w_c B) per class, the remainder r = B - sum floor(w_c B) drawn
+    systematic=False (default, the original rule): without replacement with draw probabilities proportional to the fractional
+      parts fr_c; the resulting inclusion probabilities are NOT fr_c (audit TRAINER-5: a 0.05 class in a 9-class mix gets ~12%
+      less than its share w_c B on average);
+    systematic=True: systematic (Madow) sampling, one uniform u = gen.random(): class c gets +1 when a point u + j (j = 0 ..
+      r - 1) falls in its interval [F_{c-1}, F_c) of the cumulative fractional parts; the inclusion probability is exactly
+      fr_c (each fr_c < 1), so every class gets E[n_c] = w_c B.
+    w sums to 1."""
+    x = np.asarray(w, float) * B
+    n = np.floor(x).astype(np.int64)
+    r = B - int(n.sum())
+    if r > 0:
+        fr = x - n
+        if systematic:
+            cf = np.cumsum(fr) * (r / fr.sum())
+            cf[-1] = r                                                     # exactly r at the end (rounding)
+            pts = gen.random() + np.arange(r)
+            n[np.minimum(np.searchsorted(cf, pts, side='right'), len(x) - 1)] += 1
+        else:
+            n[gen.choice(len(x), size=r, replace=False, p=fr / fr.sum())] += 1
+    return n
+
+
+def conv_precision():
+    """Convolution precision in force (INVARIANTS-2), for the output JSON of trainers and evaluation scripts:
+    conv_tf32 = torch.backends.cudnn.allow_tf32 (True: cuDNN may use TF32 kernels, PyTorch's default; False: true fp32, set by
+    env OPL_CONV_FP32=1 at `import models` or the trainers' cfg conv_fp32), and the env value."""
+    import os
+    return dict(conv_tf32=bool(torch.backends.cudnn.allow_tf32), OPL_CONV_FP32=os.environ.get('OPL_CONV_FP32'))
+
+
+class HostBanks:
+    """The banks of one geometry kept on the HOST (CPU, pageable): only a sampled batch goes to the device.
+    q[split][cls]   (np, m) fp32 tensor (taken from a Geo / slot cache) or (m, np) np.memmap (data dir, one row per sample)
+    s[split][cls]   (8, m) fp64 exact sensitivities;   F[split][cls]  exact port reactions S q, same layout as q
+    keep[split][cls]  indices of the usable samples (None: all); sample j of a bank is column / row keep[j]."""
+
+    def __init__(self, q, s=None, F=None):
+        self.q, self.s, self.F = q, s or {}, F or {}
+        self.keep = {sp: {c: None for c in d} for sp, d in q.items()}
+        self.classes = [c for c in ALL_CLASSES if c in q.get('train', {})]
+
+    @classmethod
+    def from_geo(cls, geo):
+        """Take geo.banks / geo.sens to the host (the Geo keeps none: geo.banks = geo.sens = None)."""
+        q = {sp: {c: v.cpu() for c, v in d.items()} for sp, d in geo.banks.items()}
+        s = {sp: {c: v.cpu() for c, v in d.items()} for sp, d in geo.sens.items()} if geo.sens is not None else {}
+        geo.banks = geo.sens = None
+        return cls(q, s)
+
+    @classmethod
+    def from_data(cls, d, classes=ALL_CLASSES, splits=SPLITS):
+        """Banks of a data dir ({split}_{cls}.npy m x np, {split}_{cls}_sens.npy m x 8, {split}_{cls}_F.npy m x np):
+        q and F memory-mapped (np.load mmap_mode='r'), sensitivities loaded."""
+        d = Path(d)
+        cl = [c for c in classes if (d / f'train_{c}.npy').exists()]
+        ex = lambda n_: (d / n_).exists()
+        q = {sp: {c: np.load(d / f'{sp}_{c}.npy', mmap_mode='r') for c in cl if ex(f'{sp}_{c}.npy')} for sp in splits}
+        s = {sp: {c: torch.as_tensor(np.load(d / f'{sp}_{c}_sens.npy')).T.contiguous() for c in q[sp] if ex(f'{sp}_{c}_sens.npy')}
+             for sp in splits}
+        F = {sp: {c: np.load(d / f'{sp}_{c}_F.npy', mmap_mode='r') for c in q[sp] if ex(f'{sp}_{c}_F.npy')} for sp in splits}
+        for sp in splits:
+            for c in F[sp]:
+                if F[sp][c].shape != q[sp][c].shape:
+                    raise ValueError(f'F_SHAPE {d.name} {sp}/{c}: {F[sp][c].shape} vs {q[sp][c].shape}')
+            for c in s[sp]:
+                if s[sp][c].shape[1] != q[sp][c].shape[0]:
+                    raise ValueError(f'SENS_SHAPE {d.name} {sp}/{c}')
+        return cls(q, s, F)
+
+    @staticmethod
+    def _n(a):
+        return a.shape[0] if isinstance(a, np.ndarray) else a.shape[1]
+
+    @staticmethod
+    def _take(a, idx):
+        """Samples idx of a host bank as a contiguous (rows, k) host tensor."""
+        if isinstance(a, np.ndarray):
+            return torch.from_numpy(np.ascontiguousarray(np.asarray(a[idx]).T))
+        return a[:, torch.as_tensor(idx, dtype=torch.long)]
+
+    @staticmethod
+    def _finite(a, chunk=64):
+        if isinstance(a, np.ndarray):
+            return np.concatenate([np.isfinite(a[lo:lo + chunk]).all(1) for lo in range(0, a.shape[0], chunk)] or [np.ones(0, bool)])
+        return torch.isfinite(a).all(0).numpy()
+
+    def m(self, sp, c):
+        k = self.keep[sp][c]
+        return self._n(self.q[sp][c]) if k is None else len(k)
+
+    def has_F(self, sp, c):
+        return c in self.F.get(sp, {})
+
+    def get(self, sp, c, j, F=False):
+        """Samples j of bank (sp, c) on the device: q (np, k) fp32, s (8, k) fp64 or None, F (np, k) fp64 or None."""
+        k = self.keep[sp][c]
+        i = np.asarray(j, dtype=np.int64) if k is None else k[np.asarray(j, dtype=np.int64)]
+        q = self._take(self.q[sp][c], i).to(dev).to(torch.float32)
+        s = self._take(self.s[sp][c], i).to(dev) if c in self.s.get(sp, {}) else None
+        f = self._take(self.F[sp][c], i).to(dev).to(dt) if F and self.has_F(sp, c) else None
+        return q, s, f
+
+    def chunks(self, sp, c, chunk):
+        m = self.m(sp, c)
+        for lo in range(0, m, chunk):
+            q, s, _ = self.get(sp, c, np.arange(lo, min(lo + chunk, m)))
+            yield q, s
+
+    def clean(self, case=None, log=None, min_keep=8, memo=None):
+        """train2.clean_banks on the host: drop samples whose q, exact sensitivities or reactions are non-finite; a class left
+        with fewer than min_keep samples in some split is removed. Returns the dropped counts. memo (dict, keyed by case):
+        reuse an earlier result for the same banks (memory-mapped banks are then scanned once per run, not per load)."""
+        if memo is not None and case in memo:
+            keep, classes, dropped = memo[case]
+            for c in [c for c in self.classes if c not in classes]:
+                for d_ in (self.q, self.s, self.F, self.keep):
+                    for sp in d_:
+                        d_[sp].pop(c, None)
+            self.classes = list(classes)
+            for sp, d_ in keep.items():
+                self.keep[sp].update(d_)
+            return dropped
+        dropped = {}
+        for c in list(self.classes):
+            sps = [sp for sp in self.q if c in self.q[sp]]
+            for sp in sps:
+                ok = self._finite(self.q[sp][c])
+                if c in self.s.get(sp, {}):
+                    ok &= self._finite(self.s[sp][c])
+                if self.has_F(sp, c):
+                    ok &= self._finite(self.F[sp][c])
+                if not ok.all():
+                    dropped[f'{sp}/{c}'] = int((~ok).sum())
+                    self.keep[sp][c] = np.flatnonzero(ok)
+            if min(self.m(sp, c) for sp in sps) < min_keep:
+                self.classes.remove(c)
+                for d_ in (self.q, self.s, self.F, self.keep):
+                    for sp in d_:
+                        d_[sp].pop(c, None)
+                dropped[c] = 'class removed'
+        if dropped and log is not None:
+            log(dict(event='BANK_CLEAN', case=case, dropped=dropped))
+        if memo is not None:
+            memo[case] = ({sp: {c: k for c, k in d_.items() if k is not None} for sp, d_ in self.keep.items()}, list(self.classes), dropped)
+        return dropped
+
+    def sample(self, B, gen, mix, adv=None, quota=False, want_F=False, split='train', quota_systematic=False):
+        """Batch of B directions like Geo.sample_with_sens (the same generator calls: class counts, indices per class,
+        random signs), from the host banks and adv (np, k) host buffer: q (np, B) fp32 and s (8, B) fp64 on the device (NaN
+        columns: adversarial / no labels), kinds (class per column), F (np, B) fp64 (NaN adversarial columns; None unless
+        want_F and every non-adversarial column has reactions). quota: fixed class counts (quota_counts; quota_systematic: its
+        systematic remainder)."""
+        names = [k for k, w in mix.items() if w > 0 and (k != 'adv' or adv is not None) and (k == 'adv' or k in self.classes)]
+        w = np.asarray([mix[k] for k in names], float)
+        counts = quota_counts(B, w / w.sum(), gen, quota_systematic) if quota else gen.multinomial(B, w / w.sum())
+        cols, sc, fc, kinds = [], [], [], []
+        for i, k in enumerate(names):
+            m_ = int(counts[i])
+            if m_ == 0:
+                continue
+            nan = torch.full((8, m_), float('nan'), dtype=dt, device=dev)
+            if k == 'adv':
+                j = gen.integers(0, adv.shape[1], m_)
+                cols.append(adv[:, torch.as_tensor(j)].to(dev).to(torch.float32)); sc.append(nan); fc.append('adv')
+            else:
+                j = gen.integers(0, self.m(split, k), m_)
+                q, s, f = self.get(split, k, j, F=want_F)
+                cols.append(q); sc.append(nan if s is None else s); fc.append(f)
+            kinds += [k] * m_
+        q = torch.cat(cols, 1); s = torch.cat(sc, 1)
+        sg = torch.as_tensor(gen.choice([-1.0, 1.0], q.shape[1]), dtype=torch.float32, device=dev)
+        F = None
+        if want_F and all(f is not None for f in fc):
+            F = torch.cat([torch.full((q.shape[0], c_.shape[1]), float('nan'), dtype=dt, device=dev) if isinstance(f, str) else f
+                           for f, c_ in zip(fc, cols)], 1) * sg.to(dt)[None, :]
+        return q * sg[None, :], s, kinds, F                                    # sensitivities are even in q

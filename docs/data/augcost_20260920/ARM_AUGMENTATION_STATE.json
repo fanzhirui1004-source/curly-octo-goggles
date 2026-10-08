@@ -1,0 +1,109 @@
+{
+ "purpose": "what every arm ACTUALLY augmented, read from each log's training_start line, not from PROTOCOL.json",
+ "why": "PROTOCOL.json in the version that ran records augment/proper_only/canonical but NOT augment_full_only and NOT augmented_seats, so it cannot answer the question.  The first line of each arm log can.",
+ "rows": [
+  {
+   "arm": "cutonly_noaug",
+   "seats": 32,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "wide_cut",
+   "seats": 73,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "ncut_02",
+   "seats": 3,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "ncut_04",
+   "seats": 5,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "ncut_08",
+   "seats": 9,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "ncut_08_60k",
+   "seats": 9,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "ncut_16",
+   "seats": 17,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "ncut_59",
+   "seats": 73,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 0
+  },
+  {
+   "arm": "cutmix_fullaug",
+   "seats": 64,
+   "augment": true,
+   "augment_full_only": true,
+   "augmented_seats": 28,
+   "note": "the 28 are its BOX seats; not one of its cut seats was rotated"
+  },
+  {
+   "arm": "solo_100079",
+   "seats": 1,
+   "augment": true,
+   "augment_full_only": null,
+   "augmented_seats": null,
+   "note": "no augment_full_only, so this single CUT seat WAS rotated.  Measured on its own EVAL_100079: face median 12.585 %, factor relative 0.18019",
+   "face_median": 0.1258519109180012,
+   "factor_relative": 0.18019238630581233
+  },
+  {
+   "arm": "noaug_100079",
+   "seats": 1,
+   "augment": false,
+   "augment_full_only": null,
+   "augmented_seats": null,
+   "note": "augmentation off.  Measured: face median 2.902 %, factor relative 0.12575",
+   "face_median": 0.0290188783850151,
+   "factor_relative": 0.1257487808074052
+  },
+  {
+   "arm": "cutonly_32",
+   "seats": 32,
+   "augment": true,
+   "augment_full_only": null,
+   "augmented_seats": null,
+   "note": "older binary, the field is absent, so this arm's dose cannot be recovered"
+  },
+  {
+   "arm": "cutmix_60k",
+   "seats": 64,
+   "augment": true,
+   "augment_full_only": null,
+   "augmented_seats": null,
+   "note": "older binary, dose not recoverable"
+  }
+ ],
+ "reading": "No CUT cell has ever been rotated in a multi-seat arm: every arm that recorded augmented_seats recorded zero for its cut seats.  The only evidence on the question is one n=1 pair, and it says augmentation HURTS a cut cell -- 2.902 % without against 12.585 % with, a factor of 4.3, and the factor error moves the same way, 0.1257 to 0.1802.  That is the observation the --augment-full-only flag was built on.",
+ "correction": "train_equi.py's --augment-full-only help text says 'seat 100079 3.130 -> 12.726 % when augmentation is switched on', which has the two arms the wrong way round: 3.130 % is the arm WITH augmentation.",
+ "my_error_corrected_before_publication": "I first wrote that the help text had the two arms the wrong way round, assuming the augmented arm was the good one.  It does not: I read the arms' own EVAL_100079 records and augmentation-on is the 12.6 % side, as the help text says.  The exact figures differ slightly from the text's 3.130 and 12.726 (probably a different checkpoint or gate variant), but the direction and the factor are the text's."
+}

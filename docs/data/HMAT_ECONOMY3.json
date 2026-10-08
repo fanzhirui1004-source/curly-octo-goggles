@@ -1,0 +1,75 @@
+{
+ "seat": 328,
+ "d": 12792,
+ "dense_params": 81824028,
+ "leaf": 64,
+ "eta": 2.0,
+ "n_admissible": 2965,
+ "n_near": 1344,
+ "near_params": 3041551,
+ "nec3": 0.00045921,
+ "nec10": 0.0053605,
+ "rows": [
+  {
+   "tol": 0.3,
+   "params": 4851102,
+   "near_params": 3041551,
+   "lr_params": 1809551,
+   "frac_of_dense": 0.05928701041214935,
+   "eps_op": 6.913813507308986,
+   "divergence_per_d": null,
+   "nonpositive_mu": 4
+  },
+  {
+   "tol": 0.1,
+   "params": 5723470,
+   "near_params": 3041551,
+   "lr_params": 2681919,
+   "frac_of_dense": 0.06994852416700874,
+   "eps_op": 3.4144843550898902,
+   "divergence_per_d": null,
+   "nonpositive_mu": 6
+  },
+  {
+   "tol": 0.03,
+   "params": 7021512,
+   "near_params": 3041551,
+   "lr_params": 3979961,
+   "frac_of_dense": 0.08581234842166412,
+   "eps_op": 1.5547100468507988,
+   "divergence_per_d": null,
+   "nonpositive_mu": 3
+  },
+  {
+   "tol": 0.01,
+   "params": 8257822,
+   "near_params": 3041551,
+   "lr_params": 5216271,
+   "frac_of_dense": 0.10092172436194415,
+   "eps_op": 1.1285140037121026,
+   "divergence_per_d": null,
+   "nonpositive_mu": 3
+  },
+  {
+   "tol": 0.003,
+   "params": 9748477,
+   "near_params": 3041551,
+   "lr_params": 6706926,
+   "frac_of_dense": 0.11913953930500708,
+   "eps_op": 0.6987357381503995,
+   "divergence_per_d": 0.0001279604776044744,
+   "nonpositive_mu": 0
+  },
+  {
+   "tol": 0.001,
+   "params": 11282414,
+   "near_params": 3041551,
+   "lr_params": 8240863,
+   "frac_of_dense": 0.1378863186740208,
+   "eps_op": 0.22888844416940957,
+   "divergence_per_d": 1.2738130910635777e-05,
+   "nonpositive_mu": 0
+  }
+ ],
+ "seconds": 282.76086807250977
+}

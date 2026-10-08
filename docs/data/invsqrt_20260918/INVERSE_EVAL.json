@@ -1,0 +1,40 @@
+{
+  "status": "INVERSE_EVAL_COMPLETE",
+  "evaluations": {
+    "253": {
+      "seat": 253,
+      "d": 12822,
+      "head": "invsqrt",
+      "step": 20000,
+      "diagonal_loss": "log",
+      "checkpoint": "/root/autodl-tmp/CLAUDE_ROUTE5_20260918/S1_INVSQRT/CHECKPOINT_020000.pt",
+      "inference": {
+        "seconds": 39.522872649133205,
+        "blocks": 9135675,
+        "scalar_factor_entries": 82208253,
+        "inference_chunk_pairs": 8192,
+        "complete_factor": true,
+        "all_entries_directly_predicted": true,
+        "head": "sqrt",
+        "assembly": "symmetric mirror of lower blocks"
+      },
+      "mu_min": 0.17415718194429655,
+      "mu_max": 11.890258381545864,
+      "eps_op": 10.890258381545864,
+      "under_stiff_factor": 5.741939487283653,
+      "g": 11.890258381545864,
+      "positive_numerical_spectrum": true,
+      "maximum_extreme_eigenpair_residual": 8.285431363002036e-14,
+      "D": 1906.7122410721695,
+      "D_per_mode": 0.14870630487226405,
+      "logdet_gap": -236.5348336027635,
+      "e_A": 0.4091111725367554,
+      "factor_relative": 0.35265345672516457,
+      "A_hat_times_A_star_minus_I": 0.9998902922624027,
+      "A_hat_is_spd": true,
+      "spectrum_route": "nu = eig((L R_*^T)^T (L R_*^T)); mu = 1/nu",
+      "note": "factor_relative compares L against the A^-1 factor label, so it is not comparable to the chol or sqrt arms entry by entry; g is"
+    }
+  },
+  "seconds": 107.37365293502808
+}

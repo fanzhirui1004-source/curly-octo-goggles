@@ -1,0 +1,358 @@
+{
+ "layout": "hlat221b",
+ "machine": "autodl-container-2f9845b53b-a1297f04",
+ "route": "conventional exact condensation (dense S_i by PARDISO Schur option; sparse Cholesky of the assembled condensed matrix, substructuring order)",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "memory_max_bytes": 64424509440,
+   "memory_high_bytes": 62277025792,
+   "anon_bytes": 638517248,
+   "file_bytes": 3570937856,
+   "cpu_quota_cores": 32.0,
+   "nproc": 32,
+   "os_cpu_count": 192,
+   "memory_max_GiB": 60.0,
+   "memory_high_GiB": 58.0,
+   "anon_GiB": 0.59466552734375,
+   "file_GiB": 3.325695037841797
+  },
+  "loadavg": [
+   68.0869140625,
+   67.3212890625,
+   67.74755859375
+  ],
+  "host": "autodl-container-2f9845b53b-a1297f04",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 16
+ },
+ "iparm": {
+  "1": 1,
+  "2": 3,
+  "4": 0,
+  "5": 0,
+  "6": 0,
+  "8": 0,
+  "10": 8,
+  "11": 0,
+  "13": 0,
+  "18": -1,
+  "19": -1,
+  "24": 0,
+  "25": 0,
+  "27": 0,
+  "28": 0,
+  "34": 0,
+  "35": 1,
+  "36": 0,
+  "56": 0,
+  "60": 0
+ },
+ "loadavg_start": [
+  68.0869140625,
+  67.3212890625,
+  67.74755859375
+ ],
+ "cpu_stat_start": {
+  "usage_usec": 62353956588,
+  "user_usec": 47749962961,
+  "system_usec": 14603993626,
+  "nr_periods": 69194,
+  "nr_throttled": 0,
+  "throttled_usec": 0
+ },
+ "cells": {
+  "hlat222_001": {
+   "setup_s": 56.64988353103399,
+   "assembly_s": 32.7280540689826,
+   "dofs": 300012,
+   "retained": 18264,
+   "interior": 281748,
+   "front_end_peak_rss_GiB": 16.8988037109375,
+   "schur": {
+    "schur_rows": 18264,
+    "build_s": 4.339247398078442,
+    "analysis_s": 13.864269845187664,
+    "predicted_GiB": {
+     "peak_analysis": 2.4721765518188477,
+     "permanent": 2.303220748901367,
+     "factor_solve": 10.781306266784668,
+     "total": 13.084527015686035
+    },
+    "avail_GiB": 50.20808410644531,
+    "factor_schur_s": 51.73513437062502,
+    "seconds": 65.59940421581268,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 2592265,
+      "16": 2415102,
+      "17": 11284068,
+      "18": 1311418519,
+      "19": 13924538,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 281748,
+      "48": 18264,
+      "57": -1,
+      "61": 2592265,
+      "62": 1812170
+     },
+     "nnz_factor": 1311418519,
+     "mflop_factor": 13924538,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 2592265,
+      "permanent": 2415102,
+      "factor_solve": 11284068
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 2.4721765518188477,
+      "permanent": 2.303220748901367,
+      "factor_solve": 10.76132583618164,
+      "total": 13.064546585083008
+     }
+    },
+    "peak_rss_GiB": 20.16352081298828,
+    "symmetry_rel": 3.274723532928369e-17,
+    "dense_S_GiB": 2.4853177070617676
+   }
+  },
+  "hlat222_011": {
+   "setup_s": 54.915263183414936,
+   "assembly_s": 33.1249700114131,
+   "dofs": 302772,
+   "retained": 18444,
+   "interior": 284328,
+   "front_end_peak_rss_GiB": 19.70549774169922,
+   "schur": {
+    "schur_rows": 18444,
+    "build_s": 4.406709410250187,
+    "analysis_s": 14.155313596129417,
+    "predicted_GiB": {
+     "peak_analysis": 2.4925899505615234,
+     "permanent": 2.31939697265625,
+     "factor_solve": 10.999711036682129,
+     "total": 13.319108009338379
+    },
+    "avail_GiB": 47.64048767089844,
+    "factor_schur_s": 56.28027027845383,
+    "seconds": 70.43558387458324,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 2613670,
+      "16": 2432064,
+      "17": 11513039,
+      "18": 1339874410,
+      "19": 14378736,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 284328,
+      "48": 18444,
+      "57": -1,
+      "61": 2613670,
+      "62": 1823740
+     },
+     "nnz_factor": 1339874410,
+     "mflop_factor": 14378736,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 2613670,
+      "permanent": 2432064,
+      "factor_solve": 11513039
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 2.4925899505615234,
+      "permanent": 2.31939697265625,
+      "factor_solve": 10.979689598083496,
+      "total": 13.299086570739746
+     }
+    },
+    "peak_rss_GiB": 22.95181655883789,
+    "symmetry_rel": 3.956104052932076e-17,
+    "dense_S_GiB": 2.534546971321106
+   }
+  },
+  "hlat222_101": {
+   "setup_s": 32.62390548735857,
+   "assembly_s": 21.09195250272751,
+   "dofs": 202029,
+   "retained": 27909,
+   "interior": 174120,
+   "front_end_peak_rss_GiB": 16.784557342529297,
+   "schur": {
+    "schur_rows": 27909,
+    "build_s": 2.6792196929454803,
+    "analysis_s": 8.383892089128494,
+    "predicted_GiB": {
+     "peak_analysis": 1.6664648056030273,
+     "permanent": 1.5270566940307617,
+     "factor_solve": 8.752960205078125,
+     "total": 10.280016899108887
+    },
+    "avail_GiB": 47.42439651489258,
+    "factor_schur_s": 45.79045659303665,
+    "seconds": 54.174348682165146,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 1747415,
+      "16": 1601235,
+      "17": 9158722,
+      "18": 1060271441,
+      "19": 13612924,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 174120,
+      "48": 27909,
+      "57": -1,
+      "61": 1747415,
+      "62": 1393590
+     },
+     "nnz_factor": 1060271441,
+     "mflop_factor": 13612924,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 1747415,
+      "permanent": 1601235,
+      "factor_solve": 9158722
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 1.6664648056030273,
+      "permanent": 1.5270566940307617,
+      "factor_solve": 8.734437942504883,
+      "total": 10.261494636535645
+     }
+    },
+    "peak_rss_GiB": 24.44497299194336,
+    "symmetry_rel": 4.844403911024573e-17,
+    "dense_S_GiB": 5.8033487275242805
+   }
+  },
+  "hlat222_111": {
+   "setup_s": 14.252658791840076,
+   "assembly_s": 11.835196822881699,
+   "dofs": 97230,
+   "retained": 23532,
+   "interior": 73698,
+   "front_end_peak_rss_GiB": 18.046234130859375,
+   "schur": {
+    "schur_rows": 23532,
+    "build_s": 1.3258964866399765,
+    "analysis_s": 3.39537962526083,
+    "predicted_GiB": {
+     "peak_analysis": 0.8118267059326172,
+     "permanent": 0.7386503219604492,
+     "factor_solve": 4.468817710876465,
+     "total": 5.207468032836914
+    },
+    "avail_GiB": 43.932273864746094,
+    "factor_schur_s": 20.659459561109543,
+    "seconds": 24.054839186370373,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 851262,
+      "16": 774531,
+      "17": 4668113,
+      "18": 526002318,
+      "19": 6070638,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 73698,
+      "48": 23532,
+      "57": -1,
+      "61": 851262,
+      "62": 821263,
+      "63": 69760
+     },
+     "nnz_factor": 526002318,
+     "mflop_factor": 6070638,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 851262,
+      "permanent": 774531,
+      "factor_solve": 4668113
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 0.8118267059326172,
+      "permanent": 0.7386503219604492,
+      "factor_solve": 4.451859474182129,
+      "total": 5.190509796142578
+     }
+    },
+    "peak_rss_GiB": 22.21955108642578,
+    "symmetry_rel": 4.4398563964627036e-17,
+    "dense_S_GiB": 4.125796437263489
+   }
+  }
+ },
+ "held_S_GiB": 14.949009843170643,
+ "cells_s": 491.9946315586567,
+ "dense_S_total_GiB": 14.949009843170643,
+ "rss_after_cells_GiB": 15.876884460449219,
+ "lattice_s": 0.027622930705547333,
+ "free_retained": 71046,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "solver": "pardiso",
+ "structure_s": 0.031188152730464935,
+ "nnz_upper": 856072755,
+ "n_private": 59943,
+ "n_shared": 11103,
+ "signatures": {
+  "0,1": 3240,
+  "0,2": 3156,
+  "1,3": 3216,
+  "2,3": 1491
+ },
+ "interface": "pardiso (int32)",
+ "csr_GiB": 9.567887928336859,
+ "avail_before_assembly_GiB": 42.06960678100586,
+ "indices_s": 1.1204629242420197,
+ "values_s": 12.59969176352024,
+ "assembly_peak_rss_GiB": 19.972389221191406,
+ "analysis_s": 35.74507085233927,
+ "predicted_GiB": {
+  "peak_analysis": 23.03585433959961,
+  "permanent": 22.9378080368042,
+  "factor_solve": 13.242597579956055,
+  "total": 36.180405616760254
+ },
+ "avail_before_factor_GiB": 14.622203826904297,
+ "skipped": "condensed factor: predicted 36.18 GiB + margin > available 14.62 GiB"
+}

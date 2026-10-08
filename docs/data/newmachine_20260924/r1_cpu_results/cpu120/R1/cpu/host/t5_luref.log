@@ -1,0 +1,6 @@
+/root/autodl-tmp/OPL/src_v2/teacher.py:337: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  self.U = torch.sparse_csr_tensor(self.crow.int(), self.cu, vals, size=(self.nb, self.nb))
+{"case": "fresh_train_0020_cover01_r2", "setup_s": 6.4571977108716965, "assembly_s": 20.70812436938286, "factor_s": 17.62706771492958}
+{"case": "fresh_train_0020_cover01_r1", "setup_s": 2.564546972513199, "assembly_s": 7.5590058118104935, "factor_s": 2.9683254063129425}
+{"case": "fresh_train_0020_full", "setup_s": 10.123084604740143, "assembly_s": 29.500528573989868, "factor_s": 46.82769472897053}
+{"case": "fresh_train_0007_full", "setup_s": 12.361266136169434, "assembly_s": 39.227995812892914, "factor_s": 90.55118396878242}

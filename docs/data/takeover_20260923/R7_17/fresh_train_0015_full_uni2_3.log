@@ -1,0 +1,28 @@
+{"event": "SCHUR_SETUP", "case": "fresh_train_0015_full", "seconds": 1.3257109299302101, "nnz_upper": 92149416, "dofs": 439092, "box": 29376}
+{"event": "T", "box": 29376, "schur": {"moments": 1.1260438337922096, "assemble": 0.31348996981978416, "analysis": 5.206379570066929, "factorize_schur": 19.65983859449625, "get_schur": 3.194483783096075, "unscale": 0.20920156314969063}}
+{"event": "LATTICE", "dims": [2, 1, 1], "cells": 2, "nodes": 17952, "shared_nodes": 1632, "free_dofs": 48960, "clamped_cells": 1}
+{"event": "COARSE", "floating": 1, "coarse_dim": 6}
+{"prec": "bdd", "iterations": 11, "queries_per_cell": 33, "seconds": 2.0, "rel": 1.4188045920429118e-09, "compliance": [118.62332042428076, 448.65700287871493]}
+{"prec": "coarse+jac", "iterations": 279, "queries_per_cell": 837, "seconds": 33.7, "rel": 8.76708139226733e-09, "compliance": [118.62332042428102, 448.657002878648]}
+{"prec": "jacobi", "iterations": 334, "queries_per_cell": 334, "seconds": 12.1, "rel": 9.266193926532543e-09, "compliance": [118.62332042428103, 448.6570028786847]}
+{"event": "LATTICE", "dims": [2, 2, 2], "cells": 8, "nodes": 58752, "shared_nodes": 19584, "free_dofs": 156672, "clamped_cells": 4}
+{"event": "COARSE", "floating": 4, "coarse_dim": 24}
+{"prec": "bdd", "iterations": 22, "queries_per_cell": 66, "seconds": 5.9, "rel": 3.0102768453664067e-09, "compliance": [28.99314090058366, 47.09370403695872]}
+{"prec": "coarse+jac", "iterations": 329, "queries_per_cell": 987, "seconds": 40.0, "rel": 9.06062730297252e-09, "compliance": [28.99314090058371, 47.09370403696276]}
+{"prec": "jacobi", "iterations": 453, "queries_per_cell": 453, "seconds": 16.5, "rel": 9.232211216900153e-09, "compliance": [28.993140900583654, 47.093704036962976]}
+{"event": "LATTICE", "dims": [3, 3, 3], "cells": 27, "nodes": 176256, "shared_nodes": 88128, "free_dofs": 484704, "clamped_cells": 9}
+{"event": "COARSE", "floating": 18, "coarse_dim": 108}
+{"prec": "bdd", "iterations": 28, "queries_per_cell": 84, "seconds": 13.2, "rel": 4.752171521878467e-09, "compliance": [13.641045681840962, 25.27275640891704]}
+{"prec": "coarse+jac", "iterations": 352, "queries_per_cell": 1056, "seconds": 81.6, "rel": 9.854434413171785e-09, "compliance": [13.641045681838577, 25.27275640891765]}
+{"prec": "jacobi", "iterations": 666, "queries_per_cell": 666, "seconds": 48.6, "rel": 9.603495167840383e-09, "compliance": [13.641045681838584, 25.272756408917704]}
+{"event": "LATTICE", "dims": [10, 2, 2], "cells": 40, "nodes": 267648, "shared_nodes": 124032, "free_dofs": 783360, "clamped_cells": 4}
+{"event": "COARSE", "floating": 36, "coarse_dim": 216}
+{"prec": "bdd", "iterations": 24, "queries_per_cell": 72, "seconds": 16.1, "rel": 9.895170013667153e-09, "compliance": [45.19676935730795, 2227.573380239375]}
+{"prec": "coarse+jac", "iterations": 361, "queries_per_cell": 1083, "seconds": 149.4, "rel": 9.44166368569967e-09, "compliance": [45.196769357312625, 2227.5733802488894]}
+{"prec": "jacobi", "iterations": 1168, "queries_per_cell": 1168, "seconds": 155.8, "rel": 9.736034239086942e-09, "compliance": [45.19676935731553, 2227.573380245861]}
+{"event": "LATTICE", "dims": [5, 5, 4], "cells": 100, "nodes": 595680, "shared_nodes": 383520, "free_dofs": 1689120, "clamped_cells": 20}
+{"event": "COARSE", "floating": 80, "coarse_dim": 480}
+{"prec": "bdd", "iterations": 34, "queries_per_cell": 102, "seconds": 39.8, "rel": 4.00782270652003e-09, "compliance": [6.843056368732486, 19.619703735594094]}
+{"prec": "coarse+jac", "iterations": 384, "queries_per_cell": 1152, "seconds": 314.1, "rel": 9.739011146318164e-09, "compliance": [6.843056368732509, 19.619703735592356]}
+{"prec": "jacobi", "iterations": 1007, "queries_per_cell": 1007, "seconds": 269.2, "rel": 9.997712237429298e-09, "compliance": [6.8430563687325385, 19.619703735592935]}
+DONE

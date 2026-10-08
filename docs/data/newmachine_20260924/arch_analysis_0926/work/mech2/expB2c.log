@@ -1,0 +1,11 @@
+c=0 baseline: consistent 4364.978 macro 58.539
+Q1_17        smooth x0  n= 6348  best energy excess: consistent 0.4628  macro 0.0341  (dropped 6 null dirs)  139s
+Q2_17        smooth x0  n= 8523  best energy excess: consistent 0.0298  macro 0.0105  (dropped 108 null dirs)  227s
+Q1_9         smooth x0  n= 1449  best energy excess: consistent 2.1770  macro 0.0972  (dropped 6 null dirs)  231s
+Q1_17        smooth x1  n= 6348  best energy excess: consistent 120.1269  macro 1.6273  (dropped 6 null dirs)  293s
+Q1_9         smooth x1  n= 1449  best energy excess: consistent 138.4374  macro 1.9257  (dropped 6 null dirs)  307s
+Q1_9         smooth x2  n= 1449  best energy excess: consistent 319.7511  macro 4.3535  (dropped 6 null dirs)  345s
+Q1_17        smooth x2  n= 6348  best energy excess: consistent 276.2603  macro 3.6632  (dropped 6 null dirs)  493s
+Q2_9(el 8h)  smooth x0  n= 1953  best energy excess: consistent 0.8867  macro 0.0490  (dropped 98 null dirs)  503s
+Q2_9(el 8h)  smooth x1  n= 1953  best energy excess: consistent 125.7576  macro 1.6715  (dropped 102 null dirs)  549s
+done

@@ -1,0 +1,57 @@
+{
+  "stage": "EQUI_MQ_INDEX_FREE_PILOT",
+  "source_sha": "7e43f6aa8b662d15",
+  "source_files": {
+    "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build_mq_label.py": "d15a35b49ca8d7ed3029f2e23b3acd6dfb869300aac8498ec00138605d58a0be",
+    "context.py": "eb42f6527e3bb1338d44344f6fb575154338c105a582c150faedb1696beaef36",
+    "cubic_group.py": "1db4c84d2bba0de6b83ba5910db3546305cd9761f2cde9a445a4ac01b1c19354",
+    "model.py": "bd928e881da5cdc77259cef06f7984cf4813b1db7cd9feacef931314346ac518",
+    "train_equi.py": "5081039a2c928183b43208e92cd59622d69a6b62fc3bbb29148adc3b7d8adc03"
+  },
+  "frozen_tree": "/root/autodl-tmp/CLAUDE_SQRTHEAD_20260917/src_v5",
+  "label": "MQ_UPPER.npy = packed upper of B^T A^{-1/2} B (q x q)",
+  "seats": [
+    253
+  ],
+  "known_328_diagnostic": false,
+  "model": {
+    "state": 192,
+    "width": 768,
+    "depth": 4,
+    "volume_channels": 32,
+    "segment_samples": 8,
+    "volume_encoder": "U-Net 32-16-8-4, avg-pool/nearest, zero pad",
+    "index_free": true,
+    "transposition_symmetric": true
+  },
+  "augment": false,
+  "proper_only": false,
+  "canonical": false,
+  "group_order": 48,
+  "buckets": "diagonal / near (<= near_cells background cells) / far",
+  "near_cells": 2.0,
+  "diagonal_loss": "log",
+  "log_pivot_window": [
+    -20.0,
+    20.0
+  ],
+  "optimizer": "AdamW",
+  "peak_lr": 0.0002,
+  "min_lr": 1e-05,
+  "weight_decay": 1e-05,
+  "clip_grad_norm": 10.0,
+  "steps": 48,
+  "warmup": 8,
+  "schedule": "cosine",
+  "pairs_per_bucket": 2048,
+  "calibrate_pairs": 4096,
+  "seed": 20260917,
+  "checkpoint_every": 64,
+  "manifest_sha256": "83f0c435f7bf9b2c5cd0229ceee59445fc6cd41b84d57831f73c56dd4afce265",
+  "device": "cuda:0",
+  "eval_device": "cpu",
+  "presented_seats": "all prepared seats",
+  "evaluated_seats": "all prepared seats",
+  "acceptance": "g = max(mu, 1/mu) on the frozen quotient; assembled physics via sens_model on A_PRED_UPPER"
+}

@@ -1,0 +1,137 @@
+{
+ "ckpt": "/root/autodl-tmp/OPL/S1/V2/v2L1/best.pt",
+ "per_case": {
+  "fresh_val_2005_d1_v0": {
+   "levels": [
+    {
+     "grid_nodes": 1659,
+     "split_nodes": 1659,
+     "split_extra": 0,
+     "edges": 31768
+    },
+    {
+     "grid_nodes": 390,
+     "split_nodes": 392,
+     "split_extra": 2,
+     "edges": 6472
+    },
+    {
+     "grid_nodes": 121,
+     "split_nodes": 125,
+     "split_extra": 4,
+     "edges": 1748
+    }
+   ],
+   "setup_s": 8.75722686201334,
+   "force_c": {
+    "field_rel_diff": 0.02025624780067292,
+    "excess_grid": 0.017463607818692134,
+    "excess_split": 0.021830496820636286
+   },
+   "force": {
+    "field_rel_diff": 0.0020839861954827276,
+    "excess_grid": 0.016809787594413095,
+    "excess_split": 0.018071737981343178
+   }
+  },
+  "fresh_val_2000_full": {
+   "levels": [
+    {
+     "grid_nodes": 13661,
+     "split_nodes": 13661,
+     "split_extra": 0,
+     "edges": 274524
+    },
+    {
+     "grid_nodes": 2650,
+     "split_nodes": 2660,
+     "split_extra": 10,
+     "edges": 48250
+    },
+    {
+     "grid_nodes": 576,
+     "split_nodes": 580,
+     "split_extra": 4,
+     "edges": 9992
+    }
+   ],
+   "setup_s": 36.62410306185484,
+   "force_c": {
+    "field_rel_diff": 0.05230864622045929,
+    "excess_grid": 0.012277922797468782,
+    "excess_split": 0.0904264957017367
+   },
+   "force": {
+    "field_rel_diff": 0.008798814246186516,
+    "excess_grid": 0.007796467686134345,
+    "excess_split": 0.022534210102277838
+   }
+  },
+  "fresh_val_2003_d1_v1": {
+   "levels": [
+    {
+     "grid_nodes": 9574,
+     "split_nodes": 9574,
+     "split_extra": 0,
+     "edges": 192538
+    },
+    {
+     "grid_nodes": 1955,
+     "split_nodes": 1981,
+     "split_extra": 26,
+     "edges": 35416
+    },
+    {
+     "grid_nodes": 439,
+     "split_nodes": 441,
+     "split_extra": 2,
+     "edges": 7154
+    }
+   ],
+   "setup_s": 25.889497134834528,
+   "force_c": {
+    "field_rel_diff": 0.04587198181706219,
+    "excess_grid": 0.11693231825063437,
+    "excess_split": 0.6206506357073347
+   },
+   "force": {
+    "field_rel_diff": 0.029352412856758187,
+    "excess_grid": 0.07132959186150546,
+    "excess_split": 0.37371008079079676
+   }
+  },
+  "fresh_val_2010_d0_v0": {
+   "levels": [
+    {
+     "grid_nodes": 689,
+     "split_nodes": 689,
+     "split_extra": 0,
+     "edges": 10666
+    },
+    {
+     "grid_nodes": 206,
+     "split_nodes": 212,
+     "split_extra": 6,
+     "edges": 2836
+    },
+    {
+     "grid_nodes": 88,
+     "split_nodes": 88,
+     "split_extra": 0,
+     "edges": 1112
+    }
+   ],
+   "setup_s": 4.646837420761585,
+   "force_c": {
+    "field_rel_diff": 0.00449848638899561,
+    "excess_grid": 0.332446651222026,
+    "excess_split": 0.33262017997321475
+   },
+   "force": {
+    "field_rel_diff": 0.00444309720426053,
+    "excess_grid": 0.19227799277179441,
+    "excess_split": 0.19179834584104927
+   }
+  }
+ }
+}

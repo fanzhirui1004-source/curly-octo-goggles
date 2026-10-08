@@ -1,0 +1,2732 @@
+{
+ "name": "plateS135",
+ "shape": [
+  10,
+  20,
+  1
+ ],
+ "normal": [
+  0.8320502943378437,
+  0.554700196225229,
+  0.0
+ ],
+ "b_global": 11.094003924504584,
+ "cells": [
+  {
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "case": "plateS135_000",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    1,
+    0
+   ],
+   "case": "plateS135_010",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    2,
+    0
+   ],
+   "case": "plateS135_020",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    3,
+    0
+   ],
+   "case": "plateS135_030",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    4,
+    0
+   ],
+   "case": "plateS135_040",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    5,
+    0
+   ],
+   "case": "plateS135_050",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    6,
+    0
+   ],
+   "case": "plateS135_060",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    7,
+    0
+   ],
+   "case": "plateS135_070",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    8,
+    0
+   ],
+   "case": "plateS135_080",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    9,
+    0
+   ],
+   "case": "plateS135_090",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    10,
+    0
+   ],
+   "case": "plateS135_0100",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    11,
+    0
+   ],
+   "case": "plateS135_0110",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    12,
+    0
+   ],
+   "case": "plateS135_0120",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    13,
+    0
+   ],
+   "case": "plateS135_0130",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    14,
+    0
+   ],
+   "case": "plateS135_0140",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    15,
+    0
+   ],
+   "case": "plateS135_0150",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    16,
+    0
+   ],
+   "case": "plateS135_0160",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    17,
+    0
+   ],
+   "case": "plateS135_0170",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    18,
+    0
+   ],
+   "case": "plateS135_0180",
+   "kind": "CUT",
+   "retained": 0.916675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    0,
+    19,
+    0
+   ],
+   "case": "plateS135_0190",
+   "kind": "CUT",
+   "retained": 0.333325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    0,
+    0
+   ],
+   "case": "plateS135_100",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    1,
+    0
+   ],
+   "case": "plateS135_110",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    2,
+    0
+   ],
+   "case": "plateS135_120",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    3,
+    0
+   ],
+   "case": "plateS135_130",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    4,
+    0
+   ],
+   "case": "plateS135_140",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    5,
+    0
+   ],
+   "case": "plateS135_150",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    6,
+    0
+   ],
+   "case": "plateS135_160",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    7,
+    0
+   ],
+   "case": "plateS135_170",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    8,
+    0
+   ],
+   "case": "plateS135_180",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    9,
+    0
+   ],
+   "case": "plateS135_190",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    10,
+    0
+   ],
+   "case": "plateS135_1100",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    11,
+    0
+   ],
+   "case": "plateS135_1110",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    12,
+    0
+   ],
+   "case": "plateS135_1120",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    13,
+    0
+   ],
+   "case": "plateS135_1130",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    14,
+    0
+   ],
+   "case": "plateS135_1140",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    15,
+    0
+   ],
+   "case": "plateS135_1150",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    16,
+    0
+   ],
+   "case": "plateS135_1160",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    17,
+    0
+   ],
+   "case": "plateS135_1170",
+   "kind": "CUT",
+   "retained": 0.666675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    1,
+    18,
+    0
+   ],
+   "case": "plateS135_1180",
+   "kind": "CUT",
+   "retained": 0.083325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    0,
+    0
+   ],
+   "case": "plateS135_200",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    1,
+    0
+   ],
+   "case": "plateS135_210",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    2,
+    0
+   ],
+   "case": "plateS135_220",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    3,
+    0
+   ],
+   "case": "plateS135_230",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    4,
+    0
+   ],
+   "case": "plateS135_240",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    5,
+    0
+   ],
+   "case": "plateS135_250",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    6,
+    0
+   ],
+   "case": "plateS135_260",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    7,
+    0
+   ],
+   "case": "plateS135_270",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    8,
+    0
+   ],
+   "case": "plateS135_280",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    9,
+    0
+   ],
+   "case": "plateS135_290",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    10,
+    0
+   ],
+   "case": "plateS135_2100",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    11,
+    0
+   ],
+   "case": "plateS135_2110",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    12,
+    0
+   ],
+   "case": "plateS135_2120",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    13,
+    0
+   ],
+   "case": "plateS135_2130",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    14,
+    0
+   ],
+   "case": "plateS135_2140",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    15,
+    0
+   ],
+   "case": "plateS135_2150",
+   "kind": "CUT",
+   "retained": 0.916675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    2,
+    16,
+    0
+   ],
+   "case": "plateS135_2160",
+   "kind": "CUT",
+   "retained": 0.333325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    0,
+    0
+   ],
+   "case": "plateS135_300",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    1,
+    0
+   ],
+   "case": "plateS135_310",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    2,
+    0
+   ],
+   "case": "plateS135_320",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    3,
+    0
+   ],
+   "case": "plateS135_330",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    4,
+    0
+   ],
+   "case": "plateS135_340",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    5,
+    0
+   ],
+   "case": "plateS135_350",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    6,
+    0
+   ],
+   "case": "plateS135_360",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    7,
+    0
+   ],
+   "case": "plateS135_370",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    8,
+    0
+   ],
+   "case": "plateS135_380",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    9,
+    0
+   ],
+   "case": "plateS135_390",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    10,
+    0
+   ],
+   "case": "plateS135_3100",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    11,
+    0
+   ],
+   "case": "plateS135_3110",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    12,
+    0
+   ],
+   "case": "plateS135_3120",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    13,
+    0
+   ],
+   "case": "plateS135_3130",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    14,
+    0
+   ],
+   "case": "plateS135_3140",
+   "kind": "CUT",
+   "retained": 0.666675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    3,
+    15,
+    0
+   ],
+   "case": "plateS135_3150",
+   "kind": "CUT",
+   "retained": 0.083325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    0,
+    0
+   ],
+   "case": "plateS135_400",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    1,
+    0
+   ],
+   "case": "plateS135_410",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    2,
+    0
+   ],
+   "case": "plateS135_420",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    3,
+    0
+   ],
+   "case": "plateS135_430",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    4,
+    0
+   ],
+   "case": "plateS135_440",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    5,
+    0
+   ],
+   "case": "plateS135_450",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    6,
+    0
+   ],
+   "case": "plateS135_460",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    7,
+    0
+   ],
+   "case": "plateS135_470",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    8,
+    0
+   ],
+   "case": "plateS135_480",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    9,
+    0
+   ],
+   "case": "plateS135_490",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    10,
+    0
+   ],
+   "case": "plateS135_4100",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    11,
+    0
+   ],
+   "case": "plateS135_4110",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    12,
+    0
+   ],
+   "case": "plateS135_4120",
+   "kind": "CUT",
+   "retained": 0.916675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    4,
+    13,
+    0
+   ],
+   "case": "plateS135_4130",
+   "kind": "CUT",
+   "retained": 0.333325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    0,
+    0
+   ],
+   "case": "plateS135_500",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    1,
+    0
+   ],
+   "case": "plateS135_510",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    2,
+    0
+   ],
+   "case": "plateS135_520",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    3,
+    0
+   ],
+   "case": "plateS135_530",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    4,
+    0
+   ],
+   "case": "plateS135_540",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    5,
+    0
+   ],
+   "case": "plateS135_550",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    6,
+    0
+   ],
+   "case": "plateS135_560",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    7,
+    0
+   ],
+   "case": "plateS135_570",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    8,
+    0
+   ],
+   "case": "plateS135_580",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    9,
+    0
+   ],
+   "case": "plateS135_590",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    10,
+    0
+   ],
+   "case": "plateS135_5100",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    11,
+    0
+   ],
+   "case": "plateS135_5110",
+   "kind": "CUT",
+   "retained": 0.666675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    5,
+    12,
+    0
+   ],
+   "case": "plateS135_5120",
+   "kind": "CUT",
+   "retained": 0.083325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    0,
+    0
+   ],
+   "case": "plateS135_600",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    1,
+    0
+   ],
+   "case": "plateS135_610",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    2,
+    0
+   ],
+   "case": "plateS135_620",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    3,
+    0
+   ],
+   "case": "plateS135_630",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    4,
+    0
+   ],
+   "case": "plateS135_640",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    5,
+    0
+   ],
+   "case": "plateS135_650",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    6,
+    0
+   ],
+   "case": "plateS135_660",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    7,
+    0
+   ],
+   "case": "plateS135_670",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    8,
+    0
+   ],
+   "case": "plateS135_680",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    9,
+    0
+   ],
+   "case": "plateS135_690",
+   "kind": "CUT",
+   "retained": 0.916675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    6,
+    10,
+    0
+   ],
+   "case": "plateS135_6100",
+   "kind": "CUT",
+   "retained": 0.333325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    0,
+    0
+   ],
+   "case": "plateS135_700",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    1,
+    0
+   ],
+   "case": "plateS135_710",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    2,
+    0
+   ],
+   "case": "plateS135_720",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    3,
+    0
+   ],
+   "case": "plateS135_730",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    4,
+    0
+   ],
+   "case": "plateS135_740",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    5,
+    0
+   ],
+   "case": "plateS135_750",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    6,
+    0
+   ],
+   "case": "plateS135_760",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    7,
+    0
+   ],
+   "case": "plateS135_770",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    8,
+    0
+   ],
+   "case": "plateS135_780",
+   "kind": "CUT",
+   "retained": 0.666675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    7,
+    9,
+    0
+   ],
+   "case": "plateS135_790",
+   "kind": "CUT",
+   "retained": 0.083325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    0,
+    0
+   ],
+   "case": "plateS135_800",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    1,
+    0
+   ],
+   "case": "plateS135_810",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    2,
+    0
+   ],
+   "case": "plateS135_820",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    3,
+    0
+   ],
+   "case": "plateS135_830",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    4,
+    0
+   ],
+   "case": "plateS135_840",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    5,
+    0
+   ],
+   "case": "plateS135_850",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    6,
+    0
+   ],
+   "case": "plateS135_860",
+   "kind": "CUT",
+   "retained": 0.916675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    8,
+    7,
+    0
+   ],
+   "case": "plateS135_870",
+   "kind": "CUT",
+   "retained": 0.333325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    9,
+    0,
+    0
+   ],
+   "case": "plateS135_900",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    9,
+    1,
+    0
+   ],
+   "case": "plateS135_910",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    9,
+    2,
+    0
+   ],
+   "case": "plateS135_920",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    9,
+    3,
+    0
+   ],
+   "case": "plateS135_930",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    9,
+    4,
+    0
+   ],
+   "case": "plateS135_940",
+   "kind": "FULL",
+   "retained": 1.0,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    9,
+    5,
+    0
+   ],
+   "case": "plateS135_950",
+   "kind": "CUT",
+   "retained": 0.666675,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  },
+  {
+   "position": [
+    9,
+    6,
+    0
+   ],
+   "case": "plateS135_960",
+   "kind": "CUT",
+   "retained": 0.083325,
+   "tau_corners": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4
+   ]
+  }
+ ],
+ "args": {
+  "name": "plateS135",
+  "shape": "10,20,1",
+  "theta_deg": 33.690067525979785,
+  "b0": 3.6055512754639905,
+  "t0": 0.4,
+  "gx": 0.0,
+  "gy": 0.0,
+  "gz": 0.0,
+  "jitter": 0.0,
+  "seed": 0,
+  "min_vol": 0.05,
+  "packets": "/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+  "out": "/root/autodl-tmp/OPL/S1/V2/R1/SCALE/layouts",
+  "template": "/root/autodl-tmp/OPL/S3/packets/fresh_val_2003_d1_v1"
+ }
+}

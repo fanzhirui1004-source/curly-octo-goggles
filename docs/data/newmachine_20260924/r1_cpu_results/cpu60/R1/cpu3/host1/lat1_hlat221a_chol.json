@@ -1,0 +1,216 @@
+{
+ "layout": "hlat221a",
+ "machine": "autodl-container-2f9845b53b-a1297f04",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 1,
+  "MKL_NUM_THREADS": "1",
+  "OMP_NUM_THREADS": "1",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "memory_max_bytes": 64424509440,
+   "memory_high_bytes": 62277025792,
+   "anon_bytes": 637845504,
+   "file_bytes": 3571007488,
+   "cpu_quota_cores": 32.0,
+   "nproc": 32,
+   "os_cpu_count": 192,
+   "memory_max_GiB": 60.0,
+   "memory_high_GiB": 58.0,
+   "anon_GiB": 0.5940399169921875,
+   "file_GiB": 3.3257598876953125
+  },
+  "loadavg": [
+   61.599609375,
+   65.48388671875,
+   66.93017578125
+  ],
+  "host": "autodl-container-2f9845b53b-a1297f04",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 1
+ },
+ "loadavg_start": [
+  61.599609375,
+  65.48388671875,
+  66.93017578125
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 195.54646207392216,
+   "assembly_s": 205.61607629060745,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424
+  },
+  "hlat222_010": {
+   "setup_s": 199.05193600058556,
+   "assembly_s": 205.89012294262648,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340
+  },
+  "hlat222_100": {
+   "setup_s": 121.75580963492393,
+   "assembly_s": 133.2025475129485,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510
+  },
+  "hlat222_110": {
+   "setup_s": 56.213222071528435,
+   "assembly_s": 71.35267382115126,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304
+  }
+ },
+ "cells_s": 1188.6330113708973,
+ "lattice_s": 0.06203961372375488,
+ "global_assembly_s": 24.701416097581387,
+ "global_dofs": 957888,
+ "free_retained": 77310,
+ "interior": 880578,
+ "nnz_upper": 132719531,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "front_end_peak_rss_GiB": 21.262428283691406,
+ "scaling_s": 6.880339697003365,
+ "rss_before_pardiso_GiB": 3.682201385498047,
+ "runs": [
+  {
+   "mtype": 2,
+   "nnz_stored": 132688813,
+   "iparm_requested": {
+    "1": 1,
+    "2": 3,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "8": 0,
+    "10": 8,
+    "11": 0,
+    "13": 0,
+    "18": -1,
+    "19": -1,
+    "24": 0,
+    "25": 0,
+    "27": 0,
+    "28": 0,
+    "34": 0,
+    "35": 1,
+    "36": 0,
+    "56": 0,
+    "60": 0
+   },
+   "loadavg_start": [
+    59.07763671875,
+    58.28662109375,
+    60.29248046875
+   ],
+   "cpu_stat_start": {
+    "usage_usec": 68218383380,
+    "user_usec": 52857407759,
+    "system_usec": 15360975621,
+    "nr_periods": 86906,
+    "nr_throttled": 0,
+    "throttled_usec": 0
+   },
+   "analysis_s": 105.54764642566442,
+   "analysis_peak_rss_GiB": 11.37643051147461,
+   "predicted_kB": {
+    "peak_analysis": 4591063,
+    "permanent": 4108019,
+    "factor_solve": 28809723
+   },
+   "predicted_GiB": {
+    "peak_analysis": 4.378378868103027,
+    "permanent": 3.9177122116088867,
+    "factor_solve": 27.475092887878418,
+    "total": 31.392805099487305
+   },
+   "avail_before_factor_GiB": 49.513206481933594,
+   "cgroup_before_factor": {
+    "memory_max_bytes": 64424509440,
+    "memory_high_bytes": 62277025792,
+    "anon_bytes": 9112625152,
+    "file_bytes": 3571032064,
+    "cpu_quota_cores": 32.0,
+    "nproc": 32,
+    "os_cpu_count": 192,
+    "memory_max_GiB": 60.0,
+    "memory_high_GiB": 58.0,
+    "anon_GiB": 8.486793518066406,
+    "file_GiB": 3.3257827758789062
+   },
+   "factor_s": 1399.385685287416,
+   "factor_peak_rss_GiB": 34.87786865234375,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 1,
+     "10": 8,
+     "15": 4591063,
+     "16": 4108019,
+     "17": 28794756,
+     "18": -745781125,
+     "19": 31596422,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 4591063,
+     "62": 2285493
+    },
+    "nnz_factor": -745781125,
+    "mflop_factor": 31596422,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 4591063,
+     "permanent": 4108019,
+     "factor_solve": 28794756
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 4.378378868103027,
+     "permanent": 3.9177122116088867,
+     "factor_solve": 27.460819244384766,
+     "total": 31.378531455993652
+    }
+   },
+   "solve_s": 21.382238820195198,
+   "solve_peak_rss_GiB": 34.87786865234375,
+   "rel_residual": [
+    2.0952430176193352e-10,
+    4.879454799623253e-11,
+    4.0355263041376437e-10,
+    2.0542562444441154e-12,
+    2.3472146983458257e-12,
+    1.4246035670229502e-11
+   ],
+   "compliance": [
+    302.1934844301121,
+    51.69345524093188,
+    635.7738821044,
+    90846.45315316177,
+    81897.44774450423,
+    85365.45259636143
+   ],
+   "loadavg_end": [
+    53.37353515625,
+    57.80078125,
+    58.84814453125
+   ],
+   "throttled_s": 0.0,
+   "process_peak_rss_GiB": 34.87786865234375
+  }
+ ],
+ "process_peak_rss_GiB": 34.87786865234375
+}

@@ -1,0 +1,108 @@
+## R1_E0/fresh_train_0013_cover01_r1_d11 d1=1 d2=1 enc=2.8s {"dims": [50409, 6024, 1179], "ritz": 0.0017120733966468882, "split": null}
+   depth   8 witness  2452.0956  orig7 min 1.15101 max 29.21589  q1 44.8ms q7 118.5ms
+   depth  16 witness  1399.4732  orig7 min 1.10040 max 17.09792  q1 83.2ms q7 230.2ms
+   depth  32 witness   273.9409  orig7 min 1.01966 max 4.14215  q1 160.0ms q7 454.3ms
+   depth  64 witness     7.7468  orig7 min 1.00058 max 1.07772  q1 312.8ms q7 894.4ms
+## R1_E0/fresh_train_0013_cover01_r1_d21 d1=2 d2=1 enc=3.2s {"dims": [50409, 13305, 1179], "ritz": 0.0023350931940231065, "split": null}
+   depth   8 witness  2280.7885  orig7 min 1.16830 max 27.23769  q1 49.4ms q7 134.1ms
+   depth  16 witness  1100.7223  orig7 min 1.06556 max 13.65947  q1 90.1ms q7 260.6ms
+   depth  32 witness   149.8074  orig7 min 1.01091 max 2.71323  q1 174.0ms q7 512.6ms
+   depth  64 witness     2.9204  orig7 min 1.00018 max 1.02216  q1 336.2ms q7 1020.1ms
+## R1_E0/fresh_train_0013_cover01_r1_d22 d1=2 d2=2 enc=3.3s {"dims": [50409, 13305, 2697], "ritz": 0.003523016310279339, "split": null}
+   depth   8 witness  1994.6402  orig7 min 1.16109 max 24.03103  q1 48.7ms q7 147.1ms
+   depth  16 witness   725.5904  orig7 min 1.04568 max 9.37166  q1 90.8ms q7 290.0ms
+   depth  32 witness    56.7254  orig7 min 1.00464 max 1.64387  q1 174.8ms q7 566.7ms
+   depth  64 witness     1.2610  orig7 min 1.00003 max 1.00307  q1 345.6ms q7 1118.5ms
+## R1_E0/fresh_train_0020_cover01_r1_d11 d1=1 d2=1 enc=2.8s {"dims": [53646, 6012, 1014], "ritz": 0.0022800060612995967, "split": null}
+   depth   8 witness 11203.8602  orig7 min 1.17572 max 30.72448  q1 47.3ms q7 126.2ms
+   depth  16 witness  5478.2258  orig7 min 1.06842 max 15.53770  q1 92.1ms q7 247.0ms
+   depth  32 witness   764.3767  orig7 min 1.00637 max 3.02677  q1 174.7ms q7 486.7ms
+   depth  64 witness    11.3892  orig7 min 1.00015 max 1.02765  q1 372.5ms q7 968.2ms
+## R1_E0/fresh_train_0020_cover01_r1_d21 d1=2 d2=1 enc=3.3s {"dims": [53646, 13626, 1014], "ritz": 0.0032262504164310307, "split": null}
+   depth   8 witness 10080.5510  orig7 min 1.07890 max 27.72154  q1 50.2ms q7 141.0ms
+   depth  16 witness  3915.1733  orig7 min 1.06172 max 11.38733  q1 95.7ms q7 275.3ms
+   depth  32 witness   343.2180  orig7 min 1.00462 max 1.90804  q1 186.6ms q7 547.5ms
+   depth  64 witness     3.0202  orig7 min 1.00003 max 1.00543  q1 368.4ms q7 1090.3ms
+## R1_E0/fresh_train_0020_cover01_r1_d22 d1=2 d2=2 enc=3.4s {"dims": [53646, 13626, 2409], "ritz": 0.003400877875549003, "split": null}
+   depth   8 witness  9924.3730  orig7 min 1.07639 max 27.46856  q1 50.5ms q7 145.6ms
+   depth  16 witness  3706.7825  orig7 min 1.05660 max 10.88945  q1 96.2ms q7 283.6ms
+   depth  32 witness   301.4141  orig7 min 1.00366 max 1.80115  q1 190.0ms q7 561.1ms
+   depth  64 witness     2.5436  orig7 min 1.00002 max 1.00419  q1 373.8ms q7 1115.8ms
+## R1_E1/0013_d11_m128_k12 d1=1 d2=1 enc=135.9s {"dims": [50409, 11814, 1179], "ritz": 0.0027128881807404444, "split": null, "slow": {"m": 128, "k": 12, "theta_first": [0.00239, 0.00253, 0.00266], "theta_last": 0.0051580253240244124, "below": 128}}
+   depth   8 witness  2182.6517  orig7 min 1.11081 max 26.12703  q1 46.8ms q7 129.9ms
+   depth  16 witness   958.4113  orig7 min 1.07547 max 12.01974  q1 87.0ms q7 252.8ms
+   depth  32 witness   107.5938  orig7 min 1.00895 max 2.22701  q1 170.1ms q7 498.5ms
+   depth  64 witness     1.9714  orig7 min 1.00009 max 1.01124  q1 330.3ms q7 987.2ms
+## R1_E1/0013_d22_m128_k12 d1=2 d2=2 enc=252.7s {"dims": [50409, 18582, 2697], "ritz": 0.004223543569041291, "split": null, "slow": {"m": 128, "k": 12, "theta_first": [0.00386, 0.0039, 0.00393], "theta_last": 0.006214259450196641, "below": 128}}
+   depth   8 witness  1846.0926  orig7 min 1.16606 max 22.31750  q1 53.3ms q7 167.1ms
+   depth  16 witness   578.8586  orig7 min 1.04247 max 7.67661  q1 100.3ms q7 326.6ms
+   depth  32 witness    34.5660  orig7 min 1.00331 max 1.38782  q1 194.0ms q7 644.7ms
+   depth  64 witness     1.0944  orig7 min 1.00001 max 1.00115  q1 384.0ms q7 1283.7ms
+## R1_E2/0013_d11_s0.01 d1=1 d2=1 enc=3.9s {"dims": [50409, 6039, 1179], "ritz": 0.001712216568761962, "split": {"theta": 0.01, "level1_blocks": 548, "level1_components": 551, "level2_blocks": 103, "level2_components": 103}}
+   depth   8 witness  2452.0458  orig7 min 1.15101 max 29.21540  q1 46.7ms q7 118.7ms
+   depth  16 witness  1399.3987  orig7 min 1.10039 max 17.09702  q1 83.5ms q7 229.5ms
+   depth  32 witness   273.8991  orig7 min 1.01966 max 4.14168  q1 160.0ms q7 452.3ms
+   depth  64 witness     7.7446  orig7 min 1.00058 max 1.07770  q1 313.8ms q7 893.9ms
+## R1_E2/0013_d11_s0.1 d1=1 d2=1 enc=3.9s {"dims": [50409, 7218, 1848], "ritz": 0.001743953779250654, "split": {"theta": 0.1, "level1_blocks": 548, "level1_components": 754, "level2_blocks": 103, "level2_components": 183}}
+   depth   8 witness  2443.3106  orig7 min 1.15127 max 29.11256  q1 44.8ms q7 117.3ms
+   depth  16 witness  1382.1312  orig7 min 1.09898 max 16.89743  q1 83.2ms q7 228.2ms
+   depth  32 witness   265.0908  orig7 min 1.02028 max 4.04040  q1 160.5ms q7 447.1ms
+   depth  64 witness     7.2964  orig7 min 1.00054 max 1.07254  q1 313.0ms q7 885.6ms
+## R1_E2/0013_d22_s0.01 d1=2 d2=2 enc=4.5s {"dims": [50409, 13308, 2697], "ritz": 0.0035230178648200682, "split": {"theta": 0.01, "level1_blocks": 548, "level1_components": 551, "level2_blocks": 103, "level2_components": 103}}
+   depth   8 witness  1994.6405  orig7 min 1.16109 max 24.03103  q1 48.5ms q7 146.8ms
+   depth  16 witness   725.5902  orig7 min 1.04568 max 9.37165  q1 90.7ms q7 286.9ms
+   depth  32 witness    56.7254  orig7 min 1.00464 max 1.64387  q1 174.7ms q7 565.1ms
+   depth  64 witness     1.2610  orig7 min 1.00003 max 1.00307  q1 342.2ms q7 1120.2ms
+## R1_E2/0020_d22_s0.01 d1=2 d2=2 enc=4.7s {"dims": [53646, 13626, 2409], "ritz": 0.0034011498749763353, "split": {"theta": 0.01, "level1_blocks": 526, "level1_components": 527, "level2_blocks": 89, "level2_components": 89}}
+   depth   8 witness  9924.0696  orig7 min 1.07639 max 27.46775  q1 50.5ms q7 143.8ms
+   depth  16 witness  3706.4429  orig7 min 1.05660 max 10.88854  q1 96.2ms q7 283.3ms
+   depth  32 witness   301.3512  orig7 min 1.00366 max 1.80098  q1 192.7ms q7 561.9ms
+   depth  64 witness     2.5429  orig7 min 1.00002 max 1.00419  q1 371.5ms q7 1115.5ms
+## R1_E3/0013_d11_lz d1=1 d2=1 enc=2.8s {"dims": [50409, 6024, 1179], "ritz": 0.0030482641401356476, "split": null}
+   depth   8 witness  2026.3069  orig7 min 1.15933 max 24.25726  q1 44.8ms q7 118.8ms
+   depth  16 witness   822.1854  orig7 min 1.06536 max 10.43340  q1 83.0ms q7 233.4ms
+   depth  32 witness    78.6999  orig7 min 1.00587 max 1.89200  q1 160.6ms q7 452.2ms
+   depth  64 witness     1.5318  orig7 min 1.00005 max 1.00615  q1 314.6ms q7 890.7ms
+## R1_E3/0013_d11_sa d1=1 d2=1 enc=4.5s {"dims": [50409, 6024, 1179], "ritz": 0.0033798342002358045, "split": null}
+   depth   8 witness  1989.3186  orig7 min 1.09840 max 23.57540  q1 50.3ms q7 145.6ms
+   depth  16 witness   745.8059  orig7 min 1.05060 max 9.40329  q1 95.1ms q7 285.6ms
+   depth  32 witness    61.5870  orig7 min 1.00530 max 1.69358  q1 181.4ms q7 566.5ms
+   depth  64 witness     1.3165  orig7 min 1.00003 max 1.00367  q1 355.5ms q7 1113.9ms
+## R1_E3/0013_d22_lz d1=2 d2=2 enc=3.4s {"dims": [50409, 13305, 2697], "ritz": 0.006990483506938084, "split": null}
+   depth   8 witness  1352.3512  orig7 min 1.11533 max 16.52641  q1 48.3ms q7 146.2ms
+   depth  16 witness   258.1970  orig7 min 1.01798 max 3.95830  q1 96.4ms q7 287.4ms
+   depth  32 witness     7.0748  orig7 min 1.00059 max 1.07003  q1 174.3ms q7 566.5ms
+   depth  64 witness     1.0065  orig7 min 1.00000 max 1.00086  q1 344.6ms q7 1120.0ms
+## R1_E3/0013_d22_lz_s08 d1=2 d2=2 enc=3.5s {"dims": [50409, 13305, 2697], "ritz": 0.0069904835069369686, "split": null}
+   depth   8 witness   909.3972  orig7 min 1.07705 max 11.43733  q1 48.1ms q7 147.3ms
+   depth  16 witness    97.6667  orig7 min 1.00724 max 2.11195  q1 90.0ms q7 287.3ms
+   depth  32 witness     1.8122  orig7 min 1.00008 max 1.00941  q1 174.9ms q7 563.5ms
+   depth  64 witness     1.0065  orig7 min 1.00000 max 1.00086  q1 341.4ms q7 1118.7ms
+## R1_E3/0013_d22_lz_s10 d1=2 d2=2 enc=3.5s {"dims": [50409, 13305, 2697], "ritz": 0.006990483506934373, "split": null}
+   depth   8 witness   713.7561  orig7 min 1.06024 max 9.18959  q1 60.3ms q7 146.4ms
+   depth  16 witness    56.1423  orig7 min 1.00448 max 1.63434  q1 90.4ms q7 287.0ms
+   depth  32 witness     1.2610  orig7 min 1.00003 max 1.00307  q1 174.0ms q7 565.2ms
+   depth  64 witness     1.0065  orig7 min 1.00000 max 1.00086  q1 342.8ms q7 1117.6ms
+## R1_E3/0013_d22_sa d1=2 d2=2 enc=9.5s {"dims": [50409, 13305, 2697], "ritz": 0.007541218544730611, "split": null}
+   depth   8 witness  1294.5894  orig7 min 1.08894 max 15.87377  q1 84.8ms q7 260.4ms
+   depth  16 witness   226.8283  orig7 min 1.01574 max 3.59297  q1 162.9ms q7 515.5ms
+   depth  32 witness     5.5897  orig7 min 1.00057 max 1.05288  q1 318.9ms q7 1022.8ms
+   depth  64 witness     1.0065  orig7 min 1.00000 max 1.00086  q1 635.0ms q7 2035.1ms
+## R1_E3/0020_d22_lz d1=2 d2=2 enc=3.5s {"dims": [53646, 13626, 2409], "ritz": 0.006642413968959197, "split": null}
+   depth   8 witness  6582.4076  orig7 min 1.05781 max 18.63845  q1 50.8ms q7 145.0ms
+   depth  16 witness  1332.7178  orig7 min 1.01897 max 4.56751  q1 98.2ms q7 284.4ms
+   depth  32 witness    35.7211  orig7 min 1.00033 max 1.09302  q1 189.1ms q7 561.5ms
+   depth  64 witness     1.0221  orig7 min 1.00000 max 1.00013  q1 372.9ms q7 1116.7ms
+## R1_E3/0020_d22_lz_s08 d1=2 d2=2 enc=3.5s {"dims": [53646, 13626, 2409], "ritz": 0.006642413968960415, "split": null}
+   depth   8 witness  4492.3777  orig7 min 1.03928 max 13.03849  q1 79.9ms q7 144.9ms
+   depth  16 witness   515.6850  orig7 min 1.00739 max 2.37893  q1 97.0ms q7 284.3ms
+   depth  32 witness     5.8840  orig7 min 1.00005 max 1.01315  q1 189.0ms q7 562.6ms
+   depth  64 witness     1.0158  orig7 min 1.00000 max 1.00008  q1 377.3ms q7 1115.8ms
+0013_d11_lz {'rowsum_bound0': 9.69045941137272, 'lanczos_lambda_max0': 4.586697335317065, 'rowsum_bound1': 6.213942788002172, 'lanczos_lambda_max1': 2.793358348051998, 'nnz_A': 21402243, 'nnz_P1': 598626, 'nnz_A1': 1321218} design_a 0.0015241320700678238
+0013_d11_sa {'rowsum_bound0': 9.690459411372725, 'lanczos_lambda_max0': 4.586697335317041, 'rowsum_bound1': 6.127624075436534, 'lanczos_lambda_max1': 2.214148216058748, 'nnz_A': 21402243, 'nnz_P1': 6315273, 'nnz_A1': 8265780} design_a 0.0016899171001179022
+0013_d22_lz {'rowsum_bound0': 9.690459411372707, 'lanczos_lambda_max0': 4.586697335317072, 'rowsum_bound1': 8.9934662871428, 'lanczos_lambda_max1': 3.1118350027944626, 'nnz_A': 21402243, 'nnz_P1': 1452942, 'nnz_A1': 6991767} design_a 0.003495241753469042
+0013_d22_lz_s08 {'rowsum_bound0': 9.690459411372725, 'lanczos_lambda_max0': 4.586697335317049, 'rowsum_bound1': 8.99346628714282, 'lanczos_lambda_max1': 3.1118350027944572, 'nnz_A': 21402243, 'nnz_P1': 1452942, 'nnz_A1': 6991767} design_a 0.005592386805549575
+0013_d22_lz_s10 {'rowsum_bound0': 9.690459411372709, 'lanczos_lambda_max0': 4.58669733531706, 'rowsum_bound1': nan, 'lanczos_lambda_max1': 3.1118350027944652, 'nnz_A': 21402243, 'nnz_P1': 1452942, 'nnz_A1': 6991767} design_a 0.006990483506934373
+0013_d22_sa {'rowsum_bound0': 9.690459411372718, 'lanczos_lambda_max0': 4.586697335317062, 'rowsum_bound1': nan, 'lanczos_lambda_max1': 2.2961422722744, 'nnz_A': 21402243, 'nnz_P1': 14966910, 'nnz_A1': 43133013} design_a 0.0037706092723653055
+0020_d22_lz {'rowsum_bound0': 9.003464308475849, 'lanczos_lambda_max0': 4.508972895077803, 'rowsum_bound1': 9.03190115762233, 'lanczos_lambda_max1': 2.32216758179238, 'nnz_A': 24755796, 'nnz_P1': 1558098, 'nnz_A1': 6759774} design_a 0.0033212069844795987
+0020_d22_lz_s08 {'rowsum_bound0': 9.003464308475847, 'lanczos_lambda_max0': 4.50897289507769, 'rowsum_bound1': nan, 'lanczos_lambda_max1': 2.32216758179236, 'nnz_A': 24755796, 'nnz_P1': 1558098, 'nnz_A1': 6759774} design_a 0.005313931175168332

@@ -1,0 +1,54 @@
+{
+ "why": "the user intends to rent an RTX PRO 6000 Blackwell (96 GB) and asked not to let the q <= 23000 label ceiling shape the design",
+ "the_ceiling_moves": {
+  "law": "peak = 5.961e-8 * q^2 GiB, measured as exactly 8.00 float64 q x q buffers over all 44 builds",
+  "RTX_5090_32GB_usable_30GiB": {"q_max": 22433},
+  "RTX_PRO_6000_96GB_usable_92GiB": {"q_max": 39285},
+  "CPU_90GiB_cgroup_usable_88GiB": {"q_max": 38422},
+  "EXTRAPOLATION_WARNING": "the law was fitted over q 18012-19956, a 10 % span, and q_max 39285 projects it 2x out. The buffer count is what is being extrapolated, and cuSOLVER's syevd workspace need not scale as q^2. At 9 buffers instead of 8 a q of 36000 already needs 86.9 of the 92 GiB; at 10 buffers it needs 96.6 GiB and fails. Re-measure the constant on the real card at q ~ 30000 before trusting any budget above 30000."
+ },
+ "what_becomes_labelable": {
+  "q_le_22433_today": {"cut": 281, "box": 137, "total": 418},
+  "q_le_39285": {"cut": 566, "box": 313, "total": 879},
+  "no_ceiling": {"cut": 607, "box": 313, "total": 920}
+ },
+ "the_rho_0.40_cap_loses_its_resource_argument": {
+  "packets_with_rho_above_0.40": 238,
+  "labelable_on_the_5090": 18,
+  "labelable_on_a_96GB_card": 204,
+  "wasted_fraction": {"5090": 0.924, "PRO_6000": 0.143},
+  "verdict": "WITHDRAWN as a resource argument. On 2026-09-21 the case for rho <= 0.40 was that 92.4 % of that band could not be labelled; on a 96 GB card it is 14.3 %. The cap may still be taken as a DESIGN choice - it is a reasonable engineering density range and it halves the worst-case deployment cost - but it is no longer forced."
+ },
+ "designs_at_a_96GB_budget": {
+  "q_budget": 36000,
+  "note": "36000 leaves headroom for the screen's 6.2 % p95 error under a 39285 ceiling, and survives the 9-buffer case",
+  "rho_le_0.40": {"affordable_fraction": 0.9431, "over_budget_rejections": 20, "no_material_rejections": 11,
+                  "predicted_q": {"min": 2008, "median": 23363, "max": 35858},
+                  "uniform_anchor_cells": 22, "output": "CLAUDE_FILL_20260921/PRO_0.40"},
+  "rho_le_0.50": {"affordable_fraction": 0.8402, "over_budget_rejections": 63, "no_material_rejections": 8,
+                  "predicted_q": {"min": 2735, "median": 25066, "max": 35983},
+                  "uniform_anchor_cells": 17, "output": "CLAUDE_FILL_20260921/PRO_0.50"},
+  "on_comparing_their_holes": "the two runs report 0.1436 and 0.1500, but the density axis is normalised to its own range in each, so those numbers are NOT comparable. Compare the affordable fraction and the rejection counts instead."
+ },
+ "storage_is_the_new_binding_constraint": {
+  "free_disk_gb": 3482,
+  "labels_for_the_879_already_labelable": {"MQ_only_gb": 1993, "MQ_plus_R_gb": 3985},
+  "300_new_cells_at_budget_36000": {
+   "rho_le_0.40": {"S_UPPER_gb": 305, "MQ_gb": 610, "MQ_plus_R_gb": 1220},
+   "rho_le_0.50": {"S_UPPER_gb": 351, "MQ_gb": 702, "MQ_plus_R_gb": 1404}},
+  "full_plan_MQ_plus_R": {"rho_le_0.40_gb": 5510, "rho_le_0.50_gb": 5741, "verdict": "DOES NOT FIT in 3482 GB"},
+  "full_plan_MQ_only": {"rho_le_0.40_gb": 2908, "verdict": "FITS"},
+  "the_R_UPPER_lever": "R_UPPER is exactly half of the label bytes. It is the Cholesky factor of A, and A comes from S_UPPER, which is kept, so it is regenerable. Dropping it is what makes the plan fit. It is not free: train_equi.py:725 loads it as the whitener, so it needs a code change (regenerate on demand, or cache a few)."
+ },
+ "the_two_ceilings_pull_opposite_ways": {
+  "measured": {"decode_seconds_at_q_10812": 5.372, "full_chain_seconds_at_q_10812": 9.363},
+  "scaling": "decode is O(q^2) over block pairs; the full chain (inverse, square, Cholesky) is O(q^3)",
+  "projected": {
+   "q_19500": {"decode_s": 17.5, "chain_s": 54.9, "over_2s_budget": [9, 27]},
+   "q_23363": {"decode_s": 25.1, "chain_s": 94.5, "over_2s_budget": [13, 47]},
+   "q_36000": {"decode_s": 59.6, "chain_s": 345.6, "over_2s_budget": [30, 173]},
+   "q_47760": {"decode_s": 104.8, "chain_s": 807.0, "over_2s_budget": [52, 404]}},
+  "reading": "q drives the cost on BOTH sides and is set by the geometry, not chosen. A bigger card lifts the ceiling on what can be LABELLED and does nothing for what can be DEPLOYED; if anything it hurts, by making it possible to train on cells that miss the 2 s target by 170x. The old q <= 23000 limit was accidentally keeping the deployment problem small. This is the one place where the resource limit was doing real work, and lifting it makes the deployment question urgent rather than solved.",
+  "caveat": "these are projections from one measured point by the algorithmic order, not measurements at the larger q"
+ }
+}

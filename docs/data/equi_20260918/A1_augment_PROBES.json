@@ -1,0 +1,52 @@
+{
+  "view_frame": 0,
+  "canonical": false,
+  "augment": true,
+  "rotation_consistency": [
+    {
+      "g": 43,
+      "proper": false,
+      "view_frame": 43,
+      "relative_discrepancy": 0.015716134805377563,
+      "diagonal_relative_discrepancy": 0.14743752402506813
+    },
+    {
+      "g": 42,
+      "proper": true,
+      "view_frame": 42,
+      "relative_discrepancy": 0.01573213803677104,
+      "diagonal_relative_discrepancy": 0.14430778649758777
+    },
+    {
+      "g": 4,
+      "proper": false,
+      "view_frame": 4,
+      "relative_discrepancy": 0.013775281069537649,
+      "diagonal_relative_discrepancy": 0.10942706041186878
+    },
+    {
+      "g": 38,
+      "proper": true,
+      "view_frame": 38,
+      "relative_discrepancy": 0.015404791983129076,
+      "diagonal_relative_discrepancy": 0.11397106579666848
+    },
+    {
+      "g": 36,
+      "proper": false,
+      "view_frame": 36,
+      "relative_discrepancy": 0.015337335808695967,
+      "diagonal_relative_discrepancy": 0.12419301050502443
+    },
+    {
+      "g": 32,
+      "proper": true,
+      "view_frame": 32,
+      "relative_discrepancy": 0.015320341575795244,
+      "diagonal_relative_discrepancy": 0.12081667074475934
+    }
+  ],
+  "rotation_consistency_definition": "predict the cell rotated by g, map the blocks back with g^-1, compare with the unrotated prediction: ||M_g - M_0||_F / ||M_0||_F; 0 means exactly equivariant",
+  "index_shuffle_relative_discrepancy": 3.0162360375030064e-07,
+  "index_shuffle_definition": "shuffle node indices, predict, un-shuffle; must vanish for an index-free model"
+}

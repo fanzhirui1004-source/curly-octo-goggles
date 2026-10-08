@@ -1,0 +1,14 @@
+{
+ "peak_gib_per_q_squared": 5.96114756018138e-08,
+ "implied_float64_buffers": 8.000916818002882,
+ "card_total_mib": 32607,
+ "q_max_on_30_gib": 22433,
+ "q_max_on_88_gib": 38421,
+ "eigh_seconds": {
+  "q_min": [
+   18012,
+   18.615002132952213
+  ]
+ },
+ "measured_on": 44
+}

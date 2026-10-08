@@ -1,0 +1,8 @@
+selfeq_deg>=1 GP share 0.0001 energy fraction within d elements of the loaded face (d=1,2,3,4,6,8,12,16,24): [0.287, 0.498, 0.654, 0.745, 0.866, 0.923, 0.965, 0.976, 0.994]
+selfeq_deg>=2 GP share 0.0001 energy fraction within d elements of the loaded face (d=1,2,3,4,6,8,12,16,24): [0.307, 0.514, 0.659, 0.756, 0.872, 0.93, 0.968, 0.978, 0.993]
+selfeq_deg>=3 GP share 0.0001 energy fraction within d elements of the loaded face (d=1,2,3,4,6,8,12,16,24): [0.306, 0.522, 0.674, 0.772, 0.877, 0.93, 0.966, 0.975, 0.994]
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-curly-octo-goggles/76f53c89-e2a9-52bb-8817-9460fd780b76/scratchpad/pack/work/mech2/expB3.py", line 31, in <module>
+    assert np.abs(F2 - F).max() < 1e-10 * np.abs(F).max()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

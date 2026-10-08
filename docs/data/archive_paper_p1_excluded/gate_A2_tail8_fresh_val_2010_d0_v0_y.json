@@ -1,0 +1,202 @@
+{
+ "args": {
+  "out": "/root/autodl-tmp/OPL/S1/V2/gate_A2_tail8_fresh_val_2010_d0_v0_y.json",
+  "pairs": "",
+  "configs": "y",
+  "sets": "test",
+  "s1": "/root/autodl-tmp/OPL/S1",
+  "r2_run": "mgno2_r2_d2",
+  "r1_run": "mgno_r1_e",
+  "full_run": "mgno_full_c",
+  "r2_case": "fresh_train_0020_cover01_r2",
+  "r1_case": "fresh_train_0020_cover01_r1",
+  "full_case": "fresh_train_0020_full",
+  "custom": "/root/autodl-tmp/OPL/S1/V2/A2_tail8/best.pt:fresh_val_2010_d0_v0:/root/autodl-tmp/OPL/S1/V2/A2_tail8/best.pt:",
+  "maxit": 400,
+  "nb_mode": "explicit"
+ },
+ "results": [
+  {
+   "test": {
+    "gate_compliance_max": NaN,
+    "gate_sens_max": 49582122.38870016,
+    "gate_pass": false,
+    "gate_sens_max_per_cell": [
+     49582122.38870016,
+     NaN
+    ],
+    "compliance_rel_err": [
+     83.75627294288137,
+     165.6399994755275,
+     144.97230101011186,
+     NaN,
+     NaN,
+     NaN,
+     102.62862402407059,
+     2297.518658116817,
+     3.311171596694083
+    ],
+    "sens_vec_rel_err": [
+     [
+      49582122.38870016,
+      1584897.4283537879,
+      754598.9705815965,
+      NaN,
+      NaN,
+      NaN,
+      1288888.7595435425,
+      54821797.53080497,
+      180993.31491148914
+     ],
+     [
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      NaN
+     ]
+    ],
+    "eps": [
+     [
+      3.9031229697896217,
+      3.955632522195434,
+      1.8626085541461523,
+      NaN,
+      NaN,
+      NaN,
+      0.47761916327919174,
+      -2.9084896183930256,
+      45.356092415075544
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "w": [
+     [
+      0.03937443475768576,
+      -0.15248208142334851,
+      -0.20873340242447166,
+      0.0,
+      0.0,
+      0.0,
+      0.17881471691623496,
+      -0.12705203687300054,
+      -0.026139653034927712
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      1.0000000000002067,
+      1.0000000000000941,
+      0.9999999999999748,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "bound": [
+     0.15368326072520616,
+     -0.6031630803302496,
+     -0.3887886208918521,
+     NaN,
+     NaN,
+     NaN,
+     0.08540533547553768,
+     0.36952953024081,
+     -1.1855925187501912
+    ],
+    "bound_holds": false,
+    "eps_gate_max_per_cell": [
+     NaN,
+     0.0
+    ],
+    "cut_compliance_max": 2297.518658116817,
+    "cut_sens_max": 54821797.53080497,
+    "pcg_iterations": 400,
+    "seconds": 157.33056689426303
+   },
+   "loads": [
+    "test_facex0_x_cons",
+    "test_facex0_y_cons",
+    "test_facex0_z_cons",
+    "nbr_facex0_x_cons",
+    "nbr_facex0_y_cons",
+    "nbr_facex0_z_cons",
+    "test_cut_traction_x",
+    "test_cut_traction_y",
+    "test_cut_traction_z"
+   ],
+   "gate": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    false,
+    false
+   ],
+   "energy_share": [
+    [
+     0.03937443475768576,
+     -0.15248208142334851,
+     -0.20873340242447166,
+     0.0,
+     0.0,
+     0.0,
+     0.17881471691623496,
+     -0.12705203687300054,
+     -0.026139653034927712
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0000000000002067,
+     1.0000000000000941,
+     0.9999999999999748,
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "pair": "custom0",
+   "config": "y",
+   "test_cell": {
+    "case": "fresh_val_2010_d0_v0",
+    "run": "A2_tail8",
+    "ckpt": "/root/autodl-tmp/OPL/S1/V2/A2_tail8/best.pt",
+    "missing_keys": 0,
+    "ckpt_conv_fp32": true
+   },
+   "nbr_cell": {
+    "case": "fresh_val_2010_d0_v0_nbmy",
+    "run": "A2_tail8",
+    "ckpt": "/root/autodl-tmp/OPL/S1/V2/A2_tail8/best.pt",
+    "missing_keys": null,
+    "ckpt_conv_fp32": true
+   },
+   "seconds": 189.80067982524633,
+   "conv_tf32": false
+  }
+ ],
+ "conv": {
+  "conv_tf32": false,
+  "OPL_CONV_FP32": "1"
+ }
+}

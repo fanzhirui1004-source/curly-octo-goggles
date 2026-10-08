@@ -1,0 +1,3 @@
+{"case": "fresh_train_0003_d0_v0", "threads": 8, "interior": 19548, "boundary": 8664, "factor_seconds": 1.5291988663375378, "query_1": 0.051972921937704086, "query_7": 0.08284291625022888, "query_64": 0.4509630762040615}
+{"case": "fresh_train_0013_d0_v1", "threads": 8, "interior": 165828, "boundary": 20292, "factor_seconds": 9.022330094128847, "query_1": 0.5241145938634872, "query_7": 1.9573840945959091, "query_64": 7.082767263054848}
+{"case": "fresh_train_0003_full", "threads": 8, "interior": 262608, "boundary": 17064, "factor_seconds": 17.172571279108524, "query_1": 0.8811021782457829, "query_7": 2.959562972187996, "query_64": 12.582042001187801}

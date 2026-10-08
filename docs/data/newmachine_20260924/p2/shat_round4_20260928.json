@@ -1,0 +1,11 @@
+{"case": "hlat222_000 (S4 body, deploy cell, A3_2grid, FASTIDX on, B=3)",
+ "switches": {"OPL_KE_SYMV": "float32 correction K_e: packed upper triangle (3321/6561), one Triton kernel (gather, symmetric product, atomic scatter); held packed from float32 moments",
+              "OPL_COARSE_INV": "coarse solve by explicit float32 inverse (cholesky_inverse of the float32 factor, 39 ms per cell at nc=9276) instead of two float32 triangular solves",
+              "OPL_KE_SYMV64": "float64 K product (energies, probing): same packed kernel in float64"},
+ "shat_total_ms": {"none": 79.7, "symv": 71.5, "coarse_inv": 73.0, "symv+coarse_inv": 63.4, "all_three": 61.1},
+ "segments_all_three_ms": {"net_fwd": 9.70, "wrap": 10.13, "tail": 6.25, "coarse_correct": 1.15, "K64": 9.52, "wrap_T": 15.69, "tail_T": 10.56, "net_T": 13.22, "Kc_B": 0.72, "coarse_solve": 0.41},
+ "element_product_ms_B3_held": {"dense_bmm_kernel": 0.43, "symv_kernel_tuned": 0.20},
+ "coarse_solve_ms_per_call_nc9276": {"B3": {"float32_cholesky_solve": 3.82, "float32_inverse_gemm": 0.22}, "B12": {"float32_cholesky_solve": 4.31, "float32_inverse_gemm": 0.22}},
+ "coarse_accuracy_vs_float64_solve": {"float32_cholesky_solve": 7.3e-7, "float32_cholesky_inverse": 9.2e-7, "float64_inverse_cast": 8.6e-7, "float32_triangular_inverse": 5.2e-6, "scaled_coarse_condition": 163},
+ "shat_rel_diff_vs_none": {"symv": 4.3e-8, "coarse_inv": 3.7e-8, "symv64": 3.6e-8, "all_three": 4.4e-8, "note": "symv64 alone changes only the float64 K u (1.1e-15, same as run-to-run atomics), so ~4e-8 is the run-to-run float32 scatter noise"},
+ "rejected": {"fused Triton ghost-face kernel": "correct (2e-8) but slower than the template GEMMs (0.96 vs 0.76 ms per product): per-face 135-wide cross-thread reductions"}}

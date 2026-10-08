@@ -1,0 +1,101 @@
+{
+ "seat": 253,
+ "d": 12822,
+ "q": 12828,
+ "trace_nodes": 4276,
+ "design": "uniform stiffness multiplier per module; dc/drho_m = -u_m^T S_m u_m",
+ "scope": "two glued cells; the operators are what the stage-1 arms predicted",
+ "shared_nodes": 716,
+ "assembled_dofs": 23508,
+ "exact": {
+  "compression_x": {
+   "compliance": 294518.23908501887,
+   "sens": {
+    "A": -146022.38400976392,
+    "B": -148495.85507525268
+   }
+  },
+  "shear_y": {
+   "compliance": 175599.9627130775,
+   "sens": {
+    "A": -86929.62394411802,
+    "B": -88670.33876895407
+   }
+  },
+  "shear_z": {
+   "compliance": 175649.1634103598,
+   "sens": {
+    "A": -86988.41874466685,
+    "B": -88660.74466568937
+   }
+  },
+  "bending_xy": {
+   "compliance": 236475.3339799167,
+   "sens": {
+    "A": -117948.5908191367,
+    "B": -118526.74316078072
+   }
+  }
+ },
+ "adjoint_identity_relative": {
+  "compression_x": 7.707837662882118e-15,
+  "shear_y": 3.082752627799574e-14,
+  "shear_z": 2.0380234534991875e-14,
+  "bending_xy": 3.0768357493054037e-15
+ },
+ "arms": {
+  "chol": {
+   "head": "chol",
+   "factor": "/root/autodl-tmp/CLAUDE_EQUI_20260918/A1_identity/EVAL_0253/A_PRED_UPPER.npy",
+   "eps_op": 0.813073771945297,
+   "mu_min": 0.4923368784500642,
+   "mu_max": 1.813073771945297,
+   "loads": {
+    "compression_x": {
+     "displacement_rel": 0.008829245512472541,
+     "compliance_rel": 0.0018852448031443636,
+     "sensitivity_rel": {
+      "A": 0.0027648098805039814,
+      "B": 0.0010203304967807594
+     },
+     "compliance_predicted": 293963.0001053526,
+     "compliance_exact": 294518.23908501887
+    },
+    "shear_y": {
+     "displacement_rel": 0.008317421024409558,
+     "compliance_rel": 0.0012031065568912543,
+     "sensitivity_rel": {
+      "A": 0.0022375408640809206,
+      "B": 0.00018897954930339404
+     },
+     "compliance_predicted": 175811.22817960745,
+     "compliance_exact": 175599.9627130775
+    },
+    "shear_z": {
+     "displacement_rel": 0.00829039390688718,
+     "compliance_rel": 0.0022786764742355626,
+     "sensitivity_rel": {
+      "A": 0.0033586909024792134,
+      "B": 0.0012190333628663002
+     },
+     "compliance_predicted": 176049.41102674213,
+     "compliance_exact": 175649.1634103598
+    },
+    "bending_xy": {
+     "displacement_rel": 0.008649752863506806,
+     "compliance_rel": 0.0007274704600779522,
+     "sensitivity_rel": {
+      "A": 2.6651913735837423e-06,
+      "B": 0.0014540446398630853
+     },
+     "compliance_predicted": 236647.36279992416,
+     "compliance_exact": 236475.3339799167
+    }
+   },
+   "worst_sensitivity_rel": 0.0033586909024792134,
+   "worst_compliance_rel": 0.0022786764742355626
+  }
+ },
+ "seconds": 21.696685552597046,
+ "status": "TRAINED_MODEL_SENSITIVITY_COMPLETE"
+}

@@ -1,0 +1,113 @@
+{
+ "layout": "hlat221a",
+ "machine": "autodl-container-48244ca5f1-cc078caa",
+ "route": "scipy.sparse.linalg.splu (SuperLU), factor once + solve 6 loads, full symmetric unscaled CSC, single thread",
+ "threads": {
+  "OMP": "1",
+  "MKL": "1"
+ },
+ "loadavg_start": [
+  213.0556640625,
+  230.84521484375,
+  246.34765625
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 95.02617545425892,
+   "assembly_s": 136.37145553529263,
+   "dofs": 328608
+  },
+  "hlat222_010": {
+   "setup_s": 95.08472272753716,
+   "assembly_s": 134.71401926875114,
+   "dofs": 328464
+  },
+  "hlat222_100": {
+   "setup_s": 58.038512632250786,
+   "assembly_s": 87.90821367502213,
+   "dofs": 217071
+  },
+  "hlat222_110": {
+   "setup_s": 26.67308247089386,
+   "assembly_s": 48.09667989611626,
+   "dofs": 102786
+  }
+ },
+ "cells_s": 681.9154791384935,
+ "global_assembly_s": 25.92361219227314,
+ "global_dofs": 957888,
+ "nnz_full": 264419738,
+ "matrix": "full symmetric CSC, unscaled (no Jacobi scaling)",
+ "save_s": 2.2714037746191025,
+ "npz": "/root/autodl-tmp/OPL/S1/V2/R1/cpu/host1/npz/hlat221a_K.npz",
+ "npz_GiB": 3.001511700451374,
+ "solves": {
+  "colamd": {
+   "status": "MemoryError",
+   "machine": "autodl-container-48244ca5f1-cc078caa",
+   "scipy": "1.18.1",
+   "pid": 6256,
+   "rlimit_as": [
+    75161927680,
+    75161927680
+   ],
+   "variant": "colamd",
+   "splu_kwargs": {
+    "permc_spec": "COLAMD"
+   },
+   "solver": "SuperLU bundled with SciPy 1.18.1 (scipy.sparse.linalg.splu; sequential, single thread)",
+   "load_s": 2.8468101024627686,
+   "n": 957888,
+   "nnz": 264419738,
+   "rss_after_load_GiB": 3.0566368103027344,
+   "wall_limit_s": 7200,
+   "detail": "MemoryError()",
+   "seconds": 240.17267960309982,
+   "peak_rss_GiB": 5.270378112792969,
+   "returncode": 0,
+   "parent_wall_s": 243.65736830234528,
+   "parent_backstop_kill": false,
+   "child_peak_rss_GiB": 5.270378112792969,
+   "as_limit_GiB": 70.0,
+   "watchdog_GiB": 70.0
+  },
+  "mmd": {
+   "status": "MemoryError",
+   "machine": "autodl-container-48244ca5f1-cc078caa",
+   "scipy": "1.18.1",
+   "pid": 6273,
+   "rlimit_as": [
+    75161927680,
+    75161927680
+   ],
+   "variant": "mmd",
+   "splu_kwargs": {
+    "permc_spec": "MMD_AT_PLUS_A",
+    "diag_pivot_thresh": 0.0,
+    "options": {
+     "SymmetricMode": true
+    }
+   },
+   "solver": "SuperLU bundled with SciPy 1.18.1 (scipy.sparse.linalg.splu; sequential, single thread)",
+   "load_s": 2.8592578768730164,
+   "n": 957888,
+   "nnz": 264419738,
+   "rss_after_load_GiB": 3.0561294555664062,
+   "wall_limit_s": 7200,
+   "detail": "MemoryError()",
+   "seconds": 49.60954824090004,
+   "peak_rss_GiB": 5.033481597900391,
+   "returncode": 0,
+   "parent_wall_s": 53.13940232992172,
+   "parent_backstop_kill": false,
+   "child_peak_rss_GiB": 5.270378112792969,
+   "as_limit_GiB": 70.0,
+   "watchdog_GiB": 70.0
+  }
+ },
+ "loadavg_end": [
+  185.74365234375,
+  178.759765625,
+  201.61767578125
+ ]
+}

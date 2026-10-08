@@ -1,0 +1,27 @@
+{
+  "purpose": "is the rewritten predict_full_q bit-identical to the old one, and is a larger decode chunk actually faster?",
+  "checkpoint": "/root/autodl-tmp/CLAUDE_EQUI_20260918/CUTONLY_NOAUG/CHECKPOINT_060000.pt",
+  "device": "cpu, 6 torch threads, min of 2 repeats per configuration",
+  "caveat": "timed while four training arms shared the box, so the ABSOLUTE seconds are inflated; every configuration was timed under the same contention, so the ratios are the quantity to read",
+  "rows": [
+    {"seat": 100000, "q": 711, "new_identical_to_old": true, "diagonal_identical": true,
+     "chunk_32768_relative_frobenius_difference": 6.222175830419574e-07,
+     "chunk_32768_max_absolute_difference": 0.0025634765625,
+     "seconds": {"old": 1.23, "new": 1.26, "new_chunk_32768": 1.46},
+     "speedup_new_over_old": 0.974, "speedup_chunk_32768_over_old": 0.845},
+    {"seat": 100032, "q": 10812, "new_identical_to_old": true, "diagonal_identical": true,
+     "chunk_32768_relative_frobenius_difference": 6.658e-07,
+     "chunk_32768_max_absolute_difference": 0.004272,
+     "seconds": {"old": 272.84, "new": 272.87, "new_chunk_32768": 298.83},
+     "speedup_new_over_old": 1.000, "speedup_chunk_32768_over_old": 0.913}
+  ],
+  "what_holds": [
+    "the rewritten path is BIT-IDENTICAL to the old one at both sizes, diagonal included, so the change is safe",
+    "chunk 32768 changes the answer by 6.2-6.7e-07 relative on the factor, independently reproducing the earlier 4.6e-07 claim to within a factor of 1.5"
+  ],
+  "what_is_withdrawn": [
+    "the 1.50x speedup attributed to this rewrite: measured 0.974x at q=711 and 1.000x at q=10812.  The reasoning offered for it was also wrong -- the old M - M.T guard was said to dominate, and it does not: 273 s is decode",
+    "the 2.08x attributed to chunk 32768: on CPU it is SLOWER, 0.845x and 0.913x, as well as lossy.  Whatever produced 2.08x was not this measurement; it may have been a GPU run, which is untested here and must not be assumed"
+  ],
+  "consequence": "the decode chunk rule stands on correctness alone, not on speed.  The real headroom was elsewhere: a single arm used 2.14 of the box's 16 cores with the GPU at 40 % and 3 GB of 32 GB, so four arms now run concurrently; per-step time went 0.0514 s to about 0.105 s and the GPU to 96 %, a net 1.95x, not 4x."
+}

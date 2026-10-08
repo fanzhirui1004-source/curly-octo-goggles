@@ -1,0 +1,21 @@
+compliance base [138.39895107  24.59081425  90.98565812] packed [138.39895059  24.59081416  90.98565916] bitwise equal False max rel 1.1396192123895163e-08
+sens bitwise equal False rel 5.053240319171944e-07
+run-to-run (unpacked twice): compliance max rel 8.865547484895399e-09 sens rel 4.3463616551525585e-07 bitwise False
+base stream_GB 4.8285 rss 7.511952 peak 6.23 pcg 129 solve 61.5 sens 28.6 total 114.7
+    hlat222_000 0.9038 None 0.0
+    hlat222_001 0.8192 None 0.0
+    hlat222_010 0.9036 None 0.0
+    hlat222_011 0.8269 None 0.0
+    hlat222_100 0.51 None 0.0
+    hlat222_101 0.4824 None 0.0
+    hlat222_110 0.194 None 0.0
+    hlat222_111 0.1886 None 0.0
+packed stream_GB 3.7088 rss 6.370516 peak 6.66 pcg 129 solve 63.9 sens 28.8 total 116.7
+    hlat222_000 0.6757 {'f32': 0, 'i32': 13, 'tril': 1, 'sym': 0} 0.4563
+    hlat222_001 0.6204 {'f32': 0, 'i32': 13, 'tril': 1, 'sym': 0} 0.3976
+    hlat222_010 0.6759 {'f32': 0, 'i32': 13, 'tril': 1, 'sym': 0} 0.4554
+    hlat222_011 0.6252 {'f32': 0, 'i32': 13, 'tril': 1, 'sym': 0} 0.4034
+    hlat222_100 0.4014 {'f32': 0, 'i32': 13, 'tril': 1, 'sym': 0} 0.2172
+    hlat222_101 0.383 {'f32': 0, 'i32': 13, 'tril': 1, 'sym': 0} 0.1987
+    hlat222_110 0.1656 {'f32': 0, 'i32': 4, 'tril': 1, 'sym': 0} 0.0568
+    hlat222_111 0.1615 {'f32': 0, 'i32': 4, 'tril': 1, 'sym': 0} 0.0542

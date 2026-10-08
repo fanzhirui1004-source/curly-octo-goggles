@@ -1,0 +1,297 @@
+{
+ "run": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z",
+ "k": 11,
+ "cases": [
+  "plate841_000_o011",
+  "plate841_010_o011",
+  "plate841_020_o011",
+  "plate841_030_o011",
+  "plate841_040_o011",
+  "plate841_050_o011",
+  "plate841_060_o011",
+  "plate841_070_o011",
+  "plate841_100_o011",
+  "plate841_110_o011",
+  "plate841_120_o011",
+  "plate841_130_o011",
+  "plate841_140_o011",
+  "plate841_150_o011",
+  "plate841_160_o011",
+  "plate841_200_o011",
+  "plate841_210_o011",
+  "plate841_220_o011",
+  "plate841_230_o011",
+  "plate841_240_o011",
+  "plate841_300_o011",
+  "plate841_310_o011",
+  "plate841_320_o011",
+  "plate841_330_o011"
+ ],
+ "positions": [
+  [
+   0,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   2,
+   0
+  ],
+  [
+   0,
+   3,
+   0
+  ],
+  [
+   0,
+   4,
+   0
+  ],
+  [
+   0,
+   5,
+   0
+  ],
+  [
+   0,
+   6,
+   0
+  ],
+  [
+   0,
+   7,
+   0
+  ],
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   1,
+   1,
+   0
+  ],
+  [
+   1,
+   2,
+   0
+  ],
+  [
+   1,
+   3,
+   0
+  ],
+  [
+   1,
+   4,
+   0
+  ],
+  [
+   1,
+   5,
+   0
+  ],
+  [
+   1,
+   6,
+   0
+  ],
+  [
+   2,
+   0,
+   0
+  ],
+  [
+   2,
+   1,
+   0
+  ],
+  [
+   2,
+   2,
+   0
+  ],
+  [
+   2,
+   3,
+   0
+  ],
+  [
+   2,
+   4,
+   0
+  ],
+  [
+   3,
+   0,
+   0
+  ],
+  [
+   3,
+   1,
+   0
+  ],
+  [
+   3,
+   2,
+   0
+  ],
+  [
+   3,
+   3,
+   0
+  ]
+ ],
+ "fps": [
+  "688ba5f7f4a2cdba1e4e",
+  "c576b103943aa83d0b8e",
+  "9f99f5cdd9558d707d14",
+  "c3df229bd1771af67aaa",
+  "d4b2a3ea6b02b51cca93",
+  "f025c48251c4e9f856df",
+  "a946327a22de3f314744",
+  "0e391af3a8f4a763cc2b",
+  "b3f666a38d2fe2a19eaa",
+  "24dffc18ffc896e7a05c",
+  "5b10606ddeef72fe0b5c",
+  "5d64ba69c9e2a04858cc",
+  "eada981d010af1bfa534",
+  "bafee3ba3fcfc2c22615",
+  "0af0fd2f9b381222de42",
+  "d17281ad52434d460441",
+  "01cf3f0dbe9edb8826ac",
+  "d04f80e7631556f7ea2d",
+  "3f752e8d30b7199fef8c",
+  "ae3b4b3142b06ff116ce",
+  "25c56eea4335d176108b",
+  "7ceaaa621c33f113d41f",
+  "3dbca0b7f1e2ce6778ee",
+  "3c8e617806a183cd18ce"
+ ],
+ "groups": {
+  "688ba5f7f4a2cdba1e4e": [
+   0
+  ],
+  "c576b103943aa83d0b8e": [
+   1
+  ],
+  "9f99f5cdd9558d707d14": [
+   2
+  ],
+  "c3df229bd1771af67aaa": [
+   3
+  ],
+  "d4b2a3ea6b02b51cca93": [
+   4
+  ],
+  "f025c48251c4e9f856df": [
+   5
+  ],
+  "a946327a22de3f314744": [
+   6
+  ],
+  "0e391af3a8f4a763cc2b": [
+   7
+  ],
+  "b3f666a38d2fe2a19eaa": [
+   8
+  ],
+  "24dffc18ffc896e7a05c": [
+   9
+  ],
+  "5b10606ddeef72fe0b5c": [
+   10
+  ],
+  "5d64ba69c9e2a04858cc": [
+   11
+  ],
+  "eada981d010af1bfa534": [
+   12
+  ],
+  "bafee3ba3fcfc2c22615": [
+   13
+  ],
+  "0af0fd2f9b381222de42": [
+   14
+  ],
+  "d17281ad52434d460441": [
+   15
+  ],
+  "01cf3f0dbe9edb8826ac": [
+   16
+  ],
+  "d04f80e7631556f7ea2d": [
+   17
+  ],
+  "3f752e8d30b7199fef8c": [
+   18
+  ],
+  "ae3b4b3142b06ff116ce": [
+   19
+  ],
+  "25c56eea4335d176108b": [
+   20
+  ],
+  "7ceaaa621c33f113d41f": [
+   21
+  ],
+  "3dbca0b7f1e2ce6778ee": [
+   22
+  ],
+  "3c8e617806a183cd18ce": [
+   23
+  ]
+ },
+ "rep": {
+  "688ba5f7f4a2cdba1e4e": "plate841_000_o011",
+  "c576b103943aa83d0b8e": "plate841_010_o011",
+  "9f99f5cdd9558d707d14": "plate841_020_o011",
+  "c3df229bd1771af67aaa": "plate841_030_o011",
+  "d4b2a3ea6b02b51cca93": "plate841_040_o011",
+  "f025c48251c4e9f856df": "plate841_050_o011",
+  "a946327a22de3f314744": "plate841_060_o011",
+  "0e391af3a8f4a763cc2b": "plate841_070_o011",
+  "b3f666a38d2fe2a19eaa": "plate841_100_o011",
+  "24dffc18ffc896e7a05c": "plate841_110_o011",
+  "5b10606ddeef72fe0b5c": "plate841_120_o011",
+  "5d64ba69c9e2a04858cc": "plate841_130_o011",
+  "eada981d010af1bfa534": "plate841_140_o011",
+  "bafee3ba3fcfc2c22615": "plate841_150_o011",
+  "0af0fd2f9b381222de42": "plate841_160_o011",
+  "d17281ad52434d460441": "plate841_200_o011",
+  "01cf3f0dbe9edb8826ac": "plate841_210_o011",
+  "d04f80e7631556f7ea2d": "plate841_220_o011",
+  "3f752e8d30b7199fef8c": "plate841_230_o011",
+  "ae3b4b3142b06ff116ce": "plate841_240_o011",
+  "25c56eea4335d176108b": "plate841_300_o011",
+  "7ceaaa621c33f113d41f": "plate841_310_o011",
+  "3dbca0b7f1e2ce6778ee": "plate841_320_o011",
+  "3c8e617806a183cd18ce": "plate841_330_o011"
+ },
+ "layout": "/root/autodl-tmp/xc/plates_exact/runs/xstartH_z/layout.json",
+ "cfg": {
+  "clamp": [
+   "x",
+   "min"
+  ],
+  "load": [
+   "x",
+   "max"
+  ],
+  "load_dir": "z",
+  "tmin": 0.18,
+  "tmax": 0.69,
+  "max_cols": 16,
+  "prec": "bnn:kpp:q1r",
+  "nice_tol": 1e-06,
+  "sens_route_of_run": "ad"
+ },
+ "tau_dev_max": 4.997946501106298e-13
+}

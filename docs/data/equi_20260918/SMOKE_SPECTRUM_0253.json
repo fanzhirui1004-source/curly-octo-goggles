@@ -1,0 +1,23 @@
+{
+  "seat": 253,
+  "head": "equi_mq",
+  "positive_numerical_spectrum": true,
+  "maximum_extreme_eigenpair_residual": 2.2282347176365454e-06,
+  "eigen_seconds": 42.954205714166164,
+  "factor_relative": 0.9428617633484803,
+  "diagonal_relative_max": 4.230111712517732,
+  "rigid_nullspace_leak": 0.017886548360974315,
+  "mu_min": 0.013900596503551101,
+  "mu_max": 45855624.78365945,
+  "eps_op": 45855623.78365945,
+  "under_stiff_factor": 71.93935884294865,
+  "g": 45855624.78365945,
+  "D_per_mode": 4812.844451633128,
+  "below_0_9": 7932,
+  "above_1_1": 4699,
+  "below_0_97": 8006,
+  "above_1_03": 4761,
+  "g_definition": "max_i max(mu_i, 1/mu_i) with mu = eig(R^-T A_hat R^-1), A_hat = (B M_q_hat B^T)^-2",
+  "e_A": 877.0911426078477,
+  "A_hat_spd": true
+}

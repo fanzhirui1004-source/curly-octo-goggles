@@ -1,0 +1,15 @@
+{
+ "case": "plate841_130_o029",
+ "body": "/root/autodl-tmp/xc/plates_exact/runs/plateB2/body",
+ "mode": "fd",
+ "ad_batch": 2048,
+ "out": "/root/autodl-tmp/xc/plates_exact/exact_cpu/plateB2_k029/sens/37fd5b47d0827d388431.json",
+ "dm_cache": "/root/autodl-tmp/xc/plates_exact/exact_cpu/dmoments/37fd5b47d0827d388431.npy",
+ "members": [
+  {
+   "case": "plate841_130_o029",
+   "q": "/root/autodl-tmp/xc/plates_exact/exact_cpu/plateB2_k029/q/plate841_130_o029.npy",
+   "energy_T": 26.74475475566268
+  }
+ ]
+}

@@ -1,0 +1,15 @@
+{
+  "case": "fresh_train_0021_cover01_r1",
+  "workers": 8,
+  "topology_seconds": 19.224210120737553,
+  "nodes_seconds": 0.06837116181850433,
+  "same_nodes": true,
+  "same_active_cells": true,
+  "same_topology": true,
+  "trace_seconds": 4.450492776930332,
+  "faces_seconds": 0.6618783287703991,
+  "same_P_bitwise": true,
+  "same_inverse_bitwise": true,
+  "same_faces": true,
+  "total_seconds": 24.44605240225792
+}

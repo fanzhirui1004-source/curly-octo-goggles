@@ -1,0 +1,28 @@
+{
+ "args": {
+  "root": "/home/user/curly-octo-goggles/docs/paper_p1/review_r1/results/X6_opt/homog/H_y",
+  "layout": "/home/user/curly-octo-goggles/docs/paper_p1/review_r1/results/X6_opt/homog/plate841.json",
+  "cells": "/home/user/curly-octo-goggles/docs/paper_p1/review_r1/results/X6_opt/homog/homog_cells.json",
+  "m": 6,
+  "clamp": "x,min",
+  "load": "x,max",
+  "load_dir": "y",
+  "vfrac": 0.8,
+  "move": 0.05,
+  "maxit": 60,
+  "tmin": 0.18,
+  "tmax": 0.69,
+  "span": 0.45,
+  "grad": 0.45,
+  "xtol": 0.001,
+  "ftol": 0.0001
+ },
+ "elements": 4464,
+ "nodes": 5719,
+ "vertices": 74,
+ "free": 64,
+ "material_range": [
+  0.18,
+  0.7
+ ]
+}

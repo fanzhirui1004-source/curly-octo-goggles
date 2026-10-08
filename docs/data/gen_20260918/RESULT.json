@@ -1,0 +1,94 @@
+{
+  "status": "BOUNDED_PILOT_COMPLETE",
+  "parameters": 5077241,
+  "steps": 60000,
+  "training_seconds": 14300.25860625133,
+  "seconds": 14782.971975721419,
+  "peak_gpu_allocated_bytes": 16635063296,
+  "first_loss": 0.5863943696022034,
+  "last_loss": 0.03974882513284683,
+  "median_step_seconds": 0.2123834788799286,
+  "evaluations": {
+    "115": {
+      "e_A": 0.37729331808880273,
+      "D_per_mode": 16.326793347960194,
+      "mu_min": 0.00017709342780559858,
+      "mu_max": 27919.987420325917,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "207": {
+      "e_A": 0.5059310760646184,
+      "D_per_mode": 8.429858226996364,
+      "mu_min": 2.3095681539121015e-05,
+      "mu_max": 4779.805788692669,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100000": {
+      "e_A": 0.08479045343864187,
+      "D_per_mode": 5.085350661285891,
+      "mu_min": 0.00028524218312587645,
+      "mu_max": 746.4180399439873,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100003": {
+      "e_A": 0.4557419146405381,
+      "D_per_mode": 52.176372657152136,
+      "mu_min": 5.111617115019956e-05,
+      "mu_max": 24526.013120565287,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100010": {
+      "e_A": 0.17210429243900688,
+      "D_per_mode": 19.234062411806367,
+      "mu_min": 4.286320491440828e-05,
+      "mu_max": 33475.9049547543,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100022": {
+      "e_A": 0.22163941524996142,
+      "D_per_mode": 3.1118766934573165,
+      "mu_min": 8.795091175444855e-07,
+      "mu_max": 1631.2191870018603,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100030": {
+      "e_A": 0.4484084446689685,
+      "D_per_mode": 5.502097935944055,
+      "mu_min": 5.640227977693108e-06,
+      "mu_max": 3796.412162812872,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100034": {
+      "e_A": 0.1882935662216044,
+      "D_per_mode": 2.590049476670703,
+      "mu_min": 3.6332202715585887e-06,
+      "mu_max": 1545.3613230228527,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100056": {
+      "e_A": 0.5023504195067372,
+      "D_per_mode": 4.736584864092586,
+      "mu_min": 0.00013703434198555738,
+      "mu_max": 3248.9059041197875,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    },
+    "100079": {
+      "e_A": 0.5751338164859748,
+      "D_per_mode": 26.773941422452936,
+      "mu_min": 7.182197645503922e-05,
+      "mu_max": 28181.382185955845,
+      "working_gate_pass": false,
+      "target_gate_pass": false
+    }
+  },
+  "interpretation": "training/run completion does not imply accuracy, generalization, or physical validation"
+}

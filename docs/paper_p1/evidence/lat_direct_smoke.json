@@ -1,0 +1,97 @@
+{
+ "layout": "hlat221a",
+ "threads": {
+  "MKL": "16",
+  "OMP": "16",
+  "torch": 16
+ },
+ "cpu": 128,
+ "loadavg_start": [
+  11.05419921875,
+  12.61572265625,
+  13.92138671875
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 30.971944872289896,
+   "assembly_s": 22.40193986147642,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424
+  },
+  "hlat222_010": {
+   "setup_s": 30.76918586716056,
+   "assembly_s": 22.586563855409622,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340
+  },
+  "hlat222_100": {
+   "setup_s": 17.908057760447264,
+   "assembly_s": 13.542677138000727,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510
+  },
+  "hlat222_110": {
+   "setup_s": 7.605006579309702,
+   "assembly_s": 6.693401072174311,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304
+  }
+ },
+ "cells_s": 152.4832819774747,
+ "lattice_s": 0.04443853348493576,
+ "global_assembly_s": 12.34707898274064,
+ "global_dofs": 957888,
+ "free_retained": 77310,
+ "interior": 880578,
+ "nnz_upper": 132719531,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "rss_after_assembly_GB": 21.35376739501953,
+ "runs": [
+  {
+   "mtype": 2,
+   "nnz_stored": 132688813,
+   "analysis_s": 13.25293531268835,
+   "predicted_kB": {
+    "peak_analysis": 4743044,
+    "permanent": 4301953,
+    "factor_solve": 29407031
+   },
+   "predicted_GB": 32.14739227294922,
+   "factor_s": 57.34910986572504,
+   "after_factor_kB": {
+    "peak_analysis": 4743044,
+    "permanent": 4301953,
+    "factor_solve": 29375801
+   },
+   "solve_s": 20.574773468077183,
+   "rel_residual": [
+    3.746738948968043e-11,
+    9.464363330714706e-12,
+    5.3347650619892275e-11,
+    2.989825980522836e-13,
+    3.185436551801708e-13,
+    2.111955377355872e-12
+   ],
+   "compliance": [
+    302.19348447602397,
+    51.693455243823024,
+    635.7738822700643,
+    90846.45315316696,
+    81897.44774450856,
+    85365.45259652435
+   ],
+   "peak_rss_GB": 50.99368667602539
+  }
+ ]
+}

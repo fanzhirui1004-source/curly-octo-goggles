@@ -1,0 +1,22 @@
+{
+  "source": "training-label aggregate only; never a per-case feature",
+  "samples": [
+    {
+      "seat": 253,
+      "split": "train",
+      "factor": "/root/autodl-tmp/CUTFEM_SUPERELEMENT_LABELS/REFERENCE_0253/M_UPPER.npy"
+    }
+  ],
+  "per_sample_offdiagonal_draws_per_bucket": 32768,
+  "seed": 20260917,
+  "log_pivot_min": -6.5743957198704654,
+  "log_pivot_max": -1.8808533578750253,
+  "values": {
+    "pivot_log_mean": -3.2214769242406995,
+    "pivot_log_std": 1.337489115898387,
+    "diagonal_lower_rms": 0.003471088664659412,
+    "diagonal_block_rms": 0.04906142574567573,
+    "same_patch_rms": 0.0019678769111665007,
+    "cross_patch_rms": 0.00010022099355908242
+  }
+}

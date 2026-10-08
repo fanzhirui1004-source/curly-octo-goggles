@@ -1,0 +1,33 @@
+fresh_development_0001_cover01_r1_res8     d=  9399 mu=[0.99997, 1.00598] D/d=9.96e-08 out_target=0 target=True act=3s eig=7s
+fresh_development_0004_cover01_r1_res8     d= 16158 mu=[0.99630, 1.00480] D/d=5.10e-08 out_target=0 target=True act=22s eig=38s
+fresh_train_0000_cover01_r1_res8           d= 22962 mu=[0.99955, 1.00421] D/d=9.58e-08 out_target=0 target=True act=75s eig=138s
+fresh_train_0001_cover01_r1_res8           d= 12018 mu=[0.99998, 1.00406] D/d=8.33e-08 out_target=0 target=True act=8s eig=22s
+fresh_train_0002_cover01_r1_res8           d= 26562 mu=[0.99999, 1.00791] D/d=2.43e-07 out_target=0 target=True act=132s eig=231s
+fresh_train_0003_cover01_r1_res8           d= 20586 mu=[0.99962, 1.00339] D/d=6.37e-08 out_target=0 target=True act=65s eig=162s
+fresh_train_0005_cover01_r1_res8           d= 32538 mu=[1.00000, 1.00930] D/d=2.33e-07 out_target=0 target=True act=122s eig=392s
+fresh_train_0006_cover01_r1_res8           d= 26499 mu=[0.99995, 1.00443] D/d=1.23e-07 out_target=0 target=True act=116s eig=221s
+fresh_train_0007_cover01_r1_res8           d= 26124 mu=[1.00000, 1.00613] D/d=1.78e-07 out_target=0 target=True act=64s eig=207s
+fresh_train_0008_cover01_r1_res8           d= 14298 mu=[0.99311, 1.00587] D/d=1.50e-07 out_target=0 target=True act=9s eig=34s
+fresh_train_0009_cover01_r1_res8           d= 24000 mu=[0.99987, 1.00470] D/d=1.12e-07 out_target=0 target=True act=94s eig=157s
+fresh_train_0010_cover01_r1_res8           d=  7002 mu=[0.99806, 1.00705] D/d=1.01e-07 out_target=0 target=True act=2s eig=3s
+fresh_train_0011_cover01_r1_res8           d=  1608 mu=[0.99858, 1.00213] D/d=5.16e-08 out_target=0 target=True act=0s eig=0s
+fresh_train_0013_cover01_r1_res8           d= 17340 mu=[0.99956, 1.00653] D/d=1.40e-07 out_target=0 target=True act=19s eig=53s
+fresh_train_0014_cover01_r1_res8           d= 12114 mu=[0.99996, 1.00159] D/d=4.58e-08 out_target=0 target=True act=14s eig=20s
+fresh_train_0016_cover01_r1_res8           d= 33969 mu=[0.99995, 1.00371] D/d=1.63e-07 out_target=0 target=True act=189s eig=372s
+fresh_train_0017_cover01_r1_res8           d= 32814 mu=[1.00000, 1.01473] D/d=2.07e-07 out_target=0 target=True act=133s eig=311s
+fresh_train_0018_cover01_r1_res8           d= 26694 mu=[0.99978, 1.00418] D/d=1.17e-07 out_target=0 target=True act=111s eig=177s
+fresh_train_0019_cover01_r1_res8           d= 11223 mu=[0.99540, 1.00522] D/d=8.42e-08 out_target=0 target=True act=6s eig=15s
+fresh_train_0020_cover01_r1_res8           d= 13572 mu=[0.99960, 1.01581] D/d=1.34e-07 out_target=0 target=True act=11s eig=27s
+fresh_train_0021_cover01_r1_res8           d= 21564 mu=[0.99972, 1.00355] D/d=5.24e-08 out_target=0 target=True act=52s eig=110s
+fresh_train_0022_cover01_r1_res8           d= 10896 mu=[0.99990, 1.00213] D/d=3.05e-08 out_target=0 target=True act=8s eig=15s
+fresh_train_0023_cover01_r1_res8           d= 34992 mu=[0.99998, 1.00661] D/d=1.72e-07 out_target=0 target=True act=174s eig=397s
+fresh_train_0024_cover01_r1_res8           d= 24162 mu=[0.98336, 1.01044] D/d=1.53e-07 out_target=0 target=True act=68s eig=125s
+fresh_train_0025_cover01_r1_res8           d= 35817 mu=[0.99999, 1.00503] D/d=1.64e-07 out_target=0 target=True act=198s eig=409s
+fresh_train_0026_cover01_r1_res8           d= 10608 mu=[0.99988, 1.00284] D/d=3.05e-08 out_target=0 target=True act=7s eig=11s
+fresh_train_0028_cover01_r1_res8           d= 27735 mu=[0.99951, 1.00609] D/d=1.28e-07 out_target=0 target=True act=69s eig=191s
+fresh_train_0029_cover01_r1_res8           d= 21570 mu=[0.99967, 1.00341] D/d=6.65e-08 out_target=0 target=True act=64s eig=94s
+fresh_train_0030_cover01_r1_res8           d= 28734 mu=[0.99998, 1.01438] D/d=1.06e-07 out_target=0 target=True act=101s eig=210s
+fresh_train_0031_cover01_r1_res8           d= 17694 mu=[0.99749, 1.00355] D/d=6.14e-08 out_target=0 target=True act=30s eig=51s
+train13_check                              d= 20286 mu=[0.99923, 1.00640] D/d=1.47e-07 out_target=0 target=True act=44s eig=74s
+done 31 without result ['FULLSPEC_DIRECT_01', 'FULLSPEC_DIRECT_01']
+min mu_min 0.98336  max mu_max 1.01581  max D/d 2.43e-07  all target True

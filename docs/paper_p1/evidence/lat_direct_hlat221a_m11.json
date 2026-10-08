@@ -1,0 +1,98 @@
+{
+ "layout": "hlat221a",
+ "threads": {
+  "MKL": "16",
+  "OMP": "16",
+  "torch": 16
+ },
+ "cpu": 128,
+ "loadavg_start": [
+  14.580078125,
+  15.6611328125,
+  16.34521484375
+ ],
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 30.576034042984247,
+   "assembly_s": 19.734804648905993,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424
+  },
+  "hlat222_010": {
+   "setup_s": 28.117702342569828,
+   "assembly_s": 18.640826754271984,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340
+  },
+  "hlat222_100": {
+   "setup_s": 16.70248681306839,
+   "assembly_s": 12.446658935397863,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510
+  },
+  "hlat222_110": {
+   "setup_s": 7.277019541710615,
+   "assembly_s": 6.4902449660003185,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304
+  }
+ },
+ "cells_s": 139.99059278145432,
+ "lattice_s": 0.042064424604177475,
+ "global_assembly_s": 11.572637625038624,
+ "global_dofs": 957888,
+ "free_retained": 77310,
+ "interior": 880578,
+ "nnz_upper": 132719531,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "rss_after_assembly_GB": 21.442367553710938,
+ "rss_after_release_GB": 3.591197967529297,
+ "runs": [
+  {
+   "mtype": 11,
+   "nnz_stored": 264419738,
+   "analysis_s": 19.177300795912743,
+   "predicted_kB": {
+    "peak_analysis": 13764383,
+    "permanent": 9102417,
+    "factor_solve": 57594317
+   },
+   "predicted_GB": 63.60696220397949,
+   "factor_s": 120.49672417715192,
+   "after_factor_kB": {
+    "peak_analysis": 13764383,
+    "permanent": 9102417,
+    "factor_solve": 57563088
+   },
+   "solve_s": 41.55664061382413,
+   "rel_residual": [
+    3.593036366438033e-11,
+    9.335991383389488e-12,
+    6.058743210581837e-11,
+    3.2796730878485846e-13,
+    3.161140287752197e-13,
+    2.3835591918667102e-12
+   ],
+   "compliance": [
+    302.19348447507167,
+    51.69345524370899,
+    635.773882264183,
+    90846.45315316597,
+    81897.44774450839,
+    85365.45259651908
+   ],
+   "peak_rss_GB": 69.98674774169922
+  }
+ ]
+}

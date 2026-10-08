@@ -1,0 +1,12 @@
+/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_36/design_encoder.py:123: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  self.A_up = torch.sparse_csr_tensor(self.crowA.long(), self.colA, a, size=(self.ni, self.ni))
+Traceback (most recent call last):
+  File "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_36/schur_encoder.py", line 256, in <module>
+    main(sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4:])
+  File "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_36/schur_encoder.py", line 238, in main
+    T, st0 = enc.update()
+             ^^^^^^^^^^^^
+  File "/root/autodl-tmp/CLAUDE_TAKEOVER_20260923/xcase_src_36/schur_encoder.py", line 151, in update
+    self.Tbuf = torch.zeros((self.nbx, self.nbx), dtype=fdt, device=dev)     # column-major = transpose view
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 4.16 GiB. GPU 0 has a total capacity of 31.36 GiB of which 3.58 GiB is free. Including non-PyTorch memory, this process has 27.77 GiB memory in use. Of the allocated memory 2.30 GiB is allocated by PyTorch, and 102.99 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
