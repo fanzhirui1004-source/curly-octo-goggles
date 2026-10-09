@@ -199,5 +199,5 @@ J(\bar U)=\bar C+\bar U^T\rho\le\widehat C\le C.}
 
 若所施加的作用 \(y(\bar U)\) 在数值上与变分能量并不完全一致，则定义
 \(\omega=\bar U^Ty(\bar U)-\sum_m\bar u_m^TK_m\bar u_m\)
-及 \(\rho=f-y(\bar U)\)。此时第一个恒等式增加一项 \(+\omega\)。这将求解残差与施加作用和能量之间的不一致区分开来。递归 Krylov 残差不一定等于该施加作用残差。计算式 (16) 中的各项还需要带符号的残差功和 \(\omega\)。对于两胞元配置和点阵，二者均与对偶范数界 \(|\bar U^T\rho|\le\sqrt{\bar U^T\mathbb K\bar U}\sqrt{\rho^T\mathbb K^{-1}\rho}\le\sqrt{\bar U^Ty(\bar U)-\omega}\,\sqrt{\rho^T\mathbb K^{-1}\rho}\) 一并记录；其中第二个不等式成立是因为 \(\widehat{\mathbb K}\succeq\mathbb K\)（补充说明 S4.3）。
+及 \(\rho=f-y(\bar U)\)。此时第一个恒等式增加一项 \(+\omega\)。这将求解残差与施加作用和能量之间的不一致区分开来。递归 Krylov 残差不一定等于该施加作用残差。计算式 (16) 中的各项还需要带符号的残差功和 \(\omega\)。对于两胞元构型和点阵，二者均与对偶范数界 \(|\bar U^T\rho|\le\sqrt{\bar U^T\mathbb K\bar U}\sqrt{\rho^T\mathbb K^{-1}\rho}\le\sqrt{\bar U^Ty(\bar U)-\omega}\,\sqrt{\rho^T\mathbb K^{-1}\rho}\) 一并记录；其中第二个不等式成立是因为 \(\widehat{\mathbb K}\succeq\mathbb K\)（补充说明 S4.3）。
 

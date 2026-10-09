@@ -107,7 +107,7 @@ def main_cn():
     tex = re.sub(r'\{\\def\\LTcaptype\{(?:none)?\} % do not increment counter\n'
                  r'(\\begin\{longtable\}.*?\\end\{longtable\})\n\}', r'\1', tex, flags=re.S)
     tex = shrink(tex, True)
-    tex = B.set_widths(tex, '各装配算例中 NICE 相对于精确凝聚的精度', (.19, .06, .13, .19, .17, .26))
+    tex = B.set_widths(tex, '各装配算例中 NICE 相对于精确静力凝聚的精度', (.19, .06, .13, .19, .17, .26))
     tex = B.set_widths(tex, '一次含灵敏度的点阵分析的成本', (.12, .17, .16, .16, .13, .12, .14))
     tex = B.set_widths(tex, '厚度优化算例', (.11, .09, .17, .07, .10, .10, .22, .08))
     (HERE / 'main_cn.tex').write_text(tex)

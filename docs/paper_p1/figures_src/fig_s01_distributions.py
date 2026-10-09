@@ -1,5 +1,5 @@
-"""Supplementary Figure S02: geometry-level directional mean energy error by direction class (identity view) for the five
-variants of Table ST03 (Base network, Uncorrected, Smoothing-trained, Base network, corrected, NICE).
+"""Supplementary Figure S02: geometry-level mean energy error by load class (identity view) for the five
+variants of Table ST03 (Base network, Uncorrected continuation, Smoothing-trained, Base network + correction, NICE).
 Sources: evidence/newval2_<run>.json (80 geometries; 75 for support_k and glued). Each point is one geometry's
 directional mean; bars are medians. Colours, markers and legend labels from figstyle.MODEL."""
 import json
@@ -11,9 +11,10 @@ from figstyle import MODEL, MUTED, GRID, MM, TEXT, panel, save
 EV = Path(__file__).resolve().parent.parent / 'evidence'
 VARIANTS = [('B', 'newval2_v2L1.json'), ('C', 'newval2_A0_ctrl.json'), ('A2b', 'newval2_A2b_tail8.json'),
             ('B+W', 'newval2_B2grid.json'), ('A3', 'newval2_A3_2grid.json')]
-CLASSES = [('force', 'Nodal force'), ('support', 'Soft spring support'), ('face', 'Single-face force'),
-           ('macro', 'Polynomial'), ('grf', 'Multiscale'), ('force_c', 'Consistent traction'),
-           ('face_c', 'Single-face traction'), ('support_k', 'Stiffness-scaled springs'), ('glued', 'Neighbour-induced')]
+CLASSES = [('force', 'Nodal point loads'), ('support', 'Spring supports'), ('face', 'Single-face point loads'),
+           ('macro', 'Polynomial'), ('grf', 'Multiscale'), ('force_c', 'Traction loads'),
+           ('face_c', 'Single-face traction'), ('support_k', 'Scaled spring supports'),
+           ('glued', 'Imposed by a neighbour')]
 LO, HI = 5e-6, 3e2
 WIDTH, BAR = .5, .3                      # jitter width and median-bar half-length, in category units
 

@@ -162,3 +162,42 @@ None. The source unit contains no statement about the Uncorrected continuation o
 3. The abstract keeps the approved wording "homogenisation is inaccurate where cells are not small relative to it" (that is, the structure). The introduction now uses the source meaning: "not small compared with the scale on which the field varies". The author may want the abstract aligned, for example "where the scales do not separate", which saves two words.
 4. Falgout & Vassilevski (2004) and Hou & Wu (1997) were cited only in the old introduction. They are now cited only in U01 (`U01_EN.md` lines 5 and 15). If U01 drops them, they become uncited in the reference list.
 5. The one-sentence explanation of the two-grid cycle in paragraph 4 is taken from old Section 6.1: smoothing reduces the high-frequency part of the interior error, and coarse-grid correction reduces its smooth part. Please confirm that it is wanted in the introduction.
+
+## VERIFIER
+
+Checked against MANUSCRIPT_EN/CN lines 1–39, the two approved drafts, old Sections 2.2, 2.3, 3 (intro), 4.1–4.4, 5.5, 6.1 and 7, Supplementary Table ST07, `figures/F00_problem.png`, and the units U01–U05 for every item recorded above as moved or duplicated.
+
+### Changes made
+
+1. EN paragraph 2 / CN paragraph 2 (fidelity). "the interior displacements of each cell are recovered and used to evaluate the compliance and the sensitivities" became "... used to evaluate local design quantities such as the sensitivities" (CN: 用于计算灵敏度等局部设计量). The compliance is \(C=f_g^TU\) and is computed from the retained displacements (old Section 2.3), not from the recovered interior displacements. The source says "the interior field, from which local design quantities are evaluated".
+2. EN paragraph 6 (fidelity). "The energy error controls this term only at the order of its square root" became "The energy error bounds this term only at the order of its square root", which is the source wording of old contribution (iv). CN: "能量误差对该项的控制只达到其平方根的量级" became "以能量误差界定该项时，只能得到平方根量级的界".
+3. Contribution 2, EN and CN (fidelity). Restored "by construction" from the source (old abstract "admissible by construction"; old contribution (ii) "with the retained values and rigid-body motion imposed by construction"). The bullet now reads "By construction, its output is exactly linear in the retained displacements and reproduces them and rigid-body motions. Its size does not depend on the number of retained degrees of freedom, and it forms no matrix." Before, the introduction stated rigid-body reproduction only as a condition, not as a property of the network. CN: 该网络的输出由构造保证对主自由度位移严格线性，并精确再现主自由度位移和刚体运动。网络规模与主自由度数目无关，计算中不形成矩阵。
+4. CN abstract. "在一定条件下" (under certain conditions) became "在给定条件下", to match EN "Under stated conditions" (brief Section 2 keeps this qualifier). "若对全部胞元壁进行细尺度建模" became "若对全部胞元壁作细尺度建模" (one fewer 进行; the abstract had three).
+5. CN paragraph 1. "图 1 为第 5.10 节的单层板，该板在切割处固支。" became "图 1 所示为第 5.10 节在切割处固支的单层板。"
+6. CN Figure 1 caption (a). Removed the long pre-nominal chain "由……组成的单层经一个平面切割后的俯视图"; now "单层 \(8\times4\) 个 Schwarz-P 胞元（式 (1)，均匀 \(\tau=0.40\)）经一个平面切割后的俯视图".
+7. CN paragraph 3. "……因而这些自由度也须保留为主自由度。这使主自由度数目很大且随几何变化，……的做法因而不能直接适用。" (double causal 这使……因而) became "由于切割面上的支撑和载荷作用于切割平面单元的全部自由度，切割胞元的这些自由度也须保留为主自由度。因此，主自由度数目很大且随几何变化，……的做法不能直接适用。"
+8. CN paragraph 5. "两重网格修正是固定的线性运算，修正后的……保持上述性质" lacked the causal link of EN "Because ..."; now "由于两重网格修正为固定的线性运算，修正后的凝聚刚度矩阵仍保持上述性质". This also removes the 正是 false positive inside 修正是.
+9. CN paragraph 6. "拓扑优化中的近似重分析和非精确求解已观察到类似现象" (the methods were the subject of "observed") became "在拓扑优化的近似重分析和非精确求解中，已有研究观察到类似现象".
+
+### Checks passed (no change needed)
+
+- Title lines byte-identical to the source; image line identical; figure, caption, keyword and bullet structures as required; EN and CN have 35 lines each with blank lines, citations, inline mathematics and numbers aligned line by line. The only number difference is CN "8 个切割胞元" for EN "eight cut cells", as in the source.
+- EN abstract: 250 words after verification (no change to the EN abstract).
+- Number diff old EN to new EN (script): every source number is present except the old section numbers 4.2, 4.3, 4.4, 4.6 (renumbered to 3.2, 3.3, 3.4, 3.6) and the years of the five citations moved to U01. All five moved citations (Falgout & Vassilevski 2004, Hou & Wu 1997, Toselli & Widlund 2005, Huynh et al. 2013, Vaněk et al. 1996) were confirmed in `U01_EN.md`/`U01_CN.md`; Vaněk et al. (1996) is also in `U05_EN.md` (new Section 3.3) and Toselli & Widlund (2005) in `U06_EN.md` (new Section 4).
+- "5.4 to 265 times the mean energy error": recomputed from old Table 4 (harmonic/NICE: H2 0.0806/0.0148 = 5.4, U2 1.23/0.00465 = 265). "which has no trainable parameters" is stated in the supplement (Table ST07 note: "The extension has no trainable parameters").
+- "In every example of Table ST07, a larger number of smoothing steps reduced the energy error further": source old Section 7; every row of Supplementary Table ST07 decreases from 8 to 64 steps. Limiting it to the energy error is consistent with old Remark 1 and old Section 5.5 (U1 sensitivity not monotone).
+- "Under the conditions on the smoothing interval and the coarse solve stated in Proposition 2": matches old Proposition 4 (coarse solve exact or nonnegatively shifted; \(\|\Phi_k\|_A\le1\)).
+- "any interior approximation that meets the conditions above" = old (A2) (linear, reproduces the retained values and rigid-body motion); old Section 3 says "any admissible linear extension".
+- One-sentence smoothing/coarse-grid explanation in paragraph 4: supported by old Section 6.1 ("smoothing removes the components with large Rayleigh quotients ..., and the coarse-grid correction the smooth components that smoothing reaches slowly") and old Section 4.3 ("relaxation removes the high-frequency error").
+- Duplicates claimed in items 17, 25, 36, 37, 42, 44 and 50 were confirmed in the new method units: `U03_EN.md` (transpose \(F^T\) gives the corresponding nodal forces; symmetric two-grid cycle) and `U04_EN.md` (one interior solve per retained DOF; output dimension changes with the cut).
+- Cross-references: Proposition 4→2, Propositions 2, 3→3, 4, Section 3→4, Sections 4.2, 4.3, 4.4, 4.6→3.2, 3.3, 3.4, 3.6; each mapped once. No \tag in this unit; Eq. (1) unchanged.
+- Banned patterns and old terms (brief Sections 1 and 3.1): none in EN or CN after the edits.
+- Hard constraints: no PIML numerical comparison, no priority claim, nothing on repeated measurements, machine load or training cost.
+- Figure 1 image labels already use the new terms (clamped cut-plane elements, retained cell-face nodes, retained nodes of cut-plane elements; 16 uncut and 8 cut cells; 9,674 of 72,631 nodes).
+
+### Open questions (status)
+
+- Open question 1 is resolved: `U02_EN.md` (new Section 2.3) now says "must meet three requirements" and no longer refers to "the four properties named in Section 1".
+- Open questions 2, 3 and 5 remain author decisions (NICE expansion in the abstract; abstract wording "not small relative to it" versus the introduction's "scale on which the field varies"; the smoothing sentence in paragraph 4).
+- Open question 4 stands: Falgout & Vassilevski (2004) and Hou & Wu (1997) are cited only in U01.
+- Section 0 above gives the new EN word count as 1,982; after the verifier edits it is 1,997 (wc -w).

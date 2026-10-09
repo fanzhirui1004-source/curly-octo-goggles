@@ -124,3 +124,29 @@ For Supplementary Note S8 (Further continuations of the base network). These sen
 5. **Figure 5 regeneration.** The caption assumes the regenerated F02_validation.png from figures_src/fig05_population.py (three variants). If an older five-variant PNG is still in figures/, it must be regenerated before the build.
 6. **Supplementary Figure S03 caption.** It still mentions "five of Uncorrected" (supplement, unit S4). This is consistent with S03 staying in the supplement, but the main text now cites S03 only for the base network's linear-term shares.
 7. **Term "largest single-geometry mean".** Used for the population maximum (U07 defines it as "the largest mean of a single geometry"). The CN text writes 单个几何平均误差的最大值 rather than 几何平均值, because 几何平均值 reads as "geometric mean" in Chinese. The CN supplement (S1) uses 几何均值 in the ST03 note. The assembler may want to align these.
+
+## VERIFIER
+
+Checked against MANUSCRIPT_EN.md / MANUSCRIPT_CN.md lines 430-485, SUPPLEMENTARY_EN.md Tables ST03, ST03b, ST04, ST05a, ST05b, ST06, ST07, the regenerated Figure 5 script (figures_src/fig05_population.py: three variants; panel (c) classes glued, support_k, face_c, force), U07_EN/CN (Section 5.1 variant definitions) and the approved introduction draft.
+
+Python checks (final files):
+- Old EN vs new EN: numbers absent from the new text are 1.03, 11.2, 6.33, 42, 102, 7.8 (and one occurrence each of 64 and 1.28), all in SUPPLEMENT ADDITIONS (EN and CN), and 9 (old Eq. (9) → Eq. (17)). Numbers new to the text are 1.142 and 12.702 (Table ST03b, base network force_c, Uncut and Heavy cut rows) and 71, 117 (ratio range; recomputed: 1.142/0.016 = 71.4, 5.801/0.079 = 73.4, 7.899/0.091 = 86.8, 12.702/0.109 = 116.5; the Uncorrected column reproduces the source's 64 to 102 only for force_c, which confirms the restriction "under traction loads").
+- New EN vs new CN: 25 blocks each; numbers and inline mathematics identical block by block.
+- Every remaining number recomputed or traced: 5.4 to 265 (Table 4 harmonic/NICE: 5.45 to 264.5), 7 to 290 and 2,400 to 12,000 (Table 4), 2.6 to 50 (Table ST07, 64-step harmonic / 8-step base network), 0.005 percentage points (ST03 glued 0.060 vs 0.055), δ, κ ranges (ST04), 28–43% and 24–72% (ST05a first-order shares; nodal 23.516 rounds to 24), 1.8–35% (ST05a k = 0), 1.31 and 1.20–1.40 (ST03 note).
+- Eq. (9) → Eq. (17) confirmed: old Eq. (9) is the linear-plus-quadratic sensitivity-error identity of old Proposition 3. Both occurrences mapped once. No displayed equations, no citations in this unit.
+- Banned words, old terms and variant names: none in EN or CN ("first" only as ordinal; CN "校正" only in 粗网格校正). EN sentences above 30 words occur only in figure captions (at most 35 words).
+
+Changes made:
+1. EN P3 (and CN): "NICE adds further training through the correction and draws on a larger set of training geometries" → "NICE also continues the training, with the correction inside the training loop, and draws its training geometries from a larger set." The CN "且采用更多的训练几何" said that NICE uses more training geometries, which is wrong: NICE sees at most 153 of the 591 geometries, against 305 for the base network (U07, Table ST01). The source says "widens the training pool". CN now reads "其训练几何取自更大的几何集合". "This lowers" → "This continuation lowers" (CN 这一继续训练).
+2. CN P3: "按几何进行 bootstrap 重抽样" → "以几何为单位作 bootstrap 重抽样" (removes 进行).
+3. EN P7 S1 split into two sentences (one claim per sentence). CN P7 S1 rewritten: the old CN "之所以……是因为误差场刚硬" stated a general cause, whereas EN states a condition ("when the error is stiff"); CN now reads "当误差较为刚硬时，较小的位移误差会引起较大的能量误差。这种放大作用可以定量衡量。"
+4. CN P1: "NICE 有 99% 的能量误差低于 0.69%" → "NICE 的能量误差有 99% 低于 0.69%" (word order).
+5. CN P5: "光滑对这些模态衰减缓慢，因而将其留给粗网格校正" → "光滑对这些模态的衰减较慢，这些模态因而留给粗网格校正" (grammar; drops 其).
+
+Confirmed, no change needed:
+- Open question 4 (added "under traction loads" in P8 S2): ST05a gives 14.128 / 75.072 and first-order shares 7.164 / 0.786 in the force_c rows of M1 and H2. The condition is correct and does not change the claim.
+- Open question 2 (1.142% and 12.702%): left at the printed precision of Table ST03b. If the assembler rounds to the three-digit convention of the text, the values are 1.14% and 12.7%, and the ratio range 71 to 117 is unchanged.
+- "Nearly unchanged" for 6.89% → 6.33% follows the wording the brief proposes; the numbers are in SUPPLEMENT ADDITIONS.
+- "as for the network" in the graph-harmonic description: the network's interior field also uses the exact rigid-body split (old Section 4.2, MANUSCRIPT_EN line 281), and Table ST07 states that the harmonic and zero fields receive it.
+
+Unresolved: none in this unit. The CN supplement (S1) writes 几何均值 where this unit writes 单个几何平均误差的最大值 (open question 7); the assembler should choose one form.

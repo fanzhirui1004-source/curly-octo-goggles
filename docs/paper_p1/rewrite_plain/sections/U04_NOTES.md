@@ -112,3 +112,35 @@ None. The source of this unit does not mention the Uncorrected continuation or t
 4. "Displacement directions" in old P8 became "retained displacement vectors" (EN) and 主自由度位移向量 (CN), not "test displacements". A3_EN translates the corresponding sentence of Appendix G.1 as "several test displacements". The assembler may unify these if a single term is preferred. In training the inputs are test displacements. In deployment they are arbitrary retained displacements.
 5. The introduction (U00) and Section 1.1 (U01) already state that the network is nonlinear in the geometry and linear in the retained displacements, that one network of about \(6\times10^5\) parameters serves all cells, and the range 2,679 to 45,900. This unit repeats these points because the method section must state them in full. The assembler may shorten the introduction instead.
 6. P2 cites "(Appendix G.1)" and P10 cites "(Eq. (E.1))" for the transpose. The source cited both at both places. If the assembler prefers both references at P10, the sentence can read "... in reverse order (Appendix G.1); Eq. (E.1) gives the resulting transpose of \(\widehat E\)."
+
+## VERIFIER
+
+Checked against MANUSCRIPT_EN.md / MANUSCRIPT_CN.md lines 247-288, Appendix A.1 and G.1 of APPENDICES_EN.md (for the added definitions of element moments, stencils, the weak-node norm, the position embedding and the two-plus-two coarse convolutions), the current image F11_network_architecture.png, and the neighbouring units U02, U03 and A3 for term consistency.
+
+Result of the checks:
+
+- A. Fidelity. Every sentence, number, condition and citation of the old text is in the new text; the table in (a) is correct. Python number diff old EN vs new EN: the only differences are the renumbered references and tags (old 4.1, 4.2-4.5, Sections 3 and 4.1, Eqs. (12), (13), (14) → 3.1, 3.2-3.5, Sections 3.1 and 4, Eqs. (5), (8), (9)), plus "Appendix A.1" and the second "27" (caption (d), "27 local nodes", from the relabelled image and Appendix G.1). Both display equations are byte-identical to the old ones apart from the tags. The added sentences (stencil, element moments, retained nodes, position embedding, "on the downward pass and two on the upward pass", "without learned parameters") are supported by Appendices A.1 and G.1 and the image; no claim is strengthened or weakened. The solver analogy keeps "only in its data flow", "never applies the stiffness matrix" and "does not compute residuals".
+- B. Cross-references follow brief Section 5 exactly once each; tags are (8) and (9).
+- C/E/F. No banned pattern, old term, em dash, PIML comparison, priority claim or cost statement. Figure block format is correct (image line, blank line, one-line bold caption). EN sentences: three of 31-33 words, none above 35.
+- D. EN and CN have 16 aligned blocks with identical numbers, inline mathematics and display equations in every block (Python check after the edits).
+
+Changes made:
+
+1. EN P6: "compute the coefficients of the network" → "compute the geometry-dependent coefficients" (the network also has learned weights \(W_{\ell h}\) that are not computed by the heads). CN: 计算网络的系数 → 计算依赖几何的系数.
+2. EN P11: "... is not a fixed point of its layers either." → "Nor is the equilibrium solution of the interior problem a fixed point of its layers." (register).
+3. Figure 3 caption (c): the panel name "Grid hierarchy" → "Multiscale displacement propagation", the title printed in panel (c) of the image, so that all four panel names in the caption match the image; the sentence now reads "connect the grids of the hierarchy, which have 65, 33, 17 and 9 background positions per axis". CN: (c) 多尺度位移传播。……连接多层网格中的各层网格，各层每轴分别有 65、33、17 和 9 个背景位置。
+4. CN wording (no content change):
+   - P1: 每个胞元的主自由度为……个，且随切割而变化 → 各胞元的主自由度在 2,679 至 45,900 个之间，且该集合随切割而变化 (the set, not the count per cell, changes with the cut).
+   - P2: 位移恢复对 \(q\) 线性 → 位移恢复关于 \(q\) 是线性的.
+   - P3: 未逐项进行消融试验 → 但未逐项经过消融试验检验; 单元矩作为几何输入 → 网络以单元矩作为几何输入; 在含弱连接节点的模板上另加局部交互 (no subject) → 网络还在含弱连接节点的模板上附加若干局部交互.
+   - P6: weak-node definition rewritten as 若某节点对角刚度块的范数低于该范数在全部激活节点上中位数的 1%，则称该节点为弱连接节点 (the old wording 低于激活节点上中位数 did not say whose median).
+   - P8: 约 \(6\times10^5\) 个参数的同一网络 → 同一个约含 \(6\times10^5\) 个参数的网络.
+   - P9: 所有位移特征上的运算 → 作用于位移特征的运算 (matches P2 and EN).
+   - P11: 二者的相似仅限于数据流 (ambiguous: could be read as the grid hierarchy and multigrid) → 位移分支与迭代求解器的相似仅限于数据流; 从不施加刚度矩阵 → 从不与刚度矩阵相乘; 网络各层 → 位移分支各层 (EN "its layers" refers to the branch); 网络在训练时即包含这一修正 → 网络训练时计入这一修正 (same wording as U03_CN).
+   - Caption (a): 随后进行两轮残差信息交换 (subject unclear) → 这些向量随后经过两轮残差信息交换.
+
+Not resolved (for the assembler):
+
+- The image still prints "Weak" above the third group of interactions in panel (b) (figures_src/codex/build_network.py line 167). The caption already reads "weakly connected nodes"; the relabel to "Weakly connected" must still be done in the image.
+- If the separate relabel also renames the panel (c) title, the caption name "(c) Multiscale displacement propagation" must follow it (build_network.py line 183).
+- Open questions 1, 4, 5 and 6 above remain for the assembler; they do not affect the correctness of this unit.

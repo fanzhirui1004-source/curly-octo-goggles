@@ -143,7 +143,7 @@ def main():
             block = '{\\def\\LTcaptype{} % do not increment counter\n' + block + '\n}'
         return block
     tex = re.sub(r'\\begin\{longtable\}\[\]\{@\{\}(.*?)@\{\}\}.*?\\end\{longtable\}', shrink, tex, flags=re.S)
-    tex = set_widths(tex, 'Accuracy of NICE against exact condensation', (.19, .06, .13, .19, .17, .26))
+    tex = set_widths(tex, 'Accuracy of NICE against exact static condensation', (.19, .06, .13, .19, .17, .26))
     tex = set_widths(tex, 'Cost of one lattice analysis with sensitivities', (.12, .17, .16, .16, .13, .12, .14))
     tex = set_widths(tex, 'Thickness optimisation cases', (.11, .09, .17, .07, .10, .10, .22, .08))   # five rows: portrait
     (HERE / 'main.tex').write_text(tex)

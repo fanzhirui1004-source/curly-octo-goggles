@@ -59,7 +59,7 @@ No sentence or number moved to another unit, the appendices or the supplement. F
 | "If the spectrum of \(D^{-1}A\) extends above \(a+b\), the Chebyshev polynomial amplifies those modes and the cycle can increase the energy error (Appendix D)." | Remark 1, S2 |
 | "Changing the smoothing degree changes the polynomial, so the ordering holds for each \(k\) separately and the reduction need not be monotone in \(k\)." | Remark 1, S3-S4 ("the number \(k\) of smoothing steps") |
 | "For an approximate coarse inverse \(G\), the correction stays nonexpansive when \(2G-GA_cG\succeq0\) (Eq. (D.6)), which the nonnegative shift satisfies and an arbitrary approximation need not." | Remark 1, S5-S6 ("does not increase the energy error", brief 3.1) |
-| "And the ordering does not reach the sensitivity: in the example of Appendix D.1, a projection that halves the energy of the interior error changes the sensitivity discrepancy of Eq. (9) from zero to \(2t-t^2\), against a reference sensitivity of \(-1\)." | Remark 1, S7-S8 ("does not apply to the sensitivity"; "the sensitivity difference \(\widetilde s_c-s_c\) of Eq. (17)"). Old Eq. (9) → Eq. (17). |
+| "And the ordering does not reach the sensitivity: in the example of Appendix D.1, a projection that halves the energy of the interior error changes the sensitivity discrepancy of Eq. (9) from zero to \(2t-t^2\), against a reference sensitivity of \(-1\)." | Remark 1, S7-S9 ("does not apply to the sensitivity"; "a projection halves the energy of the interior error. The same projection changes the sensitivity difference \(\widetilde s_c-s_c\) of Eq. (17) ..."). Old Eq. (9) → Eq. (17). |
 
 ### Old 4.5 "Training directions and objective" (old lines 334-347) → new 3.5 "Training"
 
@@ -73,7 +73,7 @@ No sentence or number moved to another unit, the appendices or the supplement. F
 | "For a batch of \(B\) directions, the objective is" | P10 S5 ("the loss function is") |
 | Eq. (18) | Eq. (13), unchanged |
 | "The energy term is the mean logarithm of the predicted-to-reference energy ratio." | P11 S1, written with the ratio \(q_j^T\widehat Sq_j/(q_j^TSq_j)\) and the reason (\(q_j^TSq_j=1\)) that the first term of Eq. (13) is this ratio. |
-| "For an admissible extension, the variational identity of Section 3.1 makes its minimum correspond to the equilibrium field on each sampled direction, a Ritz principle." | P11 S2 ("For a recovery operator that reproduces the retained displacements, the principle of minimum potential energy (Proposition 1) makes this term smallest when the recovered field equals the exact field for every sampled test displacement"). "admissible" replaced (brief 3.1); "the variational identity of Section 3.1" → "Proposition 1" (now in Section 3.1, Eq. (6)); the label "a Ritz principle" deleted (brief 3.1). |
+| "For an admissible extension, the variational identity of Section 3.1 makes its minimum correspond to the equilibrium field on each sampled direction, a Ritz principle." | P11 S2 ("By Proposition 1, for a recovery operator that reproduces the retained displacements, this term is smallest when the recovered field equals the exact field for every sampled test displacement"). "admissible" replaced (brief 3.1); "the variational identity of Section 3.1" → "Proposition 1" (now in Section 3.1, Eq. (6)); the label "a Ritz principle" deleted (brief 3.1). |
 | "The sensitivity term compares the field-based thickness sensitivities (eight-component vectors) on the set \(\mathcal J_s\) of directions with reference sensitivity labels;" | P11 S3-S4 ("thickness sensitivities \(\widetilde{\boldsymbol s}_j\) computed from the recovered field (Section 4.2)"; "field-based" deleted, brief 3.1; the definition of \(\widetilde s_c\) is in Section 4.2, see open question 1) |
 | "the reported configurations use \(w_s=1\)." | P11 S5 |
 | "Gradients with respect to \(\theta\) pass through the reconstructed field to the geometry encoders, coefficient heads and linear displacement maps." | P11 S6 |
@@ -148,3 +148,35 @@ None. The source of this unit does not mention the Uncorrected continuation or t
 4. Old 5.2 says "The nonexpansiveness of Section 4.3 is guaranteed by \(b\ge\lambda_{\max}(D^{-1}A)\)." The Section 5.2 writer should point to Section 3.3 and use "does not increase the energy error". 3.3 P5 keeps the matching statement, with the condition that the actual positive spectrum lies in \((0,b]\).
 5. The title of Algorithm 1 changed in wording only. The brief lists only figure and table blocks as parsed structures. If a build script matches the old title "Corrected condensed stiffness action", it needs updating.
 6. CN terms: 粗网格校正 is used for the coarse-grid correction (field-standard), and 修正 / 两重网格修正 for \(\mathcal W\), following the brief and U03. 本文的修正序列 translates "the correction sequences".
+
+## VERIFIER
+
+Checked against MANUSCRIPT_EN.md / MANUSCRIPT_CN.md lines 289-358, the brief, U03 (Section 3.1), U04 (Section 3.2), U06 (Sections 4.1-4.2) and Appendices C, D, D.1, F.1, G.2-G.4 of APPENDICES_EN.md.
+
+Python checks (after the changes below):
+- Numbers, old EN vs new EN: every difference is a renumbered reference or tag (old Sections 4.1, 4.3-4.6 → 3.1, 3.3-3.6; old Eqs. (4), (5), (6), (9), (15)-(18) → (6), (7), (14), (17), (10)-(13); Proposition 4 → 2) or an added pointer (Sections 3.1, 3.4, 4.2; Proposition 1), plus the repeated "8" and "Q_1(17)" in the spelled-out notation 8 / \(Q_1(17)\) / 8. No measured number missing or added.
+- Numbers, new EN vs new CN: identical multisets, also paragraph by paragraph (25 blocks each, 69 lines each).
+- Citations: identical lists, in order, in old EN, new EN and new CN. Inline mathematics: identical multisets in EN and CN; every old inline expression is present in the new EN. Display equations: byte-identical to the old ones apart from the tags (15)-(18) → (10)-(13); EN and CN identical.
+- Cross-references checked against the other units: Eq. (6) and (7) in U03, Eq. (14) and (17) in U06, \(d_I\) and \(\mathcal W\) defined in Section 3.1 (U03), \(\widetilde s_c\) defined in Section 4.2 (U06).
+- Claims checked against the appendices: \(k\) steps give a degree-\(k\) polynomial \(d_k=p_k(D^{-1}A)d_0\) (Appendix D); \(b\) is a power-iteration estimate for \(D^{-1}A\) multiplied by 1.05 (Appendix D); \(\mathbb K\preceq\widehat{\mathbb K}\) by assembly and order reversal of inverses (Appendix C, Eq. (C.1)); the D.1 example halves the energy and moves the discrepancy from zero to \(2t-t^2\); the training classes (equilibrated nodal loads, consistent tractions, springs, neighbour-induced traces) and the block search on the retained rigid complement (Appendix G.2-G.3).
+- Sections A-F of the verifier task: no claim strengthened or weakened, no PIML comparison, priority claim, training-cost or machine statement; no figure or table blocks in this unit; the Algorithm 1 title line is not parsed by the build scripts (latex/build_*.py contain no "Algorithm" pattern).
+
+Changes made:
+1. EN 3.5 P11 S2: "the principle of minimum potential energy (Proposition 1) makes this term smallest" → "By Proposition 1, ... this term is smallest". Proposition 1 is the Ritz identity, a consequence of the minimum potential energy principle; the parenthesis equated the two. CN: "由最小势能原理（命题 1）" → "由命题 1"; "精确再现主自由度位移的" → "在主自由度上等于给定位移的" (brief 3.1 term for "admissible"; 精确再现 is reserved for rigid-body motion in U03).
+2. EN 3.4 P9 S2: "inherit this ordering" → "inherit the ordering of Proposition 2"; the antecedent of "this ordering" was the energy-norm sentence, not the matrix ordering. CN: "保持这一序关系，其逆矩阵的序关系则反向" → "继承命题 2 的序关系，求逆后序关系反向".
+3. Remark 1, last sentence (36 words) split into two sentences in EN and CN, content unchanged.
+4. CN 3.3 P1: "二者均表明，应……" → "二者均表明，宜……"; "应" read as a requirement, while the source says "suggest".
+5. CN 3.3 P2: "所占的比例" for \(\chi_\ell\) instead of "占比", which the brief reserves for the energy fraction \(w_m\) (应变能占比); P3 already uses "比例".
+6. CN 3.5 P11: "能量比较大的测试位移" → "能量比取值较大的测试位移"; the old wording can be read as "能量 比较大" (relatively large energy) instead of "large energy ratio".
+7. CN, translationese and 其: "其总能量为" → "总能量取"; "其递推关系" → "及其递推关系"; "为其内部残差" → "为相应的内部残差"; "存储其依赖于几何的系数" → "存储依赖于几何的系数"; "网络采用若干组测试位移进行训练" → "网络以若干组测试位移作为训练数据"; "NICE 采用……同一算子进行训练" → "NICE 的训练采用……同一算子".
+8. NOTES table rows for P11 S2 and Remark 1 updated to the new wording.
+
+Not changed, but checked:
+- Remark 1 S1 names "the two conditions on the smoothing and on the coarse solve" where the source says "both conditions". The two discussed in the remark are \(\|\Phi_k\|_A\le1\) (spectrum up to \(a+b\)) and the coarse inverse (\(2G-GA_cG\succeq0\)), so the gloss is the only consistent reading.
+- 3.3 P1 S1 glosses what Eqs. (7) and (14) express; both statements are in U03 and U06. 3.4 P9 S2 states in words the assembled ordering behind "the order reversal of Appendix C"; Appendix C contains it.
+- 3.3 P5 "a power-iteration estimate of the largest eigenvalue of \(D^{-1}A\)" matches Appendix D (40 iterations of \(D^{-1}A\), factor 1.05); the iteration count stays in Appendix D and Table 1.
+
+Unresolved (for the assembler):
+- Open questions 1-6 above stand. Open question 4 (old Section 5.2 "nonexpansiveness of Section 4.3") belongs to the Section 5.2 unit.
+- U04 says "encoders" and "linear maps"; this unit keeps the source names "geometry encoders" and "linear displacement maps". The meaning agrees; the assembler may unify the wording.
+

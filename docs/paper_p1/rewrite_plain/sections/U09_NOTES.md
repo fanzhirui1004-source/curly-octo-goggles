@@ -143,9 +143,9 @@ T and N identify the loaded face of the test cell or of the neighbouring cell; x
 
 ### 两胞元装配
 
-两种继续训练变体也在第 5.6 节的两胞元装配中进行了评估。构型、载荷和误差度量均与第 5.6 节相同。各变体在所评估构型上的最大误差见表 ST08 和表 ST09。
+第 5.6 节的两胞元装配同样评估了这两种继续训练变体。构型、载荷和误差度量均与第 5.6 节相同。各变体在所评估构型上的最大误差见表 ST08 和表 ST09。
 
-未修正延续在十一种构型中进行了评估，其中四种构型的灵敏度误差超过 3% 线，最高为 11.4%（表 ST08）。在 M1 上，未修正延续的柔度误差也超过 3% 线，最高为 4.1%。平滑训练变体降低了这些误差，但在同样的四种构型中，灵敏度误差仍超过 3% 线，为 3.15–4.43%。不含粗网格校正的光滑会留下第 5.4 节所述衰减缓慢的低阶模态误差。这与 U1 和 M1 中残留的灵敏度误差相一致。基础网络加修正低于两条 3% 线，最大灵敏度误差为 0.95%，出现在 U1/x。因此，修正使装配响应降至 3% 线以下。
+未修正延续在十一种构型中经过评估，其中四种构型的灵敏度误差超过 3% 线，最高为 11.4%（表 ST08）。在 M1 上，未修正延续的柔度误差也超过 3% 线，最高为 4.1%。平滑训练变体降低了这些误差，但在同样的四种构型中，灵敏度误差仍超过 3% 线，为 3.15–4.43%。不含粗网格校正的光滑会留下第 5.4 节所述衰减缓慢的低阶模态误差。这与 U1 和 M1 中残留的灵敏度误差相一致。基础网络加修正低于两条 3% 线，最大灵敏度误差为 0.95%，出现在 U1/x。因此，修正使装配响应降至 3% 线以下。
 
 在被测胞元切割面上的面力载荷作用下，未修正延续在其七种构型中有四种超过 3% 线，灵敏度误差最高为 14.1%（表 ST09）。在相同载荷下，NICE 的柔度误差至多为 0.10%，灵敏度误差至多为 0.16%。
 
@@ -170,3 +170,27 @@ T 和 N 分别表示被测胞元和相邻胞元的加载面；x、y、z 表示�
 5. **Figure 11 image.** Panels (b) and (c) of `figures/F10_energy_share.png` print the fitted slopes ("fit, slope 1.10", "fit, slope −0.02"). The caption does not quote them, as in the source.
 6. **"coarse model"** in the old 5.7 ("at the cost of the larger coarse model") is rendered as "a larger assembled model" (CN 装配模型的规模更大), to avoid a clash with the coarse grid of the two-grid correction.
 7. **Sub-heading in Note S8.** The block above is headed "Two-cell assemblies" / "两胞元装配" without a number; the assembler numbers it with the other S8 blocks (from the units for old 5.1 and 5.3-5.5).
+
+## VERIFIER
+
+Checks run: sentence-by-sentence comparison of old EN/CN lines 486-533 with the new EN/CN; Python number diff old EN vs new EN (all differences are the old Table 5 cells, the removed Uncorrected/Smoothing-trained numbers, "Table 5"/"Table 2", Proposition 3 → 4, the new "Section 5.1" reference and "Note S8" pointers; every moved number is present in the SUPPLEMENT ADDITIONS in EN and CN with equal counts); number, inline-mathematics, citation-link and blank-line parity between new EN and new CN (38 lines each, identical); sentence lengths; banned-pattern and old-term grep. Sources opened to confirm moved or restated facts: SUPPLEMENTARY_EN.md Tables ST08, ST08b, ST09 and Figure S04; rewritten S2_EN.md (Tables ST08, ST08b, ST09, ST11a/b) and S4_EN.md (Figure S04); U06_EN.md (Proposition 4(b) is the \(\sqrt\varepsilon\) bound); U07_EN.md (Section 5.1 states that the test cells belong to the 20 selection geometries; definition of the Smoothing-trained variant); U01/U02/U11 (wording "cut-plane elements that do not lie on the cell faces", "enriching the interpolation", "assembled model"); figures F05_assembly.png (now shows only Base network + correction and NICE, all fourteen configurations), F09_assembly_loads.png, F10_energy_share.png.
+
+Verified numbers against the supplement: Base network sensitivity maxima above 3% exactly on U1/x (5.830), U1/y (5.390), M1/x (12.153); Uncorrected and Smoothing-trained above 3% exactly on U1/x, U1/y, M1/x, M1/y (eleven and twelve configurations evaluated); Uncorrected cut-surface: four of seven above 3%, up to 14.053; Base network + correction max sensitivity 0.945 (U1/x); ST11a/b ranges 78–85, 0.49–0.74, 1.3–4.5, 24–64, 0.17–0.44, 8–21, 2.2–3.4 all match.
+
+Changes made:
+1. 5.6 P3 (EN, CN): "one from each of the four cut-severity groups" → "one from each of the uncut, lightly cut, moderately cut and heavily cut groups" (CN 在未切割、轻度切割、中度切割和重度切割四个分组中各随机选取一个), restoring the named groups of the source.
+2. 5.6 P6 S2 (EN, CN): "NICE also shows this separation, although all its errors lie far below the 3% line." → "For NICE, the sensitivity error exceeds the compliance error, but both lie far below the 3% line." The old "also"/"this separation" referred back to the Smoothing-trained example, which now comes last in the paragraph; the new sentence states the source content ("whose sensitivity error exceeds its compliance error ... but both lie far below the 3% line") without a dangling reference. CN: NICE 的灵敏度误差大于柔度误差，但二者均远低于 3% 线。
+3. Figure 10 caption (EN, CN): restored the qualifier of the old caption that not every variant was evaluated in every configuration, now attached to the variants that are only in Table ST08 ("It also includes the base network and the two variants of Supplementary Note S8, which were not evaluated in every configuration."). Confirmed in Table ST08: base network 7, Uncorrected 11, Smoothing-trained 12 of the 14 configurations.
+4. 5.7 P9 (EN, CN): "removes most of the compliance error, which is 0.17–0.44% at r=3" split into two sentences so that 0.17–0.44% reads as the remaining compliance error (checked against ST11b: 0.169, 0.440, 0.261).
+5. CN only: "NICE 均低于两条 3% 线", "全部十八种构型均低于", "基础网络加修正同样低于" → "……的误差均/同样低于" (subject was the variant or configuration, not the error); "与精确值进行比较" → "与精确值比较"; "七个被测胞元十四种构型" → "七个被测胞元的十四种构型"; P1 S1 rewritten to remove a pre-nominal modifier chain ("第 5.3–5.5 节中单个胞元的能量误差较小，本节检验这些误差在装配后能否……").
+6. SUPPLEMENT ADDITIONS CN: two "进行了评估" constructions rewritten (第 5.6 节的两胞元装配同样评估了这两种继续训练变体；在十一种构型中经过评估).
+
+Checked and left unchanged:
+- P6 S1 states the general claim without "Without the complete correction"; the qualifier is kept in P6 S5 ("For the variants without the complete correction ..."), and the unit instruction asks that the main-text argument rest on NICE and Figure 11. Not a strengthening: NICE's own errors are stated to lie far below 3% in the next sentence.
+- P4 S2 ("Without the correction, the base network exceeds the 3% sensitivity line on U1 and M1 (Table ST08)") is a restatement with a main-text variant whose numbers are in Table ST08 (brief 3.3); no number added.
+- "enriching the boundary interpolation" (old "boundary enrichment") matches U01 ("enriching the interpolation") and the Bézier boundary enrichment described there; kept.
+
+Unresolved (for the assembler):
+- The unit instruction says the base network alone was not evaluated in the two-cell assemblies. Table ST08 (seven base-network rows), Table ST09 (four rows), the note to Table ST08 and Figure S04(a–c) (54 loads) show that it was evaluated in seven of the fourteen configurations. The text therefore does not claim it was not evaluated; Figure 10 shows only Base network + correction and NICE, and the caption says so. Writer's open question 2 stands.
+- ST08b label collision (writer's open question 1): the main text cites "Supplementary Table ST08b" only for the existing held-out table; old Table 5 is labelled ST08b inside the Note S8 additions as instructed. One of the two needs a new label (for example ST08c for old Table 5, two occurrences per language in the additions).
+- CN 构型 vs 配置 between main text and rewritten supplement (writer's open question 4).
