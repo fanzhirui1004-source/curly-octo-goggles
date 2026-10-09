@@ -1,4 +1,4 @@
-"""Scale-demonstration figure -> figures/F16_scale_plates.{svg,pdf,png}
+"""Scale-demonstration figure -> figures/F16_scale_plates.{svg,pdf,png} (oblique 3D views, equal panels; timing below)
 (a-d) Plan views, all at the same scale, of the plates of the scale demonstration (Section 5.10, Table ST20): 24, 51, 88
       and 110 Schwarz-P cells at the uniform start tau = 0.40, one cell thick, short side : long side 1 : 2, trimmed by a
       planar cut that scales with the plate. Walls are drawn from the level set of Eq. (1) as seen from above (height-map
@@ -16,8 +16,12 @@ import sys
 from pathlib import Path
 import numpy as np
 from matplotlib.patches import Polygon, Rectangle
+from mpl_toolkits.mplot3d import proj3d
 import figstyle as FS
+import elev3d as E
+import elev_prep_meshes as EP
 plt = FS.plt
+ELEV, AZIM, ZOOM = 40, -93, 1.28                                      # oblique view from the loaded side
 
 HERE = Path(__file__).resolve().parent
 EV = HERE.parent / 'evidence' / 'opt' / 'scale'                            # layouts of the four plates
@@ -28,7 +32,7 @@ ST20 = {24: ('6.51 M', '0.388 M', 242), 51: ('14.57 M', '0.780 M', 547), 88: ('2
         110: ('32.70 M', '1.618 M', 1164)}                         # Table ST20: cut-model DOFs, free retained DOFs, s
 UNCUT, CUTC = FS.CELL['U1'][0], FS.CELL['M2'][0]
 UNCUT_CAP, CUTC_CAP = '#5F86B3', '#1F4573'
-RES, NZ, TAU = 40, 40, 0.40                                        # pixels per cell, z samples, uniform start
+TAU = 0.40                                                         # uniform start
 
 
 def hex2rgb(h):
@@ -36,105 +40,82 @@ def hex2rgb(h):
     return np.array([int(h[i:i + 2], 16) for i in (0, 2, 4)]) / 255.0
 
 
-def clip(poly, f):
-    """Part of a convex polygon where f(P) >= 0 (one Sutherland-Hodgman pass)."""
-    out = []
-    for k in range(len(poly)):
-        P, Q = np.asarray(poly[k], float), np.asarray(poly[(k + 1) % len(poly)], float)
-        fp, fq = f(P), f(Q)
-        if fp >= 0:
-            out.append(tuple(P))
-        if (fp >= 0) != (fq >= 0):
-            t = fp / (fp - fq)
-            out.append(tuple(P + t * (Q - P)))
-    return out
+
+def plate_mesh(lay, R=12, target=60000):
+    """Marching-cubes surface of the plate at the uniform start (|phi| <= tau, kept side of the cut, layout cells only),
+    with per-triangle flags: cut cell, on an outer face of the plate, on the cut plane."""
+    nx, ny, nz = lay['shape']
+    n, b = np.asarray(lay['normal'], float), float(lay['b_global'])
+    xs, ys, zs = (np.linspace(0, m, m * R + 1) for m in (nx, ny, nz))
+    h = xs[1] - xs[0]
+    X, Y, Z = np.meshgrid(xs, ys, zs, indexing='ij')
+    G = np.abs(np.cos(2 * np.pi * X) + np.cos(2 * np.pi * Y) + np.cos(2 * np.pi * Z)) - TAU
+    G = np.maximum(G, n[0] * X + n[1] * Y - b)
+    have = np.zeros((nx, ny, nz), bool)
+    for c in lay['cells']:
+        have[tuple(c['position'])] = True
+    ci = [np.clip(np.floor(A - 1e-12).astype(int), 0, m - 1) for A, m in ((X, nx), (Y, ny), (Z, nz))]
+    cj = [np.clip(np.floor(A + 1e-12).astype(int), 0, m - 1) for A, m in ((X, nx), (Y, ny), (Z, nz))]
+    G = np.where(have[ci[0], ci[1], ci[2]] | have[cj[0], cj[1], cj[2]], G, np.maximum(G, 1.0))
+    v, f = EP.mc(G, h, (0, 0, 0))
+    v = np.clip(v, 0, [nx, ny, nz])
+    v, f = EP.decimate(v, f, target)
+    tri = v[f]
+    on_cut = np.all(np.abs(tri @ n - b) < 2e-3, axis=1)
+    on_box = np.zeros(len(f), bool)
+    for a, hi in enumerate((nx, ny, nz)):
+        for w in (0, hi):
+            on_box |= np.all(np.abs(tri[:, :, a] - w) < 2e-3, axis=1)
+    cen = tri.mean(1)
+    cut_cells = {tuple(c['position']) for c in lay['cells'] if c['kind'] != 'FULL'}
+    kc = np.floor(np.clip(cen, 0, np.array([nx, ny, nz]) - 1e-9)).astype(int)
+    is_cut = np.array([tuple(k) in cut_cells for k in kc])
+    return tri, is_cut, on_box & ~on_cut, on_cut
 
 
-def line_in_rect(n, b, nx, ny):
-    """End points (plot coordinates X = y, Y = x) of the cut line n . x = b inside the plate rectangle."""
-    pts = []
-    for Y in (0.0, float(nx)):
-        X = (b - n[0] * Y) / n[1]
-        if 0 <= X <= ny:
-            pts.append((X, Y))
-    for X in (0.0, float(ny)):
-        Y = (b - n[1] * X) / n[0]
-        if 0 < Y < nx:
-            pts.append((X, Y))
-    return pts[:2]
+def arrow2d(ax, p0, p1, zorder=30, **kw):
+    M = ax.get_proj()
+    x0, y0, _ = proj3d.proj_transform(*p0, M); x1, y1, _ = proj3d.proj_transform(*p1, M)
+    ax.annotate('', (x1, y1), (x0, y0), xycoords='data', annotation_clip=False, zorder=zorder,
+                arrowprops=dict(arrowstyle='-|>', shrinkA=0, shrinkB=0, **kw))
 
 
-def render(lay):
-    """RGBA plan image (rows = x, columns = y) of the plate walls seen from +z."""
-    nx, ny, _ = lay['shape']
-    n = np.asarray(lay['normal'], float); b = float(lay['b_global'])
-    kind = {(c['position'][0], c['position'][1]): c['kind'] for c in lay['cells']}
-    gx = (np.arange(nx * RES) + .5) / RES
-    gy = (np.arange(ny * RES) + .5) / RES
-    z = (np.arange(NZ) + .5) / NZ
-    X, Y = np.meshgrid(gx, gy, indexing='ij')
-    cxy = np.cos(2 * np.pi * X) + np.cos(2 * np.pi * Y)
-    phi = cxy[..., None] + np.cos(2 * np.pi * z)[None, None, :]
-    mat = np.abs(phi) <= TAU
-    keep = (n[0] * X + n[1] * Y <= b)
-    ci, cj = np.floor(X).astype(int), np.floor(Y).astype(int)
-    present = np.zeros_like(keep)
-    cutk = np.zeros_like(keep)
-    for (i, j), k in kind.items():
-        m = (ci == i) & (cj == j)
-        present |= m
-        if k != 'FULL':
-            cutk |= m
-    mat &= (keep & present)[..., None]
-    has = mat.any(-1)
-    top = np.where(has, (NZ - 1 - np.argmax(mat[..., ::-1], axis=-1)) / (NZ - 1), 0.0)
-    gyh, gxh = np.gradient(top)                                      # hill shading from the height map
-    light = np.clip(.78 + 2.2 * (-.55 * gxh - .35 * gyh), .45, 1.12)
-    shade = (.62 + .38 * top) * light
-    rgb = np.ones(top.shape + (3,))
-    base = np.where(cutk[..., None], hex2rgb(CUTC), hex2rgb(UNCUT))
-    cap = np.where(cutk[..., None], hex2rgb(CUTC_CAP), hex2rgb(UNCUT_CAP))
-    capm = has & (top >= 1 - 1e-9)
-    col = np.clip(base * shade[..., None], 0, 1)
-    col[capm] = cap[capm]
-    rgb[has] = col[has]
-    alpha = has.astype(float)
-    return np.dstack([rgb, alpha]), nx, ny, n, b
+def text2d(ax, p, s, **kw):
+    M = ax.get_proj()
+    x, y, _ = proj3d.proj_transform(*p, M)
+    ax.annotate(s, (x, y), xycoords='data', annotation_clip=False, **kw)
 
 
 def draw_plate(ax, name, run, letter):
     lay = json.loads((EV / 'runs' / 'layouts' / f'{name}.json').read_text())
-    img, nx, ny, n, b = render(lay)
+    nx, ny, nz = lay['shape']
+    n, b = np.asarray(lay['normal'], float), float(lay['b_global'])
     ncell = len(lay['cells']); ncut = sum(c['kind'] != 'FULL' for c in lay['cells'])
-    # removed part of the nominal rectangle (pale, dashed outline); plot X = y (long side), plot Y = x (short side)
-    rect = [(0, 0), (ny, 0), (ny, nx), (0, nx)]
-    removed = clip(rect, lambda P: n[1] * P[0] + n[0] * P[1] - b)         # where n . x > b
-    if removed:
-        ax.add_patch(Polygon(removed, closed=True, fc='#F1F3F5', ec='none', zorder=0))
-    ax.add_patch(Rectangle((0, 0), ny, nx, fc='none', ec='#AEB6BF', lw=.6, ls=(0, (3, 2)), zorder=1))
-    ax.imshow(img, extent=(0, ny, 0, nx), origin='lower', interpolation='bilinear', zorder=2)
-    for k in range(1, ny):                                             # faint cell grid
-        ax.plot([k, k], [0, nx], color='#C9D0D7', lw=.25, zorder=1)
-    for k in range(1, nx):
-        ax.plot([0, ny], [k, k], color='#C9D0D7', lw=.25, zorder=1)
-    seg = line_in_rect(n, b, nx, ny)                                   # cut line
-    ax.plot([seg[0][0], seg[1][0]], [seg[0][1], seg[1][1]], color='#8C6A2F', lw=.9, zorder=4)
-    ycut_top = min(ny, (b - n[0] * nx) / n[1])                         # end of the load face (x = nx)
-    # clamped long side x = 0 (bottom), hatched below
-    ax.plot([0, ny], [0, 0], color=FS.TEXT, lw=1.4, zorder=5, solid_capstyle='butt')
-    for t in np.arange(.15, ny, .35):
-        ax.plot([t, t - .22], [0, -.32], color=FS.MUTED, lw=.45, zorder=5)
-    # load face x = nx (top), in-plane traction along +y
-    ax.plot([0, ycut_top], [nx, nx], color=FS.TEXT, lw=1.0, zorder=5)
-    for t in np.linspace(.15, ycut_top - .65, max(2, int(round(ycut_top)))):
-        ax.annotate('', (t + .55, nx + .32), (t, nx + .32), arrowprops=dict(arrowstyle='-|>', color=FS.TEXT, lw=.6,
-                    mutation_scale=5, shrinkA=0, shrinkB=0), zorder=6)
-    ax.set_xlim(-.3, ny + .3); ax.set_ylim(-.6, nx + .9); ax.set_aspect('equal'); ax.axis('off')
+    tri, is_cut, on_box, on_cut = plate_mesh(lay)
+    rgb = np.where(is_cut[:, None], hex2rgb(CUTC), hex2rgb(UNCUT))
+    rgb[on_box] = np.where(is_cut[on_box, None], hex2rgb(CUTC_CAP), hex2rgb(UNCUT_CAP))
+    rgb[on_cut] = hex2rgb(E.SECTION)
+    rgb = E.shade(rgb, tri, amb=.55)
+    E.collection(ax, [(E.to_plot(tri), np.c_[rgb, np.ones(len(tri))])], lw=.03)
+    # clamped long side x = 0 (back): ground hatching on its top edge, pointing away from the plate
+    hs = [[(0, y, 1), (-.45, y - .25, 1)] for y in np.linspace(.15, ny - .05, 3 * ny)]
+    E.lines(ax, hs, colors=FS.MUTED, linewidths=.45)
+    E.lines(ax, [[(0, 0, 1), (0, ny, 1)]], colors=FS.TEXT, linewidths=1.0)
+    E.setup(ax, (-.6, -.2, -.2), (nx + .9, ny + .2, nz + .2), elev=ELEV, azim=AZIM, zoom=ZOOM)
+    # load face x = nx (front), in-plane traction along +y: arrows in front of the face
+    ytop = min(ny, (b - n[0] * nx) / n[1])
+    for y in np.linspace(.2, ytop - .9, max(2, int(round(ytop * .8)))):
+        arrow2d(ax, E.to_plot((nx + .55, y, .5)), E.to_plot((nx + .55, y + .75, .5)), color=FS.TEXT, lw=.7,
+                mutation_scale=5, zorder=30)
+    text2d(ax, E.to_plot((nx + .9, 0, .5)), 'in-plane traction', fontsize=6, color=FS.TEXT, ha='left',
+           va='top', zorder=30)
+    text2d(ax, E.to_plot((-.5, ny * .5, 1)), 'clamped long side', fontsize=6, color=FS.MUTED, ha='center',
+           va='bottom', zorder=30)
     dofs, ret, secs = ST20[ncell]
-    ax.text(-.3, nx + 1.05, f'({letter}) {ncell} cells ({ncut} cut)', fontsize=8, fontweight='bold', color=FS.TEXT,
-            va='bottom', ha='left')
-    ax.text(-.3, -.75, f'{dofs} DOFs, {ret} free retained\n{secs / 60:.1f} min per design iteration', fontsize=6.3,
-            color=FS.MUTED, va='top', ha='left', linespacing=1.25)
+    ax.set_title(f'({letter}) {ncell} cells ({ncut} cut)', loc='left', fontsize=8, fontweight='bold', pad=0, y=1.02)
+    ax.text2D(0.04, 0.15, f'{dofs} DOFs, {ret} retained\n{secs / 60:.1f} min per design iteration',
+              transform=ax.transAxes, fontsize=6.2, color=FS.MUTED, va='top', ha='left', linespacing=1.25)
+    print(f'{name}: {len(tri)} triangles, {is_cut.mean():.2f} on cut cells')
 
 
 def draw_timing(ax):
@@ -159,16 +140,13 @@ def draw_timing(ax):
 
 
 def main():
-    W, H, s = 178.0, 118.0, 4.8                                         # mm; s = mm per cell, the same for all plates
+    W, H = 178.0, 92.0
     fig = plt.figure(figsize=(W * FS.MM, H * FS.MM))
-
-    def plate_axes(x0, y0, nx, ny):                                    # axes in mm, data limits fixed in draw_plate
-        return fig.add_axes([x0 / W, y0 / H, (ny + .6) * s / W, (nx + 1.5) * s / H])
-    draw_plate(plate_axes(1.5, 82.0, 4, 8), *PLATES[0])
-    draw_plate(plate_axes(52.0, 72.5, 6, 12), *PLATES[1])
-    draw_plate(plate_axes(1.5, 10.0, 8, 16), *PLATES[2])
-    draw_plate(plate_axes(84.5, 10.0, 9, 18), *PLATES[3])
-    draw_timing(fig.add_axes([131 / W, 79 / H, 42 / W, 32 / H]))
+    w, h, gap, y0 = 42.5, 38.0, 2.0, 48.0
+    for k, P in enumerate(PLATES):
+        ax = fig.add_axes([(2.0 + k * (w + gap)) / W, y0 / H, w / W, h / H], projection='3d')
+        draw_plate(ax, *P)
+    draw_timing(fig.add_axes([16 / W, 9 / H, 158 / W, 26 / H]))
     if '--preview' in sys.argv:
         fig.savefig(HERE / '_preview_F16.png', dpi=220)
         print('preview written')
