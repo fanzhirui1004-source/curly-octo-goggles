@@ -69,7 +69,7 @@ Combinations without a row were not evaluated. All cells in this table belong to
 
 The cells lie outside checkpoint selection: the five validation geometries with NICE's largest single-cell errors and one randomly chosen evaluable cell per cut-severity group. Entries are maximum relative errors (%), over the six face loads for the compliance and over both cells for the thickness sensitivity. As in Table ST08, the neighbour is exact and the test cell learned. Cell labels are defined in Supplementary Section R1.
 
-| Cell | Selection | Retained volume | x: compliance | x: sensitivity | y: compliance | y: sensitivity |
+| Cell | Selection | Remaining volume | x: compliance | x: sensitivity | y: compliance | y: sensitivity |
 | --- | --- | --- | --- | --- | --- | --- |
 | W1 | largest error, rank 1 | 0.571 | 0.2706 | 1.485 | 0.2220 | 1.312 |
 | W2 | largest error, rank 2 | 0.267 | 0.1982 | 0.815 | 0.1703 | 1.344 |
@@ -132,7 +132,7 @@ Maximum relative errors (%) over the three cut-surface traction directions, for 
 
 Figure S01 and Table ST10 verify the CutFEM reference under refinement of the background grid and under changes of the ghost-penalty coefficient. Table ST10b compares the reference with a body-fitted discretisation on uncut cells. The last paragraph of this note verifies the numerical thickness derivative.
 
-For U1, M1 and M2, the compliance at \(n=32\) differs from the finest level of Figure S01(a) by at most 0.057% and the thickness sensitivity by at most 0.11%. H1 is clamped on \(x=0\) and loaded on \(y=0\), because its retained part has no material on its \(z\)-faces. At \(n=32\) it differs from \(n=48\) by up to 0.99% in compliance, for the load normal to the loaded face, and by 0.97% in sensitivity, but from \(n=64\) by only 0.07% and 0.08%. Between \(n=48\) and \(n=64\) the difference is 1.08%, so H1 does not converge monotonically (Figure S01(d), Table ST10). On U1, M1, M2 and H1, varying the ghost-penalty coefficient between \(10^{-5}\) and \(10^{-3}\) changes the compliance by at most 0.053% and the sensitivities by at most 0.12%. At \(\gamma=10^{-3}\), the penalty energy is \(1.2\times10^{-4}\) to \(5.6\times10^{-4}\) of the total. Refining the volume integration changes both quantities by at most 0.010%.
+For U1, M1 and M2, the compliance at \(n=32\) differs from the finest level of Figure S01(a) by at most 0.057% and the thickness sensitivity by at most 0.11%. H1 is clamped on \(x=0\) and loaded on \(y=0\), because its remaining part has no material on its \(z\)-faces. At \(n=32\) it differs from \(n=48\) by up to 0.99% in compliance, for the load normal to the loaded face, and by 0.97% in sensitivity, but from \(n=64\) by only 0.07% and 0.08%. Between \(n=48\) and \(n=64\) the difference is 1.08%, so H1 does not converge monotonically (Figure S01(d), Table ST10). On U1, M1, M2 and H1, varying the ghost-penalty coefficient between \(10^{-5}\) and \(10^{-3}\) changes the compliance by at most 0.053% and the sensitivities by at most 0.12%. At \(\gamma=10^{-3}\), the penalty energy is \(1.2\times10^{-4}\) to \(5.6\times10^{-4}\) of the total. Refining the volume integration changes both quantities by at most 0.010%.
 
 ### Table ST10. Refinement of the reference to \(n=64\)
 
@@ -173,7 +173,7 @@ f_r=G_r^Tf_g,\qquad U_r=G_r\mathbb K_r^{-1}f_r.
 
 The comparison evaluates the exact condensed stiffness matrices of the cells within this restricted space of cell-face displacements. The interior is therefore exact, and every error comes from the restricted boundary. Two cases are examined: every cell face restricted, as in a lattice built entirely from such substructures, and only the shared interface restricted.
 
-Boundary restriction and the interior correction \(\mathcal W\) act on different displacement spaces. Exact condensation followed by the restriction \(U=G_ry\) solves over a subspace of the space of retained displacements, and nested boundary spaces give a nondecreasing Ritz compliance. The correction keeps every retained DOF fixed and changes the interior displacements of \(u=FBU\). Its ordering holds because the two-grid cycle that defines \(H\) does not increase the energy error (Section 3.4), although two such interior spaces need not be nested. In neither case is a norm of the local sensitivity ordered.
+Boundary restriction and the interior correction \(\mathcal W\) act on different displacement spaces. Exact condensation followed by the restriction \(U=G_ry\) solves over a subspace of the space of retained displacements. By the principle of minimum potential energy, the compliance of this restricted solution does not decrease when the boundary space is enlarged to a space that contains it. The correction keeps every retained DOF fixed and changes the interior displacements of \(u=FBU\). Its ordering holds because the two-grid cycle that defines \(H\) does not increase the energy error (Section 3.4), although two such interior spaces need not be nested. In neither case is a norm of the local sensitivity ordered.
 
 ### S2.2. Conditions
 

@@ -32,7 +32,7 @@ Supplementary Notes, Tables and Figures are numbered in the order in which they 
 | RM (Table ST08b) | Moderately cut | fresh_val_2078_d0_v1 |
 | RH (Table ST08b) | Heavily cut | fresh_val_2053_d1_v0 |
 
-In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) that contains the cut angle \(\vartheta\), and v0, v1 and v2 give the heavily, moderately and lightly cut groups, which are defined by the retained volume. In configuration labels such as U1/x, x and y give the neighbour configuration of Figure 9. The deployment geometries use the G1–G4 labels of Table ST13; the table below gives their identifiers in the data archive.
+In the validation-cell identifiers, d0 and d1 give the half of \((0,\pi/4)\) that contains the cut angle \(\vartheta\), and v0, v1 and v2 give the heavily, moderately and lightly cut groups, which are defined by the remaining volume. In configuration labels such as U1/x, x and y give the neighbour configuration of Figure 9. The deployment geometries use the G1–G4 labels of Table ST13; the table below gives their identifiers in the data archive.
 
 | Benchmark label | Cut-severity group | Geometry identifier in the data archive |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ Training settings, common to the variants of Table 2, the Uncorrected continuati
 - Model selection and evaluation use an exponential moving average (EMA) of the network parameters, with decay 0.9997 and zero-initialisation bias correction.
 - Eq. (13): \(10^{-12}\) lower clamp inside the logarithm of the energy term; the sensitivity term has unit weight.
 
-Measured to the last training step, the base network's training took 4.6 h and NICE's continuation 3.5 h on the GPU (Section 5.1). Including all selection evaluations, they took 5.0 h and 4.8 h; peak GPU memory during training was 29.6 GiB. The base network was initialised from parameters obtained in three preceding training stages (7.5 GPU-hours together). The offline cost of NICE, about 60 GPU-hours, comprises these stages, the two runs including their selection evaluations, and the generation of the test-displacement sets and exact sensitivities. This generation covered the 691 geometries of the data split, its 591 training and 100 validation geometries (including the 80 of Table ST02), and took about 42 GPU-hours (Section 5.1).
+The base network was initialised from parameters obtained in three preceding training stages. The data split comprises 691 geometries: 591 training geometries and 100 validation geometries, which include the 80 of Table ST02.
 
 For the base network, the Uncorrected continuation, the Smoothing-trained variant and NICE, checkpoint selection uses the bias-corrected EMA parameters and both the identity orientation (\(v=0\)) and orientation 17 (\(v=17\)), although Table ST03 reports only the identity orientation. A geometry family consists of the geometries of the training-time validation list generated from one thickness field; an independently generated validation cell forms a family of its own. Within a family \(f\) and orientation \(v\), let \(\bar\varepsilon_{fv}\) be the mean energy error averaged over the selection classes and \(\bar e_{s,fv}\) the mean relative sensitivity-vector error over the classes with sensitivity labels. Let \(\varepsilon^{(90)}_{fv}\) be the class average of the 90th percentile of the energy error over the test displacements. Each class statistic is first averaged over the available geometries in that family. The selection score is
 
@@ -83,7 +83,7 @@ Twenty of the 80 validation geometries (6 uncut, 14 cut) belong to the selection
 
 The 80 geometries use independently generated thickness fields, with 20 uniform, 30 affine and 30 mixed trilinear fields. The generator constrains every corner parameter to \([0.17520160,0.69933962]\), the corner span to at most 0.47, and the maximum reference-coordinate gradient norm to at most 0.47. In each block of eight geometries, a uniform-field-equivalent centre volume fraction is drawn by stratified sampling between 0.1 and 0.4; nonuniform affine or trilinear shapes are scaled within these constraints. This centre-density parameter is a sampling coordinate and is not the material fraction after cutting.
 
-Canonical cut normals are \((\cos\vartheta,\sin\vartheta,0)\). The generator draws \(\vartheta\) by stratified sampling over the two halves of \((0,\pi/4)\) and the retained cell-box volume \(v_{\mathcal B}\) over thirds of \((0,1)\). Two of every eight validation fields are uncut and the other six cover the angle–volume combinations. Training and validation are drawn from separate random streams; the present table describes the 80-geometry validation set.
+Canonical cut normals are \((\cos\vartheta,\sin\vartheta,0)\). The generator draws \(\vartheta\) by stratified sampling over the two halves of \((0,\pi/4)\) and the remaining cell-box volume \(v_{\mathcal B}\) over thirds of \((0,1)\). Two of every eight validation fields are uncut and the other six cover the angle–volume combinations. Training and validation are drawn from separate random streams; the present table describes the 80-geometry validation set.
 
 | Cut-severity group | Geometries | Generation interval for \(v_{\mathcal B}\) | Observed \(v_{\mathcal B}\) | Observed corner-parameter range |
 | --- | ---: | --- | --- | --- |

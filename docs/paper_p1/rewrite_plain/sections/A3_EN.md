@@ -77,7 +77,7 @@ z,&|z|\le k_ba_{\max},\\
 \end{cases}
 \]
 
-All variants of Table 2 set \(k_b=0.5\). Each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST15 (Supplementary Note S5) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
+All variants of Table 2 and Supplementary Table ST24 set \(k_b=0.5\). Each \(a_{\max}\) is twice the largest magnitude of its coefficient group recorded in a calibration pass over training geometries, so the map is the identity up to that recorded maximum. Table ST15 (Supplementary Note S5) lists the groups, the initialisation and the parameter count of every block. Positive transfer coefficients apply the corresponding bound to \(\operatorname{softplus}(z)\) and add \(10^{-3}\); convolution coefficients use \(2\operatorname{sigmoid}(z)\).
 
 A bias-free matrix \(W_{\rm out}\in\mathbb R^{32\times3}\) returns the fine features to nodal displacement in the prescribed coordinate order. Reconstruction of the rigid-body motion and restoration of the retained values then give Eq. (9).
 
@@ -105,17 +105,17 @@ The load classes used in training have the following mechanical definitions.
 
 | Class | Construction before rigid removal and energy normalisation |
 |---|---|
-| `force` | Equilibrated nodal loads from smooth plane waves or localised Gaussian patches, with a subset loading the cut boundary. |
-| `force_c` | Consistently integrated, self-equilibrated traction loads on the material cell faces; a subset also loads the cut face. Equilibrium is imposed in traction-quadrature space. |
-| `face` / `face_c` | Equilibrated nodal loads or consistently integrated traction loads on a single cell face. |
+| `force` | Equilibrated nodal point loads from smooth plane waves or localised Gaussian patches, with a subset loading the cut boundary. |
+| `force_c` | Consistently integrated, self-equilibrated traction loads on the material cell faces; a subset also loads the cut surface. Equilibrium is imposed in traction-quadrature space. |
+| `face` / `face_c` | Equilibrated nodal point loads or consistently integrated traction loads on a single cell face. |
 | `support` | Responses with soft spring support on one cell face and equilibrated loads on the other faces. |
-| `support_k` | Consistently integrated loads with springs scaled by the local stiffness diagonal and a logarithmically sampled factor in \([0.3,3]\); the cut face remains unloaded. |
+| `support_k` | Consistently integrated loads with springs scaled by the local stiffness diagonal and a logarithmically sampled factor in \([0.3,3]\); the cut surface remains unloaded. |
 | `macro` | Equal sampling of uniform strain, quadratic, and cubic imposed displacement fields. |
 | `grf` | Multiscale displacement fields spanning 0.5–24 spatial cycles across the reference box. |
 | `glued` | Displacements imposed by a neighbouring cell that shares the interface degrees of freedom and is clamped or supported by springs on its far face; one quarter of the samples load only the neighbour. |
 | `adv` | Test displacements selected by the generalised-energy search described below. |
 
-Glued responses supply test displacements shaped by the neighbouring cell, while the energy and sensitivity labels refer to the operator of the isolated test cell; each test displacement is normalised by Eq. (G.3).
+The class `glued` supplies test displacements shaped by the neighbouring cell, while the energy and sensitivity labels refer to the operator of the isolated test cell; each test displacement is normalised by Eq. (G.3).
 
 ### G.3. Search for difficult test displacements
 

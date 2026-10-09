@@ -124,7 +124,7 @@ def supp_cn():
             '\\begin{document}\n\\begin{center}{\\Large 补充材料}\\\\[4pt]{\\Large\\bfseries ' + B.pandoc(title).strip() + '}\\end{center}\n\n')
     tex += B.pandoc(B.tables(figures(sp))) + '\n\\end{document}\n'
     tex = tex.replace('\\hypertarget', '%\\hypertarget')
-    i = tex.index('表 ST20. 规模演示')
+    i = tex.index('表 ST20. 规模算例')
     s_ = tex.index('\\begin{longtable}', i); e_ = tex.index('\\end{longtable}', s_)
     it = iter((.07, .11, .07, .30, .08, .12, .11, .08))
     tex = tex[:s_] + re.sub(r'\\real\{[0-9.]+\}', lambda m: '\\real{%.3f}' % next(it), tex[s_:e_], count=8) + tex[e_:]

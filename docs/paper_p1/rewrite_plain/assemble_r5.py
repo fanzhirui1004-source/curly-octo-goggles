@@ -3,7 +3,7 @@
 Usage: python3 assemble_r5.py [--write]
 Without --write, the assembled texts go to scratchpad/r5_out/ only; with --write, they replace the files in docs/paper_p1.
 """
-import re, sys, json, collections
+import re, sys, json, collections, subprocess
 from pathlib import Path
 
 P1 = Path('/home/user/curly-octo-goggles/docs/paper_p1')
@@ -20,13 +20,21 @@ def read(p):
     return Path(p).read_text(encoding='utf8')
 
 
+BASE = '52136f8~1'                                   # last commit before the R5 assembly: old files, references
+
+
+def base(name):
+    return subprocess.run(['git', '-C', str(P1), 'show', f'{BASE}:docs/paper_p1/{name}'], capture_output=True, text=True,
+                          check=True).stdout
+
+
 def unit(uid, lang):
     t = read(SEC / f'{uid}_{lang}.md').strip('\n')
     return t
 
 
 def assemble_main(lang):
-    old = read(P1 / f'MANUSCRIPT_{lang}.md').split('\n')
+    old = base(f'MANUSCRIPT_{lang}.md').split('\n')
     refs_head = '## References' if lang == 'EN' else '## 参考文献'
     i = next(k for k, l in enumerate(old) if l.strip() == refs_head)
     body = '\n\n'.join(unit(u, lang) for u in MAIN_UNITS)
@@ -34,7 +42,7 @@ def assemble_main(lang):
 
 
 def splice(fname, chunks, lang):
-    old = read(P1 / f'{fname}_{lang}.md').split('\n')
+    old = base(f'{fname}_{lang}.md').split('\n')
     out, pos = [], 1
     for cid, a, b in chunks:
         assert pos == a, (fname, cid, pos, a)

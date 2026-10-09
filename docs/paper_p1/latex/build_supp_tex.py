@@ -32,7 +32,7 @@ def main():
         it = iter(widths)
         block = re.sub(r'\\real\{[0-9.]+\}', lambda m: '\\real{%.3f}' % next(it), tex[s_:e_], count=len(widths))
         return tex[:s_] + block + tex[e_:]
-    tex = widths_after(tex, 'Table ST20. Scale demonstration.', (.07, .11, .07, .30, .08, .12, .11, .08))
+    tex = widths_after(tex, 'Table ST20. Scale study.', (.07, .11, .07, .30, .08, .12, .11, .08))
 
     def shrink(m):                                                         # wide tables: smaller type (as build_tex)
         cols = m.group(1).count('p{')
