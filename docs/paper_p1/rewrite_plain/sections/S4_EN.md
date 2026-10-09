@@ -28,7 +28,7 @@ Table ST16 lists the settings. The method of moving asymptotes builds one convex
 | GPU memory budget for resident learned substructures (Supplementary Note S4.1) | Case A: all cells resident; plate: cells resident while the allocated GPU memory stays below 22 GiB; scale demonstration: 4 GiB (Table ST20) |
 | Geometry-generation fallback | If generation fails for some cells, the free vertices of those cells are multiplied by \(1+\epsilon\), \(\epsilon=10^{-4},-10^{-4},10^{-3},-10^{-3},3\times10^{-3},-3\times10^{-3}\) in turn (clipped to the bounds), every cell sharing them is regenerated, and the perturbed design is analysed and continued from. Applied four times over all runs (Table ST19a) |
 
-Over every design analysed on the fine scale (all iterations of the runs of Tables ST17 and ST18 and the homogenisation design), the largest corner span is 0.4500, the largest gradient norm 0.4518 and the corner parameters lie in [0.1800, 0.6900], so every analysed cell lay within the training limits.
+The designs analysed on the fine scale are all iterations of the runs of Tables ST17 and ST18 and the homogenisation design. Over these designs, the largest corner span is 0.4500, the largest gradient norm 0.4518 and the corner parameters lie in [0.1800, 0.6900], so every analysed cell lay within the training limits.
 
 ### S6.2. Case A: NICE optimisation, exact twin and exact checks
 

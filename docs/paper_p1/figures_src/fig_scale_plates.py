@@ -17,11 +17,12 @@ from pathlib import Path
 import numpy as np
 from matplotlib.patches import Polygon, Rectangle
 from mpl_toolkits.mplot3d import proj3d
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import figstyle as FS
 import elev3d as E
 import elev_prep_meshes as EP
 plt = FS.plt
-ELEV, AZIM, ZOOM = 34, -118, 1.30                                     # the oblique view of Figure 13
+ELEV, AZIM, ZOOM = 55, -90, 1.25                                      # clamped side nearest, acute corner bottom right
 
 HERE = Path(__file__).resolve().parent
 EV = HERE.parent / 'evidence' / 'opt' / 'scale'                            # layouts of the four plates
@@ -39,6 +40,28 @@ def hex2rgb(h):
     h = h.lstrip('#')
     return np.array([int(h[i:i + 2], 16) for i in (0, 2, 4)]) / 255.0
 
+
+
+def P2(P):
+    """Plot coordinates (X, Y, Z) = (y, x, z): long side to the right, clamped side x = 0 nearest to the viewer. This is
+    the mirror of elev3d.to_plot; the uniform-start plate is symmetric about its mid-plane z = 1/2, so the view equals a
+    view of the plate from below."""
+    P = np.asarray(P, float)
+    return np.stack([P[..., 1], P[..., 0], P[..., 2]], -1)
+
+
+def setup(ax, lo, hi):
+    a, b = np.minimum(P2(lo), P2(hi)), np.maximum(P2(lo), P2(hi))
+    ax.set_xlim(a[0], b[0]); ax.set_ylim(a[1], b[1]); ax.set_zlim(a[2], b[2])
+    ax.set_box_aspect(tuple(b - a), zoom=ZOOM)
+    ax.set_proj_type('ortho'); ax.view_init(elev=ELEV, azim=AZIM)
+    ax.set_axis_off(); ax.patch.set_alpha(0)
+
+
+def lines(ax, segs, **kw):
+    lc = Line3DCollection([P2(np.asarray(x)) for x in segs], **kw)
+    lc.set_clip_on(False)
+    ax.add_collection3d(lc)
 
 
 def plate_mesh(lay, R=12, target=60000):
@@ -96,16 +119,16 @@ def draw_plate(ax, name, run, letter):
     rgb[on_box] = np.where(is_cut[on_box, None], hex2rgb(CUTC_CAP), hex2rgb(UNCUT_CAP))
     rgb[on_cut] = hex2rgb(E.SECTION)
     rgb = E.shade(rgb, tri, amb=.55)
-    E.collection(ax, [(E.to_plot(tri), np.c_[rgb, np.ones(len(tri))])], lw=.03)
-    # clamped long side x = 0 (back): ground hatching on its top edge, pointing away from the plate
-    hs = [[(0, y, 1), (-.45, y - .25, 1)] for y in np.linspace(.15, ny - .05, 3 * ny)]
-    E.lines(ax, hs, colors=FS.MUTED, linewidths=.45)
-    E.lines(ax, [[(0, 0, 1), (0, ny, 1)]], colors=FS.TEXT, linewidths=1.0)
-    E.setup(ax, (-.6, -.2, -.2), (nx + .9, ny + .2, nz + .2), elev=ELEV, azim=AZIM, zoom=ZOOM)
+    E.collection(ax, [(P2(tri), np.c_[rgb, np.ones(len(tri))])], lw=.03)
+    # clamped long side x = 0 (nearest): ground hatching along its lower edge, pointing away from the plate
+    hs = [[(0, y, 0), (-.5, y - .25, 0)] for y in np.linspace(.15, ny - .05, 3 * ny)]
+    lines(ax, hs, colors=FS.MUTED, linewidths=.45)
+    lines(ax, [[(0, 0, 0), (0, ny, 0)]], colors=FS.TEXT, linewidths=1.0)
+    setup(ax, (-.7, -.2, -.2), (nx + .9, ny + .2, nz + .2))
     # load face x = nx (front), in-plane traction along +y: arrows in front of the face
     ytop = min(ny, (b - n[0] * nx) / n[1])
     for y in np.linspace(.2, ytop - .9, max(2, int(round(ytop * .8)))):
-        arrow2d(ax, E.to_plot((nx + .55, y, .5)), E.to_plot((nx + .55, y + .75, .5)), color=FS.TEXT, lw=.7,
+        arrow2d(ax, P2((nx + .55, y, .5)), P2((nx + .55, y + .75, .5)), color=FS.TEXT, lw=.7,
                 mutation_scale=5, zorder=30)
     dofs, ret, secs = ST20[ncell]
     ax.set_title(f'({letter}) {ncell} cells ({ncut} cut)', loc='left', fontsize=8, fontweight='bold', pad=0, y=1.02)
