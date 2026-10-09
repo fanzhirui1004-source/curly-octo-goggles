@@ -22,7 +22,7 @@ import figstyle as FS
 import elev3d as E
 import elev_prep_meshes as EP
 plt = FS.plt
-ELEV, AZIM, ZOOM = 40, -74, 1.25                                      # clamped side nearest, acute corner bottom right
+ELEV, AZIM, ZOOM = 35.264, 30.0, 1.20                                 # first-angle isometric view, turned 15 deg about z
 
 HERE = Path(__file__).resolve().parent
 EV = HERE.parent / 'evidence' / 'opt' / 'scale'                            # layouts of the four plates
@@ -43,11 +43,12 @@ def hex2rgb(h):
 
 
 def P2(P):
-    """Plot coordinates (X, Y, Z) = (y, x, z): long side to the right, clamped side x = 0 nearest to the viewer. This is
-    the mirror of elev3d.to_plot; the uniform-start plate is symmetric about its mid-plane z = 1/2, so the view equals a
-    view of the plate from below."""
+    """Model coordinates (x short side, y long side, z thickness) -> plot coordinates (-z, y, x): the plate is turned by
+    90 degrees about its long clamped edge so that it stands on that edge, clamped side at the bottom and loaded face at
+    the top. Seen from (1, 1, 1), the isometric view of first-angle projection drawings (Z up, X towards the lower left,
+    Y towards the lower right)."""
     P = np.asarray(P, float)
-    return np.stack([P[..., 1], P[..., 0], P[..., 2]], -1)
+    return np.stack([-P[..., 2], P[..., 1], P[..., 0]], axis=-1)
 
 
 def setup(ax, lo, hi):
@@ -118,22 +119,22 @@ def draw_plate(ax, name, run, letter):
     rgb = np.where(is_cut[:, None], hex2rgb(CUTC), hex2rgb(UNCUT))
     rgb[on_box] = np.where(is_cut[on_box, None], hex2rgb(CUTC_CAP), hex2rgb(UNCUT_CAP))
     rgb[on_cut] = hex2rgb(E.SECTION)
-    rgb = E.shade(rgb, tri, amb=.55)
+    rgb = E.shade(rgb, P2(tri), amb=.55)
     E.collection(ax, [(P2(tri), np.c_[rgb, np.ones(len(tri))])], lw=.03)
-    # clamped long side x = 0 (nearest): ground hatching along its lower edge, pointing away from the plate
+    # clamped long side x = 0 (bottom edge after the turn): hatching below it, in the plane of the front face
     hs = [[(0, y, 0), (-.5, y - .25, 0)] for y in np.linspace(.15, ny - .05, 3 * ny)]
     lines(ax, hs, colors=FS.MUTED, linewidths=.45)
     lines(ax, [[(0, 0, 0), (0, ny, 0)]], colors=FS.TEXT, linewidths=1.0)
     setup(ax, (-.7, -.2, -.2), (nx + .9, ny + .2, nz + .2))
-    # load face x = nx (front), in-plane traction along +y: arrows in front of the face
+    # load face x = nx (top after the turn), in-plane traction along +y: arrows above the face
     ytop = min(ny, (b - n[0] * nx) / n[1])
     for y in np.linspace(.2, ytop - .9, max(2, int(round(ytop * .8)))):
         arrow2d(ax, P2((nx + .55, y, .5)), P2((nx + .55, y + .75, .5)), color=FS.TEXT, lw=.7,
                 mutation_scale=5, zorder=30)
     dofs, ret, secs = ST20[ncell]
     ax.set_title(f'({letter}) {ncell} cells ({ncut} cut)', loc='left', fontsize=8, fontweight='bold', pad=0, y=1.02)
-    ax.text2D(0.04, 0.15, f'{dofs} DOFs, {ret} retained\n{secs / 60:.1f} min per design iteration',
-              transform=ax.transAxes, fontsize=6.2, color=FS.MUTED, va='top', ha='left', linespacing=1.25)
+    ax.text2D(0.03, 0.0, f'{dofs} DOFs\n{ret} retained\n{secs / 60:.1f} min per iteration',
+              transform=ax.transAxes, fontsize=6.2, color=FS.MUTED, va='bottom', ha='left', linespacing=1.3)
     print(f'{name}: {len(tri)} triangles, {is_cut.mean():.2f} on cut cells')
 
 
