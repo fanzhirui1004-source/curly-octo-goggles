@@ -11,8 +11,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent / 'advisor_review'
-DATE_EN = sys.argv[1] if len(sys.argv) > 1 else '8 October 2026'
-DATE_CN = '2026 年 10 月 8 日'
+DATE_EN = sys.argv[1] if len(sys.argv) > 1 else '9 October 2026'
+DATE_CN = '2026 年 10 月 9 日'
 JOBS = [('main.tex', 'pdflatex', 'Draft for internal review', DATE_EN, 'P1_NICE_advisor_review_EN.pdf'),
         ('supp.tex', 'pdflatex', 'Supplementary material, draft for internal review', DATE_EN, 'P1_NICE_advisor_review_EN_supplement.pdf'),
         ('main_cn.tex', 'lualatex', '内部审阅稿', DATE_CN, 'P1_NICE_advisor_review_CN.pdf'),
