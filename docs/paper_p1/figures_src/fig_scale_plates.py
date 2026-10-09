@@ -1,10 +1,12 @@
-"""Scale-demonstration figure -> figures/F16_scale_plates.{svg,pdf,png} (oblique 3D views, equal panels; timing below)
-(a-d) Plan views, all at the same scale, of the plates of the scale demonstration (Section 5.10, Table ST20): 24, 51, 88
-      and 110 Schwarz-P cells at the uniform start tau = 0.40, one cell thick, short side : long side 1 : 2, trimmed by a
-      planar cut that scales with the plate. Walls are drawn from the level set of Eq. (1) as seen from above (height-map
-      shading); uncut cells light blue, cut cells dark blue, wall sections on the top face darker. The uncut long side
-      x = min is clamped (hatched); the opposite face x = max, which the cut shortens, carries an in-plane traction of unit
-      resultant along the long side (arrows). The part removed by the cut is drawn pale with a dashed outline.
+"""Scale-demonstration figure -> figures/F16_scale_plates.{svg,pdf,png} (3D views, equal panels; timing below)
+(a-d) The plates of the scale demonstration (Section 5.10, Table ST20), all at the same scale: 24, 51, 88 and 110
+      Schwarz-P cells at the uniform start tau = 0.40, one cell thick, short side : long side 1 : 2, trimmed by a planar
+      cut that scales with the plate. Each plate is turned by 90 degrees about its long clamped side so that it stands
+      on it, and is drawn in the isometric view of first-angle projection drawings, turned by 15 degrees about the
+      vertical. Walls are the level set of Eq. (1) (marching cubes); uncut cells light blue, cut cells dark blue, wall
+      sections on the outer faces darker. The clamped long side x = min is the bottom edge (hatched); the opposite face
+      x = max, which the cut shortens, is the top face and carries an in-plane traction of unit resultant along the long
+      side (arrows).
 (e)   Time per design iteration against the number of cells (mean and range over the timed iterations), with the
       line through the origin at the mean time per cell (the former Figure 15(c), same data and fit).
 Data: evidence/opt/scale/runs/layouts/plateS{24,51,88,110}.json (cell positions, kinds, cut plane),

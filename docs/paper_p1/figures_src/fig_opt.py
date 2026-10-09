@@ -163,7 +163,7 @@ def draw_plate(ax, G, T, FX, note):
     for mk, sel in (('o', ~FX[I, J]), ('s', FX[I, J])):
         ax.scatter(J[sel], I[sel], c=T[I[sel], J[sel]], cmap=CMAP, norm=norm, s=15 if mk == 'o' else 13, marker=mk,
                    edgecolors=FS.TEXT, linewidths=.45, zorder=5, clip_on=False)
-    # clamp along the cut: every cut-band DOF fixed; hatching on the removed side of the cut line
+    # clamp along the cut: every DOF of the cut-plane elements fixed; hatching on the removed side of the cut line
     (x1, y1), (x2, y2) = G['cut']
     ax.plot([x1, x2], [y1, y2], color=FS.TEXT, lw=1.4, zorder=4, solid_capstyle='butt')
     a = np.asarray(G['a']); t_ = np.array([x2 - x1, y2 - y1]); L = np.hypot(*t_); t_ /= L
@@ -171,7 +171,7 @@ def draw_plate(ax, G, T, FX, note):
         p0 = np.array([x1, y1]) + s_ * t_
         p1 = p0 + .2 * a - .14 * t_
         ax.plot([p0[0], p1[0]], [p0[1], p1[1]], color=FS.MUTED, lw=.5, zorder=4)
-    ax.text(W - .15, Hh - .3, 'clamped\ncut band', ha='right', va='top', fontsize=6.5, color=FS.MUTED, zorder=6,
+    ax.text(W - .15, Hh - .3, 'clamped\ncut-plane\nelements', ha='right', va='top', fontsize=6.5, color=FS.MUTED, zorder=6,
             linespacing=1.0)
     # load face: the end face internal y = min (plot X = 0); in-plane traction in internal +x (plot +Y)
     ax.plot([0, 0], [0, Hh], color=FS.TEXT, lw=2.4, zorder=4, solid_capstyle='butt')
@@ -359,15 +359,12 @@ def fig_main():
 
 # ------------------------------------------------------------------------------------------------ Figure 13
 def fig_designs():
-    """Figure 13: (a, b) final NICE design and homogenisation design with the colour bar, (c) scale demonstration."""
-    fig = plt.figure(figsize=(178 * FS.MM, 64 * FS.MM))
-    bot = fig.add_gridspec(2, 3, height_ratios=[1, .06], width_ratios=[1, 1, .78], hspace=.05, wspace=.10, top=.90,
-                           bottom=.15, left=.02, right=.975)
-    axc, _ = draw_fields(fig, bot[0, 0], bot[0, 1], bot[1, 0:2], letters=('a', 'b'))
-    axe = draw_scale(fig, bot[0, 2], letter='c', wide=True)
-    fig.canvas.draw()                                                   # align (c) with the aspect-constrained plates
-    pc, pe = axc.get_position(), axe.get_position()
-    axe.set_position([pe.x0 + .04, pc.y0, pe.width - .07, pc.height])
+    """Figure 15: (a, b) final NICE design and homogenisation design with the colour bar. The scale demonstration,
+    formerly panel (c), is Figure 16 (fig_scale_plates.py)."""
+    fig = plt.figure(figsize=(178 * FS.MM, 62 * FS.MM))
+    bot = fig.add_gridspec(2, 2, height_ratios=[1, .06], hspace=.05, wspace=.10, top=.90, bottom=.15, left=.04,
+                           right=.975)
+    draw_fields(fig, bot[0, 0], bot[0, 1], bot[1, 0:2], letters=('a', 'b'))
     FS.save(fig, 'F14_designs_scale')
 
 
