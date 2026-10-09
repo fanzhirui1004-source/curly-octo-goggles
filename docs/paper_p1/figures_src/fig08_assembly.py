@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from figstyle import MODEL, MUTED, GRID, MM, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
-RUNS = {'C': 'A0_ctrl', 'A2b': 'A2b_tail8', 'B+W': 'B2grid', 'A3': 'A3_2grid'}
+RUNS = {'B+W': 'B2grid', 'A3': 'A3_2grid'}            # main text: base network + correction and NICE (others: supplement)
 CASES = [('2000_full', 'U1'), ('2001_full', 'U2'), ('2003_d1_v1', 'M1'), ('2006_d0_v1', 'M2'), ('2005_d1_v0', 'H1'),
          ('2002_d0_v0', 'H3'), ('2004_d0_v2', 'L1')]
 LOADS = ['T/x', 'T/y', 'T/z', 'N/x', 'N/y', 'N/z']
@@ -55,9 +55,9 @@ def main():
             ax.plot(ce[3:], se[3:], mk, color=col, ms=4.5, mfc='white', mew=.9)             # neighbour-face loads: open
         ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(1e-5, 30); ax.set_ylim(1e-2, 30)
         ax.axhline(3, ls='--', lw=.75, color=MUTED); ax.axvline(3, ls='--', lw=.75, color=MUTED)
-        ax.set_xlabel('Compliance error (%)'); ax.set_ylabel('Target-cell sensitivity error (%)')
+        ax.set_xlabel('Compliance error (%)'); ax.set_ylabel('Test-cell sensitivity error (%)')
         ax.grid(color=GRID, lw=.4); panel(ax, 'cd'[j], f'{lab}: individual face loads')
-    fig.text(.5, .005, 'Filled: target-face loads; open: neighbour-face loads. Dashed lines: 3%.', ha='center', fontsize=6.5, color=MUTED)
+    fig.text(.5, .005, 'Filled: loads on the test cell; open: loads on the neighbour. Dashed lines: 3%.', ha='center', fontsize=6.5, color=MUTED)
     save(fig, 'F05_assembly')
 
 

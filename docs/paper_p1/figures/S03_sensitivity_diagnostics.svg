@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-02T04:43:28.521777</dc:date>
+    <dc:date>2026-10-09T21:18:08.943075</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -1352,7 +1352,7 @@ z
     </g>
    </g>
    <g id="text_57">
-    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="170.477501" y="10.620482" transform="rotate(-0 170.477501 10.620482)">Uncorrected (open / hatched)</text>
+    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="170.477501" y="10.620482" transform="rotate(-0 170.477501 10.620482)">Uncorrected continuation (open / hatched)</text>
    </g>
    <g id="line2d_68">
     <defs>
@@ -1369,11 +1369,11 @@ z
 " style="stroke: #243447"/>
     </defs>
     <g>
-     <use xlink:href="#m743a061b1b" x="297.273204" y="7.995482" style="fill-opacity: 0; stroke: #243447"/>
+     <use xlink:href="#m743a061b1b" x="346.615001" y="7.995482" style="fill-opacity: 0; stroke: #243447"/>
     </g>
    </g>
    <g id="text_58">
-    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="307.398204" y="10.620482" transform="rotate(-0 307.398204 10.620482)">Traction</text>
+    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="356.740001" y="10.620482" transform="rotate(-0 356.740001 10.620482)">Traction</text>
    </g>
    <g id="line2d_69">
     <defs>
@@ -1384,11 +1384,11 @@ z
 " style="stroke: #243447; stroke-linejoin: miter"/>
     </defs>
     <g>
-     <use xlink:href="#m9ebb2a446c" x="353.170469" y="7.995482" style="fill-opacity: 0; stroke: #243447; stroke-linejoin: miter"/>
+     <use xlink:href="#m9ebb2a446c" x="402.512266" y="7.995482" style="fill-opacity: 0; stroke: #243447; stroke-linejoin: miter"/>
     </g>
    </g>
    <g id="text_59">
-    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="363.295469" y="10.620482" transform="rotate(-0 363.295469 10.620482)">Nodal force</text>
+    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="412.637266" y="10.620482" transform="rotate(-0 412.637266 10.620482)">Nodal point load</text>
    </g>
   </g>
   <g id="legend_2">

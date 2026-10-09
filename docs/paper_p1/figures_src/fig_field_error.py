@@ -56,10 +56,10 @@ def main(k=3):
     P, box = z['port_xyz'], z['port_is_box']
     I = z['int_xyz']
     ax.scatter(*I.T, s=.15, c=INTERIOR, alpha=.35, linewidths=0, label='interior (I)', rasterized=True)
-    ax.scatter(*P[box].T, s=.5, c=BOXFACE, linewidths=0, label='retained: box face', rasterized=True)
-    ax.scatter(*P[~box].T, s=.6, c=CUTBAND, marker='s', linewidths=0, alpha=.8, label='retained: cut band', rasterized=True)
+    ax.scatter(*P[box].T, s=.5, c=BOXFACE, linewidths=0, label='retained: cell face', rasterized=True)
+    ax.scatter(*P[~box].T, s=.6, c=CUTBAND, marker='s', linewidths=0, alpha=.8, label='retained: cut-plane elements', rasterized=True)
     handles = [plt.Line2D([], [], ls='none', marker=mk, color=col, ms=4, label=lab) for col, mk, lab in
-               ((INTERIOR, 'o', 'interior (I)'), (BOXFACE, 'o', 'retained: box face'), (CUTBAND, 's', 'retained: cut band'))]
+               ((INTERIOR, 'o', 'interior (I)'), (BOXFACE, 'o', 'retained: cell face'), (CUTBAND, 's', 'retained: cut-plane elements'))]
     ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(.5, -.12), ncol=3, frameon=False, fontsize=6.5,
               handletextpad=.3, columnspacing=1.2, borderaxespad=0)      # below the panel (3D axes draw their labels inside)
     panel(ax, 'a', 'Retained and interior DOFs')

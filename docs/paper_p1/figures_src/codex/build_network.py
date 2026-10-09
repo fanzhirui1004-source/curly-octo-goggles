@@ -132,7 +132,7 @@ def network():
     d.arrow((77,204),(105,208),BLUE,lw=.65)
     d.arrow((116,209),(121,218),BLUE,lw=.65)
     d.tensor(111,237,6,5,'8')
-    d.text(121,237,'slot embedding',7.5,va='center')
+    d.text(121,237,'position embedding',7.5,va='center')
     d.arrow((113,233),(128,230),BLUE)
     d.box(122,216,49,14,'Local heads  →  '+r'$a,b$'+'\nMLP + bounded coefficients',BLUE,8)
     # Multilevel node embeddings supply geometry-only transfer and convolution heads.
@@ -208,7 +208,7 @@ def network():
 
     # (d) Enlarged one-interaction map: slots -> 4 heads -> channel matrices -> slots.
     d.text(106,114,'(d) Local interaction',9.5,weight='bold')
-    d.text(110,106,'27 slots',8,ha='center');d.text(146,106,'4 heads',8,ha='center');d.text(173,106,'nodes',8,ha='center')
+    d.text(110,106,'27 local nodes',8,ha='center');d.text(146,106,'4 heads',8,ha='center');d.text(173,106,'nodes',8,ha='center')
     in_y=[98,90,82,74,66];head_y=[96,87,78,69]
     for yy in in_y:d.dot(110,yy,1.15,BLUE,BLUE+'1C');d.dot(173,yy,1.15,BLUE,BLUE+'1C')
     for h,yy in enumerate(head_y):

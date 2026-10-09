@@ -14,8 +14,8 @@ C = dict(exact='#243447',        # exact / reference / exact condensation (ink)
          extra='#AA4499')        # homogenised model (Figures 12-13 only)
 MODEL = {  # colour, marker, legend label of each of the five variants (Table 2 and the note below it); short internal keys
     'B': (C['base'], 'P', 'Base network'),
-    'C': (C['uncorrected'], 'o', 'Uncorrected'),
-    'B+W': (C['assembly'], '^', 'Base network, corrected'),
+    'C': (C['uncorrected'], 'o', 'Uncorrected continuation'),
+    'B+W': (C['assembly'], '^', 'Base network + correction'),
     'A2b': (C['smoothing'], 'v', 'Smoothing-trained'),
     'A3': (C['corrected'], 's', 'NICE'),
 }

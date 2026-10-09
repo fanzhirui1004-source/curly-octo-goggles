@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-02T04:43:23.709503</dc:date>
+    <dc:date>2026-10-09T21:18:04.068146</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -931,7 +931,7 @@ L 497.480315 158.9255
 " style="fill: none; stroke: #657382; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_30">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="308.30375" y="48.850394" transform="rotate(-0 308.30375 48.850394)">(b) Nodal force: energy</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="308.30375" y="48.850394" transform="rotate(-0 308.30375 48.850394)">(b) Nodal point load: energy</text>
    </g>
   </g>
   <g id="axes_3">
@@ -1557,7 +1557,7 @@ L 497.480315 325.445669
 " style="fill: none; stroke: #657382; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_58">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="308.30375" y="215.370563" transform="rotate(-0 308.30375 215.370563)">(d) Nodal force: sensitivity</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="308.30375" y="215.370563" transform="rotate(-0 308.30375 215.370563)">(d) Nodal point load: sensitivity</text>
    </g>
   </g>
   <g id="legend_1">

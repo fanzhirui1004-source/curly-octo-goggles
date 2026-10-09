@@ -62,8 +62,8 @@ def shared_face(ax, pts):
 
 def shared_label(ax, xy, anchor, ha):
     x, y = xy
-    ax.text(x, y, 'shared box face', fontsize=7, color=SHARED, ha=ha, va='bottom', zorder=8)
-    ax.text(x, y + .14, 'coincident box-node\nDOFs shared', fontsize=6, color=MUTED, ha=ha, va='bottom',
+    ax.text(x, y, 'shared cell face', fontsize=7, color=SHARED, ha=ha, va='bottom', zorder=8)
+    ax.text(x, y + .14, 'coincident cell-face\nnode DOFs shared', fontsize=6, color=MUTED, ha=ha, va='bottom',
             linespacing=1.1, zorder=8)
     ax.plot([anchor[0], x if ha == 'left' else x], [anchor[1], y - .02], color=SHARED, lw=.6, zorder=5)
 
@@ -129,7 +129,7 @@ def main():
         ax.set_aspect('equal'); ax.axis('off')
         panel(ax, letter, title)
     fig.text(.5, .0, 'Hatched: clamped face. Light fill: loaded faces, each with separate x-, y- and z-directed '
-             'consistent tractions (arrows). Dashed: shared box face.', ha='center', va='bottom', fontsize=6.5, color=MUTED)
+             'traction loads (arrows). Dashed: shared cell face.', ha='center', va='bottom', fontsize=6.5, color=MUTED)
     save(fig, 'F09_assembly_loads')
 
 

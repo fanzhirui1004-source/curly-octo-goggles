@@ -64,7 +64,7 @@ _CELL_OF = dict(zip(CASES, ["U1", "M1", "H1", "M2", "H2"]))
 CASE_COLOR = {c: CELL[k][0] for c, k in _CELL_OF.items()}
 CASE_MARK = {c: CELL[k][1] for c, k in _CELL_OF.items()}
 SEVERITY = [CASES[0], CASES[1], CASES[3], CASES[2], CASES[4]]  # U1, M1, M2, H1, H2: legend order follows the ramp
-CLASS_LABEL=dict(force="Nodal force",support="Spring support",face="Single-face force",macro="Polynomial",grf="Multiscale",force_c="Traction",face_c="Face traction",support_k="Stiffness support",glued="Neighbour-induced")
+CLASS_LABEL=dict(force="Nodal point load",support="Spring support",face="Single-face force",macro="Polynomial",grf="Multiscale",force_c="Traction",face_c="Face traction",support_k="Stiffness support",glued="Neighbour-induced")
 TABLE_CACHE, TABLE_HASHES, SOURCE_HASHES, BUILD_LOG = {}, {}, {}, {}
 CURRENT, ROWS, BINDINGS = None, {}, []
 
@@ -278,7 +278,7 @@ def f03():
     fig,grid=canvas("Spectral location of extension error", r"$Av=\lambda Dv,\quad D=\mathrm{diag}(A)$  ·  cumulative energy in the lowest modes",2,2,height=154)
     ERR,FLD,KEY=GREY[0],GREY[2],GREY[1]  # base-network error: ink filled; exact field: light grey open; style keys: mid grey
     handles=[Line2D([],[],color=ERR,marker="o",ms=3,lw=1.2,label="Error (filled)"),Line2D([],[],color=FLD,marker="o",mfc="white",ms=3,lw=1.2,label="Exact field (open)"),
-             Line2D([],[],color=KEY,marker="o",lw=1,ms=3,label="Traction"),Line2D([],[],color=KEY,marker="^",ls="--",lw=1,ms=3,label="Nodal force")]
+             Line2D([],[],color=KEY,marker="o",lw=1,ms=3,label="Traction"),Line2D([],[],color=KEY,marker="^",ls="--",lw=1,ms=3,label="Nodal point load")]
     legend(fig,handles,4)
     cases=[CASES[0],CASES[1],CASES[3],CASES[4]]
     for j,case in enumerate(cases):
@@ -387,8 +387,8 @@ def s03b():
 def s04():
     begin("S03_sensitivity_diagnostics")
     fig,grid=canvas("Field-based sensitivity diagnostics", "Matched trace inputs  ·  Base network and Uncorrected  ·  eight-component design response",2,2,height=166,top=.82,bottom=.17,hspace=.59,wspace=.4)
-    hs=[Line2D([],[],c=VAR["base"],marker="o",ls="",ms=4,label="Base network (filled)"),Line2D([],[],c=VAR["uncorrected"],marker="o",mfc="white",ls="",ms=4,label="Uncorrected (open / hatched)"),
-        Line2D([],[],c=GREY[0],marker="o",mfc="none",ls="",ms=4,label="Traction"),Line2D([],[],c=GREY[0],marker="^",mfc="none",ls="",ms=4,label="Nodal force")]
+    hs=[Line2D([],[],c=VAR["base"],marker="o",ls="",ms=4,label="Base network (filled)"),Line2D([],[],c=VAR["uncorrected"],marker="o",mfc="white",ls="",ms=4,label="Uncorrected continuation (open / hatched)"),
+        Line2D([],[],c=GREY[0],marker="o",mfc="none",ls="",ms=4,label="Traction"),Line2D([],[],c=GREY[0],marker="^",mfc="none",ls="",ms=4,label="Nodal point load")]
     legend(fig,hs,4)
     ax=fig.add_subplot(grid[0,0])
     for model,col in [("v2L1",VAR["base"]),("A0_ctrl",VAR["uncorrected"])]:

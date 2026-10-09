@@ -172,7 +172,7 @@ def main():
         draw(ax, verts, faces, is_cut, on_box, ghost)
         ax.text2D(.5, 1.0, f'({"abcd"[i]}) {c}', transform=ax.transAxes, fontweight='bold', fontsize=8, ha='center', va='bottom')
         ax.text2D(.5, -.02, f'remaining box volume {PCT[c]}', transform=ax.transAxes, fontsize=7, ha='center', va='top')
-    fig.legend(handles=[Patch(fc=BAND, ec='none', label='material surface'), Patch(fc=BOXCAP, ec='none', label='wall section on the box faces'),
+    fig.legend(handles=[Patch(fc=BAND, ec='none', label='material surface'), Patch(fc=BOXCAP, ec='none', label='wall section on the cell faces'),
                         Patch(fc=SECTION, ec='none', label='cut-plane section'), Patch(fc=GHOST, ec='none', alpha=.4, label='part removed by the cut')],
                loc='upper center', bbox_to_anchor=(.5, 1.0), ncol=4, frameon=False, fontsize=7, columnspacing=2.0)
     fig.subplots_adjust(left=.0, right=1.0, bottom=.1, top=.84, wspace=.0)

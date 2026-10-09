@@ -77,7 +77,7 @@ def main():
     plate3d(a3, D)
     ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, W); ax.set_ylim(0, H); ax.axis('off')
     ax.text(2.5, 49.0, 'Cut TPMS lattice,\nclamped on its cut', fontsize=8, linespacing=1.1, fontweight='bold', color=FS.TEXT, va='top')
-    ax.text(2.5, 2.5, 'per cell: box-face and cut-band\nDOFs retained, interior condensed', fontsize=6.8,
+    ax.text(2.5, 2.5, 'per cell: cell-face and cut-plane\nDOFs retained, interior condensed', fontsize=6.8,
             color=FS.MUTED, va='bottom', linespacing=1.15)
     # middle: NICE division of tasks (Figure 2(a))
     x0, bw, gap, y, h = 39.0, 14.0, 2.8, 23.0, 12.0

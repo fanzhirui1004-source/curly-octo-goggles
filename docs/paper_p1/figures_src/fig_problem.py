@@ -91,7 +91,7 @@ def panel_a(ax, D):
     # labels
     ax.text(-.62, nx / 2, 'traction on the end face', rotation=90, ha='center', va='center', fontsize=7, color=FS.TEXT)
     mid = (q0 + q1) / 2
-    ax.annotate('clamped cut band\n(support on the cut)', (6.25, 1.42), (7.25, 1.95), fontsize=7,
+    ax.annotate('clamped cut-plane\nelements (support)', (6.25, 1.42), (7.25, 1.95), fontsize=7,
                 bbox=dict(fc='#F1F3F5', ec='none', pad=1.0),
                 color=FS.TEXT, ha='center', va='center', zorder=7,
                 arrowprops=dict(arrowstyle='-', color=FS.MUTED, lw=.5, shrinkA=2, shrinkB=0))
@@ -148,9 +148,9 @@ def main():
     fig.text(.665, .975, '(b) Cut cell next to the support', fontweight='bold', fontsize=8.5, va='top')
     fig.legend(handles=[Patch(fc=UNCUT, ec='none', label='uncut cell (16)'),
                         Patch(fc=CUTC, ec='none', label='cut cell (8)'),
-                        Patch(fc=E.CLAMP, ec='none', label='clamped cut band'),
-                        Line2D([], [], ls='none', marker='o', ms=3, mfc=E.BOXCAP, mec='none', label='retained box-face nodes'),
-                        Line2D([], [], ls='none', marker='o', ms=3, mfc=E.CLAMP, mec='none', label='retained cut-band nodes')],
+                        Patch(fc=E.CLAMP, ec='none', label='clamped cut-plane elements'),
+                        Line2D([], [], ls='none', marker='o', ms=3, mfc=E.BOXCAP, mec='none', label='retained cell-face nodes'),
+                        Line2D([], [], ls='none', marker='o', ms=3, mfc=E.CLAMP, mec='none', label='retained nodes of cut-plane elements')],
                loc='lower center', bbox_to_anchor=(.5, -.01), ncol=5, frameon=False, fontsize=7, columnspacing=1.3,
                handlelength=1.2, handletextpad=.5)
     fig.text(.83, .155, f'{nret:,} of {nall:,} nodes retained;\nthe others are interior (condensed)', ha='center', va='top',

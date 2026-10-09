@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-02T04:43:19.838877</dc:date>
+    <dc:date>2026-10-09T21:18:00.280220</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -1337,7 +1337,7 @@ z
     </g>
    </g>
    <g id="text_52">
-    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="286.161485" y="10.719694" transform="rotate(-0 286.161485 10.719694)">Nodal force</text>
+    <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start" x="286.161485" y="10.719694" transform="rotate(-0 286.161485 10.719694)">Nodal point load</text>
    </g>
   </g>
  </g>

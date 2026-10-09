@@ -143,8 +143,8 @@ def figure_nice(o, fc, fs):
                 ha='right', va='bottom' if key == 'ce' else 'center')
         panel(ax, letter, title)
     axb.set_ylabel('Compliance error (%)')
-    axc.set_ylabel('Target sensitivity error (%)')
-    fig.text((xb + xc + S) / 2 / W, (y0 - 7.) / H, r'Target energy share $w$ (%)', ha='center', va='top', fontsize=8,
+    axc.set_ylabel('Test-cell sensitivity error (%)')
+    fig.text((xb + xc + S) / 2 / W, (y0 - 7.) / H, r'Test-cell energy fraction $w$ (%)', ha='center', va='top', fontsize=8,
              color=TEXT)
     face_cut_legend(fig, 'A3', 1.)
     save(fig, 'F10_energy_share')
@@ -158,8 +158,8 @@ def figure_others(data, fits):
     ELO, EHI, WLO, WHI = 1e-7, 1e2, 3e-3, 200.
     fig = plt.figure(figsize=(W * MM, H * MM))
     rows = [('beta', 'ce', r'$\beta=\sum_m w_m\varepsilon_m$ (%)', 'Compliance error (%)'),
-            ('w', 'ce', r'Target energy share $w$ (%)', 'Compliance error (%)'),
-            ('w', 'se', r'Target energy share $w$ (%)', 'Target sensitivity error (%)')]
+            ('w', 'ce', r'Test-cell energy fraction $w$ (%)', 'Compliance error (%)'),
+            ('w', 'se', r'Test-cell energy fraction $w$ (%)', 'Test-cell sensitivity error (%)')]
     for j, m in enumerate(OTHERS):
         o, _ = data[m]; ex = example(o) if m == 'B' else None
         x = xl + j * (S + gx)

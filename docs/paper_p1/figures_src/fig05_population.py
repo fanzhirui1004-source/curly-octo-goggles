@@ -9,8 +9,7 @@ from figstyle import MODEL, C, MUTED, GRID, MM, panel, save
 
 EV = Path(__file__).resolve().parent.parent / 'evidence'
 # The five variants (colours, markers and legend labels from figstyle.MODEL).
-RUNS = [('B', 'v2L1') + MODEL['B'], ('C', 'A0_ctrl') + MODEL['C'], ('A2b', 'A2b_tail8') + MODEL['A2b'],
-        ('B+W', 'B2grid') + MODEL['B+W'], ('A3', 'A3_2grid') + MODEL['A3']]
+RUNS = [('B', 'v2L1') + MODEL['B'], ('B+W', 'B2grid') + MODEL['B+W'], ('A3', 'A3_2grid') + MODEL['A3']]   # main-text variants
 STRATA = ['FULL', 'light', 'moderate', 'heavy']
 
 
@@ -30,13 +29,13 @@ def main():
         d, col, mk, lab = data[key]
         for j, st in enumerate(STRATA):
             v = np.array([g['0']['force_c'] for c, g in d.items() if c in meta and strat(c) == st and 'force_c' in g['0']]) * 100
-            x = j + (k - (len(keys) - 1) / 2) * .13
+            x = j + (k - (len(keys) - 1) / 2) * .18
             ax.plot(x, v.mean(), mk, color=col, ms=5, label=lab if j == 0 else None)
             ax.plot([x, x], [np.quantile(v, .1), v.max()], color=col, lw=.8, alpha=.7)
     ax.set_yscale('log'); ax.set_xticks(range(4), ['uncut', 'lightly cut', 'moderately cut', 'heavily cut'])
     ax.set_ylabel('Energy error (%)'); ax.grid(axis='y', color=GRID, lw=.4)
     ax.legend(frameon=False, ncol=3, fontsize=6.5, loc='upper left', bbox_to_anchor=(0, -0.12))
-    panel(ax, 'a', 'Consistent tractions, by cut stratum')
+    panel(ax, 'a', 'Traction loads, by cut severity')
     ax = fig.add_subplot(gs[0, 2])
     if 'B' in data and 'A3' in data:
         b, a = data['B'][0], data['A3'][0]
@@ -51,18 +50,18 @@ def main():
         ax.set_xlabel('Base network (%)'); ax.set_ylabel('NICE (%)'); ax.legend(frameon=False, fontsize=6.5, loc='lower right')
         ax.grid(color=GRID, lw=.4)
     panel(ax, 'b', 'Per geometry: base network vs NICE')
-    classes = [('glued', 'neighbour-induced'), ('support_k', 'stiffness-scaled springs'), ('face_c', 'single-face traction'), ('force', 'nodal forces*')]
+    classes = [('glued', 'imposed by a neighbour'), ('support_k', 'stiffness-scaled springs'), ('face_c', 'single-face traction'), ('force', 'nodal point loads*')]
     ax = fig.add_subplot(gs[1, :])
     for k, key in enumerate(keys):
         d, col, mk, lab = data[key]
         for j, (cls, _) in enumerate(classes):
             v = np.array([g['0'][cls] for c, g in d.items() if c in meta and cls in g['0'] and np.isfinite(g['0'][cls])]) * 100
-            x = j + (k - (len(keys) - 1) / 2) * .13
+            x = j + (k - (len(keys) - 1) / 2) * .18
             ax.plot(x, v.mean(), mk, color=col, ms=5)
             ax.plot([x, x], [np.quantile(v, .1), v.max()], color=col, lw=.8, alpha=.7)
     ax.set_yscale('log'); ax.set_xticks(range(len(classes)), [l for _, l in classes]); ax.set_ylabel('Energy error (%)')
     ax.grid(axis='y', color=GRID, lw=.4)
-    panel(ax, 'c', 'Other loading classes, all strata')
+    panel(ax, 'c', 'Other load classes, all cells')
     save(fig, 'F02_validation')
 
 

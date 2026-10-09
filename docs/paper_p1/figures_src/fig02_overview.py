@@ -1,13 +1,12 @@
 """Figure 2 -> figures/F01_method_overview.{svg,pdf,png}: method overview of NICE (neural-initialised condensation with
 equilibrium correction), drawn with matplotlib boxes and arrows in the house style (figstyle), 178 mm wide.
 
-  (a) Condensed operator of one cell: the chain q -> rigid split -> learned extension (trial interior field) -> rigid field
-      added back, q restored on P -> E^ q -> fixed equilibrium correction W (Chebyshev, Q1 coarse solve, Chebyshev at fixed
-      q) -> u^ = F q -> K -> F^T (the transpose of the complete extension) -> S^ q, with the three roles under the
-      blocks (learning: trial field; correction: improvability; variational form: structure), the by-construction
-      properties of the extension (Eq. 14) and the properties of S^ = F^T K F (Sections 4.1, 3.1, 4.4).
-  (b) Assembly and design: cell operators -> assembled K^ -> global solve -> field recovery -> compliance and field-based
-      thickness sensitivity, with the design update closing the loop (Section 6.11).
+  (a) Condensed stiffness of one cell: the chain q -> rigid split -> neural network (interior displacements) -> rigid
+      field added back, q restored on P -> E^ q -> fixed two-grid correction W (Chebyshev, Q1 coarse solve, Chebyshev at
+      fixed q) -> u^ = F q -> K -> F^T -> S^ q, the by-construction properties of the network map (Eq. (9)) and the
+      properties of S^ = F^T K F (Sections 3.1 and 3.4).
+  (b) Assembly and design: cell operators -> assembled K^ -> global solve -> displacement recovery -> compliance and
+      thickness sensitivity, with the design update closing the loop (Section 5.10).
 No data; mathtext only (no LaTeX installation needed).  Usage: python3 fig02_overview.py [--preview]
 """
 from matplotlib.patches import FancyBboxPatch, Rectangle
@@ -69,7 +68,7 @@ def note(y, h, head, col, items):
 
 
 # ------------------------------------------------------------------------------------------------ (a) one cell
-fig.text(3.5 / W, 137.0 / H, '(a) Condensed operator of one cell', fontweight='bold', fontsize=9,
+fig.text(3.5 / W, 137.0 / H, '(a) Condensed stiffness of one cell', fontweight='bold', fontsize=9,
          color=FS.TEXT, va='bottom', ha='left')
 # row 1: the extension E^ (rigid split, learned extension, rigid field restored)
 Y1, H1 = 108.0, 18.0
@@ -79,8 +78,8 @@ arrow(9.0, 14.0, y1)
 bS = box(14.0, Y1 + 2.0, 32.0, H1 - 4.0, [('rigid split', 7.5), (r'$C_Rq\ \,|\,\ \Pi_Pq$', 8.0),
                                           ('rigid part | deformation', 6.8, FS.MUTED)], kind='aux', lw=.6)
 arrow(46.0, 56.0, y1)
-bN = box(56.0, Y1, 52.0, H1, [('learned extension', 8.5, FS.TEXT, 'bold'), (r'$\mathcal{N}_\theta(\eta)\,\Pi_Pq$', 9.0),
-                              ('trial interior field', 7.0), ('geometry-conditioned, linear in $q$', 6.8, FS.MUTED)],
+bN = box(56.0, Y1, 52.0, H1, [('neural network', 8.5, FS.TEXT, 'bold'), (r'$\mathcal{N}_\theta(\eta)\,\Pi_Pq$', 9.0),
+                              ('interior displacements', 7.0), ('geometry as input, linear in $q$', 6.8, FS.MUTED)],
          kind='learn', lw=1.1)
 arrow(108.0, 118.0, y1)
 bR = box(118.0, Y1 + 2.0, 36.0, H1 - 4.0, [('rigid field $+\\,RC_Rq$', 7.5), ('restore $q$ on $P$', 7.5)], kind='aux', lw=.6)
@@ -93,9 +92,8 @@ ax.annotate('', (136.0, Y1 + H1 - 1.95), (136.0, Y1 + H1 - 1.0), arrowprops=dict
             shrinkA=0, shrinkB=0, mutation_scale=5))
 ax.text(82.0, yb + .7, 'rigid coefficients $C_Rq$ and prescribed $q$ bypass the network', ha='center', va='bottom',
         fontsize=6.8, color=FS.MUTED)
-role(bN[0], bN[0] + bN[2], Y1 - 1.4, 'learning: trial field', LEARN)
-note(87.0, 12.5, 'by construction\n(Eq. 14)', LEARN,
-     [(55.0, r'$J_P\widehat{E}=I_p$', 'admissible'),
+note(87.0, 12.5, 'by construction\n(Eq. (9))', LEARN,
+     [(55.0, r'$J_P\widehat{E}=I_p$', '$q$ reproduced on $P$'),
       (91.0, r'$\widehat{E}R_P=R$', 'rigid-body motion reproduced'),
       (127.0, r'$\widehat{E}$ linear in $q$', 'at fixed geometry'),
       (157.0, r'one $\theta$', 'shared by all cells')])
@@ -107,7 +105,7 @@ ax.text(6.5, y2, r'$\widehat{E}q$', ha='center', va='center', fontsize=10)
 arrow(11.0, 16.0, y2)
 xC, wC = 16.0, 72.0
 box(xC, Y2, wC, H2, [], kind='corr', lw=1.1)
-ax.text(xC + wC / 2, Y2 + H2 - 3.2, r'equilibrium correction $\mathcal{W}$', ha='center', va='center', fontsize=8.5,
+ax.text(xC + wC / 2, Y2 + H2 - 3.2, r'two-grid correction $\mathcal{W}$', ha='center', va='center', fontsize=8.5,
         fontweight='bold', zorder=3)
 sub = [('Chebyshev', 19.0), ('$Q_1$ coarse', 19.0), ('Chebyshev', 19.0)]
 gap = 4.0
@@ -126,16 +124,14 @@ ax.text(xC + wC / 2, Y2 + 2.0, 'coefficients set once per geometry', ha='center'
 arrow(88.0, 102.0, y2, label=r'$\hat{u} = Fq$', size=9)
 bK = box(102.0, Y2, 14.0, H2, [('$K$', 10.0)], kind='var', lw=1.1)
 arrow(116.0, 122.0, y2)
-bT = box(122.0, Y2, 32.0, H2, [('$F^{T}$', 10.0), ('transpose of the', 6.8, FS.MUTED), ('complete extension', 6.8, FS.MUTED)],
+bT = box(122.0, Y2, 32.0, H2, [('$F^{T}$', 10.0), ('transpose of $F$', 6.8, FS.MUTED)],
          kind='var', lw=1.1)
 arrow(154.0, 164.0, y2)
 ax.text(170.0, y2, r'$\widehat{S}q$', ha='center', va='center', fontsize=10)
-role(xC, xC + wC, Y2 - 1.4, 'correction: improvability', CORR)
-role(bK[0], bT[0] + bT[2], Y2 - 1.4, 'variational form: structure', VAR)
-note(35.0, 12.5, 'condensed\noperator', VAR,
-     [(55.5, r'$\widehat{S}=F^{T}KF$', r'symmetric, $\succeq0$, rigid-body kernel'),
-      (100.5, r'$\widehat{S}-S=H^{T}AH\succeq0$', 'error quadratic in the field error $H$'),
-      (148.0, r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$', 'exact or shifted coarse solve, spectrum in $(0,b]$')])
+note(35.0, 12.5, 'condensed\nstiffness', VAR,
+     [(55.5, r'$\widehat{S}=F^{T}KF$', r'symmetric, $\succeq0$, rigid-body null space'),
+      (97.0, r'$\widehat{S}-S=H^{T}AH\succeq0$', 'error quadratic in $H$'),
+      (143.0, r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$', 'exact or shifted coarse solve, spectrum in $(0,b]$')])
 ax.plot([170.0, 170.0], [y2 - 3.2, 47.5], color=FS.MUTED, lw=.6, zorder=1)
 ax.plot([170.0], [47.5], marker='o', ms=2.2, color=FS.MUTED, zorder=1)
 
@@ -150,12 +146,12 @@ for k in (2, 1):
 box(6.0, YB, 28.0, HB, [('cells $m$', 7.5, *B), (r'$\widehat{S}_m=F_m^{T}K_mF_m$', 8.0), ('operators of row (a)', 6.8, FS.MUTED)])
 arrow(36.4, 40.5, ymb)
 box(40.5, YB, 35.0, HB, [('assembly', 7.5, *B), (r'$\widehat{\mathbb{K}}=\Sigma_m\,B_m^{T}\,\widehat{S}_m B_m$', 8.0),
-                         ('shared box-face DOFs', 6.8, FS.MUTED)])
+                         ('shared cell-face DOFs', 6.8, FS.MUTED)])
 arrow(75.5, 79.5, ymb)
 box(79.5, YB, 24.0, HB, [('global solve', 7.5, *B), (r'$\widehat{\mathbb{K}}\,\widehat{U}=f_g$', 8.0),
                          ('actions of row (a)', 6.8, FS.MUTED)])
 arrow(103.5, 107.5, ymb)
-box(107.5, YB, 26.0, HB, [('field recovery', 7.5, *B), (r'$\hat{u}_m=F_mB_m\widehat{U}$', 8.0), ('every cell', 6.8, FS.MUTED)])
+box(107.5, YB, 26.0, HB, [('recovery', 7.5, *B), (r'$\hat{u}_m=F_mB_m\widehat{U}$', 8.0), ('every cell', 6.8, FS.MUTED)])
 arrow(133.5, 137.5, ymb)
 box(137.5, YB, 36.5, HB, [('compliance', 7.5, *B), (r'$\widehat{C}=f_g^{T}\widehat{U}$', 8.0), ('thickness sensitivity', 7.5, *B),
                           (r'$\tilde{s}_c=-\hat{u}_m^{T}K_{,c}\,\hat{u}_m$', 8.0)], pitch=1.42)

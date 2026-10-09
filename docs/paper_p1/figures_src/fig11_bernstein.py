@@ -29,7 +29,7 @@ print('compliance 3/6 loads (%)', np.round(comp3, 3).tolist(), np.round(comp6, 3
 print('sensitivity 3/6 loads (%)', np.round(sens3, 3).tolist(), np.round(sens6, 3).tolist())
 
 # restriction scope is a layer-3 category: neutral greys distinguished by line style and marker
-T3 = dict(color=FS.GREY[1], ls='--', marker='o', ms=5, lw=1.2, label='Target face: 3 loads')
+T3 = dict(color=FS.GREY[1], ls='--', marker='o', ms=5, lw=1.2, label='Test-cell faces: 3 loads')
 A6 = dict(color=FS.GREY[0], ls='-', marker='s', ms=5, lw=1.2, label='All faces: 6 loads')
 DOF = dict(color=FS.GREY[0], ls='-', marker='D', ms=4.5, lw=1.2)        # retained DOFs (load-independent)
 

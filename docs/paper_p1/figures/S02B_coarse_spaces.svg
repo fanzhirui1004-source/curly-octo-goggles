@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-02T04:43:25.923599</dc:date>
+    <dc:date>2026-10-09T21:18:06.379741</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -1331,7 +1331,7 @@ L 497.480315 160.562393
 " style="fill: none; stroke: #657382; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_28">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="311.456693" y="54.179528" transform="rotate(-0 311.456693 54.179528)">(b) U1 · Nodal force</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="311.456693" y="54.179528" transform="rotate(-0 311.456693 54.179528)">(b) U1 · Nodal point load</text>
    </g>
   </g>
   <g id="axes_3">
@@ -2571,7 +2571,7 @@ L 497.480315 329.205606
 " style="fill: none; stroke: #657382; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_56">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="311.456693" y="222.822741" transform="rotate(-0 311.456693 222.822741)">(d) M1 · Nodal force</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="311.456693" y="222.822741" transform="rotate(-0 311.456693 222.822741)">(d) M1 · Nodal point load</text>
    </g>
   </g>
   <g id="axes_5">
@@ -3811,7 +3811,7 @@ L 497.480315 497.848819
 " style="fill: none; stroke: #657382; stroke-width: 0.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_84">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="311.456693" y="391.465954" transform="rotate(-0 311.456693 391.465954)">(f) M2 · Nodal force</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start" x="311.456693" y="391.465954" transform="rotate(-0 311.456693 391.465954)">(f) M2 · Nodal point load</text>
    </g>
   </g>
   <g id="legend_1">
