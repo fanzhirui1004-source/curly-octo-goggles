@@ -22,7 +22,7 @@ import figstyle as FS
 import elev3d as E
 import elev_prep_meshes as EP
 plt = FS.plt
-ELEV, AZIM, ZOOM = 55, -90, 1.25                                      # clamped side nearest, acute corner bottom right
+ELEV, AZIM, ZOOM = 40, -74, 1.25                                      # clamped side nearest, acute corner bottom right
 
 HERE = Path(__file__).resolve().parent
 EV = HERE.parent / 'evidence' / 'opt' / 'scale'                            # layouts of the four plates
