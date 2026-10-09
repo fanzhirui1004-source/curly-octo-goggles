@@ -21,7 +21,7 @@ import figstyle as FS
 import elev3d as E
 import elev_prep_meshes as EP
 plt = FS.plt
-ELEV, AZIM, ZOOM = 40, -93, 1.28                                      # oblique view from the loaded side
+ELEV, AZIM, ZOOM = 34, -118, 1.30                                     # the oblique view of Figure 13
 
 HERE = Path(__file__).resolve().parent
 EV = HERE.parent / 'evidence' / 'opt' / 'scale'                            # layouts of the four plates
@@ -107,10 +107,6 @@ def draw_plate(ax, name, run, letter):
     for y in np.linspace(.2, ytop - .9, max(2, int(round(ytop * .8)))):
         arrow2d(ax, E.to_plot((nx + .55, y, .5)), E.to_plot((nx + .55, y + .75, .5)), color=FS.TEXT, lw=.7,
                 mutation_scale=5, zorder=30)
-    text2d(ax, E.to_plot((nx + .9, 0, .5)), 'in-plane traction', fontsize=6, color=FS.TEXT, ha='left',
-           va='top', zorder=30)
-    text2d(ax, E.to_plot((-.5, ny * .5, 1)), 'clamped long side', fontsize=6, color=FS.MUTED, ha='center',
-           va='bottom', zorder=30)
     dofs, ret, secs = ST20[ncell]
     ax.set_title(f'({letter}) {ncell} cells ({ncut} cut)', loc='left', fontsize=8, fontweight='bold', pad=0, y=1.02)
     ax.text2D(0.04, 0.15, f'{dofs} DOFs, {ret} retained\n{secs / 60:.1f} min per design iteration',
