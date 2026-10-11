@@ -2,6 +2,10 @@
 
 ## Working rules (author, 11 October 2026)
 
+- The English text is the one submitted. It must carry everything the Chinese text says; never drop content from the
+  English to meet the 250-word limit. Tighten the English wording first; if that is not enough, agree a cut with the
+  author and make it in both languages.
+- Do not over-disambiguate. Fix real errors, but do not rewrite every clause so that it admits only one reading.
 - The author annotates the Chinese text section by section, starting with the abstract. Each revised passage is shown
   in Chinese and English before it enters the paper.
 - During this revision the PDFs, the advisor set and the Word files are not rebuilt after each change. Edit the unit
@@ -36,10 +40,9 @@
 8. Formal register throughout (no "这样得到的", "只会", "这两点"). EN at most 250 words; numbers as before.
 9. Terminology: the fully resolved model is "细尺度有限元模型" (EN fine-scale), as in multiscale literature; the
    supplement's "细观尺度/细观模型" (S6) were unified to "细尺度/细尺度模型". The homogenised side stays "宏观".
-10. The current abstract is the author's own revision of 11 October, with two insertions to keep the meaning:
-   "该假设" before "在不满足尺度分离……时不再成立" (the assumption fails, not the method) and "上述性质" before
-   "不依赖于网络的训练精度" (the properties, not the error, are independent of the network). "厚度梯度优化" is
-   rendered "graded-thickness optimisation".
+10. The current abstract is the author's own revision of 11 October. Suggested edits kept: "该假设" before
+   "在不满足尺度分离……时不再成立" and "通过两重网格修正减小内部不平衡力". Rejected: inserting "上述性质" before
+   "不依赖于网络的训练精度" (the author: making every clause fully unambiguous reads as machine-written).
 
 ## Introduction (proposal, awaiting the author)
 
