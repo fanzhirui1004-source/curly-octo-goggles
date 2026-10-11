@@ -19,7 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 SEC = HERE / 'sections'
 REPO = HERE.parent.parent.parent
-BASE = 'cdd11e4'                                        # last commit before the R6 revision of the units
+BASE = __import__('os').environ.get('CHECK_BASE', 'cdd11e4')   # baseline commit; override with CHECK_BASE
 
 NUM = re.compile(r'(?<![\w.])[-−]?\d[\d,]*(?:\.\d+)?(?:[eE][-−+]?\d+)?')
 CN_WORDS = ['做法', '有的', '却', '多得多', '反过来', '那部分', '得不偿失', '发展得', '有多', '为何', '什么', '怎么',
