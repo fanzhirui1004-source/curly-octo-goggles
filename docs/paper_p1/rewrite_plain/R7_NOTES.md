@@ -7,6 +7,9 @@
 - During this revision the PDFs, the advisor set and the Word files are not rebuilt after each change. Edit the unit
   files in `sections/`, run `python3 assemble_r5.py --write`, then commit and push at once, so that nothing is lost
   when the container is reset. Rebuild the outputs once, when the author asks.
+- The full texts of the PIML papers (Huang et al. 2023, 2024; Jiang et al. 2026; Guo et al. 2026a, 2026b; Zhang et al.
+  2026) are kept in the private repository `fanzhirui1004-source/piml-papers`. This repository is public, so they are
+  never committed here.
 - The authors are not in the group that developed the learned substructure (PIML) methods. The abstract does not
   comment on the limits of those methods: such a sentence would read as provocative. The neutral comparison in
   Introduction ¶3 and Section 1.1 stays as it is.
