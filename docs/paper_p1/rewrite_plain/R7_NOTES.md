@@ -53,3 +53,42 @@ give their own results only in the "this paper" paragraph and do not expand the 
 2. In ¶2–¶3 (static condensation, learned component models) tighten the wording only.
 3. Merge ¶4–¶6 (method, properties, compliance and sensitivity; about 1,300 Chinese characters) into one paragraph of
    about 500 characters, and leave the details to the contribution list and Sections 3–4, which repeat them now.
+
+## Introduction, second round (author's annotations of 11 October, applied in 36bc53c)
+
+1. ¶1 speaks of graded lattices only; trimming to a part's shape is introduced in ¶2, where the periodic-cell assumption
+   of homogenisation fails. "几何细节" replaced: the analysis must compute the response of every cell accurately, and
+   accuracy calls for resolving the deformation at the cell scale.
+2. ¶3 states the cost of the interior factorisations: interior DOFs several times the retained ones (Figure 1b),
+   a sparse Cholesky factorisation per cell and a dense condensed matrix (4.2 GiB for the median cell, factors of
+   0.60–9.4 GiB for the deployed cells of Section 5.9), repeated for every cell at every iteration; on the lattices
+   of Section 5.9 conventional exact condensation is slower than the direct solve. Open: the author may keep only
+   the comparison with the direct solve and drop the two memory figures.
+3. ¶4: no unmatched "一类模型". First sentence covers elements and substructures; Capuano & Rimoli (2019) and learned
+   substructures are given as two examples. Last sentence: for cut cells, supports and loads act on all nodes of the
+   cut-plane elements, so all their DOFs are retained and a reduced boundary description is unsuitable; the number
+   of retained DOFs is large and varies with the geometry, so one network output per retained DOF is impractical.
+4. ¶5 last sentence: the assembled system is solved by preconditioned conjugate gradients, which need only products
+   of the condensed stiffness with vectors, so neither the recovery map nor the condensed stiffness is formed.
+5. ¶6 starts from the conditions (linear, reproduces retained displacements and rigid-body motions) and then states
+   the properties; "退化为精确静力凝聚" removed ("内部位移精确时二者相同").
+6. ¶7: the statement that compliance accuracy does not ensure sensitivity accuracy is no longer restricted to
+   approximate static condensation used in design; it holds whenever both are computed from an approximate
+   displacement field.
+7. Figure 1 caption: "壁面半透明" → "材料表面以半透明绘出".
+
+## Sections 1.1–7: formal register (applied, commits daa652b to 78d56e2)
+
+- No 前者/后者, 前一项/后一项 or 它; explicit nouns or 其一/其二 instead. Explanatory "，即" asides removed.
+- Chains of short sentences merged with semicolons or colons in Chinese; in English, sentences above about 50 words
+  were split again at the semicolons (the English is the submitted text).
+- Terminology: 二阶小量 for the order of the stiffness error (Section 3.1, Section 4, conclusions); 上界 instead of
+  "在矩阵意义上不小于" in the conclusions; 一阶项 for the sensitivity error; the two terms of Eq. (17) are 线性项 and
+  二次项, as in Section 5.4 and the English "linear" and "quadratic".
+- 壁面, 壁截面, 最厚的壁 and 胞元壁 replaced by 材料表面, 材料截面, 厚度最大的部位 and "全部胞元" (Figures 1, 4 and
+  13, Sections 5.6, 5.10 and 7); 薄壁 kept.
+- The conclusions state the failure of homogenisation as the abstract does (periodic boundary conditions fail without
+  scale separation or when cells are cut).
+- Numbers, links and equations are unchanged except where a merged sentence drops a repeated symbol; every unit was
+  checked with `CHECK_BASE=HEAD python3 check_r6.py Uxx` and the assembler.
+- Reading copies: R7_intro_applied.md (introduction, CN and EN) and R7_body_CN.md (Sections 1.1–7, CN).
