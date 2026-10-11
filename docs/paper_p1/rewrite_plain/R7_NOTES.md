@@ -36,6 +36,10 @@
 8. Formal register throughout (no "这样得到的", "只会", "这两点"). EN at most 250 words; numbers as before.
 9. Terminology: the fully resolved model is "细尺度有限元模型" (EN fine-scale), as in multiscale literature; the
    supplement's "细观尺度/细观模型" (S6) were unified to "细尺度/细尺度模型". The homogenised side stays "宏观".
+10. The current abstract is the author's own revision of 11 October, with two insertions to keep the meaning:
+   "该假设" before "在不满足尺度分离……时不再成立" (the assumption fails, not the method) and "上述性质" before
+   "不依赖于网络的训练精度" (the properties, not the error, are independent of the network). "厚度梯度优化" is
+   rendered "graded-thickness optimisation".
 
 ## Introduction (proposal, awaiting the author)
 
