@@ -19,8 +19,9 @@
 1. Opening: thickness optimisation of cut lattices needs both fine-scale accuracy and a fast analysis at every design
    iteration. Do not open with cut cells carrying supports and loads (in a fine-scale model they are ordinary cells).
 2. Fine-scale models: one short sentence on their cost; no degree-of-freedom count.
-3. Homogenisation: periodic boundary conditions on a unit cell; two parallel reasons for its inaccuracy, lack of scale
-   separation and cells cut by the trimming plane ("在不满足尺度分离或胞元被切割时精度不足").
+3. Homogenisation: periodic boundary conditions on a unit cell; the assumption fails for two parallel reasons, lack of
+   scale separation and cells cut by the trimming plane. Say that the assumption no longer holds, not merely that the
+   accuracy is insufficient ("这一假设在不满足尺度分离或胞元被切割时不再成立").
 4. Static condensation in one sentence: reduces the global system without loss of accuracy, but every interior
    stiffness matrix is refactorised at every design iteration.
 5. "本文提出 NICE 方法以避免上述分解", then one sentence on how it works (all face and cut-plane-element degrees of
