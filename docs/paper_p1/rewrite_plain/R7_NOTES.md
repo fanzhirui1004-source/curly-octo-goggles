@@ -19,8 +19,8 @@
 1. Opening: thickness optimisation of cut lattices needs both fine-scale accuracy and a fast analysis at every design
    iteration. Do not open with cut cells carrying supports and loads (in a fine-scale model they are ordinary cells).
 2. Fine-scale models: one short sentence on their cost; no degree-of-freedom count.
-3. Homogenisation: periodic boundary conditions on a unit cell, inaccurate without scale separation, particularly in
-   cut cells, which are not periodic.
+3. Homogenisation: periodic boundary conditions on a unit cell; two parallel reasons for its inaccuracy, lack of scale
+   separation and cells cut by the trimming plane ("在不满足尺度分离或胞元被切割时精度不足").
 4. Static condensation in one sentence: reduces the global system without loss of accuracy, but every interior
    stiffness matrix is refactorised at every design iteration.
 5. "本文提出 NICE 方法以避免上述分解", then one sentence on how it works (all face and cut-plane-element degrees of
@@ -33,6 +33,8 @@
 7. Sensitivities: their error is of first order in the interior displacement error, so the accuracy of the compliance
    does not ensure that of the sensitivities; both are trained and checked. No "然而" before this sentence.
 8. Formal register throughout (no "这样得到的", "只会", "这两点"). EN at most 250 words; numbers as before.
+9. Terminology: the fully resolved model is "细尺度有限元模型" (EN fine-scale), as in multiscale literature; the
+   supplement's "细观尺度/细观模型" (S6) were unified to "细尺度/细尺度模型". The homogenised side stays "宏观".
 
 ## Introduction (proposal, awaiting the author)
 
