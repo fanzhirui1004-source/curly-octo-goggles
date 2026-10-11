@@ -14,26 +14,25 @@
   comment on the limits of those methods: such a sentence would read as provocative. The neutral comparison in
   Introduction ¶3 and Section 1.1 stays as it is.
 
-## Abstract (committed)
+## Abstract (committed; wording settled with the author)
 
-Decisions taken from the author's annotations of the Chinese abstract:
-
-1. Open with the need: fine-scale accuracy and a fast analysis at every design iteration. Do not open with cut cells
-   carrying supports and loads; in a fine-scale model they are treated like any other cell.
-2. No filler such as "且各胞元的几何互不相同"; write 胞元, not 胞元壁.
-3. Homogenisation: state the periodic boundary conditions assumed on the unit cell, the loss of accuracy without
-   scale separation, and that cut cells are not periodic.
-4. Static condensation in one sentence: it reduces the global system without loss of accuracy, but needs one interior
-   factorisation per cell geometry, and every design iteration changes every geometry. No pairwise "与 A 相比……；
-   与 B 相比……" comparison.
-5. NICE in one sentence, without a "但" contrast: what it saves (no interior factorisation) and how it works (all
-   degrees of freedom on cell faces and in cut-plane elements retained; network with the cell geometry as input; one
-   fixed two-grid cycle; condensed stiffness from the strain energy of the corrected field).
-6. Properties in one sentence ("这一构造保证" / "By construction"). The condition behind them (linear in the
-   retained displacements, reproduces rigid-body motions) stays in the body; the English abstract has no room for it.
-7. Sensitivities: keep "柔度准确并不保证灵敏度准确", led in by "内部位移误差则以一次项进入厚度灵敏度".
-
-English: 250 words. All numbers as before.
+1. Opening: thickness optimisation of cut lattices needs both fine-scale accuracy and a fast analysis at every design
+   iteration. Do not open with cut cells carrying supports and loads (in a fine-scale model they are ordinary cells).
+2. Fine-scale models: one short sentence on their cost; no degree-of-freedom count.
+3. Homogenisation: periodic boundary conditions on a unit cell, inaccurate without scale separation, particularly in
+   cut cells, which are not periodic.
+4. Static condensation in one sentence: reduces the global system without loss of accuracy, but every interior
+   stiffness matrix is refactorised at every design iteration.
+5. "本文提出 NICE 方法以避免上述分解", then one sentence on how it works (all face and cut-plane-element degrees of
+   freedom retained; network with the cell geometry as input; two-grid cycle on the force imbalance; condensed
+   stiffness from the strain energy of the corrected field).
+6. Properties: upper bound on the exact condensed stiffness, error of second order in the interior displacement
+   error, independent of the network accuracy. The conditions (linear in the retained displacements, reproduces them
+   and rigid-body motions) and the guarantee that the correction does not increase the error (Proposition 2) stay in
+   the body: the author found the conditional statement unclear in an abstract.
+7. Sensitivities: their error is of first order in the interior displacement error, so the accuracy of the compliance
+   does not ensure that of the sensitivities; both are trained and checked. No "然而" before this sentence.
+8. Formal register throughout (no "这样得到的", "只会", "这两点"). EN at most 250 words; numbers as before.
 
 ## Introduction (proposal, awaiting the author)
 
