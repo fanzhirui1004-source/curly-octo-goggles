@@ -92,3 +92,33 @@ give their own results only in the "this paper" paragraph and do not expand the 
 - Numbers, links and equations are unchanged except where a merged sentence drops a repeated symbol; every unit was
   checked with `CHECK_BASE=HEAD python3 check_r6.py Uxx` and the assembler.
 - Reading copies: R7_intro_applied.md (introduction, CN and EN) and R7_body_CN.md (Sections 1.1–7, CN).
+
+## Word annotations on the abstract and Section 1 (12 October), applied after discussion
+
+- Abstract: the fine-scale sentence is the author's ("细尺度有限元模型须离散全部胞元，每次设计迭代都需重新组装和求解
+  大规模方程组"); the assumption is the subject of the homogenisation sentence ("所采用的周期性边界条件假设…不再成立");
+  "利用" before the network. The English stays at 250 words by small trims elsewhere, with no content dropped.
+- Introduction ¶2 states the two premises of homogenisation (scale separation; complete, periodic cells) and how each
+  fails, instead of repeating the abstract.
+- ¶3: interior DOFs "约为其 6 倍（按中位数计）" (median ratio 6.25 over the 80 validation geometries, 6.5 for the
+  cell of Figure 1b); times stated as 16–20 min for conventional exact condensation against 14–17 min for the direct
+  solve on the eight-cell lattices. Avoid "甚至…还" and lists of raw numbers.
+- ¶4 ends with what cut cells require (all DOFs of the cut-plane elements retained; size and composition of the
+  retained set change with the geometry). Do not explain why other routes are not taken; say why ours is taken.
+- ¶5: "利用"; "随后保持主自由度位移不变，施加一次……两重网格循环".
+- ¶6 states the network properties directly (no "若…则…"). The guarantee of the correction is explained in words:
+  Chebyshev smoothing is built for an eigenvalue interval of the diagonally scaled interior stiffness matrix and
+  amplifies no error component when the upper end is not below the actual largest eigenvalue; the exact coarse solve
+  is an energy projection. No reference to "命题 2" in the introduction.
+- ¶7: the sentence "这一现象并不限于静力凝聚…" is deleted; "柔度的精度不能保证灵敏度的精度" is folded into the
+  preceding consequence so that "类似现象" has a clear referent.
+- Contributions: (1) retained DOFs: loads and supports act directly on them, and the boundary-reduction error is
+  avoided (Section 5.7); (2) network for varying retained sets, one network for the cuts within the training range,
+  energy properties carry over (the classical property is not claimed as new); (3) correction: what it does, the
+  guarantee under the conditions above, and 6.89% → 0.0965% for the base network.
+- Figure captions (Figures 1–16): only what is shown and how to read it; no reconstruction or rendering details, no
+  definitions or conclusions repeated from the text.
+- Section 1.1 rewritten by research line: condensation and component reduction (with the shared energy property),
+  lattices and unfitted discretisations, learned component models (no evaluation such as "最为系统", no lineage in
+  detail, no item-by-item comparison), solvers and operator learning, and one closing paragraph that positions NICE
+  (the only comparison). Not "与 NICE 最接近的是…": prior work is described in its own terms.
