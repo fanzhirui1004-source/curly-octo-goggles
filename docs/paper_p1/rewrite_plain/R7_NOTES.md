@@ -135,3 +135,30 @@ give their own results only in the "this paper" paragraph and do not expand the 
   elements, ghost faces and retained DOFs; discrete reference solution). The display is unnumbered so that the
   equation numbers of the paper do not change.
 - The Section 2 opening is a one-sentence outline; its former content is in 2.2.
+
+## Section 2: Word annotations on Sections 2.1–2.5 (12 October, second file)
+
+Twenty items were discussed; items 1 and 3–18 are applied (CN and EN), item 2 and the restructuring of 2.4–2.5
+(items 19–20) are pending.
+
+- 2.1: the cell geometry is "defined in" the reference box (not "occupies"); the material domain is introduced with
+  one lead-in sentence (no "共同"). \(\tau(x)\) is the "thickness parameter field" (no "带宽", "band"); "a larger
+  \(\tau\) gives a thicker material layer". The corner values determine \(\tau(x)\) and the material domain
+  uniquely; the continuity of the thickness across shared faces and the coincidence of the material cross-sections
+  on uncut shared faces are stated here (moved from 2.4). Thickness sensitivities are the derivatives of the
+  compliance. The corner numbering \(c=1,\ldots,8\) (used nowhere else) and the sentence on uncut cells are deleted;
+  the cut surface is defined as the material surface created by the cut plane.
+- 2.2: \(Q_2\) is explained as 27-node quadratic Lagrange hexahedral elements; \(h=1/n\) is defined where the ghost
+  penalty uses it; "nonzero volume" replaces "positive measure" (also in A.1); no "strictly". The positive
+  quadrature weights are explained by their role (every quadrature point contributes a positive semidefinite
+  matrix). The closing paragraph no longer lists "three consequences": no remeshing; one grid hierarchy for every
+  geometry, with geometry-dependent template coefficients for the varying sets; the discrete solution is the
+  reference for the errors of NICE, and its own discretisation error is assessed in Section 5.2 and Supplementary
+  Note S1.
+- 2.3: cut-plane elements are defined directly (active elements crossed by the cut plane in which the cut surface
+  has nonzero area); the reason for retaining all their DOFs is stated (the cut plane passes through element
+  interiors, so supports and loads on the cut surface act on retained DOFs only).
+- Terminology elsewhere: "隐式带"/"implicit band" → "材料层"/"material layer" (A.1, Table 1, S1); "带参数"/"band
+  parameter" → "角点厚度参数"/"corner thickness parameter" (Appendix H); "正面积材料片"/"positive-area patch" →
+  element faces that contain material (2.3, A.1, Table 1).
+- New EN sentences above 40 words were split at their semicolons.

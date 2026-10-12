@@ -16,12 +16,12 @@ Each validation geometry is evaluated with the test displacements of the nine lo
 
 | Quantity | Setting |
 |---|---|
-| Reference geometry | Unit box; Schwarz-P-type implicit band with trilinear corner parameters and an optional planar cut |
+| Reference geometry | Unit box; Schwarz-P-type material layer with a trilinearly interpolated thickness parameter field and an optional planar cut |
 | Displacement approximation | Continuous tensor-product \(Q_2\) solid elements on a Cartesian background mesh |
 | Background resolution, validation geometries | \(n=32\) elements per axis; \(65\) Q2 nodes per axis |
 | Isotropic material, validation geometries | Normalised Young's modulus \(E_Y=1\), Poisson's ratio \(\nu=0.3\) |
 | Ghost-penalty coefficient, validation geometries | \(\gamma=10^{-4}\) |
-| Retained DOFs | DOFs of the cell-face nodes of material patches of positive area on the cell faces; all DOFs of the active elements that carry a cut-surface patch of positive area (cut-plane elements) |
+| Retained DOFs | DOFs of the nodes of the element faces on the cell faces that contain material; all DOFs of the cut-plane elements |
 | Standard volume integration | \(4^3\) initial subcells; one local refinement of partially filled subcells; clipped Kuhn tetrahedra with quadrature-rule parameter 4 |
 | Smoothing interval | \([b/30,b]\), with \(b\) equal to 1.05 times a 40-step power-iteration estimate of \(\lambda_{\max}(D^{-1}A)\) (Section 3.3) |
 | Principal coarse space | Trilinear vector functions on a \(17^3\)-vertex grid, restricted to the interior DOFs |

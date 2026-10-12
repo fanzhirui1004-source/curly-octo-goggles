@@ -92,7 +92,7 @@ Canonical cut normals are \((\cos\vartheta,\sin\vartheta,0)\). The generator dra
 | Moderately cut | 20 | \((1/3,2/3)\) | 0.3437–0.6605 | 0.1867–0.6983 |
 | Heavily cut | 20 | \((0,1/3)\) | 0.01326–0.3195 | 0.1768–0.6946 |
 
-The cut volumes refer to the cell box before it is intersected with the TPMS band. No two validation geometries coincide up to a symmetry of the cube. At \(n=32\), the numbers of retained DOFs of the 80 geometries have a median of 23,604 and range from 2,679 to 45,900; the numbers of active DOFs have a median of 221,442 and range from 2,757 to 439,092. The selected spectral and assembly cases are identified in the geometry key of Supplementary Section R1; they are reported as test cases and do not form a random sample for population inference.
+The cut volumes refer to the cell box before it is intersected with the TPMS material layer. No two validation geometries coincide up to a symmetry of the cube. At \(n=32\), the numbers of retained DOFs of the 80 geometries have a median of 23,604 and range from 2,679 to 45,900; the numbers of active DOFs have a median of 221,442 and range from 2,757 to 439,092. The selected spectral and assembly cases are identified in the geometry key of Supplementary Section R1; they are reported as test cases and do not form a random sample for population inference.
 
 ## Table ST03. Energy error by load class (identity orientation)
 
