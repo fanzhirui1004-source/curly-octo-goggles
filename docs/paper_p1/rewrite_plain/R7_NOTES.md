@@ -122,3 +122,16 @@ give their own results only in the "this paper" paragraph and do not expand the 
   lattices and unfitted discretisations, learned component models (no evaluation such as "最为系统", no lineage in
   detail, no item-by-item comparison), solvers and operator learning, and one closing paragraph that positions NICE
   (the only comparison). Not "与 NICE 最接近的是…": prior work is described in its own terms.
+
+## Section 2: separate subsection on the cut finite element discretisation (author's request, 12 October)
+
+- 2.1 Geometry; 2.2 Cut finite element discretisation (new); 2.3 Retained DOFs and static condensation; 2.4 Assembly,
+  compliance and design problem; 2.5 Assumptions. Every cross-reference to the old 2.2–2.4 in the main text,
+  appendices and supplement was shifted by one; the reference to the discrete reference model in Section 5.2 now
+  points to 2.2.
+- 2.2 states the background mesh and active elements, the stiffness as an unnumbered display (elastic form on the
+  material part plus the ghost penalty \(g_h\), moved from Appendix A.1, which now points to 2.2), the role of the
+  ghost penalty for small cuts, the positive-weight quadrature, and three consequences (no remeshing; varying active
+  elements, ghost faces and retained DOFs; discrete reference solution). The display is unnumbered so that the
+  equation numbers of the paper do not change.
+- The Section 2 opening is a one-sentence outline; its former content is in 2.2.
