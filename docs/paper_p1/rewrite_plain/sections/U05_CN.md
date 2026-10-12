@@ -37,7 +37,7 @@ H=\Phi_kC_V\Phi_kH_{\rm net},\qquad
 \tag{12}
 \]
 
-**命题 2（修正的序关系）。** 设网络位移恢复算子 \(\widehat E\) 满足 (A2)，粗求解为精确求解或采用附录 F.1 中带非负平移的粗逆（式 (D.6)），且 \(\|\Phi_k\|_A\le1\)。则在 (A1) 下有 \(S\preceq\widehat S\preceq\widehat S_{\rm net}\)，其中 \(\widehat S_{\rm net}=\widehat E^TK\widehat E\) 为未经修正的凝聚刚度矩阵（附录 D.1）。对于给定几何下固定的任一线性修正，只要其内部误差映射 \(\Theta\) 满足 \(\Theta^TA\Theta\preceq A\)，同一序关系均成立。
+**命题 2（修正的序关系）。** 设网络位移恢复算子 \(\widehat E\) 满足 \(J_P\widehat E=I_p\) 和 \(\widehat ER_P=R\)，粗求解为精确求解或采用附录 F.1 中带非负平移的粗逆（式 (D.6)），且 \(\|\Phi_k\|_A\le1\)。则 \(S\preceq\widehat S\preceq\widehat S_{\rm net}\)，其中 \(\widehat S_{\rm net}=\widehat E^TK\widehat E\) 为未经修正的凝聚刚度矩阵（附录 D.1）。对于给定几何下固定的任一线性修正，只要其内部误差映射 \(\Theta\) 满足 \(\Theta^TA\Theta\preceq A\)，同一序关系均成立。
 
 由命题 2，修正不会增大 \(A\) 能量范数下的误差。装配刚度矩阵继承这一序关系，其逆矩阵的序关系则相反（附录 C），因此修正使装配所得的柔度趋近参考值（附录 D.1）。命题 2 保证序关系，但不保证误差减小的幅度（附录 D），第 5.5 节给出该幅度的测量结果。
 

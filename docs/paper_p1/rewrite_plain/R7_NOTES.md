@@ -174,3 +174,26 @@ Twenty items were discussed and all are applied (CN and EN).
   (discretisation, construction of NICE, construction of the assembly, or assumption), and one sentence lists the
   four genuine assumptions. "Assumption (A1)" etc. became "condition (A1)" (Sections 3.1 and 4, S4); Appendix B.1 is
   "Standing conditions"; Appendix C speaks of the coupling conditions of Section 2.4.
+
+## Section 2.5 dissolved; interior loads in Appendix C.3 (12 October; CN applied, EN pending the author's reading)
+
+- The former 2.5 mixed design goals with the premises of the propositions, listed proven properties, the class of
+  recovery operators and genuine assumptions as one list of "conditions", and needed a commentary on each item. It is
+  removed; every item now stands where it belongs:
+  - the three requirements on the approximate condensed stiffness open Section 3, and the outline of Section 3 says
+    which section meets which requirement;
+  - the properties of \(K\) stay in 2.3, with one sentence on exact versus numerical integration (Appendix A.1,
+    Table ST04);
+  - the support assumption (\(\mathbb K\succ0\)) is stated in 2.4;
+  - the two properties of the recovery operator are stated in 3.1, with the remark that the propositions hold for any
+    linear recovery operator having them and that NICE has them by construction;
+  - the design interval stays in 4.2, pointing to Appendix B.1 ("基本设定").
+- The labels (A1)–(A3) and (D) are gone; Propositions 1–4 state their premises directly.
+- Interior loads, as in the PIML papers (Huang et al. 2024, Guo et al. 2026a: one sentence in the main text, the
+  derivation in an appendix), but without "without loss of generality", because the error relations of Section 4 use
+  this premise: 2.3 says "为叙述简洁，设载荷只作用于主自由度…处理方法见附录 C.3". The new Appendix C.3 gives the exact
+  condensation with interior loads (stiffness unchanged), the NICE variant (energy minimisation over
+  \(Fq+J_I^T\widehat p_I\), right-hand side \(F^T(f-KJ_I^T\widehat p_I)\) by the existing transpose, no factorisation),
+  the identity "load error \(=H^TA(p_I-\widehat p_I)\)" (product of the two interior errors; checked numerically on a
+  random SPD example), the first-order error \(H^Tf_I\) and the missing \(f_I^TA^{-1}f_I\) without the particular
+  solution, and that Section 4 and the examples assume \(f_I=0\). No limitation sentence in 6.3.
