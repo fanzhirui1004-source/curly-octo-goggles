@@ -119,7 +119,7 @@ def check_main(en, cn):
     OLD_EN = ['box face', 'box-face', 'cut band', 'cut-band', 'energy share', 'trial field', 'improvab', 'division of',
               'geometry-conditioned', 'field-based', 'consistent traction', 'work-conjugate', 'nonexpansive', 'latent',
               'slot', 'stratum', 'strata', 'target cell', 'Uncorrected', 'Smoothing-trained', 'extension']
-    OLD_CN = ['胞元边界面', '切割带', '能量份额', '试探场', '可改进性', '分工', '几何条件化', '场基', '一致面力', '功共轭',
+    OLD_CN = ['胞元表面', '切割带', '能量份额', '试探场', '可改进性', '分工', '几何条件化', '场基', '一致面力', '功共轭',
               '非扩张', '潜空间', '槽位', '分层', '目标胞元', '未校正', '平滑训练', '延拓', '保留自由度', '保留位移']
     for w in OLD_EN:
         k = len(re.findall(re.escape(w), body, re.I))

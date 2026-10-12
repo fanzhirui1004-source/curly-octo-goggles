@@ -138,8 +138,7 @@ give their own results only in the "this paper" paragraph and do not expand the 
 
 ## Section 2: Word annotations on Sections 2.1–2.5 (12 October, second file)
 
-Twenty items were discussed; items 1 and 3–18 are applied (CN and EN), item 2 and the restructuring of 2.4–2.5
-(items 19–20) are pending.
+Twenty items were discussed and all are applied (CN and EN).
 
 - 2.1: the cell geometry is "defined in" the reference box (not "occupies"); the material domain is introduced with
   one lead-in sentence (no "共同"). \(\tau(x)\) is the "thickness parameter field" (no "带宽", "band"); "a larger
@@ -162,3 +161,16 @@ Twenty items were discussed; items 1 and 3–18 are applied (CN and EN), item 2 
   parameter" → "角点厚度参数"/"corner thickness parameter" (Appendix H); "正面积材料片"/"positive-area patch" →
   element faces that contain material (2.3, A.1, Table 1).
 - New EN sentences above 40 words were split at their semicolons.
+- Item 2: the six faces of the reference cube are "胞元边界面" in CN (EN unchanged: cell faces), as in the usual
+  "单胞边界" of homogenisation; "胞元表面" was read as the surface of the material. All 65 occurrences were replaced,
+  together with the remaining box-face uses of "表面" (A3, S2, S3, S4, Figure 11 caption). The material part on a
+  boundary face is not given a new name ("边界面上的材料截面"); the cut surface is "切割面". This reverses the R5
+  replacement "胞元边界面 → 胞元表面", which had followed the EN change "box face → cell face"; the assembler check now
+  flags "胞元表面" instead.
+- Items 19–20: 2.4 starts with its main point and Eq. (3); the face-matching argument is in 2.1 and the one-sided-cut
+  rule in Appendix A.1; "assume \(\mathbb K\succ0\)" is stated once, in 2.5. The three requirements moved to 2.5,
+  now "Requirements and standing conditions" ("近似凝聚的要求与前提条件"); the third requirement reads "the effect of
+  the error on compliance and sensitivities must be quantifiable". Each condition states where it comes from
+  (discretisation, construction of NICE, construction of the assembly, or assumption), and one sentence lists the
+  four genuine assumptions. "Assumption (A1)" etc. became "condition (A1)" (Sections 3.1 and 4, S4); Appendix B.1 is
+  "Standing conditions"; Appendix C speaks of the coupling conditions of Section 2.4.
