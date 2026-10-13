@@ -4,10 +4,10 @@ Besides NICE, two further networks continue the training of the base network for
 
 **Table ST24. Training and evaluation settings of the two further continuations.** Columns as in Table 2 of the main text.
 
-| Variant | Network parameters | Training set (geometries) | Correction in training | Correction at evaluation |
+| Variant | Network parameters | Training geometries (set / used) | Correction in training | Correction at evaluation |
 | --- | --- | ---: | --- | --- |
-| Smoothing-trained | Base network continued for 15,000 training steps | 591 | 8 smoothing steps | 8 smoothing steps |
-| Uncorrected continuation | Base network continued for 15,000 training steps | 591 | None | None |
+| Smoothing-trained | Base network continued for 15,000 training steps | 591 / at most 153 | 8 smoothing steps | 8 smoothing steps |
+| Uncorrected continuation | Base network continued for 15,000 training steps | 591 / at most 153 | None | None |
 
 Both continuations use the network architecture of Section 3, with about \(6\times10^5\) trainable parameters (Table ST15). The three continuations, NICE, the Smoothing-trained variant and the Uncorrected continuation, draw from the same set of 591 geometries. This set contains 304 of the 305 training geometries of the base network. The three continuations see the same geometries in the same order, at most 153 of the 591 in their 15,000 training steps (Table ST01).
 

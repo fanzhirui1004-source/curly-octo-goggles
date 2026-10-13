@@ -20,7 +20,7 @@ ghost 面集 \(\mathcal F_g\) 与单位系数的稳定化双线性形式 \(g_h\)
 
 矩的积分方法如下。每个激活背景单元初始划分为 \(4^3\) 个子胞元，部分被材料占据的子胞元再细化一次，各分为 \(2^3\) 个子单元，因而材料边界附近最细子胞元的宽度为 \(h/8\)。细化只作用于部分占据的子胞元，并不对每个激活单元均匀细分。完全被占据的子胞元贡献解析的张量积单项式矩。在最细的部分占据层级上，每个子胞元划分为六个 Kuhn 四面体，并依次由定义材料层和切割平面的三个插值不等式裁剪。裁剪后的四面体采用每个坐标方向四点的锥形 Gauss–Jacobi 乘积积分规则积分（每个四面体 64 个点）。累积的矩再乘以物理 Jacobian \((2n)^{-3}\)。所有求积权重均为正。模板按单项式展开的被积函数为 \(B^T\mathsf CB\)，其中 \(B\) 为应变–位移矩阵，\(\mathsf C\) 为弹性张量。因此，每个数值积分得到的 \(K_e\) 都是半正定矩阵的正组合，对数值矩同样有 \(K\succeq0\)。
 
-几何生成时，只有激活背景单元构成单一面连通集合、且该集合含有胞元边界面主自由度的胞元才被接受。这保证了稳定化离散模型的连通性；在该模型中，仅通过部分填充单元相连的材料借助共享基函数和 ghost 罚项相互耦合。本文使用的全部训练、验证、相邻和点阵胞元均通过了这一检查。在单元积分精确且弹性张量正定的前提下，该检查给出第 2.3 节所述的刚体零空间。设 \(v^TKv=0\)。式 (A.1) 中两项均为半正定，故各自为零。在每个激活单元上，材料部分的体积大于零，因此 \(Q_2\) 场 \(v_h\) 的对称梯度在一个体积大于零的区域上为零。由于 \(\nabla^{\rm s}v_h\) 是多项式，它在整个单元上为零，即 \(v_h\) 在该单元上为刚体运动。两个面相邻的激活单元共享公共面上的九个节点，这些节点不共线，因此二者的刚体运动相同。于是，面连通性使 \(v_h\) 成为一个全局刚体运动。反之，全局刚体场是仿射的，其应变为零，一阶和二阶法向导数的跳跃也为零，因而 ghost 项在其上为零。故 \(\ker K=\operatorname{range}R\)。若采用数值矩，同一结论要求离散单元矩阵保持该零空间。这一点作为假设引入，表 ST04 中的刚体能量比支持该假设。
+几何生成时，只有激活背景单元构成单一面连通集合、且该集合含有胞元边界面主自由度的胞元才被接受。这保证了稳定化离散模型的连通性；在该模型中，仅通过部分填充单元相连的材料借助共享基函数和 ghost 罚项相互耦合。本文使用的全部 Schwarz-P 训练、验证、相邻和点阵胞元均通过了这一检查。该检查给出第 2.3 节所述的刚体零空间，对所用的数值矩成立。设 \(v^TKv=0\)。式 (A.1) 中两项均为半正定，故各自为零。完全被占据的子胞元取解析矩，弹性张量正定，因此 \(Q_2\) 场 \(v_h\) 的对称梯度在这类子胞元上为零；\(\nabla^{\rm s}v_h\) 是多项式，于是在含有该子胞元的整个单元上为零，\(v_h\) 在该单元上为刚体运动。被认证为完全填充的单元的全部子胞元均完全被占据，每个胞元也都含有完全被占据的子胞元。在 ghost 面上，\(Q_2\) 场法向导数的跳跃为切向双二次多项式，三点 Gauss 积分对其平方精确，ghost 项为零时一阶和二阶法向导数的跳跃在整个面上为零；\(v_h\) 跨面连续且沿法向至多为二次，两侧单元上的 \(v_h\) 因而为同一多项式。其余公共面两侧均为认证填充的单元，二者共享面上九个不共线的节点，刚体运动相同。于是，面连通性使 \(v_h\) 成为一个全局刚体运动。反之，全局刚体场是仿射的，其应变以及一阶和二阶法向导数的跳跃均为零，式 (A.1) 两项在其上均为零。故 \(\ker K=\operatorname{range}R\)。
 
 第 5 节的总体统计中，单个几何的能量误差取同一载荷类别下所有评估测试位移的平均值。总体均值对每个可用几何赋予相同权重。
 
@@ -30,31 +30,31 @@ ghost 面集 \(\mathcal F_g\) 与单位系数的稳定化双线性形式 \(g_h\)
 
 在附录 B 和附录 C 中，\(f\equiv f_g\) 表示装配后作用于主自由度的载荷。
 
-对每个胞元，\(K=K^T\succeq0\)，主自由度集与内部自由度集 \(P,I\) 固定，且 \(A=K_{II}\succ0\)。精确位移恢复 \(E\) 由 \(E_P=I_p\) 和 \(E_I=-A^{-1}K_{IP}\) 定义。线性位移恢复算子 \(F\) 满足 \(F_P=I_p\)。令 \(H=F_I-E_I\)，则 \(F=E+J_I^TH\)、\(S=E^TKE\)、\(\widehat S=F^TKF\)。所有转置均针对包含修正在内的完整位移恢复算子。内部体载荷为零（内部载荷见附录 C.3）；等价地，载荷泛函只依赖于主自由度。按一致积分施加的边界载荷，在边界虚功非零的自由度均为主自由度时具有这一性质。
+对每个胞元，\(K=K^T\succeq0\)，主自由度集与内部自由度集 \(P,I\) 固定，且 \(A=K_{II}\succ0\)。精确位移恢复 \(\Psi\) 由 \(\Psi_P=I_p\) 和 \(\Psi_I=-A^{-1}K_{IP}\) 定义。线性位移恢复算子 \(\widehat\Psi\) 满足 \(\widehat\Psi_P=I_p\)。令 \(H=\widehat\Psi_I-\Psi_I\)，则 \(\widehat\Psi=\Psi+J_I^TH\)、\(S=\Psi^TK\Psi\)、\(\widehat S=\widehat\Psi^TK\widehat\Psi\)。所有转置均针对包含修正在内的完整位移恢复算子。内部体载荷为零（内部载荷见附录 C.3）；等价地，载荷泛函只依赖于主自由度。按一致积分施加的边界载荷，在边界虚功非零的自由度均为主自由度时具有这一性质。
 
-各胞元内部互不相交，胞元间的耦合全部通过主自由度传递，且装配映射 \(B_m\) 包含固定的齐次支撑。带支撑的精确装配刚度矩阵 \(\mathbb K=\sum_m B_m^TS_mB_m\) 正定。参考装配与学习胞元的装配采用相同的局部稳定化矩阵。所施加的全局载荷 \(f\ne0\) 固定。
+各胞元的内部自由度互不相交，ghost 面均位于各胞元内部，胞元间的耦合全部通过主自由度传递，且装配映射 \(B_m\) 包含固定的齐次支撑。带支撑的精确装配刚度矩阵 \(\mathbb K=\sum_m B_m^TS_mB_m\) 正定。参考装配与学习胞元的装配采用相同的局部稳定化矩阵。所施加的全局载荷 \(f\ne0\) 固定。
 
 关于设计的论述还需要一个可微的设计区间，在该区间上以下离散选择保持不变：激活单元；ghost 面集 \(\mathcal F_g\)；主自由度集与内部自由度集 \(P,I\)；装配映射 \(B_m\) 及支撑；载荷；网络的二值节点指示量，以及弱连接区域的单元模板与面模板集合（附录 G.1）；粗列支撑筛选与粗因子平移量 \(\xi\)（附录 F.1）。其中任一项发生变化即为离散模型切换，导数不跨越该切换计算。刚度导数包含所选离散设定中的每一个变化项。在本文报告的灵敏度中，矩的差分改变体刚度，所选的 ghost 矩阵及其系数保持固定。
 
 ### B.2. 变分恒等式、位移恢复算子的转置与刚体零空间（命题 1 的证明）
 
-设选择算子满足 \(J_P^TJ_P+J_I^TJ_I=I_{n_a}\)，并假设式 (2) 中的对称刚度矩阵满足 \(A\succ0\)。对任意满足 \(J_Pv=q\) 的场 \(v\)，存在唯一的 \(w\in\mathbb R^i\) 使得 \(v=Eq+J_I^Tw\)。由于 \(J_IKE=0\)，
+设选择算子满足 \(J_P^TJ_P+J_I^TJ_I=I_{n_a}\)，并假设式 (2) 中的对称刚度矩阵满足 \(A\succ0\)。对任意满足 \(J_Pv=q\) 的场 \(v\)，存在唯一的 \(w\in\mathbb R^i\) 使得 \(v=\Psi q+J_I^Tw\)。由于 \(J_IK\Psi=0\)，
 
 \[
 v^TKv=q^TSq+w^TAw.
 \tag{B.1}
 \]
 
-这证明了 \(Eq\) 的能量最小性与唯一性。对运动容许的线性位移恢复算子 \(F=E+J_I^TH\) 应用同一展开，即得式 (6)。因此，在固定 \(q\) 时，\(Fq\) 的稳定化离散应变能比 \(Eq\) 的高出 \(q^TH^TAHq\) 的一半。文中报告的能量误差采用不含因子二分之一的二次能量。此外，\(r_I=J_IKFq=AHq\)，这证明了式 (7) 中的两个表达式。
+这证明了 \(\Psi q\) 的能量最小性与唯一性。对运动容许的线性位移恢复算子 \(\widehat\Psi=\Psi+J_I^TH\) 应用同一展开，即得式 (6)。因此，在固定 \(q\) 时，\(\widehat\Psi q\) 的稳定化离散应变能比 \(\Psi q\) 的高出 \(q^TH^TAHq\) 的一半。文中报告的能量误差采用不含因子二分之一的二次能量。此外，\(r_I=J_IK\widehat\Psi q=AHq\)，这证明了式 (7) 中的两个表达式。
 
-进一步假设 \(\ker K=\operatorname{range}R\)、\(R_P\) 的秩为六，且 \(FR_P=R\)。与 \(R_Pa\) 对应的精确场为 \(Ra\)，因其在主自由度上取这些位移并满足内部平衡。于是 \(ER_P=R\) 且 \(HR_P=0\)。刚体再现给出 \(\widehat S R_P=F^TKR=0\)。反之，若 \(q^T\widehat S q=0\)，则由半正定性可知 \(Fq\in\ker K\)。记 \(Fq=Ra\)；取其主自由度分量得 \(q=R_Pa\)。因此
+进一步假设 \(\ker K=\operatorname{range}R\)、\(R_P\) 的秩为六，且 \(\widehat\Psi R_P=R\)。与 \(R_Pa\) 对应的精确场为 \(Ra\)，因其在主自由度上取这些位移并满足内部平衡。于是 \(\Psi R_P=R\) 且 \(HR_P=0\)。刚体再现给出 \(\widehat S R_P=\widehat\Psi^TKR=0\)。反之，若 \(q^T\widehat S q=0\)，则由半正定性可知 \(\widehat\Psi q\in\ker K\)。记 \(\widehat\Psi q=Ra\)；取其主自由度分量得 \(q=R_Pa\)。因此
 
 \[
 \ker S=\ker\widehat S=\operatorname{range}R_P.
 \tag{B.2}
 \]
 
-包含关系 \(\ker\widehat S\subseteq\ker S\) 无需上述假设即成立：由 \(\widehat S-S\succeq0\) 与 \(S\succeq0\)，\(q^T\widehat Sq=0\) 蕴含 \(q^TSq=0\)，从而 \(Sq=0\)。因此，近似位移恢复算子不会给凝聚刚度矩阵增加零能模态。主自由度刚体模态之外的零能模态只可能属于离散模型本身。附录 A.1 在其连通性条件下，并假设数值积分的单元矩阵保持刚体零空间，排除了这种模态。对于表 5 的点阵，带支撑的整体点阵系统均可进行 Cholesky 分解，这排除了带支撑装配系统的零能模态。
+包含关系 \(\ker\widehat S\subseteq\ker S\) 无需上述假设即成立：由 \(\widehat S-S\succeq0\) 与 \(S\succeq0\)，\(q^T\widehat Sq=0\) 蕴含 \(q^TSq=0\)，从而 \(Sq=0\)。因此，近似位移恢复算子不会给凝聚刚度矩阵增加零能模态。主自由度刚体模态之外的零能模态只可能属于离散模型本身。附录 A.1 在其连通性条件下排除了这种模态。对于表 5 的点阵，带支撑的整体点阵系统均可进行 Cholesky 分解，这排除了带支撑装配系统的零能模态。
 
 由刚体再现和对称性得
 
@@ -63,7 +63,7 @@ v^TKv=q^TSq+w^TAw.
 \tag{B.3}
 \]
 
-对于式 (9) 中的构造，\(C_RR_P=I_6\) 且 \(\Pi_PR_P=0\)，而线性原始位移映射将零映射为零，因此 \(\widehat ER_P=R\)。由内部残差驱动的修正不改变该场，故 \(FR_P=R\)，式 (B.3) 对修正后的位移恢复算子同样成立。
+对于式 (9) 中的构造，\(C_RR_P=I_6\) 且 \(\Pi_PR_P=0\)，而线性原始位移映射将零映射为零，因此 \(\widehat\Psi_{\rm net}R_P=R\)。由内部残差驱动的修正不改变该场，故 \(\widehat\Psi R_P=R\)，式 (B.3) 对修正后的位移恢复算子同样成立。
 
 设 \(Z\in\mathbb R^{p\times(p-6)}\) 的各列标准正交，张成主自由度刚体模态的正交补空间，并定义 \(S_*=Z^TSZ\succ0\)。该空间上的最大能量误差为
 
@@ -88,39 +88,39 @@ v^TKv=q^TSq+w^TAw.
 若单独使用不平衡离散力的主自由度分块，则为
 
 \[
-(KF)_P=S+K_{PI}H.
+(K\widehat\Psi)_P=S+K_{PI}H.
 \]
 
-附加的变分反力为 \(F_I^T(KF)_I=(E_I+H)^TAH\)。由于 \(E_I^TA=-K_{PI}\)，该反力中的项 \(E_I^TAH\) 与 \(K_{PI}H\) 相互抵消。因此
+附加的变分反力为 \(\widehat\Psi_I^T(K\widehat\Psi)_I=(\Psi_I+H)^TAH\)。由于 \(\Psi_I^TA=-K_{PI}\)，该反力中的项 \(\Psi_I^TAH\) 与 \(K_{PI}H\) 相互抵消。因此
 
 \[
-(KF)_P+F_I^T(KF)_I=S+H^TAH.
+(K\widehat\Psi)_P+\widehat\Psi_I^T(K\widehat\Psi)_I=S+H^TAH.
 \tag{B.6}
 \]
 
-因此，转置 \(F^T\) 既保证互易性，又消除一阶刚度误差。不含该项的主自由度力提取一般具有 \(O(H)\) 量级的误差，且不一定对称。
+因此，转置 \(\widehat\Psi^T\) 既保证互易性，又消除一阶刚度误差。不含该项的主自由度力提取一般具有 \(O(H)\) 量级的误差，且不一定对称。
 
 对任意全局向量，二次误差等于式 (C.1) 中非负局部误差之和。因此 \(\widehat{\mathbb K}\succeq\mathbb K\succ0\)，这证明了即使某些胞元仅为半正定，带支撑的系统仍可求解。
 
 ### B.3. 位移幅值与刚度比
 
-能量误差对幅值相同的位移误差赋予不同的权重。为显式表达这种依赖关系，取 \(q\perp R_P\) 以除去主自由度位移中的刚体分量，令 \(d=Fq-Eq\)，并引入由 \(\mathsf W\succ0\) 诱导的位移范数：
+能量误差对幅值相同的位移误差赋予不同的权重。为显式表达这种依赖关系，取 \(q\perp R_P\) 以除去主自由度位移中的刚体分量，令 \(d=\widehat\Psi q-\Psi q\)，并引入由 \(\mathsf W\succ0\) 诱导的位移范数：
 
 \[
-\delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|Eq\|_{\mathsf W}},\qquad
+\delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|\Psi q\|_{\mathsf W}},\qquad
 \rho_{K,\mathsf W}(v)=\frac{v^TKv}{v^T\mathsf Wv},\qquad
-\kappa_{\mathsf W}(q,d)=\frac{\rho_{K,\mathsf W}(d)}{\rho_{K,\mathsf W}(Eq)}.
+\kappa_{\mathsf W}(q,d)=\frac{\rho_{K,\mathsf W}(d)}{\rho_{K,\mathsf W}(\Psi q)}.
 \tag{B.7}
 \]
 
-对于非零场误差和非零参考能量，记 \(u=Eq\)，消去 \(d^T\mathsf Wd\) 与 \(u^T\mathsf Wu\) 后得
+对于非零场误差和非零参考能量，记 \(u=\Psi q\)，消去 \(d^T\mathsf Wd\) 与 \(u^T\mathsf Wu\) 后得
 
 \[
 \boxed{\varepsilon(q)=\delta_{\mathsf W}(q)^2\kappa_{\mathsf W}(q,d).}
 \tag{B.8}
 \]
 
-第 5.4 节和表 ST04 采用 \(\mathsf W=\operatorname{diag}(0,D)\)，其中 \(D=\operatorname{diag}(K_{II})\)，即 Jacobi 加权的内部范数。该加权仅为半正定。由于 \(d\) 在主自由度上为零，只要 \(d_I\ne0\) 且 \(u_I\ne0\)，该恒等式仍然成立，此时也无需 \(q\perp R_P\) 这一条件。因子 \(\kappa_{\mathsf W}\) 比较误差与平衡响应的刚度含量，它并非矩阵条件数。若误差集中于比加载响应更刚硬的变形，则 \(\kappa_{\mathsf W}\) 较大，此时即使较小的相对位移误差在力学上也不可忽略。
+第 5.4 节和表 ST04 采用 Jacobi 加权的内部范数 \(\mathsf W=\operatorname{diag}(0,D)\)，其中 \(D=\operatorname{diag}(K_{II})\)。该加权仅为半正定。由于 \(d\) 在主自由度上为零，只要 \(d_I\ne0\) 且 \(u_I\ne0\)，该恒等式仍然成立，此时也无需 \(q\perp R_P\) 这一条件。因子 \(\kappa_{\mathsf W}\) 比较误差与平衡响应的刚度含量，并非矩阵条件数。若误差集中于比加载响应更刚硬的变形，则 \(\kappa_{\mathsf W}\) 较大，此时即使较小的相对位移误差在力学上也不可忽略。
 
 \(\kappa_{\mathsf W}\) 的分母度量所选测试位移下的物理响应。光滑则作用于主自由度位移固定时 \(Av=\lambda Dv\) 的谱，因此两种“软”的含义不同。例如，\(A=\operatorname{diag}(\epsilon_0,1)\)（\(0<\epsilon_0\ll1\)）在未缩放时有一个极软的模态，而 \(D^{-1/2}AD^{-1/2}=I\)。累积的 Jacobi 缩放低阶模态误差能量（式 (10)）因而能够识别光滑削减缓慢的分量，但并不决定所测得的 \(\kappa\)。
 
@@ -147,7 +147,7 @@ U^T\mathbb D U=\sum_m\|H_m B_mU\|_{A_m}^2\ge0.
 
 ### C.1. 柔度误差即恢复位移场的误差能量（命题 3 的证明）
 
-令 \(U=\mathbb K^{-1}f\)、\(\widehat U=\widehat{\mathbb K}^{-1}f\)、\(q_m=B_mU\)、\(\widehat q_m=B_m\widehat U\)、\(u_m=E_mq_m\)、\(\widehat u_m=F_m\widehat q_m\)。式 (C.1) 中的矩阵 \(\mathbb D=\widehat{\mathbb K}-\mathbb K\) 等于 \(\sum_m B_m^TH_m^TA_mH_mB_m\)。
+令 \(U=\mathbb K^{-1}f\)、\(\widehat U=\widehat{\mathbb K}^{-1}f\)、\(q_m=B_mU\)、\(\widehat q_m=B_m\widehat U\)、\(u_m=\Psi_mq_m\)、\(\widehat u_m=\widehat\Psi_m\widehat q_m\)。式 (C.1) 中的矩阵 \(\mathbb D=\widehat{\mathbb K}-\mathbb K\) 等于 \(\sum_m B_m^TH_m^TA_mH_mB_m\)。
 
 对于协调的胞元场，采用能量形式 \(a(v,v)=\sum_m v_m^TK_mv_m\)。共享的主自由度按其所属各胞元的能量贡献分别计入。由精确的局部平衡和全局方程得 \(a(u,v)=f^TY\)，其中 \(Y\) 为 \(v\) 在未约束的全局主自由度上的装配位移。在平衡态 \(\widehat{\mathbb K}\widehat U=f\) 处，\(a(\widehat u,\widehat u)=f^T\widehat U=\widehat C\)。因此
 
@@ -158,8 +158,8 @@ U^T\mathbb D U=\sum_m\|H_m B_mU\|_{A_m}^2\ge0.
 \]
 
 第二个等式由
-\(\widehat u_m-u_m=E_m(\widehat q_m-q_m)+J_{I,m}^TH_m\widehat q_m\)
-得到。由于 \(J_{I,m}K_mE_m=0\)，这两项关于 \(K_m\) 正交。因此，柔度的低估量度量的是恢复位移场的总能量误差，主自由度解的误差只占其中一部分。
+\(\widehat u_m-u_m=\Psi_m(\widehat q_m-q_m)+J_{I,m}^TH_m\widehat q_m\)
+得到。由于 \(J_{I,m}K_m\Psi_m=0\)，这两项关于 \(K_m\) 正交。因此，柔度的低估量度量的是恢复位移场的总能量误差，主自由度解的误差只占其中一部分。
 
 定义
 
@@ -175,11 +175,11 @@ U^T\mathbb D U=\sum_m\|H_m B_mU\|_{A_m}^2\ge0.
 \widehat C=\max_Y\{2f^TY-Y^T\widehat{\mathbb K}Y\}.
 \]
 
-由于 \(U^T\widehat{\mathbb K}U=(1+\beta)C\)，对标量寻优得 \(\alpha=(1+\beta)^{-1}\) 且 \(\widehat C\ge C/(1+\beta)\)，即 \((C-\widehat C)/C\le\beta/(1+\beta)\le\beta\)。结合式 (C.2)，即证得式 (15)。该结论针对特定载荷，原因在于 \(w_m\) 与 \(\varepsilon_m\) 在同一组精确装配的主自由度位移处求值。
+由于 \(U^T\widehat{\mathbb K}U=(1+\beta)C\)，对标量寻优得 \(\alpha=(1+\beta)^{-1}\) 且 \(\widehat C\ge C/(1+\beta)\)，故 \((C-\widehat C)/C\le\beta/(1+\beta)\le\beta\)。结合式 (C.2)，即证得式 (15)。该结论针对特定载荷，原因在于 \(w_m\) 与 \(\varepsilon_m\) 在同一组精确装配的主自由度位移处求值。
 
 ### C.2. 装配系统的非精确求解
 
-设 \(\bar U\) 为同一固定变分算子的近似解，\(\rho=f-\widehat{\mathbb K}\bar U\)、\(\bar C=f^T\bar U\)、\(\bar u_m=F_mB_m\bar U\)。精确恒等式变为
+设 \(\bar U\) 为同一固定变分算子的近似解，\(\rho=f-\widehat{\mathbb K}\bar U\)、\(\bar C=f^T\bar U\)、\(\bar u_m=\widehat\Psi_mB_m\bar U\)。精确恒等式变为
 
 \[
 \boxed{C-\bar C
@@ -194,19 +194,18 @@ J(\bar U)=\bar C+\bar U^T\rho\le\widehat C\le C.}
 \(\omega=\bar U^Ty(\bar U)-\sum_m\bar u_m^TK_m\bar u_m\)
 及 \(\rho=f-y(\bar U)\)。此时第一个恒等式增加一项 \(+\omega\)。这将求解残差与施加作用和能量之间的不一致区分开来。递归 Krylov 残差不一定等于该施加作用残差。计算式 (16) 中的各项还需要带符号的残差功和 \(\omega\)。对于两胞元构型和点阵，二者均与对偶范数界 \(|\bar U^T\rho|\le\sqrt{\bar U^T\mathbb K\bar U}\sqrt{\rho^T\mathbb K^{-1}\rho}\le\sqrt{\bar U^Ty(\bar U)-\omega}\,\sqrt{\rho^T\mathbb K^{-1}\rho}\) 一并记录；其中第二个不等式成立是由于 \(\widehat{\mathbb K}\succeq\mathbb K\)（补充说明 S4.3）。
 
-
 ### C.3. 内部载荷
 
 正文假设载荷只作用于主自由度。若内部自由度上作用载荷 \(f_I\)（如体力），精确静力凝聚给出
 
 \[
-Sq=E^Tf=f_P-K_{PI}A^{-1}f_I,\qquad u=Eq+J_I^TA^{-1}f_I .
+Sq=\Psi^Tf=f_P-K_{PI}A^{-1}f_I,\qquad u=\Psi q+J_I^TA^{-1}f_I .
 \]
 
-内部载荷只改变凝聚载荷，并在内部位移中增加 \(A^{-1}f_I\) 一项，凝聚刚度矩阵 \(S\) 不变。对于 NICE，设 \(\widehat p_I\) 为 \(p_I=A^{-1}f_I\) 的近似，例如由第 3.4 节的两重网格循环求解 \(Ap_I=f_I\) 得到。在 \(\widehat u=Fq+J_I^T\widehat p_I\) 上使离散势能最小，得到
+内部载荷只改变凝聚载荷，并在内部位移中增加 \(A^{-1}f_I\) 一项，凝聚刚度矩阵 \(S\) 不变。对于 NICE，设 \(\widehat p_I\) 为 \(p_I=A^{-1}f_I\) 的近似，例如由第 3.4 节的两重网格循环求解 \(Ap_I=f_I\) 得到。在 \(\widehat u=\widehat\Psi q+J_I^T\widehat p_I\) 上使离散势能最小，得到
 
 \[
-\widehat S\,\widehat q=F^T\big(f-KJ_I^T\widehat p_I\big),
+\widehat S\,\widehat q=\widehat\Psi^T\big(f-KJ_I^T\widehat p_I\big),
 \]
 
-其右端可借助第 3.1 节和附录 E 的转置计算，无需分解。由于 \(E^TKJ_I^T=0\)，右端与精确凝聚载荷之差为 \(H^TA(p_I-\widehat p_I)\)，等于位移恢复误差与内部载荷位移误差的乘积；二者之一精确时，凝聚载荷即为精确值。若略去 \(\widehat p_I\)，该差为 \(H^Tf_I\)，是内部误差的一阶项；即使 \(F=E\)，柔度也将少计 \(f_I^TA^{-1}f_I\)。第 4 节的误差关系针对 \(f_I=0\) 推导，本文的算例也只包含作用于主自由度的载荷，上述推广未经数值检验。
+其右端可借助第 3.1 节和附录 E 的转置计算，无需分解。由于 \(\Psi^TKJ_I^T=0\)，右端与精确凝聚载荷之差为 \(H^TA(p_I-\widehat p_I)\)，等于位移恢复误差与内部载荷位移误差的乘积；二者之一精确时，凝聚载荷即为精确值。若略去 \(\widehat p_I\)，该差为 \(H^Tf_I\)，是内部误差的一阶项；即使 \(\widehat\Psi=\Psi\)，柔度也将少计 \(f_I^TA^{-1}f_I\)。第 4 节的误差关系针对 \(f_I=0\) 推导，本文的算例也只包含作用于主自由度的载荷，上述推广未经数值检验。

@@ -9,8 +9,8 @@ p_k(t)=\frac{T_k((a+b-2t)/(b-a))}{T_k((a+b)/(b-a))}.
 
 \[
 d_I^{\rm sm}=p_k(D^{-1}A)d_I,\qquad
-\|d_I^{\rm sm}\|_A^2\le\psi_k^2\|d_I\|_A^2,\qquad
-\psi_k=\max_{\lambda\in\sigma(D^{-1/2}AD^{-1/2})}|p_k(\lambda)|.
+\|d_I^{\rm sm}\|_A^2\le\bar p_k^2\|d_I\|_A^2,\qquad
+\bar p_k=\max_{\lambda\in\sigma(D^{-1/2}AD^{-1/2})}|p_k(\lambda)|.
 \tag{D.2}
 \]
 
@@ -52,7 +52,7 @@ For a full-column-rank coarse basis \(V\), with \(A_c=V^TAV\succ0\), define \(Q_
 \tag{D.5}
 \]
 
-This proves Eq. (11). Applying Eq. (D.2) before and after this projection yields \(\|\Phi_kC_V\Phi_kd\|_A\le\psi_k^2\|d\|_A\). Because \(\psi_k<1\) whenever the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering stated in Section 3.4 (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, the energy contraction factor \(\psi_8^4\) of the cycle is 0.97–0.99. The estimate therefore guarantees little more than that the cycle does not increase the energy error. It uses no approximation property of the coarse space, and the reductions by one to three orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
+This proves Eq. (11). Applying Eq. (D.2) before and after this projection yields \(\|\Phi_kC_V\Phi_kd\|_A\le\bar p_k^2\|d\|_A\). Because \(\bar p_k<1\) whenever \(k\ge1\) and the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering stated in Section 3.4 (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, the energy contraction factor \(\bar p_8^4\) of the cycle is 0.97–0.99. The estimate therefore guarantees little more than that the cycle does not increase the energy error. It uses no approximation property of the coarse space, and the reductions by one to three orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
 
 ### D.1. Corrections, orderings and approximate coarse inverses (proof of Proposition 2)
 
@@ -62,7 +62,7 @@ A linear correction that is fixed for a given geometry acts on \(H\) through \(H
 S\preceq\widehat S_{\rm new}\preceq\widehat S_{\rm old}.
 \]
 
-Thus the exact assembled compliance increases monotonically towards the reference, and the total reconstructed energy error of Eq. (14) decreases; in particular, repeating a fixed cycle cannot increase the energy error. Changing the smoothing degree, or stopping the recurrence of Eq. (D.3) at an intermediate step, changes the polynomial, so the energy error need not decrease monotonically in \(k\). The sensitivity error is not ordered by this matrix inequality. For example, take \(K=I_3\), \(P=\{1\}\), \(u=(1,0,0)^T\) and the positive semidefinite derivative \(K_{,c}=vv^T\), \(v=(1,1,-1)^T\), of the nested family \(K(\tau)=I+\tau vv^T\). Projecting the second component out of the interior error \(d=(0,t,t)^T\) halves its energy from \(2t^2\) to \(t^2\), whereas the sensitivity discrepancy of Eq. (17) changes from zero to \(2t-t^2\) against a reference sensitivity of \(-1\) (0.19 at \(t=0.1\)).
+Thus the exact assembled compliance neither decreases nor exceeds the reference, and the total reconstructed energy error of Eq. (14) does not increase; in particular, repeating a fixed cycle cannot increase the energy error. Changing the smoothing degree, or stopping the recurrence of Eq. (D.3) at an intermediate step, changes the polynomial, so the energy error need not decrease monotonically in \(k\). The sensitivity error is not ordered by this matrix inequality. For example, take \(K=I_3\), \(P=\{1\}\), \(u=(1,0,0)^T\) and the positive semidefinite derivative \(K_{,c}=vv^T\), \(v=(1,1,-1)^T\), of the nested family \(K(\tau)=I+\tau vv^T\). Projecting the second component out of the interior error \(d=(0,t,t)^T\) halves its energy from \(2t^2\) to \(t^2\), whereas the sensitivity discrepancy of Eq. (17) changes from zero to \(2t-t^2\) against a reference sensitivity of \(-1\) (0.19 at \(t=0.1\)).
 
 For a symmetric approximate inverse \(G\) in place of \(A_c^{-1}\) in the coarse-grid correction \(C_V=I-VA_c^{-1}V^TA\) of Eq. (D.5), the energy removed by the correction is
 
@@ -79,7 +79,7 @@ Consequently, \(2G-GA_cG\succeq0\) suffices for the correction not to increase t
 All transposes below use the Euclidean pairing of the stored displacement and nodal-force vectors. Write \(M_I=J_I^TJ_I\). Transposing Eq. (9) gives
 
 \[
-\widehat E^Ty=J_Py+C_R^TR^TM_Iy
+\widehat\Psi_{\rm net}^Ty=J_Py+C_R^TR^TM_Iy
  +\Pi_P^T\mathcal N_\theta(\eta)^TM_Iy.
 \tag{E.1}
 \]
@@ -116,7 +116,7 @@ For the full-field coarse-grid correction,
 A cycle \(\mathcal W=\mathcal T_{\rm post}\mathcal W_c\mathcal T_{\rm pre}\) therefore uses the reverse sequence \(\mathcal W^T=\mathcal T_{\rm pre}^T\mathcal W_c^T\mathcal T_{\rm post}^T\). The resulting reaction is
 
 \[
-\widehat S q=\widehat E^T\mathcal W^TK\mathcal W\widehat E q.
+\widehat S q=\widehat\Psi_{\rm net}^T\mathcal W^TK\mathcal W\widehat\Psi_{\rm net} q.
 \tag{E.4}
 \]
 

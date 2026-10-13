@@ -84,7 +84,7 @@ A bias-free matrix \(W_{\rm out}\in\mathbb R^{32\times3}\) returns the fine feat
 **Frame consistency.** Geometry augmentation in training samples the 48 cube symmetries. For an orthogonal cube transformation, the deterministic signed permutation maps satisfy
 
 \[
-K'=T_aKT_a^T,\qquad E'=T_aET_P^T,\qquad S'=T_PST_P^T.
+K'=T_aKT_a^T,\qquad \Psi'=T_a\Psi T_P^T,\qquad S'=T_PST_P^T.
 \tag{G.2}
 \]
 
@@ -135,33 +135,33 @@ M_{N_q}\succeq\alpha I, \alpha>0
 \tag{G.4}
 \]
 
-If the test displacements do not span the complement, choose a unit \(v\) orthogonal to them and \(T_*=\Theta\,vv^T\) with \(\Theta>0\). Every sampled error is then zero, whereas the worst error is \(\Theta\) and can be arbitrarily large. Such a PSD perturbation can be realised as \(H^TAH\) if there is at least one interior degree of freedom. Thus retaining all DOFs in P defines the approximation target, while adequate coverage by the test displacements controls how accurately it is learned. The coverage condition \(M_{N_q}\succeq\alpha I\), \(\alpha>0\), on the \((p-6)\)-dimensional complement requires \(N_q\ge p-6\), i.e. thousands to tens of thousands of test displacements per geometry here. The sampled sets of test displacements do not satisfy it, so Eq. (G.4) is not applied and no upper bound on \(\varepsilon_*\) is claimed.
+If the test displacements do not span the complement, choose a unit \(v\) orthogonal to every \(x_j\) and \(T_*=\Theta\,vv^T\) with \(\Theta>0\). Every sampled error is then zero, whereas the worst error is \(\Theta\) and can be arbitrarily large. Such a positive semidefinite perturbation can be realised as \(H^TAH\) if there is at least one interior degree of freedom. Thus retaining all DOFs in P defines the approximation target, while adequate coverage by the test displacements controls how accurately it is learned. The coverage condition \(M_{N_q}\succeq\alpha I\), \(\alpha>0\), on the \((p-6)\)-dimensional complement requires \(N_q\ge p-6\), i.e. thousands to tens of thousands of test displacements per geometry here. The sampled sets of test displacements do not satisfy it, so Eq. (G.4) is not applied and no upper bound on \(\varepsilon_*\) is claimed.
 
 ## Appendix H. Sensitivity identities and design intervals
 
 The derivative of the exact condensed stiffness and the derivative of the energy at fixed displacement are
 
 \[
-S_{,c}=E^TK_{,c}E,\qquad
+S_{,c}=\Psi^TK_{,c}\Psi,\qquad
 \frac{\partial}{\partial\tau_c}\left(\tfrac12q^TSq\right)
-=\tfrac12(Eq)^TK_{,c}(Eq).
+=\tfrac12(\Psi q)^TK_{,c}(\Psi q).
 \tag{H.1}
 \]
 
-On a differentiable interval with fixed active topology and fixed selectors \(J_P\) and \(J_I\), differentiating \(J_PE=I_p\) gives \(J_PE_{,c}=0\). Since \(J_IKE=0\), both terms \(E_{,c}^TKE\) and \(E^TKE_{,c}\) vanish. Differentiating \(S=E^TKE\) therefore proves Eq. (H.1).
+On a differentiable interval with fixed active topology and fixed selectors \(J_P\) and \(J_I\), differentiating \(J_P\Psi=I_p\) gives \(J_P\Psi_{,c}=0\). Since \(J_IK\Psi=0\), both terms \(\Psi_{,c}^TK\Psi\) and \(\Psi^TK\Psi_{,c}\) vanish. Differentiating \(S=\Psi^TK\Psi\) therefore proves Eq. (H.1).
 
-For a supported equilibrium, differentiating \(\mathbb K U=f_g\) at a fixed load gives \(U_{,c}=-\mathbb K^{-1}\mathbb K_{,c}U\) and hence \(C_{,c}=-U^T\mathbb K_{,c}U\). With fixed gathers and Eq. (H.1), this becomes the sum of \(-u_m^TK_{m,c}u_m\) over affected cells. The sensitivity labels hold the base-design nodal load fixed, including the nodal loads obtained by consistent integration of traction loads.
+For a supported equilibrium, differentiating \(\mathbb K U=f_g\) at a fixed load gives \(U_{,c}=-\mathbb K^{-1}\mathbb K_{,c}U\) and hence \(C_{,c}=-U^T\mathbb K_{,c}U\). With fixed assembly maps and Eq. (H.1), this becomes the sum of \(-u_m^TK_{m,c}u_m\) over affected cells. The sensitivity labels hold the base-design nodal load fixed, including the nodal loads obtained by consistent integration of traction loads.
 
 Expanding the quadratic sensitivity estimate at \(u+d\) proves Eq. (17).
 
-For the condensed stiffness \(\widehat S=F^TKF\), direct differentiation gives
+For the condensed stiffness \(\widehat S=\widehat\Psi^TK\widehat\Psi\), direct differentiation gives
 
 \[
-\widehat S_{,c}=F_{,c}^TKF+F^TK_{,c}F+F^TKF_{,c}.
+\widehat S_{,c}=\widehat\Psi_{,c}^TK\widehat\Psi+\widehat\Psi^TK_{,c}\widehat\Psi+\widehat\Psi^TK\widehat\Psi_{,c}.
 \tag{H.2}
 \]
 
-Apply the compliance derivative at equilibrium to the assembly of learned substructures and use \(J_PF_{,c}=0\). With \(F_{I,c}=J_I\,\partial F/\partial\tau_c\), so that \(F_{,c}=J_I^TF_{I,c}\), the two terms that contain the derivative of the recovery operator become \(2(F_{I,c}\widehat q)^Tr_I\), proving Eq. (18). If the load depends on design, the full compliance derivative also contains \(2f_{g,c}^T\widehat U\), and correspondingly \(2f_{g,c}^TU\) for the exact assembly. Changes of the DOF selectors, assembly maps or support maps contribute their own chain-rule terms, including the derivatives of \(B_m^TS_mB_m\) when \(B_m\) varies.
+Apply the compliance derivative at equilibrium to the assembly of learned substructures and use \(J_P\widehat\Psi_{,c}=0\). With \(\widehat\Psi_{I,c}=J_I\,\partial \widehat\Psi/\partial\tau_c\), so that \(\widehat\Psi_{,c}=J_I^T\widehat\Psi_{I,c}\), the two terms that contain the derivative of the recovery operator become \(2(\widehat\Psi_{I,c}\widehat q)^Tr_I\), proving Eq. (18). If the load depends on design, the full compliance derivative also contains \(2f_{g,c}^T\widehat U\), and correspondingly \(2f_{g,c}^TU\) for the exact assembly. Changes of the DOF selectors, assembly maps or support maps contribute their own chain-rule terms, including the derivatives of \(B_m^TS_mB_m\) when \(B_m\) varies.
 
 In the reference computation, moment derivatives are approximated by
 
@@ -176,7 +176,7 @@ The active set is fixed for this calculation, and the elasticity templates and g
 
 ### H.1. Sensitivity error bounds (proof of Proposition 4)
 
-For a fixed retained displacement vector \(q\), set \(u=Eq\), \(d=J_I^THq\), and \(\mathcal E=d^TKd=(Hq)^TA(Hq)\). The derivatives \(K_{,c}\), \(c=1,\ldots,8\), are symmetric. Define the reference vector \(\boldsymbol s\) with components \(s_c=-u^TK_{,c}u\), and assume \(\|\boldsymbol s\|_2>0\). Eq. (17) then reads
+For a fixed retained displacement vector \(q\), set \(u=\Psi q\), \(d=J_I^THq\), and \(\mathcal E=d^TKd=(Hq)^TA(Hq)\). The derivatives \(K_{,c}\), \(c=1,\ldots,8\), are symmetric. Define the reference vector \(\boldsymbol s\) with components \(s_c=-u^TK_{,c}u\), and assume \(\|\boldsymbol s\|_2>0\). Eq. (17) then reads
 
 \[
 \widetilde s_c-s_c=-2d^TK_{,c}u-d^TK_{,c}d.
@@ -199,11 +199,11 @@ Cauchy–Schwarz and the quadratic-form operator bound give
 \tag{H.4}
 \]
 
-All eight components are included, and the denominator is the norm of the exact sensitivity vector for that test displacement. The constants separate the coupling through the stiffness derivative, the interior coercivity and the scale of the reference sensitivity. For fixed \(q\) and \(H=tH_0\), the linear coefficient vanishes if and only if \((H_0q)^Tb_c=0\) for every corner. It vanishes for all interior errors if \(J_IK_{,c}E q=0\) for every corner. A useful special case is \(K_{,c}=\alpha_cK\): interior equilibrium removes the linear term, and the relative sensitivity error equals the energy error when the reference vector is nonzero.
+All eight components are included, and the denominator is the norm of the exact sensitivity vector for that test displacement. The constants separate the coupling through the stiffness derivative, the interior coercivity and the scale of the reference sensitivity. For fixed \(q\) and \(H=tH_0\), the linear coefficient vanishes if and only if \((H_0q)^Tb_c=0\) for every corner. It vanishes for all interior errors if \(J_IK_{,c}\Psi q=0\) for every corner. A useful special case is \(K_{,c}=\alpha_cK\): interior equilibrium removes the linear term, and the relative sensitivity error equals the energy error when the reference vector is nonzero.
 
 ### H.2. The complete design derivative and the sign of the thickness derivative
 
-With fixed selectors, differentiating \(J_IKE=0\) gives \(AE_{I,c}=-J_IK_{,c}E\). With \(K_{II,c}\) as in Appendix H.1, differentiating the variational stiffness error gives
+With fixed selectors, differentiating \(J_IK\Psi=0\) gives \(A\Psi_{I,c}=-J_IK_{,c}\Psi\). With \(K_{II,c}\) as in Appendix H.1, differentiating the variational stiffness error gives
 
 \[
 \boxed{(\widehat S-S)_{,c}
@@ -211,21 +211,21 @@ With fixed selectors, differentiating \(J_IKE=0\) gives \(AE_{I,c}=-J_IK_{,c}E\)
 \tag{H.5}
 \]
 
-Its norm is bounded by \(2\|A\|\|H\|\|H_{,c}\|+\|K_{II,c}\|\|H\|^2\). Thus a value error \(H=O(t)\) by itself does not imply a quadratic derivative error. For example, with \(f=1\), \(K=I_2\), \(E=(1,0)^T\) and \(F_t(\tau)=(1,t+\tau)^T\), the compliance gap at \(\tau=0\) is \(C-\widehat C_t=t^2/(1+t^2)\), whereas the derivative error is \(\partial_\tau(\widehat C_t-C)=-2t/(1+t^2)^2\). With \(H_t(\tau)=t\sin(\tau/t^2+\pi/4)\) the gap is \(O(t^2)\), but the derivative error tends to \(-1\). Neither family is uniformly \(C^1\)-small. A uniformly \(C^1\)-small recovery error, \(H=tH_0(\tau)\) with bounded \(H_0,H_{0,c}\), gives \((\widehat S-S)_{,c}=O(t^2)\). With uniformly bounded exact solutions and inverse stiffnesses, this also yields \(\widehat C_{,c}-C_{,c}=O(t^2)\).
+Its norm is bounded by \(2\|A\|\|H\|\|H_{,c}\|+\|K_{II,c}\|\|H\|^2\). Thus a value error \(H=O(t)\) by itself does not imply a quadratic derivative error. For example, with \(f=1\), \(K=I_2\), \(\Psi=(1,0)^T\) and \(\widehat\Psi_t(\tau)=(1,t+\tau)^T\), the compliance gap at \(\tau=0\) is \(C-\widehat C_t=t^2/(1+t^2)\), whereas the derivative error is \(\partial_\tau(\widehat C_t-C)=-2t/(1+t^2)^2\). With \(H_t(\tau)=t\sin(\tau/t^2+\pi/4)\) the gap is \(O(t^2)\), but the derivative error tends to \(-1\). Neither family is uniformly \(C^1\)-small. A uniformly \(C^1\)-small recovery error, \(H=tH_0(\tau)\) with bounded \(H_0,H_{0,c}\), gives \((\widehat S-S)_{,c}=O(t^2)\). With uniformly bounded exact solutions and inverse stiffnesses, this also yields \(\widehat C_{,c}-C_{,c}=O(t^2)\).
 
 At the same retained displacement vector \(q\), Eqs. (17) and (H.5) give
 
 \[
-\widetilde s_c-s_c=2(Hq)^TAE_{I,c}q-(Hq)^TK_{II,c}Hq,\qquad
+\widetilde s_c-s_c=2(Hq)^TA\Psi_{I,c}q-(Hq)^TK_{II,c}Hq,\qquad
 -q^T\widehat S_{,c}q-s_c=-2(H_{,c}q)^TA\,Hq-(Hq)^TK_{II,c}Hq.
 \tag{H.6}
 \]
 
-The complete derivative of Eq. (18) evaluates \(-q^T\widehat S_{,c}q\) at the assembled \(\widehat q\), so its comparison with \(s_c\) also contains the change of this quantity between \(q\) and \(\widehat q\). The residual term of Eq. (18) thus removes the term linear in the interior displacement error and replaces it by a term weighted by the design derivative of the recovery error. Which of the two gives the more accurate gradient depends on whether \(\|H_{,c}q\|_A\) is small compared with \(\|E_{I,c}q\|_A\).
+The complete derivative of Eq. (18) evaluates \(-q^T\widehat S_{,c}q\) at the assembled \(\widehat q\), so its comparison with \(s_c\) also contains the change of this quantity between \(q\) and \(\widehat q\). The residual term of Eq. (18) removes the term linear in the interior displacement error and replaces it by a term weighted by the design derivative of the recovery error. The linear terms in the error bounds of the sensitivity estimate and of the complete derivative contain \(\|\Psi_{I,c}q\|_A\) and \(\|H_{,c}q\|_A\), respectively.
 
-The \(O(t)\) term of the sensitivity estimate can cancel against the residual term. At the same retained displacement, \(J_IK_{,c}Eq=-AE_{I,c}q\). For \(H=tH_0\), the linear error of the sensitivity estimate is \(+2t(H_0q)^TAE_{I,c}q\), while the linear contribution of the residual term is \(-2t(E_{I,c}q)^TAH_0q\). A sensitivity estimate with a first-order error and a complete derivative with a second-order error can therefore coexist, even with a positive semidefinite stiffness derivative. For \(K(\tau)=\begin{bmatrix}1+\tau&\tau\\\tau&1+\tau\end{bmatrix}\), \(E=(1,-\tau/(1+\tau))^T\), \(F_t=E+(0,t)^T\) and \(f=1\) at \(\tau=0\), the exact derivative is \(-1\), the sensitivity estimate \(-(1+t)^2/(1+t^2)^2\) and the residual term \(2t/(1+t^2)^2\); their sum \(-1/(1+t^2)\) has error \(t^2/(1+t^2)\).
+The \(O(t)\) term of the sensitivity estimate can cancel against the residual term. At the same retained displacement, \(J_IK_{,c}\Psi q=-A\Psi_{I,c}q\). For \(H=tH_0\), the linear error of the sensitivity estimate is \(+2t(H_0q)^TA\Psi_{I,c}q\), while the linear contribution of the residual term is \(-2t(\Psi_{I,c}q)^TAH_0q\). A sensitivity estimate with a first-order error and a complete derivative with a second-order error can therefore coexist, even with a positive semidefinite stiffness derivative. For \(K(\tau)=\begin{bmatrix}1+\tau&\tau\\\tau&1+\tau\end{bmatrix}\), \(\Psi=(1,-\tau/(1+\tau))^T\), \(\widehat\Psi_t=\Psi+(0,t)^T\) and \(f=1\) at \(\tau=0\), the exact derivative is \(-1\), the sensitivity estimate \(-(1+t)^2/(1+t^2)^2\) and the residual term \(2t/(1+t^2)^2\); their sum \(-1/(1+t^2)\) has error \(t^2/(1+t^2)\).
 
-Under a fixed basis and exact integration, increasing one corner thickness parameter \(\tau_c\) with nonnegative \(Q_1\) shape functions enlarges the material domain. With fixed ghost stabilisation, this gives \(K_{,c}\succeq0\), \(S_{,c}\succeq0\), and \(C_{,c}\le0\). The sensitivity estimate is then also nonpositive for any displacement field; the quadratic term in the signed sensitivity discrepancy of Eq. (17) is nonpositive, while the cross term can have either sign. That the variational condensed stiffness dominates the exact one at every design does not by itself make the approximate compliance monotone with respect to the design: the residual term can change the sign of its complete derivative. For a scalar design parameter \(\gamma_1>0\), \(K(\gamma_1)=\gamma_1I_2\), \(E=(1,0)^T\) and \(F=(1,g(\gamma_1))^T\), one has \(\widehat S=\gamma_1(1+g^2)\ge S=\gamma_1\); at \(\gamma_1=1\), \(g=0.1\) and \(g'=-10\), \(\widehat S'=-0.99\), so \(\widehat C'>0\) for \(f=1\) although \(C'=-1\), while the sensitivity estimate remains negative.
+Under a fixed basis and exact integration, increasing one corner thickness parameter \(\tau_c\) with nonnegative \(Q_1\) shape functions enlarges the material domain. With fixed ghost stabilisation, this gives \(K_{,c}\succeq0\), \(S_{,c}\succeq0\), and \(C_{,c}\le0\). The sensitivity estimate is then also nonpositive for any displacement field; the quadratic term in the signed sensitivity discrepancy of Eq. (17) is nonpositive, while the cross term can have either sign. That the variational condensed stiffness dominates the exact one at every design does not by itself make the approximate compliance monotone with respect to the design: the residual term can change the sign of its complete derivative. For a scalar design parameter \(\gamma_1>0\), \(K(\gamma_1)=\gamma_1I_2\), \(\Psi=(1,0)^T\) and \(\widehat\Psi=(1,g(\gamma_1))^T\), one has \(\widehat S=\gamma_1(1+g^2)\ge S=\gamma_1\); at \(\gamma_1=1\), \(g=0.1\) and \(g'=-10\), \(\widehat S'=-0.99\), so \(\widehat C'>0\) for \(f=1\) although \(C'=-1\), while the sensitivity estimate remains negative.
 
 More explicitly, for \(h>0\), \(N_c^{Q_1}(x)\ge0\) implies \(\Omega(\tau)\subseteq\Omega(\tau+h e_c)\). For any discrete coefficient vector \(v\), with interpolated displacement field \(v_h\),
 \[
@@ -234,7 +234,7 @@ v^T[K(\tau+h e_c)-K(\tau)]v
 \nabla^{\rm s}v_h:\mathsf C:\nabla^{\rm s}v_h\,dx\ge0.
 \tag{H.7}
 \]
-Here \(\nabla^{\rm s}\) is the symmetric gradient, the elasticity tensor \(\mathsf C\) and the basis are fixed, and the ghost contribution cancels. Taking the differentiable limit proves that the thickness derivative is positive semidefinite. A centred difference of stiffness matrices assembled from exactly nested domains is also PSD. Changes of the adaptive integration subdivision, approximate moments or independently selected stabilisation can break this discrete nesting relation; a fixed active topology alone does not establish that it holds numerically. A step study of the central difference and an element-level check of the moment derivatives (Supplementary Note S1, Figure S01(c)) show that the numerical derivative is accurate on the fixed active set. They also show that the discrete moments preserve the nesting only approximately: some partially filled elements have indefinite derivative matrices. Eq. (H.7) therefore describes exact integration; the reference sensitivities of this study are derivatives of the discrete model and are compared as such.
+Here \(\nabla^{\rm s}\) is the symmetric gradient, the elasticity tensor \(\mathsf C\) and the basis are fixed, and the ghost contribution cancels. Taking the differentiable limit proves that the thickness derivative is positive semidefinite. A centred difference of stiffness matrices assembled from exactly nested domains is also positive semidefinite. Changes of the adaptive integration subdivision, approximate moments or independently selected stabilisation can break this discrete nesting relation; a fixed active topology alone does not establish that it holds numerically. A step study of the central difference and an element-level check of the moment derivatives (Supplementary Note S1, Figure S01(c)) show that the numerical derivative is accurate on the fixed active set. They also show that the discrete moments preserve the nesting only approximately: some partially filled elements have indefinite derivative matrices. Eq. (H.7) therefore describes exact integration; the reference sensitivities of this study are derivatives of the discrete model and are compared as such.
 
 ## Appendix I. A computable lower bound on the energy error
 

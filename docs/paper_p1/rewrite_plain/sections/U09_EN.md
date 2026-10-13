@@ -24,7 +24,7 @@ The energy fraction of the test cell explains why the compliance error can be or
 
 ![Figure 11](figures/F10_energy_share.png)
 
-**Figure 11. The energy fraction of the test cell scales down the compliance error but not the sensitivity error.** Results of NICE in the fourteen configurations, one point per load (filled: face loads; open: cut-surface loads). (a) Compliance error against \(\beta=\sum_mw_m\varepsilon_m\); the line denotes equality. The compliance error lies between 0.963 and 1.004 times \(\beta\), and the excess of the ratios above 1 is smaller than the residual work of the pair solves (Supplementary Note S4.3). (b) Compliance error and (c) test-cell sensitivity error against the exact energy fraction \(w\) of the test cell; solid lines are least-squares fits in logarithmic coordinates. The circled point is U1/x under the z traction load on the neighbour face.
+**Figure 11. Compliance and sensitivity errors in two-cell assemblies against the energy fraction of the test cell.** Results of NICE in the fourteen configurations, one point per load (filled: face loads; open: cut-surface loads). (a) Compliance error against \(\beta=\sum_mw_m\varepsilon_m\); the line denotes equality. The compliance error lies between 0.963 and 1.004 times \(\beta\), and the excess of the ratios above 1 is smaller than the residual work of the pair solves (Supplementary Note S4.3). (b) Compliance error and (c) test-cell sensitivity error against the exact energy fraction \(w\) of the test cell; solid lines are least-squares fits in logarithmic coordinates. The circled point is U1/x under the z traction load on the neighbour face.
 
 ### 5.7. Ablation: restricting the cell-face displacements
 

@@ -6,8 +6,8 @@ cell at the final design.
     outlined by the support on the cut, the loaded end face by arrows; 3D view (elevation 34 deg, azimuth -118 deg).
 (b) the change from the uniform start, tau(x) - 0.40, on the same view (BrBG, symmetric about 0: brown thinner, teal thicker).
 (c) cut cell (3, 2, 0), next to the support and closest to the loaded end, at the final design under the design load (unit
-    in-plane traction on the end face): displacement magnitude |u| on its walls from NICE (recovered field F_m B_m U_hat of
-    the NICE lattice solve) and from exact condensation (E_m B_m U, exact lattice solve of the exact check), on one colour
+    in-plane traction on the end face): displacement magnitude |u| on its walls from NICE (recovered field Psi^_m B_m U_hat of
+    the NICE lattice solve) and from exact condensation (Psi_m B_m U, exact lattice solve of the exact check), on one colour
     scale, and the magnitude of their difference; the relative differences are those of data_elev/cellfield_summary.json
     (energy norm of the cell's stiffness, Euclidean norm of the nodal displacements), copied to data_elev/F14_caption.json.
 Data: data_elev/plate_design.json, plate_k023.npz, cell320_k023.npz, cellfield_summary.json
@@ -125,8 +125,8 @@ def main():
     cell(axs[2], m, du, nd, 'magma_r')
     fig.text(.01, .455, '(c) Cut cell next to the support (Figure 1b) at the final design, design load: displacement magnitude on the walls',
              fontweight='bold', fontsize=8.5, va='top')
-    for x_, t in zip((.03 + w / 2, .355 + w / 2, .68 + w / 2), ('NICE, $|F_m B_m \\widehat U|$', 'exact condensation, $|E_m B_m U|$',
-                           'difference $|F_m B_m \\widehat U - E_m B_m U|$')):
+    for x_, t in zip((.03 + w / 2, .355 + w / 2, .68 + w / 2), ('NICE, $|\\widehat{\\Psi}_m B_m \\widehat U|$', 'exact condensation, $|\\Psi_m B_m U|$',
+                           'difference $|\\widehat{\\Psi}_m B_m \\widehat U - \\Psi_m B_m U|$')):
         fig.text(x_, .415, t, ha='center', va='center', fontsize=7.5)
     c1 = fig.add_axes([.12, .108, .44, .011])
     cb1 = fig.colorbar(ScalarMappable(nu, U_CMAP), cax=c1, orientation='horizontal')

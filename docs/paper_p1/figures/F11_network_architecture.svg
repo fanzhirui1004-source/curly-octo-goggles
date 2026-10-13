@@ -3234,12 +3234,15 @@ z
     </g>
    </g>
    <g id="text_47">
-    <!-- $\widehat E q$ -->
-    <g style="fill: #243447" transform="translate(484.693701 243.065286)">
+    <!-- $\widehat{\Psi}_{\rm net} q$ -->
+    <g style="fill: #243447" transform="translate(479.543701 243.065286)">
      <text>
-      <tspan x="7.453125" y="-4.96875" style="font-size: 6.491228px; font-family: 'STIXSizeTwoSym'; fill: #243447">̂</tspan>
-      <tspan x="0" y="-0.84375" style="font-style: italic; font-size: 10px; font-family: 'STIXGeneral'; fill: #243447">E</tspan>
-      <tspan x="6.359375" y="-0.84375" style="font-style: italic; font-size: 10px; font-family: 'STIXGeneral'; fill: #243447">q</tspan>
+      <tspan x="8.75" y="-4.09375" style="font-size: 7.614664px; font-family: 'STIXSizeTwoSym'; fill: #243447">̂</tspan>
+      <tspan x="0" y="-0.234375" style="font-size: 10px; font-family: 'STIXGeneral'; fill: #243447">Ψ</tspan>
+      <tspan x="7.617491" y="1.265625" style="font-size: 7px; font-family: 'STIXGeneral'; fill: #243447">n</tspan>
+      <tspan x="11.117491" y="1.265625" style="font-size: 7px; font-family: 'STIXGeneral'; fill: #243447">e</tspan>
+      <tspan x="14.225493" y="1.265625" style="font-size: 7px; font-family: 'STIXGeneral'; fill: #243447">t</tspan>
+      <tspan x="16.621492" y="-0.234375" style="font-style: italic; font-size: 10px; font-family: 'STIXGeneral'; fill: #243447">q</tspan>
      </text>
     </g>
    </g>

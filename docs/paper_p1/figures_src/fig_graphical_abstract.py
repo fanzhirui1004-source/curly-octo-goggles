@@ -4,7 +4,7 @@ Canvas 130 x 52 mm; PNG at 300 dpi (1535 x 614 px); saved without a tight boundi
           the outer faces (dark blue), clamped cut band and support plane (sand), end-face traction (arrows)
           (data_elev/plate_design.json, plate_k000.npz; same scene as the 3D view of the plate in elev3d.py)
   middle  the NICE division of tasks of Figure 2(a) (fig02_overview.py colours): learned extension -> two-grid
-          correction -> energy form F^T K F; learning: trial field / correction: improvability / variational form: structure
+          correction -> energy form (Psi^)^T K Psi^; learning: trial field / correction: improvability / variational form: structure
   right   headline: clamped cut layer, homogenised model underestimates the compliance by 27% (Section 5.10: 27.0% of the
           exact compliance of the uniform start); NICE matches exact condensation to 0.03% in compliance and 0.3% in gradient
           (plate checks of the NICE run: compliance 0.011% and 0.030% below exact, gradient errors 0.029% and 0.30%).
@@ -63,11 +63,11 @@ def plate3d(ax, D):
         arrow2d(ax, E.to_plot((x - .5, -.35, .5)), E.to_plot((x + .5, -.35, .5)), color=FS.TEXT, lw=1.0, mutation_scale=7)
 
 
-def box(ax, x, y, w, h, title, sub, kind):
+def box(ax, x, y, w, h, title, sub, kind, sub_size=7.5):
     fc, ec = FILL[kind]
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle='round,pad=0,rounding_size=1.2', fc=fc, ec=ec, lw=1.0, zorder=2))
     ax.text(x + w / 2, y + h * .66, title, ha='center', va='center', fontsize=7.5, fontweight='bold', color=FS.TEXT, zorder=3)
-    ax.text(x + w / 2, y + h * .30, sub, ha='center', va='center', fontsize=7.5, color=FS.TEXT, zorder=3)
+    ax.text(x + w / 2, y + h * .30, sub, ha='center', va='center', fontsize=sub_size, color=FS.TEXT, zorder=3)
 
 
 def main():
@@ -86,10 +86,10 @@ def main():
             color=FS.TEXT)
     spec = [('learned', 'extension', 'learn', 'learning:', 'trial field', LEARN),
             ('two-grid', 'correction', 'corr', 'correction:', 'improvability', CORR),
-            ('energy', r'form $F^TKF$', 'var', 'variational\nform:', 'structure', VAR)]
+            ('energy', r'form $\widehat{\Psi}^TK\widehat{\Psi}$', 'var', 'variational\nform:', 'structure', VAR)]
     for i, (t1, t2, kind, r1, r2, col) in enumerate(spec):
         x = x0 + i * (bw + gap)
-        box(ax, x, y, bw, h, t1, t2, kind)
+        box(ax, x, y, bw, h, t1, t2, kind, sub_size=7.0 if kind == 'var' else 7.5)   # Psi-hat form fits the 14 mm box
         ax.plot([x, x, x + bw, x + bw], [y - 1.6, y - 2.4, y - 2.4, y - 1.6], color=col, lw=.8)
         ax.text(x + bw / 2, y - 3.4, f'{r1}\n{r2}', ha='center', va='top', fontsize=6.8, fontweight='bold', color=col,
                 linespacing=1.15)

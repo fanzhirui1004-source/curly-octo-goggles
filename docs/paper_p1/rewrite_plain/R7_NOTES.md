@@ -197,3 +197,24 @@ Twenty items were discussed and all are applied (CN and EN).
   the identity "load error \(=H^TA(p_I-\widehat p_I)\)" (product of the two interior errors; checked numerically on a
   random SPD example), the first-order error \(H^Tf_I\) and the missing \(f_I^TA^{-1}f_I\) without the particular
   solution, and that Section 4 and the examples assume \(f_I=0\). No limitation sentence in 6.3.
+
+## astra second-round review: implementation (13 Oct)
+
+All decisions in r7_drafts/astra_r2_decisions.md (batches 1-7, notation, 2/3-2) are applied to the CN and EN units;
+the discussion with the exact wordings is in r7_drafts/astra_r2_discussion.md, the verified batch-6 edit pairs in
+r7_drafts/astra_r2_batch6_edits.json.
+- EN now mirrors the CN dissolution of Section 2.5 (requirements open Section 3, premises stated in Propositions 1-4,
+  Appendix B.1 "Basic setting", new Appendix C.3 "Interior loads").
+- Notation: E -> \Psi, F -> \widehat\Psi, \widehat E -> \widehat\Psi_{\rm net}, \psi_k -> \bar p_k, in all units;
+  Figures 2, 3, 13 and the graphical abstract regenerated (matplotlib 3.11.2, the version in the old figure metadata).
+- Rigid-body kernel under numerical integration is now derived in Appendix A.1 (author checked that every cell
+  contains a fully occupied subcell); the face-connectivity sentence is restricted to Schwarz-P cells.
+- D1: the global PCG with the balanced two-level preconditioner is described in Section 3.6, now titled
+  "凝聚刚度矩阵的施加与装配求解" / "Applying the condensed stiffness and solving the assembled system".
+- Own errors fixed: Table 3 cut-surface row 7 -> 10 configurations; gyroid continuation "6 to 23" -> "10 to 23" times
+  in 6.3 and the S7 reading paragraph (ST22: 9.6-23.2 over the six load and support classes).
+- Supplement: GPU software in S3 (PyTorch 2.8.0, CUDA 12.8, NVIDIA cuDSS 0.8); GPU model once in 5.9 and S3.
+- CN-only style clean-up of leftover 它/后者/explanatory "，即" in U04 and the supplement.
+- Offline cost stays unreported (author: the dataset was generated before the solver was sped up).
+- Pipeline: assembler joins units with a blank line (Appendix D/G and supplement headings restored); the Word build
+  writes aligned blocks as arrays, so no literal '&' appears in other readers.

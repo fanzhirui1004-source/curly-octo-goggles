@@ -2,9 +2,9 @@
 equilibrium correction), drawn with matplotlib boxes and arrows in the house style (figstyle), 178 mm wide.
 
   (a) Condensed stiffness of one cell: the chain q -> rigid split -> neural network (interior displacements) -> rigid
-      field added back, q restored on P -> E^ q -> fixed two-grid correction W (Chebyshev, Q1 coarse solve, Chebyshev at
-      fixed q) -> u^ = F q -> K -> F^T -> S^ q, the by-construction properties of the network map (Eq. (9)) and the
-      properties of S^ = F^T K F (Sections 3.1 and 3.4).
+      field added back, q restored on P -> Psi^_net q -> fixed two-grid correction W (Chebyshev, Q1 coarse solve, Chebyshev at
+      fixed q) -> u^ = Psi^ q -> K -> (Psi^)^T -> S^ q, the by-construction properties of the network map (Eq. (9)) and the
+      properties of S^ = (Psi^)^T K Psi^ (Sections 3.1 and 3.4).
   (b) Assembly and design: cell operators -> assembled K^ -> global solve -> displacement recovery -> compliance and
       thickness sensitivity, with the design update closing the loop (Section 5.10).
 No data; mathtext only (no LaTeX installation needed).  Usage: python3 fig02_overview.py [--preview]
@@ -84,7 +84,7 @@ bN = box(56.0, Y1, 52.0, H1, [('neural network', 8.5, FS.TEXT, 'bold'), (r'$\mat
 arrow(108.0, 118.0, y1)
 bR = box(118.0, Y1 + 2.0, 36.0, H1 - 4.0, [('rigid field $+\\,RC_Rq$', 7.5), ('restore $q$ on $P$', 7.5)], kind='aux', lw=.6)
 arrow(154.0, 164.0, y1)
-ax.text(170.0, y1, r'$\widehat{E}q$', ha='center', va='center', fontsize=10)
+ax.text(171.5, y1, r'$\widehat{\Psi}_{\rm net}q$', ha='center', va='center', fontsize=10)
 # rigid bypass above row 1
 yb = Y1 + H1 + 2.5
 ax.plot([30.0, 30.0, 136.0, 136.0], [Y1 + H1 - 2.0, yb, yb, Y1 + H1 - 2.0], color=FS.MUTED, lw=.6, zorder=1)
@@ -93,16 +93,16 @@ ax.annotate('', (136.0, Y1 + H1 - 1.95), (136.0, Y1 + H1 - 1.0), arrowprops=dict
 ax.text(82.0, yb + .7, 'rigid coefficients $C_Rq$ and prescribed $q$ bypass the network', ha='center', va='bottom',
         fontsize=6.8, color=FS.MUTED)
 note(87.0, 12.5, 'by construction\n(Eq. (9))', LEARN,
-     [(55.0, r'$J_P\widehat{E}=I_p$', '$q$ reproduced on $P$'),
-      (91.0, r'$\widehat{E}R_P=R$', 'rigid-body motion reproduced'),
-      (127.0, r'$\widehat{E}$ linear in $q$', 'at fixed geometry'),
+     [(55.0, r'$J_P\widehat{\Psi}_{\rm net}=I_p$', '$q$ reproduced on $P$'),
+      (91.0, r'$\widehat{\Psi}_{\rm net}R_P=R$', 'rigid-body motion reproduced'),
+      (127.0, r'$\widehat{\Psi}_{\rm net}$ linear in $q$', 'at fixed geometry'),
       (157.0, r'one $\theta$', 'shared by all cells')])
 
-# row 2: the correction W and the variational form F^T K
+# row 2: the correction W and the variational form (Psi^)^T K
 Y2, H2 = 56.0, 22.0
 y2 = Y2 + H2 / 2
-ax.text(6.5, y2, r'$\widehat{E}q$', ha='center', va='center', fontsize=10)
-arrow(11.0, 16.0, y2)
+ax.text(6.0, y2, r'$\widehat{\Psi}_{\rm net}q$', ha='center', va='center', fontsize=10)
+arrow(12.5, 16.0, y2)
 xC, wC = 16.0, 72.0
 box(xC, Y2, wC, H2, [], kind='corr', lw=1.1)
 ax.text(xC + wC / 2, Y2 + H2 - 3.2, r'two-grid correction $\mathcal{W}$', ha='center', va='center', fontsize=8.5,
@@ -121,15 +121,15 @@ ax.text(xC + wC / 2, Y2 + 4.6, '$q$ held fixed; fixed, linear;', ha='center', va
         zorder=3)
 ax.text(xC + wC / 2, Y2 + 2.0, 'coefficients set once per geometry', ha='center', va='center', fontsize=6.8,
         color=FS.MUTED, zorder=3)
-arrow(88.0, 102.0, y2, label=r'$\hat{u} = Fq$', size=9)
+arrow(88.0, 102.0, y2, label=r'$\hat{u} = \widehat{\Psi}q$', size=9)
 bK = box(102.0, Y2, 14.0, H2, [('$K$', 10.0)], kind='var', lw=1.1)
 arrow(116.0, 122.0, y2)
-bT = box(122.0, Y2, 32.0, H2, [('$F^{T}$', 10.0), ('transpose of $F$', 6.8, FS.MUTED)],
+bT = box(122.0, Y2, 32.0, H2, [(r'$\widehat{\Psi}^{T}$', 10.0), (r'transpose of $\widehat{\Psi}$', 6.8, FS.MUTED)],
          kind='var', lw=1.1)
 arrow(154.0, 164.0, y2)
 ax.text(170.0, y2, r'$\widehat{S}q$', ha='center', va='center', fontsize=10)
 note(35.0, 12.5, 'condensed\nstiffness', VAR,
-     [(55.5, r'$\widehat{S}=F^{T}KF$', r'symmetric, $\succeq0$, rigid-body null space'),
+     [(55.5, r'$\widehat{S}=\widehat{\Psi}^{T}K\widehat{\Psi}$', r'symmetric, $\succeq0$, rigid-body null space'),
       (97.0, r'$\widehat{S}-S=H^{T}AH\succeq0$', 'error quadratic in $H$'),
       (143.0, r'$S\preceq\widehat{S}\preceq\widehat{S}_{\rm net}$', 'exact or shifted coarse solve, spectrum in $(0,b]$')])
 ax.plot([170.0, 170.0], [y2 - 3.2, 47.5], color=FS.MUTED, lw=.6, zorder=1)
@@ -143,7 +143,7 @@ B = (FS.TEXT, 'bold')
 for k in (2, 1):
     ax.add_patch(FancyBboxPatch((6.0 + 1.2 * k, YB + 1.2 * k), 28.0, HB, boxstyle='round,pad=0,rounding_size=1.2',
                                 fc='#F3F5F7', ec='#8E99A4', lw=.6, zorder=1))
-box(6.0, YB, 28.0, HB, [('cells $m$', 7.5, *B), (r'$\widehat{S}_m=F_m^{T}K_mF_m$', 8.0), ('operators of row (a)', 6.8, FS.MUTED)])
+box(6.0, YB, 28.0, HB, [('cells $m$', 7.5, *B), (r'$\widehat{S}_m=\widehat{\Psi}_m^{T}K_m\widehat{\Psi}_m$', 8.0), ('operators of row (a)', 6.8, FS.MUTED)])
 arrow(36.4, 40.5, ymb)
 box(40.5, YB, 35.0, HB, [('assembly', 7.5, *B), (r'$\widehat{\mathbb{K}}=\Sigma_m\,B_m^{T}\,\widehat{S}_m B_m$', 8.0),
                          ('shared cell-face DOFs', 6.8, FS.MUTED)])
@@ -151,7 +151,7 @@ arrow(75.5, 79.5, ymb)
 box(79.5, YB, 24.0, HB, [('global solve', 7.5, *B), (r'$\widehat{\mathbb{K}}\,\widehat{U}=f_g$', 8.0),
                          ('actions of row (a)', 6.8, FS.MUTED)])
 arrow(103.5, 107.5, ymb)
-box(107.5, YB, 26.0, HB, [('recovery', 7.5, *B), (r'$\hat{u}_m=F_mB_m\widehat{U}$', 8.0), ('every cell', 6.8, FS.MUTED)])
+box(107.5, YB, 26.0, HB, [('recovery', 7.5, *B), (r'$\hat{u}_m=\widehat{\Psi}_mB_m\widehat{U}$', 8.0), ('every cell', 6.8, FS.MUTED)])
 arrow(133.5, 137.5, ymb)
 box(137.5, YB, 36.5, HB, [('compliance', 7.5, *B), (r'$\widehat{C}=f_g^{T}\widehat{U}$', 8.0), ('thickness sensitivity', 7.5, *B),
                           (r'$\tilde{s}_c=-\hat{u}_m^{T}K_{,c}\,\hat{u}_m$', 8.0)], pitch=1.42)

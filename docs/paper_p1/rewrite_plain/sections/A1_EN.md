@@ -20,41 +20,41 @@ The ghost-face set \(\mathcal F_g\) and the unit-coefficient stabilisation form 
 
 The moments are integrated on \(4^3\) initial subcells per active background element. Partially occupied subcells are refined once into \(2^3\) children, so that the finest subcell width near the material boundary is \(h/8\). Refinement is local to partially occupied subcells and does not subdivide every active element uniformly. Fully occupied subcells contribute analytic tensor-product monomial moments. At the finest partial level, each subcell is divided into six Kuhn tetrahedra and clipped successively by the three interpolated inequalities defining the material layer and the cut plane. The clipped tetrahedra are integrated with a conical Gauss–Jacobi product rule of four points per coordinate direction (64 points per tetrahedron). The accumulated moments are multiplied by the physical Jacobian \((2n)^{-3}\). Every quadrature weight is positive. The integrand that the templates expand in monomials is \(B^T\mathsf CB\), where \(B\) is the strain–displacement matrix and \(\mathsf C\) the elasticity tensor. Each numerically integrated \(K_e\) is therefore a positive combination of positive semidefinite matrices, and \(K\succeq0\) holds for the numerical moments as well.
 
-Geometry generation accepts a cell only if its active background elements form a single face-connected set carrying retained cell-face DOFs. This establishes the connectivity of the stabilised discrete model, in which material connected only through partially filled elements is coupled through shared basis functions and the ghost penalty. Every training, validation, neighbour and lattice cell used in this work passes this check. This check yields the rigid-body kernel stated in Section 2.3, provided the element integration is exact and the elasticity tensor is positive definite. Suppose \(v^TKv=0\). Both terms of Eq. (A.1) are positive semidefinite, so each vanishes. On every active element the material part has nonzero volume, so the \(Q_2\) field \(v_h\) has zero symmetric gradient on a region of nonzero volume. Since \(\nabla^{\rm s}v_h\) is polynomial, it then vanishes on the whole element, and \(v_h\) is rigid there. Two face-adjacent active elements share the nine nodes of their common face, which are not collinear, so their rigid motions coincide. Face-connectivity therefore makes \(v_h\) one global rigid motion. Conversely, a global rigid field is affine, so it has zero strain and zero jumps of its first and second normal derivatives, and the ghost term vanishes on it. Hence \(\ker K=\operatorname{range}R\). With numerical moments, the same conclusion requires the discrete element matrices to keep this kernel. That is an assumption, supported by the rigid-body energy ratios of Table ST04.
+Geometry generation accepts a cell only if its active background elements form a single face-connected set carrying retained cell-face DOFs. This establishes the connectivity of the stabilised discrete model, in which material connected only through partially filled elements is coupled through shared basis functions and the ghost penalty. Every Schwarz-P training, validation, neighbour and lattice cell used in this work passes this check. This check yields the rigid-body kernel stated in Section 2.3 for the numerical moments used. Suppose \(v^TKv=0\). Both terms of Eq. (A.1) are positive semidefinite, so each vanishes. Fully occupied subcells use analytic moments and the elasticity tensor is positive definite, so the symmetric gradient of the \(Q_2\) field \(v_h\) vanishes on such a subcell. Since \(\nabla^{\rm s}v_h\) is polynomial, it then vanishes on the whole element containing that subcell, and \(v_h\) is rigid on this element. All subcells of an element certified as completely filled are fully occupied, and every cell contains a fully occupied subcell. On a ghost face, the jump of a normal derivative of a \(Q_2\) field is biquadratic in the tangential coordinates, and the three-point Gauss rule integrates its square exactly; a vanishing ghost term therefore makes the jumps of the first and second normal derivatives vanish on the whole face. Since \(v_h\) is continuous across the face and at most quadratic in the normal direction, \(v_h\) is the same polynomial on both neighbouring elements. Every other face shared by two active elements lies between two certified filled elements, which share the nine non-collinear nodes of the face and hence the same rigid motion. Face-connectivity therefore makes \(v_h\) one global rigid motion. Conversely, a global rigid field is affine, so its strain and the jumps of its first and second normal derivatives vanish, and both terms of Eq. (A.1) vanish on it. Hence \(\ker K=\operatorname{range}R\).
 
 For the population statistics of Section 5, the energy error of a geometry is the mean over the evaluated test displacements of one load class. Population means then give equal weight to each available geometry.
 
 ## Appendix B. Variational identity, rigid-body kernel and energy-error measures
 
-### B.1. Standing conditions
+### B.1. Basic setting
 
 In Appendices B and C, \(f\equiv f_g\) denotes the assembled retained load.
 
-For each cell, \(K=K^T\succeq0\), the retained and interior DOF sets \(P,I\) are fixed, and \(A=K_{II}\succ0\). The exact recovery \(E\) is defined by \(E_P=I_p\) and \(E_I=-A^{-1}K_{IP}\). A linear recovery operator \(F\) has \(F_P=I_p\). Set \(H=F_I-E_I\), so \(F=E+J_I^TH\), \(S=E^TKE\), and \(\widehat S=F^TKF\). All transposes are taken of the complete recovery operator, including the correction. Interior body loads are zero; equivalently, the load functional depends only on the retained DOFs. Boundary loads integrated consistently have this property when all DOFs with nonzero boundary virtual work are retained.
+For each cell, \(K=K^T\succeq0\), the retained and interior DOF sets \(P,I\) are fixed, and \(A=K_{II}\succ0\). The exact recovery \(\Psi\) is defined by \(\Psi_P=I_p\) and \(\Psi_I=-A^{-1}K_{IP}\). A linear recovery operator \(\widehat\Psi\) has \(\widehat\Psi_P=I_p\). Set \(H=\widehat\Psi_I-\Psi_I\), so \(\widehat\Psi=\Psi+J_I^TH\), \(S=\Psi^TK\Psi\), and \(\widehat S=\widehat\Psi^TK\widehat\Psi\). All transposes are taken of the complete recovery operator, including the correction. Interior body loads are zero (for interior loads see Appendix C.3); equivalently, the load functional depends only on the retained DOFs. Boundary loads integrated consistently have this property when all DOFs with nonzero boundary virtual work are retained.
 
-The cell interiors are disjoint, all intercell couplings act through the retained DOFs, and the assembly maps \(B_m\) include fixed homogeneous supports. The supported exact assembled stiffness \(\mathbb K=\sum_m B_m^TS_mB_m\) is positive definite. The same local stabilised matrices define both the reference and the learned assemblies. The applied global load \(f\ne0\) is fixed.
+The interior DOF sets of the cells are disjoint, the ghost faces lie within each cell, all intercell couplings act through the retained DOFs, and the assembly maps \(B_m\) include fixed homogeneous supports. The supported exact assembled stiffness \(\mathbb K=\sum_m B_m^TS_mB_m\) is positive definite. The same local stabilised matrices define both the reference and the learned assemblies. The applied global load \(f\ne0\) is fixed.
 
 Design statements additionally use a differentiable design interval on which the following discrete choices are fixed: the active elements; the ghost-face set \(\mathcal F_g\); the retained and interior DOF sets \(P,I\); the assembly maps \(B_m\) and the supports; the load; the network's binary node indicators and the sets of element and face stencils of weakly connected regions (Appendix G.1); and the coarse-column support screen and the coarse-factor shift \(\xi\) (Appendix F.1). A change in any of them is a switch of the discrete model, and derivatives are not taken across it. Stiffness derivatives include every varying term in the chosen discrete specification. In the sensitivities reported here, moment differences vary the body stiffness while the selected ghost matrix and its coefficient are fixed.
 
 ### B.2. Variational identity, transpose of the recovery operator and rigid-body kernel (proof of Proposition 1)
 
-Let the selectors satisfy \(J_P^TJ_P+J_I^TJ_I=I_{n_a}\), and assume the symmetric stiffness in Eq. (2) has \(A\succ0\). For any field \(v\) with \(J_Pv=q\), there is a unique \(w\in\mathbb R^i\) such that \(v=Eq+J_I^Tw\). Since \(J_IKE=0\),
+Let the selectors satisfy \(J_P^TJ_P+J_I^TJ_I=I_{n_a}\), and assume the symmetric stiffness in Eq. (2) has \(A\succ0\). For any field \(v\) with \(J_Pv=q\), there is a unique \(w\in\mathbb R^i\) such that \(v=\Psi q+J_I^Tw\). Since \(J_IK\Psi=0\),
 
 \[
 v^TKv=q^TSq+w^TAw.
 \tag{B.1}
 \]
 
-This proves the energy-minimising property and uniqueness of \(Eq\). Applying the same expansion to an admissible linear recovery operator \(F=E+J_I^TH\) yields Eq. (6). At fixed \(q\), the stabilised discrete strain energy of \(Fq\) therefore exceeds that of \(Eq\) by one half of \(q^TH^TAHq\). The reported energy error uses the quadratic energy without the factor one half. Moreover, \(r_I=J_IKFq=AHq\), which proves both expressions in Eq. (7).
+This proves the energy-minimising property and uniqueness of \(\Psi q\). Applying the same expansion to an admissible linear recovery operator \(\widehat\Psi=\Psi+J_I^TH\) yields Eq. (6). At fixed \(q\), the stabilised discrete strain energy of \(\widehat\Psi q\) therefore exceeds that of \(\Psi q\) by one half of \(q^TH^TAHq\). The reported energy error uses the quadratic energy without the factor one half. Moreover, \(r_I=J_IK\widehat\Psi q=AHq\), which proves both expressions in Eq. (7).
 
-Suppose additionally that \(\ker K=\operatorname{range}R\), \(R_P\) has rank six, and \(FR_P=R\). The exact field associated with \(R_Pa\) is \(Ra\), because it takes these retained displacements and satisfies interior equilibrium. Thus \(ER_P=R\) and \(HR_P=0\). Rigid reproduction gives \(\widehat S R_P=F^TKR=0\). Conversely, if \(q^T\widehat S q=0\), positive semidefiniteness implies \(Fq\in\ker K\). Write \(Fq=Ra\); selecting the retained entries gives \(q=R_Pa\). Hence
+Suppose additionally that \(\ker K=\operatorname{range}R\), \(R_P\) has rank six, and \(\widehat\Psi R_P=R\). The exact field associated with \(R_Pa\) is \(Ra\), because it takes these retained displacements and satisfies interior equilibrium. Thus \(\Psi R_P=R\) and \(HR_P=0\). Rigid reproduction gives \(\widehat S R_P=\widehat\Psi^TKR=0\). Conversely, if \(q^T\widehat S q=0\), positive semidefiniteness implies \(\widehat\Psi q\in\ker K\). Write \(\widehat\Psi q=Ra\); selecting the retained entries gives \(q=R_Pa\). Hence
 
 \[
 \ker S=\ker\widehat S=\operatorname{range}R_P.
 \tag{B.2}
 \]
 
-The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate recovery operator therefore cannot add zero-energy modes to the condensed stiffness. A zero-energy mode other than the retained rigid-body modes could only belong to the discrete model itself. Appendix A.1 excludes such a mode under its connectivity condition and the assumption that the numerically integrated element matrices keep the rigid-body kernel. For the lattices of Table 5, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
+The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate recovery operator therefore cannot add zero-energy modes to the condensed stiffness. A zero-energy mode other than the retained rigid-body modes could only belong to the discrete model itself. Appendix A.1 excludes such a mode under its connectivity condition. For the lattices of Table 5, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
 
 Rigid reproduction and symmetry give
 
@@ -63,7 +63,7 @@ Rigid reproduction and symmetry give
 \tag{B.3}
 \]
 
-For the construction in Eq. (9), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat ER_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(FR_P=R\) and Eq. (B.3) holds for the corrected recovery operator.
+For the construction in Eq. (9), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat\Psi_{\rm net}R_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(\widehat\Psi R_P=R\) and Eq. (B.3) holds for the corrected recovery operator.
 
 Let \(Z\in\mathbb R^{p\times(p-6)}\) have orthonormal columns spanning the orthogonal complement of the retained rigid-body modes, and define \(S_*=Z^TSZ\succ0\). The largest energy error over this space is
 
@@ -88,32 +88,32 @@ Taking the supremum proves Eq. (B.4).
 The retained block of the unbalanced discrete force, used alone, would be
 
 \[
-(KF)_P=S+K_{PI}H.
+(K\widehat\Psi)_P=S+K_{PI}H.
 \]
 
-The additional variational reaction is \(F_I^T(KF)_I=(E_I+H)^TAH\). Since \(E_I^TA=-K_{PI}\), its term \(E_I^TAH\) cancels \(K_{PI}H\). Thus
+The additional variational reaction is \(\widehat\Psi_I^T(K\widehat\Psi)_I=(\Psi_I+H)^TAH\). Since \(\Psi_I^TA=-K_{PI}\), its term \(\Psi_I^TAH\) cancels \(K_{PI}H\). Thus
 
 \[
-(KF)_P+F_I^T(KF)_I=S+H^TAH.
+(K\widehat\Psi)_P+\widehat\Psi_I^T(K\widehat\Psi)_I=S+H^TAH.
 \tag{B.6}
 \]
 
-The transpose \(F^T\) thus ensures reciprocity and cancels the first-order stiffness error. A retained-force extraction without this term generally has an \(O(H)\) error and need not be symmetric.
+The transpose \(\widehat\Psi^T\) thus ensures reciprocity and cancels the first-order stiffness error. A retained-force extraction without this term generally has an \(O(H)\) error and need not be symmetric.
 
 For any global vector, the quadratic error is the sum of nonnegative local errors in Eq. (C.1). Consequently \(\widehat{\mathbb K}\succeq\mathbb K\succ0\), which proves that the supported system is solvable even if some cells are only positive semidefinite.
 
 ### B.3. Displacement magnitude and stiffness ratio
 
-The energy error weights displacement errors of equal magnitude differently. To make this dependence explicit, remove the rigid-body part of the retained displacements by taking \(q\perp R_P\), let \(d=Fq-Eq\), and introduce a displacement norm induced by \(\mathsf W\succ0\):
+The energy error weights displacement errors of equal magnitude differently. To make this dependence explicit, remove the rigid-body part of the retained displacements by taking \(q\perp R_P\), let \(d=\widehat\Psi q-\Psi q\), and introduce a displacement norm induced by \(\mathsf W\succ0\):
 
 \[
-\delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|Eq\|_{\mathsf W}},\qquad
+\delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|\Psi q\|_{\mathsf W}},\qquad
 \rho_{K,\mathsf W}(v)=\frac{v^TKv}{v^T\mathsf Wv},\qquad
-\kappa_{\mathsf W}(q,d)=\frac{\rho_{K,\mathsf W}(d)}{\rho_{K,\mathsf W}(Eq)}.
+\kappa_{\mathsf W}(q,d)=\frac{\rho_{K,\mathsf W}(d)}{\rho_{K,\mathsf W}(\Psi q)}.
 \tag{B.7}
 \]
 
-For nonzero field error and nonzero reference energy, cancellation of \(d^T\mathsf Wd\) and \(u^T\mathsf Wu\), with \(u=Eq\), gives
+For nonzero field error and nonzero reference energy, cancellation of \(d^T\mathsf Wd\) and \(u^T\mathsf Wu\), with \(u=\Psi q\), gives
 
 \[
 \boxed{\varepsilon(q)=\delta_{\mathsf W}(q)^2\kappa_{\mathsf W}(q,d).}
@@ -147,7 +147,7 @@ The order reversal follows by setting \(Q=\mathbb K^{-1/2}\widehat{\mathbb K}\ma
 
 ### C.1. Compliance error as the error energy of the recovered field (proof of Proposition 3)
 
-Let \(U=\mathbb K^{-1}f\), \(\widehat U=\widehat{\mathbb K}^{-1}f\), \(q_m=B_mU\), \(\widehat q_m=B_m\widehat U\), \(u_m=E_mq_m\), and \(\widehat u_m=F_m\widehat q_m\). The matrix \(\mathbb D=\widehat{\mathbb K}-\mathbb K\) of Eq. (C.1) equals \(\sum_m B_m^TH_m^TA_mH_mB_m\).
+Let \(U=\mathbb K^{-1}f\), \(\widehat U=\widehat{\mathbb K}^{-1}f\), \(q_m=B_mU\), \(\widehat q_m=B_m\widehat U\), \(u_m=\Psi_mq_m\), and \(\widehat u_m=\widehat\Psi_m\widehat q_m\). The matrix \(\mathbb D=\widehat{\mathbb K}-\mathbb K\) of Eq. (C.1) equals \(\sum_m B_m^TH_m^TA_mH_mB_m\).
 
 For conforming cell fields, use the energy form \(a(v,v)=\sum_m v_m^TK_mv_m\). Shared retained DOFs are counted through their separate cell energy contributions. Exact local equilibrium and the global equation give \(a(u,v)=f^TY\), where \(Y\) denotes the free assembled retained displacements of \(v\). At the equilibrium \(\widehat{\mathbb K}\widehat U=f\), \(a(\widehat u,\widehat u)=f^T\widehat U=\widehat C\). Hence
 
@@ -158,8 +158,8 @@ For conforming cell fields, use the energy form \(a(v,v)=\sum_m v_m^TK_mv_m\). S
 \]
 
 The second equality follows from
-\(\widehat u_m-u_m=E_m(\widehat q_m-q_m)+J_{I,m}^TH_m\widehat q_m\).
-The two terms are \(K_m\)-orthogonal because \(J_{I,m}K_mE_m=0\). The underestimation of the compliance thus measures the total energy error of the recovered field, and the error of the retained solution accounts for only one part of it.
+\(\widehat u_m-u_m=\Psi_m(\widehat q_m-q_m)+J_{I,m}^TH_m\widehat q_m\).
+The two terms are \(K_m\)-orthogonal because \(J_{I,m}K_m\Psi_m=0\). The underestimation of the compliance thus measures the total energy error of the recovered field, and the error of the retained solution accounts for only one part of it.
 
 Define
 
@@ -179,7 +179,7 @@ Since \(U^T\widehat{\mathbb K}U=(1+\beta)C\), optimising the scalar gives \(\alp
 
 ### C.2. Inexact assembled solves
 
-Let \(\bar U\) be an approximate solution of the same fixed variational operator, \(\rho=f-\widehat{\mathbb K}\bar U\), \(\bar C=f^T\bar U\), and \(\bar u_m=F_mB_m\bar U\). The exact identity becomes
+Let \(\bar U\) be an approximate solution of the same fixed variational operator, \(\rho=f-\widehat{\mathbb K}\bar U\), \(\bar C=f^T\bar U\), and \(\bar u_m=\widehat\Psi_mB_m\bar U\). The exact identity becomes
 
 \[
 \boxed{C-\bar C
@@ -194,3 +194,18 @@ If an applied action \(y(\bar U)\) is not numerically identical to the variation
 \(\omega=\bar U^Ty(\bar U)-\sum_m\bar u_m^TK_m\bar u_m\)
 and \(\rho=f-y(\bar U)\). Then the first identity acquires an additional \(+\omega\). This separates the residual of the solve from the inconsistency between the applied action and the energy. A recursive Krylov residual need not equal this applied-action residual. Evaluating the terms in Eq. (16) additionally requires the signed residual work and \(\omega\). For the two-cell configurations and the lattices, both are recorded together with the dual-norm bound \(|\bar U^T\rho|\le\sqrt{\bar U^T\mathbb K\bar U}\sqrt{\rho^T\mathbb K^{-1}\rho}\le\sqrt{\bar U^Ty(\bar U)-\omega}\,\sqrt{\rho^T\mathbb K^{-1}\rho}\); the second inequality holds because \(\widehat{\mathbb K}\succeq\mathbb K\) (Supplementary Note S4.3).
 
+### C.3. Interior loads
+
+The main text assumes that loads act on the retained DOFs only. If a load \(f_I\) acts on the interior DOFs, for example a body force, exact static condensation gives
+
+\[
+Sq=\Psi^Tf=f_P-K_{PI}A^{-1}f_I,\qquad u=\Psi q+J_I^TA^{-1}f_I .
+\]
+
+Interior loads change only the condensed load and add the term \(A^{-1}f_I\) to the interior displacements; the condensed stiffness \(S\) is unchanged. For NICE, let \(\widehat p_I\) approximate \(p_I=A^{-1}f_I\), obtained for example by solving \(Ap_I=f_I\) with the two-grid cycle of Section 3.4. Minimising the discrete potential energy over \(\widehat u=\widehat\Psi q+J_I^T\widehat p_I\) gives
+
+\[
+\widehat S\,\widehat q=\widehat\Psi^T\big(f-KJ_I^T\widehat p_I\big),
+\]
+
+whose right-hand side can be computed with the transpose of Section 3.1 and Appendix E, without factorisation. Since \(\Psi^TKJ_I^T=0\), the right-hand side differs from the exact condensed load by \(H^TA(p_I-\widehat p_I)\), the product of the recovery error and the error of the interior load displacement; if either is exact, the condensed load is exact. Without \(\widehat p_I\), the difference is \(H^Tf_I\), which is first order in the interior error, and even with \(\widehat\Psi=\Psi\) the compliance misses \(f_I^TA^{-1}f_I\). The error relations of Section 4 are derived for \(f_I=0\), the examples of this paper contain only loads on retained DOFs, and this generalisation has not been tested numerically.

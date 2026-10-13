@@ -20,41 +20,41 @@ The ghost-face set \(\mathcal F_g\) and the unit-coefficient stabilisation form 
 
 The moments are integrated on \(4^3\) initial subcells per active background element. Partially occupied subcells are refined once into \(2^3\) children, so that the finest subcell width near the material boundary is \(h/8\). Refinement is local to partially occupied subcells and does not subdivide every active element uniformly. Fully occupied subcells contribute analytic tensor-product monomial moments. At the finest partial level, each subcell is divided into six Kuhn tetrahedra and clipped successively by the three interpolated inequalities defining the material layer and the cut plane. The clipped tetrahedra are integrated with a conical Gauss–Jacobi product rule of four points per coordinate direction (64 points per tetrahedron). The accumulated moments are multiplied by the physical Jacobian \((2n)^{-3}\). Every quadrature weight is positive. The integrand that the templates expand in monomials is \(B^T\mathsf CB\), where \(B\) is the strain–displacement matrix and \(\mathsf C\) the elasticity tensor. Each numerically integrated \(K_e\) is therefore a positive combination of positive semidefinite matrices, and \(K\succeq0\) holds for the numerical moments as well.
 
-Geometry generation accepts a cell only if its active background elements form a single face-connected set carrying retained cell-face DOFs. This establishes the connectivity of the stabilised discrete model, in which material connected only through partially filled elements is coupled through shared basis functions and the ghost penalty. Every training, validation, neighbour and lattice cell used in this work passes this check. This check yields the rigid-body kernel stated in Section 2.3, provided the element integration is exact and the elasticity tensor is positive definite. Suppose \(v^TKv=0\). Both terms of Eq. (A.1) are positive semidefinite, so each vanishes. On every active element the material part has nonzero volume, so the \(Q_2\) field \(v_h\) has zero symmetric gradient on a region of nonzero volume. Since \(\nabla^{\rm s}v_h\) is polynomial, it then vanishes on the whole element, and \(v_h\) is rigid there. Two face-adjacent active elements share the nine nodes of their common face, which are not collinear, so their rigid motions coincide. Face-connectivity therefore makes \(v_h\) one global rigid motion. Conversely, a global rigid field is affine, so it has zero strain and zero jumps of its first and second normal derivatives, and the ghost term vanishes on it. Hence \(\ker K=\operatorname{range}R\). With numerical moments, the same conclusion requires the discrete element matrices to keep this kernel. That is an assumption, supported by the rigid-body energy ratios of Table ST04.
+Geometry generation accepts a cell only if its active background elements form a single face-connected set carrying retained cell-face DOFs. This establishes the connectivity of the stabilised discrete model, in which material connected only through partially filled elements is coupled through shared basis functions and the ghost penalty. Every Schwarz-P training, validation, neighbour and lattice cell used in this work passes this check. This check yields the rigid-body kernel stated in Section 2.3 for the numerical moments used. Suppose \(v^TKv=0\). Both terms of Eq. (A.1) are positive semidefinite, so each vanishes. Fully occupied subcells use analytic moments and the elasticity tensor is positive definite, so the symmetric gradient of the \(Q_2\) field \(v_h\) vanishes on such a subcell. Since \(\nabla^{\rm s}v_h\) is polynomial, it then vanishes on the whole element containing that subcell, and \(v_h\) is rigid on this element. All subcells of an element certified as completely filled are fully occupied, and every cell contains a fully occupied subcell. On a ghost face, the jump of a normal derivative of a \(Q_2\) field is biquadratic in the tangential coordinates, and the three-point Gauss rule integrates its square exactly; a vanishing ghost term therefore makes the jumps of the first and second normal derivatives vanish on the whole face. Since \(v_h\) is continuous across the face and at most quadratic in the normal direction, \(v_h\) is the same polynomial on both neighbouring elements. Every other face shared by two active elements lies between two certified filled elements, which share the nine non-collinear nodes of the face and hence the same rigid motion. Face-connectivity therefore makes \(v_h\) one global rigid motion. Conversely, a global rigid field is affine, so its strain and the jumps of its first and second normal derivatives vanish, and both terms of Eq. (A.1) vanish on it. Hence \(\ker K=\operatorname{range}R\).
 
 For the population statistics of Section 5, the energy error of a geometry is the mean over the evaluated test displacements of one load class. Population means then give equal weight to each available geometry.
 
 ## Appendix B. Variational identity, rigid-body kernel and energy-error measures
 
-### B.1. Standing conditions
+### B.1. Basic setting
 
 In Appendices B and C, \(f\equiv f_g\) denotes the assembled retained load.
 
-For each cell, \(K=K^T\succeq0\), the retained and interior DOF sets \(P,I\) are fixed, and \(A=K_{II}\succ0\). The exact recovery \(E\) is defined by \(E_P=I_p\) and \(E_I=-A^{-1}K_{IP}\). A linear recovery operator \(F\) has \(F_P=I_p\). Set \(H=F_I-E_I\), so \(F=E+J_I^TH\), \(S=E^TKE\), and \(\widehat S=F^TKF\). All transposes are taken of the complete recovery operator, including the correction. Interior body loads are zero; equivalently, the load functional depends only on the retained DOFs. Boundary loads integrated consistently have this property when all DOFs with nonzero boundary virtual work are retained.
+For each cell, \(K=K^T\succeq0\), the retained and interior DOF sets \(P,I\) are fixed, and \(A=K_{II}\succ0\). The exact recovery \(\Psi\) is defined by \(\Psi_P=I_p\) and \(\Psi_I=-A^{-1}K_{IP}\). A linear recovery operator \(\widehat\Psi\) has \(\widehat\Psi_P=I_p\). Set \(H=\widehat\Psi_I-\Psi_I\), so \(\widehat\Psi=\Psi+J_I^TH\), \(S=\Psi^TK\Psi\), and \(\widehat S=\widehat\Psi^TK\widehat\Psi\). All transposes are taken of the complete recovery operator, including the correction. Interior body loads are zero (for interior loads see Appendix C.3); equivalently, the load functional depends only on the retained DOFs. Boundary loads integrated consistently have this property when all DOFs with nonzero boundary virtual work are retained.
 
-The cell interiors are disjoint, all intercell couplings act through the retained DOFs, and the assembly maps \(B_m\) include fixed homogeneous supports. The supported exact assembled stiffness \(\mathbb K=\sum_m B_m^TS_mB_m\) is positive definite. The same local stabilised matrices define both the reference and the learned assemblies. The applied global load \(f\ne0\) is fixed.
+The interior DOF sets of the cells are disjoint, the ghost faces lie within each cell, all intercell couplings act through the retained DOFs, and the assembly maps \(B_m\) include fixed homogeneous supports. The supported exact assembled stiffness \(\mathbb K=\sum_m B_m^TS_mB_m\) is positive definite. The same local stabilised matrices define both the reference and the learned assemblies. The applied global load \(f\ne0\) is fixed.
 
 Design statements additionally use a differentiable design interval on which the following discrete choices are fixed: the active elements; the ghost-face set \(\mathcal F_g\); the retained and interior DOF sets \(P,I\); the assembly maps \(B_m\) and the supports; the load; the network's binary node indicators and the sets of element and face stencils of weakly connected regions (Appendix G.1); and the coarse-column support screen and the coarse-factor shift \(\xi\) (Appendix F.1). A change in any of them is a switch of the discrete model, and derivatives are not taken across it. Stiffness derivatives include every varying term in the chosen discrete specification. In the sensitivities reported here, moment differences vary the body stiffness while the selected ghost matrix and its coefficient are fixed.
 
 ### B.2. Variational identity, transpose of the recovery operator and rigid-body kernel (proof of Proposition 1)
 
-Let the selectors satisfy \(J_P^TJ_P+J_I^TJ_I=I_{n_a}\), and assume the symmetric stiffness in Eq. (2) has \(A\succ0\). For any field \(v\) with \(J_Pv=q\), there is a unique \(w\in\mathbb R^i\) such that \(v=Eq+J_I^Tw\). Since \(J_IKE=0\),
+Let the selectors satisfy \(J_P^TJ_P+J_I^TJ_I=I_{n_a}\), and assume the symmetric stiffness in Eq. (2) has \(A\succ0\). For any field \(v\) with \(J_Pv=q\), there is a unique \(w\in\mathbb R^i\) such that \(v=\Psi q+J_I^Tw\). Since \(J_IK\Psi=0\),
 
 \[
 v^TKv=q^TSq+w^TAw.
 \tag{B.1}
 \]
 
-This proves the energy-minimising property and uniqueness of \(Eq\). Applying the same expansion to an admissible linear recovery operator \(F=E+J_I^TH\) yields Eq. (6). At fixed \(q\), the stabilised discrete strain energy of \(Fq\) therefore exceeds that of \(Eq\) by one half of \(q^TH^TAHq\). The reported energy error uses the quadratic energy without the factor one half. Moreover, \(r_I=J_IKFq=AHq\), which proves both expressions in Eq. (7).
+This proves the energy-minimising property and uniqueness of \(\Psi q\). Applying the same expansion to an admissible linear recovery operator \(\widehat\Psi=\Psi+J_I^TH\) yields Eq. (6). At fixed \(q\), the stabilised discrete strain energy of \(\widehat\Psi q\) therefore exceeds that of \(\Psi q\) by one half of \(q^TH^TAHq\). The reported energy error uses the quadratic energy without the factor one half. Moreover, \(r_I=J_IK\widehat\Psi q=AHq\), which proves both expressions in Eq. (7).
 
-Suppose additionally that \(\ker K=\operatorname{range}R\), \(R_P\) has rank six, and \(FR_P=R\). The exact field associated with \(R_Pa\) is \(Ra\), because it takes these retained displacements and satisfies interior equilibrium. Thus \(ER_P=R\) and \(HR_P=0\). Rigid reproduction gives \(\widehat S R_P=F^TKR=0\). Conversely, if \(q^T\widehat S q=0\), positive semidefiniteness implies \(Fq\in\ker K\). Write \(Fq=Ra\); selecting the retained entries gives \(q=R_Pa\). Hence
+Suppose additionally that \(\ker K=\operatorname{range}R\), \(R_P\) has rank six, and \(\widehat\Psi R_P=R\). The exact field associated with \(R_Pa\) is \(Ra\), because it takes these retained displacements and satisfies interior equilibrium. Thus \(\Psi R_P=R\) and \(HR_P=0\). Rigid reproduction gives \(\widehat S R_P=\widehat\Psi^TKR=0\). Conversely, if \(q^T\widehat S q=0\), positive semidefiniteness implies \(\widehat\Psi q\in\ker K\). Write \(\widehat\Psi q=Ra\); selecting the retained entries gives \(q=R_Pa\). Hence
 
 \[
 \ker S=\ker\widehat S=\operatorname{range}R_P.
 \tag{B.2}
 \]
 
-The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate recovery operator therefore cannot add zero-energy modes to the condensed stiffness. A zero-energy mode other than the retained rigid-body modes could only belong to the discrete model itself. Appendix A.1 excludes such a mode under its connectivity condition and the assumption that the numerically integrated element matrices keep the rigid-body kernel. For the lattices of Table 5, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
+The inclusion \(\ker\widehat S\subseteq\ker S\) holds without these assumptions: \(\widehat S-S\succeq0\) and \(S\succeq0\), so \(q^T\widehat Sq=0\) implies \(q^TSq=0\) and hence \(Sq=0\). An approximate recovery operator therefore cannot add zero-energy modes to the condensed stiffness. A zero-energy mode other than the retained rigid-body modes could only belong to the discrete model itself. Appendix A.1 excludes such a mode under its connectivity condition. For the lattices of Table 5, the supported whole-lattice systems admitted a Cholesky factorisation, which excludes a zero-energy mode of the supported assembled system.
 
 Rigid reproduction and symmetry give
 
@@ -63,7 +63,7 @@ Rigid reproduction and symmetry give
 \tag{B.3}
 \]
 
-For the construction in Eq. (9), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat ER_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(FR_P=R\) and Eq. (B.3) holds for the corrected recovery operator.
+For the construction in Eq. (9), \(C_RR_P=I_6\) and \(\Pi_PR_P=0\), and a linear raw displacement map sends zero to zero, so \(\widehat\Psi_{\rm net}R_P=R\). Corrections driven by the interior residual leave this field unchanged, so \(\widehat\Psi R_P=R\) and Eq. (B.3) holds for the corrected recovery operator.
 
 Let \(Z\in\mathbb R^{p\times(p-6)}\) have orthonormal columns spanning the orthogonal complement of the retained rigid-body modes, and define \(S_*=Z^TSZ\succ0\). The largest energy error over this space is
 
@@ -88,32 +88,32 @@ Taking the supremum proves Eq. (B.4).
 The retained block of the unbalanced discrete force, used alone, would be
 
 \[
-(KF)_P=S+K_{PI}H.
+(K\widehat\Psi)_P=S+K_{PI}H.
 \]
 
-The additional variational reaction is \(F_I^T(KF)_I=(E_I+H)^TAH\). Since \(E_I^TA=-K_{PI}\), its term \(E_I^TAH\) cancels \(K_{PI}H\). Thus
+The additional variational reaction is \(\widehat\Psi_I^T(K\widehat\Psi)_I=(\Psi_I+H)^TAH\). Since \(\Psi_I^TA=-K_{PI}\), its term \(\Psi_I^TAH\) cancels \(K_{PI}H\). Thus
 
 \[
-(KF)_P+F_I^T(KF)_I=S+H^TAH.
+(K\widehat\Psi)_P+\widehat\Psi_I^T(K\widehat\Psi)_I=S+H^TAH.
 \tag{B.6}
 \]
 
-The transpose \(F^T\) thus ensures reciprocity and cancels the first-order stiffness error. A retained-force extraction without this term generally has an \(O(H)\) error and need not be symmetric.
+The transpose \(\widehat\Psi^T\) thus ensures reciprocity and cancels the first-order stiffness error. A retained-force extraction without this term generally has an \(O(H)\) error and need not be symmetric.
 
 For any global vector, the quadratic error is the sum of nonnegative local errors in Eq. (C.1). Consequently \(\widehat{\mathbb K}\succeq\mathbb K\succ0\), which proves that the supported system is solvable even if some cells are only positive semidefinite.
 
 ### B.3. Displacement magnitude and stiffness ratio
 
-The energy error weights displacement errors of equal magnitude differently. To make this dependence explicit, remove the rigid-body part of the retained displacements by taking \(q\perp R_P\), let \(d=Fq-Eq\), and introduce a displacement norm induced by \(\mathsf W\succ0\):
+The energy error weights displacement errors of equal magnitude differently. To make this dependence explicit, remove the rigid-body part of the retained displacements by taking \(q\perp R_P\), let \(d=\widehat\Psi q-\Psi q\), and introduce a displacement norm induced by \(\mathsf W\succ0\):
 
 \[
-\delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|Eq\|_{\mathsf W}},\qquad
+\delta_{\mathsf W}(q)=\frac{\|d\|_{\mathsf W}}{\|\Psi q\|_{\mathsf W}},\qquad
 \rho_{K,\mathsf W}(v)=\frac{v^TKv}{v^T\mathsf Wv},\qquad
-\kappa_{\mathsf W}(q,d)=\frac{\rho_{K,\mathsf W}(d)}{\rho_{K,\mathsf W}(Eq)}.
+\kappa_{\mathsf W}(q,d)=\frac{\rho_{K,\mathsf W}(d)}{\rho_{K,\mathsf W}(\Psi q)}.
 \tag{B.7}
 \]
 
-For nonzero field error and nonzero reference energy, cancellation of \(d^T\mathsf Wd\) and \(u^T\mathsf Wu\), with \(u=Eq\), gives
+For nonzero field error and nonzero reference energy, cancellation of \(d^T\mathsf Wd\) and \(u^T\mathsf Wu\), with \(u=\Psi q\), gives
 
 \[
 \boxed{\varepsilon(q)=\delta_{\mathsf W}(q)^2\kappa_{\mathsf W}(q,d).}
@@ -147,7 +147,7 @@ The order reversal follows by setting \(Q=\mathbb K^{-1/2}\widehat{\mathbb K}\ma
 
 ### C.1. Compliance error as the error energy of the recovered field (proof of Proposition 3)
 
-Let \(U=\mathbb K^{-1}f\), \(\widehat U=\widehat{\mathbb K}^{-1}f\), \(q_m=B_mU\), \(\widehat q_m=B_m\widehat U\), \(u_m=E_mq_m\), and \(\widehat u_m=F_m\widehat q_m\). The matrix \(\mathbb D=\widehat{\mathbb K}-\mathbb K\) of Eq. (C.1) equals \(\sum_m B_m^TH_m^TA_mH_mB_m\).
+Let \(U=\mathbb K^{-1}f\), \(\widehat U=\widehat{\mathbb K}^{-1}f\), \(q_m=B_mU\), \(\widehat q_m=B_m\widehat U\), \(u_m=\Psi_mq_m\), and \(\widehat u_m=\widehat\Psi_m\widehat q_m\). The matrix \(\mathbb D=\widehat{\mathbb K}-\mathbb K\) of Eq. (C.1) equals \(\sum_m B_m^TH_m^TA_mH_mB_m\).
 
 For conforming cell fields, use the energy form \(a(v,v)=\sum_m v_m^TK_mv_m\). Shared retained DOFs are counted through their separate cell energy contributions. Exact local equilibrium and the global equation give \(a(u,v)=f^TY\), where \(Y\) denotes the free assembled retained displacements of \(v\). At the equilibrium \(\widehat{\mathbb K}\widehat U=f\), \(a(\widehat u,\widehat u)=f^T\widehat U=\widehat C\). Hence
 
@@ -158,8 +158,8 @@ For conforming cell fields, use the energy form \(a(v,v)=\sum_m v_m^TK_mv_m\). S
 \]
 
 The second equality follows from
-\(\widehat u_m-u_m=E_m(\widehat q_m-q_m)+J_{I,m}^TH_m\widehat q_m\).
-The two terms are \(K_m\)-orthogonal because \(J_{I,m}K_mE_m=0\). The underestimation of the compliance thus measures the total energy error of the recovered field, and the error of the retained solution accounts for only one part of it.
+\(\widehat u_m-u_m=\Psi_m(\widehat q_m-q_m)+J_{I,m}^TH_m\widehat q_m\).
+The two terms are \(K_m\)-orthogonal because \(J_{I,m}K_m\Psi_m=0\). The underestimation of the compliance thus measures the total energy error of the recovered field, and the error of the retained solution accounts for only one part of it.
 
 Define
 
@@ -179,7 +179,7 @@ Since \(U^T\widehat{\mathbb K}U=(1+\beta)C\), optimising the scalar gives \(\alp
 
 ### C.2. Inexact assembled solves
 
-Let \(\bar U\) be an approximate solution of the same fixed variational operator, \(\rho=f-\widehat{\mathbb K}\bar U\), \(\bar C=f^T\bar U\), and \(\bar u_m=F_mB_m\bar U\). The exact identity becomes
+Let \(\bar U\) be an approximate solution of the same fixed variational operator, \(\rho=f-\widehat{\mathbb K}\bar U\), \(\bar C=f^T\bar U\), and \(\bar u_m=\widehat\Psi_mB_m\bar U\). The exact identity becomes
 
 \[
 \boxed{C-\bar C
@@ -193,6 +193,23 @@ The error of the corrected functional is \(\widehat C-J(\bar U)=\rho^T\widehat{\
 If an applied action \(y(\bar U)\) is not numerically identical to the variational energy, define
 \(\omega=\bar U^Ty(\bar U)-\sum_m\bar u_m^TK_m\bar u_m\)
 and \(\rho=f-y(\bar U)\). Then the first identity acquires an additional \(+\omega\). This separates the residual of the solve from the inconsistency between the applied action and the energy. A recursive Krylov residual need not equal this applied-action residual. Evaluating the terms in Eq. (16) additionally requires the signed residual work and \(\omega\). For the two-cell configurations and the lattices, both are recorded together with the dual-norm bound \(|\bar U^T\rho|\le\sqrt{\bar U^T\mathbb K\bar U}\sqrt{\rho^T\mathbb K^{-1}\rho}\le\sqrt{\bar U^Ty(\bar U)-\omega}\,\sqrt{\rho^T\mathbb K^{-1}\rho}\); the second inequality holds because \(\widehat{\mathbb K}\succeq\mathbb K\) (Supplementary Note S4.3).
+
+### C.3. Interior loads
+
+The main text assumes that loads act on the retained DOFs only. If a load \(f_I\) acts on the interior DOFs, for example a body force, exact static condensation gives
+
+\[
+Sq=\Psi^Tf=f_P-K_{PI}A^{-1}f_I,\qquad u=\Psi q+J_I^TA^{-1}f_I .
+\]
+
+Interior loads change only the condensed load and add the term \(A^{-1}f_I\) to the interior displacements; the condensed stiffness \(S\) is unchanged. For NICE, let \(\widehat p_I\) approximate \(p_I=A^{-1}f_I\), obtained for example by solving \(Ap_I=f_I\) with the two-grid cycle of Section 3.4. Minimising the discrete potential energy over \(\widehat u=\widehat\Psi q+J_I^T\widehat p_I\) gives
+
+\[
+\widehat S\,\widehat q=\widehat\Psi^T\big(f-KJ_I^T\widehat p_I\big),
+\]
+
+whose right-hand side can be computed with the transpose of Section 3.1 and Appendix E, without factorisation. Since \(\Psi^TKJ_I^T=0\), the right-hand side differs from the exact condensed load by \(H^TA(p_I-\widehat p_I)\), the product of the recovery error and the error of the interior load displacement; if either is exact, the condensed load is exact. Without \(\widehat p_I\), the difference is \(H^Tf_I\), which is first order in the interior error, and even with \(\widehat\Psi=\Psi\) the compliance misses \(f_I^TA^{-1}f_I\). The error relations of Section 4 are derived for \(f_I=0\), the examples of this paper contain only loads on retained DOFs, and this generalisation has not been tested numerically.
+
 ## Appendix D. Polynomial smoothing and coarse projections
 
 For \(0<a<b\), the degree-\(k\) Chebyshev error polynomial and its energy bound are
@@ -204,8 +221,8 @@ p_k(t)=\frac{T_k((a+b-2t)/(b-a))}{T_k((a+b)/(b-a))}.
 
 \[
 d_I^{\rm sm}=p_k(D^{-1}A)d_I,\qquad
-\|d_I^{\rm sm}\|_A^2\le\psi_k^2\|d_I\|_A^2,\qquad
-\psi_k=\max_{\lambda\in\sigma(D^{-1/2}AD^{-1/2})}|p_k(\lambda)|.
+\|d_I^{\rm sm}\|_A^2\le\bar p_k^2\|d_I\|_A^2,\qquad
+\bar p_k=\max_{\lambda\in\sigma(D^{-1/2}AD^{-1/2})}|p_k(\lambda)|.
 \tag{D.2}
 \]
 
@@ -247,7 +264,7 @@ For a full-column-rank coarse basis \(V\), with \(A_c=V^TAV\succ0\), define \(Q_
 \tag{D.5}
 \]
 
-This proves Eq. (11). Applying Eq. (D.2) before and after this projection yields \(\|\Phi_kC_V\Phi_kd\|_A\le\psi_k^2\|d\|_A\). Because \(\psi_k<1\) whenever the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering stated in Section 3.4 (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, the energy contraction factor \(\psi_8^4\) of the cycle is 0.97–0.99. The estimate therefore guarantees little more than that the cycle does not increase the energy error. It uses no approximation property of the coarse space, and the reductions by one to three orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
+This proves Eq. (11). Applying Eq. (D.2) before and after this projection yields \(\|\Phi_kC_V\Phi_kd\|_A\le\bar p_k^2\|d\|_A\). Because \(\bar p_k<1\) whenever \(k\ge1\) and the positive spectrum lies in \((0,b]\), the cycle is an energy contraction, which gives the operator ordering stated in Section 3.4 (Appendix D.1). For the spectra of U1, M1 and M2 (\(\lambda_1\approx4\)–\(9\times10^{-4}\) against \(a\approx0.17\); Supplementary Table ST05b), however, the energy contraction factor \(\bar p_8^4\) of the cycle is 0.97–0.99. The estimate therefore guarantees little more than that the cycle does not increase the energy error. It uses no approximation property of the coarse space, and the reductions by one to three orders of magnitude in Section 5.5 are empirical. A two-grid convergence estimate would require an approximation property of the \(Q_1\) space for walls about one element thick [Xu & Zikatanov (2002)](https://doi.org/10.1090/S0894-0347-02-00398-3). This is the standard energy-projection mechanism of subspace correction [Xu (1992)](https://doi.org/10.1137/1034116).
 
 ### D.1. Corrections, orderings and approximate coarse inverses (proof of Proposition 2)
 
@@ -257,7 +274,7 @@ A linear correction that is fixed for a given geometry acts on \(H\) through \(H
 S\preceq\widehat S_{\rm new}\preceq\widehat S_{\rm old}.
 \]
 
-Thus the exact assembled compliance increases monotonically towards the reference, and the total reconstructed energy error of Eq. (14) decreases; in particular, repeating a fixed cycle cannot increase the energy error. Changing the smoothing degree, or stopping the recurrence of Eq. (D.3) at an intermediate step, changes the polynomial, so the energy error need not decrease monotonically in \(k\). The sensitivity error is not ordered by this matrix inequality. For example, take \(K=I_3\), \(P=\{1\}\), \(u=(1,0,0)^T\) and the positive semidefinite derivative \(K_{,c}=vv^T\), \(v=(1,1,-1)^T\), of the nested family \(K(\tau)=I+\tau vv^T\). Projecting the second component out of the interior error \(d=(0,t,t)^T\) halves its energy from \(2t^2\) to \(t^2\), whereas the sensitivity discrepancy of Eq. (17) changes from zero to \(2t-t^2\) against a reference sensitivity of \(-1\) (0.19 at \(t=0.1\)).
+Thus the exact assembled compliance neither decreases nor exceeds the reference, and the total reconstructed energy error of Eq. (14) does not increase; in particular, repeating a fixed cycle cannot increase the energy error. Changing the smoothing degree, or stopping the recurrence of Eq. (D.3) at an intermediate step, changes the polynomial, so the energy error need not decrease monotonically in \(k\). The sensitivity error is not ordered by this matrix inequality. For example, take \(K=I_3\), \(P=\{1\}\), \(u=(1,0,0)^T\) and the positive semidefinite derivative \(K_{,c}=vv^T\), \(v=(1,1,-1)^T\), of the nested family \(K(\tau)=I+\tau vv^T\). Projecting the second component out of the interior error \(d=(0,t,t)^T\) halves its energy from \(2t^2\) to \(t^2\), whereas the sensitivity discrepancy of Eq. (17) changes from zero to \(2t-t^2\) against a reference sensitivity of \(-1\) (0.19 at \(t=0.1\)).
 
 For a symmetric approximate inverse \(G\) in place of \(A_c^{-1}\) in the coarse-grid correction \(C_V=I-VA_c^{-1}V^TA\) of Eq. (D.5), the energy removed by the correction is
 
@@ -274,7 +291,7 @@ Consequently, \(2G-GA_cG\succeq0\) suffices for the correction not to increase t
 All transposes below use the Euclidean pairing of the stored displacement and nodal-force vectors. Write \(M_I=J_I^TJ_I\). Transposing Eq. (9) gives
 
 \[
-\widehat E^Ty=J_Py+C_R^TR^TM_Iy
+\widehat\Psi_{\rm net}^Ty=J_Py+C_R^TR^TM_Iy
  +\Pi_P^T\mathcal N_\theta(\eta)^TM_Iy.
 \tag{E.1}
 \]
@@ -311,7 +328,7 @@ For the full-field coarse-grid correction,
 A cycle \(\mathcal W=\mathcal T_{\rm post}\mathcal W_c\mathcal T_{\rm pre}\) therefore uses the reverse sequence \(\mathcal W^T=\mathcal T_{\rm pre}^T\mathcal W_c^T\mathcal T_{\rm post}^T\). The resulting reaction is
 
 \[
-\widehat S q=\widehat E^T\mathcal W^TK\mathcal W\widehat E q.
+\widehat S q=\widehat\Psi_{\rm net}^T\mathcal W^TK\mathcal W\widehat\Psi_{\rm net} q.
 \tag{E.4}
 \]
 
@@ -328,6 +345,7 @@ The coarse matrix \(V^TAV\) is recovered from coloured stiffness probes. With a 
 ### F.2. Arithmetic
 
 The network's interior displacements, the rigid-body reconstruction and the prescribed retained entries use single precision (float32). Quadratic energies and sparse stiffness products use double precision (float64), and convolutions use true float32 arithmetic, without TF32 or lower precisions. The correction, including the smoothing and the coarse algebra, runs in double precision in training and in the accuracy studies of Sections 5.2–5.8. It runs in single precision in the timed lattice route of Table 5 and in the optimisations of Section 5.10. The fixed-network correction studies of Section 5.5 (Table 4 and Supplementary Tables ST05a, ST06 and ST07) apply the same correction in double precision to the single-precision network field. For the base network they estimate the smoothing interval from their own power-iteration start, which is also the interval compared with the spectrum in Section 5.4 (Supplementary Table ST05b). Sensitivity contractions use float32 element products with float64 accumulation. These arithmetic choices approximate the real linear maps of the preceding derivations.
+
 ## Appendix G. Network coefficients and training test displacements
 
 ### G.1. Geometry features and displacement maps
@@ -414,7 +432,7 @@ A bias-free matrix \(W_{\rm out}\in\mathbb R^{32\times3}\) returns the fine feat
 **Frame consistency.** Geometry augmentation in training samples the 48 cube symmetries. For an orthogonal cube transformation, the deterministic signed permutation maps satisfy
 
 \[
-K'=T_aKT_a^T,\qquad E'=T_aET_P^T,\qquad S'=T_PST_P^T.
+K'=T_aKT_a^T,\qquad \Psi'=T_a\Psi T_P^T,\qquad S'=T_PST_P^T.
 \tag{G.2}
 \]
 
@@ -465,33 +483,33 @@ M_{N_q}\succeq\alpha I, \alpha>0
 \tag{G.4}
 \]
 
-If the test displacements do not span the complement, choose a unit \(v\) orthogonal to them and \(T_*=\Theta\,vv^T\) with \(\Theta>0\). Every sampled error is then zero, whereas the worst error is \(\Theta\) and can be arbitrarily large. Such a PSD perturbation can be realised as \(H^TAH\) if there is at least one interior degree of freedom. Thus retaining all DOFs in P defines the approximation target, while adequate coverage by the test displacements controls how accurately it is learned. The coverage condition \(M_{N_q}\succeq\alpha I\), \(\alpha>0\), on the \((p-6)\)-dimensional complement requires \(N_q\ge p-6\), i.e. thousands to tens of thousands of test displacements per geometry here. The sampled sets of test displacements do not satisfy it, so Eq. (G.4) is not applied and no upper bound on \(\varepsilon_*\) is claimed.
+If the test displacements do not span the complement, choose a unit \(v\) orthogonal to every \(x_j\) and \(T_*=\Theta\,vv^T\) with \(\Theta>0\). Every sampled error is then zero, whereas the worst error is \(\Theta\) and can be arbitrarily large. Such a positive semidefinite perturbation can be realised as \(H^TAH\) if there is at least one interior degree of freedom. Thus retaining all DOFs in P defines the approximation target, while adequate coverage by the test displacements controls how accurately it is learned. The coverage condition \(M_{N_q}\succeq\alpha I\), \(\alpha>0\), on the \((p-6)\)-dimensional complement requires \(N_q\ge p-6\), i.e. thousands to tens of thousands of test displacements per geometry here. The sampled sets of test displacements do not satisfy it, so Eq. (G.4) is not applied and no upper bound on \(\varepsilon_*\) is claimed.
 
 ## Appendix H. Sensitivity identities and design intervals
 
 The derivative of the exact condensed stiffness and the derivative of the energy at fixed displacement are
 
 \[
-S_{,c}=E^TK_{,c}E,\qquad
+S_{,c}=\Psi^TK_{,c}\Psi,\qquad
 \frac{\partial}{\partial\tau_c}\left(\tfrac12q^TSq\right)
-=\tfrac12(Eq)^TK_{,c}(Eq).
+=\tfrac12(\Psi q)^TK_{,c}(\Psi q).
 \tag{H.1}
 \]
 
-On a differentiable interval with fixed active topology and fixed selectors \(J_P\) and \(J_I\), differentiating \(J_PE=I_p\) gives \(J_PE_{,c}=0\). Since \(J_IKE=0\), both terms \(E_{,c}^TKE\) and \(E^TKE_{,c}\) vanish. Differentiating \(S=E^TKE\) therefore proves Eq. (H.1).
+On a differentiable interval with fixed active topology and fixed selectors \(J_P\) and \(J_I\), differentiating \(J_P\Psi=I_p\) gives \(J_P\Psi_{,c}=0\). Since \(J_IK\Psi=0\), both terms \(\Psi_{,c}^TK\Psi\) and \(\Psi^TK\Psi_{,c}\) vanish. Differentiating \(S=\Psi^TK\Psi\) therefore proves Eq. (H.1).
 
-For a supported equilibrium, differentiating \(\mathbb K U=f_g\) at a fixed load gives \(U_{,c}=-\mathbb K^{-1}\mathbb K_{,c}U\) and hence \(C_{,c}=-U^T\mathbb K_{,c}U\). With fixed gathers and Eq. (H.1), this becomes the sum of \(-u_m^TK_{m,c}u_m\) over affected cells. The sensitivity labels hold the base-design nodal load fixed, including the nodal loads obtained by consistent integration of traction loads.
+For a supported equilibrium, differentiating \(\mathbb K U=f_g\) at a fixed load gives \(U_{,c}=-\mathbb K^{-1}\mathbb K_{,c}U\) and hence \(C_{,c}=-U^T\mathbb K_{,c}U\). With fixed assembly maps and Eq. (H.1), this becomes the sum of \(-u_m^TK_{m,c}u_m\) over affected cells. The sensitivity labels hold the base-design nodal load fixed, including the nodal loads obtained by consistent integration of traction loads.
 
 Expanding the quadratic sensitivity estimate at \(u+d\) proves Eq. (17).
 
-For the condensed stiffness \(\widehat S=F^TKF\), direct differentiation gives
+For the condensed stiffness \(\widehat S=\widehat\Psi^TK\widehat\Psi\), direct differentiation gives
 
 \[
-\widehat S_{,c}=F_{,c}^TKF+F^TK_{,c}F+F^TKF_{,c}.
+\widehat S_{,c}=\widehat\Psi_{,c}^TK\widehat\Psi+\widehat\Psi^TK_{,c}\widehat\Psi+\widehat\Psi^TK\widehat\Psi_{,c}.
 \tag{H.2}
 \]
 
-Apply the compliance derivative at equilibrium to the assembly of learned substructures and use \(J_PF_{,c}=0\). With \(F_{I,c}=J_I\,\partial F/\partial\tau_c\), so that \(F_{,c}=J_I^TF_{I,c}\), the two terms that contain the derivative of the recovery operator become \(2(F_{I,c}\widehat q)^Tr_I\), proving Eq. (18). If the load depends on design, the full compliance derivative also contains \(2f_{g,c}^T\widehat U\), and correspondingly \(2f_{g,c}^TU\) for the exact assembly. Changes of the DOF selectors, assembly maps or support maps contribute their own chain-rule terms, including the derivatives of \(B_m^TS_mB_m\) when \(B_m\) varies.
+Apply the compliance derivative at equilibrium to the assembly of learned substructures and use \(J_P\widehat\Psi_{,c}=0\). With \(\widehat\Psi_{I,c}=J_I\,\partial \widehat\Psi/\partial\tau_c\), so that \(\widehat\Psi_{,c}=J_I^T\widehat\Psi_{I,c}\), the two terms that contain the derivative of the recovery operator become \(2(\widehat\Psi_{I,c}\widehat q)^Tr_I\), proving Eq. (18). If the load depends on design, the full compliance derivative also contains \(2f_{g,c}^T\widehat U\), and correspondingly \(2f_{g,c}^TU\) for the exact assembly. Changes of the DOF selectors, assembly maps or support maps contribute their own chain-rule terms, including the derivatives of \(B_m^TS_mB_m\) when \(B_m\) varies.
 
 In the reference computation, moment derivatives are approximated by
 
@@ -506,7 +524,7 @@ The active set is fixed for this calculation, and the elasticity templates and g
 
 ### H.1. Sensitivity error bounds (proof of Proposition 4)
 
-For a fixed retained displacement vector \(q\), set \(u=Eq\), \(d=J_I^THq\), and \(\mathcal E=d^TKd=(Hq)^TA(Hq)\). The derivatives \(K_{,c}\), \(c=1,\ldots,8\), are symmetric. Define the reference vector \(\boldsymbol s\) with components \(s_c=-u^TK_{,c}u\), and assume \(\|\boldsymbol s\|_2>0\). Eq. (17) then reads
+For a fixed retained displacement vector \(q\), set \(u=\Psi q\), \(d=J_I^THq\), and \(\mathcal E=d^TKd=(Hq)^TA(Hq)\). The derivatives \(K_{,c}\), \(c=1,\ldots,8\), are symmetric. Define the reference vector \(\boldsymbol s\) with components \(s_c=-u^TK_{,c}u\), and assume \(\|\boldsymbol s\|_2>0\). Eq. (17) then reads
 
 \[
 \widetilde s_c-s_c=-2d^TK_{,c}u-d^TK_{,c}d.
@@ -529,11 +547,11 @@ Cauchy–Schwarz and the quadratic-form operator bound give
 \tag{H.4}
 \]
 
-All eight components are included, and the denominator is the norm of the exact sensitivity vector for that test displacement. The constants separate the coupling through the stiffness derivative, the interior coercivity and the scale of the reference sensitivity. For fixed \(q\) and \(H=tH_0\), the linear coefficient vanishes if and only if \((H_0q)^Tb_c=0\) for every corner. It vanishes for all interior errors if \(J_IK_{,c}E q=0\) for every corner. A useful special case is \(K_{,c}=\alpha_cK\): interior equilibrium removes the linear term, and the relative sensitivity error equals the energy error when the reference vector is nonzero.
+All eight components are included, and the denominator is the norm of the exact sensitivity vector for that test displacement. The constants separate the coupling through the stiffness derivative, the interior coercivity and the scale of the reference sensitivity. For fixed \(q\) and \(H=tH_0\), the linear coefficient vanishes if and only if \((H_0q)^Tb_c=0\) for every corner. It vanishes for all interior errors if \(J_IK_{,c}\Psi q=0\) for every corner. A useful special case is \(K_{,c}=\alpha_cK\): interior equilibrium removes the linear term, and the relative sensitivity error equals the energy error when the reference vector is nonzero.
 
 ### H.2. The complete design derivative and the sign of the thickness derivative
 
-With fixed selectors, differentiating \(J_IKE=0\) gives \(AE_{I,c}=-J_IK_{,c}E\). With \(K_{II,c}\) as in Appendix H.1, differentiating the variational stiffness error gives
+With fixed selectors, differentiating \(J_IK\Psi=0\) gives \(A\Psi_{I,c}=-J_IK_{,c}\Psi\). With \(K_{II,c}\) as in Appendix H.1, differentiating the variational stiffness error gives
 
 \[
 \boxed{(\widehat S-S)_{,c}
@@ -541,21 +559,21 @@ With fixed selectors, differentiating \(J_IKE=0\) gives \(AE_{I,c}=-J_IK_{,c}E\)
 \tag{H.5}
 \]
 
-Its norm is bounded by \(2\|A\|\|H\|\|H_{,c}\|+\|K_{II,c}\|\|H\|^2\). Thus a value error \(H=O(t)\) by itself does not imply a quadratic derivative error. For example, with \(f=1\), \(K=I_2\), \(E=(1,0)^T\) and \(F_t(\tau)=(1,t+\tau)^T\), the compliance gap at \(\tau=0\) is \(C-\widehat C_t=t^2/(1+t^2)\), whereas the derivative error is \(\partial_\tau(\widehat C_t-C)=-2t/(1+t^2)^2\). With \(H_t(\tau)=t\sin(\tau/t^2+\pi/4)\) the gap is \(O(t^2)\), but the derivative error tends to \(-1\). Neither family is uniformly \(C^1\)-small. A uniformly \(C^1\)-small recovery error, \(H=tH_0(\tau)\) with bounded \(H_0,H_{0,c}\), gives \((\widehat S-S)_{,c}=O(t^2)\). With uniformly bounded exact solutions and inverse stiffnesses, this also yields \(\widehat C_{,c}-C_{,c}=O(t^2)\).
+Its norm is bounded by \(2\|A\|\|H\|\|H_{,c}\|+\|K_{II,c}\|\|H\|^2\). Thus a value error \(H=O(t)\) by itself does not imply a quadratic derivative error. For example, with \(f=1\), \(K=I_2\), \(\Psi=(1,0)^T\) and \(\widehat\Psi_t(\tau)=(1,t+\tau)^T\), the compliance gap at \(\tau=0\) is \(C-\widehat C_t=t^2/(1+t^2)\), whereas the derivative error is \(\partial_\tau(\widehat C_t-C)=-2t/(1+t^2)^2\). With \(H_t(\tau)=t\sin(\tau/t^2+\pi/4)\) the gap is \(O(t^2)\), but the derivative error tends to \(-1\). Neither family is uniformly \(C^1\)-small. A uniformly \(C^1\)-small recovery error, \(H=tH_0(\tau)\) with bounded \(H_0,H_{0,c}\), gives \((\widehat S-S)_{,c}=O(t^2)\). With uniformly bounded exact solutions and inverse stiffnesses, this also yields \(\widehat C_{,c}-C_{,c}=O(t^2)\).
 
 At the same retained displacement vector \(q\), Eqs. (17) and (H.5) give
 
 \[
-\widetilde s_c-s_c=2(Hq)^TAE_{I,c}q-(Hq)^TK_{II,c}Hq,\qquad
+\widetilde s_c-s_c=2(Hq)^TA\Psi_{I,c}q-(Hq)^TK_{II,c}Hq,\qquad
 -q^T\widehat S_{,c}q-s_c=-2(H_{,c}q)^TA\,Hq-(Hq)^TK_{II,c}Hq.
 \tag{H.6}
 \]
 
-The complete derivative of Eq. (18) evaluates \(-q^T\widehat S_{,c}q\) at the assembled \(\widehat q\), so its comparison with \(s_c\) also contains the change of this quantity between \(q\) and \(\widehat q\). The residual term of Eq. (18) thus removes the term linear in the interior displacement error and replaces it by a term weighted by the design derivative of the recovery error. Which of the two gives the more accurate gradient depends on whether \(\|H_{,c}q\|_A\) is small compared with \(\|E_{I,c}q\|_A\).
+The complete derivative of Eq. (18) evaluates \(-q^T\widehat S_{,c}q\) at the assembled \(\widehat q\), so its comparison with \(s_c\) also contains the change of this quantity between \(q\) and \(\widehat q\). The residual term of Eq. (18) removes the term linear in the interior displacement error and replaces it by a term weighted by the design derivative of the recovery error. The linear terms in the error bounds of the sensitivity estimate and of the complete derivative contain \(\|\Psi_{I,c}q\|_A\) and \(\|H_{,c}q\|_A\), respectively.
 
-The \(O(t)\) term of the sensitivity estimate can cancel against the residual term. At the same retained displacement, \(J_IK_{,c}Eq=-AE_{I,c}q\). For \(H=tH_0\), the linear error of the sensitivity estimate is \(+2t(H_0q)^TAE_{I,c}q\), while the linear contribution of the residual term is \(-2t(E_{I,c}q)^TAH_0q\). A sensitivity estimate with a first-order error and a complete derivative with a second-order error can therefore coexist, even with a positive semidefinite stiffness derivative. For \(K(\tau)=\begin{bmatrix}1+\tau&\tau\\\tau&1+\tau\end{bmatrix}\), \(E=(1,-\tau/(1+\tau))^T\), \(F_t=E+(0,t)^T\) and \(f=1\) at \(\tau=0\), the exact derivative is \(-1\), the sensitivity estimate \(-(1+t)^2/(1+t^2)^2\) and the residual term \(2t/(1+t^2)^2\); their sum \(-1/(1+t^2)\) has error \(t^2/(1+t^2)\).
+The \(O(t)\) term of the sensitivity estimate can cancel against the residual term. At the same retained displacement, \(J_IK_{,c}\Psi q=-A\Psi_{I,c}q\). For \(H=tH_0\), the linear error of the sensitivity estimate is \(+2t(H_0q)^TA\Psi_{I,c}q\), while the linear contribution of the residual term is \(-2t(\Psi_{I,c}q)^TAH_0q\). A sensitivity estimate with a first-order error and a complete derivative with a second-order error can therefore coexist, even with a positive semidefinite stiffness derivative. For \(K(\tau)=\begin{bmatrix}1+\tau&\tau\\\tau&1+\tau\end{bmatrix}\), \(\Psi=(1,-\tau/(1+\tau))^T\), \(\widehat\Psi_t=\Psi+(0,t)^T\) and \(f=1\) at \(\tau=0\), the exact derivative is \(-1\), the sensitivity estimate \(-(1+t)^2/(1+t^2)^2\) and the residual term \(2t/(1+t^2)^2\); their sum \(-1/(1+t^2)\) has error \(t^2/(1+t^2)\).
 
-Under a fixed basis and exact integration, increasing one corner thickness parameter \(\tau_c\) with nonnegative \(Q_1\) shape functions enlarges the material domain. With fixed ghost stabilisation, this gives \(K_{,c}\succeq0\), \(S_{,c}\succeq0\), and \(C_{,c}\le0\). The sensitivity estimate is then also nonpositive for any displacement field; the quadratic term in the signed sensitivity discrepancy of Eq. (17) is nonpositive, while the cross term can have either sign. That the variational condensed stiffness dominates the exact one at every design does not by itself make the approximate compliance monotone with respect to the design: the residual term can change the sign of its complete derivative. For a scalar design parameter \(\gamma_1>0\), \(K(\gamma_1)=\gamma_1I_2\), \(E=(1,0)^T\) and \(F=(1,g(\gamma_1))^T\), one has \(\widehat S=\gamma_1(1+g^2)\ge S=\gamma_1\); at \(\gamma_1=1\), \(g=0.1\) and \(g'=-10\), \(\widehat S'=-0.99\), so \(\widehat C'>0\) for \(f=1\) although \(C'=-1\), while the sensitivity estimate remains negative.
+Under a fixed basis and exact integration, increasing one corner thickness parameter \(\tau_c\) with nonnegative \(Q_1\) shape functions enlarges the material domain. With fixed ghost stabilisation, this gives \(K_{,c}\succeq0\), \(S_{,c}\succeq0\), and \(C_{,c}\le0\). The sensitivity estimate is then also nonpositive for any displacement field; the quadratic term in the signed sensitivity discrepancy of Eq. (17) is nonpositive, while the cross term can have either sign. That the variational condensed stiffness dominates the exact one at every design does not by itself make the approximate compliance monotone with respect to the design: the residual term can change the sign of its complete derivative. For a scalar design parameter \(\gamma_1>0\), \(K(\gamma_1)=\gamma_1I_2\), \(\Psi=(1,0)^T\) and \(\widehat\Psi=(1,g(\gamma_1))^T\), one has \(\widehat S=\gamma_1(1+g^2)\ge S=\gamma_1\); at \(\gamma_1=1\), \(g=0.1\) and \(g'=-10\), \(\widehat S'=-0.99\), so \(\widehat C'>0\) for \(f=1\) although \(C'=-1\), while the sensitivity estimate remains negative.
 
 More explicitly, for \(h>0\), \(N_c^{Q_1}(x)\ge0\) implies \(\Omega(\tau)\subseteq\Omega(\tau+h e_c)\). For any discrete coefficient vector \(v\), with interpolated displacement field \(v_h\),
 \[
@@ -564,7 +582,7 @@ v^T[K(\tau+h e_c)-K(\tau)]v
 \nabla^{\rm s}v_h:\mathsf C:\nabla^{\rm s}v_h\,dx\ge0.
 \tag{H.7}
 \]
-Here \(\nabla^{\rm s}\) is the symmetric gradient, the elasticity tensor \(\mathsf C\) and the basis are fixed, and the ghost contribution cancels. Taking the differentiable limit proves that the thickness derivative is positive semidefinite. A centred difference of stiffness matrices assembled from exactly nested domains is also PSD. Changes of the adaptive integration subdivision, approximate moments or independently selected stabilisation can break this discrete nesting relation; a fixed active topology alone does not establish that it holds numerically. A step study of the central difference and an element-level check of the moment derivatives (Supplementary Note S1, Figure S01(c)) show that the numerical derivative is accurate on the fixed active set. They also show that the discrete moments preserve the nesting only approximately: some partially filled elements have indefinite derivative matrices. Eq. (H.7) therefore describes exact integration; the reference sensitivities of this study are derivatives of the discrete model and are compared as such.
+Here \(\nabla^{\rm s}\) is the symmetric gradient, the elasticity tensor \(\mathsf C\) and the basis are fixed, and the ghost contribution cancels. Taking the differentiable limit proves that the thickness derivative is positive semidefinite. A centred difference of stiffness matrices assembled from exactly nested domains is also positive semidefinite. Changes of the adaptive integration subdivision, approximate moments or independently selected stabilisation can break this discrete nesting relation; a fixed active topology alone does not establish that it holds numerically. A step study of the central difference and an element-level check of the moment derivatives (Supplementary Note S1, Figure S01(c)) show that the numerical derivative is accurate on the fixed active set. They also show that the discrete moments preserve the nesting only approximately: some partially filled elements have indefinite derivative matrices. Eq. (H.7) therefore describes exact integration; the reference sensitivities of this study are derivatives of the discrete model and are compared as such.
 
 ## Appendix I. A computable lower bound on the energy error
 
