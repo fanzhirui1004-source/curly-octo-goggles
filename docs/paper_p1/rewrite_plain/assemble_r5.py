@@ -47,7 +47,7 @@ def splice(fname, chunks, lang):
     for cid, a, b in chunks:
         assert pos == a, (fname, cid, pos, a)
         new = read(SEC / f'{cid}_{lang}.md').rstrip('\n').split('\n')
-        out += new
+        out += new + ['']                       # blank line: the next unit's heading starts a block
         pos = b + 1
     out += old[pos - 1:]
     return '\n'.join(out).rstrip('\n') + '\n'

@@ -17,6 +17,8 @@ FMT = 'markdown+tex_math_single_backslash-auto_identifiers-smart-implicit_figure
 def build(md, out):
     md = re.sub(r'\\tag\{([^}]*)\}', r'\\qquad(\1)', md)              # Word equations have no \tag
     md = re.sub(r'\{\\rm ([^{}]*)\}', r'\\mathrm{\1}', md)             # {\rm x} -> \mathrm{x} (texmath)
+    # aligned would become a Word equation array, whose '&' alignment marks some readers (e.g. WPS) show literally
+    md = md.replace(r'\begin{aligned}', r'\begin{array}{rlrll}').replace(r'\end{aligned}', r'\end{array}')
     pypandoc.convert_text(md, 'docx', format=FMT, outputfile=str(out),
                           extra_args=['--resource-path', str(SRC), '--wrap=preserve'])
     print(out.name, out.stat().st_size)
