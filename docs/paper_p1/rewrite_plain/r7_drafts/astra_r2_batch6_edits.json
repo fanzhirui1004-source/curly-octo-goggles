@@ -1,0 +1,965 @@
+[
+ {
+  "region": "R1-5.9（U10_CN.md / U10_EN.md，第 5.9 节、表 5 及表注）",
+  "items": [
+   {
+    "id": "G7-1",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 删去 5.9 首段（结论句、两条原因、110 胞元规模句），不采纳，首段保留。只按第一轮建议把“160 万”统一为 5.10 的“162 万”（EN 1.62 million）。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "160 万",
+      "new": "162 万"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "system 1.6 million",
+      "new": "system 1.62 million"
+     }
+    ],
+    "facts_checked": "S4_CN.md/S4_EN.md ST20 第 110 胞元行：32.70 M / 1.618 M。review_r1/results/X6_final/scale/scale_summary.json plateS110：cutfem_dofs_assembled 32,698,773（3270 万），retained_free 1,617,882（162 万 / 1.62 million；retained_assembled 1,677,498 含固支面），iter_s 均值 1163.9 s = 19.4 min（19 min），每胞元 10.58 s（约 11 s）。5.10（U10_CN.md:56 / U10_EN.md:56）已写“162 万 / 1.62 million”。",
+    "concerns": "verdict 由起草稿的 reject_confirmed 改为 adopt_modified：起草稿带了 edits，与“原文不改”矛盾。astra 的删除仍不采纳，edits 只统一数字。旧串缩短为“160 万”和“system 1.6 million”，均已确认在文件中唯一。110 胞元一句在 5.9、5.10 和结论中出现三次，按最小改动保留。"
+   },
+   {
+    "id": "G7-2",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 重写首段，引入“完整胞元”“在线部署”，并丢了沿用块体主自由度、固支和载荷一句，不采纳。只取“未约束主自由度”，与表 5 列名一致。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "两个八胞元点阵的主自由度分别为",
+      "new": "两个八胞元点阵的未约束主自由度分别为"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "for the two eight-cell lattices, these number 139,002 and 143,685,",
+      "new": "the two eight-cell lattices have 139,002 and 143,685 free retained DOFs,"
+     }
+    ],
+    "facts_checked": "evidence/host_direct/lat2_hlat222_chol.json 与 lat2_hlat331_chol.json：free_retained 139,002 / 143,685，interior 1,694,472 / 1,969,926，global_dofs 1,833,474 / 2,113,611 = free_retained + interior。可见 183 万 / 211 万也不含固支自由度，两边口径一致。t5retime/learned_hlat222.json lattice.free_dofs 139,002。表 5 列名为“未约束主自由度 / free retained”。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-3",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去路线 (a) 的定义（装配含内部自由度的完整模型、只分解一次），第二句还缺主语，不采纳，原文保留。",
+    "edits": [],
+    "facts_checked": "evidence/host_direct/lat2_hlat*_chol.json 16 线程最大相对残差：221a 3.3e-10，221b 4.5e-10，222 1.5e-10，331 2.6e-09，均低于 3×10⁻⁹，与 S3 ST12b 一致。CPU 型号 AMD EPYC 9654 已在原文中。",
+    "concerns": "同意第一轮的理由。"
+   },
+   {
+    "id": "G7-4",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去“通过内部刚度矩阵的 Cholesky 分解完成凝聚”，常规精确凝聚的成本正来自这一步；“消去共享界面”搭配也不当。不采纳。",
+    "edits": [],
+    "facts_checked": "S3 ST12c 中柔度与 (a) 之差为 5e-10、4e-10、2e-10、7e-10。evidence/host_condensed/hostcond_summary.json 中 221a 的 rel_diff 最大为 4.6e-10。原文“7×10⁻¹⁰ 以内”成立。",
+    "concerns": "同意第一轮的理由。"
+   },
+   {
+    "id": "G7-5",
+    "verdict": "adopt_modified",
+    "summary_cn": "采纳“递推相对残差”。按 D1 改指第 3.6 节，并补 GPU 型号 NVIDIA GeForce RTX 5090（全文仅此一处）。astra 删去的“为每个胞元准备学习子结构”计入计时，保留。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "在一块 GPU 上运行的 NICE",
+      "new": "在一块 NVIDIA GeForce RTX 5090 GPU 上运行的 NICE"
+     },
+     {
+      "file": "U10_CN.md",
+      "old": "以第 5.8 节的预条件共轭梯度法将装配方程组求解至相对残差",
+      "new": "以第 3.6 节的预条件共轭梯度法将装配方程组求解至递推相对残差"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "Route (c) is NICE on one GPU.",
+      "new": "Route (c) is NICE on one NVIDIA GeForce RTX 5090 GPU."
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "conjugate gradients of Section 5.8 to a relative residual",
+      "new": "conjugate gradients of Section 3.6 to a recursive relative residual"
+     }
+    ],
+    "facts_checked": "review_r1/results/X6_final/t5retime/learned_hlat221a/221b/222/331.json：gpu 字段均为 \"NVIDIA GeForce RTX 5090\"，args.tol 均为 1e-06，solve.residual 为 8.99e-7、9.47e-7、9.76e-7、9.94e-7，与 S3“递推相对残差 10⁻⁶，实际 9.0–9.9×10⁻⁷”一致。iteration_total 为 39.43/37.34/79.20/105.46 s，迭代次数 114/119/129/164，与表 5 一致。全稿此前没有 5090 字样（grep 确认）。",
+    "concerns": "EN 由起草稿的“recursively updated relative residual”改为“recursive relative residual”，与 S3_EN.md:9 中描述同一批计时的措辞（以及 S4_EN.md:26）一致，也更短。CN“递推相对残差”与 S3_CN.md:9 一致。“第 3.6 节”以 D1 为前提：PCG 和平衡两层预条件子的说明从 5.8 移入 3.6。5.9 内只有这一处指向“第 5.8 节的预条件共轭梯度法”；其余“第 5.8 节”指点阵或精确凝聚基准，不改。"
+   },
+   {
+    "id": "G7-6",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去“若计算灵敏度，耗时还将增加”和硬件不同的说明，换成含糊的元陈述，不采纳，原段保留。",
+    "edits": [],
+    "facts_checked": "S3 ST12b 16 线程下六载荷求解占总时间：13.5/484.4=2.8%，10.4/349.2=3.0%，31.0/867.8=3.6%，36.0/1041.6=3.5%，“3–4%”成立。“均不包含数据生成和训练的一次性成本”按 R5/R6 的既定处理（U10_NOTES.md 中该句“kept: source statement”，astra_r2_review_CN.md TBD-3a“保持原样，不扩写”）保留。",
+    "concerns": "同意第一轮的理由。末句“并不衡量硬件上等价的计算量”有“并不……”式元陈述的味道，可选删减见 extra_findings 4。"
+   },
+   {
+    "id": "G7-7",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 改表题、把工作量写进列名、删表注中的路线定义。只采纳两点：表题删去“含灵敏度”，因为 (a)(b) 不计算灵敏度；表注删去正文已有的路线定义，只说各列给出什么，并注明三个柔度误差依次对应 x、y、z 方向的面力载荷。列名不改，不用“在线部署”。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "**表 5. 一次含灵敏度的点阵分析的成本。** (a) 采用稀疏 Cholesky 分解的整体点阵直接求解，使用 MKL PARDISO，在 CPU 上以 16 个线程运行。表中给出从胞元设置到求解六个载荷（三个面力载荷和三个随机载荷）的时间，以及进程峰值内存。(b) 用 PARDISO 的 Schur 补选项凝聚每个胞元，再以分块 Cholesky 分解求解凝聚后的点阵方程组，16 线程：总时间与进程峰值内存。(c) 胞元准备、预条件子设置、对三个面力载荷求解至 \\(10^{-6}\\) 的共轭梯度迭代以及灵敏度计算：时间、GPU 峰值内存和胞元准备后的 CPU 内存。(c) 的柔度误差对四胞元点阵以 (a) 为基准，对八胞元点阵以第 5.8 节的精确静力凝聚为基准。路线 (a) 和 (b) 求解六个载荷，不计算灵敏度；路线 (c) 求解三个载荷并计算灵敏度。",
+      "new": "**表 5. 一次点阵分析的成本。** (a)、(b) 为从胞元设置到求解六个载荷（三个面力载荷和三个随机载荷）的时间和进程峰值内存，不计算灵敏度。(c) 为胞元准备、预条件子设置、对三个面力载荷求解至 \\(10^{-6}\\) 的共轭梯度迭代和灵敏度计算的时间，以及 GPU 峰值内存和胞元准备后的 CPU 内存。(c) 的柔度误差依次对应 x、y、z 方向的面力载荷，对四胞元点阵以 (a) 为基准，对八胞元点阵以第 5.8 节的精确静力凝聚为基准。"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "**Table 5. Cost of one lattice analysis with sensitivities.** (a) Direct solution of the whole lattice by sparse Cholesky factorisation with MKL PARDISO and 16 threads on the CPU. Time from cell setup to the solution of six loads (three traction loads and three random loads), and peak process memory. (b) Condensation of every cell with the Schur-complement option of PARDISO, followed by the solution of the condensed lattice system by block Cholesky factorisation, 16 threads: total time and peak process memory. (c) Cell preparation, preconditioner setup, conjugate gradients for the three traction loads to \\(10^{-6}\\), and sensitivities: time, peak GPU memory and CPU memory after cell preparation. The compliance error of (c) is computed against (a) for the four-cell lattices and against the exact static condensation of Section 5.8 for the eight-cell lattices. Routes (a) and (b) solve six loads and do not evaluate sensitivities; route (c) solves three loads and evaluates the sensitivities.",
+      "new": "**Table 5. Cost of one lattice analysis.** (a), (b): time from cell setup to the solution of six loads (three traction loads and three random loads) without sensitivities, and peak process memory. (c): time of cell preparation, preconditioner setup, conjugate gradients for the three traction loads to \\(10^{-6}\\) and sensitivities; peak GPU memory and CPU memory after cell preparation. The compliance errors of (c), for the traction loads in the x, y and z directions, are computed against (a) for the four-cell lattices and against the exact static condensation of Section 5.8 for the eight-cell lattices."
+     }
+    ],
+    "facts_checked": "表 5 全部数值已核对。(a) 时间和内存：host_direct/lat2_*_chol.json 总计 484.4/349.2/867.8/1041.6 s，process_peak_rss 35.12/31.99/71.14/85.88 GiB。(b)：hostcond_summary.json total_s 588.8 s、27.86 GiB 等。(c)：t5retime 中时间 39.43/37.34/79.20/105.46 s，GPU 峰值 peak_device_GB×1e9/2³⁰ = 6.34/6.09/8.50/9.19 GiB。CPU 内存：host_rss_GB_after_front_end 为 VmRSS(kB)/1e6（lat_scale.py:32–36），乘 1e6×1024/2³⁰ 得 2.42/2.42/3.88/4.70 GiB。柔度误差按载荷顺序 consistent_ymax_x/y/z 重算：221a 0.0148/0.0118/0.0103，221b 0.0219/0.0157/0.0142（基准为 (a) 的 compliance）；222 0.0140/0.0112/0.0097，331 0.0154/0.0137/0.0151（基准为 lat_hetero*_A3.json 的 exact.compliance）。与表中各行一致，三个数依次对应 x、y、z 方向的载荷。",
+    "concerns": "删去的 MKL PARDISO、16 线程 CPU、Schur 补选项、分块 Cholesky 在正文路线 (a)(b) 两段（U10 第 13、15 行，CN/EN 同）都有，S3 也有，所以 EN 整体不丢信息。保留“内存单位为 GiB。各阶段耗时见补充说明 S3 和补充表 ST12。”两句。起草稿写的是“三个柔度误差对应三个面力载荷”，未说明顺序；本稿改为“依次对应 x、y、z 方向”，EN 措辞同 U09_EN.md:7。EN 中“without sensitivities”紧跟所修饰的求解，(c) 句改用分号。备选（改动最小）：只把表题改为“一次点阵分析的成本 / Cost of one lattice analysis”，表注其余不动，因为末句已写明 (a)(b) 不计算灵敏度。推荐本稿写法，因为表注只说明各列读法，更符合作者对表注的要求。"
+   },
+   {
+    "id": "G7-8",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 的 79.2/105.5、“按所列部署”“双方”“增线程”和删去式 (16)，都不采纳。原句“增加线程数……改善有限”不准：由单线程增至 16 线程，总时间降为约 1/5。只改为“线程数增至 32”，括注保留。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "增加线程数对直接求解的改善有限",
+      "new": "线程数增至 32 对直接求解的改善有限"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "More threads reduce the time of the direct solution only slightly",
+      "new": "Raising the thread count to 32 reduces the time of the direct solution only slightly"
+     }
+    ],
+    "facts_checked": "单线程到 16 线程（ST12b）：总时间 2,425→484、2,131→349、5,864→868、8,131→1,042 s。16 到 32 线程（evidence/host_direct_32threads/lat2t32_*_chol.json）：总时间 484.4→378.4、349.2→340.9、867.7→823.3、1041.5→955.4 s；cells_s 229.9→219.4、184.2→204.9、379.5→432.7、431.3→434.3 s，不随线程数加速；分解 193→106、117→87、368→276、482→395 s。与 ST12b 表注一致。其余数字：868/79.2=11.0，1041.6/105.46=9.9（约十倍）；扣除准备阶段后 254.5/31.9=8.0、165.0/30.85=5.4、488.3/67.4=7.2、610.3/92.8=6.6（五至八倍）；cells_s 占总时间 47.5/52.8/43.7/41.4%（41 至 53%）；计时柔度误差比第 5.8 节高 0.0003–0.0048 个百分点（至多 0.005）。105.46 s 舍入为 105 s 正确，结论中的“79–105 s”不改。",
+    "concerns": "起草稿删去了括注中的“32 线程和单线程的耗时见”，EN 也删去了对单线程时间的指引。本稿改为最小改动，只换主语，括注和 EN 后半句保留，EN 不丢内容。“式 (16)”保留。"
+   },
+   {
+    "id": "G7-9",
+    "verdict": "adopt_modified",
+    "summary_cn": "原首句“内存需求呈同样的规律”不准：时间排序为 (b)>(a)>(c)，内存排序为 (a)>(b)>(c)。astra 改成元陈述，不采纳。首句改为“NICE 所需内存也少于两种精确路线”；采纳“主要由”；“增长略快于自由度数”有证据，保留。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "内存需求呈同样的规律。",
+      "new": "NICE 所需内存也少于两种精确路线。"
+     },
+     {
+      "file": "U10_CN.md",
+      "old": "86 GiB，由增长",
+      "new": "86 GiB，主要由增长"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "The memory requirements follow the same pattern.",
+      "new": "NICE also needs less memory than the two exact routes."
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "set by the Cholesky factor",
+      "new": "set mainly by the Cholesky factor"
+     }
+    ],
+    "facts_checked": "PARDISO 内存占进程峰值：66.4/71.1=93%，80.9/85.9=94%（“主要由”）。每百万自由度的 PARDISO 内存：31.96/0.958=33.4，28.82/0.885=32.6，66.37/1.833=36.2，80.85/2.114=38.3 GiB（“增长略快于自由度数”）。NICE 的 GPU 与 CPU 内存合计 8.5+3.9=12.4 和 9.2+4.7=13.9 GiB，低于 (b) 的 40.1/42.2 GiB 和 (a) 的 71.1/85.9 GiB。(b) 中保存的凝聚矩阵 32.8/33.4 GiB，占 82%/79%（“大部分”）。",
+    "concerns": "起草稿用的是“远少于 / far less”。本稿改为“少于 / less”：与 5.9 首句“所需时间和内存均少于”一致，倍数由后文数字给出，也不带评价词。"
+   },
+   {
+    "id": "G7-10",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 把光滑聚集和 BoomerAMG 改称“多重网格 / 经典多重网格”（技术错误），删去比较对象和倍数，末句也含糊，都不采纳。只采纳“不计算灵敏度”这一说明。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "所用三个载荷的耗时",
+      "new": "所用三个载荷（不计算灵敏度）的耗时"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "Including the setup and assembly of route (a), this solver",
+      "new": "Including the setup and assembly of route (a) but no sensitivities, this solver"
+     }
+    ],
+    "facts_checked": "ST12e 中 GAMG 至 10⁻⁴ 含设置、三载荷为 221 / 278 s。加上 ST12b 的胞元设置与整体装配 379.5+36.0=415.5≈416 和 431.3+42.3=473.6≈474，得 637 / 752 s。637/79.2=8.0，752/105.46=7.1（八倍、七倍）；416/79.2=5.3，474/105.46=4.5。设置 35.3/39.2 s，每载荷 52–72 和 66–84 s，柔度差 4.6e-10/1.4e-10（<5×10⁻¹⁰），BoomerAMG 250–260 次，BDDC 449.2/523.1 s，均与正文一致。",
+    "concerns": "EN 由起草稿的“for the three loads of route (c) without sensitivities,”改为放在 Including 从句里。原写法可误读为“不计算灵敏度的路线 (c)”。CN 括注位置不变，中英内容对应。"
+   },
+   {
+    "id": "G7-11",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把“内部刚度矩阵的分解”和“网络编码和修正的设置”换成笼统的“更新胞元数值准备”，并加前向指引，不采纳，原段保留。",
+    "edits": [],
+    "facts_checked": "无数字。被删的具体内容与 S3 ST13“凝聚”列一致（NICE：网络编码与修正设置；常规：内部自由度的符号分析与 Cholesky 分解）。",
+    "concerns": "同意第一轮的理由。“可以上一次的解为初值”的可读性见 extra_findings 2。"
+   }
+  ],
+  "critic_notes": "逐条核对：所有 edit.old 已用 python 对当前 U10_CN.md / U10_EN.md 计数，均恰为 1；在副本上依次应用后通读 5.9，中英文对应，无禁用词（region 内的“并不”一处为原有的公平性说明，另一处是事实陈述）。改动如下。(1) G7-1：起草稿的 verdict 是 reject_confirmed 却带 edits，改为 adopt_modified；旧串缩短为“160 万”和“system 1.6 million”。(2) G7-5：EN 由“recursively updated relative residual”改为“recursive relative residual”，与 S3_EN/S4_EN 中描述同一批计时的措辞一致。(3) G7-7：“三个柔度误差对应三个面力载荷”改为“依次对应 x、y、z 方向的面力载荷”（已按 consistent_ymax_x/y/z 的顺序重算各误差）；EN 中“without sensitivities”紧跟所修饰的求解，(c) 句用分号；补充最小改动备选（只改表题）。(4) G7-8：起草稿删去了括注中单线程与 32 线程的指引；本稿改为最小改动，只把“增加线程数”换成“线程数增至 32”，括注和 EN 后半句保留，EN 不丢内容。(5) G7-9：“远少于 / far less”改为“少于 / less”，与 5.9 首句一致，倍数由数字给出。(6) G7-10：EN 的“without sensitivities”移入 Including 从句，避免误读为“不计算灵敏度的路线 (c)”。数字全部按 t5retime、host_direct、host_direct_32threads、hostcond_summary、lat_hetero*_A3、scale_summary 和 S3/S4 补充表复核。D1（第 3.6 节）、顺序保留、Ψ 记号（本区无恢复算子记号）、5-12 均不冲突。",
+  "extra_findings": "1.（已核实）t5retime/compare_old_new.py 把 host_rss_GB_after_front_end 按 GB×1e9/2³⁰ 换算，得到 CPU 内存 2.37/2.36/3.79/4.59。该字段实为 VmRSS(kB)/1e6（docs/data/newmachine_20260924/src_v2_wip/lat_scale.py:32–36，第 175 行写入），正确换算为 ×1e6×1024/2³⁰ = 2.42/2.42/3.88/4.70 GiB，表 5 的 2.4/2.4/3.9/4.7 正确。论文不用改；compare_old_new.txt 的 rss 列不能作为核对依据。\n2.（可选，可读性）U10_CN.md 末段“装配方程组的求解可以上一次的解为初值”易断成“可以上”。可改为“可取上一次的解为初值”（old“可以上一次的解为初值”在文件中唯一），EN 不变。\n3.（可选）5.9 首段“约合每胞元 11 s”与 5.10“每胞元 10.1 至 10.9 s”表面上不一致。实际 1163.9/110 = 10.58 s，“约 11 s”是正确舍入。如要统一：CN“约合每胞元 11 s”→“约合每胞元 10.6 s”，EN“about 11 s per cell”→“about 10.6 s per cell”（两处 old 均唯一）。\n4.（可选，作者定）U10_CN.md:19 末句“，并不衡量硬件上等价的计算量”是“并不……”式说明。如要精简，CN 删去这半句（old“，并不衡量硬件上等价的计算量”→“”），EN 删去“ and does not measure hardware-equivalent amounts of work”（两处 old 均唯一），保留“本节比较的是各路线在各自部署方式下的成本 / the comparison concerns the routes as each is deployed”。第一轮认为这是公平性前提，应保留，本稿不强求。\n5.（已核实）5.9 中没有 需要指出的是、它、前者、后者、甚至、却、荷载、完整胞元、保留自由度、分工、非扩张、“，即”等禁用词，没有指向已撤销的第 2.5 节的引用，也没有 E/F/Ê 记号。“完整 Neumann 矩阵”中的“完整”不是“完整胞元”。\n6. 装配脚本的数字核对会把“162 万 / 1.62 million”报为 CN/EN 数字不一致。改前的“160 万 / 1.6 million”以及“183 万 / 1.83”同样会报，只报告、不阻断，不需处理。\n7.（D1，区外）第 5.8 节第 3 段（U10_CN.md:3 / U10_EN.md:3）中 PCG 与平衡两层预条件子的说明须移入第 3.6 节，由负责 5.8 / 3.6 的批次处理。G7-5 中“第 3.6 节”的引用以此为前提。\n8.（D1，区外，新增）第 5.10 节还有一处同类引用：U10_CN.md:40“采用第 5.8 节的预条件共轭梯度法求解点阵”，以及 U10_EN.md:40“by the preconditioned conjugate gradients of Section 5.8.”。按 D1 应改为“第 3.6 节 / Section 3.6”，请负责 5.10 的批次一并处理。同节其余“第 5.8 节”指块体或精确凝聚，不改。\n9.（区外，新增）S3_CN.md:99 / S3_EN.md:99 写有“第 5.8 节的精确与学习点阵求解、第 5.9 节的学习路线 (c) 以及第 5.10 节的学习求解，均采用这一平衡作用”。D1 把说明移入 3.6 后，S4.1 与第 3.6 节的分工（正文给方法，S4.1 给细节）需由处理 D1 的批次确认，避免重复。"
+ },
+ {
+  "region": "R2-5.10-text",
+  "items": [
+   {
+    "id": "G7-12",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把首句改成元陈述“延伸到厚度设计”，把“角点厚度参数”缩成“角点参数”，块体改指第 5.3 节。同意初审，保留原文：第 5 节顺序不变，“第 5.8 节的块体”不改。",
+    "edits": [],
+    "facts_checked": "术语表规定用“角点厚度参数”；决定 5-S1：点阵仍在第 5.8 节，所以块体的引用不变。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-13",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去角点跨度定义和训练参数域数字，顶点梯度改指第 4.2 节。保留原文：第 2.4 节指向本节定义“角点跨度”，参数域按 5-S4 留在第 6.3 节，顶点梯度公式在第 2.4 节。",
+    "edits": [],
+    "facts_checked": "U02_CN.md:77 / U02_EN.md:77 写“每个胞元的角点跨度和梯度范数均受到限制……（第 5.10 节）”，正文中“角点跨度”只在本段定义（S4/U11 只使用不定义）。ST16：训练范围 [0.1752, 0.6993]，跨度和梯度训练限值 0.47，与正文 [0.175, 0.699]、0.47 一致。决定 5-S4：参数域留在第 6.3 节。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-14",
+    "verdict": "author_decision",
+    "summary_cn": "astra 把约 720 字的首段拆成三段。建议只拆两段：算例与设计问题一段，从“优化器使用”起另起一段写梯度、界限、训练域和迭代流程；角点跨度定义原样保留。第 3.6 节引用（D1）见 G7-29，拆不拆都要改。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "\\(2f_{g,c}^T\\widehat U\\)。优化器使用",
+      "new": "\\(2f_{g,c}^T\\widehat U\\)。\n\n优化器使用"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "of Appendix H. The optimiser receives",
+      "new": "of Appendix H.\n\nThe optimiser receives"
+     }
+    ],
+    "facts_checked": "拆分后中文两段分别为 269 和 454 字，英文为 105 和 158 词。中英文同步拆分。本条不改数字（ST16：移动限 0.05、每次迭代 0.0255，不进行线搜索，采用 Svanberg (2007) 子问题求解器）。old 均唯一；全部改动依次应用后，5.10 节中英文都是 22 段。",
+    "concerns": "这是编辑取舍，不拆也没有错。拆成三段的话，迭代流程只剩一句，自成一段太短，所以建议拆两段。"
+   },
+   {
+    "id": "G7-16",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把首句结论“NICE 所得设计与精确静力凝聚所得设计一致”改成“检验能否复现”，其余是同义缩写。保留原文：结论有 ST17c 支撑。",
+    "edits": [],
+    "facts_checked": "ST17c：最终设计精确柔度相对差 −1.25e-05，角点参数至多差 0.0051。ST17b：柔度误差 −0.0112/−0.0182/−0.0279%，梯度误差 0.069/0.170/0.329%（→0.028%、0.33%）。表 6：24.5908→24.1038（−1.98%），24.5936→24.1108（−1.96%），均为 2.0%。optA/history.jsonl 共 24 条 ITER 记录，对应 24 次迭代。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-17",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 写“使切割面直接承担支撑”，并用了“完整胞元”。前者不准确：支撑加在切割平面单元上，在切割面一个单元尺寸之内。后者不是本文术语。保留原文。",
+    "edits": [],
+    "facts_checked": "S6.3：“除固支的切割平面单元自由度外，没有其他自由度被固定”。ST21 表题：固定切割胞元的全部切割平面单元自由度。h=1/32。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-18",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把“厚度最大的部位”改回“厚部”，并加了元陈述“收益须以同体积设计比较”。保留原文；“同体积比较”的意思改写为下一段的引语（G7-19）。",
+    "edits": [],
+    "facts_checked": "ST21 与 cplateN/check_exact_000/023.json：−0.0105%、−0.0296%（→0.011%、0.030%），梯度 0.029%、0.301%（→0.30%），sign_agreement=1.0（64 个分量）。cplateN/history.jsonl：C 75.591→最大 110.493（k=4）→78.264。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-19",
+    "verdict": "adopt_modified",
+    "summary_cn": "同体积参照另起一段，开头写明原因（初始设计与最终设计体积不同），“同体积”改为“体积为 V*”。30.5% 一句移到均匀化设计的比较之后（G7-21）。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "（补充表 ST21）。另取两个同体积的均匀设计作为参照：",
+      "new": "（补充表 ST21）。\n\n由于初始设计与最终设计的体积不同，另取两个体积为 \\(V^*\\) 的均匀设计作为参照："
+     },
+     {
+      "file": "U10_CN.md",
+      "old": "降低 30.9%；下文的均匀化设计相对第一个均匀设计使精确柔度降低 30.5%。",
+      "new": "降低 30.9%。"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "(Supplementary Table ST21). Two uniform designs of the same volume serve as references: in the first,",
+      "new": "(Supplementary Table ST21).\n\nBecause the start and final designs differ in volume, two uniform designs of volume \\(V^*\\) serve as references. In the first,"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "by 30.9%; the homogenisation design described below lowers it by 30.5% against the first.",
+      "new": "by 30.9%."
+     }
+    ],
+    "facts_checked": "cplateN/history.jsonl：k=0 时 V_rel=1.25，k=23 时 V_rel=1.00000，所以初始与最终体积确实不同。ST21：78.287/115.357−1=−32.13%（→32.1%），78.287/113.279−1=−30.89%（→30.9%）。两个均匀设计的 NICE 柔度误差为 −0.0191%、−0.0179%（≤0.019%），梯度误差为 0.064%、0.055%（≤0.064%）。ST21 表题写明“两个体积等于 V* 的均匀设计”。",
+    "concerns": "英文在 references 后用句号断开（中文保留冒号），原句 45 词，断开后两句都在 40 词以内；EN 超过 40 词的句子少一句。30.5% 并入 G7-21，仍在 5.10 节内，中英文数字多重集合不变。"
+   },
+   {
+    "id": "G7-20",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 写“以相同设计核对时”，事实有误：27–33% 是同一迭代序号下宏观柔度与 NICE 运行柔度之比，第 3 次迭代之后两次运行的设计已经不同。从 astra 稿只采纳“宏观单元数”。我们的原句没有点明比较的是同一迭代，建议再加“同一迭代的”（可选）。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "每个方向的单元数由 6 增至 12",
+      "new": "每个方向的宏观单元数由 6 增至 12"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "12 instead of 6 elements per cell",
+      "new": "12 instead of 6 macroscale elements per cell"
+     },
+     {
+      "file": "U10_CN.md",
+      "old": "宏观柔度比 NICE 柔度低 27–33%",
+      "new": "宏观柔度比同一迭代的 NICE 柔度低 27–33%"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "27–33% below the NICE compliance;",
+      "new": "27–33% below the NICE compliance at the same iteration;"
+     }
+    ],
+    "facts_checked": "由 cplateN/history.jsonl（24 条）和 HC_x/history.jsonl（23 条）逐次计算 C_macro/C_NICE−1：k=0–3 依次为 −26.99、−28.41、−30.00、−31.77%，两边 tv 至多相差 5.3e-8（同一设计）；k=4 为 −32.52%（最大，V_rel 0.99649 对 0.99620），此后依次为 −32.00…−29.38%（k=22），tv 相差 0.023–0.26（设计不同）。范围 26.99–32.52%，写作 27–33% 无误；“直至第 3 次迭代……相同的设计”也无误。hevalHC/history.jsonl 只有 1 条（C=80.172，是 NICE 唯一评估过的均匀化设计），所以“以相同设计核对”不成立。S6.3 写“迭代 0–3……27.0–31.8%，在其后续路径上则低 29–33%”，一致。homog_conv.json：m=6 时 55.192，m=12 时 56.088；55.192/75.599−1=−26.99%（27.0%），56.088/75.599−1=−25.81%（25.8%）。",
+    "concerns": "第二对改动（“同一迭代的”/“at the same iteration”）是我们自己的澄清，不来自 astra；任务说明写的是 astra 的改动只采纳“宏观单元数”，作者若只要这一处，删去第二对即可。加上后 EN 句约 32 词。图 14 图注(b)是否写明同一迭代序号，属图注区域 G7-26。"
+   },
+   {
+    "id": "G7-21",
+    "verdict": "adopt_modified",
+    "summary_cn": "均匀化设计与 NICE 设计的最终比较另起一段，30.5% 移到 2.44% 一句之后。结论句“均匀化模型……低估约四分之一，所得设计……刚度也较低”保留；astra 新加的元陈述末句不采纳。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "（图 14b）。在切割几何上",
+      "new": "（图 14b）。\n\n在切割几何上"
+     },
+     {
+      "file": "U10_CN.md",
+      "old": "（补充表 ST18c 和 ST21）。均匀化设计的角点参数",
+      "new": "（补充表 ST18c 和 ST21）。相对第一个均匀设计，均匀化设计使精确柔度降低 30.5%。均匀化设计的角点参数"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "(Figure 14b). Analysed on",
+      "new": "(Figure 14b).\n\nAnalysed on"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "(Supplementary Tables ST18c and ST21). The corner",
+      "new": "(Supplementary Tables ST18c and ST21). Against the first uniform design, the homogenisation design lowers the exact compliance by 30.5%. The corner"
+     }
+    ],
+    "facts_checked": "ST21/ST18c：80.198/115.357−1=−30.48%（→30.5%）；80.172/78.264=1.0244，80.198/78.287=1.0244（+2.44%）；hevalHC/check_exact_000.json：C_exact 80.1976，C_hat 80.1722；细尺度 V/V* 为 0.99821（少 0.18%）；角点参数最大差 0.262，相关系数 0.946（→0.26、0.95）。原段中文 788 字、英文 348 词，是 5.10 节最长的一段；拆分后为 552/272 字、241/126 词。",
+    "concerns": "拆段后，结论句的“四分之一”依据上一段的 27.0% 和 25.8%，“因此”跨段承接，读来仍顺：这是整个均匀化比较的总结句，放在比较的末段。作者若不想拆段，只采用第 2、4 条改动（移入 30.5%）即可。"
+   },
+   {
+    "id": "G7-22",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 的改动都是同义改写（“改变离散选择”、加“含每胞元几何生成的”等），数字未变。保留原文。",
+    "edits": [],
+    "facts_checked": "ST19b 最小值为 3/8 和 11/24。ST19a 共四次，最大 |Δτ| 为 5.8e-04。cplateN/history.jsonl：板平均每次迭代 200.1 s，范围 154.7–270.1 s，合计 4802 s=1.33 h；optA 平均 74.2 s。Ut_rho_rel 最大值：cplateN 5.22e-8，optA 1.55e-8，hevalHC 5.42e-8；5.4e-8 来自均匀化设计的 NICE 分析，见 extra_findings 2。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-23",
+    "verdict": "adopt_modified",
+    "summary_cn": "只采纳“近似”：每胞元 10.1–10.9 s，相差约 8%。astra 的“超过 4 GiB 时从 CPU 流式传输”不准确（只有超出预算的部分才流式传输），“规模实验”“仅”也不采纳。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "耗时与胞元数成正比",
+      "new": "耗时近似与胞元数成正比"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "grew in proportion to the number of cells",
+      "new": "grew approximately in proportion to the number of cells"
+     }
+    ],
+    "facts_checked": "ST20 与 scale/scale_summary.json：242/24=10.08、547/51=10.73、962/88=10.93、1164/110=10.58 s/胞元（→10.1–10.9）；1164 s=19.4 min；PCG 次数 [169,138,160,168]、[168,156,164,171]、[172,158,165,173] 及 110 胞元 142–172（→138–173）；110 胞元时切割模型 32.70 M（3270 万），未约束主自由度 1.618 M（162 万）。S4.1：只有超出常驻预算的胞元才流式传输。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G7-24",
+    "verdict": "adopt_modified",
+    "summary_cn": "按初审意见压缩表注：删去“迭代次数：设计迭代的次数”，合并重复的几何生成说明，“（补充说明 S6.1）”由末句的 S6 涵盖，载荷说明保留。初审建议新增的“规模算例只计时前四次设计迭代”不加（表格单元已写“4 次计时”），表题不改。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "单个面上单位面力载荷下的柔度。初始：初始设计，其体积在每次运行中均比 \\(V^*\\) 高 25%。最终：最后一次设计迭代。除特别标注外，柔度均为 NICE 值。",
+      "new": "柔度为单个面上单位面力载荷下的值，除注明外均为 NICE 值。初始：初始设计，体积比 \\(V^*\\) 高 25%。最终：最后一次设计迭代。"
+     },
+     {
+      "file": "U10_CN.md",
+      "old": "迭代次数：设计迭代的次数。时间：一次设计迭代的平均时间，包括每个胞元的几何生成。与表 5 中的分析不同，一次设计迭代需重新生成每个胞元的几何，且只求解一个载荷（补充说明 S6.1）。",
+      "new": "时间：一次设计迭代的平均时间；与表 5 的分析不同，设计迭代包括每个胞元的几何生成，且只求解一个载荷。"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "Compliance under a unit traction load on a face. Start: initial design, whose volume exceeds \\(V^*\\) by 25% in every run. Final: last design iteration. Compliances are NICE values unless marked otherwise.",
+      "new": "Compliances under a unit traction load on a face, NICE values unless marked otherwise. Start: initial design, with a volume 25% above \\(V^*\\). Final: last design iteration."
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "Iterations: number of design iterations. Time: mean time of a design iteration, including the geometry generation of every cell. Unlike the analyses of Table 5, a design iteration regenerates the geometry of every cell and solves for one load (Supplementary Note S6.1).",
+      "new": "Time: mean time of a design iteration; unlike the analyses of Table 5, a design iteration includes the geometry generation of every cell and solves for one load."
+     }
+    ],
+    "facts_checked": "所有运行都取 V*=0.8V(τ0)（ST16；S6.5 规模算例同），cplateN 与 HC_x 在 k=0 时 V_rel=1.25，所以初始体积都比 V* 高 25%。S6.1：设计迭代重新生成每个胞元的几何，只求解一个载荷而非三个；表 5 的分析不生成几何。Hom 为 4,464 个单元（S6.3）。“补充说明 S6.1”在 5.10 正文中仍有引用（停止判据一句），删去表注中的这一处不会使 S6.1 失去引用。末句“详见补充说明 S6 和补充表 ST16–ST21”保留，不在 old 范围内。",
+    "concerns": "EN 没有删去实质内容：“Iterations: number of design iterations”是同义重复，“in every run”由表注整体适用于所有行代替，几何生成仍写明计入时间。初稿 EN 用“which, unlike …, includes … and solves for one load”，先行词含糊（字面可读成“时间求解一个载荷”），已改为分号句式，与中文对应。初审建议的表题“厚度设计算例”未采纳，原表题无误。"
+   },
+   {
+    "id": "G7-25",
+    "verdict": "no_action",
+    "summary_cn": "astra 只是把表 6 的上标 a、b 从 OMML 换成 Word 字符上标，显示相同，源文件不改。",
+    "edits": [],
+    "facts_checked": "U10 中表 6 用 \\(^{a}\\)、\\(^{b}\\)，Word 由 Markdown 生成。",
+    "concerns": "若作者希望 Word 中的脚注上标以字符形式出现，可在 docx 生成脚本中把只含 \\(^{x}\\) 的数学对象转为 vertAlign=superscript；目前不必改。"
+   },
+   {
+    "id": "G7-29",
+    "verdict": "already_decided",
+    "summary_cn": "按 D1，5.10 节的预条件共轭梯度法改指第 3.6 节。astra 的其余重编号不采纳：第 5 节顺序不变，块体仍在第 5.8 节，参数域仍在第 6.3 节，图号 13–16 不变（5-S1、5-S2、5-S4）。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "采用第 5.8 节的预条件共轭梯度法",
+      "new": "采用第 3.6 节的预条件共轭梯度法"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "solution by the preconditioned conjugate gradients of Section 5.8",
+      "new": "solution by the preconditioned conjugate gradients of Section 3.6"
+     }
+    ],
+    "facts_checked": "“采用第 5.8 节的预条件共轭梯度法”在 U10_CN.md 中只出现 1 次（5.10 首段）；EN 的 “by the preconditioned conjugate gradients of Section 5.8” 出现 2 次，所以 old 取包含 “solution” 的唯一串。5.10 中其余引用（第 5.8 节块体、第 6.3 节参数域、第 5.1 和 6.3 节取向、第 4.2 节、式 (15)(16)、表 3、图 13–16）按已定结构均不变。",
+    "concerns": "第 5.9 节路线 (c) 也有同样的引用（U10_CN.md“以第 5.8 节的预条件共轭梯度法将装配方程组”，U10_EN.md “solves the assembled system by the preconditioned conjugate gradients of Section 5.8”），属 5.9 区域的 G7-5，须按 D1 一并改。本区域不重复给出，以免两处 edit 冲突。"
+   }
+  ],
+  "critic_notes": "核对：全部 22 条 edit 的 old 在当前文件中各出现 1 次，按顺序在临时副本上全部应用无冲突、无重叠；应用后 5.10 节中英文都是 22 段；中英文数字多重集合（assemble_r5.numbers）与改前相同，只是 5.8→3.6，以及原有的万单位差异（3270 万/32.7 million，162 万/1.62 million）；EN 超过 40 词的句子少一句（原 45 词句被拆开）；新文本无禁用词，无 OLD_CN/OLD_EN 旧术语，无新公式，所以不涉及 Ψ 记号。\n改动：(1) G7-24：初稿英文时间句“which, unlike …, includes … and solves for one load”先行词含糊，改为分号句式“Time: mean time of a design iteration; unlike the analyses of Table 5, a design iteration includes …”，与中文对应；表注替换拆成中英文各两条较短的 edit，未改动的“精确校核”句不再纳入 old。(2) G7-19：删除 30.5% 的两条 edit 的 old 缩短为“降低 30.9%；下文的……”/“by 30.9%; the homogenisation …”，效果不变。(3) G7-20：保留“同一迭代的”，在 concerns 中标为我们自己的可选澄清，因为任务说明要求 astra 的改动只采纳“宏观单元数”。\n判定均未改动。所有数字已用 cplateN/HC_x/hevalHC/optA 的 history.jsonl、check_exact_*.json、homog_conv.json、scale_summary.json 及 S4（ST16–ST21）重新核实。作者在本批的回复“不写，不加，其他同意”对应第五批 5-12、5-13，不涉及本区域。",
+  "extra_findings": "1) CPU 内存增量略偏低（已核实）：U10_CN“每增加一个胞元约增长 0.7 GiB”/EN “grew by about 0.7 GiB per cell”。按 ST20 总量 15.0/35.2/62.8/79.9 GiB，相邻两档边际增量为 0.75、0.75、0.78，总体 (79.9−15.0)/86=0.755 GiB；0.62–0.73 是每胞元平均值。可选改为“约 0.75 GiB”/“about 0.75 GiB”，或保留（“约”字勉强容纳）。\n2) 5.4e-8 的出处（已核实）：“在这些运行中，式 (16) 的残差功始终至多为柔度的 5.4×10^-8”/“In these runs, …”。Ut_rho_rel 最大值：cplateN 5.22e-8，optA 1.55e-8，hevalHC（均匀化设计的 NICE 分析）5.42e-8。若把 hevalHC 算作运行（ST18a 中单列），原句成立；也可改“运行”为“分析”（EN “In these analyses”）。轻微。\n3) 扰动措辞（已核实）：中文“需要几何生成器对某个角点参数施加至多 5.8×10^-4 的扰动”/英文“the geometry generator required a perturbation of at most … in a corner parameter”。按 ST19a，回退机制一次把 4–12 个自由顶点乘以 1+ε，并不只扰动“某个”参数；中文写成生成器施加扰动，英文主语是“generator required”，两者不一致。可选改为“需要对角点参数施加至多……的扰动”。轻微。\n4) 跨区域：第 5.9 节路线 (c) 仍引第 5.8 节的预条件共轭梯度法（U10_CN.md:17、U10_EN.md:17），须按 D1 改为第 3.6 节，属 G7-5。\n5) 跨区域：5.9 首段“主自由度装配系统有 160 万个自由度”/“1.6 million”，与 5.10“未约束主自由度为 162 万个”/“1.62 million”取整不一致。scale_summary：110 胞元 retained_free 1,617,882，retained_assembled 1,677,498。G7-1 已提出。\n6) 用词（可选）：“作为对照，参照基于均匀化的梯度设计方法”中“对照/参照”连用，而“对照”在算例 A 中已是“对照运行”的专名。可改为“作为比较”（EN 已是 “For comparison”）。\n7) 已核查无问题：本区域无禁用词（它/前者/后者/，即/甚至/却/荷载/需要指出的是/完整胞元）；无 OLD_CN/OLD_EN 旧术语。表 6 各单元格核对无误：24.5936/24.1108；0.0013%（24.110806/24.110504−1=1.25e-5）；469/74/200/4 s；94.34–85.38；94.353/89.129 和 0.013/0.011%；迭代次数 24/23/24/23 与 history 记录条数一致（optA 24，cplateN 24，HC_x 23）。\n8) 新增（跨区域，供 G7-26 参考）：若采纳 G7-20 的“同一迭代的”，图 14(b) 图注也宜写明线是同一迭代序号下的比较，与 ST17a 注和 S6.3 的写法一致。\n9) 新增：表注删去“（补充说明 S6.1）”后，S6.1 在主文中仍由 5.10 停止判据一句（“这一选择的说明见补充说明 S6.1”/“Supplementary Note S6.1 explains this choice”）引用，补充说明的引用完整性不受影响。"
+ },
+ {
+  "region": "R3-5.10-captions",
+  "items": [
+   {
+    "id": "G7-15",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 把图 13(c) 右图写成“位移大小之差的绝对值”，与脚本不符：脚本画的是差向量的模。原稿“及二者之差”确有歧义，只补“的大小”并换用新记号；1.04% 一句保留原稿。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "\\(F_mB_m\\widehat U\\) 与精确静力凝聚 \\(E_mB_mU\\)（同一色标）及二者之差（单独色标）",
+      "new": "\\(\\widehat\\Psi_mB_m\\widehat U\\) 与精确静力凝聚 \\(\\Psi_mB_mU\\)（同一色标）及二者之差的大小（单独色标）"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "\\(F_mB_m\\widehat U\\) and exact static condensation \\(E_mB_mU\\) on a common scale, and their difference on a separate scale",
+      "new": "\\(\\widehat\\Psi_mB_m\\widehat U\\) and exact static condensation \\(\\Psi_mB_mU\\) on a common scale, and the magnitude of their difference on a separate scale"
+     }
+    ],
+    "facts_checked": "In figures_src/fig_plate_design3d.py:92-93, un=|u_nice| and ue=|u_exact| per node, and du=np.linalg.norm(u_nice-u_exact, axis=1). The right subpanel (line 125) plots du, the magnitude of the difference vector, not ||u_nice|-|u_exact||. The rendered figures/F14_plate_design3d.png titles that subpanel 'difference |F_mB_mÛ-E_mB_mU|' and labels its colour bar '|u_NICE-u_exact| (own scale)', so astra's 'difference of magnitudes' is wrong. In data_elev/cellfield_summary.json, plate841_320_o023 (position [3,2,0], kind CUT) has rel_energy_norm=0.0104097 (1.04%) and local_rel_energy_norm=0.0104104 (1.04%). By the F14_caption.json definition, local_rel_energy_norm is 'u_hat replaced by F_m q_m, q_m the exact retained displacements', so 'the same recovery applied to the exact retained displacements gives the same difference' holds at the quoted precision. The same cell has rel_l2_retained=0.054% against rel_l2_interior=0.80%, so astra's added '主要' is not needed. The bottom line of the figure prints 1.04% (energy), 0.76% (nodal l2) and 0.29% (wall maximum), which is consistent with these values. fig_problem.py:8 shows that Figure 1b is the same cell (3,2,0). Both old strings occur exactly once (python count, U10_CN.md and U10_EN.md).",
+    "concerns": "(1) I kept the CN edit to the smallest insertion, '及二者之差' → '及二者之差的大小', and dropped the drafter's added '，以'. (2) Ordering. If the global Ψ notation pass runs before this edit, the old strings above, which still contain F_m/E_m, will not match. In that case use the symbol-free variant instead. CN: old '（同一色标）及二者之差（单独色标）' → new '（同一色标）及二者之差的大小（单独色标）'. EN: old 'and their difference on a separate scale' → new 'and the magnitude of their difference on a separate scale'. Both old strings are unique, count 1. (3) Figure 13 itself still renders F_m/E_m in the panel (c) titles (fig_plate_design3d.py:128-129) and has to be regenerated (see extra_findings 1). (4) The closing clause '因此差异来自胞元内部的位移恢复' is an inference. R7_NOTES allows it, because it bans only conclusions repeated from the text, and the body never discusses panel (c). I recommend keeping it. If the author applies the strict 'no conclusions' rule, delete '，因此差异来自胞元内部的位移恢复' and ', so it comes from the displacement recovery within the cell'."
+   },
+   {
+    "id": "G7-26",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 区分“同一迭代序号”与“同一设计”可取，但删了面板标识，“放回切割模型”也不准确。只在原稿“对照运行（线）”前补“同一迭代序号的”，其余不动。",
+    "edits": [
+     {
+      "file": "U10_CN.md",
+      "old": "相对于对照运行（线）",
+      "new": "相对于同一迭代序号的对照运行（线）"
+     },
+     {
+      "file": "U10_EN.md",
+      "old": "from the twin run (line)",
+      "new": "from the twin run at the same iteration (line)"
+     }
+    ],
+    "facts_checked": "In fig_opt.py:243, the strip line is rel_twin=100*(CA[:n]/CX[:n]-1), NICE against twin at the same iteration index. In fig_opt.py:244 and 74, the circles are rel_chk=100*(C_hat/C_exact-1) for the same design at k=0, 12 and 23. The script docstring (lines 5-6) says 'relative to the twin run at the same design iteration (line; the designs of the two runs differ)'. In FACTS_FINAL.json, A.tau_vs_twin_path is 0 for k=0-4 and at most 8.77e-4 for k=5-22, which matches the ST17a note in S4_CN.md:68 ('同一迭代序号下的…自迭代 5 起…至多相差 8.8e-04'). A.perturbations has k=16 (eps 1e-4, dtau 5.8e-5) and k=19 (eps 1e-3, dtau 5.8e-4), matching ST19a. A.vs_twin at k=19 is -0.102%, which is the dip in the rendered strip. The rendered F13_optimisation.png shows the line with crosses, circles at 0, 12 and 23, the 'perturbed designs' annotation and V>V* shading over iterations 0-4 in both panels. Both old strings are unique (count 1).",
+    "concerns": "I shortened the drafter's CN. The drafter's version also added '柔度' and '的' in the second clause; only '同一迭代序号的' is needed, since '同一设计精确柔度' already marks the circles. I kept the panel labels '(a) 算例 A', '(b) 切割面固支板', '（虚线）' and the quoted in-figure label 'perturbed designs'. In EN, 'at the same iteration' is shorter than ST17a's 'at the same iteration index' and unambiguous next to 'same design'."
+   },
+   {
+    "id": "G7-27",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 拆分 (a)(b)，并在末尾加了目的句“以比较最终设计性能”，违反图注规则；其余为同义改写。保留原稿。",
+    "edits": [],
+    "facts_checked": "Checked the current caption against the rendered F14_designs_scale.png. Panels (a) Final NICE design and (b) Homogenisation design show layer z=0. The colour bar reads 'circles: free, squares: fixed', and the squares sit on the load face. Vertices in the light removed region are corners of cut cells. The thick hatched line along the cut is labelled 'clamped cut-plane elements', and arrows on the load face show the in-plane traction. The panels print 78.26/78.29 and 80.17/80.20. These match FACTS (plate C_final=78.2636, C_final_exact=78.2868) and the body text (exact 78.287 and 80.198). CN and EN correspond.",
+    "concerns": "I agree with the first pass. astra's '各设计均标出…NICE 与精确柔度' says the same thing as our '柔度为同一设计的 NICE 值与精确值'. Its added '以比较最终设计性能' is a purpose clause, which the caption rule forbids."
+   },
+   {
+    "id": "G7-28",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把“未切割胞元”改成“完整胞元”（非本文术语），其余为同义或口语化改写。保留原稿。",
+    "edits": [],
+    "facts_checked": "I recomputed from X6_final/scale/scale_summary.json, which has 4 entries in iter_s per plate. Mean times are 242.5, 547.0, 962.0 and 1163.9 s, i.e. 4.0, 9.1, 16.0 and 19.4 min, matching panels (a-d). Per cell that is 10.10, 10.72, 10.93 and 10.58 s. The pooled ratio, sum of means over sum of cells, is 10.68 s; it is computed the same way in fig_opt.py (spc) and printed in panel (e) as '10.7 s per cell'. For 110 cells, cutfem_dofs_assembled=32,698,773 and retained_free=1,617,882 match the panel's '32.70 M DOFs, 1.618 M retained' and the caption's '切割有限元模型的自由度数、未约束主自由度数'. Error bars are the min-max of the four timed iterations (fig_opt.py err). Table 6 says '4 次计时', so '计时迭代' is the same set as astra's '前四次迭代'.",
+    "concerns": "I agree with the first pass. astra's '细尺度自由度' is less precise than our '切割有限元模型的自由度数'."
+   }
+  ],
+  "critic_notes": "1. G7-15. I cut the CN edit to the smallest insertion: '及二者之差' becomes '及二者之差的大小'; the drafter's added '，以' is dropped. The EN edit is unchanged. Both use the new symbols \\widehat\\Psi_mB_m\\widehat U and \\Psi_mB_mU. I added a symbol-free fallback edit pair in case the global notation pass runs first, and verified it is unique. I also noted an option, for strict application of the 'no conclusions' rule, to drop the clause '因此差异来自…'.\n2. G7-26. I shortened the CN edit to inserting only '同一迭代序号的' and dropped the drafter's extra '柔度' and '的'. The EN edit is unchanged.\n3. G7-27 and G7-28. Verdicts confirmed after re-checking the rendered figures and scale_summary.json.\n4. Every old string was re-verified with count==1. The EN phrase 'preconditioned conjugate gradients of Section 5.8' occurs twice in U10_EN.md, so the D1 replacement there must be replace-all.\n5. I dropped the drafter's extra finding 4 (rename '几何生成器' to '几何生成回退机制'). The body text (U10 ¶54, CN and EN) attributes the perturbation to '几何生成器' / 'the geometry generator', so changing only the caption would make the two inconsistent.\n6. The figure-regeneration finding is now based on a scan of all figures_src scripts. Only fig02_overview.py, fig_graphical_abstract.py and fig_plate_design3d.py render old operator symbols.\n7. No edit states that NICE is worse than base+correction (5-12). No captions contain banned words or OLD_CN/OLD_EN terms.",
+  "extra_findings": "1. Figure 13 must be regenerated (verified). fig_plate_design3d.py:128-129 renders 'NICE, $|F_m B_m \\widehat U|$', 'exact condensation, $|E_m B_m U|$' and 'difference $|F_m B_m \\widehat U - E_m B_m U|$' in figures/F14_plate_design3d.png/svg/pdf. They should become '$|\\widehat\\Psi_m B_m \\widehat U|$', '$|\\Psi_m B_m U|$' and 'difference $|\\widehat\\Psi_m B_m \\widehat U - \\Psi_m B_m U|$'. A scan of every figures_src/*.py for math-mode F, E, \\widehat E and \\psi shows that only fig02_overview.py, fig_graphical_abstract.py and fig_plate_design3d.py render the old symbols. The notation decision lists only the first two, so F14_plate_design3d has to be added to the regeneration list. The docstrings (fig_plate_design3d.py:9-10, elev_prep_meshes.py:15-16) and F14_caption.json 'local_extension' are not rendered; they could be updated for consistency only.\n\n2. D1 references in the U10 body (already decided; outside the captions; verified):\n   - CN line 17: '以第 5.8 节的预条件共轭梯度法' (count 1) → '以第 3.6 节的预条件共轭梯度法'.\n   - CN line 40: '采用第 5.8 节的预条件共轭梯度法' (count 1) → '采用第 3.6 节的预条件共轭梯度法'.\n   - EN: 'preconditioned conjugate gradients of Section 5.8' occurs twice (lines 17 and 40). Replace both with 'Section 3.6'.\n   - These references stay 5.8, because they point to the lattice results: line 11 '第 5.8 节的两个八胞元点阵'; line 21 '第 5.8 节的精确静力凝聚'; line 30 '比第 5.8 节报告的凝聚刚度矩阵误差'; line 40 '算例 A 为第 5.8 节的 2×2×2 块体'.\n\n3. Optional, not recommended unless the author wants uniform wording. Figure 14(a) says '阴影为体积由 \\(1.25V^*\\) 减至 \\(V^*\\) 的迭代' and (b) says '阴影为 \\(V>V^*\\) 的迭代'. Both shaded spans are iterations 0-4 (case A V_rel 1.25→0.997 at k=4), and the figure labels both 'V>V*'. The two descriptions are equivalent, and (a) carries the 1.25V* start, so there is no defect.\n\n4. Checked, no defect. No banned words, OLD_CN/OLD_EN terms or Section 2.5 references appear in the captions of Figures 13-16. Figure 13(a) is titled 'iteration 23' while the body says 'stops after 24 design iterations'; this is consistent with the 0-based axis of Figure 14 and with ST17a (k=0..23).\n\n5. Checked, no defect. ST17a's 'from iteration 5 the corner parameters differ by at most 8.8e-04' and the body's 'final corner parameters differ by at most 0.0051' do not contradict each other. FACTS_FINAL A.tau_vs_twin_path gives a maximum of 8.77e-4 over same-index pairs k=5-22. A.tau_vs_twin_final.maxabs=0.00508 compares NICE's final design (k=23) with the twin's final design (k=22)."
+ },
+ {
+  "region": "R4-6",
+  "items": [
+   {
+    "id": "G8-1",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把 6.1 标题改为“完整主自由度与内部近似的分工”。“分工”在装配脚本的禁用旧词表里；原标题与三段内容一一对应，不改。",
+    "edits": [],
+    "facts_checked": "assemble_r5.py OLD_CN contains '分工'. Current titles: U11_CN.md:3 '### 6.1. 主自由度、网络与修正' and U11_EN.md:3 'Retained degrees of freedom, network and correction'. 6.1 has three paragraphs: retained DOFs, network, correction.",
+    "concerns": ""
+   },
+   {
+    "id": "G8-2",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删掉了本段核心结论（限制胞元边界面位移引起的局部灵敏度误差大于 NICE 内部近似引起的误差）和 ST12d 出处，又加了否定式元陈述和其他路线的改进办法。同意初审，保留原文。",
+    "edits": [],
+    "facts_checked": "U09_CN.md:33 (5.7): at r=8 the sensitivity error under neighbour-face loads is 24–64%; with only the shared interface restricted it is 8–21% at r=3 and 2.2–3.4% at r=5. U09_CN.md:9,11 (5.6): NICE sensitivity error ≤0.67% over 14 configurations and ≤1.49% over 18. ST12d (S3_CN.md:54-61): the CG solve takes most of the time of route (c). Our text already limits the claim ('胞元尺寸固定……未采用……分区加密或富集').",
+    "concerns": ""
+   },
+   {
+    "id": "G8-3",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把支撑句改成“保留自由度……并不自动要求固定……按各自支撑约定解释”，术语不对，又是元陈述，保留原句。初审提议补“支撑和载荷”：引言贡献 (1) 和第 2.3 节都已写过，与作者 5-13“不加”一致，不补。",
+    "edits": [],
+    "facts_checked": "U00_CN.md:31 (contribution 1): '切割面上的支撑和载荷由此可直接施加于主自由度'. U02_CN.md:39 (2.3): '切割面上的支撑和载荷由此只作用于主自由度'. U10_CN.md:48,52 (5.10) describe the plate support (all DOFs of the cut-plane elements fixed) and the homogenised clamp. Decision 5-13: do not add the sentence that cut-surface traction loads act directly on the retained DOFs of the cut-plane elements.",
+    "concerns": "Only if the author still wants the first-pass wording: CN '此外，切割平面单元的主自由度直接承担第 5.10 节板的支撑' -> '此外，支撑和载荷可直接施加于切割平面单元的主自由度，第 5.10 节板的支撑即由这些自由度承担'. EN 'In addition, the retained DOFs of the cut-plane elements carry the support of the plate of Section 5.10 directly' -> 'In addition, supports and loads can be applied directly to the retained DOFs of the cut-plane elements, which carry the support of the plate of Section 5.10'. Not recommended."
+   },
+   {
+    "id": "G8-4",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把 6.1 第 2 段压成两句，删掉了“同一网络未作改动”、线性带来的可训练性和凝聚刚度矩阵无需形成，又加了“并不意味着……”元陈述。保留原文。",
+    "edits": [],
+    "facts_checked": "U11_CN.md:7 contains all three items. U10_CN.md:32 (5.9) already gives the per-cell storage, 0.25–1.37 GiB. The parameter count of about 6×10^5 matches ST15 (cited in U07_CN.md:45 and S8_CN.md).",
+    "concerns": ""
+   },
+   {
+    "id": "G8-5",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 新增“网络提供长程耦合初值”的论断和“附录 J”，用了“分工”“非扩张”两个旧词，还删去说明互补性的全部数据。附录 J 已决定不设，保留原文。",
+    "edits": [],
+    "facts_checked": "Decision 5-S2: old 5.4 stays in the main text and there is no Appendix J. '分工' and '非扩张' are in OLD_CN. U08_CN.md:29 gives the 1.8–35% energy errors from about 1% displacement errors. U08_CN.md:39: with eight times the smoothing work, the graph-harmonic field is still 2.6–50 times the eight-step base result in five of six cells. Table 4 (U08_CN.md:45): M1 13.5 -> 0.186.",
+    "concerns": ""
+   },
+   {
+    "id": "G8-6",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 删掉 M1、3% 线和 1.31 倍三项，又加了“M2、H2、U2 未逐一改善”和“总成本孰低”两句。M2/H2/U2 按 5-12 不写，其余改写也不采纳。只按第 5.3 节补上“训练几何取自更大的集合”，让 1.31 倍的归因与 5.3 一致；中文顺带把“修正本身”后的逗号改为冒号，与英文对应，避免长串逗号。",
+    "edits": [
+     {
+      "file": "U11_CN.md",
+      "old": "在施加修正的条件下继续训练使平均能量误差进一步降低，但改进小于修正本身，",
+      "new": "NICE 在施加修正的条件下继续训练，训练几何取自更大的集合，平均能量误差进一步降低，但改进小于修正本身："
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "Training with the correction applied adds less",
+      "new": "Training with the correction applied, on geometries drawn from a larger set, adds less"
+     }
+    ],
+    "facts_checked": "U08_CN.md:7 / U08_EN.md:7 (5.3) attribute the further gain both to correction-in-the-loop training and to drawing the training geometries from a larger set ('训练几何取自更大的集合' / 'draws its training geometries from a larger set'). Current 6.1 names only the correction-aware training (U11_NOTES open question 3). S1_CN/EN.md:99: 0.0965/0.0737 = 1.31; bootstrap 1.20–1.40 in 5.3. U07_CN.md:45 and S8_CN.md: the pool has 591 geometries containing 304 of the base network's 305, and NICE used at most 153 of them. S8 shows only the uncorrected continuation on the same pool (6.89% -> 6.33%), so the two factors are not separated under correction, and naming both is the accurate statement. 'Drawn from a larger set' refers to the pool, which matches 5.3 and the new Table 2 column '591 / 至多 153' (decision 5-1). The M2/H2/U2 values (0.0273 vs 0.0358, 0.0117 vs 0.0148, 0.00424 vs 0.00465) are true but are not written, per 5-12. Both olds occur once. Preview of the result: '……NICE 在施加修正的条件下继续训练，训练几何取自更大的集合，平均能量误差进一步降低，但改进小于修正本身：基础网络加修正的平均能量误差为 NICE 的 1.31 倍（第 5.3 节）。'",
+    "concerns": "The colon (CN only) mirrors the existing EN colon. Drop it to keep the edit strictly to the attribution: use old '在施加修正的条件下继续训练使平均能量误差进一步降低' and new 'NICE 在施加修正的条件下继续训练，训练几何取自更大的集合，平均能量误差进一步降低'."
+   },
+   {
+    "id": "G8-7",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 改写的 6.2 首段写了数据生成和训练成本、“还需完整的生成与训练用时记录”，又删去本文路线更快的原因，违反硬性规定。保留原文。",
+    "edits": [],
+    "facts_checked": "Hard rule: never mention data-generation or offline training cost. U10_CN.md:19 keeps the single sentence '均不包含数据生成和训练的一次性成本' unchanged. U10_CN.md:30: after deducting preparation, NICE is still five to eight times faster.",
+    "concerns": ""
+   },
+   {
+    "id": "G8-8",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 的 BDDC/FETI-DP 对照与原文同义。astra 的末句把“增加修正工作量能够改善能量精度”写成一般结论，与注 1 和附录 D.1“误差的减小未必随 k 单调”不符。保留原文。",
+    "edits": [],
+    "facts_checked": "U05_CN.md:44 (Note 1): the order relation holds for each k separately, and the decrease in error is not necessarily monotone in k. ST07 shows only a decrease in the examples tested. Our 6.2 first sentence already makes the compliance-versus-sensitivity point, and its last sentence cites 5.5.",
+    "concerns": ""
+   },
+   {
+    "id": "G8-9",
+    "verdict": "author_decision",
+    "summary_cn": "astra 把求解器比较范围一段移到 6.2，并加了“应理解为所报告部署方式的比较”。建议留在 6.3 不动：这是局限，而且 6.2 已写明只在两个八胞元点阵上比较过。如要移动，按下列编辑原句照搬（先删后插）。",
+    "edits": [
+     {
+      "file": "U11_CN.md",
+      "old": "与整体点阵细尺度迭代求解器的比较仅在两个八胞元点阵上进行，参与比较的有采用标准设置的代数多重网格 [Vaněk et al. (1996)](https://doi.org/10.1007/BF02238511)、[Henson & Yang (2002)](https://doi.org/10.1016/S0168-9274(01)00115-5)、[Falgout & Yang (2002)](https://doi.org/10.1007/3-540-47789-6_66)，以及采用精确局部求解的 BDDC [Dohrmann (2003)](https://doi.org/10.1137/S1064827502412887) 的局部分解成本（第 5.9 节）；本文未与 FETI-DP [Farhat et al. (2001)](https://doi.org/10.1002/nme.76) 和经调参的多重网格进行比较。",
+      "new": ""
+     },
+     {
+      "file": "U11_CN.md",
+      "old": "### 6.3. ",
+      "new": "与整体点阵细尺度迭代求解器的比较仅在两个八胞元点阵上进行，参与比较的有采用标准设置的代数多重网格 [Vaněk et al. (1996)](https://doi.org/10.1007/BF02238511)、[Henson & Yang (2002)](https://doi.org/10.1016/S0168-9274(01)00115-5)、[Falgout & Yang (2002)](https://doi.org/10.1007/3-540-47789-6_66)，以及采用精确局部求解的 BDDC [Dohrmann (2003)](https://doi.org/10.1137/S1064827502412887) 的局部分解成本（第 5.9 节）；本文未与 FETI-DP [Farhat et al. (2001)](https://doi.org/10.1002/nme.76) 和经调参的多重网格进行比较。\n\n### 6.3. "
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "Fine-scale iterative solvers of the whole lattice were compared on the two eight-cell lattices only, using algebraic multigrid [Vaněk et al. (1996)](https://doi.org/10.1007/BF02238511), [Henson & Yang (2002)](https://doi.org/10.1016/S0168-9274(01)00115-5), [Falgout & Yang (2002)](https://doi.org/10.1007/3-540-47789-6_66) in standard settings and the local factorisation cost of BDDC with exact local solvers [Dohrmann (2003)](https://doi.org/10.1137/S1064827502412887) (Section 5.9). FETI-DP [Farhat et al. (2001)](https://doi.org/10.1002/nme.76) and tuned multigrid were not compared. ",
+      "new": ""
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "### 6.3. ",
+      "new": "Fine-scale iterative solvers of the whole lattice were compared on the two eight-cell lattices only, using algebraic multigrid [Vaněk et al. (1996)](https://doi.org/10.1007/BF02238511), [Henson & Yang (2002)](https://doi.org/10.1016/S0168-9274(01)00115-5), [Falgout & Yang (2002)](https://doi.org/10.1007/3-540-47789-6_66) in standard settings and the local factorisation cost of BDDC with exact local solvers [Dohrmann (2003)](https://doi.org/10.1137/S1064827502412887) (Section 5.9). FETI-DP [Farhat et al. (2001)](https://doi.org/10.1002/nme.76) and tuned multigrid were not compared.\n\n### 6.3. "
+     }
+    ],
+    "facts_checked": "6.2 (U11_CN.md:13) already says '在比较了迭代求解器的两个八胞元点阵上'. U10_CN.md:34 (5.9) holds the AMG and BDDC results. The moved text is verbatim. Each old occurs exactly once at the time of application, checked by a python simulation that applied G8-6, X-1, G8-9, G8-11, G8-12 and 4-12 option B in sequence. CN/EN paragraph counts still match after the move (14/14).",
+    "concerns": "Recommendation: keep in 6.3 (do not apply). If applied, apply in the listed order (delete, then insert); inserting first would make the deleted sentence occur twice. Side effect: 6.3 ¶4 is then the single sentence '优化器须使设计保持在上述参数域之内……局部优化。' / 'An optimiser must keep…are local.' That is acceptable, or it can be joined to the preceding paragraph."
+   },
+   {
+    "id": "G8-10",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删掉了“优化器须使设计保持在参数域之内……该节的优化均为局部优化”。“局部优化”全文只在这一句出现，这句保留，中英文都不改。",
+    "edits": [],
+    "facts_checked": "U11_CN.md:23 / U11_EN.md:23 last sentence. U10_CN.md:40 (5.10) gives the bounds 0.18–0.69 and the 0.45 limits, which lie inside the ST02 domain [0.17520160, 0.69933962] / 0.47 (S1_CN.md:84). Decision 5-S4 keeps the domain in 6.3. 'Local optimisation' appears in no other unit (grep).",
+    "concerns": ""
+   },
+   {
+    "id": "G8-11",
+    "verdict": "author_decision",
+    "summary_cn": "astra 把“切割平面单元自由度占 37–50%”和“K_PP 直接分解限制规模”移到 6.2 并改写，丢了“单个 GPU”等限定。建议留在 6.3：两点都是局限，6.1 也已指向第 6.3 节。如要移动，按下列编辑原句照搬，并把 6.1 的“第 6.3 节”改为“第 6.2 节”。",
+    "edits": [
+     {
+      "file": "U11_CN.md",
+      "old": "在切割面不承受载荷或支撑之处，切割平面单元的主自由度会增大装配系统的规模：在第 5.8 和 5.9 节的点阵中，切割平面单元中不在胞元边界面上的自由度占未约束主自由度的 37% 至 50%，对这些自由度采用约化表示是自然的下一步工作。在单个 GPU 上，目前可分析的点阵规模受预条件子中 \\(\\mathbb K_{PP}\\) 直接分解的限制，该分解的内存随装配后的主自由度系统增长，而学习胞元的内存保持在固定额度之内；在预条件子中再增加一层或采用迭代粗求解，是消除该限制的自然途径。",
+      "new": ""
+     },
+     {
+      "file": "U11_CN.md",
+      "old": "相应的精度损失见第 5.5 节。",
+      "new": "相应的精度损失见第 5.5 节。\n\n在切割面不承受载荷或支撑之处，切割平面单元的主自由度会增大装配系统的规模：在第 5.8 和 5.9 节的点阵中，切割平面单元中不在胞元边界面上的自由度占未约束主自由度的 37% 至 50%，对这些自由度采用约化表示是自然的下一步工作。在单个 GPU 上，目前可分析的点阵规模受预条件子中 \\(\\mathbb K_{PP}\\) 直接分解的限制，该分解的内存随装配后的主自由度系统增长，而学习胞元的内存保持在固定额度之内；在预条件子中再增加一层或采用迭代粗求解，是消除该限制的自然途径。"
+     },
+     {
+      "file": "U11_CN.md",
+      "old": "增大了装配系统的规模（第 6.3 节）",
+      "new": "增大了装配系统的规模（第 6.2 节）"
+     },
+     {
+      "file": "U11_EN.md",
+      "old": " Where the cut surfaces carry no loads or supports, the retained DOFs of the cut-plane elements enlarge the assembled system. In the lattices of Sections 5.8 and 5.9, the DOFs of the cut-plane elements that do not lie on the cell faces make up 37 to 50% of the free retained DOFs. A reduced representation of these DOFs where the cut carries no loads or supports is a natural next step. On one GPU, the size of the lattice that can be analysed is at present limited by the direct factorisation of \\(\\mathbb K_{PP}\\) in the preconditioner. The memory of this factorisation grows with the assembled retained system, whereas the memory of the learned cells stays within a fixed budget; a further level in the preconditioner or an iterative coarse solve is the natural way to remove this limit.",
+      "new": ""
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "quantified in Section 5.5.",
+      "new": "quantified in Section 5.5.\n\nWhere the cut surfaces carry no loads or supports, the retained DOFs of the cut-plane elements enlarge the assembled system. In the lattices of Sections 5.8 and 5.9, the DOFs of the cut-plane elements that do not lie on the cell faces make up 37 to 50% of the free retained DOFs. A reduced representation of these DOFs where the cut carries no loads or supports is a natural next step. On one GPU, the size of the lattice that can be analysed is at present limited by the direct factorisation of \\(\\mathbb K_{PP}\\) in the preconditioner. The memory of this factorisation grows with the assembled retained system, whereas the memory of the learned cells stays within a fixed budget; a further level in the preconditioner or an iterative coarse solve is the natural way to remove this limit."
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "enlarge the assembled system (Section 6.3)",
+      "new": "enlarge the assembled system (Section 6.2)"
+     }
+    ],
+    "facts_checked": "ST12a (S3_CN.md:17-26): the cut-plane DOFs off the cell faces are 46%, 47%, 50% and 37% of the free retained DOFs, so 37–50% is right. S3_CN.md:103: K_PP is factorised once per design iteration on the GPU, and learned cells beyond the budget are streamed from CPU memory. U11_CN.md:5 / U11_EN.md:5 (6.1) forward-reference 'Section 6.3' for the enlarged system; that edit is included. The python simulation of sequential application confirmed that every old is unique at its turn.",
+    "concerns": "Recommendation: keep in 6.3 (do not apply). If applied, apply in order: delete, insert, then update the reference. The option keeps the original sentences verbatim. astra's rewrite dropped '单个 GPU', '第 5.8 和 5.9 节的点阵' and '固定额度'."
+   },
+   {
+    "id": "G8-12",
+    "verdict": "author_decision",
+    "summary_cn": "astra 把 6.3 标题改为“适用范围与局限性”。建议保留“局限性 / Limitations”：首段讲的训练适用设定本身就是局限，参数域按 5-S4 留在 6.3，内容不变。如改，中英文同改。",
+    "edits": [
+     {
+      "file": "U11_CN.md",
+      "old": "### 6.3. 局限性",
+      "new": "### 6.3. 适用范围与局限性"
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "### 6.3. Limitations",
+      "new": "### 6.3. Scope and limitations"
+     }
+    ],
+    "facts_checked": "U11_CN.md:15 / U11_EN.md:15 headings, each unique. Cross-references elsewhere (S4 S7, 6.1) use '第 6.3 节' / 'Section 6.3' only, never the title.",
+    "concerns": "Recommendation: keep (do not apply)."
+   },
+   {
+    "id": "G8-13",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把参数范围移到 5.1，写“原胞族”丢了比较对象，删去多切割、曲面边界和留出胞族测试，还加了“螺旋型”。保留原文。核对时发现本段“6 至 23 倍”有误，见 X-1。",
+    "edits": [],
+    "facts_checked": "Decision 5-S4: the domain stays in 6.3. ST02 (S1_CN.md:84): [0.17520160, 0.69933962], span and gradient norm at most 0.47. Recomputed from evidence/gcell/gval_A3.json and gval_A3G.json against evidence/newval_A3_2grid.json for the 16 P twins (mapping in gcell/gval.json). Zero-shot ratio for the six load and support classes: 55.5–233.8 ('56 至 234', correct). Reduction: 5.82–10.21 ('六至十倍', correct). The remaining ratio after continuation is not 6–23 (see X-1).",
+    "concerns": ""
+   },
+   {
+    "id": "G8-14",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去等变性的定义和“主要在恒等取向下评估”，把 Jiang 写成直接比较对象，又加了“……也不等于……”“这些结果确定了当前证据范围”等元陈述。保留原文。",
+    "edits": [],
+    "facts_checked": "ST03c (S1_CN.md:124-136), seven classes. Identity sum 0.296 vs orientation 17 sum 0.308 = +4%. force_c 0.074 -> 0.083 = +12%. Orientation 17 was used in checkpoint selection. Our text states Jiang's property neutrally, as the rule on the PIML group requires.",
+    "concerns": ""
+   },
+   {
+    "id": "G8-15",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把首句改成“应分别理解”的元陈述，删去附录 G.4 出处、由残差求能量误差的代价和 H2 的 3.6% 参考离散误差，并用了“却”和“低于参考值”。保留原文。",
+    "edits": [],
+    "facts_checked": "ST10 (S2_CN.md:137-146) at n=32: H1 +0.07/0.08, worst-NICE cell -0.14/0.23, thinnest cell -0.28/0.44, H2 -0.93/3.59. The text's 'at most 0.28%/0.44%, H2 about 1% and 3.6%' is correct. Eq. (15) gives Ŝ⪰S, so 'not conservative' and not 'below' is right. U11 CN contains no '却' (grep).",
+    "concerns": ""
+   },
+   {
+    "id": "G8-16",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删掉两份验证范围清单，把 s̃_c 与差商的细节分散移到 H.2 等处。两份清单保留。灵敏度细节是否移入 H.2 见 4-12，默认留在 6.3。",
+    "edits": [],
+    "facts_checked": "Lists checked against the sources. 14 configurations (7 cells × x/y, U09_CN.md:9) and 18 (9 cells, U09_CN.md:11). Two eight-cell lattices and the two four-cell layers (ST14 rows). Three designs of case A (U10_CN.md:46). Five plate designs: iterations 0 and 23, homogenised, and two uniform designs (S4 table rows). The first designs of the 24- and 51-cell plates (U10_CN.md:56). astra's H.2 [686] carries the s̃_c numbers but has no place for the two lists.",
+    "concerns": ""
+   },
+   {
+    "id": "4-12",
+    "verdict": "author_decision",
+    "summary_cn": "建议默认留在 6.3：这些是所报告灵敏度和优化（不用线搜索）的局限，H.2 是理论推导。若作者嫌 6.3 第 3 段太长（英文 402 词），可用方案 B：6.3 只留“s̃_c 忽略位移恢复算子的设计依赖……（附录 H.2）”一句，其余四句原样移到 H.2 抵消算例段之后，不用线搜索的理由随之保留。",
+    "edits": [
+     {
+      "file": "U11_CN.md",
+      "old": "这一依赖进入式 (18) 的导数。以中心差分检验近似柔度，无法判定 \\(\\widehat C_{,c}\\) 与 \\(\\widetilde s_c\\) 中哪一个梯度更准确：在每个点阵胞元的 49 次重建中，有 21 至 48 次至少有一项附录 B.1 所列的离散选择发生切换，且差商随步长减小而增大（补充说明 S4.3）。灵敏度 \\(\\widetilde s_c\\) 无需差商，对于两个八胞元点阵和两个四胞元层，由其得到的共享参数梯度在面载荷下误差为 0.02–0.13%，在随机载荷下为 0.22–0.35%（补充表 ST14）。第 5.10 节的优化采用不带线搜索的迭代步，因为线搜索会将近似柔度与并非其导数的 \\(\\widetilde s_c\\) 相比较。",
+      "new": "这一依赖进入式 (18) 的导数（附录 H.2）。"
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "which enters the derivative of Eq. (18). A central-difference check of the approximate compliance cannot decide whether \\(\\widehat C_{,c}\\) or \\(\\widetilde s_c\\) is the more accurate gradient. At least one of the discrete choices listed in Appendix B.1 switches in 21 to 48 of the 49 rebuilds of each lattice cell, and the difference quotient grows as the step decreases (Supplementary Note S4.3). The sensitivity \\(\\widetilde s_c\\) needs no difference quotient; for the two eight-cell lattices and the two four-cell layers, it gives the gradient with respect to the shared parameters to within 0.02–0.13% under the face loads and 0.22–0.35% under the random loads (Supplementary Table ST14). The optimisations of Section 5.10 take steps without a line search, because a line search would compare the approximate compliance with \\(\\widetilde s_c\\), which is not its derivative.",
+      "new": "which enters the derivative of Eq. (18) (Appendix H.2)."
+     },
+     {
+      "file": "A3_CN.md",
+      "old": "二者之和 \\(-1/(1+t^2)\\) 的误差为 \\(t^2/(1+t^2)\\)。",
+      "new": "二者之和 \\(-1/(1+t^2)\\) 的误差为 \\(t^2/(1+t^2)\\)。\n\n以中心差分检验近似柔度，无法判定 \\(\\widehat C_{,c}\\) 与 \\(\\widetilde s_c\\) 中哪一个梯度更准确：在每个点阵胞元的 49 次重建中，有 21 至 48 次至少有一项附录 B.1 所列的离散选择发生切换，且差商随步长减小而增大（补充说明 S4.3）。灵敏度 \\(\\widetilde s_c\\) 无需差商，对于两个八胞元点阵和两个四胞元层，由其得到的共享参数梯度在面载荷下误差为 0.02–0.13%，在随机载荷下为 0.22–0.35%（补充表 ST14）。第 5.10 节的优化采用不带线搜索的迭代步，因为线搜索会将近似柔度与并非其导数的 \\(\\widetilde s_c\\) 相比较。"
+     },
+     {
+      "file": "A3_EN.md",
+      "old": "their sum \\(-1/(1+t^2)\\) has error \\(t^2/(1+t^2)\\).",
+      "new": "their sum \\(-1/(1+t^2)\\) has error \\(t^2/(1+t^2)\\).\n\nA central-difference check of the approximate compliance cannot decide whether \\(\\widehat C_{,c}\\) or \\(\\widetilde s_c\\) is the more accurate gradient. At least one of the discrete choices listed in Appendix B.1 switches in 21 to 48 of the 49 rebuilds of each lattice cell, and the difference quotient grows as the step decreases (Supplementary Note S4.3). The sensitivity \\(\\widetilde s_c\\) needs no difference quotient; for the two eight-cell lattices and the two four-cell layers, it gives the gradient with respect to the shared parameters to within 0.02–0.13% under the face loads and 0.22–0.35% under the random loads (Supplementary Table ST14). The optimisations of Section 5.10 take steps without a line search, because a line search would compare the approximate compliance with \\(\\widetilde s_c\\), which is not its derivative."
+     }
+    ],
+    "facts_checked": "Appendix H is in A3_CN.md/A3_EN.md (H.2 at line 204). The insertion point follows the cancellation-example paragraph and precedes the thickness-derivative sign paragraph, so it does not touch the H.2 paragraph that decisions 4-4/4-8 edit. ST14 (S3_CN.md:117-126): 49 rebuilds = 3 steps × 2 signs × 8 corners + 1; switching rebuilds 21–48 across the four lattices; gradient error face 0.022–0.130 and random 0.22–0.35; D_act grows as h decreases. Appendix B.1 lists the discrete choices. 5.10 (U10_CN.md:40) says only '不进行线搜索', so the reason survives only in the moved text, which keeps it, as the G4-12 review required. 6.3 EN paragraph lengths are 306/160/402/88 words. The moved text is verbatim, contains no E/F symbols, and the olds avoid '\\(F\\)', so they survive the global Ψ notation change. All olds are unique and compatible with G8-9/G8-11 (simulated). H.2 paragraph counts stay equal in CN and EN (11/11).",
+    "concerns": "Default recommendation: keep in 6.3 (do not apply). 6.3 as a whole (~950 EN words) is not excessive for a Limitations section. A lighter option that adds no words is to split 6.3 ¶3 into three paragraphs: evidence scope / sensitivity / system size. CN: break before '文中报告的灵敏度' (anchor '也未单独考察。文中报告的灵敏度') and before the second '在切割面不承受载荷或支撑之处' (anchor '相比较。在切割面不承受载荷或支撑之处'). EN: break before 'The reported sensitivities' (anchor 'was not isolated. The reported sensitivities') and before 'Where the cut surfaces' (anchor 'which is not its derivative. Where the cut surfaces'). All four anchors are unique. Split CN and EN together. This conflicts with option B and with G8-11."
+   },
+   {
+    "id": "X-1",
+    "verdict": "adopt",
+    "summary_cn": "本文自身的数字错误。6.3 说 gyroid 继续训练后，载荷与支撑类别的误差“仍为 Schwarz-P 胞元误差水平的 6 至 23 倍”；按证据，这六类实际为 9.5–22.9 倍，应写“10 至 23 倍”。“6”来自多尺度位移类（5.6 倍），不属于载荷与支撑类别。补充说明 S7 解读段同错，一并改。",
+    "edits": [
+     {
+      "file": "U11_CN.md",
+      "old": "仍为 Schwarz-P 胞元误差水平的 6 至 23 倍",
+      "new": "仍为 Schwarz-P 胞元误差水平的 10 至 23 倍"
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "they remain 6 to 23 times the Schwarz-P level",
+      "new": "they remain 10 to 23 times the Schwarz-P level"
+     },
+     {
+      "file": "S4_CN.md",
+      "old": "降至 P 水平的 6 至 23 倍",
+      "new": "降至 P 水平的 10 至 23 倍"
+     },
+     {
+      "file": "S4_EN.md",
+      "old": "to 6 to 23 times the P level",
+      "new": "to 10 to 23 times the P level"
+     }
+    ],
+    "facts_checked": "Recomputed the continued/P-twin ratios independently from evidence/gcell/gval_A3G.json 'mean' and evidence/newval_A3_2grid.json per_geo for the 16 P twins (gval.json p_twin). The P means reproduce the ST22 column (0.068/0.031/0.058/0.031/0.053/0.054/0.014/0.024). Continued ratios: force_c 10.9, face_c 18.9, force 13.4, face 22.9, support 11.3, support_k 9.54 (9.70 on the matched 15 cells), macro 8.7, grf 5.6. The six load and support classes give 9.54–22.9, i.e. 10–23 after rounding; 6 appears only with grf. Zero-shot 55.5–233.8 and reduction 5.82–10.21 are confirmed. The ST22 rounded values give the same picture (0.52/0.054 = 9.6, 0.72/0.031 = 23.2). In 6.3 and in the S7 Reading paragraph (S4_CN/EN.md:241), '这些误差 / them' explicitly means the load-and-support errors. All four olds occur once.",
+    "concerns": "S4_CN.md:213 / S4_EN.md:213 '这些均值仍为……6 至 23 倍' / 'The means remain 6 to 23 times…' follows the sentence on the imposed displacements, so it reads as all eight classes (5.6–22.9) and is correct; it is left unchanged. The two S4 edits are outside R4-6; route them to the owner of S7 if needed. The CN/EN number check is unaffected, since 10 and 23 appear in both."
+   }
+  ],
+  "critic_notes": "All edit olds re-verified with python (count == 1 in the current files). A sequential simulation applying G8-6, X-1, G8-9, G8-11, G8-12 and 4-12 option B together confirmed that each old is still unique at its turn and that CN/EN paragraph counts match (U11 14/14, H.2 11/11). Changes to the draft:\n1. G8-6: kept adopt_modified. The CN old now also covers '，但改进小于修正本身，' and the new text ends with a colon, matching the existing EN colon and breaking the six-clause comma run that the insertion created. A strictly minimal fallback without the colon is given in concerns. Re-checked that 5.3 names both factors and that the S8 uncorrected continuation used the same 591 pool; naming both factors is consistent with 5-1 ('591 / 至多 153').\n2. X-1: confirmed independently from the JSON records (support_k 9.54 → rounds to 10; face 22.9). Kept, and noted that S4:213 stays.\n3. G8-8 summary_cn: removed '它' (now 'astra 的末句').\n4. G8-9 concerns: added the side effect that, if applied, 6.3 ¶4 becomes a one-sentence paragraph.\n5. G8-4/G8-5 facts: corrected the line citations. 4-12: added that the no-line-search reason survives only in the moved text, as G4-12 required.\n6. Extra findings 3 and 4 downgraded to 'leave'. U11_NOTES already decided that 'uncorrected condensed stiffness' stays, and U03_EN uses 'uncorrected recovery', so the warning is pre-existing. The EN qualifier in 6.3 restricts which DOFs can be reduced, so it is not pure repetition.\nNo verdict reversals: astra's rewrites in 6.1–6.3 bring in banned terms, meta-statements, data-generation cost or deletions of evidence. The structural moves (G8-9, G8-11, G8-12, 4-12) stay author_decision with 'keep' recommended, in line with the author's conservative structure decisions 5-S1, 5-S2 and 5-S4 and with 'no additions'.",
+  "extra_findings": "1. Wrong number (6.3 ¶1 and the S7 Reading paragraph). '仍为 Schwarz-P 胞元误差水平的 6 至 23 倍' / 'they remain 6 to 23 times the Schwarz-P level' should read 10 to 23 for the load-and-support classes (computed 9.54–22.9). See item X-1.\n\n2. Optional, CN only (6.1 ¶2). '同一网络未作任何改动，即用于' uses 即 in the sense of 就, not the banned explanatory '，即', but it looks like it. Optional: drop the comma, giving '同一网络未作任何改动即用于'. EN unchanged. The old string is unique.\n\n3. Leave. The assembler flags 'uncorrected' in 6.1 ¶3 EN ('lies between the uncorrected and the exact condensed stiffness') against OLD_EN 'Uncorrected' (re.I). U11_NOTES already decided to keep it: it means Ŝ_net, not the S8 variant. U03_EN:49 also uses 'uncorrected recovery', so the warning is pre-existing and accepted.\n\n4. Leave. In 6.3 ¶3 EN, 'A reduced representation of these DOFs where the cut carries no loads or supports' repeats the condition of the preceding sentence. The qualifier still limits which DOFs can be reduced, so it is not pure repetition. CN has no repeat, and the mismatch is harmless.\n\n5. Optional deletion of a redundant topic sentence (6.3 ¶1). '其他 TPMS 胞族需要进一步训练。' / 'Other TPMS families need further training. ' is restated three sentences later by '因此，其他胞族需要新的训练数据和网络参数' / 'Other families therefore require new training data and network parameters'. Edits: CN old '其他 TPMS 胞族需要进一步训练。' -> ''; EN old 'Other TPMS families need further training. ' (with trailing space) -> ''. Both are unique.\n\n6. Notation, applied globally later. 6.3 ¶3 '位移恢复算子 \\(F\\)' / 'the recovery operator \\(F\\)' becomes \\(\\widehat\\Psi\\). No other E/F/Ê symbol appears in U11 Sections 6–7. The olds of 4-12 and G8-11 avoid '\\(F\\)', so they survive the replacement.\n\n7. D1. U11 has no reference to the PCG of Section 5.8, so no 5.8 -> 3.6 change is needed in Section 6. '预条件子中 \\(\\mathbb K_{PP}\\)' could take '（第 3.6 节）', but this is not needed under the no-additions stance. The 5.10 reference (U10_CN.md:40 '采用第 5.8 节的预条件共轭梯度法') is outside this region and covered by D1.\n\n8. If G8-9 is applied, 6.3 ¶4 is left as the single sentence on the parameter domain and local optimisation. It can stand, or be joined to the preceding paragraph.\n\n9. Checked and clean.\n- U11 cross-references: all Section 5 references (5.2–5.10) stay valid under the kept order. 3.2, 3.4, 3.5, 3.6, G.4, B.1, I, S4.3, S7, ST02, ST03c, ST10, ST12d and ST14 all exist and match.\n- Banned words: none in U11 Sections 6 (它/前者/后者/前一式/后一式/甚至/却/荷载/需要指出的是/完整胞元/首次/并不意味着/应分别理解), and no OLD_CN term.\n- Paragraph counts: CN/EN equal.\n- Numbers verified: 1.31 (0.0965/0.0737); M1 13.5→0.186; 1.8–35%; 2.6–50 (5 of 6); 37–50% (ST12a 46/47/50/37); 49 rebuilds and 21–48 switches; 0.02–0.13% / 0.22–0.35% (ST14); 0.28% / 0.44% and H2 0.93 / 3.59 (ST10); +4% / +12% (ST03c: 0.308/0.296, 0.083/0.074); 56–234 and six- to tenfold (S7 JSON); 14/18 configurations; the 3/5/first-iteration checked designs; [0.175, 0.699] and 0.47 (ST02); 0.25–1.37 GiB and five- to eightfold (5.9)."
+ },
+ {
+  "region": "R5-7（第 7 节结论、代码与数据可用性；U11_CN.md / U11_EN.md）",
+  "items": [
+   {
+    "id": "G8-17",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把结论第 1 段压成名词串，删去“只有刚体模态的应变能为零”“不依赖于网络的训练精度”、命题 2 与 ST07、5.4–265 倍、6.89%→0.0965%，并改用“刚度上界”“二阶凝聚能量误差”。保留原文。",
+    "edits": [],
+    "facts_checked": "同意初审。“构成精确凝聚刚度矩阵的上界”“二阶小量”符合 R7_NOTES 的结论用语，也与引言-6 决定一致（引言保留“上界”）。引言 ¶6 和贡献列表仍写“不依赖于网络的训练精度”（U00_CN.md:25,32），摘要-4 只改摘要，所以结论不冲突。5.4–265 倍按表 4 的图调和/NICE 计算：M1 131、M2 188、H1 111、H2 5.45、U2 264.5（U08_CN.md:44-49）。ST07 中六个胞元、三种初始场的误差都随 8→16→32→64 步单调下降（S1_CN.md ST07），“每个算例……均使误差进一步降低”成立。6.89%/0.0965% 分别是 force_c 的基础网络和基础网络加修正均值（evidence/RESULTS_TABLES.md:13，0.0965/0.905，n=80）。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G8-18",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去结论第 2 段（命题 3、4，约 1% 位移误差造成 1.8%–35% 能量误差，柔度与灵敏度须同时检验）。保留原文。",
+    "edits": [],
+    "facts_checked": "命题 3、4 是第 4 节的主要结果。“以各胞元的应变能占比为权重进入装配柔度”没有写成等式，与引言-7 的“不超过……加权和”和 4-1 的“加权误差界”不冲突。引言-7(b) 删去命题编号只针对引言，结论在正文之后，引用命题编号没有问题。1.8%–35% 按表 4 基础网络无修正误差：H1 1.81、M2 3.64、M1 13.5、H2 35.0（U08_CN.md:45-48）。“约 1%”见 U08_CN.md:15。第 5.4 节按决定 5-S2 保留，引用的节号有效。",
+    "concerns": "无。"
+   },
+   {
+    "id": "G8-19",
+    "verdict": "author_decision",
+    "summary_cn": "astra 在 0.074% 前加了“面力载荷”，又用点阵结果替换两胞元数字、删去 27%，并新增 2.44%。建议只做两处增补：0.074% 加“在面力载荷下”，与同节的 6.89%→0.0965% 口径一致；在两胞元数字之后加摘要定稿的点阵句。两胞元数字和 27% 都不删。",
+    "edits": [
+     {
+      "file": "U11_CN.md",
+      "old": "NICE 在 80 个验证几何上的平均能量误差为 0.074%",
+      "new": "NICE 在面力载荷下 80 个验证几何的平均能量误差为 0.074%"
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "the mean energy error of NICE over the 80 validation geometries is 0.074%",
+      "new": "the mean energy error of NICE under traction loads on the 80 validation geometries is 0.074%"
+     },
+     {
+      "file": "U11_CN.md",
+      "old": "分别不超过 0.27% 和 1.49%。",
+      "new": "分别不超过 0.27% 和 1.49%。两个八胞元点阵在面载荷下的柔度误差低于 0.015%，点阵梯度误差在 0.09% 以内。"
+     },
+     {
+      "file": "U11_EN.md",
+      "old": "are at most 0.27% and 1.49%.",
+      "new": "are at most 0.27% and 1.49%. Two eight-cell lattices have compliance errors below 0.015% and gradient errors within 0.09% under face loads."
+     }
+    ],
+    "facts_checked": "四个 old 均用 python 核对过，各出现 1 次。0.074% 是 force_c（面力载荷）的 NICE 均值，精确值 0.0737，n=80（evidence/RESULTS_TABLES.md:14；ST03 表 force_c 行 0.074）。点阵柔度误差：面载荷下 2×2×2 为 0.0137/0.0110/0.0094%，3×3×1 为 0.0147/0.0134/0.0103%，都低于 0.015%（S3_CN.md:130）。点阵梯度误差：面载荷下 2×2×2 为 0.052–0.069%，3×3×1 为 0.041–0.088%，都在 0.09% 以内（ST14，S3_CN.md:125-126；U10_CN.md:5）。点阵句的中英文都逐字取自 astra_r2_decisions.md 摘要-7。0.27%/1.49% 是 ST08b 中 W1 的 0.2706/1.485，为 32 种两胞元构型的最大值；切割面面力下 NICE 的最大值为 0.101/0.161（ST09），没有超过，所以决定 5-6 之后“每种两胞元构型”仍成立。27%（U10_CN.md:52 为 27.0%）未动。astra 的 2.44% 属实（U10_CN.md:52），但不采纳。",
+    "concerns": "两组 edit（第 1、2 条为载荷限定，第 3、4 条为点阵句）互不重叠，可以分别采纳，两组都建议采用。摘要-5 决定摘要中的 0.074% 不加限定，原因是 250 词上限，而且 force_c 是 NICE 各载荷类别中均值最大的一类。结论没有篇幅限制，同段的 0.0965% 已限定为面力载荷，加上限定后两个数字口径一致。英文点阵句沿用摘要的“under face loads”，不改成正文第 5.8 节的“under the face loads”，以便摘要、第 5 节开篇和结论用同一句。新增数字在中英文中成对出现，装配脚本的数字核对不受影响。"
+   },
+   {
+    "id": "G8-20",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 改写了成本句，删去直接求解的 868–1,042 s 和 51 胞元精确校核的 0.014%/0.05%。保留原文，“三个载荷”不加。",
+    "edits": [],
+    "facts_checked": "表 5（U10_CN.md:25-28）中八胞元直接求解为 868/1,042 s。AMG-PCG 计入路线 (a) 的设置与装配后，求解路线 (c) 的三个载荷耗时 637/752 s（U10_CN.md:34）。规模算例的精确校核结果为柔度 0.013/0.011%、梯度 0.045/0.047%（表 3 末行；表 6 规模行 94.353 (0.013%)、89.129 (0.011%)），“低于 0.014%”“低于 0.05%”成立。110 胞元板为 3270 万自由度、19.4 min（U10_CN.md:56）。",
+    "concerns": "不建议加“三个载荷”。第 5.9 节和表 5 已交代载荷数；结论里只给 NICE 标“三个载荷”，会引出直接求解为何是六个载荷，而路线 (a) 中载荷求解只占总时间的 3–4%（U10_CN.md:19）。AMG 的比较本来用的就是同样三个载荷。"
+   },
+   {
+    "id": "G8-21",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把 105 s 改为 106 s。原始记录为 105.46 s，取整为 105；表 5 的 105.5 是一位小数的显示值，再取整成 106 属于二次舍入。保留 79–105 s。",
+    "edits": [],
+    "facts_checked": "review_r1/results/X6_final/t5retime/learned_hlat331.json 中 iterations[0].phases.iteration_total = 105.4644 s，learned_hlat222.json 中为 79.2011 s，gpu 字段均为“NVIDIA GeForce RTX 5090”。compare_old_new.txt 中 hlat331 的 new 为 total 105.46，old 为 110.12。初审引用的 110.12 s 是旧运行的记录。ST12d 3×3×1 各阶段之和为 104.97 s，与总计相差 0.49 s，在表注所说的 0.2–0.5 s 之内。表 5 的 79.2/105.5 与第 5.9 节的“79 s 和 105 s”（U10_CN.md:30）都与该记录一致。",
+    "concerns": "初审设的条件（原始值 ≥105.5 才改 106）已被原始记录排除，第 5.9 节和结论都不需要改。"
+   },
+   {
+    "id": "G8-22",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去结论末段的均匀化失效句和“粗网格校正并入网络”的展望，换成含“离线成本”“仍需……建立”“却”的句子。保留原文。",
+    "edits": [],
+    "facts_checked": "同意初审。R7_NOTES 规定结论按摘要的写法陈述均匀化失效，现有句子与摘要 U00_CN.md:5 一致。astra 新句含被禁止的离线成本、否定式元陈述（仍需……建立）和“却”。“无需分解各胞元内部刚度矩阵”准确：每个几何只分解粗空间矩阵 VᵀAV，例如 M1 的 Q1(17) 粗空间有 5,601 列，内部自由度为 165,927 个（S1_CN.md ST07 末段）。",
+    "concerns": "无。"
+   }
+  ],
+  "critic_notes": "1) 六处 edit 的 old 都用 python 核对过，在当前文件中各出现 1 次；中英文成对。2) 第 4 条（EN 点阵句）的“under the face loads”改回作者在摘要-7 认可的原句“under face loads”，使摘要、第 5 节开篇（5-S1）和结论用同一句。其余 edit 与起草人相同。3) G8-19 的 concerns 已压缩；补充了摘要-5 不加限定的原因（250 词上限，force_c 是 NICE 均值最大的一类），说明结论为何仍建议加。4) 各 verdict 维持起草人的判断。G8-21 由初审的 author_decision 改为 reject_confirmed，依据是当前原始计时记录 105.4644 s；初审引用的 110.12 s 为旧运行记录。5) 逐项复核了数字：0.0737（RESULTS_TABLES force_c，n=80）、0.0965、点阵柔度 0.0137–0.0147、梯度 0.041–0.088（ST14）、ST08b 的 W1 0.2706/1.485、ST09 中 NICE 的最大值 0.101/0.161、5.4–265、1.8–35、0.013/0.011 与 0.045/0.047、105.46/79.20 s。6) 一致性检查：第 7 节的“上界”“二阶小量”“不依赖于网络的训练精度”与引言 ¶6、贡献列表一致，摘要-4 只改摘要；第 2 段不是等式表述，不违反引言-7；第 7 节没有第 5.8 节 PCG 引用（D1 不涉及），没有 E/F 记号，没有违反 5-12 的表述；GPU 型号只按决定在第 5.9 节加，结论不加。",
+  "extra_findings": "1) 术语不统一（本区，仅 CN；EN 用 checked/exact checks，无须改）：结论第 3 段前一句写“在该板五个经精确校核的设计上”，后一句写“最多 51 个胞元的精确核验”。全稿其余各处用“校核”（U10 5 处），“核验”只出现在 U11 的两处。建议 edit：U11_CN.md old“最多 51 个胞元的精确核验”（count=1）→ new“最多 51 个胞元的精确校核”。第 6.3 节 U11_CN.md:21 的“经精确静力凝聚核验的设计”（count=1）可同样改为“校核”，该处属 R5-6。\n2) 记号（第 6.3 节，属 R5-6，同在 U11）：U11_CN.md:21“忽略了位移恢复算子 \\(F\\) 对设计的依赖”和 U11_EN.md:21“the recovery operator \\(F\\)”在全局替换时应改为 \\(\\widehat\\Psi\\)。第 7 节和代码与数据可用性段不含 E/F 记号。\n3) U11_CN.md:7（第 6.1 节，区外）“同一网络未作任何改动，即用于 80 个验证几何”中的“，即”是“就”义，不是解释性的“即”，但机械检查会标出，可改为“，直接用于”。\n4) 一致性：第 5 节开篇 U07_CN.md:3/U07_EN.md:3 的 0.074% 也没有载荷限定，后面紧接的 0.0965% 却有。若采纳 G8-19 第 1、2 条，按 5-S1 改写该段时可同样加“在面力载荷下 / under traction loads”。摘要按摘要-5 保持不加。\n5) 已核对、无冲突：第 7 节没有 OLD_CN/OLD_EN 旧术语（assemble_r5.py 列表全部为 0 命中），没有它/前者/后者/甚至/却/荷载/，即/完整胞元/仍需/并不意味着，没有第 5.8 节 PCG 引用。中英文逐段对应，数字一致。代码与数据可用性段 astra 未改，中英文一致，不涉及数据生成或训练成本。\n6) 初审 G8-21 引用的是旧计时文件（110.12 s）；当前记录在 review_r1/results/X6_final/t5retime/（105.46 s；compare_old_new.txt 中 old/new 并列）。\n7) 转达的作者原话“不写，不加，其他同意”对应决定文件第五批的“5-12 不写，5-13 不加，其他同意”，与本区条目无关。"
+ },
+ {
+  "region": "R6-appendices",
+  "items": [
+   {
+    "id": "G8-23",
+    "verdict": "already_decided",
+    "summary_cn": "astra 把并入上一段的附录 D、G 标题恢复成了独立标题。原因在组装脚本：splice() 拼接各单元时不留空行。按决定 4-9 只改脚本，单元文件不动。",
+    "edits": [],
+    "facts_checked": "assemble_r5.py 第 49 行先对每个单元做 rstrip('\\n')，第 50 行再直接 `out += new`，下一单元的首行标题因此前面没有空行。用 git show 52136f8~1 的基准文件只读模拟了 splice()（scratchpad/tmp_b6c/sim.py）。现脚本下前面缺空行的标题行为：APPENDICES_EN [196, 331]，APPENDICES_CN [213, 348]，SUPPLEMENTARY_EN/CN [242, 477, 624]。改为 `out += new + ['']` 后，四个文件都为空列表，没有出现连续三个空行，文件结尾不变；基准文件按换行切分后为 597/888 个元素，所以 old[pos-1:] 只剩 ['']。LaTeX 中确实出现了字面 \\#\\#：main.tex 第 1208、1343 行（附录 D、G），main_cn.tex 第 1206、1341 行，supp.tex 第 575、989 行，supp_cn.tex 第 567、951 行（ST08、S3）。S6 紧跟在表格行之后，pandoc 仍识别为 \\section（supp.tex 第 1337 行），但修改脚本后该处同样正常。",
+    "concerns": "最小修改：/home/user/curly-octo-goggles/docs/paper_p1/rewrite_plain/assemble_r5.py 的 splice() 第 50 行由 `out += new` 改为 `out += new + ['']`。效果是每个单元后接一个空行，最后多出的空行由第 53 行的 `.rstrip('\\n') + '\\n'` 去掉。在单元文件末尾补空行不起作用：第 49 行的 rstrip 会把它删掉（A1_EN、A2_CN/EN、S1–S3 末尾本来就有空行，照样出错）。改完运行 `python3 assemble_r5.py --write`，再重建 LaTeX 和 Word。"
+   },
+   {
+    "id": "G8-24",
+    "verdict": "no_action",
+    "summary_cn": "astra 删去了 Word 公式中的“&”。这些“&”是 pandoc（texmath）把 aligned 写成 Word 方程数组时插入的对齐符，Microsoft Word 不显示，其他软件可能直接显示。源文件不改；如需保险，只在 build_docx.py 中把 aligned 换成 array{rlrll}。",
+    "edits": [],
+    "facts_checked": "用 pandoc 3.6.4（pypandoc）独立重做了转换，FMT 以及 \\tag→\\qquad(n)、{\\rm}→\\mathrm 预处理都与 build_docx.py 相同（scratchpad/tmp_b6c/t.py）。U02+A2 的 EN 和 CN 都有 13 个 m:t 含 &、4 个 eqArr：式 (1) 2 个，ghost 罚项显示式 2 个，式 (2) 2 个，(D.3) 7 个。\\tag 位于 aligned 之外，去掉也不改变 & 的个数，最小样例中 \\qquad(9) 落在 eqArr 之外。texmath Writers/OMML.hs 的 makeArray：列对齐为 R,L,R,L…（isRLSequence，Shared.hs 第 435–438 行）时输出 m:eqArr，每个对齐点写成 <m:r><m:t>&</m:t></m:r>；OMML 读取器用 breakOnAmpersand 按同样的 & 拆分，这是 Word 方程数组的对齐约定。改成 array{rlrll} 后，& 为 0，eqArr 为 0，生成 m:m 矩阵，mcJc 依次为 right/left/right/left。astra 的 docx 有 eqArrPr baseJc（说明是另存的），& 全部删掉后 (D.3) 等式失去了对齐。全部单元中只有 U02 和 A2 用到 aligned。",
+    "concerns": "属于转换流程问题，源文件和 PDF 都不改。可选修改：/home/user/curly-octo-goggles/docs/paper_p1/word/build_docx.py 的 build() 在第 19 行后加一行 `md = md.replace(r'\\begin{aligned}', r'\\begin{array}{rlrll}').replace(r'\\end{aligned}', r'\\end{array}')`。多出的 'l' 打断 R,L 序列，texmath 因此输出矩阵；多余的列说明会按实际单元数截掉。代价是 Word 矩阵的列间距，(D.3) 中 ϱ0 与“=1/ζ”之间会稍宽。本机 LibreOffice 没有 Math 模块（未装 libreoffice-math，转换出的 PDF 中公式整段缺失），无法目视核对。建议：作者或导师若用 WPS 等非 Microsoft 软件阅读 Word 版，就加这一行；只用 Microsoft Word 则可不改。"
+   },
+   {
+    "id": "G8-25",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 给收缩因子小于 1 补了“光滑步数为正”的条件，同时改动了其他几处。只采纳这一条件，写成“只要 k≥1 且正谱位于 (0,b] 内”，其余保留原文。",
+    "edits": [
+     {
+      "file": "A2_CN.md",
+      "old": "只要正谱位于 \\((0,b]\\) 内，就有",
+      "new": "只要 \\(k\\ge1\\) 且正谱位于 \\((0,b]\\) 内，就有"
+     },
+     {
+      "file": "A2_EN.md",
+      "old": "whenever the positive spectrum lies in \\((0,b]\\)",
+      "new": "whenever \\(k\\ge1\\) and the positive spectrum lies in \\((0,b]\\)"
+     }
+    ],
+    "facts_checked": "old 在文件中各出现 1 次。p_0≡1，故 k=0 时收缩因子为 1。k≥1 时：λ∈[a,b] 有 |p_k|≤1/T_k(ζ)<1；λ∈(0,a) 时自变量在 (1,ζ)，T_k 严格增，0<p_k<1；谱为有限集，所以最大值 <1。用 ST05b（S1_CN 第 191–196 行）的 λ1 和 a、b=30a 重算 k=8 时的四次方：U1 0.987，M1 0.981，M2 0.969，与“0.97–0.99”一致；λ1 为 4.02e-4、5.74e-4、9.36e-4，a 为 0.173–0.175，与“4–9×10^{-4}”“a≈0.17”一致。“第 5.5 节”就是“固定网络参数下的修正”（U08 第 33 行），第 5 节顺序不变，保留。",
+    "concerns": "old/new 都不含 \\psi，所以与全局 ψ_k→p̄_k 改名的先后顺序无关；同段的 \\psi_k^2、\\psi_k<1、\\psi_8^4 以及式 (D.2) 第 12–13 行的两处留给全局改名。改名后的中文全句为：“只要 \\(k\\ge1\\) 且正谱位于 \\((0,b]\\) 内，就有 \\(\\bar p_k<1\\)，因而……”。"
+   },
+   {
+    "id": "G8-26",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 把 D.1 的“单调增大并趋向参考值”“减小”改为非严格表述，并加了非扩张和收敛两句。只采纳非严格表述，按最小改动写成“精确装配柔度不减小且不超过参考值，……能量误差不增大”；另两句不加，也不用“非扩张”。",
+    "edits": [
+     {
+      "file": "A2_CN.md",
+      "old": "单调增大并趋向参考值，且式 (14) 的总重构能量误差减小",
+      "new": "不减小且不超过参考值，式 (14) 的总重构能量误差不增大"
+     },
+     {
+      "file": "A2_EN.md",
+      "old": "increases monotonically towards the reference, and the total reconstructed energy error of Eq. (14) decreases",
+      "new": "neither decreases nor exceeds the reference, and the total reconstructed energy error of Eq. (14) does not increase"
+     }
+    ],
+    "facts_checked": "old 在文件中各出现 1 次。由 Θ^TAΘ⪯A 只能得到 S⪯Ŝ_new⪯Ŝ_old。装配刚度保持这一顺序，逆矩阵顺序相反（附录 C），所以 Ĉ_old≤Ĉ_new≤C，且可能取等号，原文的“增大”“减小”过强。式 (14)（U06_CN 第 11–16 行）为 C−Ĉ=a(û−u,û−u)，正是总重构能量误差，所以不增大。修改后中文全句：“因此，精确装配柔度不减小且不超过参考值，式 (14) 的总重构能量误差不增大；特别地，重复执行固定的循环不会增大能量误差。”英文全句：“Thus the exact assembled compliance neither decreases nor exceeds the reference, and the total reconstructed energy error of Eq. (14) does not increase; in particular, repeating a fixed cycle cannot increase the energy error.”",
+    "concerns": "与第 3.4 节已定写法（“不小于修正前的值，且不超过参考值”）意思相同。D.1 的前一句已写出 H_new=ΘH，“不减小”的比较对象是明确的，所以取更短的写法。作者若希望字面一致，可把 CN new 改为“修正后的精确装配柔度不小于修正前的值且不超过参考值，式 (14) 的总重构能量误差不增大”（old 改为“精确装配柔度单调增大并趋向参考值，且式 (14) 的总重构能量误差减小”，同样唯一）。新措辞不含 OLD_CN/OLD_EN 中的“非扩张/nonexpansive”。"
+   },
+   {
+    "id": "G8-27",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 把灵敏度反例拆成单独一段并压缩了措辞。两版都正确，保留原文。",
+    "edits": [],
+    "facts_checked": "K=I3，P={1}，u=(1,0,0)，v=(1,1,−1)，K_,c=vvᵀ。û=(1,t,t) 时 vᵀû=1，偏差为 0；投影掉第二分量后，能量由 2t² 降为 t²，vᵀû=1−t，偏差 2t−t² 在 t=0.1 时为 0.19；参考灵敏度为 −(vᵀu)²=−1。",
+    "concerns": "同意初审：“参考灵敏度 −1”缺谓语；拆段会破坏与英文的段落对应。"
+   },
+   {
+    "id": "G8-28",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 压缩 F.1 的粗基定义，丢掉了“参考立方体”“三线性”“背景节点”，这部分不采纳。只采纳去掉“主”：“主粗基”容易误读为主自由度上的粗基，按第 3.4 节改为“本文主要采用的粗基”，英文 principal 不变。",
+    "edits": [
+     {
+      "file": "A2_CN.md",
+      "old": "主粗基 \\(V\\)",
+      "new": "本文主要采用的粗基 \\(V\\)"
+     }
+    ],
+    "facts_checked": "old 在 A2_CN 中出现 1 次，全部单元中“主粗基”只此一处。U05_CN 第 30 行（第 3.4 节）为“本文主要采用的粗基记为 Q_1(17)”，U05_EN 第 30 行和 A2_EN 第 129 行都是 “principal coarse basis”。V 只作用于内部自由度 I，而文中的“主”专指主自由度和主节点。A2_NOTES 第 130 行早已指出这一混淆。",
+    "concerns": "把初稿的 author_decision 改为 adopt_modified：第 3.4 节已用“本文主要采用的粗基”，统一过来是术语修正，不需要作者另行决定。这是 CN 独有的修改，因为英文 principal 不与 retained 冲突，第 3.4 节英文也是 principal，所以英文不改。"
+   },
+   {
+    "id": "G8-29",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 删去了“粗因子平移”的定义和单精度接受规则的理由，又加了两句与上下文重复的话。B.1 和 ST19b 都引用这一术语，保留原文。",
+    "edits": [],
+    "facts_checked": "A1_CN/EN 第 37 行（B.1）引用“粗因子平移量 ξ（附录 F.1）”和 “coarse-factor shift ξ (Appendix F.1)”；S4_CN 第 169 行的表头有“粗因子平移”。trainlib.py 中 _chol_jitter（第 173–181 行）按 0、1e-12、1e-10、1e-8、1e-6、1e-4 依次试平移，可选主元平方下限 OPL_COARSE_PIVOT_FLOOR；opt_design.py 第 93 行把下限设为 1e-7。这些都与 F.1 的“10^{-7}”和平移序列一致。",
+    "concerns": "同意初审。"
+   },
+   {
+    "id": "G8-30",
+    "verdict": "already_decided",
+    "summary_cn": "astra 只改了节号（第 5.6 节、附录 J），这依赖第 5 节重排。第 5 节顺序已定为不变（5-S2，不设附录 J），保留原文。",
+    "edits": [],
+    "facts_checked": "U08 的标题：5.4 网络误差的分布（第 13 行，其中第 17 行与光滑区间比较并引 ST05b），5.5 固定网络参数下的修正（第 33 行，含表 4）。F.2 引用的第 5.2–5.8 节、表 5、第 5.10 节、ST05a/ST06/ST07/ST05b 都对得上；ST05b 表注写明第 5.5 节光滑研究和附录 F.2。",
+    "concerns": "依据决定 5-S2 和“第 5 节顺序不变”。"
+   },
+   {
+    "id": "G8-31",
+    "verdict": "reject_confirmed",
+    "summary_cn": "astra 只做了措辞压缩（“施加相应界并加”），读起来生硬，保留原文。",
+    "edits": [],
+    "facts_checked": "A3_CN 与 A3_EN 第 80 行内容一致（softplus 加 10^{-3}，卷积系数为 2sigmoid）。",
+    "concerns": "同意初审。"
+   },
+   {
+    "id": "G8-32",
+    "verdict": "adopt_modified",
+    "summary_cn": "astra 删去了“它们”。改为“与所有 x_j 正交”，比“与之正交”准确（v 位于 x_j 所在的 p−6 维空间），英文同步修改；同段删去解释性的“，即”。",
+    "edits": [
+     {
+      "file": "A3_CN.md",
+      "old": "则取与它们正交的单位向量",
+      "new": "则取与所有 \\(x_j\\) 正交的单位向量"
+     },
+     {
+      "file": "A3_EN.md",
+      "old": "choose a unit \\(v\\) orthogonal to them",
+      "new": "choose a unit \\(v\\) orthogonal to every \\(x_j\\)"
+     },
+     {
+      "file": "A3_CN.md",
+      "old": "，即本文中每个几何需要",
+      "new": "，本文中每个几何需要"
+     }
+    ],
+    "facts_checked": "三处 old 在文件中各出现 1 次。T_* 为 (p−6)×(p−6) 矩阵，x_j=S_*^{1/2}Zᵀq_j∈R^{p−6}，T_*=Θvvᵀ 要求 v∈R^{p−6}；ε_j=Θ(vᵀx_j)²=0 要求 v 与每个 x_j 正交，而不是与 q_j∈R^p 正交。主自由度数为 2,679–45,900（S1_CN/EN 第 95 行），故 p−6 为数千至数万，与原文一致。",
+    "concerns": "删去“，即”只改中文：英文的 “i.e.” 不在禁用之列，内容与中文一致，所以不动。修改后中文：“若这些测试位移不张成该补空间，则取与所有 \\(x_j\\) 正交的单位向量 \\(v\\)……要求 \\(N_q\\ge p-6\\)，本文中每个几何需要数千至数万个测试位移。”"
+   }
+  ],
+  "critic_notes": "逐条核对了初稿的全部 edit：old 在当前单元文件中各出现 1 次（python count），中英文对应完整（G8-28 与 G8-32 中“，即”的删除为 CN 独有，理由已写明）。主要修改如下。\n(1) G8-26：初稿写成“修正后的精确装配柔度不小于修正前的值且不超过参考值”，改为最小改动“不减小且不超过参考值”，英文改为 “neither decreases nor exceeds the reference”，更短。concerns 中保留了与第 3.4 节字面一致的备选写法。\n(2) G8-28：verdict 由 author_decision 改为 adopt_modified。第 3.4 节（U05_CN:30）已用“本文主要采用的粗基”，A2_NOTES 也早已指出“主粗基”与主自由度相混，统一过来是术语修正，不需要作者另行决定。\n(3) G8-24：用 pandoc 3.6.4 独立复现，结果相同：13 个 &、4 个 eqArr；改用 array{rlrll} 后都为 0，mcJc 为 right/left。删去了初稿中无法核实的“奇数个 & 为对齐点、偶数个为间隔符”。补充确认本机未装 libreoffice-math，转换出的 PDF 中公式整段缺失，无法渲染。给出明确建议：用 WPS 等非 Microsoft 软件阅读时才需加这一行。summary 精简。\n(4) G8-23：独立模拟 splice 修改，结果与初稿一致；补充核对了 LaTeX 中字面 \\#\\# 的位置（main/main_cn/supp/supp_cn），并说明 S6 因紧跟表格行而未出错。修正细节：末尾本有空行的单元还包括 A1_EN。\n(5) 数字复核：用 ST05b 重算 k=8 时收缩因子的四次方（0.987/0.981/0.969）；用 lam_check_val80.json 复核端点比（2.07–5.00%，中位数 3.92%）、Gershgorin 比（4.66–19.36，中位数 18.37）、Lanczos 78–150 步、相对残差（最大 9.64e-4，中位数 2.23e-6）；p 的范围为 2,679–45,900。\n(6) extra_findings：保留初稿各条（均已核实 old 唯一），新增 G.1、G.3 两处括号里的“（即”，以及第 3.4 节已定英文写法会触发 OLD_EN 检查的问题。",
+  "extra_findings": "初稿各条均已核实，各 old 在文件中唯一：\n(1) A2_CN.md:45（附录 D）“后者由 \\(D^{-1/2}AD^{-1/2}\\)”用了“后者”。建议 old=“后者由 \\(D^{-1/2}AD^{-1/2}\\)”，new=“\\(\\lambda_{\\max}\\) 由 \\(D^{-1/2}AD^{-1/2}\\)”；英文不改。\n(2) A2_CN.md:75（D.1）“但它并非精确投影”用了“它”。建议 new=“但平移后的校正并非精确投影”；英文 “although it is not the exact projection” 可保留。\n(3) A3_CN.md:11（G.1）“将该初始特征场记为 \\(X^0(q)\\)，它通过 \\(q_d\\) 依赖于 \\(q\\)。”用了“它”。建议整句改为“该初始特征场通过 \\(q_d\\) 依赖于 \\(q\\)，记为 \\(X^0(q)\\)。”；英文不改。\n(4) A3_CN.md:34（G.1）“初始值为零（即简单的关联平均）”。可改为“初始值为零，对应简单的关联平均”，英文 “(plain incidence averaging)” 不改。\n(5) A3_EN.md:138（G.4）“Such a PSD perturbation”中的 PSD 在全部英文单元中没有定义（另一处是 A3_EN:237），而全文其他地方都写 positive semidefinite。建议改为 “Such a positive semidefinite perturbation”；中文“半正定”不变。\n本轮新增：\n(6) A3_CN.md:9（G.1）“随后进行两轮残差消息传递（即第 3.2 节中的两轮信息交换）”中括号里的解释性“即”。英文是 “(the two rounds of exchange in Section 3.2)”，没有 i.e.。建议 old=“（即第 3.2 节中的两轮信息交换）”，new=“（第 3.2 节中的两轮信息交换）”，英文不改。\n(7) A3_CN.md:122（G.3）“（即 \\(S\\) 在该补空间上的逆，……）”中的“即”。英文为 “the inverse of S on this complement”。可去掉“即 ”，改为“（\\(S\\) 在该补空间上的逆，……）”，英文不改。\n(8) 区域外：第 3.4 节（U05:42）已定的英文写法 “no smaller than the uncorrected one” 会被 assemble_r5.py 的 OLD_EN 检查报出。该检查对 'Uncorrected' 用 re.I 匹配正文，原意是让补充材料的变体名不进入正文。建议改为 “so the corrected assembled compliance is no smaller than before the correction and no larger than the reference value”。\n其他：A3_CN.md:224（H.2）“因此它与 \\(s_c\\) 的比较”用了“它”。A2_CN.md:105“，即得第一个表达式”和 A3_CN.md:226“因此，即使”都不是解释性用法，但机械检查会报出，可保留。\n改名覆盖：本区域内 \\psi 只出现在 A2_CN/EN 第 12、13、55 行。全局改名还要处理 A3 第 87 行式 (G.2) 的 “E'=T_aET_P^T”（E→\\Psi），以及 A2 中两处 \\widehat E（→\\widehat\\Psi_{\\rm net}）。本区域没有“第 5.8 节的预条件共轭梯度法”，也没有引用已撤销的第 2.5 节。\n已核对的数字：附录 D 端点检验与 evidence/lam_check_val80.json 一致。表 4 中基础网络修正前后之比为 73–2,991 倍。第 5.5 节还包括只做光滑的结果（图 8），附录 D 末段“一至三个数量级”可接受。\n用户的转述“不写，不加，其他同意”对应决定 5-12、5-13，本区域没有与之冲突的修改。"
+ }
+]
