@@ -239,3 +239,21 @@ applied to the CN and EN units; the EN abstract stays at 249 words.
   in three and refers to Tables 3 and 5 for the exact checks.
 - Conclusion adds the homogenisation design (0.18% less material, 2.44% higher compliance) and states that the 27%
   concerns the uniform starting design.
+
+## GPT Pro narrative review, second round: implementation (14 Oct)
+
+Decisions R2-1 to R2-8 in r7_drafts/gptpro_decisions.md (review: r7_drafts/gptpro_review2_CN.md) are applied to the CN
+and EN units; the EN abstract stays at 249 words.
+- 5.9 and 6.2 separate the one-time cell preparation (geometry encoding, correction setup) from the per-application
+  network evaluation and correction.
+- Abstract: 0.074% is stated for traction loads over 80 Schwarz-P validation geometries (20 of them uncut; the old EN
+  "80 cut" was wrong), and the plate sentence separates the initial design (27%) from the final design (0.03%,
+  0.3%); the conclusion no longer calls the 80 geometries cut. EN compensation: "Fine-scale models", "Periodic
+  homogenisation fails ...", "per iteration" ("geometry-conditioned" is a retired term and was not used).
+- Introduction: dense condensed matrix and Cholesky factor are attributed to the conventional implementation.
+- Conclusion: the properties "follow from the construction and hold for any network parameters".
+- 5.8: the comparison with the two-cell maxima and its causal "because Eq. (15)" are gone; Eq. (15) is stated as the
+  bound on the lattice compliance error only.
+- Appendix H and 5.10: the reverse-mode moment derivative is the exact derivative at fixed clipping topology and
+  agrees with the central difference (H.3) to 2e-8 (Supplementary Note S1; r1_psd.py ad_vs_fd_rel, moments_ad).
+- 6.1: the outlook on merging the coarse-grid correction into the network is removed.

@@ -520,7 +520,7 @@ M_{e\alpha,c}\approx
 \tag{H.3}
 \]
 
-The active set is fixed for this calculation, and the elasticity templates and ghost contribution are held constant. The moment quadrature is recomputed at each perturbed thickness, so its clipping and integration branches may change. The resulting matrices represent a numerical design derivative on that prescribed topology. The sensitivities of the NICE lattice analyses and optimisations (Sections 5.9 and 5.10) are instead obtained by reverse-mode differentiation of the moment integrals at the fixed recovered displacement field.
+The active set is fixed for this calculation, and the elasticity templates and ghost contribution are held constant. The moment quadrature is recomputed at each perturbed thickness, so its clipping and integration branches may change. The resulting matrices represent a numerical design derivative on that prescribed topology. The sensitivities of the NICE lattice analyses and optimisations (Sections 5.9 and 5.10) are instead obtained by reverse-mode differentiation of the moment integrals at the fixed recovered displacement field. This derivative is the exact derivative of the discrete moments at fixed clipping topology and agrees with Eq. (H.3) to \(2\times10^{-8}\) (Supplementary Note S1).
 
 ### H.1. Sensitivity error bounds (proof of Proposition 4)
 
