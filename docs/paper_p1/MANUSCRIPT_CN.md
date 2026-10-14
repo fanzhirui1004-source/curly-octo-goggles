@@ -79,9 +79,9 @@ NICE 的网络输出对主自由度位移严格线性，并由构造精确再现
 \end{aligned}
 \]
 
-式中，\(u_h\) 和 \(v_h\) 为激活自由度向量 \(u\) 和 \(v\) 对应的 \(Q_2\) 位移场，\(\mathsf C\) 为各向同性弹性张量，\(h=1/n\) 为背景单元的边长。ghost 面集 \(\mathcal F_g\) 由位于胞元内部、两侧单元均为激活单元且二者并非都被认证为完全由材料填充的背景面构成，\([\partial_{n_f}^{j}\,\cdot\,]\) 为第 \(j\) 阶法向导数在面 \(f\) 上的跳跃，\(\lambda_{\rm ref}\) 和 \(\mu_{\rm ref}\) 为参考 Lamé 常数，\(\gamma\) 为罚系数（验证几何取 \(\gamma=10^{-4}\)，表 1）。弹性项仅在各单元的材料部分上积分；若某激活单元只含极少材料（小切割），其自由度几乎不受弹性项约束，刚度矩阵趋于病态。ghost 罚项惩罚相邻激活单元之间位移导数的跳跃，使这些自由度经由相邻单元得到控制 [Burman (2010)](https://doi.org/10.1016/j.crma.2010.10.006), [Burman et al. (2015)](https://doi.org/10.1002/nme.4823)。材料部分上的积分在细分的子胞元和裁剪后的四面体上数值计算（附录 A.1）。所用求积公式的权重均为正，弹性项在每个求积点上的贡献因而都是半正定矩阵；ghost 罚项同样半正定，所得 \(K\) 对称半正定，定义稳定化离散能量 \(\tfrac12u^TKu\)。
+式中，\(u_h\) 和 \(v_h\) 为激活自由度向量 \(u\) 和 \(v\) 对应的 \(Q_2\) 位移场，\(\mathsf C\) 为各向同性弹性张量，\(h=1/n\) 为背景单元的边长。ghost 面集 \(\mathcal F_g\) 由位于胞元内部、两侧单元均为激活单元且二者并非都被认证为完全由材料填充的背景面构成，\([\partial_{n_f}^{j}\,\cdot\,]\) 为第 \(j\) 阶法向导数在面 \(f\) 上的跳跃，\(\lambda_{\rm ref}\) 和 \(\mu_{\rm ref}\) 为参考 Lamé 常数，\(\gamma\) 为罚系数（验证几何取 \(\gamma=10^{-4}\)，表 1）。弹性项仅在各单元的材料部分上积分；若某激活单元只含极少材料（小切割），其自由度几乎不受弹性项约束，刚度矩阵趋于病态。ghost 罚项惩罚相邻激活单元之间位移导数的跳跃，使这些自由度经由相邻单元得到控制 [Burman (2010)](https://doi.org/10.1016/j.crma.2010.10.006), [Burman et al. (2015)](https://doi.org/10.1002/nme.4823)。切割单元上的积分可采用自适应细分 [Parvizian et al. (2007)](https://doi.org/10.1007/s00466-007-0173-y), [Düster et al. (2008)](https://doi.org/10.1016/j.cma.2008.02.036)、矩拟合 [Müller et al. (2013)](https://doi.org/10.1002/nme.4569) 或高阶隐式求积 [Saye (2015)](https://doi.org/10.1137/140966290) 等方法；本文在细分的子胞元和裁剪后的四面体上数值计算（附录 A.1）。\(Q_2\) 单元刚度的被积函数是各坐标次数不超过四次的多项式，因此先在各单元的材料部分上计算 125 个单项式的积分（称为单元矩），再与固定的模板矩阵组合得到单元刚度（式 (A.1)），结果与用同一求积规则直接积分相同。所用求积公式的权重均为正，弹性项在每个求积点上的贡献因而都是半正定矩阵；ghost 罚项同样半正定，所得 \(K\) 对称半正定，定义稳定化离散能量 \(\tfrac12u^TKu\)。
 
-采用这种离散，厚度或切割改变时无需重新划分网格，只需重新计算各单元材料部分上的积分，厚度灵敏度也由这些积分的导数求得（附录 H）。所有胞元共用同一背景网格，第 3.2 节网络的多层网格即建立在该背景网格上，对所有几何都相同；随几何改变的只是激活单元、ghost 面和主自由度集合（第 2.3 节），网络通过由几何计算的模板系数适应这些变化（第 3.2 节）。本文以该离散模型的解作为参考解，NICE 的误差均相对于这一参考解度量；参考解本身的离散误差通过网格加密以及与贴体离散的比较评估（第 5.2 节，补充说明 S1）。图 1 给出一个切割点阵及其中的一个切割胞元，表 1（第 5.1 节）列出各算例的离散设置，附录 A 给出积分与装配的细节。
+采用这种离散，厚度或切割改变时无需重新划分网格，只需重新计算各单元的矩。单元内的材料分布只通过这些矩进入刚度矩阵的弹性项、厚度灵敏度（由矩的导数求得，附录 H）和网络的单元特征（第 3.2 节）。所有胞元共用同一背景网格，第 3.2 节网络的多层网格即建立在该背景网格上，对所有几何都相同；随几何改变的只是激活单元、ghost 面和主自由度集合（第 2.3 节），网络通过由几何计算的模板系数适应这些变化（第 3.2 节）。本文以该离散模型的解作为参考解，NICE 的误差均相对于这一参考解度量；参考解本身的离散误差通过网格加密以及与贴体离散的比较评估（第 5.2 节，补充说明 S1）。图 1 给出一个切割点阵及其中的一个切割胞元，表 1（第 5.1 节）列出各算例的离散设置，附录 A 给出积分与装配的细节。
 
 ### 2.3. 主自由度与静力凝聚
 
@@ -183,7 +183,7 @@ NICE 方法由修正后的位移恢复算子 \(\widehat\Psi\) 确定，该算子
 
 第 3.1 节和第 4 节的关系以下列三项性质为前提，网络结构由构造保证其精确成立：（1）几何固定时，位移恢复关于 \(q\) 线性，非线性仅出现于几何分支，作用于位移特征的运算均为线性运算；（2）位移恢复精确再现主自由度位移和刚体运动，刚体运动在输入端分离、在输出端重构，主自由度位移在输出端重新赋值（式 (9)）；（3）式 (5) 中节点力的计算需要位移恢复的转置，该转置由线性位移路径逐个运算转置得到（附录 G.1）。第 5.2 节核对了其数值实现。
 
-其余设计选择决定网络对该映射的逼近程度，未逐项经消融试验检验。对每个激活单元和每个施加 ghost 罚项的单元面，网络各取一组固定的节点，称为模板；网络权重作用于模板中的单元局部节点位置、特征通道和网格层级，各模板的系数由几何计算得到，因此同一网络适用于训练所覆盖几何范围内的各种主自由度集合。由于材料边界与背景单元相交，网络以单元矩（局部单项式在各背景单元材料部分上的积分，附录 A.1）作为几何输入。由主自由度位移到内部位移的映射使胞元内相距较远的部分相互耦合，这种长程耦合由 U 形多层网格承担：特征逐级传递到更粗的网格，再逐级传回。网络还在含弱连接节点的模板上附加若干局部交互，此类节点仅通过少量较小的刚度项与胞元其余部分相连。
+其余设计选择决定网络对该映射的逼近程度，未逐项经消融试验检验。对每个激活单元和每个施加 ghost 罚项的单元面，网络各取一组固定的节点，称为模板；网络权重作用于模板中的单元局部节点位置、特征通道和网格层级，各模板的系数由几何计算得到，因此同一网络适用于训练所覆盖几何范围内的各种主自由度集合。由于材料边界与背景单元相交，网络以单元矩（第 2.2 节）作为几何输入。由主自由度位移到内部位移的映射使胞元内相距较远的部分相互耦合，这种长程耦合由 U 形多层网格承担：特征逐级传递到更粗的网格，再逐级传回。网络还在含弱连接节点的模板上附加若干局部交互，此类节点仅通过少量较小的刚度项与胞元其余部分相连。
 
 据此，网络分为两个分支（图 3）：非线性的几何分支对每个几何计算一次线性算子的系数，位移分支即为该线性算子。
 
@@ -691,6 +691,8 @@ Dohrmann, C. R. (2003). [A preconditioner for substructuring based on constraine
 
 Dohrmann, C. R. (2007). [An approximate BDDC preconditioner](https://doi.org/10.1002/nla.514). *Numerical Linear Algebra with Applications*, 14(2), 149–168.
 
+Düster, A., Parvizian, J., Yang, Z., Rank, E. (2008). [The finite cell method for three-dimensional problems of solid mechanics](https://doi.org/10.1016/j.cma.2008.02.036). *Computer Methods in Applied Mechanics and Engineering*, 197(45–48), 3768–3782.
+
 E, W., Yu, B. (2018). [The Deep Ritz method: a deep learning-based numerical algorithm for solving variational problems](https://doi.org/10.1007/s40304-018-0127-z). *Communications in Mathematics and Statistics*, 6(1), 1–12.
 
 Efendiev, Y., Galvis, J., Hou, T. Y. (2013). [Generalized multiscale finite element methods (GMsFEM)](https://doi.org/10.1016/j.jcp.2013.04.045). *Journal of Computational Physics*, 251, 116–135.
@@ -765,10 +767,15 @@ Luz, I., Galun, M., Maron, H., Basri, R., Yavneh, I. (2020). [Learning algebraic
 
 McBane, S., Choi, Y. (2021). [Component-wise reduced order model lattice-type structure design](https://doi.org/10.1016/j.cma.2021.113813). *Computer Methods in Applied Mechanics and Engineering*, 381, 113813.
 
+Müller, B., Kummer, F., Oberlack, M. (2013). [Highly accurate surface and volume integration on implicit domains by means of moment-fitting](https://doi.org/10.1002/nme.4569). *International Journal for Numerical Methods in Engineering*, 96(8), 512–528.
 
 Parish, E., Lindsay, P., Shelton, T., Mersch, J. (2024). [Embedded symmetric positive semi-definite machine-learned elements for reduced-order modeling in finite-element simulations with application to threaded fasteners](https://doi.org/10.1007/s00466-024-02481-5). *Computational Mechanics*, 74(6), 1357–1381.
 
+Parvizian, J., Düster, A., Rank, E. (2007). [Finite cell method: h- and p-extension for embedded domain problems in solid mechanics](https://doi.org/10.1007/s00466-007-0173-y). *Computational Mechanics*, 41(1), 121–133.
+
 Pfaff, T., Fortunato, M., Sanchez-Gonzalez, A., Battaglia, P. W. (2021). [Learning mesh-based simulation with graph networks](https://openreview.net/forum?id=roNqYL0_XP). In *International Conference on Learning Representations (ICLR 2021)*.
+
+Saye, R. I. (2015). [High-order quadrature methods for implicitly defined surfaces and volumes in hyperrectangles](https://doi.org/10.1137/140966290). *SIAM Journal on Scientific Computing*, 37(2), A993–A1019.
 
 Smetana, K., Patera, A. T. (2016). [Optimal Local Approximation Spaces for Component-Based Static Condensation Procedures](https://doi.org/10.1137/15m1009603). *SIAM Journal on Scientific Computing*, 38(5), A3318–A3356.
 

@@ -257,3 +257,21 @@ and EN units; the EN abstract stays at 249 words.
 - Appendix H and 5.10: the reverse-mode moment derivative is the exact derivative at fixed clipping topology and
   agrees with the central difference (H.3) to 2e-8 (Supplementary Note S1; r1_psd.py ad_vs_fd_rel, moments_ad).
 - 6.1: the outlook on merging the coarse-grid correction into the network is removed.
+
+## Section 2.2: integration over cut elements and element moments (14 Oct)
+
+- Prompted by the author's question whether the element moments are a CutFEM standard. They are not prescribed by
+  CutFEM; the moment form K_e = sum M_ea T_a is the subdivision quadrature regrouped (same result as direct
+  integration with the same quadrature rule), possible because all elements of the Cartesian background mesh share
+  the same Q2 templates. The paper explained the formula in Appendix A.1 but cited no cut-cell quadrature work and
+  did not say why moments are used.
+- 2.2 (CN/EN): one sentence on the usual options (adaptive subdivision: Parvizian et al. 2007, Düster et al. 2008;
+  moment fitting: Müller et al. 2013; high-order implicit quadrature: Saye 2015), then the moment form and its
+  equivalence to direct integration; the next paragraph now says that the material distribution within an element
+  enters the elastic stiffness, the thickness sensitivity and the network's element features only through the
+  moments. 3.2 (CN/EN): the parenthetical definition of the element moments now points to Section 2.2.
+- References: the four entries (metadata checked against Crossref) are in `sections/REFS_ADD.md`; `assemble_r5.py`
+  now merges that file into the reference list at alphabetical positions (the list itself still comes from the R5
+  base). Same entries appended to `references_verified.bib`.
+- Checks: number/link/maths parity EN = CN for U02 and U04; EN sentences over 40 words unchanged (150); cited works
+  73 -> 77. PDF and Word not rebuilt (author's instruction).

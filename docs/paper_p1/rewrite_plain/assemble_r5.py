@@ -33,12 +33,37 @@ def unit(uid, lang):
     return t
 
 
+REFS_ADD = SEC / 'REFS_ADD.md'          # references added after the R5 base; one entry per paragraph, shared by EN and CN
+
+
+def _ref_key(entry):
+    import unicodedata
+    return unicodedata.normalize('NFKD', entry).encode('ascii', 'ignore').decode().lower()
+
+
+def merge_refs(tail):
+    """Insert the entries of REFS_ADD.md into the reference list (the first block of `tail`) at their alphabetical
+    positions; entries already present are skipped, the order of the existing entries is kept."""
+    if not REFS_ADD.exists():
+        return tail
+    head, _, rest = tail.partition('\n')
+    m = re.search(r'\n## ', rest)
+    block, after = (rest[:m.start()], rest[m.start():]) if m else (rest, '')
+    entries = [e.strip() for e in block.split('\n\n') if e.strip()]
+    for new in (e.strip() for e in read(REFS_ADD).split('\n\n') if e.strip()):
+        if new in entries:
+            continue
+        k = next((j for j, e in enumerate(entries) if _ref_key(e) > _ref_key(new)), len(entries))
+        entries.insert(k, new)
+    return head + '\n\n' + '\n\n'.join(entries) + '\n' + after
+
+
 def assemble_main(lang):
     old = base(f'MANUSCRIPT_{lang}.md').split('\n')
     refs_head = '## References' if lang == 'EN' else '## 参考文献'
     i = next(k for k, l in enumerate(old) if l.strip() == refs_head)
     body = '\n\n'.join(unit(u, lang) for u in MAIN_UNITS)
-    return body + '\n\n' + '\n'.join(old[i:]).rstrip('\n') + '\n'
+    return body + '\n\n' + merge_refs('\n'.join(old[i:]).rstrip('\n')) + '\n'
 
 
 def splice(fname, chunks, lang):
