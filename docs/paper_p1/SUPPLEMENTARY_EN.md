@@ -159,7 +159,7 @@ Means over the test displacements (%) at fixed retained displacements. \(k\) is 
 | Base network | U1 | force | 0.742 | — | 1.018 | — | 55.124 |
 | Base network | U2 | force_c | 0.402 | — | 0.588 | — | 35.658 |
 | Base network | U2 | force | 0.506 | — | 1.008 | — | 71.565 |
-| Base network | M1 | force_c | 13.512 | 4.685 / 2.9452 | 14.128 | 2.7552 / 1.6339 | 7.164 |
+| Base network | M1 | force_c | 13.512 | 4.6850 / 2.9452 | 14.128 | 2.7552 / 1.6339 | 7.164 |
 | Base network | M1 | force | 7.156 | — | 4.822 | — | 23.516 |
 | Base network | H1 | force_c | 1.814 | 0.25081 / 0.059403 | 1.909 | 0.26139 / 0.14959 | 28.403 |
 | Base network | H1 | force | 1.842 | — | 0.923 | — | 35.199 |

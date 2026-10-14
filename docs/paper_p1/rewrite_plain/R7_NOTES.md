@@ -218,3 +218,24 @@ r7_drafts/astra_r2_batch6_edits.json.
 - Offline cost stays unreported (author: the dataset was generated before the solver was sped up).
 - Pipeline: assembler joins units with a blank line (Appendix D/G and supplement headings restored); the Word build
   writes aligned blocks as arrays, so no literal '&' appears in other readers.
+
+## GPT Pro narrative review: implementation (14 Oct)
+
+All decisions in r7_drafts/gptpro_decisions.md (groups A-D; the review itself is r7_drafts/gptpro_review_CN.md) are
+applied to the CN and EN units; the EN abstract stays at 249 words.
+- Introduction: the method paragraph names the problem (retained sets that change with the cut) and ends with "no
+  interior factorisation"; the properties paragraph drops the smoothing-interval and coarse-projection explanation and
+  points to the conditions of Section 3.4; the complementarity numbers (6.89% -> 0.0965%, 5.4-265 times, Table 4)
+  sit in contribution (3) only; Capuano & Rimoli is cited once, in Section 1.1.
+- Training vs checks: training covers the energy and the sensitivities, assembled checks the compliance and the
+  sensitivities (abstract, introduction, conclusion); Section 2.4 says that NICE uses the estimate of the reference
+  sensitivities; Section 4.2 separates the error at given q from the assembled error.
+- Claims narrowed: "any network parameters" (6.3), recovery operators that are linear and reproduce the retained
+  displacements and rigid-body motions (conclusion), "generally dominates" (5.4), errors below the largest cell error
+  (5.8), "the compliance errors above" (5.8), speed with its deployment (abstract, 5.9).
+- Fixes: 4.69% -> 4.68% (5.5; ST05a now 4.6850), "its refinement" instead of n=64 (6.3).
+- Structure: Section 5 opens with a route map; 5.10 announces the scale timings; 6.1 paragraph 3 is shorter and ends
+  with the coarse-level outlook (moved from the conclusion); 6.2 says where the cost goes; 6.3 paragraph 3 is split
+  in three and refers to Tables 3 and 5 for the exact checks.
+- Conclusion adds the homogenisation design (0.18% less material, 2.44% higher compliance) and states that the 27%
+  concerns the uniform starting design.
