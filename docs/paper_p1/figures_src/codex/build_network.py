@@ -18,7 +18,7 @@ os.environ.setdefault('MPLCONFIGDIR',str(HERE/'_build'/'.mplconfig'))
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, FancyArrowPatch, Circle, Ellipse, Polygon
+from matplotlib.patches import Rectangle, FancyArrowPatch, Circle, Ellipse, Polygon, Arc
 from PIL import Image,ImageOps
 
 BLUE='#0072B2'; INK='#243447'; GRAY='#657382'; LIGHT='#DFE5E9'; ORANGE='#D55E00'
@@ -116,38 +116,49 @@ def network():
     d.arrow((25,199),(25,197),BLUE,lw=.65)
     d.text(46,209,'mean',7.5,BLUE,ha='center')
     d.text(7,179,'MLP: affine → GELU → affine',8)
-    d.arrow((64,224),(70,220),BLUE);d.arrow((64,197),(70,204),BLUE)
-    for yy in [204,212,220]:
-        d.box(72,yy-1.7,3.4,3.4,color=BLUE,fc=BLUE+'20');d.dot(94,yy,1.4,BLUE,BLUE+'20')
-    for ya in [204,212,220]:
-        for yb in [204,212,220]:d.line([(75.5,ya),(92.5,yb)],BLUE,lw=.4)
-    d.arrow((78,223),(90,223),BLUE,style='<->',lw=.8)
-    d.text(83,230,'64-channel exchange',8,ha='center')
-    d.text(83,225,'2 residual rounds',7.5,ha='center')
-    d.text(74,199,'E',8,ha='center');d.text(94,199,'N',8,ha='center')
-    # Local heads use element/face + node + learned slot embeddings.
-    d.arrow((97,216),(120,224),BLUE)
-    d.tensor(110,208,7,7,'64')
-    d.text(110,214,'Face',7.5,ha='center')
-    d.arrow((77,204),(105,208),BLUE,lw=.65)
-    d.arrow((116,209),(121,218),BLUE,lw=.65)
-    d.tensor(111,237,6,5,'8')
-    d.text(121,237,'position embedding',7.5,va='center')
-    d.arrow((113,233),(128,230),BLUE)
+    # Exchange drawn as two rows: element embeddings enter the element row (E), node embeddings the node row (N);
+    # each element is linked only to its own nodes (two message-passing rounds, element update first).
+    d.arrow((63,223),(72.6,220.4),BLUE);d.arrow((63,198),(73.0,204.3),BLUE)
+    xs=[75,83.5,92]
+    for ie,i_n in [(0,0),(0,1),(1,0),(1,1),(1,2),(2,1),(2,2)]:
+        d.line([(xs[ie],218.3),(xs[i_n],206.4)],BLUE,lw=.4)
+    for x in xs:
+        d.box(x-1.7,218.3,3.4,3.4,color=BLUE,fc=BLUE+'20');d.dot(x,205,1.4,BLUE,BLUE+'20')
+    d.text(83.5,232.5,'64-channel exchange',8,ha='center')
+    d.text(83.5,227.5,'2 residual rounds',7.5,ha='center')
+    d.text(96.2,220,'E',8,va='center');d.text(96.2,205,'N',8,va='center')
+    # Local heads take the element (or face) embedding, the node embedding and a learned position embedding.
+    d.tensor(109,226,7,7,'64')
+    d.text(108,232.4,'Face',7.5,ha='center')
+    d.arrow((99,221.6),(105.2,225),BLUE,lw=.65)
+    d.arrow((114.6,226),(121.6,226),BLUE,lw=.65)
+    d.arrow((99,219.6),(121.6,220.6),BLUE)
+    d.arrow((99,206.6),(121.6,217.3),BLUE)
+    d.tensor(111,239,6,5,'8')
+    d.text(121,239,'position embedding',7.5,va='center')
+    d.arrow((114,236.4),(128,230.3),BLUE)
     d.box(122,216,49,14,'Local heads  →  '+r'$a,b$'+'\nMLP + bounded coefficients',BLUE,8)
-    # Multilevel node embeddings supply geometry-only transfer and convolution heads.
-    d.line([(96,202),(99,202),(99,194)],BLUE);d.arrow((99,194),(109,194),BLUE)
-    d.tensor(113,194,7,8,'64')
-    d.text(97,179,'Node hierarchy',7.5)
+    # Node embeddings averaged onto the coarse grids (node hierarchy) feed the transfer and the convolution heads.
+    d.line([(99,204),(101,204),(101,194)],BLUE);d.arrow((101,194),(108.8,194),BLUE)
+    d.tensor(112.5,194,7,8,'64')
+    d.text(98.8,182,'Node hierarchy',7.5)
     d.box(124,190,47,14,r'Transfer heads  →  $r_i,p_i$'+'\nPositive geometry coefficients',BLUE,8)
-    d.arrow((119,197),(123,197),BLUE)
+    d.arrow((118.3,197),(123.6,197),BLUE)
     d.box(124,172,47,12,r'Convolution heads  →  $g_{\ell j}$'+'\n'+r'$2\,\mathrm{sigmoid}$',BLUE,8)
-    d.line([(118,190),(121,190),(121,178)],BLUE);d.arrow((121,178),(123,178),BLUE)
+    d.line([(118.3,191),(120,191),(120,178)],BLUE);d.arrow((120,178),(123.6,178),BLUE)
     # Dashed coefficient buses enter only the numerical maps of the q branch.
-    d.line([(172,223),(176,223),(176,162),(56,162)],BLUE,True)
-    for xx in [56,88,106,130]:d.arrow((xx,162),(xx,154),BLUE,True)
-    d.line([(172,197),(178,197),(178,162)],BLUE,True)
-    d.line([(172,178),(177,178),(177,162)],BLUE,True)
+    # Two separate coefficient paths: a, b from the local heads to the local and weak interactions; r_i, p_i and
+    # g (orange) from the transfer and convolution heads to the multigrid. The a, b path hops over the single crossing.
+    d.line([(172,223),(179,223),(179,160),(89.7,160)],BLUE,True)
+    d.ax.add_patch(Arc((88,160),3.4,3.4*d.yratio,theta1=0,theta2=180,color=BLUE,lw=.8,linestyle=(0,(3,2))))
+    d.line([(86.3,160),(56,160)],BLUE,True)
+    for xx in [56,106,130]:
+        d.arrow((xx,160),(xx,154),BLUE,True)
+        d.text(xx-.8,155.6,r'$a,b$',8,BLUE,ha='right')
+    d.line([(172,197),(175.5,197),(175.5,163.5),(88,163.5)],ORANGE,True)
+    d.line([(172,178),(175.5,178)],ORANGE,True)
+    d.arrow((88,163.5),(88,154),ORANGE,True)
+    d.text(87.2,155.6,r'$r_i,p_i,g_{\ell j}$',8,ORANGE,ha='right')
 
     # (b) The actual MGNO2 forward sequence and two deterministic bypasses.
     d.text(7,166,'(b) Displacement branch: linear in '+r'$q$'+' for fixed geometry',10,weight='bold')
