@@ -7,7 +7,9 @@ Nine content slides (problem; cut finite elements; NICE; network; properties and
 conclusions; progress), a closing slide and three backup slides. Helpers (text boxes, cards, stat callouts, tables,
 pictures) come from build_talk.py; display formulas are typeset with LaTeX (Latin Modern, as in the paper) and inserted
 as pictures; the two-dimensional cut finite element schematic is drawn here. Numbers follow the R7 manuscript
-(docs/paper_p1/MANUSCRIPT_CN.md); figures come from docs/paper_p1/figures. Speaker notes total about ten minutes."""
+(docs/paper_p1/MANUSCRIPT_CN.md); figures come from docs/paper_p1/figures. The speaker notes come from
+groupmeeting_notes.py: a timed script (about ten minutes in all) and backup items on every slide; the same notes are also
+written next to the deck as <deck>_讲稿.md."""
 import sys, hashlib, subprocess, tempfile
 from pathlib import Path
 from PIL import Image
@@ -20,6 +22,7 @@ from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import re  # noqa: E402
 import build_talk  # noqa: E402
+from groupmeeting_notes import render as notes, export_markdown  # noqa: E402
 from build_talk import (rgb, font, text, card, stat, image, table, cite, Deck,  # noqa: E402
                         RED, DARK, GRAY, BLUE, LIGHT, LBLUE, X0)
 
@@ -406,15 +409,10 @@ def build(template, out):
             r[0].text = '及其在切割 TPMS 点阵厚度设计中的应用　·　组会汇报　·　2026 年 10 月'
             for extra in r[1:]:
                 extra.text = ''
-    s1.notes_slide.notes_text_frame.text = (
-        '各位老师、同学好。今天用十分钟汇报 P1：带平衡校正的神经初始化静力凝聚，简称 NICE，以及这一方法在切割 TPMS 点阵厚度设计中的应用。')
+    s1.notes_slide.notes_text_frame.text = notes('title')
 
     # ------------------------------------------------------------------ 2 problem
-    s = D.slide('切割点阵的厚度设计：均匀化不准，细尺度分析太慢',
-                '研究对象是按零件外形切割的 TPMS 点阵，左图的点阵在切割面上固支，支撑由切割胞元承担。厚度设计每次迭代都要重新分析全部胞元。'
-                '均匀化在切割、无尺度分离时不准，后面的固支板上把初始设计的柔度低估了 27%；细尺度精确分析准确，但八胞元点阵分析一次就要 14 到 20 分钟。'
-                '切割面上的支撑和载荷作用在切割平面单元的全部节点上，这些自由度须全部保留，每个胞元有两千多到四万多个；'
-                '组内的学习子结构以少量边界自由度换取规模，这里的要求不同。所以本文保留静力凝聚的框架和全部主自由度，只近似内部位移。')
+    s = D.slide('切割点阵的厚度设计：均匀化不准，细尺度分析太慢', notes('problem'))
     image(s, FIG / 'F00_problem.png', X0, 1.08, W, 3.45)
     Wc = (W - 2 * 0.3) / 3
     for k, (num, lab) in enumerate([
@@ -426,11 +424,7 @@ def build(template, out):
                      ('保留静力凝聚的框架和全部主自由度，只近似内部位移，免去内部刚度矩阵的分解', {})], h=0.56)
 
     # ------------------------------------------------------------------ 3 CutFEM and discretisation
-    s = D.slide('切割有限元离散：几何改变无需重新划分网格',
-                '离散采用稳定化切割有限元。左边是二维示意，背景网格固定，实际每轴 32 个 Q2 单元。与材料相交的单元为激活单元；'
-                '材料边界不需要贴体网格，只决定哪些单元激活、在哪里积分。积分在单元的材料部分上进行，用子胞元细分和裁剪四面体计算；'
-                '只含少量材料的单元由 ghost 罚项稳定。主自由度有两类：胞元边界面上的节点（蓝点）和切割平面单元的全部节点（棕点）；'
-                '其余为内部自由度，约为主自由度的六倍。厚度或切割改变时只重算积分，不重新划分网格；右图是四个验证胞元。')
+    s = D.slide('切割有限元离散：几何改变无需重新划分网格', notes('cutfem'))
     image(s, cutfem_schematic(), X0, 1.08, 4.72, 4.72)
     legend = [('fill', SC_COL['mat'], '材料层'), ('fill', SC_COL['removed'], '切除部分'), ('line', SC_COL['cut'], '切割平面'),
               ('cell', SC_COL['active'], '激活单元'), ('fill', SC_COL['cutel'], '切割平面单元'), ('line', SC_COL['ghost'], 'ghost 面'),
@@ -447,11 +441,7 @@ def build(template, out):
     ], size=16, space=10)
 
     # ------------------------------------------------------------------ 4 NICE overview
-    s = D.slide('NICE：保留全部主自由度，只近似内部位移',
-                'NICE 保留全部主自由度，只近似内部位移，分三步。第一步，网络以胞元几何为输入，由主自由度位移预测内部位移，对位移是线性的。'
-                '第二步，主自由度位移不变，施加一次固定的两重网格修正：八步 Chebyshev 光滑、Q1 粗网格校正、再八步光滑，减小网络遗留的内部不平衡力，'
-                '修正不含可训练参数。第三步，凝聚刚度矩阵由修正后位移场的应变能计算。装配方程组用预条件共轭梯度法求解，只需要矩阵–向量乘积，'
-                '所以不分解内部刚度矩阵，也不形成稠密的凝聚刚度矩阵。设计迭代中网络参数不变。')
+    s = D.slide('NICE：保留全部主自由度，只近似内部位移', notes('nice'))
     image(s, FIG / 'F01_method_overview.png', X0, 1.08, 6.9, 5.62)
     formula(s, r'\widehat S=\widehat\Psi^{T}K\widehat\Psi,\qquad \widehat\Psi=\mathcal W\,\widehat\Psi_{\rm net}', 7.75, 1.12, 5.08,
             0.95, size=22, fill=PANEL_B)
@@ -467,31 +457,35 @@ def build(template, out):
                                       ('设计迭代中网络参数不变', {'bold': True, 'color': RED})]],
          size=15, fill=PANEL_R, anchor='m')
 
-    # ------------------------------------------------------------------ 5 network architecture
-    s = D.slide('网络：几何分支算系数，位移分支对 q 线性',
-                '网络逼近精确位移恢复的内部部分。难点是主自由度有两千多到四万多个，并且随切割变化，不能给每个自由度设一个输出。'
-                '网络分两支：几何分支是非线性的，由单元矩和节点指标算出各运算的系数，每个几何只算一次；位移分支对主自由度位移线性，'
-                '把位移提升为 32 个通道，在 27 节点的模板上做局部交互，再经过每轴 65、33、17、9 的 U 形多层网格，最后转换为内部位移。'
-                '刚体运动绕过网络，主自由度位移在输出端重新赋值，这两项由构造保证。权重不对应具体自由度，所以约 60 万参数的同一个网络适用于所有主自由度集合。'
-                '训练损失由修正后的算子计算，包括能量和灵敏度两项。')
-    image(s, FIG / 'F11_network_architecture.png', X0, 1.08, 7.75, 4.9, crop=(0.0, 0.0, 0.0, 0.485))
-    text(s, 8.5, 1.15, 4.33, 4.85, [
-        label('几何分支　', '非线性，每个几何算一次：由单元矩和节点指标算出各运算的系数'),
-        label('位移分支　', '对 q 线性：32 个通道；局部交互（27 节点模板、4 个头）与 U 形多层网格（每轴 65 / 33 / 17 / 9）'),
-        label('构造保证　', '刚体运动绕过网络重构；主自由度位移在输出端重新赋值'),
-        label('规模无关　', [('权重不对应具体自由度：约 ', {}), ss('6×10^{5}'), (' 参数的同一网络适用于 2,679–45,900 个主自由度', {})]),
-    ], size=15, space=12)
-    banner(s, 6.12, [('训练：', {'bold': True, 'color': RED}),
-                     ('损失 = 能量比的对数 + 灵敏度误差；由修正后的算子计算，梯度经修正传到网络参数', {})], h=0.56)
+    # ------------------------------------------------------------------ 5 network architecture (the whole of Figure 3)
+    # Figure 3 is cut into its two halves, (a, b) on the left and (c, d) on the right, shown at the same scale; the pixel
+    # rows below bound the halves of F11_network_architecture.png (the bottom line on training and deployment is left out).
+    s = D.slide('网络：几何分支算系数，位移分支对 q 线性', notes('network'))
+    F3 = FIG / 'F11_network_architecture.png'
+    fw, fh = Image.open(F3).size
+    Wf = (W - 0.25) / 2
+    for k, (top, bottom) in enumerate([(40, 1365), (1385, 2385)]):
+        ar = (fw - 45) / (bottom - top)
+        image(s, F3, X0 + k * (Wf + 0.25), 1.05, Wf, Wf / ar, crop=(45 / fw, top / fh, 0.0, 1 - bottom / fh))
+    y_ab = 1.05 + Wf * (1365 - 40) / (fw - 45)                    # bottom of the (a, b) half
+    y_cd = 1.05 + Wf * (2385 - 1385) / (fw - 45)                  # bottom of the (c, d) half
+    text(s, X0, y_ab + 0.12, Wf, 6.72 - y_ab - 0.12, [
+        [('单元特征 126 = 1 + 1 + 124　', {'bold': True, 'color': RED}),
+         ('材料体积分数、其对数、124 个单元矩 ÷ 材料体积（第 3 页的 125 个矩去掉零阶）', {})],
+        [('节点特征 11 = 4 + 1 + 6　', {'bold': True, 'color': RED}),
+         ('4 个标记（主节点 / 胞元边界面 / 切割平面单元 / 弱连接）、1 个刚度量（对角刚度块范数的对数）、6 个位置项 sin、cos(2πx, 2πy, 2πz)', {})],
+    ], size=14, space=8, fill=PANEL_B, anchor='m')
+    text(s, X0 + Wf + 0.25, y_cd + 0.1, Wf, 6.72 - y_cd - 0.1, [
+        label('几何分支 (a)　', '非线性，每个几何算一次，算出各运算的系数'),
+        label('位移分支 (b)　', '对 q 线性；刚体运动绕过网络，主自由度在输出端重新赋值'),
+        label('(c) 传得远　', '每轴 65/33/17/9 的 U 形多层网格，负责远距离耦合'),
+        label('(d) 看得细　', '27 节点模板上的局部交互，负责单元尺度的几何细节'),
+        label('规模无关　', [('权重不对应具体自由度：约 ', {}), ss('6×10^{5}'),
+                         (' 参数的同一网络适用于 2,679–45,900 个主自由度', {})]),
+    ], size=14, space=7)
 
     # ------------------------------------------------------------------ 6 properties and accuracy
-    s = D.slide('性质由构造保证；从单胞到点阵，误差不累积',
-                '这一页讲性质和精度。凝聚刚度矩阵由应变能计算，只要位移恢复在主自由度上等于给定位移、精确再现刚体运动，就有经典的 Ritz 恒等式：'
-                '近似值减精确值等于内部误差的能量，半正定。由此得到三点：可组装，对任意网络参数都对称半正定；可改进，修正不增大误差，部署时还能增加修正步数；'
-                '可追溯，柔度误差不超过按应变能占比加权的能量误差 β，灵敏度误差含一阶项，所以两者分别检验。'
-                '下面的误差都相对同一离散模型的精确静力凝聚：单个胞元平均能量误差 0.074%，基础网络只加修正就从 6.89% 降到 0.0965%；'
-                '两胞元装配 32 种构型，柔度不超过 0.27%，灵敏度不超过 1.49%；两个八胞元点阵的胞元都没有参与训练，柔度误差低于 0.015%，梯度误差不超过 0.09%。'
-                '最右边的例子中柔度误差只有 0.000073%，被测胞元的灵敏度误差是 0.598%，所以只看柔度不够。')
+    s = D.slide('性质由构造保证；从单胞到点阵，误差不累积', notes('properties'))
     formula(s, r'\boxed{\;\widehat S-S=H^{T}\!AH\succeq 0\;}', X0, 1.1, 4.55, 1.25, size=28, fill=PANEL_B)
     text(s, X0, 2.42, 4.55, 0.95, [[('命题 1（Ritz 恒等式）', {'bold': True, 'color': INK}),
                                     ('：位移恢复在主自由度上等于给定位移、精确再现刚体运动时成立，与网络参数无关', {})]],
@@ -504,9 +498,10 @@ def build(template, out):
         card(s, 5.3 + k * (Wp + 0.2), 1.1, Wp, 2.27, h_, b_, size=14, head_size=17)
     Wl = (W - 3 * 0.3) / 4
     boxes = [('单个胞元', '80 个验证几何，面力载荷', '0.074%', '平均能量误差', '6.89% → 0.0965%', '基础网络只在部署时加修正'),
-             ('两胞元装配', '32 种构型，面载荷', '≤0.27%', '柔度误差', '≤1.49%', '灵敏度误差'),
-             ('八胞元点阵', '16 个胞元均未参与训练，面载荷', '<0.015%', '柔度误差', '≤0.09%', '梯度误差'),
-             ('柔度准 ≠ 灵敏度准', '例：U1/x，载荷加在相邻胞元上', '0.000073%', '柔度误差', '0.598%', '被测胞元的灵敏度误差')]
+             ('两胞元装配', '32 种构型，一个学习胞元', '≤0.27%', '柔度误差', '≤1.49%', '灵敏度误差'),
+             ('两个八胞元点阵', '全部为学习胞元，均未参与训练', '<0.015%', '柔度误差', '≤0.09%', '点阵梯度误差'),
+             ('柔度准 ≠ 灵敏度准', '例：U1/x，载荷加在相邻胞元上', '0.000073%', '柔度误差', '0.598%',
+              '灵敏度误差，约为柔度误差的 8,200 倍')]
     for k, bx in enumerate(boxes):
         x = X0 + k * (Wl + 0.3)
         ladder(s, x, 3.6, Wl, 3.05, *bx, fill=PANEL_R if k == 3 else PANEL)
@@ -514,11 +509,7 @@ def build(template, out):
             chevron(s, x + Wl + 0.05, 4.82, col=MUTED)
 
     # ------------------------------------------------------------------ 7 cost and scale
-    s = D.slide('成本：快约十倍，耗时随胞元数线性增长',
-                '成本方面，两个八胞元点阵上，NICE 在一块 GPU 上含灵敏度的一次分析是 79 和 105 秒，16 线程直接求解是 868 和 1,042 秒，约为十倍，'
-                '常规精确静力凝聚更慢；GPU 内存峰值 9.2 GiB，直接求解要 71 到 86 GiB。两条路线运行在不同处理器上，比较的是各自部署方式下的成本，'
-                '都不含数据生成和训练。快的原因在于每个胞元的内部位移由一次网络计算和固定步数的修正得到，不分解内部刚度矩阵，装配问题只在主自由度上求解。'
-                '右图是规模：24 到 110 胞元的板，每胞元每次设计迭代 10 到 11 秒，耗时随胞元数线性增长；110 胞元板有 3270 万个自由度，一次迭代 19.4 分钟。')
+    s = D.slide('成本：快约十倍，耗时随胞元数线性增长', notes('cost'))
     cd = CategoryChartData()
     cd.categories = ['八胞元块体', '八胞元单层']
     cd.add_series('整体点阵直接求解（16 线程）', (868, 1042))
@@ -551,11 +542,7 @@ def build(template, out):
     cite(s, '一块 GPU 对 16 个 CPU 线程，比较的是各自部署方式下的成本；均不含数据生成和训练')
 
     # ------------------------------------------------------------------ 8 thickness design
-    s = D.slide('厚度设计：复现精确静力凝聚的结果',
-                '设计问题是体积约束下的柔度最小化，设计变量是顶点处的角点厚度参数，用 MMA 求解。算例 A 是八胞元块体，另用精确静力凝聚做了一次对照优化，'
-                '左图两条曲线几乎重合，最终角点参数之差至多 0.0051。第二个算例是切割面固支的 24 胞元板，右图是 NICE 的最终设计。'
-                '紫色曲线是均匀化模型，把均匀初始设计的柔度低估了 27%，宏观网格加密后仍有 25.8%，这块单层板在厚度方向没有尺度分离。'
-                'NICE 经精确校核，最终设计的柔度偏差 0.03%，梯度偏差 0.3%；用均匀化模型优化得到的设计，精确柔度比 NICE 设计高 2.44%，材料少 0.18%。')
+    s = D.slide('厚度设计：复现精确静力凝聚的结果', notes('design'))
     image(s, FIG / 'F13_optimisation.png', X0, 1.08, 7.75, 3.72)
     image(s, FIG / 'F14_plate_design3d.png', 8.5, 1.08, 4.33, 3.2, crop=(0.0, 0.0, 0.5, 0.47))
     text(s, 8.5, 4.3, 4.33, 0.4, ['切割面固支板的 NICE 最终设计'], size=12, color=MUTED, align='c')
@@ -566,10 +553,7 @@ def build(template, out):
         stat(s, X0 + k * (Ws + 0.25), 5.0, Ws, num, lab, nsize=28, lsize=13, h=1.5)
 
     # ------------------------------------------------------------------ 9 conclusions and limitations
-    s = D.slide('结论与局限',
-                '总结三点：保留全部主自由度、只近似内部位移；性质由构造保证，与网络精度无关；柔度和灵敏度分别检验，点阵误差小，分析快约十倍，'
-                '设计复现精确静力凝聚的结果。局限主要是三条：只训练了一种胞族和单平面切割，新胞族需要重新训练；柔度被低估，不是保守估计；'
-                '规模受预条件子中直接分解的限制。')
+    s = D.slide('结论与局限', notes('conclusions'))
     for k, (h_, b_) in enumerate([
             ('只近似内部位移', '保留全部主自由度：切割面上的支撑和载荷直接施加；同一网络适用于随切割变化的主自由度集合'),
             ('性质由构造保证', '对称半正定、不低于精确值、误差为二阶小量，与网络精度无关；修正不增大误差'),
@@ -587,10 +571,7 @@ def build(template, out):
         card(s, X0 + k * (Wc + 0.3), 4.88, Wc, 1.78, h_, [b_], fill=PANEL_R, size=15, head_size=17)
 
     # ------------------------------------------------------------------ 10 progress and plan
-    s = D.slide('进展与计划',
-                '最后是进展。论文的中英文正文和补充材料已经修订完成，剩下作者信息与声明、图形摘要和通读定稿，计划投 CMAME，同时挂 arXiv。'
-                '后续两个方向：一是以应力等局部量为目标或约束的设计，配后验误差估计与自适应修正；二是跨胞族和几何的泛化。'
-                '另外要改进预条件子，扩大可分析的规模。谢谢大家。')
+    s = D.slide('进展与计划', notes('plan'))
     Wf = (W - 2 * 0.45) / 3
     for k, (h_, b_, f_) in enumerate([('已完成', '中英文正文与补充材料修订完成；投稿信、亮点已起草', PANEL_B),
                                        ('待办', '作者信息与各项声明；图形摘要更新；通读定稿', PANEL),
@@ -606,14 +587,12 @@ def build(template, out):
         card(s, X0 + k * (Wc + 0.3), 3.75, Wc, 2.35, h_, [b_], size=17, head_size=18)
 
     # ------------------------------------------------------------------ 11 closing
-    s = D.slide('谢谢！敬请各位老师和同学批评指正', '谢谢大家，欢迎提问。')
+    s = D.slide('谢谢！敬请各位老师和同学批评指正', notes('thanks'))
     image(s, FIG / 'F14_plate_design3d.png', 2.0, 1.3, 9.33, 4.7, crop=(0.0, 0.0, 0.5, 0.47))
     text(s, X0, 6.1, W, 0.5, ['切割面固支板的 NICE 最终设计（NICE 柔度 78.26，精确柔度 78.29）'], size=15, color=GRAY, align='c')
 
     # ------------------------------------------------------------------ backup 1: training and deployment
-    s = D.slide('备用：训练与部署',
-                '备用页。损失函数第一项是能量比的对数平均，由命题 1 非负，只有恢复位移场精确时为零；第二项是八分量厚度灵敏度相对参考值的误差。'
-                '损失由修正后的算子计算，梯度经过光滑和粗网格校正传到网络参数，训练和部署用同一个算子。右表是三个变体。')
+    s = D.slide('备用：训练与部署', notes('b_training'))
     formula(s, r'\mathcal L(\theta)=\frac1B\sum_{j=1}^{B}\log\!\big(q_j^{T}\widehat S q_j\big)'
                r'+w_s\frac{1}{|\mathcal J_s|}\sum_{j\in\mathcal J_s}\frac{\|\tilde{\bm s}_j-\bm s_j\|_2^2}{\|\bm s_j\|_2^2},'
                r'\qquad q_j^{T}Sq_j=1', X0, 1.2, W, 1.25, size=22)
@@ -635,9 +614,7 @@ def build(template, out):
     cite(s, '论文第 3.5、3.6 节，式 (13)，表 2')
 
     # ------------------------------------------------------------------ backup 2: correction effect
-    s = D.slide('备用：修正的作用',
-                '备用页。固定基础网络的参数单独看修正：H2 的误差主要在高频，八步光滑就从 35% 降到 0.2%；M1 的误差有很大一部分在光滑区间以下，'
-                '要靠粗网格校正。下表是同一修正作用在四种初始场上，图调和初始场修正后遗留的误差是 NICE 的 5.4 到 265 倍，所以网络和修正互补。')
+    s = D.slide('备用：修正的作用', notes('b_correction'))
     image(s, FIG / 'F04_correction.png', X0, 1.1, 7.3, 2.75, crop=(0.0, 0.0, 0.0, 0.5))
     table(s, X0, 3.95, 7.3, [
         ['胞元', '基础网络（无修正）', '零内部位移', '图调和', '基础网络', 'NICE'],
@@ -657,9 +634,7 @@ def build(template, out):
     cite(s, '论文第 5.3、5.5 节，图 8(a,b)，表 4')
 
     # ------------------------------------------------------------------ backup 3: table 3
-    s = D.slide('备用：全部装配算例与精确静力凝聚的偏差',
-                '备用页，所有装配算例都相对同一离散模型的精确静力凝聚。两胞元装配里只有被测胞元是学习胞元，其余算例全部是学习胞元。'
-                '柔度误差最大 0.27%；全学习的点阵和设计中，柔度误差不超过 0.069%，梯度误差不超过 0.33%。88 和 110 胞元板没有算精确参考解。')
+    s = D.slide('备用：全部装配算例与精确静力凝聚的偏差', notes('b_table3'))
     table(s, X0, 1.15, W, [
         ['算例', '每构型胞元数（切割）', '载荷或设计', '柔度误差 (%)', '灵敏度或梯度误差 (%)'],
         ['两胞元装配，七个选择胞元', '2（0 或 1）', '14 个构型，各六个面载荷', '≤ 0.056', '灵敏度 ≤ 0.67'],
@@ -679,6 +654,12 @@ def build(template, out):
     D.total(n)
     D.prs.save(out)
     print(out, n, 'slides')
+    keys = ['title', 'problem', 'cutfem', 'nice', 'network', 'properties', 'cost', 'design', 'conclusions', 'plan', 'thanks',
+            'b_training', 'b_correction', 'b_table3']
+    assert len(keys) == n
+    md = Path(out).with_name(Path(out).stem + '_讲稿.md')
+    export_markdown(md, {k: i + 1 for i, k in enumerate(keys)})
+    print(md)
 
 
 if __name__ == '__main__':
