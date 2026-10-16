@@ -102,17 +102,45 @@ class SPDSolver:
         b = torch.zeros((w, n), dtype=self.fdt, device=dev).T
         if SLIM:
             torch.cuda.empty_cache()                                       # src_v3: cached blocks back to the device
-        self.solver = DirectSolver(self.U, b, options=opts)
-        if lib:
-            self.solver.plan_config.host_nthreads = threads
+        mode = os.environ.get('OPL_KPP_HYBRID', 'auto')                    # src_v3: cuDSS hybrid memory (factor in host
+        self.hybrid = False                                                # memory): '1' always, 'auto' when the planned
+        self.solver = self._make(DirectSolver, opts, b, lib, threads, mode == '1')   # device peak does not fit, '0' never
         self.solver.plan()
+        self.mem_est = self._estimates()
+        if mode == 'auto' and not self.hybrid and 'peak_device_memory' in self.mem_est:
+            free = torch.cuda.mem_get_info()[0]
+            margin = int(float(os.environ.get('OPL_KPP_MARGIN_GB', '1.5')) * 2 ** 30)
+            if self.mem_est['peak_device_memory'] > free - margin:
+                self.solver.free()
+                torch.cuda.empty_cache()
+                self.solver = self._make(DirectSolver, opts, b, lib, threads, True, limit=max(free - margin, 2 ** 30))
+                self.solver.plan()
+                self.mem_est = dict(self._estimates(), planned_without_hybrid=self.mem_est, free_before=free)
+        self.solver.factorize()
+
+    def _make(self, DirectSolver, opts, b, lib, threads, hybrid, limit=None):
+        """DirectSolver on self.U; hybrid=True: cuDSS hybrid memory mode (factors in host memory, device use limited)."""
+        kw = {}
+        if hybrid:
+            from nvmath.sparse.advanced import ExecutionCUDA, HybridMemoryModeOptions
+            ho = HybridMemoryModeOptions(hybrid_memory_mode=True, hybrid_device_memory_limit=limit) if limit else \
+                HybridMemoryModeOptions(hybrid_memory_mode=True)
+            kw['execution'] = ExecutionCUDA(hybrid_memory_mode_options=ho)
+            self.hybrid = True
+        solver = DirectSolver(self.U, b, options=opts, **kw)
+        if lib:
+            solver.plan_config.host_nthreads = threads
+        return solver
+
+    def _estimates(self):
         try:                                                               # src_v3: cuDSS memory estimates (bytes)
             me = self.solver.plan_info.memory_estimates
-            self.mem_est = {k: int(me[k]) for k in ('permanent_device_memory', 'peak_device_memory', 'permanent_host_memory',
-                                                    'peak_host_memory', 'hybrid_min_device_memory', 'hybrid_max_device_memory')}
+            out = {k: int(me[k]) for k in ('permanent_device_memory', 'peak_device_memory', 'permanent_host_memory',
+                                           'peak_host_memory', 'hybrid_min_device_memory', 'hybrid_max_device_memory')}
+            out['hybrid'] = self.hybrid
+            return out
         except Exception as e:                                             # noqa: BLE001
-            self.mem_est = dict(error=repr(e)[:200])
-        self.solver.factorize()
+            return dict(error=repr(e)[:200], hybrid=self.hybrid)
 
     def solve(self, r):
         _set_current()                                                     # autograd may call from its own thread

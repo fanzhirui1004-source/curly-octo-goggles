@@ -26,6 +26,11 @@ FUSED = os.environ.get('FUSED_HYPER', '0') == '1'
 
 
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
+# src_v3, OPL_V3_SLOTS=recompute (opt-in): the hyperedge slot weights (a, b of every layer: ~270 MiB for a large cell,
+# about half of its deployed state) are not stored; FastNet keeps the geometry embeddings (ge, gn: ~31 MiB) and
+# recomputes the slot weights once per application (s_hat / field / field_T) with exactly the ops and shapes of
+# models.MGNO2.geometry (bitwise the same values), dropping them afterwards. Default 'store' (src_v2 behaviour).
+SLOTS = os.environ.get('OPL_V3_SLOTS', 'store')
 _SHARED = {}
 
 
@@ -85,6 +90,12 @@ class _Hyper:
         self.St = _csr(he, nodes, sb, (H * Eh, N))
         self.W = W.detach().to(f32).contiguous()
         self.Wt = self.W.transpose(1, 2).contiguous()
+
+    def set_ab(self, a, b):
+        self.a, self.b = a.detach().to(f32).contiguous(), b.detach().to(f32).contiguous()
+
+    def drop_ab(self):
+        self.a = self.b = None
 
     def fwd(self, X):
         N, B, F = X.shape
@@ -183,6 +194,11 @@ class FastNet:
                 _share(t_)
         self.cpl, self.levels, self.L_pre, self.L_post = m.cpl, m.levels, m.L_pre, m.L_post
         self.n_fringe = m.n_fringe if self.two else 0
+        self._rc, self._rc_depth = None, 0
+        if SLOTS == 'recompute' and FUSED and self.two:                                 # src_v3: slot weights on demand
+            self._rc = dict(ge=gp['ge'].detach(), gn=gp['gn'].detach())
+            for h in self._hypers():
+                h.drop_ab()
         # wrapper (trainlib.Geo.field): rigid split and port overwrite, float32
         self.RP, self.RA, self.RPpinv = geo.RP.to(f32), geo.RA.to(f32), geo.RPpinv.to(f32)
         self.Pidx = geo.P
@@ -195,8 +211,88 @@ class FastNet:
         import types
         c = self.c
         keep = ('m', 'dense_idx', 'e_src', 'e_dst', 'e_k', 'e_ptr', 'n_dst', 'n_src')
-        self.c = types.SimpleNamespace(N=c.N, port_nodes=c.port_nodes, trans=[{k: t[k] for k in keep if k in t} for t in c.trans])
+        ns = types.SimpleNamespace(N=c.N, port_nodes=c.port_nodes, trans=[{k: t[k] for k in keep if k in t} for t in c.trans])
+        if self._rc is not None:                                                        # what the slot recompute reads
+            for k in ('en', 'fn', 'gp_owner', 'gp_nbr', 'gp_axis', 'b3_el', 'b3_gp', 'el_fringe', 'gp_fringe', 'el_fade', 'gp_fade'):
+                if hasattr(c, k):
+                    setattr(ns, k, getattr(c, k))
+        self.c = ns
         return self
+
+    # ------------------------------------------------------------------ slot weights on demand (OPL_V3_SLOTS=recompute)
+    def _hypers(self):
+        return list(self.elem) + (list(self.face) + list(self.fringe) if self.two else [])
+
+    def _slot_tensors(self):
+        """ab, fab, xab exactly as models.MGNO.geometry / MGNO2.geometry form them (same ops, same shapes)."""
+        m, c, ge, gn = self.model, self.c, self._rc['ge'], self._rc['gn']
+        E = c.en.shape[0]
+
+        def clip(name, x, shape):
+            st = m._bst[name]
+            if st == 'off':
+                return x
+            return MD._SoftClip.apply(x, getattr(m, 'bnd_' + name).view(shape), st == 'mixed', m.bound_knee)
+        L = m.L_pre + m.L_post
+        z = torch.cat([ge[:, None, :].expand(E, 27, -1), gn[c.en], m.slot[None].expand(E, -1, -1)], 2)
+        ab = m.slot_head(z).reshape(E, 27, 2, L, m.H) * 0.2
+        xab = m.slot_head_x(z).reshape(E, 27, 2, max(m.n_fringe, 1), m.H) * 0.2
+        del z
+        nf = len(c.gp_owner)
+        ax = torch.nn.functional.one_hot(c.gp_axis, 3).to(f32)
+        gf = m.face_in(torch.cat([ge[c.gp_owner], ge[c.gp_nbr], ax], 1))
+        zf = torch.cat([gf[:, None, :].expand(nf, 27, -1), gn[c.fn], m.fslot[None].expand(nf, -1, -1)], 2)
+        Lg = L + m.n_fringe
+        fab = m.fslot_head(zf).reshape(nf, 27, 2, Lg, m.H) * 0.2
+        del zf, gf
+        if m.bounded:
+            ab = clip('ab', ab, (1, 1, 2, L, 1))
+            fab = clip('fab', fab, (1, 1, 2, Lg, 1))
+            xab = clip('xab', xab, (1, 1, 2, max(m.n_fringe, 1), 1))
+        return ab, fab, xab
+
+    def _assign_slots(self, ab, fab, xab):
+        """The _Hyper slot weights from ab / fab / xab, as __init__ derives them."""
+        m, c = self.model, self.c
+        L = m.L_pre + m.L_post
+        b3 = MD.MGNO._b3
+        arg = (lambda kind, i: m._b3arg(c, kind, i) if getattr(m, 'b3', False) else None)
+        for l, h in enumerate(self.elem):
+            h.set_ab(ab[:, :, 0, l], b3(ab[:, :, 1, l], arg('le', l)))
+        fe, ff = (c.el_fade, c.gp_fade) if getattr(m, 'fringe_soft', False) else (None, None)
+        for g, h in enumerate(self.face):
+            a, b = fab[:, :, 0, g], b3(fab[:, :, 1, g], arg('lf', g))
+            if g >= L:
+                a, b = a[c.gp_fringe], b[c.gp_fringe]
+                if ff is not None:
+                    b = b * ff[:, None, None]
+            h.set_ab(a, b)
+        for l, h in enumerate(self.fringe):
+            xb = b3(xab[:, :, 1, l], arg('lx', l))[c.el_fringe]
+            h.set_ab(xab[c.el_fringe][:, :, 0, l], xb if fe is None else xb * fe[:, None, None])
+
+    def slots(self):
+        """Context: slot weights present inside (recomputed on entry, dropped on exit; no-op in 'store' mode)."""
+        import contextlib
+        me = self
+
+        @contextlib.contextmanager
+        def ctx():
+            if me._rc is None:
+                yield
+                return
+            if me._rc_depth == 0:
+                with torch.no_grad():
+                    me._assign_slots(*me._slot_tensors())
+            me._rc_depth += 1
+            try:
+                yield
+            finally:
+                me._rc_depth -= 1
+                if me._rc_depth == 0:
+                    for h in me._hypers():
+                        h.drop_ab()
+        return ctx()
 
     # ------------------------------------------------------------------ pieces
     def _clamp(self, X, X0):
@@ -242,7 +338,11 @@ class FastNet:
 
     # ------------------------------------------------------------------ model map and its adjoint (float32)
     @torch.no_grad()
-    def ext(self, qd):
+    def ext(self, *args):
+        with self.slots():
+            return self._ext(*args)
+
+    def _ext(self, qd):
         c = self.c
         B = qd.shape[1]
         X0 = torch.zeros((self.N, B, self.W_in.shape[1]), device=dev)
@@ -268,7 +368,11 @@ class FastNet:
         return (X @ self.W_out).permute(0, 2, 1).reshape(-1, B)
 
     @torch.no_grad()
-    def ext_T(self, y):
+    def ext_T(self, *args):
+        with self.slots():
+            return self._ext_T(*args)
+
+    def _ext_T(self, y):
         c = self.c
         B = y.shape[1]
         Xb = y.reshape(self.N, 3, B).permute(0, 2, 1) @ self.W_out.T
@@ -304,7 +408,11 @@ class FastNet:
 
     # ------------------------------------------------------------------ Geo wrapper and the variational reaction
     @torch.no_grad()
-    def field(self, q):
+    def field(self, *args):
+        with self.slots():
+            return self._field(*args)
+
+    def _field(self, q):
         q32 = q.to(f32)
         cc = self.RPpinv @ q32
         u = self.ext(q32 - self.RP @ cc) + self.RA @ cc
@@ -318,7 +426,11 @@ class FastNet:
         return TL.smooth_tail_T(self.geo.C, y, self.model.smooth_k, self.model.smooth_alpha)
 
     @torch.no_grad()
-    def field_T(self, y):
+    def field_T(self, *args):
+        with self.slots():
+            return self._field_T(*args)
+
+    def _field_T(self, y):
         if getattr(self.model, 'smooth_k', 0) or getattr(self.model, 'coarse_space', None):
             import trainlib as TL
             y = TL.wrap_T(self.geo.C, y, self.model)
@@ -329,7 +441,11 @@ class FastNet:
         return yP + qd + self.RPpinv.T @ (self.RA.T @ yI - self.RP.T @ qd)
 
     @torch.no_grad()
-    def s_hat(self, q):
+    def s_hat(self, *args):
+        with self.slots():
+            return self._s_hat(*args)
+
+    def _s_hat(self, q):
         """S_hat q = E_hat^T K E_hat q (the K product in float64, as trainlib.Geo.s_hat_apply)."""
         import trainlib as TL
         with TL._held(self.geo.C):                                                      # float32 K_e formed once
