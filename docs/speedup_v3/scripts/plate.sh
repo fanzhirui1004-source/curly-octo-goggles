@@ -5,7 +5,7 @@
 TAG=$1; N=$2; shift 2
 W=/root/autodl-tmp/OPL/V3W; P=/root/autodl-tmp/OPL; SC=$P/S1/V2/R1/SCALE
 R=$W/plate/${TAG}_S$N; mkdir -p $R
-BODY=$W/plate/body_S$N; mkdir -p $BODY
+BODY=${BODYDIR:-$W/plate/body_S$N}; mkdir -p $BODY                    # BODYDIR: fresh bodies (e.g. to time generation)
 [ -e $R/body ] || ln -s $BODY $R/body
 source $P/S1/env_gpu.sh
 D=/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/root/autodl-tmp/CUTFEM_INGEST_R38/environment/runtime/r13_pardiso_v1/lib

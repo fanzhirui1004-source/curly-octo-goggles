@@ -157,22 +157,51 @@ class BodyFail(RuntimeError):
 
 def make_bodies(cases):
     """fast_prep4 for every case without PREP.json, --workers in parallel; raises on any failure."""
-    if not (BODY / Path(A.templates).name).exists() and Path(A.templates).exists():
-        shutil.copy(A.templates, BODY / Path(A.templates).name)
-    todo = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
-    if todo:
-        src = Path(__file__).resolve().parent / 'fast_prep4.py'
-        one = ROOT / 'body_one.sh'
-        one.write_text('#!/bin/bash\n[ -f $1/$2/PREP.json ] && exit 0\n'
-                       f'cd {A.frozen_cwd} && OMP_NUM_THREADS=1 timeout 1800 {A.frozen} {src} 1 $1 $2 > $1/$2.log 2>&1 || touch $1/$2.failed\n')
-        one.chmod(0o755)
-        (ROOT / 'todo.txt').write_text('\n'.join(todo) + '\n')
-        subprocess.run(['bash', '-c', f'xargs -a {ROOT}/todo.txt -P {A.workers} -I{{}} {one} {BODY} {{}}'], check=False,
-                       env=dict(os.environ))
+    proc, todo = start_bodies(cases)
+    if proc is not None:
+        proc.wait()
     bad = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
     if bad:
         raise BodyFail(bad)
     return len(todo)
+
+
+def start_bodies(cases):
+    """Start fast_prep4 for every case without PREP.json (--workers in parallel, xargs); returns (process or None, todo)."""
+    if not (BODY / Path(A.templates).name).exists() and Path(A.templates).exists():
+        shutil.copy(A.templates, BODY / Path(A.templates).name)
+    todo = [c for c in cases if not (BODY / c / 'PREP.json').exists()]
+    if not todo:
+        return None, todo
+    src = Path(__file__).resolve().parent / 'fast_prep4.py'
+    one = ROOT / 'body_one.sh'
+    one.write_text('#!/bin/bash\n[ -f $1/$2/PREP.json ] && exit 0\n'
+                   f'cd {A.frozen_cwd} && OMP_NUM_THREADS=1 timeout 1800 {A.frozen} {src} 1 $1 $2 > $1/$2.log 2>&1 || touch $1/$2.failed\n')
+    one.chmod(0o755)
+    (ROOT / 'todo.txt').write_text('\n'.join(todo) + '\n')
+    return subprocess.Popen(['bash', '-c', f'xargs -a {ROOT}/todo.txt -P {A.workers} -I{{}} {one} {BODY} {{}}'],
+                            env=dict(os.environ)), todo
+
+
+PIPE_BODIES = os.environ.get('OPL_V3_PIPE_BODIES', '0') == '1'
+
+
+def body_waiter(proc):
+    """src_v3 (OPL_V3_PIPE_BODIES=1): analyse_fast's front end takes each cell as soon as its body is complete (fast_prep4
+    writes PREP.json after every other file) while the remaining bodies are still being generated; BodyFail as soon as a
+    cell's body failed (the caller then falls back to make_bodies' retry loop). Only with the face templates already in
+    the body directory (else a worker writes them while the front end may read them)."""
+    def wait(case):
+        ok, bad = BODY / case / 'PREP.json', BODY / f'{case}.failed'
+        while not ok.exists():
+            if bad.exists() or (proc is not None and proc.poll() is not None and not ok.exists()):
+                raise BodyFail([case])
+            time.sleep(0.05)
+    return wait
+
+
+def pipe_ok():
+    return PIPE_BODIES and A.fast and not A.exact and ((BODY / Path(A.templates).name).exists() or Path(A.templates).exists())
 
 
 # ------------------------------------------------------------------------------------------------ constraints
@@ -321,8 +350,9 @@ def _dof_keys(lat):
     return (((g[:, 0] * M + g[:, 1]) * M + g[:, 2]) * 3 + c) * 2 + np.asarray(lat.priv, np.int64)
 
 
-def analyse_fast(cases, positions, h):
-    """--fast: the deployment route of Table 5 (lat_scale.py) for the current design; same outputs as analyse()."""
+def analyse_fast(cases, positions, h, wait=None):
+    """--fast: the deployment route of Table 5 (lat_scale.py) for the current design; same outputs as analyse().
+    wait(case) (src_v3, OPL_V3_PIPE_BODIES=1): blocks until the case's body is generated (body_waiter)."""
     import gc
     import stream_ops as SO
     import lat_scale as LS
@@ -333,6 +363,8 @@ def analyse_fast(cases, positions, h):
     t = time.perf_counter()
     Cs, ops, kpp_host, fps = {}, {}, {}, {}
     for case in cases:
+        if wait is not None:
+            wait(case)
         C = TE.Cell(case, str(BODY), log=lambda s_: None, deploy=True)
         C.assemble_deploy(C.taus0)
         BD.netdata(C, str(BODY), TMP / case)
@@ -611,7 +643,19 @@ def main():
         corners = [tv[vid[m]] for m in range(len(base))]
         cases = write_packets(base, corners, k)
         t = time.perf_counter(); tv_mma, perturb = tv.copy(), []
-        for attempt in range(A.body_retry + 1):
+        res = None
+        if pipe_ok():                                                          # src_v3: bodies overlap the front end
+            proc, todo = start_bodies(cases)
+            torch.cuda.reset_peak_memory_stats()
+            try:
+                res = analyse_fast(cases, positions, h, wait=body_waiter(proc))
+            except BodyFail as e:
+                log(dict(event='BODY_PIPE_FAIL', k=k, failed=e.bad))
+                res = None
+            if proc is not None:
+                proc.wait()
+            nb, t_body = len(todo), 0.0                                        # overlapped (inside the analysis time)
+        for attempt in range(A.body_retry + 1 if res is None else 0):
             try:
                 nb = make_bodies(cases); break
             except BodyFail as e:
@@ -632,9 +676,10 @@ def main():
                 cases = write_packets(base, corners, k)
                 perturb.append(dict(attempt=attempt, eps=eps, failed=e.bad, vertices=vs, regenerated=[cases[m] for m in aff]))
                 log(dict(event='BODY_PERTURB', k=k, **perturb[-1]))
-        t_body = time.perf_counter() - t
-        torch.cuda.reset_peak_memory_stats()
-        res = analyse_exact(cases, positions) if A.exact else (analyse_fast(cases, positions, h) if A.fast else analyse(cases, positions, h))
+        if res is None:
+            t_body = time.perf_counter() - t
+            torch.cuda.reset_peak_memory_stats()
+            res = analyse_exact(cases, positions) if A.exact else (analyse_fast(cases, positions, h) if A.fast else analyse(cases, positions, h))
         # cell arrays are in lattice order; map to the layout order of vid
         m_of = {c: i for i, c in enumerate(cases)}
         perm = [m_of[c] for c in res['order']]

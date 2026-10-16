@@ -41,15 +41,26 @@ def main():
     vid, nv, tv0, dmax, vkeys = OD.RC.vertex_map(positions, taus0)
     corners = [tv0[vid[m]] for m in range(len(base))]
     cases = OD.write_packets(base, corners, 0)
-    t = time.perf_counter()
-    nb = OD.make_bodies(cases)
-    t_body = time.perf_counter() - t
     name, h = OD.LH.holder_for(A.model)
-    VC.point('start_analysis')
-    torch.cuda.reset_peak_memory_stats()
-    t = time.perf_counter()
-    res = OD.analyse_fast(cases, positions, h)
-    wall = time.perf_counter() - t
+    if OD.pipe_ok():                                                    # src_v3 OPL_V3_PIPE_BODIES=1: bodies overlap
+        VC.point('start_analysis')                                      # the front end (wall time includes them)
+        torch.cuda.reset_peak_memory_stats()
+        t = time.perf_counter()
+        proc, todo = OD.start_bodies(cases)
+        res = OD.analyse_fast(cases, positions, h, wait=OD.body_waiter(proc))
+        if proc is not None:
+            proc.wait()
+        nb, t_body = len(todo), 0.0
+        wall = time.perf_counter() - t
+    else:
+        t = time.perf_counter()
+        nb = OD.make_bodies(cases)
+        t_body = time.perf_counter() - t
+        VC.point('start_analysis')
+        torch.cuda.reset_peak_memory_stats()
+        t = time.perf_counter()
+        res = OD.analyse_fast(cases, positions, h)
+        wall = time.perf_counter() - t
     VC.point('end_analysis')
     out = dict(cells=len(cases), C=res['C'], pcg=res['pcg'], true_residual=res['true_residual'], Ut_rho_rel=res['Ut_rho_rel'],
                times=dict(res['times'], bodies_s=t_body, analysis_wall_s=wall), bodies_new=nb, streamed=res.get('streamed'),
