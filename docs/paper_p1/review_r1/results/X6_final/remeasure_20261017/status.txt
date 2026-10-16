@@ -1,0 +1,35 @@
+2026-10-17_01:10:35 WAIT start
+2026-10-17_01:10:35 used=977779M ready=0 stable=0
+2026-10-17_01:15:35 used=1028735M ready=0 stable=0
+2026-10-17_01:20:35 used=1079740M ready=0 stable=0
+2026-10-17_01:25:35 used=1130719M ready=0 stable=0
+2026-10-17_01:30:35 used=1181675M ready=0 stable=0
+2026-10-17_01:35:35 used=1232652M ready=0 stable=0
+2026-10-17_01:40:35 used=1283620M ready=0 stable=0
+2026-10-17_01:45:35 used=1334618M ready=0 stable=0
+2026-10-17_01:50:35 used=1385619M ready=0 stable=0
+2026-10-17_01:55:35 used=1436594M ready=0 stable=0
+2026-10-17_02:00:35 used=1487580M ready=0 stable=0
+2026-10-17_02:05:35 used=1538638M ready=0 stable=0
+2026-10-17_02:10:35 used=1589594M ready=0 stable=0
+2026-10-17_02:15:35 used=1640583M ready=0 stable=0
+2026-10-17_02:20:35 used=1691527M ready=0 stable=0
+2026-10-17_02:25:35 used=1742515M ready=0 stable=0
+2026-10-17_02:30:35 used=1793497M ready=0 stable=0
+2026-10-17_02:35:35 used=1843568M ready=0 stable=0
+2026-10-17_02:40:35 used=1891070M ready=1 stable=0
+2026-10-17_02:45:35 used=1891070M ready=1 stable=1
+2026-10-17_02:50:35 used=1891070M ready=1 stable=2
+2026-10-17_02:50:35 TRANSFER_DONE used=1891070M
+2026-10-17_02:50:37 ENV 2.8.0+cu128 12.8 NVIDIA GeForce RTX 5090 
+2026-10-17_02:50:37 START t5 hlat221a
+2026-10-17_02:51:18 END t5 hlat221a rc=0 gpu_max_MiB= 8000
+2026-10-17_02:51:18 START t5 hlat221b
+2026-10-17_02:51:58 END t5 hlat221b rc=0 gpu_max_MiB= 7822
+2026-10-17_02:51:58 START t5 hlat222
+2026-10-17_02:53:19 END t5 hlat222 rc=0 gpu_max_MiB= 10786
+2026-10-17_02:53:19 START t5 hlat331
+2026-10-17_02:55:07 END t5 hlat331 rc=0 gpu_max_MiB= 11368
+2026-10-17_02:55:07 START st13
+2026-10-17_02:55:17 END st13 rc=0
+2026-10-17_02:55:17 ALL_DONE
