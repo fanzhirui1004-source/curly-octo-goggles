@@ -82,8 +82,22 @@ def tail_bounds(C, alpha):
     return lmax / alpha, lmax
 
 
+CHEB = os.environ.get('OPL_V3_CHEB', '1') == '1'
+
+
+def _cheb_fused(C, x):
+    """src_v3 (OPL_V3_CHEB=1): deployment cells without autograd run the Chebyshev sweeps through chebfused (one Triton
+    kernel per sweep besides the float32 K product; bitwise the same iterates)."""
+    return CHEB and not torch.is_grad_enabled() and x.dim() == 2 and getattr(C, '_deploy', False) \
+        and hasattr(getattr(C, '_Kc', None), 'mm32')
+
+
 def _cheb(C, z0, b, k, alpha):
     """Chebyshev iteration on A z = b, A = D^-1 K_II (interior vectors), from z0; returns p_k(A) z0 + s_k(A) b."""
+    if _cheb_fused(C, z0):
+        import chebfused as CF
+        lmin, lmax = tail_bounds(C, alpha)
+        return CF.cheb(C, C._Kc, z0, b, k, lmin, lmax, dt)
     lmin, lmax = tail_bounds(C, alpha)
     theta, delta = (lmax + lmin) / 2, (lmax - lmin) / 2
     sigma = theta / delta; rho = 1 / sigma
@@ -524,6 +538,10 @@ def wrap_T(C, y, model):
 def smooth_tail(C, u, k, alpha=30.0):
     """k Jacobi-preconditioned Chebyshev sweeps on the interior equilibrium K_II u_I = -K_IP u_P (ports held), from u.
     Linear in u, energy-norm contractive: S_hat stays symmetric and >= S. Differentiable (fp64); returns u.dtype."""
+    if _cheb_fused(C, u):
+        import chebfused as CF
+        lmin, lmax = tail_bounds(C, alpha)
+        return CF.smooth_tail(C, C._Kc, u, k, lmin, lmax, dt).to(u.dtype)
     lmin, lmax = tail_bounds(C, alpha)
     theta, delta = (lmax + lmin) / 2, (lmax - lmin) / 2
     sigma = theta / delta; rho = 1 / sigma

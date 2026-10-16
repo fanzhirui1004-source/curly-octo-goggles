@@ -28,6 +28,7 @@ import fastidx as FI
 
 dt = torch.float64
 AXES = {'x': 0, 'y': 1, 'z': 2}
+SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 
 
 def default_device():
@@ -254,6 +255,8 @@ class MultiLattice:
     # ------------------------------------------------------------------ assembled port stiffness
     def assemble_kpp(self):
         """Upper triplets (rows, cols, vals) of the assembled K_PP on the free DOFs (coalesced, sorted by row then col)."""
+        if SLIM:
+            return self._assemble_kpp_lean()
         R, Cc, V = [], [], []
         for i, G in enumerate(self.geoms):
             r, c, v = G.kpp()
@@ -266,6 +269,40 @@ class MultiLattice:
         key, inv = torch.unique(r * self.nfree + c, return_inverse=True)
         vals = torch.zeros(len(key), dtype=dt, device=v.device).index_add_(0, inv, v)
         rows, cols = key // self.nfree, key % self.nfree
+        return rows.to(self.device), cols.to(self.device), vals.to(self.device)
+
+    def _assemble_kpp_lean(self):
+        """src_v3 (OPL_V3_SLIM=1): the same triplets with a smaller device peak (about 6.6 GiB less at 88 plate cells):
+        one int64 key (row * nfree + col) and one value per cell entry instead of row, col and value lists plus their
+        concatenation, the per-cell device triplets released after use (CellGeom.kpp caches them otherwise), and a sort
+        with a segment sum instead of torch.unique(return_inverse). The duplicate entries are summed by index_add_ as before
+        (float64 atomics: the per-entry sums agree to rounding)."""
+        K, V = [], []
+        for i, G in enumerate(self.geoms):
+            cached = G._kpp is not None
+            r, c, v = G.kpp()
+            if not cached:
+                G._kpp = None
+            f = self.gather_idx[i].to(r.device)
+            fr, fc = f[r], f[c]
+            ok = (fr >= 0) & (fc >= 0)
+            K.append((torch.minimum(fr, fc) * self.nfree + torch.maximum(fr, fc))[ok]); V.append(v[ok].to(dt))
+            del r, c, v, fr, fc, ok
+        key = torch.cat(K); K.clear()
+        val = torch.cat(V); V.clear()
+        key, perm = torch.sort(key)
+        val = val[perm]
+        del perm
+        new = torch.ones(len(key), dtype=torch.bool, device=key.device)
+        if len(key) > 1:
+            torch.ne(key[1:], key[:-1], out=new[1:])
+        inv = torch.cumsum(new, 0) - 1
+        key = key[new]
+        del new
+        vals = torch.zeros(len(key), dtype=dt, device=val.device).index_add_(0, inv, val)
+        del inv, val
+        rows, cols = key // self.nfree, key % self.nfree
+        del key
         return rows.to(self.device), cols.to(self.device), vals.to(self.device)
 
     def kpp_dense(self):

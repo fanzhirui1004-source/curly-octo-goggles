@@ -202,8 +202,11 @@ def main(argv=None):
                 _free_prec(*held); held = None
             for g in lat.geoms:
                 g._kpp = None                                                      # new design: new K_PP triplets
-            shared = {'kpp_triplets': lat.assemble_kpp(), 'kpp_triplets_s': 0.0}   # src_v3: no other reference (the
-            for g in lat.geoms:                                                    # K_PP factor frees the triplets)
+            if LM.SLIM:                                                            # src_v3: K_PP assembled by the
+                shared = {}                                                        # Factory after the coarse space
+            else:
+                shared = {'kpp_triplets': lat.assemble_kpp(), 'kpp_triplets_s': 0.0}
+            for g in lat.geoms:
                 g._kpp = None
             ph['kpp_assemble'] = T() - t; t = T()
             fac = PR.Factory(lat, olist, shared=shared, kpp_backend='auto', log=lambda d: None)

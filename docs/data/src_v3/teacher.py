@@ -256,17 +256,21 @@ class _Kfp32:
         return self.M32[lo:hi] if self.M32 is not None else self.C.M[lo:hi].to(torch.float32)
 
     def __matmul__(self, x):
-        C, f32 = self.C, torch.float32
-        x32 = x.to(f32)
-        if self.G64vals is not None and not getattr(C, '_deploy', False):
+        if self.G64vals is not None and not getattr(self.C, '_deploy', False):
             self.G64vals = None                                                 # not needed outside deploy mode
+        return self.mm32(x.to(torch.float32)).to(x.dtype)
+
+    def mm32(self, x32):
+        """K x32 in float32 (input and output float32; __matmul__ converts around it). src_v3: also called directly by
+        chebfused with a float32 iterate it keeps up to date."""
+        C, f32, x = self.C, torch.float32, x32
         if self.gf is not None:
             y = self.gf.matvec(x32, torch.zeros_like(x32)).mul_(self.gamma)
         else:
             y = self.G @ x32
         ch = C._lean_chunk
         if self._v3(x):
-            return self._mm_v3(x32, y).to(x.dtype)
+            return self._mm_v3(x32, y)
         if self.symv and not (torch.is_grad_enabled() and x.requires_grad):
             import ke_symv as KS
             y, x32 = y.contiguous(), x32.contiguous()
@@ -275,7 +279,7 @@ class _Kfp32:
             else:
                 for lo in range(0, len(C.dofs), ch):
                     KS.symv_(y, self.m32(lo, lo + ch) @ self.Tup32, C.dofs[lo:lo + ch], x32)
-            return y.to(x.dtype)
+            return y
         Xe = FI.rows(x32, C.dofs) if FI.ON else None                           # all element vectors at once
         for j, lo in enumerate(range(0, len(C.dofs), ch)):
             de = C.dofs[lo:lo + ch]
@@ -287,7 +291,7 @@ class _Kfp32:
                 Ke = (self.m32(lo, lo + ch) @ self.Tf32).reshape(-1, 81, 81)
             xe = Xe[lo:lo + ch] if Xe is not None else FI.rows(x32, de)
             y.index_add_(0, de.reshape(-1), torch.bmm(Ke, xe).reshape(-1, x.shape[1]))
-        return y.to(x.dtype)
+        return y
 
     def _v3(self, x):
         """src_v3 element products (fullke): deployment cells with element matrices from the moments."""

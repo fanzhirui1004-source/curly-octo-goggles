@@ -381,8 +381,11 @@ def analyse_fast(cases, positions, h):
     F = lat.F[:, ['xyz'.index(A.load_dir)]].contiguous()
     for g in lat.geoms:
         g._kpp = None
-    shared = {'kpp_triplets': lat.assemble_kpp(), 'kpp_triplets_s': 0.0}       # src_v3: no other reference (the K_PP
-    for g in lat.geoms:                                                        # factor frees the triplets)
+    if LM.SLIM:                                                                # src_v3: K_PP assembled by the Factory
+        shared = {}                                                            # after the coarse space (its A Z pass
+    else:                                                                      # runs without the triplets on the device)
+        shared = {'kpp_triplets': lat.assemble_kpp(), 'kpp_triplets_s': 0.0}
+    for g in lat.geoms:
         g._kpp = None
     T['setup_s'] = time.perf_counter() - t
     t = time.perf_counter()
