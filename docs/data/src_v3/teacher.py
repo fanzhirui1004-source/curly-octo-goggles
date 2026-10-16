@@ -193,6 +193,9 @@ class GhostFaces:
     def matvec(self, x, y):
         """y += G x (x, y: nb x b, self.dtype)."""
         b = x.shape[1]
+        import ghostfused as GFU
+        if GFU.usable(self, x) and y.is_contiguous():                           # src_v3: one kernel per template
+            return GFU.matvec(self, x, y)
         if FI.ON:                                                               # one block per face template
             for iT, B in zip(self.idxT, self.B):
                 X = FI.rows(x, iT) if b > 1 else x[iT]                          # 135 x faces x b (GEMM layout)

@@ -77,15 +77,26 @@ def _launch(kern, n, B, *args, init):
     kern[(triton.cdiv(n, BI),)](*args, INIT=init, BI=BI, BB=BB, num_warps=4, enable_fp_fusion=False)
 
 
+_CO = {}
+
+
 def _coeffs(theta, delta, k, dt, device):
-    """Row 0: (1 / theta, 0); row i >= 1: (a1, c2) of update i, the Python-float sequence of trainlib (float64)."""
-    sigma = theta / delta; rho = 1 / sigma
-    out = [(1.0 / theta, 0.0)]
-    for i in range(k - 1):
-        rho_n = 1 / (2 * sigma - rho)
-        out.append((rho_n * rho, 2 * rho_n / delta))
-        rho = rho_n
-    return torch.tensor(out, dtype=dt, device=device)
+    """Row 0: (1 / theta, 0); row i >= 1: (a1, c2) of update i, the Python-float sequence of trainlib (float64).
+    Cached per (theta, delta, k): a host-to-device copy of a new tensor synchronises the stream (copy_ with
+    non_blocking=False), which would stall the host in every sweep call; the cells' tail bounds are fixed after setup."""
+    key = (theta, delta, k, dt, str(device))
+    co = _CO.get(key)
+    if co is None:
+        sigma = theta / delta; rho = 1 / sigma
+        out = [(1.0 / theta, 0.0)]
+        for i in range(k - 1):
+            rho_n = 1 / (2 * sigma - rho)
+            out.append((rho_n * rho, 2 * rho_n / delta))
+            rho = rho_n
+        co = _CO[key] = torch.tensor(out, dtype=dt, device=device)
+        if len(_CO) > 4096:                                                 # many designs in one process: keep it small
+            _CO.clear(); _CO[key] = co
+    return co
 
 
 def smooth_tail(C, Kc, u, k, lmin, lmax, dt):

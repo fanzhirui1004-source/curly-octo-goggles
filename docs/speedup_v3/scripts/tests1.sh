@@ -10,4 +10,5 @@ bash $S/tst.sh streams2 t_streams.py $B24 plateS24_040_o000,plateS24_030_o000
 bash $S/tst.sh streams3 t_streams.py $B24 plateS24_040_o000,plateS24_030_o000,plateS24_020_o000
 TST_TIMEOUT=3600 bash $S/tst.sh hyper t_hyper.py $B24:plateS24_040_o000
 TST_TIMEOUT=3600 bash $S/tst.sh hfuse t_hfuse.py $B24:plateS24_040_o000
+TST_TIMEOUT=1800 bash $S/tst.sh gf t_gf.py $B24:plateS24_040_o000
 echo "$(date +%F_%T) TESTS1_DONE" >> $W/status.txt
