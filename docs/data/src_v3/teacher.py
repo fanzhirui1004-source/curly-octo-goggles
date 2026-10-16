@@ -165,7 +165,7 @@ class GhostFaces:
     def __init__(self, C, dtype, chunk=2048, like=None):
         self.chunk, self.dtype = chunk, dtype
         if like is not None:                                                    # same faces, other precision
-            self.idx, self.faces = like.idx, like.faces
+            self.idxT, self.faces = like.idxT, like.faces
             self.B = [B.to(dtype) for B in like.B]
             return
         d = Path(C._body_dir) / C.case
@@ -178,18 +178,25 @@ class GhostFaces:
         if not np.array_equal(C.nodes[local], (g[..., 0] * M + g[..., 1]) * M + g[..., 2]):
             raise ValueError('GHOST_FACE_NODE_MISSING')
         dofs = (3 * local[:, :, None] + np.arange(3)).reshape(len(faces), -1)
-        self.idx = [torch.as_tensor(dofs[faces[:, 2] == k], dtype=torch.int32, device=dev) for k in range(len(offs))]
+        # src_v3: the face DOF lists are stored transposed (135 x faces, contiguous), so the template products gather and
+        # scatter in GEMM layout directly (src_v2 permuted and copied both ways in every product); `idx` is the
+        # faces x 135 view used by the setup code
+        self.idxT = [torch.as_tensor(dofs[faces[:, 2] == k].T.copy(), dtype=torch.int32, device=dev) for k in range(len(offs))]
         self.B = [torch.as_tensor(tpl['canonical'][k], dtype=dtype, device=dev) for k in range(len(offs))]
         self.faces = len(faces)
+
+    @property
+    def idx(self):
+        return [t.t() for t in self.idxT]
 
     def matvec(self, x, y):
         """y += G x (x, y: nb x b, self.dtype)."""
         b = x.shape[1]
         if FI.ON:                                                               # one block per face template
-            for idx, B in zip(self.idx, self.B):
-                X = FI.rows(x, idx).permute(1, 0, 2).reshape(idx.shape[1], -1)
-                Y = B.t() @ (B @ X)
-                y.index_add_(0, idx.reshape(-1), Y.reshape(idx.shape[1], len(idx), b).permute(1, 0, 2).reshape(-1, b))
+            for iT, B in zip(self.idxT, self.B):
+                X = FI.rows(x, iT) if b > 1 else x[iT]                          # 135 x faces x b (GEMM layout)
+                Y = B.t() @ (B @ X.reshape(iT.shape[0], -1))
+                y.index_add_(0, iT.reshape(-1), Y.reshape(-1, b))
             return y
         for idx, B in zip(self.idx, self.B):
             for lo in range(0, len(idx), self.chunk):
