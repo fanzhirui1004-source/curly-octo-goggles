@@ -111,6 +111,9 @@ class _Hyper:
     def fwd_res(self, X):
         """X + fwd(X) with the residual folded into the scatter (fused path only)."""
         N, B, F = X.shape
+        import hyperfused as HF
+        if HF.usable(self, X):                                                          # src_v3: one kernel per layer
+            return HF.layer_res(self, X, False)
         import fused_hyper as FH
         Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
@@ -119,6 +122,9 @@ class _Hyper:
     def adj_res(self, Y):
         """Y + adj(Y) with the residual folded into the scatter (fused path only)."""
         N, B, F = Y.shape
+        import hyperfused as HF
+        if HF.usable(self, Y):                                                          # src_v3: one kernel per layer
+            return HF.layer_res(self, Y, True)
         import fused_hyper as FH
         Z = FH.gather(Y.reshape(N, B * F).contiguous(), self.hn, self.b, self.deg, self.H, FH.BLK, True)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.Wt).view(self.H, self.Eh, B * F)
@@ -456,7 +462,10 @@ class FastNet:
 def slim_deploy(op, geo, C, model=None):
     """src_v3 (OPL_V3_SLIM=1): after the warm-up application of a deployed cell (and any fingerprint that reads the model
     cache or geo.nd), drop what no later use reads: the model's per-geometry cache (FastNet keeps its own slim view),
-    the float64 rigid modes of the geometry wrapper (FastNet holds float32 copies), the network input arrays (host)."""
+    the float64 rigid modes of the geometry wrapper (FastNet holds float32 copies), the network input arrays (host).
+    Also the post-warm-up hook for teacher.Cell.store64 (OPL_V3_KE64=store: keep the float64 partial-element matrices)."""
+    if hasattr(C, 'store64'):
+        C.store64()
     if not SLIM:
         return
     op.fast.slim()

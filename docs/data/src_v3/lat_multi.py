@@ -22,6 +22,7 @@ No factorisation / GPU dependence here: CPU tests build synthetic CellGeoms (t_l
 teacher.Cell (assembled).
 """
 import os
+import contextlib
 import numpy as np
 import torch
 import fastidx as FI
@@ -29,6 +30,14 @@ import fastidx as FI
 dt = torch.float64
 AXES = {'x': 0, 'y': 1, 'z': 2}
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
+NSTREAMS = int(os.environ.get('OPL_V3_STREAMS', '1'))                  # src_v3: compute streams for apply_blocks
+_STREAMS = []
+
+
+def _streams(n, device):
+    while len(_STREAMS) < n:
+        _STREAMS.append(torch.cuda.Stream(device=device))
+    return _STREAMS[:n]
 
 
 def default_device():
@@ -210,22 +219,41 @@ class MultiLattice:
 
     def apply_blocks(self, ops, blocks, batch=True, max_cols=None):
         """blocks[i]: (nport_i, k_i) port matrix of cell i (k_i may differ, 0 = skip) -> [S_i blocks[i]], one apply per
-        operator object (columns concatenated, chunks of max_cols)."""
+        operator object (columns concatenated, chunks of max_cols).
+        src_v3 (OPL_V3_STREAMS=n > 1): the applies are issued round robin on n CUDA streams, so that one cell's kernels
+        (many small, latency-bound ones at one column) run alongside the next cell's; every apply is the same sequence of
+        operations as before and the results are combined by the caller in cell order."""
         mc = max_cols or self.max_cols
         outs = [None] * len(blocks)
+        groups = []
         for op, cells in self.groups(ops, batch):
             cells = [i for i in cells if blocks[i] is not None and blocks[i].shape[1] > 0]
-            if not cells:
-                continue
-            X = torch.cat([blocks[i] for i in cells], 1)
-            if mc is None or X.shape[1] <= mc:
-                Y = op.apply(X)
-            else:
-                Y = torch.cat([op.apply(X[:, c0:c0 + mc]) for c0 in range(0, X.shape[1], mc)], 1)
+            if cells:
+                groups.append((op, cells))
+        ms = NSTREAMS > 1 and len(groups) > 1 and any(blocks[c[0]].is_cuda for _, c in groups)
+        if ms:
+            main = torch.cuda.current_stream()
+            ready = torch.cuda.Event(); ready.record(main)
+            sts = _streams(NSTREAMS, main.device)
+        for g, (op, cells) in enumerate(groups):
+            ctx = contextlib.nullcontext() if not ms else torch.cuda.stream(sts[g % NSTREAMS])
+            if ms:
+                sts[g % NSTREAMS].wait_event(ready)
+            with ctx:
+                X = torch.cat([blocks[i] for i in cells], 1)
+                if mc is None or X.shape[1] <= mc:
+                    Y = op.apply(X)
+                else:
+                    Y = torch.cat([op.apply(X[:, c0:c0 + mc]) for c0 in range(0, X.shape[1], mc)], 1)
+                if ms:
+                    Y.record_stream(main)                                   # read by the caller on the main stream
             c0 = 0
             for i in cells:
                 k = blocks[i].shape[1]
                 outs[i] = Y[:, c0:c0 + k]; c0 += k
+        if ms:
+            for st in sts:
+                main.wait_stream(st)
         return outs
 
     def matvec(self, ops, U, batch=True, max_cols=None):
