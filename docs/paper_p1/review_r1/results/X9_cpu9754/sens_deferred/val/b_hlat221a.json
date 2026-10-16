@@ -1,0 +1,665 @@
+{
+ "layout": "hlat221a",
+ "machine": "autodl-container-215f42a675-7f00d8a5",
+ "route": "(b) conventional exact condensation (lat_cond_cpu, block solver) + interior recovery + sensitivities",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "memory_max_bytes": 96636764160,
+   "memory_high_bytes": 94489280512,
+   "anon_bytes": 661385216,
+   "file_bytes": 6642098176,
+   "cpu_quota_cores": 16.0,
+   "nproc": 128,
+   "os_cpu_count": 128,
+   "memory_max_GiB": 90.0,
+   "memory_high_GiB": 88.0,
+   "anon_GiB": 0.6159629821777344,
+   "file_GiB": 6.185935974121094
+  },
+  "loadavg": [
+   16.638671875,
+   17.99658203125,
+   15.69140625
+  ],
+  "host": "autodl-container-215f42a675-7f00d8a5",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 16
+ },
+ "iparm": {
+  "1": 1,
+  "2": 3,
+  "4": 0,
+  "5": 0,
+  "6": 0,
+  "8": 0,
+  "10": 8,
+  "11": 0,
+  "13": 0,
+  "18": -1,
+  "19": -1,
+  "24": 0,
+  "25": 0,
+  "27": 0,
+  "28": 0,
+  "34": 0,
+  "35": 1,
+  "36": 0,
+  "56": 0,
+  "60": 0
+ },
+ "loadavg_start": [
+  16.638671875,
+  17.99658203125,
+  15.69140625
+ ],
+ "cpu_stat_start": {
+  "usage_usec": 13059845508,
+  "user_usec": 7072400080,
+  "system_usec": 5987445427,
+  "nr_periods": 89495,
+  "nr_throttled": 551,
+  "throttled_usec": 16776830
+ },
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 29.547714054584503,
+   "assembly_s": 21.400954285636544,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424,
+   "front_end_peak_rss_GiB": 17.666179656982422,
+   "schur": {
+    "schur_rows": 20184,
+    "build_s": 1.9421610003337264,
+    "analysis_s": 6.55032476503402,
+    "predicted_GiB": {
+     "peak_analysis": 2.5653085708618164,
+     "permanent": 2.419184684753418,
+     "factor_solve": 12.766791343688965,
+     "total": 15.185976028442383
+    },
+    "avail_GiB": 79.83601760864258,
+    "factor_schur_s": 28.955207434482872,
+    "seconds": 35.50553219951689,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 2689921,
+      "16": 2536699,
+      "17": 13365552,
+      "18": 1539822008,
+      "19": 17795567,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 308424,
+      "48": 20184,
+      "57": -1,
+      "61": 2689921,
+      "62": 2165822
+     },
+     "nnz_factor": 1539822008,
+     "mflop_factor": 17795567,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 2689921,
+      "permanent": 2536699,
+      "factor_solve": 13365552
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 2.5653085708618164,
+      "permanent": 2.419184684753418,
+      "factor_solve": 12.746383666992188,
+      "total": 15.165568351745605
+     }
+    },
+    "peak_rss_GiB": 22.8809814453125,
+    "symmetry_rel": 3.981873792445756e-17,
+    "dense_S_GiB": 3.03532075881958
+   },
+   "keep_s": 0.6734987450763583,
+   "kept_csr_GiB": 0.9439836852252483
+  },
+  "hlat222_010": {
+   "setup_s": 28.97412872686982,
+   "assembly_s": 20.799343002960086,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340,
+   "front_end_peak_rss_GiB": 22.01903533935547,
+   "schur": {
+    "schur_rows": 20124,
+    "build_s": 1.9136050287634134,
+    "analysis_s": 6.359805019572377,
+    "predicted_GiB": {
+     "peak_analysis": 2.569422721862793,
+     "permanent": 2.421947479248047,
+     "factor_solve": 12.83355712890625,
+     "total": 15.255504608154297
+    },
+    "avail_GiB": 75.69089126586914,
+    "factor_schur_s": 29.2608684534207,
+    "seconds": 35.620673472993076,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 2694235,
+      "16": 2539596,
+      "17": 13435564,
+      "18": 1548370077,
+      "19": 17971138,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 308340,
+      "48": 20124,
+      "57": -1,
+      "61": 2694235,
+      "62": 2168834
+     },
+     "nnz_factor": 1548370077,
+     "mflop_factor": 17971138,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 2694235,
+      "permanent": 2539596,
+      "factor_solve": 13435564
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 2.569422721862793,
+      "permanent": 2.421947479248047,
+      "factor_solve": 12.813152313232422,
+      "total": 15.235099792480469
+     }
+    },
+    "peak_rss_GiB": 27.045703887939453,
+    "symmetry_rel": 8.547558746835606e-17,
+    "dense_S_GiB": 3.0173016786575317
+   },
+   "keep_s": 0.5590047985315323,
+   "kept_csr_GiB": 0.9455132149159908
+  },
+  "hlat222_100": {
+   "setup_s": 17.54050519876182,
+   "assembly_s": 14.06680778041482,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510,
+   "front_end_peak_rss_GiB": 19.900981903076172,
+   "schur": {
+    "schur_rows": 30561,
+    "build_s": 1.220777302980423,
+    "analysis_s": 3.7528515085577965,
+    "predicted_GiB": {
+     "peak_analysis": 1.736684799194336,
+     "permanent": 1.5790700912475586,
+     "factor_solve": 9.831256866455078,
+     "total": 11.410326957702637
+    },
+    "avail_GiB": 74.25558471679688,
+    "factor_schur_s": 23.700404052622616,
+    "seconds": 27.453255561180413,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 1821046,
+      "16": 1655775,
+      "17": 10289162,
+      "18": 1198404868,
+      "19": 16878840,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 186510,
+      "48": 30561,
+      "57": -1,
+      "61": 1821046,
+      "62": 1461679
+     },
+     "nnz_factor": 1198404868,
+     "mflop_factor": 16878840,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 1821046,
+      "permanent": 1655775,
+      "factor_solve": 10289162
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 1.736684799194336,
+      "permanent": 1.5790700912475586,
+      "factor_solve": 9.812509536743164,
+      "total": 11.391579627990723
+     }
+    },
+    "peak_rss_GiB": 29.806488037109375,
+    "symmetry_rel": 3.128234121605964e-17,
+    "dense_S_GiB": 6.958653934299946
+   },
+   "keep_s": 0.4316660137847066,
+   "kept_csr_GiB": 0.5990945883095264
+  },
+  "hlat222_110": {
+   "setup_s": 7.587670325301588,
+   "assembly_s": 7.694092043675482,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304,
+   "front_end_peak_rss_GiB": 22.835979461669922,
+   "schur": {
+    "schur_rows": 25482,
+    "build_s": 0.5776619650423527,
+    "analysis_s": 1.588587773963809,
+    "predicted_GiB": {
+     "peak_analysis": 0.8425664901733398,
+     "permanent": 0.7608518600463867,
+     "factor_solve": 4.966155052185059,
+     "total": 5.727006912231445
+    },
+    "avail_GiB": 69.15968704223633,
+    "factor_schur_s": 9.89766823593527,
+    "seconds": 11.48625600989908,
+    "pardiso": {
+     "iparm_1based": {
+      "1": 1,
+      "2": 3,
+      "3": 16,
+      "5": 1,
+      "10": 8,
+      "15": 883495,
+      "16": 797811,
+      "17": 5189522,
+      "18": 588703634,
+      "19": 7371853,
+      "34": -1,
+      "35": 1,
+      "36": 1,
+      "38": 77304,
+      "48": 25482,
+      "57": -1,
+      "61": 883495,
+      "62": 860166,
+      "63": 87083
+     },
+     "nnz_factor": 588703634,
+     "mflop_factor": 7371853,
+     "perturbed_pivots": 0,
+     "peak_mem_kB": {
+      "peak_analysis": 883495,
+      "permanent": 797811,
+      "factor_solve": 5189522
+     },
+     "peak_mem_GiB": {
+      "peak_analysis": 0.8425664901733398,
+      "permanent": 0.7608518600463867,
+      "factor_solve": 4.949113845825195,
+      "total": 5.709965705871582
+     }
+    },
+    "peak_rss_GiB": 28.170188903808594,
+    "symmetry_rel": 8.826804965558447e-17,
+    "dense_S_GiB": 4.837902814149857
+   },
+   "keep_s": 0.09761479496955872,
+   "kept_csr_GiB": 0.28470347076654434
+  }
+ },
+ "held_S_GiB": 17.849179185926914,
+ "cells_s": 270.2810891093686,
+ "dense_S_total_GiB": 17.849179185926914,
+ "kept_csr_total_GiB": 2.77329495921731,
+ "rss_after_cells_GiB": 21.674530029296875,
+ "lattice_s": 0.017190583050251007,
+ "free_retained": 77310,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "solver": "block",
+ "solver_description": "exact block Cholesky of the block-sparse condensed matrix in the substructuring order (cell-private retained DOFs eliminated per cell, then the dense shared-DOF interface), dense MKL kernels (dpotrf, dtrsm, dsyrk, dgemm)",
+ "n_shared": 12327,
+ "n_private": 64983,
+ "interface_dense_GiB": 1.132152445614338,
+ "private_elimination_s": 27.652188252657652,
+ "held_factor_GiB": 11.450246885418892,
+ "interface_factor_solve_s": 0.7388566406443715,
+ "back_substitution_s": 0.23766248393803835,
+ "block_peak_rss_GiB": 24.572189331054688,
+ "condensed_s": 28.956356315873563,
+ "compliance": [
+  302.19348447545525,
+  51.693455243754954,
+  635.773882271024,
+  90846.45315316509,
+  81897.44774450813,
+  85365.45259652442
+ ],
+ "reference": {
+  "file": "/root/autodl-tmp/cpu9754/val/a_hlat221a.json",
+  "mtype": 2,
+  "compliance": [
+   302.1934844744502,
+   51.693455243694046,
+   635.773882266416,
+   90846.4531531657,
+   81897.44774450838,
+   85365.4525965208
+  ],
+  "rel_diff": [
+   3.325784092567119e-12,
+   1.1781686737322161e-12,
+   7.247979993962872e-12,
+   6.772360450213455e-15,
+   2.9976021664879227e-15,
+   4.241051954068098e-14
+  ]
+ },
+ "front_end_s": 147.61121541820467,
+ "schur_s": 110.06571724358946,
+ "total_without_sens_s": 297.49407338164747,
+ "sens_loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z"
+ ],
+ "recovery": {
+  "hlat222_000": {
+   "blocks_s": 2.342473383061588,
+   "analysis_s": 4.090640378184617,
+   "predicted_GiB": {
+    "peak_analysis": 1.420731544494629,
+    "permanent": 1.3000822067260742,
+    "factor_solve": 7.422860145568848,
+    "total": 8.722942352294922
+   },
+   "factor_s": 8.347038651816547,
+   "solve_s": 2.660693509504199,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 16,
+     "10": 8,
+     "15": 1489745,
+     "16": 1363235,
+     "17": 7762357,
+     "18": 913139486,
+     "19": 5172490,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 1489745,
+     "62": 1102798
+    },
+    "nnz_factor": 913139486,
+    "mflop_factor": 5172490,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1489745,
+     "permanent": 1363235,
+     "factor_solve": 7762357
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.420731544494629,
+     "permanent": 1.3000822067260742,
+     "factor_solve": 7.4027605056762695,
+     "total": 8.702842712402344
+    }
+   },
+   "interior_rel_residual": 5.9484161721150485e-15,
+   "energy": 491.4595595885669,
+   "seconds": 17.44084592256695
+  },
+  "hlat222_010": {
+   "blocks_s": 2.2140830159187317,
+   "analysis_s": 4.10550033301115,
+   "predicted_GiB": {
+    "peak_analysis": 1.4226150512695312,
+    "permanent": 1.3011693954467773,
+    "factor_solve": 7.349698066711426,
+    "total": 8.650867462158203
+   },
+   "factor_s": 8.17055166233331,
+   "solve_s": 1.0007641734555364,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 16,
+     "10": 8,
+     "15": 1491720,
+     "16": 1364375,
+     "17": 7685641,
+     "18": 904544148,
+     "19": 5022806,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 1491720,
+     "62": 1092987
+    },
+    "nnz_factor": 904544148,
+    "mflop_factor": 5022806,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 1491720,
+     "permanent": 1364375,
+     "factor_solve": 7685641
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 1.4226150512695312,
+     "permanent": 1.3011693954467773,
+     "factor_solve": 7.329598426818848,
+     "total": 8.630767822265625
+    }
+   },
+   "interior_rel_residual": 5.9090983453848505e-15,
+   "energy": 192.41751021631367,
+   "seconds": 15.490899184718728
+  },
+  "hlat222_100": {
+   "blocks_s": 1.2605010941624641,
+   "analysis_s": 2.404699195176363,
+   "predicted_GiB": {
+    "peak_analysis": 0.831547737121582,
+    "permanent": 0.7583227157592773,
+    "factor_solve": 3.486844062805176,
+    "total": 4.245166778564453
+   },
+   "factor_s": 2.7959917737171054,
+   "solve_s": 0.5700190793722868,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 16,
+     "10": 8,
+     "15": 871941,
+     "16": 795159,
+     "17": 3637050,
+     "18": 424806187,
+     "19": 1751926,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 871941,
+     "62": 598169
+    },
+    "nnz_factor": 424806187,
+    "mflop_factor": 1751926,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 871941,
+     "permanent": 795159,
+     "factor_solve": 3637050
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 0.831547737121582,
+     "permanent": 0.7583227157592773,
+     "factor_solve": 3.4685611724853516,
+     "total": 4.226883888244629
+    }
+   },
+   "interior_rel_residual": 4.335016861068419e-15,
+   "energy": 260.8580752491422,
+   "seconds": 7.031211142428219
+  },
+  "hlat222_110": {
+   "blocks_s": 0.5473773954436183,
+   "analysis_s": 0.9854439562186599,
+   "predicted_GiB": {
+    "peak_analysis": 0.3237323760986328,
+    "permanent": 0.2993030548095703,
+    "factor_solve": 1.1130962371826172,
+    "total": 1.4123992919921875
+   },
+   "factor_s": 0.5674855215474963,
+   "solve_s": 0.1457973076030612,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 16,
+     "10": 8,
+     "15": 339458,
+     "16": 313842,
+     "17": 1149703,
+     "18": 126390022,
+     "19": 355535,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 339458,
+     "62": 279832
+    },
+    "nnz_factor": 126390022,
+    "mflop_factor": 355535,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 339458,
+     "permanent": 313842,
+     "factor_solve": 1149703
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 0.3237323760986328,
+     "permanent": 0.2993030548095703,
+     "factor_solve": 1.0964422225952148,
+     "total": 1.3957452774047852
+    }
+   },
+   "interior_rel_residual": 3.8196874316631176e-15,
+   "energy": 44.9256769439655,
+   "seconds": 2.2461041808128357
+  }
+ },
+ "recovery_s": 45.968474416062236,
+ "sens_s": 308.4120100652799,
+ "sens": {
+  "hlat222_000": {
+   "seconds": 105.70497765298933,
+   "energy_density_s": 0.3391710389405489,
+   "reverse_s": 105.36563183460385,
+   "s": [
+    -398.30356833706026,
+    -409.3105866195924,
+    -330.87053712832414,
+    -344.1171551408256,
+    -298.6216112040857,
+    -308.3941185130776,
+    -248.53490498688885,
+    -261.26322992189637
+   ]
+  },
+  "hlat222_010": {
+   "seconds": 103.29055474605411,
+   "energy_density_s": 0.356640737503767,
+   "reverse_s": 102.93374873604625,
+   "s": [
+    -155.04699311365826,
+    -159.16018856703775,
+    -103.58281077742893,
+    -109.70013025756492,
+    -123.43153047598933,
+    -126.79137239193969,
+    -83.15294223994303,
+    -88.45479439210273
+   ]
+  },
+  "hlat222_100": {
+   "seconds": 65.4896530834958,
+   "energy_density_s": 0.20545937586575747,
+   "reverse_s": 65.28410755842924,
+   "s": [
+    -233.78161712791277,
+    -232.46685635295646,
+    -169.46283107924953,
+    -167.65727914049566,
+    -111.29759678580078,
+    -107.8171124564679,
+    -59.587747132174044,
+    -57.40799807154904
+   ]
+  },
+  "hlat222_110": {
+   "seconds": 33.926824582740664,
+   "energy_density_s": 0.1055306289345026,
+   "reverse_s": 33.8212108835578,
+   "s": [
+    -63.478922291613976,
+    -61.524486413219435,
+    -20.406066076804084,
+    -20.19291728740066,
+    -20.587072645648224,
+    -19.519048442647374,
+    -3.9943719837970595,
+    -3.9080400475598673
+   ]
+  }
+ },
+ "energy_check": {
+  "sum_cell_energy": 989.6608219979883,
+  "sum_face_compliance": 989.6608219902342,
+  "rel_diff": 7.835065929384655e-12
+ },
+ "recovery_sens_peak_rss_GiB": 18.61739730834961,
+ "sens_settings": {
+  "objective": "sum of the face-load compliances",
+  "method": "moments_ad.cell_sens (reverse mode)",
+  "skip_full": true,
+  "ad_batch": 256,
+  "torch_threads": 16,
+  "recovery": "interior Cholesky of K_II per cell (PARDISO, tuned iparm), recomputed"
+ },
+ "total_s": 652.0769148916006,
+ "keep_s": 1.761784352362156,
+ "process_peak_rss_GiB": 29.806488037109375,
+ "loadavg_end": [
+  17.8623046875,
+  16.95751953125,
+  15.8818359375
+ ],
+ "throttled_s": 7.214239
+}

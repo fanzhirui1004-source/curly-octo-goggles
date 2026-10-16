@@ -1,0 +1,305 @@
+{
+ "layout": "hlat221a",
+ "machine": "autodl-container-215f42a675-7f00d8a5",
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "memory_max_bytes": 96636764160,
+   "memory_high_bytes": 94489280512,
+   "anon_bytes": 8704856064,
+   "file_bytes": 6641905664,
+   "cpu_quota_cores": 16.0,
+   "nproc": 128,
+   "os_cpu_count": 128,
+   "memory_max_GiB": 90.0,
+   "memory_high_GiB": 88.0,
+   "anon_GiB": 8.10702896118164,
+   "file_GiB": 6.185756683349609
+  },
+  "loadavg": [
+   4.8427734375,
+   9.8310546875,
+   11.62841796875
+  ],
+  "host": "autodl-container-215f42a675-7f00d8a5",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 16
+ },
+ "loadavg_start": [
+  4.8427734375,
+  9.8310546875,
+  11.62841796875
+ ],
+ "route": "(a) whole-lattice direct solve (lat_direct_cpu2) + sensitivities (cpu_sens)",
+ "cells": {
+  "hlat222_000": {
+   "setup_s": 29.829412962310016,
+   "assembly_s": 21.914768744260073,
+   "dofs": 328608,
+   "retained": 20184,
+   "interior": 308424
+  },
+  "hlat222_010": {
+   "setup_s": 32.561822588555515,
+   "assembly_s": 22.221022417768836,
+   "dofs": 328464,
+   "retained": 20124,
+   "interior": 308340
+  },
+  "hlat222_100": {
+   "setup_s": 18.105434882454574,
+   "assembly_s": 12.172719670459628,
+   "dofs": 217071,
+   "retained": 30561,
+   "interior": 186510
+  },
+  "hlat222_110": {
+   "setup_s": 7.649455867707729,
+   "assembly_s": 6.472629532217979,
+   "dofs": 102786,
+   "retained": 25482,
+   "interior": 77304
+  }
+ },
+ "cells_s": 150.93482200521976,
+ "lattice_s": 0.04180571064352989,
+ "global_assembly_s": 12.061566279269755,
+ "global_dofs": 957888,
+ "free_retained": 77310,
+ "interior": 880578,
+ "nnz_upper": 132719531,
+ "loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z",
+  "random0",
+  "random1",
+  "random2"
+ ],
+ "front_end_peak_rss_GiB": 21.313884735107422,
+ "scaling_s": 2.5541736762970686,
+ "rss_before_pardiso_GiB": 3.7242507934570312,
+ "runs": [
+  {
+   "mtype": 2,
+   "nnz_stored": 132688813,
+   "iparm_requested": {
+    "1": 1,
+    "2": 3,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "8": 0,
+    "10": 8,
+    "11": 0,
+    "13": 0,
+    "18": -1,
+    "19": -1,
+    "24": 0,
+    "25": 0,
+    "27": 0,
+    "28": 0,
+    "34": 0,
+    "35": 1,
+    "36": 0,
+    "56": 0,
+    "60": 0
+   },
+   "loadavg_start": [
+    18.76025390625,
+    15.64501953125,
+    13.62939453125
+   ],
+   "cpu_stat_start": {
+    "usage_usec": 8179244446,
+    "user_usec": 4184927634,
+    "system_usec": 3994316811,
+    "nr_periods": 85606,
+    "nr_throttled": 153,
+    "throttled_usec": 13026297
+   },
+   "analysis_s": 13.475725799798965,
+   "analysis_peak_rss_GiB": 15.898651123046875,
+   "predicted_kB": {
+    "peak_analysis": 4743044,
+    "permanent": 4301953,
+    "factor_solve": 29407031
+   },
+   "predicted_GiB": {
+    "peak_analysis": 4.523319244384766,
+    "permanent": 4.102662086486816,
+    "factor_solve": 28.044730186462402,
+    "total": 32.14739227294922
+   },
+   "avail_before_factor_GiB": 79.39641571044922,
+   "cgroup_before_factor": {
+    "memory_max_bytes": 96636764160,
+    "memory_high_bytes": 94489280512,
+    "anon_bytes": 9238028288,
+    "file_bytes": 6642036736,
+    "cpu_quota_cores": 16.0,
+    "nproc": 128,
+    "os_cpu_count": 128,
+    "memory_max_GiB": 90.0,
+    "memory_high_GiB": 88.0,
+    "anon_GiB": 8.603584289550781,
+    "file_GiB": 6.185878753662109
+   },
+   "factor_s": 59.55717087723315,
+   "factor_peak_rss_GiB": 35.39125442504883,
+   "pardiso": {
+    "iparm_1based": {
+     "1": 1,
+     "2": 3,
+     "3": 16,
+     "10": 8,
+     "15": 4743044,
+     "16": 4301953,
+     "17": 29375801,
+     "18": -741496549,
+     "19": 31634117,
+     "34": -1,
+     "35": 1,
+     "57": -1,
+     "61": 4743044,
+     "62": 3070349
+    },
+    "nnz_factor": -741496549,
+    "mflop_factor": 31634117,
+    "perturbed_pivots": 0,
+    "peak_mem_kB": {
+     "peak_analysis": 4743044,
+     "permanent": 4301953,
+     "factor_solve": 29375801
+    },
+    "peak_mem_GiB": {
+     "peak_analysis": 4.523319244384766,
+     "permanent": 4.102662086486816,
+     "factor_solve": 28.014946937561035,
+     "total": 32.11760902404785
+    }
+   },
+   "solve_s": 14.85407152492553,
+   "solve_peak_rss_GiB": 35.45439910888672,
+   "rel_residual": [
+    4.743207975275255e-11,
+    1.2312299621554629e-11,
+    8.730524666899583e-11,
+    4.612758180456386e-13,
+    4.2253179542639656e-13,
+    3.4465822745967904e-12
+   ],
+   "compliance": [
+    302.1934844744502,
+    51.693455243694046,
+    635.773882266416,
+    90846.4531531657,
+    81897.44774450838,
+    85365.4525965208
+   ],
+   "loadavg_end": [
+    24.59375,
+    18.5390625,
+    14.83935546875
+   ],
+   "throttled_s": 3.169114,
+   "process_peak_rss_GiB": 35.45439910888672
+  }
+ ],
+ "sens_loads": [
+  "consistent_ymax_x",
+  "consistent_ymax_y",
+  "consistent_ymax_z"
+ ],
+ "sens_s": 296.46710076369345,
+ "sens_peak_rss_GiB": 11.10763931274414,
+ "sens": {
+  "hlat222_000": {
+   "seconds": 105.61552023049444,
+   "energy_density_s": 0.40150938741862774,
+   "reverse_s": 105.21384607627988,
+   "s": [
+    -398.30356833236317,
+    -409.3105866143191,
+    -330.87053712514387,
+    -344.1171551370801,
+    -298.6216111999098,
+    -308.3941185084511,
+    -248.53490498406524,
+    -261.2632299186265
+   ]
+  },
+  "hlat222_010": {
+   "seconds": 97.32702204678208,
+   "energy_density_s": 0.30753382854163647,
+   "reverse_s": 97.01938690245152,
+   "s": [
+    -155.0469931130392,
+    -159.16018856631845,
+    -103.58281077711453,
+    -109.70013025731176,
+    -123.43153047490802,
+    -126.79137239087201,
+    -83.15294223974561,
+    -88.4547943919393
+   ]
+  },
+  "hlat222_100": {
+   "seconds": 61.79122771974653,
+   "energy_density_s": 0.20924948249012232,
+   "reverse_s": 61.58190240897238,
+   "s": [
+    -233.7816171245007,
+    -232.46685634982484,
+    -169.46283107724483,
+    -167.65727913869566,
+    -111.29759678406826,
+    -107.81711245492643,
+    -59.58774713144567,
+    -57.40799807092353
+   ]
+  },
+  "hlat222_110": {
+   "seconds": 31.700216508470476,
+   "energy_density_s": 0.10177683737128973,
+   "reverse_s": 31.598362998105586,
+   "s": [
+    -63.47892229102304,
+    -61.524486412652216,
+    -20.40606607641822,
+    -20.19291728707746,
+    -20.587072645462623,
+    -19.519048442481026,
+    -3.9943719837288056,
+    -3.9080400475126646
+   ]
+  }
+ },
+ "sens_settings": {
+  "objective": "sum of the face-load compliances",
+  "method": "moments_ad.cell_sens (reverse mode)",
+  "skip_full": true,
+  "ad_batch": 256,
+  "torch_threads": 16
+ },
+ "stages_s": {
+  "cells": 150.93482200521976,
+  "lattice": 0.04180571064352989,
+  "global_assembly": 12.061566279269755,
+  "scaling": 2.5541736762970686,
+  "analysis": 13.475725799798965,
+  "factor": 59.55717087723315,
+  "solve": 14.85407152492553,
+  "sens": 296.46710076369345
+ },
+ "total_s": 549.9464366370812,
+ "total_without_sens_s": 253.47933587338775,
+ "process_peak_rss_GiB": 35.45439910888672
+}
