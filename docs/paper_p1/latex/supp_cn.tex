@@ -1115,7 +1115,7 @@ PARDISO 内存
 3×3×1 & 12.66 & 0.14 & 7.25 & 80.85 & 4.07 \\
 \end{longtable}}
 
-总计、迭代次数与内存见表 5。各阶段之和比总计少 0.2--0.5 s，差额为阶段之间的簿记开销。GPU 内存为进程分配的峰值，CPU 内存为胞元准备之后的常驻集大小。常驻 GPU 的学习子结构（补充说明 S4.1）：四胞元点阵的全部胞元，以及每个八胞元点阵中的四个胞元。
+总计、迭代次数与内存见表 5。各阶段之和比总计少 0.2--0.5 s，差额为阶段之间的簿记开销。GPU 内存为整块 GPU 的峰值内存占用（nvidia-smi 每 0.1 s 采样一次），除张量外还包括 CUDA 上下文、cuDSS 的分解以及缓存分配器保留的内存；CPU 内存为胞元准备之后的常驻集大小。常驻 GPU 的学习子结构（补充说明 S4.1）：四胞元点阵的全部胞元，以及每个八胞元点阵中的四个胞元。
 
 \subsubsection{ST12e. CPU 上的整体点阵迭代求解器（16 个 MPI 进程）：设置、共轭梯度与 BDDC 分解（s）}
 
@@ -1156,16 +1156,15 @@ BDDC 分解：Dirichlet + Neumann
 
 \subsection{表 ST13. 常规凝聚与 NICE 的逐胞元成本}
 
-四个部署胞元，其中两个切割、两个未切割（补充材料第 R1 节）。胞元准备：几何预处理，以及胞元设置、矩积分与刚度装配；NICE 在 GPU 上进行，常规路线在 CPU 上进行。凝聚：对 NICE 为网络编码与修正设置（光滑区间与粗网格分解）；对常规路线为 MKL PARDISO（16 线程）对内部自由度的符号分析与 Cholesky 分解。内存单位为 GiB：NICE 的网络状态与修正所占用的 GPU 内存，或 PARDISO 的分解存储（iparm(17)）。两者均不包括胞元刚度 \(K\)，两条路线都需保存该矩阵（最后一列，GPU 存储格式）。
+四个部署胞元，其中两个切割、两个未切割（补充材料第 R1 节）。两条路线都读取已生成的胞元几何，几何生成不计入计时（与表 5 相同）。胞元准备：对 NICE 为胞元设置与单元矩计算，在 GPU 上进行；对常规路线为胞元设置、矩积分与刚度装配，在 CPU 上进行。凝聚：对 NICE 为网络输入、编码与修正设置（光滑区间与粗网格分解）；对常规路线为 MKL PARDISO（16 线程）对内部自由度的符号分析与 Cholesky 分解。NICE 的耗时不含每个进程开始时一次性的 GPU 核函数编译与初始化（约 1.5 s）。内存单位为 GiB：对 NICE 为部署实现在修正设置完成后为该胞元保存的全部 GPU 内存，包括网络状态、修正以及以单元矩形式保存的刚度（部署实现不装配胞元刚度矩阵，单元矩每个胞元占 0.03--0.09 GiB）；对常规路线为 PARDISO 的分解存储（iparm(17)），此外还需保存装配后的胞元刚度矩阵。
 
-{\footnotesize
+{\small
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 胞元
@@ -1177,17 +1176,15 @@ BDDC 分解：Dirichlet + Neumann
 凝聚（s）：NICE / 常规
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 内存（GiB）：NICE 状态 / PARDISO 因子
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-\(K\)（GiB）
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-G1（切割） & 177,507 / 24,636 & 5.3 / 27.3 & 0.72 / 10.5 & 0.74 / 2.89 & 1.39 \\
-G2（切割） & 67,224 / 18,858 & 3.0 / 10.9 & 0.16 / 1.9 & 0.25 / 0.60 & 0.51 \\
-G3（未切割） & 289,494 / 17,508 & 6.1 / 45.0 & 0.78 / 27.3 & 1.20 / 6.18 & 2.32 \\
-G4（未切割） & 404,148 / 25,920 & 6.5 / 47.0 & 1.09 / 48.9 & 1.37 / 9.42 & 2.71 \\
+G1（切割） & 177,507 / 24,636 & 0.46 / 27.3 & 0.29 / 10.5 & 0.48 / 2.89 \\
+G2（切割） & 67,224 / 18,858 & 0.27 / 10.9 & 0.13 / 1.9 & 0.19 / 0.60 \\
+G3（未切割） & 289,494 / 17,508 & 0.58 / 45.0 & 0.52 / 27.3 & 0.83 / 6.18 \\
+G4（未切割） & 404,148 / 25,920 & 0.68 / 47.0 & 0.76 / 48.9 & 1.08 / 9.42 \\
 \end{longtable}}
 
 \section{补充说明 S4. 全局预条件、两胞元构型与残差记录}
