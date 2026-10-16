@@ -1,4 +1,6 @@
-"""One fused kernel per hyperedge layer application (gather -> channel mix W_h -> scatter, H = 4) vs fused_hyper's three
+"""(Measured src_v3/hyperfused.py, removed after this test: no faster than the tiled fused_hyper kernels at B = 1, and the
+B = 3 variant did not finish compiling.)
+One fused kernel per hyperedge layer application (gather -> channel mix W_h -> scatter, H = 4) vs fused_hyper's three
 steps (gather kernel, cuBLAS bmm, scatter kernel), on a real cell's layers: time per application (forward with the
 folded residual, adjoint) and the relative difference of the result (the channel mix is summed in another order).
 usage: python t_hfuse.py BODY_DIR:CASE [--B 1,3]"""

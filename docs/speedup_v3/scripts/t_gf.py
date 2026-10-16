@@ -1,4 +1,5 @@
-"""Fused ghost-face product (ghostfused, OPL_V3_GFFUSE) vs GhostFaces.matvec on a real cell (float32 correction's gf):
+"""(Measured the fused ghost-face kernel src_v3/ghostfused.py, removed after this test: slower than GhostFaces.matvec.)
+Fused ghost-face product (ghostfused, OPL_V3_GFFUSE) vs GhostFaces.matvec on a real cell (float32 correction's gf):
 time per product and relative difference, for B = 1, 2, 3; and the full float32 K product time with the switch on/off.
 usage: python t_gf.py BODY_DIR:CASE"""
 import os, sys, json, time

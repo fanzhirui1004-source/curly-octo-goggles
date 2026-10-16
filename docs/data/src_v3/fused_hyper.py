@@ -70,6 +70,61 @@ def _backward(X, dY, dZ, Zp, hn, A, deg, dX, dA, dB, Eh, BF, H: tl.constexpr, S:
         tl.atomic_add(dB + (e * S + s) * H + hh, tl.sum((dy / g)[None, :] * zp, axis=1))
 
 
+@triton.jit
+def _gather_t(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr, EB: tl.constexpr, BC: tl.constexpr,
+              DEG: tl.constexpr):
+    """_gather on a tile of EB hyperedges x BC columns (src_v3): the same sum per output element, in the same order."""
+    e = tl.program_id(0) * EB + tl.arange(0, EB)
+    me = e < Eh
+    cols = tl.program_id(1) * BC + tl.arange(0, BC)
+    cm = cols < BF
+    hh = tl.arange(0, H)
+    acc = tl.zeros((EB, H, BC), dtype=tl.float32)
+    for s in tl.static_range(S):
+        n = tl.load(hn + e * S + s, mask=me, other=0).to(tl.int64)
+        w = tl.load(wgt + (e[:, None] * S + s) * H + hh[None, :], mask=me[:, None], other=0.0)
+        if DEG:
+            w = w / tl.load(deg + n, mask=me, other=1.0)[:, None]
+        x = tl.load(src + n[:, None] * BF + cols[None, :], mask=me[:, None] & cm[None, :], other=0.0)
+        acc += w[:, :, None] * x[:, None, :]
+    ptr = out + (hh[None, :, None].to(tl.int64) * Eh + e[:, None, None]) * BF + cols[None, None, :]
+    tl.store(ptr, acc, mask=me[:, None, None] & cm[None, None, :])
+
+
+@triton.jit
+def _scatter_t(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr, EB: tl.constexpr, BC: tl.constexpr,
+               DEG: tl.constexpr):
+    """_scatter on a tile of EB hyperedges x BC columns (src_v3): the same products and atomic row adds (the head sum of
+    a row may round differently: the atomics already make the order data dependent)."""
+    e = tl.program_id(0) * EB + tl.arange(0, EB)
+    me = e < Eh
+    cols = tl.program_id(1) * BC + tl.arange(0, BC)
+    cm = cols < BF
+    hh = tl.arange(0, H)
+    z = tl.load(src + (hh[None, :, None].to(tl.int64) * Eh + e[:, None, None]) * BF + cols[None, None, :],
+                mask=me[:, None, None] & cm[None, None, :], other=0.0)
+    for s in tl.static_range(S):
+        n = tl.load(hn + e * S + s, mask=me, other=0).to(tl.int64)
+        w = tl.load(wgt + (e[:, None] * S + s) * H + hh[None, :], mask=me[:, None], other=0.0)
+        if DEG:
+            w = w / tl.load(deg + n, mask=me, other=1.0)[:, None]
+        tl.atomic_add(out + n[:, None] * BF + cols[None, :], tl.sum(w[:, :, None] * z, axis=1), mask=me[:, None] & cm[None, :])
+
+
+TILED = os.environ.get('OPL_V3_HTILE', '1') == '1'
+# (EB hyperedges, BC columns, warps) per program, measured on the RTX 5090 (scripts/t_hyper.py, plate cell, F = 32):
+# one program per hyperedge with 512-wide column blocks leaves 15/16 of the lanes idle at B = 1 (B * F = 32)
+_TILE_G = {32: (8, 32, 4), 128: (4, 128, 4)}
+_TILE_S = {32: (8, 32, 2), 128: (4, 128, 4)}
+
+
+def _tile(table, BF):
+    for lim in sorted(table):
+        if BF <= lim:
+            return table[lim]
+    return None
+
+
 def _grid(Eh, BF, blk):
     return (Eh, triton.cdiv(BF, blk))
 
@@ -81,6 +136,12 @@ def gather(src, hn, w, deg, H, blk, use_deg):
     out = torch.empty((H, Eh, BF), dtype=torch.float32, device=src.device)
     if Eh == 0 or BF == 0:                                                  # empty hyperedge set (e.g. no fringe)
         return out
+    t = _tile(_TILE_G, BF) if TILED else None
+    if t is not None:
+        EB, BC, nw = t
+        _gather_t[(triton.cdiv(Eh, EB), triton.cdiv(BF, BC))](src, hn, w, deg, out, Eh, BF, H=H, S=S, EB=EB, BC=BC,
+                                                              DEG=use_deg, num_warps=nw)
+        return out
     _gather[_grid(Eh, BF, blk)](src, hn, w, deg, out, Eh, BF, H=H, S=S, BLK=blk, DEG=use_deg)
     return out
 
@@ -91,6 +152,12 @@ def scatter(src, hn, w, deg, N, blk, use_deg, init=None):
     H, Eh, BF = src.shape
     out = torch.zeros((N, BF), dtype=torch.float32, device=src.device) if init is None else init.reshape(N, BF).clone()
     if Eh == 0 or BF == 0:
+        return out
+    t = _tile(_TILE_S, BF) if TILED else None
+    if t is not None:
+        EB, BC, nw = t
+        _scatter_t[(triton.cdiv(Eh, EB), triton.cdiv(BF, BC))](src, hn, w, deg, out, Eh, BF, H=H, S=hn.shape[1], EB=EB,
+                                                               BC=BC, DEG=use_deg, num_warps=nw)
         return out
     _scatter[_grid(Eh, BF, blk)](src, hn, w, deg, out, Eh, BF, H=H, S=hn.shape[1], BLK=blk, DEG=use_deg)
     return out

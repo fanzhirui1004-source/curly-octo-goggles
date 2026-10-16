@@ -193,15 +193,15 @@ class StreamedOp:
             off += (nb + 511) // 512 * 512
         self.total = max(off, 512)
         self.buf = torch.empty(self.total, dtype=torch.uint8)
+        self.registered = False
+        if self.total and REGISTER:                                     # src_v3: page-locked BEFORE the copies (device
+            err = torch.cuda.cudart().cudaHostRegister(self.buf.data_ptr(), self.total, 0)   # to pageable memory runs at
+            self.registered = int(err) == 0                                                 # ~1.5 GB/s: 0.35 s per cell)
         for key, x in src.items():
             if self.enc.get(key, (None,))[0] in ('tril', 'sym'):
                 _pack_tril(x, self._view(self.buf, key))
             else:
                 self._view(self.buf, key).copy_(x.contiguous())
-        self.registered = False
-        if self.total and REGISTER:
-            err = torch.cuda.cudart().cudaHostRegister(self.buf.data_ptr(), self.total, 0)
-            self.registered = int(err) == 0
         self.pinned = {key: self._view(self.buf, key) for key in src}
         del src
         self.bytes = sum(v[1] for v in self.layout.values())

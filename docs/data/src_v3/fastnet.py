@@ -111,9 +111,6 @@ class _Hyper:
     def fwd_res(self, X):
         """X + fwd(X) with the residual folded into the scatter (fused path only)."""
         N, B, F = X.shape
-        import hyperfused as HF
-        if HF.usable(self, X):                                                          # src_v3: one kernel per layer
-            return HF.layer_res(self, X, False)
         import fused_hyper as FH
         Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
@@ -122,9 +119,6 @@ class _Hyper:
     def adj_res(self, Y):
         """Y + adj(Y) with the residual folded into the scatter (fused path only)."""
         N, B, F = Y.shape
-        import hyperfused as HF
-        if HF.usable(self, Y):                                                          # src_v3: one kernel per layer
-            return HF.layer_res(self, Y, True)
         import fused_hyper as FH
         Z = FH.gather(Y.reshape(N, B * F).contiguous(), self.hn, self.b, self.deg, self.H, FH.BLK, True)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.Wt).view(self.H, self.Eh, B * F)
