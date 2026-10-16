@@ -551,14 +551,14 @@ Differences are relative to the iterate at a relative residual of \(10^{-9}\), w
 
 ### Table ST13. Per-cell cost of conventional condensation and NICE
 
-Four deployment cells, two cut and two uncut (Supplementary Section R1). Cell preparation: geometry preprocessing plus cell setup, moment integration and stiffness assembly, on the GPU for NICE and on the CPU for the conventional route. Condensation: network encoding plus correction setup (smoothing interval and coarse factorisation) for NICE; symbolic analysis and Cholesky factorisation of the interior by MKL PARDISO (16 threads) for the conventional route. Memory, in GiB: for NICE, all GPU memory that the deployed implementation holds for the cell after the correction setup, comprising the network state, the correction and the stiffness kept as element moments (the deployed implementation does not assemble the cell stiffness matrix; the element moments take 0.03–0.09 GiB per cell); for the conventional route, PARDISO's factorisation storage (iparm(17)), with the assembled cell stiffness matrix held in addition.
+Four deployment cells, two cut and two uncut (Supplementary Section R1). Both routes read the generated cell geometry; geometry generation is not timed (as in Table 5). Cell preparation: cell setup and element moments, on the GPU, for NICE; cell setup, moment integration and stiffness assembly, on the CPU, for the conventional route. Condensation: network input, encoding and correction setup (smoothing interval and coarse factorisation) for NICE; symbolic analysis and Cholesky factorisation of the interior by MKL PARDISO (16 threads) for the conventional route. The NICE times exclude the one-time compilation and initialisation of the GPU kernels at the start of a process (about 1.5 s). Memory, in GiB: for NICE, all GPU memory that the deployed implementation holds for the cell after the correction setup, comprising the network state, the correction and the stiffness kept as element moments (the deployed implementation does not assemble the cell stiffness matrix; the element moments take 0.03–0.09 GiB per cell); for the conventional route, PARDISO's factorisation storage (iparm(17)), with the assembled cell stiffness matrix held in addition.
 
 | Cell | DOFs / retained | Cell preparation (s): NICE / conventional | Condensation (s): NICE / conventional | Memory (GiB): NICE state / PARDISO factor |
 | --- | --- | --- | --- | --- |
-| G1 (cut) | 177,507 / 24,636 | 5.3 / 27.3 | 0.72 / 10.5 | 0.48 / 2.89 |
-| G2 (cut) | 67,224 / 18,858 | 3.0 / 10.9 | 0.16 / 1.9 | 0.19 / 0.60 |
-| G3 (uncut) | 289,494 / 17,508 | 6.1 / 45.0 | 0.78 / 27.3 | 0.83 / 6.18 |
-| G4 (uncut) | 404,148 / 25,920 | 6.5 / 47.0 | 1.09 / 48.9 | 1.08 / 9.42 |
+| G1 (cut) | 177,507 / 24,636 | 0.46 / 27.3 | 0.29 / 10.5 | 0.48 / 2.89 |
+| G2 (cut) | 67,224 / 18,858 | 0.27 / 10.9 | 0.13 / 1.9 | 0.19 / 0.60 |
+| G3 (uncut) | 289,494 / 17,508 | 0.58 / 45.0 | 0.52 / 27.3 | 0.83 / 6.18 |
+| G4 (uncut) | 404,148 / 25,920 | 0.68 / 47.0 | 0.76 / 48.9 | 1.08 / 9.42 |
 
 ## Supplementary Note S4. Global preconditioning, two-cell configurations and residual records
 

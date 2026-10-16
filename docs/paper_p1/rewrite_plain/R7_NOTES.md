@@ -287,7 +287,15 @@ and EN units; the EN abstract stays at 249 words.
   layers, assembled K, no coarse factor). The K column (assembled stiffness in GPU storage) is removed: the deployed
   implementation keeps the stiffness as element moments (0.03-0.09 GiB per cell, included in the state). 5.9: "0.19 to
   1.08 GiB".
-- Open: ST13's NICE time columns still come from the older path (cell preparation includes 1.6-2.2 s of geometry
-  preprocessing that the conventional column excludes); decision pending.
+- ST13's NICE time columns (author's decision, same day): the old values came from an earlier benchmark of the
+  non-deployed path (bench_A3_cells.jsonl + time_setup.json; cell preparation = 1.6-2.2 s geometry preprocessing, which
+  the conventional column excludes, + setup with the global sparsity pattern, moments and CSR assembly; condensation =
+  network input, encoding with CSR layers, correction setup). Replaced by the deployed implementation measured in the
+  same run as the memory column (st13_deploy_mem.json, after the kernels are compiled): cell preparation (setup +
+  element moments) 0.46 / 0.27 / 0.58 / 0.68 s, condensation (network input + encoding + correction setup) 0.29 /
+  0.13 / 0.52 / 0.76 s. Consistent with Table 5 (front end of the eight-cell lattices 11.8 / 12.7 s; in the lattice
+  runs the first cell takes about 2.7 s with the one-time compilation and initialisation, the others 0.5-1.3 s). ST13
+  caption: geometry generation untimed for both routes (as Table 5); the NICE times exclude the one-time compilation
+  and initialisation (about 1.5 s).
 - CPU-timed content unchanged (EPYC 9654); the EPYC 9754 runs were stopped by the author's decision. PDF and Word not
   rebuilt.
