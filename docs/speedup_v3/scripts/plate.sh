@@ -12,14 +12,14 @@ D=/root/autodl-tmp/CUTFEM_DEPENDENCIES_20260924/root/autodl-tmp/CUTFEM_INGEST_R3
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$D PYTHONPATH=$PYTHONPATH:/root/autodl-tmp/pylib_cpu
 export OPL_GP_CACHE=0 OPL_CONV_FP32=1 OPL_STREAM_PACK=1
 unset OPL_MODEL_ARGS_OVERRIDE FUSED_HYPER SENS_REASSOC LAT_CPU OPL_T5_SKIP; export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export OPL_PACKETS_EXTRA=$R/packets:$P/S4/packets:$P/S3/packets:$SC/plate_packets
+export OPL_PACKETS_EXTRA=$R/packets:$P/S4/packets:$P/S3/packets:$SC/plate_packets:$W/plate_packets
 export OPL_BENCH_TMP=$W/bench_tmp
 for kv in "$@"; do export "$kv"; done
 export SRC=${SRC:-$P/src_v3}
 cd $SRC
 nvidia-smi --query-gpu=timestamp,memory.used --format=csv,noheader,nounits -lms 100 > $R/gpu.csv 2>&1 & SMP=$!
 echo "$(date +%F_%T) START plate $TAG S$N src=$SRC env=[$*]" >> $W/status.txt
-timeout ${TMO:-14400} $PY -u $W/scripts/v3_plate.py $R/census.json $R $SC/layouts/plateS$N.json --model A3=$P/S1/V2/A3_2grid/best.pt \
+timeout ${TMO:-14400} $PY -u $W/scripts/v3_plate.py $R/census.json $R ${LAYOUT:-$SC/layouts/plateS$N.json} --model A3=$P/S1/V2/A3_2grid/best.pt \
   --clamp x,min --load x,max --load-dir y --vfrac 0.8 --maxit 60 --stop-after 1 --fast --table5 --workers 14 --sens ad --ad-batch 2048 \
   --resident-gb ${RGB:-4} --warm --body-retry 6 $EXTRA_ARGS > $R/run.log 2>&1 &
 TPID=$!; sleep 2; PID=$(pgrep -P $TPID | head -1)

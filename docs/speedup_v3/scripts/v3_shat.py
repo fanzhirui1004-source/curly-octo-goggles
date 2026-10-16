@@ -106,9 +106,9 @@ def main():
         ka = p.key_averages()
         dev_rows = [e for e in ka if e.device_type == torch.autograd.DeviceType.CUDA]
         r['profile_B'] = B
-        r['kernel_ms_per_shat'] = sum(e.self_device_time_total for e in ka) / 3000
+        r['kernel_ms_per_shat'] = sum(e.self_device_time_total for e in dev_rows) / 3000
         r['launches_per_shat'] = sum(e.count for e in dev_rows) // 3
-        rows = sorted(((e.key, e.self_device_time_total / 3000, e.count // 3) for e in ka if e.self_device_time_total > 0), key=lambda z: -z[1])
+        rows = sorted(((e.key, e.self_device_time_total / 3000, e.count // 3) for e in dev_rows if e.self_device_time_total > 0), key=lambda z: -z[1])
         r['top_kernels'] = [dict(name=k[:100], ms=round(c, 3), calls=n) for k, c, n in rows[:40]]
         ops = sorted(((e.key, e.cpu_time_total / 3000, e.count // 3) for e in ka if e.device_type == torch.autograd.DeviceType.CPU), key=lambda z: -z[2])
         r['top_ops_by_count'] = [dict(name=k[:80], cpu_ms=round(c, 3), calls=n) for k, c, n in ops[:40]]
