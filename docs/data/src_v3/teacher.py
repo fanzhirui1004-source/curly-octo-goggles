@@ -19,8 +19,12 @@ from fractions import Fraction
 import numpy as np
 import torch
 import fastidx as FI
+import fullke as FK
 
 HERE = Path(__file__).resolve().parent
+if os.environ.get('OPL_V3_SWITCHES', '1') == '1':                      # src_v3 defaults: the packed element products
+    os.environ.setdefault('OPL_KE_SYMV', '1')                          # (float32 correction and float64 K), verified on
+    os.environ.setdefault('OPL_KE_SYMV64', '1')                        # hlat222 (docs/speedup_v3/CHANGES_CN.md)
 sys.path.insert(0, str(HERE))
 dev, dt = torch.device(os.environ.get('OPL_DEV', 'cuda:0')), torch.float64   # OPL_DEV=cpu: local unit tests (no factorizations)
 ROOT = Path('/root/autodl-tmp/CUTFEM_FRESH_GP_20260921')
@@ -187,6 +191,7 @@ class _Kfp32:
         f32 = torch.float32
         self.C, self.ke_moments, self.gf = C, ke_moments, None
         self._ke_tmp, self._kp_tmp, self._hold = None, None, 0
+        self._kp_part = self._ke_part = self._dp_part = None                # src_v3 (fullke): held partial elements
         self.symv = ke_moments and os.environ.get('OPL_KE_SYMV') == '1'      # packed upper Ke, fused Triton product
         if ke_moments and SLIM:                                             # src_v3: shared float32 T; the float32
             self.Ke, self.M32 = None, None                                      # moments are rounded per chunk (same values)
@@ -225,6 +230,8 @@ class _Kfp32:
         else:
             y = self.G @ x32
         ch = C._lean_chunk
+        if self._v3(x):
+            return self._mm_v3(x32, y).to(x.dtype)
         if self.symv and not (torch.is_grad_enabled() and x.requires_grad):
             import ke_symv as KS
             y, x32 = y.contiguous(), x32.contiguous()
@@ -247,14 +254,64 @@ class _Kfp32:
             y.index_add_(0, de.reshape(-1), torch.bmm(Ke, xe).reshape(-1, x.shape[1]))
         return y.to(x.dtype)
 
+    def _v3(self, x):
+        """src_v3 element products (fullke): deployment cells with element matrices from the moments."""
+        return FK.ON32 and self.ke_moments and getattr(self.C, '_deploy', False) and x.dim() == 2 \
+            and not (torch.is_grad_enabled() and x.requires_grad)
+
+    def _mm_v3(self, x32, y):
+        """y += K_elements x32 (float32): one GEMM for the full elements, the partial ones per element (held or per
+        chunk; packed Triton product with OPL_KE_SYMV)."""
+        C, f32 = self.C, torch.float32
+        fk = FK.setup(C)['f32']
+        y, x32 = y.contiguous(), x32.contiguous()
+        FK.full_product(fk, x32, y)
+        part, npart, ch, B = fk['part'], fk['n_part'], C._lean_chunk, x32.shape[1]
+        if self.symv:
+            import ke_symv as KS
+            if self._kp_part is not None:
+                return KS.symv_(y, self._kp_part, self._dp_part, x32)
+            for lo in range(0, npart, ch):
+                pi = part[lo:lo + ch]
+                KS.symv_(y, C.M[pi].to(f32) @ self.Tup32, C.dofs[pi], x32)
+            return y
+        for j, lo in enumerate(range(0, npart, ch)):
+            if self._ke_part is not None:
+                de, Ke = self._dp_part[lo:lo + ch], self._ke_part[j]
+            else:
+                pi = part[lo:lo + ch]
+                de, Ke = C.dofs[pi], (C.M[pi].to(f32) @ self.Tf32).reshape(-1, 81, 81)
+            y.index_add_(0, de.reshape(-1), torch.bmm(Ke, FI.rows(x32, de)).reshape(-1, B))
+        return y
+
     def hold(self):
         """Context: with ke_moments and OPL_FASTIDX=1, the float32 element matrices are formed once (same chunks, same
-        products) and reused by every product inside the block, then released."""
+        products) and reused by every product inside the block, then released.
+        src_v3 (fullke): only the partial elements' matrices are held (the full ones share one)."""
         import contextlib
         me = self
 
         @contextlib.contextmanager
         def ctx():
+            if FK.ON32 and me.ke_moments and getattr(me.C, '_deploy', False) and me._hold == 0:
+                C = me.C
+                fk = FK.setup(C)['f32']
+                part, npart, ch = fk['part'], fk['n_part'], C._lean_chunk
+                me._dp_part = C.dofs[part]
+                Mp = C.M[part].to(torch.float32)
+                if me.symv:
+                    me._kp_part = Mp @ me.Tup32
+                elif FI.ON:
+                    me._ke_part = [(Mp[lo:lo + ch] @ me.Tf32).reshape(-1, 81, 81) for lo in range(0, npart, ch)]
+                del Mp
+                me._hold += 1
+                try:
+                    yield
+                finally:
+                    me._hold -= 1
+                    if me._hold == 0:
+                        me._kp_part = me._ke_part = me._dp_part = None
+                return
             E = len(me.C.M)
             if me.symv and me._hold == 0:
                 ch = me.C._lean_chunk
@@ -488,7 +545,8 @@ class Cell:
         self.taus = list(taus)
         self._free()
         for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cAi32', '_cV32', '_cV32t', '_cL32_keep', '_Kc', 'GF64', 'M', 'dM',
-                  '_kpp_cache', 'diag3', '_c_mf', '_c_nc', '_c_invd', '_cAp32', '_cLd32', '_c_inv_err', '_c_tri_err'):   # + src_v3 coarse                                       # state of the previous design (if any)
+                  '_kpp_cache', 'diag3', '_c_mf', '_c_nc', '_c_invd', '_cAp32', '_cLd32', '_c_inv_err', '_c_tri_err',
+                  '_fk', '_k64_part', '_dp64_part'):                         # + src_v3 coarse, fullke                                       # state of the previous design (if any)
             setattr(self, k, None)
         gc.collect(); torch.cuda.empty_cache()
         self.M = self.moments(taus)
@@ -558,6 +616,8 @@ class Cell:
     def _Kx_lean(self, x):
         if getattr(self, '_deploy', False):
             y = self.G64 @ x if self.G64 is not None else self.GF64.matvec(x, torch.zeros_like(x)).mul_(self.gamma)
+            if FK.ON and x.dim() == 2 and not (torch.is_grad_enabled() and x.requires_grad):
+                return self._kx64_v3(x, y)
             Tf = self.Tm.reshape(125, 81 * 81)
             if os.environ.get('OPL_KE_SYMV64') == '1' and x.dim() == 2 and not (torch.is_grad_enabled() and x.requires_grad):
                 import ke_symv as KS                                           # packed upper K_e, fused Triton product
@@ -577,6 +637,33 @@ class Cell:
             de = self.dofs[lo:lo + self._lean_chunk]
             ye = torch.bmm(self.Ke[lo:lo + self._lean_chunk], FI.rows(x, de))
             y.index_add_(0, de.reshape(-1), ye.reshape(-1, x.shape[1]))
+        return y
+
+    def _kx64_v3(self, x, y):
+        """src_v3 (fullke): y += K_elements x in float64: one GEMM for the full elements, the partial ones per element
+        (packed Triton product with OPL_KE_SYMV64, else the mirrored upper-triangle GEMM and bmm), held by hold64()."""
+        fk = FK.setup(self)['f64']
+        y, xc = y.contiguous(), x.contiguous()
+        FK.full_product(fk, xc, y)
+        part, npart, ch, B = fk['part'], fk['n_part'], self._lean_chunk, x.shape[1]
+        held, dp = getattr(self, '_k64_part', None), getattr(self, '_dp64_part', None)
+        if os.environ.get('OPL_KE_SYMV64') == '1':
+            import ke_symv as KS
+            for j, lo in enumerate(range(0, npart, ch)):
+                if held is not None:
+                    KS.symv_(y, held[j], dp[lo:lo + ch], xc)
+                else:
+                    pi = part[lo:lo + ch]
+                    KS.symv_(y, self.M[pi] @ self.Tm_up, self.dofs[pi], xc)
+            return y
+        sym = shared(('sym81', str(self.M.device)), lambda: _sym81(self.M.device))
+        for j, lo in enumerate(range(0, npart, ch)):
+            if held is not None:
+                de, Ke = dp[lo:lo + ch], held[j]
+            else:
+                pi = part[lo:lo + ch]
+                de, Ke = self.dofs[pi], (self.M[pi] @ self.Tm_up)[:, sym].reshape(-1, 81, 81)
+            y.index_add_(0, de.reshape(-1), torch.bmm(Ke, FI.rows(xc, de)).reshape(-1, B))
         return y
 
     def _ke64(self, lo, hi):
@@ -607,7 +694,21 @@ class Cell:
         @contextlib.contextmanager
         def ctx():
             own = FI.ON and getattr(me, '_deploy', False) and getattr(me, '_ke64_tmp', None) is None \
-                and getattr(me, '_kp64_tmp', None) is None
+                and getattr(me, '_kp64_tmp', None) is None and getattr(me, '_k64_part', None) is None
+            if own and FK.ON:                                               # src_v3 (fullke): partial elements only
+                fk = FK.setup(me)['f64']
+                part, npart, ch = fk['part'], fk['n_part'], me._lean_chunk
+                me._dp64_part = me.dofs[part]
+                if os.environ.get('OPL_KE_SYMV64') == '1':
+                    me._k64_part = [me.M[part[lo:lo + ch]] @ me.Tm_up for lo in range(0, npart, ch)]
+                else:
+                    sym = shared(('sym81', str(me.M.device)), lambda: _sym81(me.M.device))
+                    me._k64_part = [(me.M[part[lo:lo + ch]] @ me.Tm_up)[:, sym].reshape(-1, 81, 81) for lo in range(0, npart, ch)]
+                try:
+                    yield
+                finally:
+                    me._k64_part = me._dp64_part = None
+                return
             if own:
                 Tf, ch = me.Tm.reshape(125, 81 * 81), me._lean_chunk
                 if os.environ.get('OPL_KE_SYMV64') == '1':                      # packed upper triangles only

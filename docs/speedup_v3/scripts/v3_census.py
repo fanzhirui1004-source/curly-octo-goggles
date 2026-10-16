@@ -194,6 +194,8 @@ def sc_init(self, lat, ops, kind, rcond=1e-10, batch=True):
         v = getattr(self, nm, None)
         if v is not None:
             b[nm] = sum(x.numel() * x.element_size() for x in parts(v)) / GiB
+    if getattr(self, 'azb', None):
+        b['azb'] = sum(sum(x.numel() * x.element_size() for x in blk) for blk in self.azb) / GiB
     REC['coarse'].append(dict(seconds=time.perf_counter() - t, bytes_GiB=b, desc=self.desc, setup=self.setup))
 
 

@@ -237,6 +237,13 @@ def _csr(r, c, v, shape):
     return torch.sparse_coo_tensor(torch.stack([r, c]), v, shape).coalesce().to_sparse_csr()
 
 
+def _csr32(A):
+    return torch.sparse_csr_tensor(A.crow_indices().int(), A.col_indices().int(), A.values(), A.shape)
+
+
+BLOCKS = os.environ.get('OPL_COARSE_BLOCKS', '1') == '1'                     # src_v3: SparseCoarse A Z per cell
+
+
 class SparseCoarse:
     """Coarse with the same Q = Z A_c^+ Z^T for large lattices (OPL_COARSE_SPARSE=1; q1* spaces): Z and A Z are kept
     sparse (Z: the hats of a DOF's own cell corners only; A Z: the ports of the <= 8 cells around a vertex) and
@@ -277,6 +284,8 @@ class SparseCoarse:
             r, c, v = r[ok], newc[c[ok]], v[ok]
             nc = int(keep.sum())
             self.Z = _csr(r, c, v, (n, nc)); self.ZT = _csr(c, r, v, (nc, n))
+            if BLOCKS:                                                       # src_v3: int32 index arrays
+                self.Z, self.ZT = _csr32(self.Z), _csr32(self.ZT)
             del r, c, v
         self.desc = dict(vertices=len(verts), kind=kind, columns=nc, dropped_zero=int((~keep).sum()), sparse=True,
                          Z_nnz=int(self.Z.values().numel()))
@@ -299,17 +308,26 @@ class SparseCoarse:
             outs = lat.apply_blocks(ops, blocks, batch)
             Ac = torch.zeros((nc, nc), dtype=dt, device=dev)
             AR, AC, AV = [], [], []
+            self.azb = [] if BLOCKS else None
             for i, (q, y, J) in enumerate(zip(blocks, outs, Js)):
                 kp, fk = lat._keep[i]
                 zb, yb = q[kp], y[kp].to(dt)
                 Ac.index_put_((J[:, None], J[None, :]), zb.T @ yb, accumulate=True)
+                if BLOCKS:                                                   # src_v3: (A Z) as per-cell dense blocks
+                    self.azb.append((fk, J, yb.contiguous()))
+                    continue
                 AR.append(fk[:, None].expand(-1, len(J)).reshape(-1)); AC.append(J[None, :].expand(len(fk), -1).reshape(-1))
                 AV.append(yb.reshape(-1))
             del blocks, outs
-            ar, ac, av = torch.cat(AR), torch.cat(AC), torch.cat(AV)
-            del AR, AC, AV
-            self.AZ = _csr(ar, ac, av, (n, nc)); self.AZT = _csr(ac, ar, av, (nc, n))
-            del ar, ac, av
+            if BLOCKS:
+                self.AZ = self.AZT = None
+                az_nnz = sum(int(Y.numel()) for _, _, Y in self.azb)
+            else:
+                ar, ac, av = torch.cat(AR), torch.cat(AC), torch.cat(AV)
+                del AR, AC, AV
+                self.AZ = _csr(ar, ac, av, (n, nc)); self.AZT = _csr(ac, ar, av, (nc, n))
+                del ar, ac, av
+                az_nnz = int(self.AZ.values().numel())
         self.setup['AZ_s'] = t.s
         with _T(dev) as t:
             asym = float((Ac - Ac.T).norm() / Ac.norm())
@@ -321,7 +339,7 @@ class SparseCoarse:
             self.TT = self.T.T.contiguous()
         self.setup['factor_s'] = t.s
         self.desc.update(rank=int(ok.sum()), Ac_asym=asym, Ac_cond_scaled=float(lam.max() / lam[ok].min()),
-                         negative_eigs=int((lam < 0).sum()), AZ_nnz=int(self.AZ.values().numel()))
+                         negative_eigs=int((lam < 0).sum()), AZ_nnz=az_nnz, AZ_blocks=BLOCKS)
 
     def WT(self, R):
         return self.TT @ torch.sparse.mm(self.ZT, R)
@@ -330,9 +348,20 @@ class SparseCoarse:
         return torch.sparse.mm(self.Z, self.T @ a)
 
     def AWm(self, a):
+        if self.azb is not None:                                             # sum over cells of (A Z)_i (T a)[J_i]
+            ta = self.T @ a
+            out = torch.zeros((self.Z.shape[0], a.shape[1]), dtype=ta.dtype, device=ta.device)
+            for fk, J, Y in self.azb:
+                out.index_add_(0, fk, Y @ ta[J])
+            return out
         return torch.sparse.mm(self.AZ, self.T @ a)
 
     def AWT(self, y):
+        if self.azb is not None:                                             # T^T sum over cells of (A Z)_i^T y[fk_i]
+            z = torch.zeros((self.T.shape[0], y.shape[1]), dtype=y.dtype, device=y.device)
+            for fk, J, Y in self.azb:
+                z.index_add_(0, J, Y.T @ y[fk])
+            return self.TT @ z
         return self.TT @ torch.sparse.mm(self.AZT, y)
 
     def Q(self, R):
@@ -342,7 +371,7 @@ class SparseCoarse:
         return Zr - self.Wm(self.AWT(Zr))
 
     def free(self):
-        self.Z = self.ZT = self.AZ = self.AZT = self.T = self.TT = None
+        self.Z = self.ZT = self.AZ = self.AZT = self.T = self.TT = self.azb = None
 
 
 # ---------------------------------------------------------------------- preconditioners

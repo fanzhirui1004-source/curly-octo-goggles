@@ -51,7 +51,7 @@ def main():
              env={k: v for k, v in os.environ.items() if k.startswith('OPL_')})
     Bs = [int(x) for x in a.B.split(',')]
     gen = torch.Generator(device=dev).manual_seed(0)
-    Q = torch.randn((C.np_, max(Bs)), dtype=dt, device=dev, generator=gen)
+    Q = torch.randn((C.np_, max(32, max(Bs))), dtype=dt, device=dev, generator=gen)   # fixed directions for every B list
     Q = Q - C.Q @ (C.Q.T @ Q)
     r['ms'] = {}
     outs = {}
