@@ -156,7 +156,8 @@ def cell_census():
         rec['cell_host_bytes'] = sum(v for k, v in cn.items() if '_kpp_cache' not in k)
         rec['cell_host_by_attr_MiB'] = top({k: v for k, v in cn.items() if '_kpp_cache' not in k}, 12)
         rec.update(nb=int(C.nb), np=int(C.np_), ni=int(C.ni), elements=int(len(C.cells)),
-                   nc=int(C._cV32.shape[1]) if getattr(C, '_cV32', None) is not None else None)
+                   nc=int(C._cV32.shape[1]) if getattr(C, '_cV32', None) is not None else getattr(C, '_c_nc', None),
+                   inv_err=getattr(C, '_c_inv_err', None), tri_err=getattr(C, '_c_tri_err', None))
         tot['kpp_host'] += rec['kpp_host_bytes']; tot['nd_host'] += rec['nd_host_bytes']; tot['cell_np'] += rec['cell_host_bytes']
         REC['cells'].append(rec)
     REC['cell_totals_GiB'] = {k: v / GiB for k, v in tot.items()}

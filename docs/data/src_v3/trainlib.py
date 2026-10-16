@@ -337,7 +337,8 @@ def coarse_setup(C, space, reach=4, chunk=None):
         Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
         with (C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()):
             A = coarse_galerkin_tpl(C, space, vc, slot, nc)
-        return _coarse_finish(C, space, A, Vt, dvc, t0)
+        _coarse_finish(C, space, A, Vt, dvc, t0)
+        return _coarse_mf_meta(C, vc, slot, nc, ne)
     h = (2 * C.n) / ne
     R = 2 + int(math.ceil(reach / h))
     s = 2 * R + 1
@@ -368,7 +369,8 @@ def coarse_setup(C, space, reach=4, chunk=None):
         A[r0:r1] = torch.where(near, Y[r0:r1][:, cix], torch.zeros((), dtype=dt, device=dvc))
         del near
     del Y
-    return _coarse_finish(C, space, A, Vt, dvc, t0)
+    _coarse_finish(C, space, A, Vt, dvc, t0)
+    return _coarse_mf_meta(C, vc, slot, nc, ne)
 
 
 def _coarse_finish(C, space, A, Vt, dvc, t0):
@@ -381,6 +383,7 @@ def _coarse_finish(C, space, A, Vt, dvc, t0):
         torch.cuda.empty_cache()
     dcol = (1 / d)[Vt.indices()[1]]
     C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, Vt.shape, dtype=dt, device=dvc).coalesce()
+    C._c_invd = (1 / d) if _coarse_pack_on(C) else None
     C._cL = L
     C._c_space, C._c_shift, C._c_seconds = space, shift, time.perf_counter() - t0
 
@@ -393,9 +396,65 @@ def coarse_correct(C, x):
     return xx.index_add(0, C.I, c)
 
 
+def _coarse_pack_on(C):
+    """src_v3 (OPL_COARSE_PACK=1, default): deployment cells with the float32 coarse solve keep the coarse inverse as
+    packed symmetric tiles (symtile) and the prolongation matrix-free (coarse_mf)."""
+    return (os.environ.get('OPL_COARSE_PACK', '1') == '1' and os.environ.get('OPL_COARSE_FP32') == '1'
+            and getattr(C, '_deploy', False))
+
+
+def _coarse_mf_meta(C, vc, slot, nc, ne):
+    if getattr(C, '_c_invd', None) is not None:
+        import coarse_mf as CM
+        C._c_mf = CM.meta(C, vc, slot, nc, C._c_invd, ne)
+        C._c_nc = int(nc)
+        C._c_invd = None
+
+
+COARSE_INV_TOL = float(os.environ.get('OPL_COARSE_INV_TOL', '1e-4'))
+
+
+def _coarse_pack(C):
+    """src_v3: float32 coarse solve from the fresh float64 factor C._cL: the explicit inverse of the float32 factor
+    (as OPL_COARSE_INV) stored as packed symmetric tiles (half the dense memory, one Triton product per solve) when its
+    action agrees with the float64 solve to OPL_COARSE_INV_TOL (default 1e-4) on seeded directions; otherwise (a nearly
+    singular coarse matrix) the dense float32 factor and two triangular solves (src_v2 default). The float64 factor and
+    prolongation are released (deployment memory)."""
+    import symtile as ST
+    f32 = torch.float32
+    L64 = C._cL
+    L32 = L64.to(f32)
+    Ai = torch.cholesky_inverse(L32)
+    g = torch.Generator(device=L64.device); g.manual_seed(0)
+    X = torch.randn((L64.shape[0], 4), dtype=f32, device=L64.device, generator=g)
+    y64 = torch.cholesky_solve(X.to(dt), L64)
+    err_inv = float((Ai.to(dt) @ X.to(dt) - y64).norm() / y64.norm())
+    err_tri = float((torch.cholesky_solve(X, L32).to(dt) - y64).norm() / y64.norm())
+    C._c_inv_err, C._c_tri_err = err_inv, err_tri
+    C._cL = C._cV = None
+    if err_inv <= COARSE_INV_TOL:
+        C._cAp32, C._cLd32 = ST.pack(Ai), None
+        del Ai, L32
+    else:
+        C._cAp32, C._cLd32 = None, L32
+        del Ai
+    C._cL32 = C._cV32 = C._cV32t = C._cAi32 = None
+    if L64.is_cuda:
+        torch.cuda.empty_cache()
+
+
 def _coarse_solve(C, r):
     """V A_c^-1 V^T r (interior vectors); float32 factor and prolongation when OPL_COARSE_FP32=1 and the cell has a
-    float32 correction stiffness (teacher.Cell.lean(correction_fp32=True)); otherwise float64 as before."""
+    float32 correction stiffness (teacher.Cell.lean(correction_fp32=True)); otherwise float64 as before.
+    src_v3 (OPL_COARSE_PACK=1): packed symmetric inverse and matrix-free prolongation (_coarse_pack, coarse_mf)."""
+    if getattr(C, '_c_mf', None) is not None and getattr(C, '_Kc', None) is not None:
+        if getattr(C, '_cL', None) is not None:                             # a fresh float64 factor from coarse_setup
+            _coarse_pack(C)
+        import coarse_mf as CM
+        import symtile as ST
+        z = CM.restrict(C, r.to(torch.float32))
+        s = ST.matmul(C._cAp32, C._c_nc, z) if C._cAp32 is not None else torch.cholesky_solve(z, C._cLd32)
+        return CM.prolong(C, s).to(r.dtype)
     if os.environ.get('OPL_COARSE_FP32') == '1' and getattr(C, '_Kc', None) is not None:
         if getattr(C, '_cL', None) is not None:                             # a fresh float64 factor from coarse_setup
             C._cL32, C._cV32, C._cV32t = C._cL.to(torch.float32), C._cV.to(torch.float32), \
