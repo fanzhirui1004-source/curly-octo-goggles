@@ -23,7 +23,8 @@ import numpy as np
 import contextlib
 import torch
 
-MIN_BYTES = 1 << 20
+MIN_BYTES = int(os.environ.get('OPL_STREAM_MIN', '0'))                # src_v3: 0 (src_v2: 1 MiB; smaller tensors stayed on the
+                                                                        # device for every streamed cell, ~15-30 MB per cell)
 STORE_FP32 = os.environ.get('OPL_STREAM_FP32', '0') == '1'
 STORE_PACK = os.environ.get('OPL_STREAM_PACK', '0') == '1'
 PACK_MIN = 1 << 24                                                      # square matrices of at least 16 MB
@@ -46,12 +47,16 @@ def _pack_tril(x, out):
 
 
 def _unpack_tril(seg, n, sym):
-    """Inverse of _pack_tril on seg's device; sym: mirror the strict lower triangle (symmetric matrix)."""
+    """Inverse of _pack_tril on seg's device; sym: mirror the strict lower triangle (symmetric matrix). Integer scatter
+    indices (src_v3; src_v2 assigned through a boolean mask, which synchronises the host with the copy stream)."""
     y = torch.zeros((n, n), dtype=seg.dtype, device=seg.device)
-    pos = 0
+    pos, yf, d = 0, y.view(-1), seg.device
     for r0, r1, cnt in _tril_blocks(n):
-        m = torch.arange(r1, device=seg.device)[None, :] <= torch.arange(r0, r1, device=seg.device)[:, None]
-        y[r0:r1, :r1][m] = seg[pos:pos + cnt]
+        r = torch.arange(r0, r1, device=d)
+        rr = torch.repeat_interleave(r, r + 1, output_size=cnt)
+        start = (r * (r + 1)) // 2 - (r0 * (r0 + 1)) // 2
+        cc = torch.arange(cnt, device=d) - torch.repeat_interleave(start, r + 1, output_size=cnt)
+        yf[rr * n + cc] = seg[pos:pos + cnt]
         pos += cnt
     if sym:
         y += torch.tril(y, -1).T
@@ -134,7 +139,7 @@ def _walk(root, handles, seen):
             items = list(vars(o).items())
         for k, v in items:
             if torch.is_tensor(v):
-                if v.is_cuda and _nbytes(v) >= MIN_BYTES:
+                if v.is_cuda and _nbytes(v) >= MIN_BYTES and not getattr(v, '_opl_shared', False):
                     handles.append((o, k, v))
             elif _enter_obj(v):
                 stack.append(v)
@@ -315,6 +320,20 @@ class StreamedOp:
         self._unregister()
         self.pinned, self.slots, self.buf = {}, [], None
         self.nxt = self.op = self.C = None                              # the prefetch ring must not keep released ops alive
+
+
+def drop(op):
+    """Forget a StreamedOp whose cells are discarded (src_v3): unregister and free the pinned buffer without restoring the
+    slots (release() first copies every part back into new host tensors, a transient host peak of the whole state)."""
+    if op.depth:
+        raise RuntimeError('drop inside active()')
+    for o, k, s in op.slots:
+        _OWNED.pop((id(o), k), None)
+    op.loaded = op.dbuf = None
+    _LIVE.discard(op)
+    op._unregister()
+    op.pinned, op.slots, op.buf = {}, [], None
+    op.nxt = op.op = op.C = None
 
 
 def link(ops):

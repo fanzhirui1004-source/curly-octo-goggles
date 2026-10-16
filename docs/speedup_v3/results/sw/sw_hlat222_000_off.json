@@ -1,0 +1,43 @@
+{
+ "case": "hlat222_000",
+ "nb": 328608,
+ "ni": 308424,
+ "ports": 20184,
+ "elements": 11463,
+ "setup_s": 2.8740779291838408,
+ "env": {
+  "OPL_COARSE_PIVOT_FLOOR": "1e-7",
+  "OPL_BENCH_TMP": "/root/autodl-tmp/OPL/V3W/bench_tmp",
+  "OPL_CONV_FP32": "1",
+  "OPL_GP_CACHE": "0",
+  "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/V3W/plate/base_S24/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+  "OPL_TAILT_FUSED": "1",
+  "OPL_COARSE_FP32": "1",
+  "OPL_COARSE_ELEM": "1",
+  "OPL_TET_TRITON": "1"
+ },
+ "ms": {
+  "1": 40.004562586545944,
+  "3": 72.57452234625816,
+  "16": 299.6490780264139,
+  "32": 588.124824501574
+ },
+ "peak_extra_MiB": {
+  "1": 805.91162109375,
+  "3": 1111.63330078125,
+  "16": 1888.72802734375,
+  "32": 3490.556640625
+ },
+ "vs_ref": {
+  "1": 0.0,
+  "3": 0.0,
+  "16": 0.0,
+  "32": 0.0
+ },
+ "vs_ref_norm": {
+  "1": 0.0,
+  "3": 0.0,
+  "16": 0.0,
+  "32": 0.0
+ }
+}

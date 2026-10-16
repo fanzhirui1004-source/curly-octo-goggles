@@ -1,0 +1,44 @@
+{
+ "case": "hlat222_000",
+ "nb": 328608,
+ "ni": 308424,
+ "ports": 20184,
+ "elements": 11463,
+ "setup_s": 2.922323822043836,
+ "env": {
+  "OPL_COARSE_PIVOT_FLOOR": "1e-7",
+  "OPL_BENCH_TMP": "/root/autodl-tmp/OPL/V3W/bench_tmp",
+  "OPL_CONV_FP32": "1",
+  "OPL_KE_SYMV64": "1",
+  "OPL_GP_CACHE": "0",
+  "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/V3W/plate/base_S24/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+  "OPL_TAILT_FUSED": "1",
+  "OPL_COARSE_FP32": "1",
+  "OPL_COARSE_ELEM": "1",
+  "OPL_TET_TRITON": "1"
+ },
+ "ms": {
+  "1": 39.671748876571655,
+  "3": 68.68977155536413,
+  "16": 297.53127079457045,
+  "32": 587.9503851756454
+ },
+ "peak_extra_MiB": {
+  "1": 625.15673828125,
+  "3": 940.5859375,
+  "16": 1888.72802734375,
+  "32": 3490.556640625
+ },
+ "vs_ref": {
+  "1": 7.879707751095161e-08,
+  "3": 7.879707751095161e-08,
+  "16": 8.84257892753312e-08,
+  "32": 8.84257892753312e-08
+ },
+ "vs_ref_norm": {
+  "1": 3.5295213013012786e-08,
+  "3": 3.641527209759833e-08,
+  "16": 3.675663967246555e-08,
+  "32": 3.762427648543808e-08
+ }
+}

@@ -57,13 +57,21 @@ class _T:
 
 
 # ---------------------------------------------------------------------- sparse SPD factorisation (fine level)
-class SparseSPD:
-    """Factor of an SPD matrix given by upper triplets on n unknowns (Jacobi scaled first)."""
+SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 
-    def __init__(self, rows, cols, vals, n, backend='auto'):
+
+class SparseSPD:
+    """Factor of an SPD matrix given by upper triplets on n unknowns (Jacobi scaled first).
+    src_v3: rows / cols / vals may also be passed as one list (holder) that this constructor empties, so that the
+    triplets are freed (and the allocator cache returned to the device) before cuDSS plans and factorises."""
+
+    def __init__(self, rows, cols=None, vals=None, n=None, backend='auto'):
+        if cols is None:                                                    # holder list [rows, cols, vals]
+            rows, cols, vals = rows.pop(0), rows.pop(0), rows.pop(0)
         self.n, self.dev = n, vals.device
         dg = torch.zeros(n, dtype=dt, device=vals.device); d = rows == cols
         dg[rows[d]] = vals[d]
+        del d
         if not bool((dg > 0).all()):
             raise ValueError('KPP_DIAGONAL_NOT_POSITIVE')
         self.s = 1 / torch.sqrt(dg)
@@ -87,7 +95,13 @@ class SparseSPD:
             import teacher as TE
             crow = torch.zeros(n + 1, dtype=torch.long, device=vals.device)
             crow[1:] = torch.cumsum(torch.bincount(rows, minlength=n), 0)
-            self.sol = TE.SPDSolver(crow.int(), cols.int(), sv.contiguous(), n)
+            crow, cols = crow.int(), cols.int()
+            if SLIM:                                                        # src_v3: free the triplets and the cache
+                import gc
+                del rows, vals, dg
+                gc.collect(); torch.cuda.empty_cache()
+            self.sol = TE.SPDSolver(crow, cols, sv.contiguous(), n)
+            self.mem_est = getattr(self.sol, 'mem_est', None)
         else:
             import scipy.sparse as sp
             r, c, v = rows.cpu().numpy(), cols.cpu().numpy(), sv.cpu().numpy()
@@ -348,8 +362,15 @@ class Jacobi:
 
 
 class KppFine:
-    def __init__(self, lat, kpp=None, backend='auto'):
+    def __init__(self, lat, kpp=None, backend='auto', holder=None):
         dev = lat.device
+        if holder is not None:                                              # src_v3: triplets owned by this call
+            self.nnz_upper = int(len(holder[2]))
+            with _T(dev) as t2:
+                self.fac = SparseSPD(holder, None, None, lat.nfree, backend)
+            self.setup = dict(kpp_assemble_s=0.0, kpp_factor_s=t2.s)
+            self.backend = self.fac.backend
+            return
         with _T(dev) as t:
             r, c, v = kpp if kpp is not None else lat.assemble_kpp()
         self.nnz_upper = int(len(v))
@@ -483,7 +504,12 @@ class Factory:
             if name == 'jac':
                 self.shared[name] = Jacobi(self.lat, self._kpp())
             elif name == 'kpp':
-                self.shared[name] = KppFine(self.lat, self._kpp(), self.kpp_backend)
+                if SLIM:                                                    # src_v3: the factor takes the triplets over
+                    self._kpp()
+                    holder = list(self.shared.pop('kpp_triplets'))
+                    self.shared[name] = KppFine(self.lat, backend=self.kpp_backend, holder=holder)
+                else:
+                    self.shared[name] = KppFine(self.lat, self._kpp(), self.kpp_backend)
             else:
                 raise ValueError(f'FINE:{name}')
             self.shared[name].setup['kpp_triplets_s'] = self.shared.get('kpp_triplets_s', 0.0)

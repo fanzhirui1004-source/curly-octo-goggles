@@ -43,6 +43,25 @@ def sync():
     torch.cuda.synchronize()
 
 
+# src_v3: per-pattern constants (T_m, its upper triangle, float32 copies, index maps) are the same for every cell with the
+# same node ordering, material and grid; one device copy is shared and flagged so that stream_ops never streams it.
+SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
+_SHARED = {}
+
+
+def shared(key, make):
+    """One tensor per key (cached), flagged as shared (stream_ops leaves it on the device)."""
+    t = _SHARED.get(key)
+    if t is None:
+        t = make()
+        try:
+            t._opl_shared = True
+        except (AttributeError, RuntimeError):
+            pass
+        _SHARED[key] = t
+    return t
+
+
 def rigid_basis(node_ids, n):
     """Orthonormal rigid modes (6 columns) on the given grid nodes, node-major xyz."""
     g = np.stack(np.unravel_index(node_ids, (2 * n + 1,) * 3), 1) / (2 * n)
@@ -77,10 +96,18 @@ class SPDSolver:
         self.n, self.w = n, w
         self.U = torch.sparse_csr_tensor(crow, col, vals, size=(n, n))
         b = torch.zeros((w, n), dtype=self.fdt, device=dev).T
+        if SLIM:
+            torch.cuda.empty_cache()                                       # src_v3: cached blocks back to the device
         self.solver = DirectSolver(self.U, b, options=opts)
         if lib:
             self.solver.plan_config.host_nthreads = threads
         self.solver.plan()
+        try:                                                               # src_v3: cuDSS memory estimates (bytes)
+            me = self.solver.plan_info.memory_estimates
+            self.mem_est = {k: int(me[k]) for k in ('permanent_device_memory', 'peak_device_memory', 'permanent_host_memory',
+                                                    'peak_host_memory', 'hybrid_min_device_memory', 'hybrid_max_device_memory')}
+        except Exception as e:                                             # noqa: BLE001
+            self.mem_est = dict(error=repr(e)[:200])
         self.solver.factorize()
 
     def solve(self, r):
@@ -141,6 +168,14 @@ class GhostFaces:
         return y
 
 
+def _sym81(device):
+    """Flat 81 x 81 index into the packed upper triangle (torch.triu_indices order) of a symmetric matrix."""
+    iu = torch.triu_indices(81, 81, device=device)
+    pos = torch.full((81, 81), -1, dtype=torch.long, device=device)
+    pos[iu[0], iu[1]] = torch.arange(iu.shape[1], device=device)
+    return torch.where(pos >= 0, pos, pos.t()).reshape(-1)
+
+
 class _Kfp32:
     """K x in float32 (element matrices and the symmetric ghost-penalty part, int32 indices) for the equilibrium correction's
     smoothing and coarse residuals (teacher.Cell.lean(correction_fp32=True)); input and output keep their dtype. The
@@ -153,7 +188,12 @@ class _Kfp32:
         self.C, self.ke_moments, self.gf = C, ke_moments, None
         self._ke_tmp, self._kp_tmp, self._hold = None, None, 0
         self.symv = ke_moments and os.environ.get('OPL_KE_SYMV') == '1'      # packed upper Ke, fused Triton product
-        if ke_moments:
+        if ke_moments and SLIM:                                             # src_v3: shared float32 T; the float32
+            self.Ke, self.M32 = None, None                                      # moments are rounded per chunk (same values)
+            self.Tf32 = shared(('Tf32', C.Tm.data_ptr()), lambda: C.Tm.reshape(125, 81 * 81).to(f32))
+            if self.symv:
+                self.Tup32 = shared(('Tup32', C.Tm.data_ptr()), lambda: C.Tm_up.reshape(125, -1).to(f32))
+        elif ke_moments:
             self.Ke, self.M32, self.Tf32 = None, C.M.to(f32), C.Tm.reshape(125, 81 * 81).to(f32)
             if self.symv:
                 self.Tup32 = C.Tm_up.reshape(125, -1).to(f32)
@@ -170,6 +210,10 @@ class _Kfp32:
         self.G = torch.sparse_csr_tensor(Gf.crow_indices().int(), Gf.col_indices().int(), Gf.values().to(f32), Gf.shape)
         self.G64vals = Gf.values()                                              # kept only until lean(deploy=True) takes it
         del Gf
+
+    def m32(self, lo, hi):
+        """float32 moments of element rows lo:hi (stored copy, or rounded from the float64 moments: the same values)."""
+        return self.M32[lo:hi] if self.M32 is not None else self.C.M[lo:hi].to(torch.float32)
 
     def __matmul__(self, x):
         C, f32 = self.C, torch.float32
@@ -188,7 +232,7 @@ class _Kfp32:
                 KS.symv_(y, self._kp_tmp, C.dofs, x32)
             else:
                 for lo in range(0, len(C.dofs), ch):
-                    KS.symv_(y, self.M32[lo:lo + ch] @ self.Tup32, C.dofs[lo:lo + ch], x32)
+                    KS.symv_(y, self.m32(lo, lo + ch) @ self.Tup32, C.dofs[lo:lo + ch], x32)
             return y.to(x.dtype)
         Xe = FI.rows(x32, C.dofs) if FI.ON else None                           # all element vectors at once
         for j, lo in enumerate(range(0, len(C.dofs), ch)):
@@ -198,7 +242,7 @@ class _Kfp32:
             elif self._ke_tmp is not None:
                 Ke = self._ke_tmp[j]
             else:
-                Ke = (self.M32[lo:lo + ch] @ self.Tf32).reshape(-1, 81, 81)
+                Ke = (self.m32(lo, lo + ch) @ self.Tf32).reshape(-1, 81, 81)
             xe = Xe[lo:lo + ch] if Xe is not None else FI.rows(x32, de)
             y.index_add_(0, de.reshape(-1), torch.bmm(Ke, xe).reshape(-1, x.shape[1]))
         return y.to(x.dtype)
@@ -211,14 +255,15 @@ class _Kfp32:
 
         @contextlib.contextmanager
         def ctx():
+            E = len(me.C.M)
             if me.symv and me._hold == 0:
                 ch = me.C._lean_chunk
-                me._kp_tmp = torch.empty((len(me.M32), me.Tup32.shape[1]), dtype=me.M32.dtype, device=me.M32.device)
-                for lo in range(0, len(me.M32), ch):
-                    torch.matmul(me.M32[lo:lo + ch], me.Tup32, out=me._kp_tmp[lo:lo + ch])
+                me._kp_tmp = torch.empty((E, me.Tup32.shape[1]), dtype=torch.float32, device=me.Tup32.device)
+                for lo in range(0, E, ch):
+                    torch.matmul(me.m32(lo, lo + ch), me.Tup32, out=me._kp_tmp[lo:lo + ch])
             elif me.ke_moments and FI.ON and me._hold == 0:
                 ch = me.C._lean_chunk
-                me._ke_tmp = [(me.M32[lo:lo + ch] @ me.Tf32).reshape(-1, 81, 81) for lo in range(0, len(me.M32), ch)]
+                me._ke_tmp = [(me.m32(lo, lo + ch) @ me.Tf32).reshape(-1, 81, 81) for lo in range(0, E, ch)]
             me._hold += 1
             try:
                 yield
@@ -256,10 +301,18 @@ class Cell:
         keys = np.unique(xi.reshape(len(xi), -1), axis=0)
         if len(keys) != 1:
             raise ValueError('ONE_NODE_ORDERING_EXPECTED')
-        self.Tm = torch.tensor(EM.pattern_operators(keys[0].reshape(27, 3), lam, mu, self.n)[1], dtype=dt, device=dev).reshape(125, 81, 81)
-        iu = torch.triu_indices(81, 81, device=dev)
-        self.iu = iu
-        self.Tm_up = self.Tm[:, iu[0], iu[1]].contiguous()
+        pkey = ('Tm', keys[0].tobytes(), lam, mu, self.n, str(dev))
+        if SLIM:                                                            # src_v3: one shared copy per pattern
+            self.Tm = shared(pkey, lambda: torch.tensor(EM.pattern_operators(keys[0].reshape(27, 3), lam, mu, self.n)[1], dtype=dt,
+                                                        device=dev).reshape(125, 81, 81))
+            iu = shared(('iu', str(dev)), lambda: torch.triu_indices(81, 81, device=dev))
+            self.iu = iu
+            self.Tm_up = shared(pkey + ('up',), lambda: self.Tm[:, iu[0], iu[1]].contiguous())
+        else:
+            self.Tm = torch.tensor(EM.pattern_operators(keys[0].reshape(27, 3), lam, mu, self.n)[1], dtype=dt, device=dev).reshape(125, 81, 81)
+            iu = torch.triu_indices(81, 81, device=dev)
+            self.iu = iu
+            self.Tm_up = self.Tm[:, iu[0], iu[1]].contiguous()
         nb = 3 * len(self.nodes); self.nb = nb
         self.dofs = torch.as_tensor(dofs, dtype=torch.long, device=dev)
         if deploy:                                                              # deploy_from_scratch: no global pattern
@@ -308,11 +361,21 @@ class Cell:
         self.P = torch.nonzero(pm).squeeze(1); self.I = torch.nonzero(~pm).squeeze(1)
         self.np_, self.ni = len(self.P), len(self.I)
         self.Q = rigid_basis(self.port_node_ids, self.n)
-        self.Qall = rigid_basis(self.nodes, self.n)
+        self._Qall = None if SLIM else rigid_basis(self.nodes, self.n)        # src_v3: built on first use (factor routes)
         self.sol_I = self.sol_N = None
         sync(); self.setup_seconds = time.perf_counter() - t0
         log(json.dumps(dict(event='SETUP', case=case, seconds=self.setup_seconds, dofs=nb, ports=self.np_, interior=self.ni,
                             box_nodes=int(self.is_box.sum()), cut_nodes=int(self.is_cut.sum()), elements=int(len(self.cells)))))
+
+    @property
+    def Qall(self):
+        if getattr(self, '_Qall', None) is None:
+            self._Qall = rigid_basis(self.nodes, self.n)
+        return self._Qall
+
+    @Qall.setter
+    def Qall(self, v):
+        self._Qall = v
 
     # ---------------------------------------------------------------- assembly
     def moments(self, taus):
@@ -521,6 +584,9 @@ class Cell:
         triangle (3321 of 6561 entries) is formed by the GEMM and mirrored (half the float64 flops; same products)."""
         if not FI.ON:
             return (self.M[lo:hi] @ self.Tm.reshape(125, 81 * 81)).reshape(-1, 81, 81)
+        if SLIM and self.Tm_up.device == self.M.device:                     # src_v3: shared map and upper triangle
+            sym = shared(('sym81', str(self.M.device)), lambda: _sym81(self.M.device))
+            return (self.M[lo:hi] @ self.Tm_up)[:, sym].reshape(-1, 81, 81)
         sym = getattr(self, '_sym_idx', None)
         if sym is None or sym.device != self.M.device:
             iu = torch.triu_indices(81, 81, device=self.M.device)

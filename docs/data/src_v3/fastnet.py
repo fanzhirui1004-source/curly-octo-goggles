@@ -25,6 +25,29 @@ dev, f32, f64 = MD.dev, MD.f32, torch.float64
 FUSED = os.environ.get('FUSED_HYPER', '0') == '1'
 
 
+SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
+_SHARED = {}
+
+
+def _share(t):
+    """Flag a tensor as shared by all cells (a model parameter or a quantity derived from parameters only): stream_ops
+    leaves it on the device instead of copying it into every cell's streamed state (src_v3)."""
+    try:
+        t._opl_shared = True
+    except (AttributeError, RuntimeError):
+        pass
+    return t
+
+
+def _shared_t(W):
+    """The transposed copy W^T (contiguous) of a parameter-derived W, one per parameter storage (src_v3)."""
+    key = (W.data_ptr(), tuple(W.shape), tuple(W.stride()))
+    t = _SHARED.get(key)
+    if t is None:
+        t = _SHARED[key] = _share(W.transpose(1, 2).contiguous())
+    return t
+
+
 def _csr(rows, cols, vals, shape):
     """CSR from (unsorted, duplicate-free) triplets."""
     key = rows * shape[1] + cols
@@ -46,7 +69,10 @@ class _Hyper:
             self.hn, self.deg = hn.contiguous(), deg.to(f32).contiguous()
             self.a, self.b = a.detach().to(f32).contiguous(), b.detach().to(f32).contiguous()
             self.W = W.detach().to(f32).contiguous()
-            self.Wt = self.W.transpose(1, 2).contiguous()
+            if SLIM:                                                                    # src_v3: parameters stay shared
+                _share(self.W); self.Wt = _shared_t(self.W)
+            else:
+                self.Wt = self.W.transpose(1, 2).contiguous()
             return
         he = (torch.arange(H, device=dev)[:, None, None] * Eh + torch.arange(Eh, device=dev)[None, :, None]).expand(H, Eh, 27)
         nodes = hn[None].expand(H, Eh, 27)
@@ -152,11 +178,25 @@ class FastNet:
             self.P.append(_csr(i, v, pv, (t['n_src'], t['n_dst']))); self.Pt.append(_csr(v, i, pv, (t['n_dst'], t['n_src'])))
         self.gates = [g_.detach() for g_ in gp['gates']]
         self.convs = [w_.detach() for w_ in m.convs]
+        if SLIM:                                                                        # src_v3: parameters stay shared
+            for t_ in self.convs + [self.W_in, self.W_out]:
+                _share(t_)
         self.cpl, self.levels, self.L_pre, self.L_post = m.cpl, m.levels, m.L_pre, m.L_post
         self.n_fringe = m.n_fringe if self.two else 0
         # wrapper (trainlib.Geo.field): rigid split and port overwrite, float32
         self.RP, self.RA, self.RPpinv = geo.RP.to(f32), geo.RA.to(f32), geo.RPpinv.to(f32)
         self.Pidx = geo.P
+
+    def slim(self):
+        """src_v3: after the freeze, keep only what ext / ext_T read from the per-geometry cache (port nodes, the
+        U-Net levels' sizes and dense indices, the split-graph edges if any); the rest of models.MGCache (element and
+        face node lists, float64 moments, input features, stiffness shares, transfer pairs) is no longer referenced
+        from here (the caller drops the model's own reference)."""
+        import types
+        c = self.c
+        keep = ('m', 'dense_idx', 'e_src', 'e_dst', 'e_k', 'e_ptr', 'n_dst', 'n_src')
+        self.c = types.SimpleNamespace(N=c.N, port_nodes=c.port_nodes, trans=[{k: t[k] for k in keep if k in t} for t in c.trans])
+        return self
 
     # ------------------------------------------------------------------ pieces
     def _clamp(self, X, X0):
@@ -295,3 +335,16 @@ class FastNet:
         with TL._held(self.geo.C):                                                      # float32 K_e formed once
             u = self.field(q).to(f64)
             return self.field_T((self.geo.C.K @ u).to(f32)).to(f64)
+
+
+def slim_deploy(op, geo, C, model=None):
+    """src_v3 (OPL_V3_SLIM=1): after the warm-up application of a deployed cell (and any fingerprint that reads the model
+    cache or geo.nd), drop what no later use reads: the model's per-geometry cache (FastNet keeps its own slim view),
+    the float64 rigid modes of the geometry wrapper (FastNet holds float32 copies), the network input arrays (host)."""
+    if not SLIM:
+        return
+    op.fast.slim()
+    if model is not None:
+        model.caches.pop(C.case, None)
+    geo.RA = geo.RP = geo.RPpinv = None
+    geo.nd = None

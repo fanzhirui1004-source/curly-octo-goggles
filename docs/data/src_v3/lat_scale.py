@@ -148,9 +148,15 @@ def main(argv=None):
             pc['encode'] = T() - t; t = T()
             op.apply(torch.zeros((C.np_, 1), dtype=dt, device=dev))              # correction caches (coarse factor)
             pc['warmup'] = T() - t; t = T()
-            kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
+            if TE.SLIM:                                                            # src_v3: int32 indices on the host
+                r_, c_, v_ = C._kpp_cache
+                kpp_host[case] = (r_.int().cpu(), c_.int().cpu(), v_.cpu())
+                del r_, c_, v_
+            else:
+                kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
             C._kpp_cache = kpp_host[case]
             C.diag3 = None
+            FN.slim_deploy(op, geo, C, h.model)                                    # src_v3 (OPL_V3_SLIM=1)
             if torch.cuda.memory_allocated() / 1e9 < a.resident_gb:
                 ops[case] = _Resident(op)
             else:
@@ -196,13 +202,13 @@ def main(argv=None):
                 _free_prec(*held); held = None
             for g in lat.geoms:
                 g._kpp = None                                                      # new design: new K_PP triplets
-            kpp = lat.assemble_kpp()
-            for g in lat.geoms:
+            shared = {'kpp_triplets': lat.assemble_kpp(), 'kpp_triplets_s': 0.0}   # src_v3: no other reference (the
+            for g in lat.geoms:                                                    # K_PP factor frees the triplets)
                 g._kpp = None
             ph['kpp_assemble'] = T() - t; t = T()
-            fac = PR.Factory(lat, olist, shared={'kpp_triplets': kpp, 'kpp_triplets_s': 0.0}, kpp_backend='auto', log=lambda d: None)
+            fac = PR.Factory(lat, olist, shared=shared, kpp_backend='auto', log=lambda d: None)
+            del shared
             pcnd, st, _ = fac.build(a.prec)
-            del kpp
             ph['prec_setup'] = T() - t; t = T()
             rec['prec'] = {k: v for k, v in st.items() if isinstance(v, (int, float, str))}
         else:

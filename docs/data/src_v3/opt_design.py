@@ -350,8 +350,14 @@ def analyse_fast(cases, positions, h):
                          gp_fringe=int(cc.gp_fringe.sum()) if cc is not None and getattr(cc, 'gp_fringe', None) is not None else None,
                          shift=float(getattr(C, '_c_shift', 0.0) or 0.0),
                          b=float(C._tail_bounds[2]) if getattr(C, '_tail_bounds', None) else None)
-        kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
+        if TE.SLIM:                                                            # src_v3: int32 indices on the host
+            r_, c_, v_ = C._kpp_cache
+            kpp_host[case] = (r_.int().cpu(), c_.int().cpu(), v_.cpu())
+            del r_, c_, v_
+        else:
+            kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
         C._kpp_cache = kpp_host[case]; C.diag3 = None
+        FN.slim_deploy(op, geo, C, model)                                     # src_v3 (OPL_V3_SLIM=1)
         if torch.cuda.memory_allocated() / 2 ** 30 < A.resident_gb:
             ops[case] = LS._Resident(op)
         else:
@@ -375,14 +381,14 @@ def analyse_fast(cases, positions, h):
     F = lat.F[:, ['xyz'.index(A.load_dir)]].contiguous()
     for g in lat.geoms:
         g._kpp = None
-    kpp = lat.assemble_kpp()
-    for g in lat.geoms:
+    shared = {'kpp_triplets': lat.assemble_kpp(), 'kpp_triplets_s': 0.0}       # src_v3: no other reference (the K_PP
+    for g in lat.geoms:                                                        # factor frees the triplets)
         g._kpp = None
     T['setup_s'] = time.perf_counter() - t
     t = time.perf_counter()
-    fac = PR.Factory(lat, olist, shared={'kpp_triplets': kpp, 'kpp_triplets_s': 0.0}, kpp_backend='auto', log=lambda d: None)
+    fac = PR.Factory(lat, olist, shared=shared, kpp_backend='auto', log=lambda d: None)
+    del shared
     pc, _, _ = fac.build(A.prec)
-    del kpp
     T['precond_s'] = time.perf_counter() - t
     t = time.perf_counter()
     X0 = None
@@ -439,7 +445,10 @@ def analyse_fast(cases, positions, h):
     out = dict(C=Chat, S=S, order=order, vol=vol, dvol=dvol, pcg=int(r['iterations']), true_residual=tres, Ut_rho_rel=Ur / Chat,
                fps=[fps[c] for c in order], times=T, streamed=int(sum(isinstance(o, SO.StreamedOp) for o in olist)))
     for o in olist:
-        o.release()
+        if TE.SLIM and isinstance(o, SO.StreamedOp):                           # src_v3: the cells are discarded; no
+            SO.drop(o)                                                         # copy back into host tensors
+        else:
+            o.release()
     for c in order:
         h.model.caches.pop(c, None)
     del olist, ops, lat, X, rho, F, Cs
