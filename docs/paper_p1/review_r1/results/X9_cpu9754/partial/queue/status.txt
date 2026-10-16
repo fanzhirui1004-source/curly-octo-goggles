@@ -1,0 +1,22 @@
+2026-10-17_03:12:42 RUNNER start pid=2602 host=autodl-container-e3b5468e80-c50381db
+2026-10-17_03:18:12 START 00_env.sh load=3.42 3.31 3.51
+2026-10-17_03:18:21 END 00_env.sh rc=0 9s load=3.31 3.29 3.50 throttled_s=0
+2026-10-17_03:18:21 START 10_tune.sh load=3.31 3.29 3.50
+2026-10-17_03:18:23 END 10_tune.sh rc=1 2s load=3.20 3.27 3.50 throttled_s=0
+2026-10-17_03:18:23 START 21_st13_rep1.sh load=3.20 3.27 3.50
+2026-10-17_03:18:26 END 21_st13_rep1.sh rc=1 2s load=3.20 3.27 3.50 throttled_s=0
+2026-10-17_03:18:26 START 22_st13_rep2.sh load=3.20 3.27 3.50
+2026-10-17_03:18:28 END 22_st13_rep2.sh rc=1 2s load=4.39 3.51 3.57 throttled_s=0
+2026-10-17_03:18:28 START 23_st13_rep3.sh load=4.39 3.51 3.57
+2026-10-17_03:18:30 END 23_st13_rep3.sh rc=1 2s load=4.39 3.51 3.57 throttled_s=0
+2026-10-17_03:18:30 START 30_dump_hlat222.sh load=4.39 3.51 3.57
+2026-10-17_03:31:02 END 30_dump_hlat222.sh rc=0 752s load=2.60 5.83 5.73 throttled_s=0
+2026-10-17_03:31:02 START 30a_tune.sh load=2.60 5.83 5.73
+2026-10-17_03:37:51 END 30a_tune.sh rc=0 409s load=13.54 11.09 8.29 throttled_s=0
+2026-10-17_03:37:51 START 30b_st13_rep1.sh load=13.54 11.09 8.29
+2026-10-17_03:45:53 END 30b_st13_rep1.sh rc=0 482s load=19.52 16.53 11.84 throttled_s=0
+2026-10-17_03:45:53 START 30c_st13_rep2.sh load=19.52 16.53 11.84
+2026-10-17_03:53:55 END 30c_st13_rep2.sh rc=0 482s load=16.95 15.74 13.27 throttled_s=0
+2026-10-17_03:53:55 START 30d_st13_rep3.sh load=16.95 15.74 13.27
+2026-10-17_03:54:49 END 30d_st13_rep3.sh rc=143 54s load=11.81 14.44 12.96 throttled_s=0
+2026-10-17_03:54:49 RUNNER stop

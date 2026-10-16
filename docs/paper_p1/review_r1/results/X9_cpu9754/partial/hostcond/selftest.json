@@ -1,0 +1,1 @@
+{"lp64": {"assembly_err": 0.0, "solve_err": 4.281480444403727e-16}, "ilp64": {"assembly_err": 0.0, "solve_err": 5.419618141824548e-16}, "block": {"solve_err": 5.982761070216127e-16, "n_shared": 20}}

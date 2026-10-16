@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/root/autodl-tmp/OPL/src_v2/bench_cpu2.py", line 340, in <module>
+    main(sys.argv[1:])
+  File "/root/autodl-tmp/OPL/src_v2/bench_cpu2.py", line 318, in main
+    C, r = front_end(case, a.body)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/OPL/src_v2/bench_cpu2.py", line 115, in front_end
+    t = time.perf_counter(); C = TE.Cell(case, body, log=lambda s_: None); r['setup_s'] = time.perf_counter() - t
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/OPL/src_v2/teacher.py", line 239, in __init__
+    ctx = json.loads((packet_dir(case) / 'FRESH_CONTEXT.json').read_text())
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/root/autodl-tmp/CUTFEM_FRESH_GP_20260921/packets/fresh_train_0020_full/FRESH_CONTEXT.json'

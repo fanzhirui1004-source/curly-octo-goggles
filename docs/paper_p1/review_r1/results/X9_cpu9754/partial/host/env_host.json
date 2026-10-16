@@ -1,0 +1,32 @@
+{
+ "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+ "mkl_max_threads": 16,
+ "MKL_NUM_THREADS": "16",
+ "OMP_NUM_THREADS": "16",
+ "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+ "python": "3.12.3",
+ "numpy": "2.3.2",
+ "cgroup": {
+  "memory_max_bytes": 128849018880,
+  "memory_high_bytes": null,
+  "anon_bytes": 410185728,
+  "file_bytes": 27514331136,
+  "cpu_quota_cores": 36.0,
+  "nproc": 256,
+  "os_cpu_count": 256,
+  "memory_max_GiB": 120.0,
+  "memory_high_GiB": null,
+  "anon_GiB": 0.3820152282714844,
+  "file_GiB": 25.624717712402344
+ },
+ "loadavg": [
+  3.42431640625,
+  3.3095703125,
+  3.51318359375
+ ],
+ "host": "autodl-container-e3b5468e80-c50381db",
+ "scipy": "1.18.1",
+ "torch": "2.8.0+cu128",
+ "torch_threads": 16,
+ "machine": "autodl-container-e3b5468e80-c50381db"
+}

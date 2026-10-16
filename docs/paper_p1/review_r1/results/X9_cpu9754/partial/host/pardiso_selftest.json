@@ -1,0 +1,113 @@
+{
+ "env": {
+  "mkl": "Intel(R) oneAPI Math Kernel Library Version 2026.1-Product Build 20260612 for Intel(R) 64 architecture applications",
+  "mkl_max_threads": 16,
+  "MKL_NUM_THREADS": "16",
+  "OMP_NUM_THREADS": "16",
+  "mkl_rt": "/root/autodl-tmp/mklenv/lib/libmkl_rt.so.3",
+  "python": "3.12.3",
+  "numpy": "2.3.2",
+  "cgroup": {
+   "memory_max_bytes": 128849018880,
+   "memory_high_bytes": null,
+   "anon_bytes": 412880896,
+   "file_bytes": 27514343424,
+   "cpu_quota_cores": 36.0,
+   "nproc": 256,
+   "os_cpu_count": 256,
+   "memory_max_GiB": 120.0,
+   "memory_high_GiB": null,
+   "anon_GiB": 0.3845252990722656,
+   "file_GiB": 25.62472915649414
+  },
+  "loadavg": [
+   3.42431640625,
+   3.3095703125,
+   3.51318359375
+  ],
+  "host": "autodl-container-e3b5468e80-c50381db",
+  "scipy": "1.18.1",
+  "torch": "2.8.0+cu128",
+  "torch_threads": 16
+ },
+ "n": 8000,
+ "chol": {
+  "analysis_s": 0.022657155990600586,
+  "factor_s": 0.010999321937561035,
+  "rel_res": 9.50814406225128e-16,
+  "iparm_1based": {
+   "1": 1,
+   "2": 3,
+   "10": 8,
+   "15": 3037,
+   "16": 2922,
+   "17": 7602,
+   "18": 656058,
+   "19": -1,
+   "24": 1,
+   "25": 1,
+   "27": 1,
+   "35": 1,
+   "63": 4690
+  },
+  "nnz_factor": 656058,
+  "mflop_factor": -1,
+  "perturbed_pivots": 0,
+  "peak_mem_kB": {
+   "peak_analysis": 3037,
+   "permanent": 2922,
+   "factor_solve": 7602
+  },
+  "peak_mem_GiB": {
+   "peak_analysis": 0.0028963088989257812,
+   "permanent": 0.0027866363525390625,
+   "factor_solve": 0.0072498321533203125,
+   "total": 0.010036468505859375
+  }
+ },
+ "lu_default": {
+  "analysis_s": 0.027186110615730286,
+  "factor_s": 0.016791366040706635,
+  "rel_res": 2.9425279003146104e-16,
+  "iparm_1based": {
+   "1": 1,
+   "2": 3,
+   "3": 8,
+   "7": 2,
+   "8": 2,
+   "10": 13,
+   "11": 1,
+   "13": 1,
+   "15": 6760,
+   "16": 5459,
+   "17": 13953,
+   "18": 1228134,
+   "19": 292,
+   "26": 630690978,
+   "34": -1,
+   "57": -1,
+   "61": 6760,
+   "62": 8982,
+   "63": 4583
+  },
+  "nnz_factor": 1228134,
+  "mflop_factor": 292,
+  "perturbed_pivots": 0,
+  "peak_mem_kB": {
+   "peak_analysis": 6760,
+   "permanent": 5459,
+   "factor_solve": 13953
+  },
+  "peak_mem_GiB": {
+   "peak_analysis": 0.00644683837890625,
+   "permanent": 0.005206108093261719,
+   "factor_solve": 0.013306617736816406,
+   "total": 0.018512725830078125
+  }
+ },
+ "schur": {
+  "rel_err": 2.4847219206108393e-16,
+  "rel_err_symmetrised_lower": 2.4847219206108393e-16,
+  "rel_err_symmetrised_upper": 2.4847219206108393e-16
+ }
+}

@@ -27,3 +27,14 @@ the exports and runs of ST12e, route (a) 32 threads, route (a) single thread, su
 `/root/autodl-tmp/OPL/S1/V2/R9754/{host, host1, hostcond, itercmp}`.
 
 Inputs (code, lattice geometry, the four ST13 cells and their packets, environments) were copied from the GPU machine.
+
+## Status: stopped (2026-10-17 03:55)
+
+Stopped by the author's decision once the CPU sensitivities were deferred: the paper keeps the CPU-timed content of
+the EPYC 9654 runs, and this round adds only the two GPU measurements (`X6_final/remeasure_20261017`). Completed before
+the stop: environment record and self-tests, PARDISO tuning (same settings as on the EPYC 9654), the hlat222 export of
+ST12e, and two of the three ST13 repetitions (`partial/`). For reference, ST13 conventional columns on the EPYC 9754
+(G1-G4, two repetitions): cell preparation 29.4 / 11.1 / 48.7 / 48.8 s, analysis + factorisation 10.9 / 2.1 / 25.5 /
+43.5 s, PARDISO factor 2.89 / 0.60 / 6.18 / 9.42 GiB (EPYC 9654: 27.3 / 10.9 / 45.0 / 47.0 s, 10.5 / 1.9 / 27.3 /
+48.9 s, the same factors). The first attempts of the tuning and ST13 jobs (`partial/queue/*.failed1.log`) failed on four
+missing packet directories, which were then copied.

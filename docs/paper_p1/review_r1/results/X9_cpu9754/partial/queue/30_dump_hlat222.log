@@ -1,0 +1,4 @@
+/root/autodl-tmp/OPL/src_v2/teacher.py:337: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  self.U = torch.sparse_csr_tensor(self.crow.int(), self.cu, vals, size=(self.nb, self.nb))
+{"layout": "hlat222", "cells_s": 581.9700864851475, "global_assembly_s": 49.127366825938225, "global_dofs": 1833474, "free_retained": 139002, "nnz_upper": 258181146, "loads": ["consistent_ymax_x", "consistent_ymax_y", "consistent_ymax_z", "random0", "random1", "random2"]}
+DONE {"n": 1833474, "nnz_full": 514361120}
