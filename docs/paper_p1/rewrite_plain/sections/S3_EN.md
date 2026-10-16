@@ -60,7 +60,7 @@ Condensed solve: private elimination, interface factorisation and solution, and 
 | 2×2×2 | 11.82 | 0.17 | 6.57 | 56.37 | 3.80 |
 | 3×3×1 | 12.66 | 0.14 | 7.25 | 80.85 | 4.07 |
 
-Total, iterations and memory: Table 5. The phases sum to 0.2–0.5 s less than the totals; the remainder is bookkeeping between phases. GPU memory is the peak allocated by the process; CPU memory is the resident set size after cell preparation. Learned substructures resident on the GPU (Supplementary Note S4.1): all cells of the four-cell lattices and four cells of each eight-cell lattice.
+Total, iterations and memory: Table 5. The phases sum to 0.2–0.5 s less than the totals; the remainder is bookkeeping between phases. GPU memory is the peak memory in use on the whole GPU (nvidia-smi, sampled every 0.1 s), which besides the tensors includes the CUDA context, the cuDSS factorisation and the memory held by the caching allocator; CPU memory is the resident set size after cell preparation. Learned substructures resident on the GPU (Supplementary Note S4.1): all cells of the four-cell lattices and four cells of each eight-cell lattice.
 
 #### ST12e. Whole-lattice iterative solvers on the CPU (16 MPI processes): setup, conjugate gradients and BDDC factorisations (s)
 
@@ -73,14 +73,14 @@ Differences are relative to the iterate at a relative residual of \(10^{-9}\), w
 
 ### Table ST13. Per-cell cost of conventional condensation and NICE
 
-Four deployment cells, two cut and two uncut (Supplementary Section R1). Cell preparation: geometry preprocessing plus cell setup, moment integration and stiffness assembly, on the GPU for NICE and on the CPU for the conventional route. Condensation: network encoding plus correction setup (smoothing interval and coarse factorisation) for NICE; symbolic analysis and Cholesky factorisation of the interior by MKL PARDISO (16 threads) for the conventional route. Memory, in GiB: GPU memory held by NICE's network state and correction, or PARDISO's factorisation storage (iparm(17)). Neither includes the cell stiffness \(K\), which both routes hold (last column, GPU storage format).
+Four deployment cells, two cut and two uncut (Supplementary Section R1). Cell preparation: geometry preprocessing plus cell setup, moment integration and stiffness assembly, on the GPU for NICE and on the CPU for the conventional route. Condensation: network encoding plus correction setup (smoothing interval and coarse factorisation) for NICE; symbolic analysis and Cholesky factorisation of the interior by MKL PARDISO (16 threads) for the conventional route. Memory, in GiB: for NICE, all GPU memory that the deployed implementation holds for the cell after the correction setup, comprising the network state, the correction and the stiffness kept as element moments (the deployed implementation does not assemble the cell stiffness matrix; the element moments take 0.03–0.09 GiB per cell); for the conventional route, PARDISO's factorisation storage (iparm(17)), with the assembled cell stiffness matrix held in addition.
 
-| Cell | DOFs / retained | Cell preparation (s): NICE / conventional | Condensation (s): NICE / conventional | Memory (GiB): NICE state / PARDISO factor | \(K\) (GiB) |
-| --- | --- | --- | --- | --- | --- |
-| G1 (cut) | 177,507 / 24,636 | 5.3 / 27.3 | 0.72 / 10.5 | 0.74 / 2.89 | 1.39 |
-| G2 (cut) | 67,224 / 18,858 | 3.0 / 10.9 | 0.16 / 1.9 | 0.25 / 0.60 | 0.51 |
-| G3 (uncut) | 289,494 / 17,508 | 6.1 / 45.0 | 0.78 / 27.3 | 1.20 / 6.18 | 2.32 |
-| G4 (uncut) | 404,148 / 25,920 | 6.5 / 47.0 | 1.09 / 48.9 | 1.37 / 9.42 | 2.71 |
+| Cell | DOFs / retained | Cell preparation (s): NICE / conventional | Condensation (s): NICE / conventional | Memory (GiB): NICE state / PARDISO factor |
+| --- | --- | --- | --- | --- |
+| G1 (cut) | 177,507 / 24,636 | 5.3 / 27.3 | 0.72 / 10.5 | 0.48 / 2.89 |
+| G2 (cut) | 67,224 / 18,858 | 3.0 / 10.9 | 0.16 / 1.9 | 0.19 / 0.60 |
+| G3 (uncut) | 289,494 / 17,508 | 6.1 / 45.0 | 0.78 / 27.3 | 0.83 / 6.18 |
+| G4 (uncut) | 404,148 / 25,920 | 6.5 / 47.0 | 1.09 / 48.9 | 1.08 / 9.42 |
 
 ## Supplementary Note S4. Global preconditioning, two-cell configurations and residual records
 

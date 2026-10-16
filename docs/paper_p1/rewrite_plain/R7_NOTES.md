@@ -275,3 +275,19 @@ and EN units; the EN abstract stays at 249 words.
   base). Same entries appended to `references_verified.bib`.
 - Checks: number/link/maths parity EN = CN for U02 and U04; EN sentences over 40 words unchanged (150); cited works
   73 -> 77. PDF and Word not rebuilt (author's instruction).
+
+## GPU memory of Table 5 and ST13 from the 2026-10-17 re-measurement (17 Oct)
+
+- Table 5 (c), GPU memory: whole-device peak (nvidia-smi every 0.1 s; `review_r1/results/X6_final/remeasure_20261017`),
+  7.8 / 7.6 / 10.5 / 11.1 GiB instead of the PyTorch peaks 6.3 / 6.1 / 8.5 / 9.2. Times, iterations and compliance
+  errors unchanged (FINAL3; the re-measurement reproduces the iterations and the PyTorch peaks exactly, compliance within
+  3.7e-8). Caption (CN/EN), 5.9 ("at most 11.1 GiB") and the ST12d note changed accordingly.
+- ST13: NICE state = all GPU memory the deployed implementation holds for the cell after the correction setup
+  (allocator delta), 0.48 / 0.19 / 0.83 / 1.08 GiB instead of 0.74 / 0.25 / 1.20 / 1.37 (older path: CSR network
+  layers, assembled K, no coarse factor). The K column (assembled stiffness in GPU storage) is removed: the deployed
+  implementation keeps the stiffness as element moments (0.03-0.09 GiB per cell, included in the state). 5.9: "0.19 to
+  1.08 GiB".
+- Open: ST13's NICE time columns still come from the older path (cell preparation includes 1.6-2.2 s of geometry
+  preprocessing that the conventional column excludes); decision pending.
+- CPU-timed content unchanged (EPYC 9654); the EPYC 9754 runs were stopped by the author's decision. PDF and Word not
+  rebuilt.
