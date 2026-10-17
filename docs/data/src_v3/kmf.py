@@ -53,6 +53,7 @@ NB = int(os.environ.get('OPL_V3_KMF_NB', '0') or 0)                    # columns
 GF2 = os.environ.get('OPL_V3_KMF_GF2', 'auto')                         # ghost faces: DOF-parallel kernel (gf2): '1' always,
                                                                         # 'auto' from 2 columns on (faster there), '0' never
 FPB2 = int(os.environ.get('OPL_V3_KMF_FPB2', '4'))                     # gf2: faces per group (2, 4)
+EF = os.environ.get('OPL_V3_KMF_EF', '0') == '1'                        # P13b: elements and faces in one kernel (kef)
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
 WARPS = int(os.environ.get('OPL_V3_KMF_WARPS', '4'))
@@ -216,6 +217,7 @@ def _lib():
     lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
     lib.gf_launch64.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     lib.gf2_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
+    lib.kef_launch.argtypes = [ctypes.c_void_p] * 8 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gf2_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     _init_tables(lib)
     _LIB = lib
@@ -436,4 +438,37 @@ def gf_apply64_(y, gst, x, blocks=None, nb=None, gf2=None):
                             int(nb or 0), int(blocks), torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'GF64_LAUNCH:{rc}')
+    return y
+
+
+# ---------------------------------------------------------------------- src_v3 P13b: elements and faces in one kernel
+def efn_table(gst, E):
+    """(E x 3 int32) the neighbour element of each element's ghost face along axis d (-1: none), from gf_state."""
+    efn = gst.get('efn')
+    if efn is None:
+        nf, c1, c2 = gst['nf'], gst['c1'], gst['c2']
+        dev = gst['fe'].device
+        d = (torch.arange(nf, device=dev) >= c1).long() + (torch.arange(nf, device=dev) >= c2).long()
+        efn = torch.full((E * 3,), -1, dtype=torch.int32, device=dev)
+        key = gst['fe'].long() * 3 + d
+        if len(torch.unique(key)) != nf:
+            raise ValueError('EF_FACE_TWICE')
+        efn[key] = gst['fn']
+        efn = gst['efn'] = efn.view(E, 3).contiguous()
+    return efn
+
+
+def apply_ef_(y, st, x, nb=None, blocks=None):
+    """y += (K_elements + gamma G_faces) x in one kernel (state(C) with its 'gf' tables; x, y float32 contiguous)."""
+    assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
+    _check_pts(st)
+    gst = st['gf']
+    E, B = st['nd'].shape[0], x.shape[1]
+    efn = efn_table(gst, E)
+    rc = _lib().kef_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['wl'].data_ptr(), st['wm'].data_ptr(),
+                           efn.data_ptr(), gst['fmap'].data_ptr(), gst['G'].data_ptr(), E, B, int(NB if nb is None else nb),
+                           int(blocks if blocks is not None else _blocks(x.device)),
+                           torch.cuda.current_stream(x.device).cuda_stream)
+    if rc != 0:
+        raise RuntimeError(f'KEF_LAUNCH:{rc}')
     return y

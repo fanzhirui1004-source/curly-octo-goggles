@@ -369,8 +369,10 @@ class _Kfp32:
         if KMF.ON and KMF.GF and self.symv and self.gf is not None and x32.shape[1] <= KMF.MAXB and KMF.kind() == 'cuda' \
                 and not (torch.is_grad_enabled() and x32.requires_grad) and not self._v3(x32):
             st = self.mf_state()                                                # src_v3 P13: ghost faces and elements
-            if 'gf' in st:                                                      # matrix-free (two CUDA kernels)
-                x32 = x32.contiguous()
+            if 'gf' in st:                                                      # matrix-free (two CUDA kernels; P13b:
+                x32 = x32.contiguous()                                          # one)
+                if KMF.EF:
+                    return KMF.apply_ef_(torch.zeros_like(x32), st, x32)
                 y = KMF.gf_apply_(torch.zeros_like(x32), st['gf'], x32)
                 return KMF.apply_(y, st, x32)
         if self.gf is not None:
