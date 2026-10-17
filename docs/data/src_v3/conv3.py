@@ -10,8 +10,8 @@ import triton
 import triton.language as tl
 
 ON = os.environ.get('OPL_V3_CONV3', '0') == '1'
-BM = int(os.environ.get('OPL_V3_CONV3_BM', '64'))
-WARPS = int(os.environ.get('OPL_V3_CONV3_WARPS', '4'))
+BM = int(os.environ.get('OPL_V3_CONV3_BM', '32'))
+WARPS = int(os.environ.get('OPL_V3_CONV3_WARPS', '8'))
 
 
 @triton.jit
@@ -105,7 +105,7 @@ def _conv3s(xc_ptr, inv_ptr, didx_ptr, w_ptr, g_ptr, out_ptr, n, m, B, sg, F: tl
 
 
 BMS = int(os.environ.get('OPL_V3_CONV3S_BM', '32'))
-WARPS_S = int(os.environ.get('OPL_V3_CONV3S_WARPS', '4'))
+WARPS_S = int(os.environ.get('OPL_V3_CONV3S_WARPS', '8'))
 
 
 def conv_sparse(Xc, inv, didx, W, m, g=None, gate_in=False, bm=None, warps=None):
