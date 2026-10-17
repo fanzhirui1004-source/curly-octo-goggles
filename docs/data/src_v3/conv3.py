@@ -9,7 +9,7 @@ import torch
 import triton
 import triton.language as tl
 
-ON = os.environ.get('OPL_V3_CONV3', '0') == '1'
+ON = os.environ.get('OPL_V3_CONV3', '1') == '1'
 BM = int(os.environ.get('OPL_V3_CONV3_BM', '32'))
 WARPS = int(os.environ.get('OPL_V3_CONV3_WARPS', '8'))
 
