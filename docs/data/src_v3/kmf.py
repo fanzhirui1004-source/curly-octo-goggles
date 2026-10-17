@@ -36,6 +36,7 @@ CUDA = os.environ.get('OPL_V3_KMF_CUDA', '1') == '1'
 MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '4'))
 EPB = int(os.environ.get('OPL_V3_KMF_EPB', '4'))                       # CUDA kernel: elements per block (2, 4, 8)
 GF = int(os.environ.get('OPL_V3_KMF_GF', '1') or 0)                   # CUDA: the ghost faces matrix-free too
+ON64 = os.environ.get('OPL_V3_KMF64', '0') == '1'                      # src_v3 P14: the float64 K product as well
 FPB = int(os.environ.get('OPL_V3_KMF_FPB', '8'))                       # faces per group (4, 8)
 GF_BLOCKS = int(os.environ.get('OPL_V3_KMF_GFBLK', '0') or 0)          # blocks of the face kernel (0: 8 per SM)
 NB = int(os.environ.get('OPL_V3_KMF_NB', '0') or 0)                    # columns per block (1, 2, 4; 0: by B)
@@ -187,18 +188,24 @@ def _lib():
     if not os.path.exists(so):
         nvcc = os.environ.get('OPL_V3_NVCC') or shutil.which('nvcc') or '/usr/local/cuda/bin/nvcc'
         tmp = f'{so}.{os.getpid()}.tmp'
-        subprocess.run([nvcc, '-O3', '-std=c++17', f'-arch={arch}', '-Xcompiler', '-fPIC', '-shared', '-o', tmp, src],
-                       check=True, capture_output=True)
+        r = subprocess.run([nvcc, '-O3', '-std=c++17', f'-arch={arch}', '-Xcompiler', '-fPIC', '-shared', '-o', tmp, src],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError('NVCC:' + (r.stderr or r.stdout)[-1500:])
         os.replace(tmp, so)
     lib = ctypes.CDLL(so)
-    lib.kmf_init.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    lib.kmf_init.argtypes = [ctypes.c_void_p] * 4
     lib.kmf_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_float,
                                                         ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+    lib.kmf_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_double,
+                                                          ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
     lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
+    lib.gf_launch64.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     g, _ = np.polynomial.legendre.leggauss(5)
-    L = np.array([[_lag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float32)
-    D = np.array([[_dlag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float32)
-    rc = lib.kmf_init(L.ctypes.data, D.ctypes.data)
+    L64 = np.array([[_lag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float64)
+    D64 = np.array([[_dlag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float64)
+    L, D = L64.astype(np.float32), D64.astype(np.float32)
+    rc = lib.kmf_init(L.ctypes.data, D.ctypes.data, L64.ctypes.data, D64.ctypes.data)
     if rc != 0:
         raise RuntimeError(f'KMF_INIT:{rc}')
     _LIB = lib
@@ -214,7 +221,7 @@ def cuda_ok():
         _lib()
         return True
     except Exception as ex:                                                 # noqa: BLE001 (no nvcc: Triton path)
-        _LIB_ERR = repr(ex)[:300]
+        _LIB_ERR = repr(ex)[:1600]
         return False
 
 
@@ -251,7 +258,7 @@ def apply_(y, st, x, epb=None, nb=None):
     return y
 
 
-def gf_state(C, nd):
+def gf_state(C, nd, dtype=torch.float32):
     """Ghost faces of the cell for gf_kernel (CUDA path): fe, fn (element and +1 neighbour along the face direction,
     int32, faces grouped by direction), cuts c1, c2, fmap (3 x 45 int32: face node -> 32 * neighbour + tensor slot),
     G (3 x 45 x 45 float32: gamma b_d^T b_d from the float64 templates, b_d the scalar block of B_d = b_d (x) I_3)."""
@@ -287,7 +294,7 @@ def gf_state(C, nd):
     dev = C.M.device
     t = lambda a, dt_=torch.int32: torch.as_tensor(np.ascontiguousarray(a), dtype=dt_, device=dev)
     return dict(fe=t(faces[order, 0]), fn=t(faces[order, 1]), c1=int(cuts[1]), c2=int(cuts[2]), nf=int(cuts[3]),
-                fmap=t(fmap), G=t(G, torch.float32), nd=nd)
+                fmap=t(fmap), G=t(G, dtype), nd=nd)
 
 
 _SMS = {}
@@ -306,4 +313,50 @@ def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None):
                           torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'GF_LAUNCH:{rc}')
+    return y
+
+
+# ---------------------------------------------------------------------- src_v3 P14: the float64 K product
+def state64(C, elements):
+    """Float64 data of the matrix-free product over the given elements (int64 indices; the partial elements when the
+    full ones keep fullke's shared-matrix GEMM): nd (tensor order) and w (float64 weights times (2n)^2), plus the ghost
+    faces (float64 Gram matrices, all faces; nd of all elements for their node lists)."""
+    xi, lam, mu = C._kmf_spec
+    _, Vi = tables(xi, C.n, C.M.device)
+    xi = np.asarray(xi).reshape(27, 3)
+    t = (9 * (xi[:, 0] + 1) + 3 * (xi[:, 1] + 1) + (xi[:, 2] + 1)).astype(np.int64)
+    inv = np.empty(27, np.int64); inv[t] = np.arange(27)
+    inv = torch.as_tensor(inv, device=C.dofs.device)
+    nd_all = nodes(C.dofs)[:, inv].contiguous()
+    nd = nd_all[elements].contiguous()
+    E = len(elements)
+    w = torch.empty((E, 125), dtype=torch.float64, device=C.M.device)
+    for lo in range(0, E, 8192):
+        w[lo:lo + 8192] = (C.M[elements[lo:lo + 8192]] @ Vi) * (2.0 * C.n) ** 2
+    return dict(kind='cuda64', nd=nd, w=w, lam=float(lam), mu=float(mu), gf=gf_state(C, nd_all, torch.float64))
+
+
+def apply64_(y, st, x, epb=None, nb=None):
+    """y += K_e x over state64's elements, float64 (x, y: nb x B float64 contiguous)."""
+    assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float64 and y.dtype == torch.float64
+    E, B = st['nd'].shape[0], x.shape[1]
+    rc = _lib().kmf_launch64(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), E, B, st['lam'],
+                             st['mu'], int(epb or 4), int(nb or 0), torch.cuda.current_stream(x.device).cuda_stream)
+    if rc != 0:
+        raise RuntimeError(f'KMF64_LAUNCH:{rc}')
+    return y
+
+
+def gf_apply64_(y, gst, x, blocks=None, nb=None):
+    """y += gamma G x (ghost faces, float64) through gf_state(..., float64)."""
+    assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float64 and y.dtype == torch.float64
+    if blocks is None:
+        if x.device not in _SMS:
+            _SMS[x.device] = torch.cuda.get_device_properties(x.device).multi_processor_count
+        blocks = GF_BLOCKS or 8 * _SMS[x.device]
+    rc = _lib().gf_launch64(x.data_ptr(), y.data_ptr(), gst['nd'].data_ptr(), gst['fe'].data_ptr(), gst['fn'].data_ptr(),
+                            gst['fmap'].data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'], gst['c2'], x.shape[1],
+                            int(nb or 0), int(blocks), torch.cuda.current_stream(x.device).cuda_stream)
+    if rc != 0:
+        raise RuntimeError(f'GF64_LAUNCH:{rc}')
     return y

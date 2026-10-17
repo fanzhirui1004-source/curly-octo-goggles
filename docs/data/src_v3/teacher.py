@@ -738,7 +738,7 @@ class Cell:
         self._free()
         for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cAi32', '_cV32', '_cV32t', '_cL32_keep', '_Kc', 'GF64', 'M', 'dM',
                   '_kpp_cache', 'diag3', '_c_mf', '_c_nc', '_c_invd', '_cAp32', '_cLd32', '_c_inv_err', '_c_tri_err', '_cBlk', '_c_blk_info',
-                  '_fk', '_k64_part', '_dp64_part'):                         # + src_v3 coarse, fullke                                       # state of the previous design (if any)
+                  '_fk', '_k64_part', '_dp64_part', '_mf64'):                # + src_v3 coarse, fullke, P14                                       # state of the previous design (if any)
             setattr(self, k, None)
         _collect()
         self.M = self.moments(taus)
@@ -805,8 +805,24 @@ class Cell:
         _collect()
         return self
 
+    def mf64_state(self):
+        """src_v3 P14: the float64 matrix-free product's data (kmf.state64 over fullke's partial elements; ghost faces
+        with float64 Gram matrices), built on first use (reset with the design)."""
+        if getattr(self, '_mf64', None) is None:
+            self._mf64 = KMF.state64(self, FK.setup(self)['f64']['part'])
+        return self._mf64
+
+    def _mf64_on(self, x):
+        return KMF.ON64 and FK.ON and x.dim() == 2 and x.dtype == torch.float64 and x.is_cuda and self.G64 is None \
+            and not (torch.is_grad_enabled() and x.requires_grad) and KMF.kind() == 'cuda' and KMF.cuda_ok()
+
     def _Kx_lean(self, x):
         if getattr(self, '_deploy', False):
+            if self._mf64_on(x):                                                # src_v3 P14: no element matrices
+                st, xc = self.mf64_state(), x.contiguous()
+                y = KMF.gf_apply64_(torch.zeros_like(xc), st['gf'], xc)
+                FK.full_product(FK.setup(self)['f64'], xc, y)
+                return KMF.apply64_(y, st, xc)
             y = self.G64 @ x if self.G64 is not None else self.GF64.matvec(x, torch.zeros_like(x)).mul_(self.gamma)
             if FK.ON and x.dim() == 2 and not (torch.is_grad_enabled() and x.requires_grad):
                 return self._kx64_v3(x, y)
@@ -889,8 +905,10 @@ class Cell:
             self._k64_part = [(self.M[part[lo:lo + ch]] @ self.Tm_up)[:, sym].reshape(-1, 81, 81) for lo in range(0, npart, ch)]
 
     def ke64_bytes(self):
-        """Bytes store64 would keep (8 x 3321 per partial element)."""
+        """Bytes store64 would keep (8 x 3321 per partial element; none with the matrix-free product, P14)."""
         if not (FI.ON and FK.ON and getattr(self, '_deploy', False)) or getattr(self, 'M', None) is None:
+            return 0
+        if KMF.ON64 and KMF.kind() == 'cuda':
             return 0
         return int(FK.setup(self)['f64']['n_part']) * 3321 * 8
 
@@ -905,6 +923,8 @@ class Cell:
         if KE64 == 'form' or (KE64 == 'auto' and not allow) or not (FI.ON and FK.ON and getattr(self, '_deploy', False)) \
                 or getattr(self, '_k64_part', None) is not None or getattr(self, 'M', None) is None:
             return False
+        if KMF.ON64 and KMF.kind() == 'cuda':                               # src_v3 P14: nothing to store
+            return False
         self._form64_part()
         return True
 
@@ -918,7 +938,8 @@ class Cell:
         @contextlib.contextmanager
         def ctx():
             own = FI.ON and getattr(me, '_deploy', False) and getattr(me, '_ke64_tmp', None) is None \
-                and getattr(me, '_kp64_tmp', None) is None and getattr(me, '_k64_part', None) is None
+                and getattr(me, '_kp64_tmp', None) is None and getattr(me, '_k64_part', None) is None \
+                and not (KMF.ON64 and FK.ON and KMF.kind() == 'cuda')               # (src_v3 P14: nothing to form)
             if own and FK.ON:                                               # src_v3 (fullke): partial elements only
                 me._form64_part()
                 try:
