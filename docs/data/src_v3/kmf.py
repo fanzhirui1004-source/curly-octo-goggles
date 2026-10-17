@@ -54,6 +54,7 @@ GF2 = os.environ.get('OPL_V3_KMF_GF2', 'auto')                         # ghost f
                                                                         # 'auto' from 2 columns on (faster there), '0' never
 FPB2 = int(os.environ.get('OPL_V3_KMF_FPB2', '4'))                     # gf2: faces per group (2, 4)
 EF = os.environ.get('OPL_V3_KMF_EF', '0') == '1'                        # P13b: elements and faces in one kernel (kef)
+GK = os.environ.get('OPL_V3_KMF_GK', '0') == '1'                        # P15: ghost faces as A (x) m (x) m (gk)
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
 WARPS = int(os.environ.get('OPL_V3_KMF_WARPS', '4'))
@@ -218,6 +219,8 @@ def _lib():
     lib.gf_launch64.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     lib.gf2_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
     lib.kef_launch.argtypes = [ctypes.c_void_p] * 8 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.gk_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.gk_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gf2_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     _init_tables(lib)
     _LIB = lib
@@ -315,12 +318,44 @@ def gf_state(C, nd, dtype=torch.float32):
     """Ghost faces of the cell for gf_kernel (CUDA path): fe, fn (element and +1 neighbour along the face direction,
     int32, faces grouped by direction), cuts c1, c2, fmap (3 x 45 int32: face node -> 32 * neighbour + tensor slot),
     G (3 x 45 x 45 float32: gamma b_d^T b_d from the float64 templates, b_d the scalar block of B_d = b_d (x) I_3);
-    fnode (faces x 45 int32: the face nodes, for gf2_kernel). The integer parts are kept once per cell (C._kmf_gfi,
-    shared by the float32 and float64 states; reset with the design)."""
+    fnode (faces x 45 int32: the face nodes, for gf2_kernel); P15: gk (A with gamma, then m: 34 values) and fsuv (faces x
+    45 int32, the face nodes in (s, u, v) order) when the Gram matrices factor as A (x) m (x) m. The integer parts are
+    kept once per cell (C._kmf_gfi, shared by the float32 and float64 states; reset with the design)."""
     gi = getattr(C, '_kmf_gfi', None)
     if gi is None:
         gi = C._kmf_gfi = _gf_int(C, nd)
-    return dict(gi, G=gi['G64'].to(dtype), G64=None)
+    return dict(gi, G=gi['G64'].to(dtype), G64=None, gk=gi['gk64'].to(dtype) if gi.get('gk64') is not None else None)
+
+
+def _gk_factors(G, offs):
+    """P15: G_d = A (x) m (x) m in the face's (s, u, v) node order for all three directions (s: the five layers along
+    the face normal; u, v: the other two axes in increasing order), A and m the same for all: (A, m, perm) with perm[d]
+    the template node of each (s, u, v), else None. (The ghost-penalty rows are normal-jump stencils times tangential
+    shape-function products: the Gram matrix is the normal 5 x 5 block times the 1-D tangential factor twice.)"""
+    perms, Gs = [], []
+    for k in range(3):
+        o = offs[k]
+        a, b = [i for i in range(3) if i != k]
+        if o[:, k].max() > 4 or o[:, a].max() > 2 or o[:, b].max() > 2 or o.min() < 0:
+            return None
+        idx = np.full((5, 3, 3), -1, np.int64)
+        idx[o[:, k], o[:, a], o[:, b]] = np.arange(45)
+        if (idx < 0).any():
+            return None
+        p = idx.reshape(-1)
+        perms.append(p)
+        Gs.append(G[k][np.ix_(p, p)])
+    G6 = Gs[0].reshape(5, 3, 3, 5, 3, 3)
+    A = G6[:, 1, 1, :, 1, 1].copy()
+    s0 = int(np.argmax(np.abs(np.diag(A))))
+    if A[s0, s0] == 0:
+        return None
+    m = G6[s0, :, 1, s0, :, 1] / A[s0, s0]
+    R = np.einsum('ab,ij,kl->aikbjl', A, m, m).reshape(45, 45)
+    for k in range(3):
+        if np.abs(R - Gs[k]).max() > 1e-12 * np.abs(Gs[k]).max():
+            return None
+    return A, m, np.stack(perms)
 
 
 def _gf_int(C, nd):
@@ -361,8 +396,14 @@ def _gf_int(C, nd):
     m = fm.long()[dd]                                                       # nf x 45
     el = torch.where(m >= 32, fn.long()[:, None], fe.long()[:, None])
     fnode = nd.long()[el, m & 31].to(torch.int32).contiguous()
+    gk64 = fsuv = None
+    fac = _gk_factors(G, offs)
+    if fac is not None:                                                     # P15: (s, u, v) node order per face
+        A, mt, perm = fac
+        gk64 = torch.as_tensor(np.concatenate([A.reshape(-1), mt.reshape(-1)]), dtype=torch.float64, device=dev)
+        fsuv = fnode.gather(1, torch.as_tensor(perm, device=dev)[dd]).contiguous()
     return dict(fe=fe, fn=fn, c1=int(cuts[1]), c2=int(cuts[2]), nf=nf, fmap=fm, nd=nd, fnode=fnode,
-                G64=torch.as_tensor(G, dtype=torch.float64, device=dev))
+                G64=torch.as_tensor(G, dtype=torch.float64, device=dev), gk64=gk64, fsuv=fsuv)
 
 
 _SMS = {}
@@ -380,9 +421,27 @@ def _blocks(dev):
     return GF_BLOCKS or 8 * _SMS[dev]
 
 
-def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None, gf2=None):
+def _use_gk(gk, gst):
+    return (GK if gk is None else bool(gk)) and gst.get('gk') is not None
+
+
+def gk_apply_(y, gst, x, blocks=None, nb=None):
+    """y += gamma G x (ghost faces) in the Kronecker form (P15; gf_state with 'gk'; float32 or float64)."""
+    assert x.is_contiguous() and y.is_contiguous() and x.dtype == y.dtype == gst['gk'].dtype
+    f = _lib().gk_launch64 if x.dtype == torch.float64 else _lib().gk_launch
+    rc = f(x.data_ptr(), y.data_ptr(), gst['fsuv'].data_ptr(), gst['gk'].data_ptr(), gst['nf'], x.shape[1],
+           int(NB if nb is None else nb), int(_blocks(x.device) if blocks is None else blocks),
+           torch.cuda.current_stream(x.device).cuda_stream)
+    if rc != 0:
+        raise RuntimeError(f'GK_LAUNCH:{rc}')
+    return y
+
+
+def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None, gf2=None, gk=None):
     """y += gamma G x (ghost faces, float32) through gf_state (x, y: nb x B float32 contiguous)."""
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
+    if _use_gk(gk, gst):
+        return gk_apply_(y, gst, x, blocks=blocks, nb=nb)
     if blocks is None:
         blocks = _blocks(x.device)
     if _use_gf2(gf2, x.shape[1]):
@@ -427,9 +486,11 @@ def apply64_(y, st, x, epb=None, nb=None):
     return y
 
 
-def gf_apply64_(y, gst, x, blocks=None, nb=None, gf2=None):
+def gf_apply64_(y, gst, x, blocks=None, nb=None, gf2=None, gk=None):
     """y += gamma G x (ghost faces, float64) through gf_state(..., float64)."""
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float64 and y.dtype == torch.float64
+    if _use_gk(gk, gst):
+        return gk_apply_(y, gst, x, blocks=blocks, nb=nb)
     if blocks is None:
         blocks = _blocks(x.device)
     if _use_gf2(gf2, x.shape[1]):

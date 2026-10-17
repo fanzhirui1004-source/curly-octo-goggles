@@ -1,0 +1,472 @@
+{
+ "cells": 51,
+ "C": 89.12043286688389,
+ "pcg": 168,
+ "true_residual": 0.00045271181260349085,
+ "Ut_rho_rel": -6.020640390282575e-09,
+ "times": {
+  "resident_gb": 4.0,
+  "prof_fe": {
+   "cells": 3,
+   "wall_ms": 1508.62,
+   "window_ms": 1506.07,
+   "kernels": 20958,
+   "kernel_sum_ms": 917.32,
+   "kernel_busy_ms": 917.32,
+   "concurrency": 1.0,
+   "memcpy_n": 2655,
+   "memcpy_sum_ms": 45.39,
+   "memcpy_busy_ms": 45.39,
+   "h2d_GB": 0.124,
+   "memset_sum_ms": 0.67,
+   "kernel_and_memcpy_overlap_ms": 0.0,
+   "idle_ms": 542.69,
+   "per_stream": {
+    "7": {
+     "kernels": 20958,
+     "kernel_ms": 917.32,
+     "memcpy_ms": 45.39,
+     "busy_ms": 963.38
+    }
+   },
+   "top_kernels": [
+    [
+     "void kernel<getrf_wo_pivot_params_<double, 0, 256, 1, 64, 64, 64, 16, 1, 1> >(in",
+     243.167,
+     12
+    ],
+    [
+     "_fwd2",
+     119.513,
+     9
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align1>(cutlass",
+     50.034,
+     93
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_tn_align1>(cutlass",
+     34.302,
+     442
+    ],
+    [
+     "void (anonymous namespace)::indexing_backward_kernel_stride_1<double>(long const",
+     32.151,
+     21
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_tn_align1>(cutlass",
+     30.592,
+     53
+    ],
+    [
+     "void trsm_left_kernel<int, double, 256, 4, false, false, false, false, false>(cu",
+     26.884,
+     380
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_nn_align1>(cutlass",
+     26.379,
+     438
+    ],
+    [
+     "void trsm_left_kernel<int, double, 256, 4, false, false, true, false, false>(cub",
+     26.18,
+     438
+    ],
+    [
+     "void at::native::vectorized_gather_kernel<16, long>(char*, char*, long*, int, lo",
+     24.359,
+     350
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_128x64_16x3_tn_align1>(cutlas",
+     23.697,
+     8
+    ],
+    [
+     "void kernel<getrf_wo_pivot_params_<double, 0, 256, 1, 64, 64, 64, 8, 1, 1> >(int",
+     17.728,
+     9
+    ],
+    [
+     "void kmf_kernel<double, 4, 1>(double const*, double*, int const*, double const*,",
+     14.921,
+     123
+    ],
+    [
+     "void gf_kernel<double, 4, 1>(double const*, double*, int const*, int const*, int",
+     13.929,
+     123
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nt_align1>(cutlass",
+     12.754,
+     17
+    ],
+    [
+     "void at::native::radixSortKVInPlace<2, -1, 16, 2, signed char, long, unsigned in",
+     11.669,
+     27
+    ],
+    [
+     "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<a",
+     8.237,
+     42
+    ],
+    [
+     "void at::native::indexFuncLargeIndex<double, long, unsigned int, 2, 2, -2, true,",
+     7.675,
+     36
+    ],
+    [
+     "void kernel_trsm_l_mul32<double, 8, false, true, false, false>(int, int, double ",
+     7.238,
+     61
+    ],
+    [
+     "void at_cuda_detail::cub::DeviceRadixSortOnesweepKernel<at_cuda_detail::cub::Dev",
+     6.853,
+     368
+    ],
+    [
+     "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<a",
+     6.729,
+     363
+    ],
+    [
+     "void at::native::_scatter_gather_elementwise_kernel<128, 8, at::native::_cuda_sc",
+     6.493,
+     114
+    ],
+    [
+     "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<a",
+     6.269,
+     1142
+    ],
+    [
+     "void at_cuda_detail::cub::DeviceMergeSortMergeKernel<at_cuda_detail::cub::Device",
+     5.789,
+     26
+    ],
+    [
+     "void kernel_trsm_l_mul32<double, 8, false, false, false, false>(int, int, double",
+     5.677,
+     10
+    ]
+   ],
+   "cpu_api": {
+    "cudaStreamSynchronize": [
+     966.38,
+     2398
+    ],
+    "cudaMemcpyAsync": [
+     241.94,
+     2655
+    ],
+    "cudaHostRegister": [
+     148.76,
+     3
+    ],
+    "cudaLaunchKernel": [
+     142.17,
+     19055
+    ],
+    "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags": [
+     6.61,
+     1466
+    ],
+    "cuLaunchKernelEx": [
+     5.75,
+     584
+    ],
+    "cudaMemsetAsync": [
+     4.8,
+     1229
+    ],
+    "cuLaunchKernel": [
+     4.64,
+     1319
+    ],
+    "cudaDeviceGetAttribute": [
+     0.8,
+     3396
+    ],
+    "cudaPeekAtLastError": [
+     0.38,
+     6810
+    ],
+    "cudaFuncGetAttributes": [
+     0.18,
+     14
+    ],
+    "cudaDeviceSynchronize": [
+     0.1,
+     5
+    ]
+   }
+  },
+  "prep_s": 40.339681441895664,
+  "host_budget": {
+   "limit_GiB": 90.0,
+   "frac": null,
+   "top": 0.95,
+   "transient_x": 4.0,
+   "reserve_GiB": 2.91,
+   "cells": 51,
+   "slots_kept": 51,
+   "float64_kept": 51
+  },
+  "setup_s": 0.37396302446722984,
+  "precond_s": 22.860932301729918,
+  "solve_s": 64.80746635328978,
+  "prof": {
+   "wall_ms": 357.71,
+   "window_ms": 355.79,
+   "kernels": 27943,
+   "kernel_sum_ms": 552.58,
+   "kernel_busy_ms": 352.72,
+   "concurrency": 1.567,
+   "memcpy_n": 653,
+   "memcpy_sum_ms": 284.0,
+   "memcpy_busy_ms": 282.33,
+   "h2d_GB": 15.552,
+   "memset_sum_ms": 0.0,
+   "kernel_and_memcpy_overlap_ms": 281.88,
+   "idle_ms": 2.62,
+   "per_stream": {
+    "7": {
+     "kernels": 251,
+     "kernel_ms": 0.69,
+     "memcpy_ms": 0.0,
+     "busy_ms": 0.69
+    },
+    "17": {
+     "kernels": 14089,
+     "kernel_ms": 283.07,
+     "memcpy_ms": 1.08,
+     "busy_ms": 284.11
+    },
+    "21": {
+     "kernels": 13603,
+     "kernel_ms": 268.82,
+     "memcpy_ms": 1.07,
+     "busy_ms": 269.84
+    },
+    "13": {
+     "kernels": 0,
+     "kernel_ms": 0.0,
+     "memcpy_ms": 281.85,
+     "busy_ms": 281.85
+    }
+   },
+   "top_kernels": [
+    [
+     "_scatter_t",
+     113.582,
+     2448
+    ],
+    [
+     "_gather_t",
+     67.621,
+     2448
+    ],
+    [
+     "void gf2_kernel<float, 4, 2>(float const*, float*, int const*, float const*, int",
+     58.16,
+     816
+    ],
+    [
+     "_conv3s",
+     42.499,
+     1224
+    ],
+    [
+     "void gf_kernel<float, 8, 1>(float const*, float*, int const*, int const*, int co",
+     41.684,
+     1020
+    ],
+    [
+     "void kmf_kernel<float, 4, 2>(float const*, float*, int const*, float const*, flo",
+     38.392,
+     816
+    ],
+    [
+     "void magma_sgemmEx_kernel<float, float, float, false, false, 6, 3, 5, 3, 3>(int,",
+     34.957,
+     2493
+    ],
+    [
+     "void kmf_kernel<float, 4, 1>(float const*, float*, int const*, float const*, flo",
+     29.909,
+     1020
+    ],
+    [
+     "_cheb_step",
+     10.625,
+     816
+    ],
+    [
+     "void kmf_kernel<double, 4, 1>(double const*, double*, int const*, double const*,",
+     9.447,
+     51
+    ],
+    [
+     "void gf_kernel<double, 4, 1>(double const*, double*, int const*, int const*, int",
+     9.167,
+     51
+    ],
+    [
+     "void cusparse::csrmm_alg2_kernel<false, false, false, int, int, int, int, float,",
+     7.519,
+     612
+    ],
+    [
+     "_tail_step",
+     7.378,
+     816
+    ],
+    [
+     "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>",
+     6.76,
+     3099
+    ],
+    [
+     "_restrict",
+     6.703,
+     102
+    ],
+    [
+     "_symm_map",
+     6.136,
+     192
+    ],
+    [
+     "std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, float, fl",
+     6.066,
+     96
+    ],
+    [
+     "_prolong",
+     4.994,
+     102
+    ],
+    [
+     "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<a",
+     4.65,
+     865
+    ],
+    [
+     "_mask_split_ip",
+     4.588,
+     1275
+    ],
+    [
+     "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda",
+     4.298,
+     1064
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align1>(cutlass",
+     3.5,
+     42
+    ],
+    [
+     "void cusparse::(anonymous namespace)::csr_partition_kernel<int, int>(int const*,",
+     3.352,
+     612
+    ],
+    [
+     "_symm",
+     3.055,
+     102
+    ],
+    [
+     "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda",
+     2.857,
+     765
+    ]
+   ],
+   "cpu_api": {
+    "cudaDeviceSynchronize": [
+     306.11,
+     4
+    ],
+    "cudaGraphLaunch": [
+     39.47,
+     51
+    ],
+    "cudaMemcpyAsync": [
+     1.32,
+     194
+    ],
+    "cudaLaunchKernel": [
+     0.8,
+     256
+    ],
+    "cudaStreamWaitEvent": [
+     0.09,
+     135
+    ],
+    "cudaStreamIsCapturing": [
+     0.07,
+     271
+    ],
+    "cudaEventRecordWithFlags": [
+     0.06,
+     85
+    ],
+    "cudaEventRecord": [
+     0.04,
+     51
+    ],
+    "cudaDriverGetVersion": [
+     0.01,
+     51
+    ]
+   }
+  },
+  "graph": {
+   "on": true,
+   "maxb": 4,
+   "pools": 3,
+   "captures": 102,
+   "recaptures": 0,
+   "replays": 8517,
+   "failed": 0,
+   "capture_s": 1.3,
+   "errors": []
+  },
+  "sens_s": 26.966973370872438,
+  "bodies_s": 0.0010238010436296463,
+  "analysis_wall_s": 156.2648954037577
+ },
+ "bodies_new": 0,
+ "streamed": 41,
+ "gpu_peak_gb": 8.548534393310547,
+ "host_peak_gb": 19.713836669921875,
+ "env": {
+  "OPL_V3_PROF_OUT": "/root/autodl-tmp/OPL/V3W/plate/v3T_S51/prof40.json",
+  "OPL_V3_KMF64": "1",
+  "OPL_V3_KMF": "1",
+  "OPL_V3_PIPE_BODIES": "0",
+  "OPL_BENCH_TMP": "/root/autodl-tmp/OPL/V3W/bench_tmp",
+  "OPL_V3_PROF_FE_OUT": "/root/autodl-tmp/OPL/V3W/plate/v3T_S51/prof_fe20.json",
+  "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+  "OPL_CONV_FP32": "1",
+  "OPL_V3_PROF_ITER": "40",
+  "OPL_V3_PROF_FE": "20",
+  "OPL_STREAM_PACK": "1",
+  "OPL_GP_CACHE": "0",
+  "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/V3W/plate/v3T_S51/packets:/root/autodl-tmp/OPL/V3W/plate/v3T_S51/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets:/root/autodl-tmp/OPL/V3W/plate_packets",
+  "OPL_KE_SYMV": "1",
+  "OPL_KE_SYMV64": "1",
+  "OPL_TAILT_FUSED": "1",
+  "OPL_COARSE_FP32": "1",
+  "OPL_COARSE_ELEM": "1",
+  "OPL_TET_TRITON": "1",
+  "OPL_COARSE_SPARSE": "1",
+  "OPL_COARSE_PIVOT_FLOOR": "1e-7"
+ }
+}

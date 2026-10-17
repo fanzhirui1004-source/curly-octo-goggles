@@ -1,0 +1,206 @@
+{
+ "wall_ms": 357.71,
+ "window_ms": 355.79,
+ "kernels": 27943,
+ "kernel_sum_ms": 552.58,
+ "kernel_busy_ms": 352.72,
+ "concurrency": 1.567,
+ "memcpy_n": 653,
+ "memcpy_sum_ms": 284.0,
+ "memcpy_busy_ms": 282.33,
+ "h2d_GB": 15.552,
+ "memset_sum_ms": 0.0,
+ "kernel_and_memcpy_overlap_ms": 281.88,
+ "idle_ms": 2.62,
+ "per_stream": {
+  "7": {
+   "kernels": 251,
+   "kernel_ms": 0.69,
+   "memcpy_ms": 0.0,
+   "busy_ms": 0.69
+  },
+  "17": {
+   "kernels": 14089,
+   "kernel_ms": 283.07,
+   "memcpy_ms": 1.08,
+   "busy_ms": 284.11
+  },
+  "21": {
+   "kernels": 13603,
+   "kernel_ms": 268.82,
+   "memcpy_ms": 1.07,
+   "busy_ms": 269.84
+  },
+  "13": {
+   "kernels": 0,
+   "kernel_ms": 0.0,
+   "memcpy_ms": 281.85,
+   "busy_ms": 281.85
+  }
+ },
+ "top_kernels": [
+  [
+   "_scatter_t",
+   113.582,
+   2448
+  ],
+  [
+   "_gather_t",
+   67.621,
+   2448
+  ],
+  [
+   "void gf2_kernel<float, 4, 2>(float const*, float*, int const*, float const*, int",
+   58.16,
+   816
+  ],
+  [
+   "_conv3s",
+   42.499,
+   1224
+  ],
+  [
+   "void gf_kernel<float, 8, 1>(float const*, float*, int const*, int const*, int co",
+   41.684,
+   1020
+  ],
+  [
+   "void kmf_kernel<float, 4, 2>(float const*, float*, int const*, float const*, flo",
+   38.392,
+   816
+  ],
+  [
+   "void magma_sgemmEx_kernel<float, float, float, false, false, 6, 3, 5, 3, 3>(int,",
+   34.957,
+   2493
+  ],
+  [
+   "void kmf_kernel<float, 4, 1>(float const*, float*, int const*, float const*, flo",
+   29.909,
+   1020
+  ],
+  [
+   "_cheb_step",
+   10.625,
+   816
+  ],
+  [
+   "void kmf_kernel<double, 4, 1>(double const*, double*, int const*, double const*,",
+   9.447,
+   51
+  ],
+  [
+   "void gf_kernel<double, 4, 1>(double const*, double*, int const*, int const*, int",
+   9.167,
+   51
+  ],
+  [
+   "void cusparse::csrmm_alg2_kernel<false, false, false, int, int, int, int, float,",
+   7.519,
+   612
+  ],
+  [
+   "_tail_step",
+   7.378,
+   816
+  ],
+  [
+   "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>",
+   6.76,
+   3099
+  ],
+  [
+   "_restrict",
+   6.703,
+   102
+  ],
+  [
+   "_symm_map",
+   6.136,
+   192
+  ],
+  [
+   "std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, float, fl",
+   6.066,
+   96
+  ],
+  [
+   "_prolong",
+   4.994,
+   102
+  ],
+  [
+   "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<a",
+   4.65,
+   865
+  ],
+  [
+   "_mask_split_ip",
+   4.588,
+   1275
+  ],
+  [
+   "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda",
+   4.298,
+   1064
+  ],
+  [
+   "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align1>(cutlass",
+   3.5,
+   42
+  ],
+  [
+   "void cusparse::(anonymous namespace)::csr_partition_kernel<int, int>(int const*,",
+   3.352,
+   612
+  ],
+  [
+   "_symm",
+   3.055,
+   102
+  ],
+  [
+   "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda",
+   2.857,
+   765
+  ]
+ ],
+ "cpu_api": {
+  "cudaDeviceSynchronize": [
+   306.11,
+   4
+  ],
+  "cudaGraphLaunch": [
+   39.47,
+   51
+  ],
+  "cudaMemcpyAsync": [
+   1.32,
+   194
+  ],
+  "cudaLaunchKernel": [
+   0.8,
+   256
+  ],
+  "cudaStreamWaitEvent": [
+   0.09,
+   135
+  ],
+  "cudaStreamIsCapturing": [
+   0.07,
+   271
+  ],
+  "cudaEventRecordWithFlags": [
+   0.06,
+   85
+  ],
+  "cudaEventRecord": [
+   0.04,
+   51
+  ],
+  "cudaDriverGetVersion": [
+   0.01,
+   51
+  ]
+ }
+}

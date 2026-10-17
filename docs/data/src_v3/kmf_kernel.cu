@@ -453,6 +453,85 @@ gf2_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ f
     }
 }
 
+// Ghost faces, Kronecker form (src_v3 P15, gk): every face's Gram matrix is gamma A (x) m (x) m in the face's (s, u, v)
+// node order (s: the five node layers along the face normal, i_d = 0, 1, 2 of fe and i_d = 1, 2 of fn; u, v: the other
+// two axes in increasing order; A 5 x 5 with gamma, m the 3 x 3 tangential factor), checked against the templates when
+// the state is built (kmf._gk_factors). 495 instead of 2025 multiply-adds per face and component, 34 table values
+// instead of three 45 x 45 matrices. 15 threads per face, thread (s, c) with c the component; two faces per warp
+// (lanes 0-14 and 16-30), warp-synchronous: the thread gathers the 3 x 3 plane of layer s, applies m along u and v in
+// registers and writes the plane to shared memory; then row s of A over the face's five planes and 9 atomic adds.
+// fsuv: nf x 45 node indices in (s, u, v) order; tab: A (25) then m (9).
+template <typename T, int NB>
+__global__ void __launch_bounds__(128)
+gk_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ fsuv, const T* __restrict__ tab, int nf,
+          int LD)
+{
+    __shared__ T sZ[8][NB][135];                                  // [face of the block][col][27 s + 9 c + 3 u + v]
+    const int lane = threadIdx.x & 31, wf = 2 * (threadIdx.x >> 5) + (lane >> 4), l = lane & 15;
+    const bool act = l < 15;
+    const int s = act ? l / 3 : 0, c = act ? l - 3 * (l / 3) : 0;
+    T a[5], m[9];
+#pragma unroll
+    for (int i = 0; i < 5; i++) a[i] = tab[5 * s + i];
+#pragma unroll
+    for (int i = 0; i < 9; i++) m[i] = tab[25 + i];
+    const int col0 = blockIdx.y * NB;
+    const int ncol = min(NB, LD - col0);
+    for (int fb = 8 * blockIdx.x; fb < nf; fb += 8 * gridDim.x) {  // (uniform in the block)
+        const int f = fb + wf;
+        const bool ok = act && f < nf;
+        int nodes[9];
+        if (ok) {
+#pragma unroll
+            for (int q = 0; q < 9; q++) nodes[q] = fsuv[(int64_t)f * 45 + 9 * s + q];
+            T p[NB][9];
+#pragma unroll
+            for (int q = 0; q < 9; q++)
+#pragma unroll
+                for (int k = 0; k < NB; k++) p[k][q] = k < ncol ? x[(3 * (int64_t)nodes[q] + c) * LD + col0 + k] : T(0);
+#pragma unroll
+            for (int k = 0; k < NB; k++) {
+                T w[9];
+#pragma unroll
+                for (int u = 0; u < 3; u++)
+#pragma unroll
+                    for (int v = 0; v < 3; v++)
+                        w[3 * u + v] = m[3 * u] * p[k][v] + m[3 * u + 1] * p[k][3 + v] + m[3 * u + 2] * p[k][6 + v];
+#pragma unroll
+                for (int u = 0; u < 3; u++)
+#pragma unroll
+                    for (int v = 0; v < 3; v++)
+                        sZ[wf][k][27 * s + 9 * c + 3 * u + v] = m[3 * v] * w[3 * u] + m[3 * v + 1] * w[3 * u + 1] + m[3 * v + 2] * w[3 * u + 2];
+            }
+        }
+        __syncwarp();
+        if (ok) {
+#pragma unroll
+            for (int k = 0; k < NB; k++) {
+                if (k < ncol) {
+#pragma unroll
+                    for (int q = 0; q < 9; q++) {
+                        const T* z = &sZ[wf][k][9 * c + q];
+                        const T acc = a[0] * z[0] + a[1] * z[27] + a[2] * z[54] + a[3] * z[81] + a[4] * z[108];
+                        atomicAdd(y + (3 * (int64_t)nodes[q] + c) * LD + col0 + k, acc);
+                    }
+                }
+            }
+        }
+        __syncwarp();                                             // (sZ reused by the next pair)
+    }
+}
+
+template <typename T>
+static void gk_go(const T* x, T* y, const int* fsuv, const T* tab, int nf, int B, int nb, int blocks, cudaStream_t s)
+{
+    int gx = (nf + 7) / 8;
+    if (blocks > 0 && gx > blocks) gx = blocks;
+    if (nb == 1) gk_kernel<T, 1><<<dim3(gx, B), 128, 0, s>>>(x, y, fsuv, tab, nf, B);
+    else if (nb == 2) gk_kernel<T, 2><<<dim3(gx, (B + 1) / 2), 128, 0, s>>>(x, y, fsuv, tab, nf, B);
+    else gk_kernel<T, 4><<<dim3(gx, (B + 3) / 4), 128, 0, s>>>(x, y, fsuv, tab, nf, B);
+}
+
 template <typename T, int FPB, int NB>
 static void gf2_go(const T* x, T* y, const int* fnode, const T* G, int nf, int c1, int c2, int B, int blocks,
                    cudaStream_t s)
@@ -522,6 +601,9 @@ int kmf_init(const float* tabL, const float* tabD, const double* tabL64, const d
     cudaFuncGetAttributes(&at, gf2_kernel<double, 2, 4>);
     cudaFuncGetAttributes(&at, kef_kernel<4, 1>); cudaFuncGetAttributes(&at, kef_kernel<4, 2>);
     cudaFuncGetAttributes(&at, kef_kernel<2, 4>);
+    cudaFuncGetAttributes(&at, gk_kernel<float, 1>); cudaFuncGetAttributes(&at, gk_kernel<float, 2>);
+    cudaFuncGetAttributes(&at, gk_kernel<float, 4>); cudaFuncGetAttributes(&at, gk_kernel<double, 1>);
+    cudaFuncGetAttributes(&at, gk_kernel<double, 2>); cudaFuncGetAttributes(&at, gk_kernel<double, 4>);
     return (int)cudaDeviceSynchronize();
 }
 
@@ -625,6 +707,23 @@ int gf_launch64(const double* x, double* y, const int* nd, const int* fe, const 
     if (nb == 1) gf_go<double, 4, 1>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);
     else if (nb == 2) gf_go<double, 4, 2>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);
     else gf_go<double, 2, 4>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);       // (48 KB static limit)
+    return (int)cudaGetLastError();
+}
+
+int gk_launch(const float* x, float* y, const int* fsuv, const float* tab, int nf, int B, int nb, int blocks, void* stream)
+{
+    if (nf <= 0 || B <= 0) return 0;
+    if (nb <= 0) nb = auto_nb(B);
+    gk_go<float>(x, y, fsuv, tab, nf, B, nb, blocks, (cudaStream_t)stream);
+    return (int)cudaGetLastError();
+}
+
+int gk_launch64(const double* x, double* y, const int* fsuv, const double* tab, int nf, int B, int nb, int blocks,
+                void* stream)
+{
+    if (nf <= 0 || B <= 0) return 0;
+    if (nb <= 0) nb = auto_nb(B);
+    gk_go<double>(x, y, fsuv, tab, nf, B, nb, blocks, (cudaStream_t)stream);
     return (int)cudaGetLastError();
 }
 
