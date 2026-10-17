@@ -31,7 +31,7 @@ import torch
 import triton
 import triton.language as tl
 
-ON = os.environ.get('OPL_V3_KMF', '0') == '1'
+ON = os.environ.get('OPL_V3_KMF', '1') == '1'                         # P13 (default on: see use())
 CUDA = os.environ.get('OPL_V3_KMF_CUDA', '1') == '1'
 MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '16'))
 EPB = int(os.environ.get('OPL_V3_KMF_EPB', '4'))                       # CUDA kernel: elements per block (2, 4, 8)
@@ -234,6 +234,12 @@ def _init_tables(lib):
     if rc != 0:
         raise RuntimeError(f'KMF_INIT:{rc}')
     _TABLES[0] = PTS                                                        # the tables it holds (constant memory)
+
+
+def use():
+    """P13 in the solve's float32 products: switch on and the CUDA library usable (without nvcc the packed matrices as
+    before: the Triton form is slower than they are)."""
+    return ON and cuda_ok()
 
 
 def cuda_ok():

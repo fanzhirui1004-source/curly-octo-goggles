@@ -366,7 +366,7 @@ class _Kfp32:
         if KC64 and getattr(C, '_deploy', False) and x32.dim() == 2 \
                 and not (torch.is_grad_enabled() and x32.requires_grad):         # src_v3 check only: the float64 product,
             return C._Kx_lean(x32.to(torch.float64)).to(f32)                     # rounded (reference for P13)
-        if KMF.ON and KMF.GF and self.symv and self.gf is not None and x32.shape[1] <= KMF.MAXB and KMF.kind() == 'cuda' \
+        if self.symv and self.gf is not None and x32.shape[1] <= KMF.MAXB and KMF.GF and KMF.use() \
                 and not (torch.is_grad_enabled() and x32.requires_grad) and not self._v3(x32):
             st = self.mf_state()                                                # src_v3 P13: ghost faces and elements
             if 'gf' in st:                                                      # matrix-free (two CUDA kernels; P13b:
@@ -385,9 +385,9 @@ class _Kfp32:
         if self.symv and not (torch.is_grad_enabled() and x.requires_grad):
             import ke_symv as KS
             y, x32 = y.contiguous(), x32.contiguous()
-            if KMF.ON and x32.shape[1] <= KMF.MAXB:                             # src_v3 P13: matrix-free narrow product
+            if x32.shape[1] <= KMF.MAXB and KMF.use():                          # src_v3 P13: matrix-free narrow product
                 return KMF.apply_(y, self.mf_state(), x32)
-            if KMF.ON and self._hold > 0 and self._kp_tmp is None:              # src_v3 P13: wide product inside a hold:
+            if self._hold > 0 and self._kp_tmp is None and KMF.use():           # src_v3 P13: wide product inside a hold:
                 self._form_p()                                                  # the matrices now, released with the hold
             if self._kp_tmp is not None:
                 KS.symv_(y, self._kp_tmp, C.dofs, x32, kmap=self._kmap if torch.is_tensor(self._kmap) else None)
@@ -505,7 +505,7 @@ class _Kfp32:
                         me._kp_part = me._ke_part = me._dp_part = None
                 return
             E = len(me.C.M)
-            if me.symv and me._hold == 0 and KMF.ON:                            # src_v3 P13: narrow products matrix-free,
+            if me.symv and me._hold == 0 and KMF.use():                         # src_v3 P13: narrow products matrix-free,
                 me.mf_state()                                                   # wide ones form the matrices on first use
             elif me.symv and me._hold == 0:
                 me._form_p()
