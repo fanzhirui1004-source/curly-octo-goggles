@@ -110,7 +110,16 @@ with torch.no_grad():
             G = Graphed(f, C.np_, B)
             tg = ev(lambda: G(q), a.rep)
             out[on] = G(q).clone(); out[(on, 'b')] = G(q).clone()
-            r['on' if on else 'off'] = dict(ms_eager=round(te, 2), ms_graph=round(tg, 2))
+            from torch.profiler import profile, ProfilerActivity
+            with profile(activities=[ProfilerActivity.CUDA]) as p_:
+                for _ in range(5):
+                    G(q)
+                torch.cuda.synchronize()
+            rows_ = [e_ for e_ in p_.key_averages() if e_.device_type == torch.autograd.DeviceType.CUDA]
+            top_ = [(e_.key[:50], round(e_.self_device_time_total / 5e3, 3), e_.count // 5)
+                    for e_ in sorted(rows_, key=lambda e_: -e_.self_device_time_total)[:14]]
+            r['on' if on else 'off'] = dict(ms_eager=round(te, 2), ms_graph=round(tg, 2),
+                                            kernel_ms=round(sum(e_.self_device_time_total for e_ in rows_) / 5e3, 2), top=top_)
             del G; torch.cuda.synchronize(); torch.cuda.empty_cache()
         set_sw(False)
         r['rel_on_off'] = float(((out[True] - out[False]).norm(dim=0) / out[False].norm(dim=0)).max())
