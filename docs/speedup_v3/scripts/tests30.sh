@@ -8,6 +8,7 @@ bash $S/tst.sh gemmsites t_gemmsites.py $SP
 bash $S/tst.sh symv6 t_symv6.py $SP
 bash $S/tst.sh clampfree t_clampfree.py $SP
 bash $S/tst.sh sw_clampfree t_switch.py $SP --sw fastnet.CLAMPFREE
+bash $S/tst.sh hfuse2 t_hfuse2.py $SP
 bash $S/tst.sh conv2s t_conv2.py $SP
 bash $S/tst.sh sw_conv3s t_switch.py $SP --sw fastnet.CONV3
 echo "$(date +%F_%T) TESTS30_DONE" >> $W/status.txt

@@ -66,6 +66,8 @@ with torch.no_grad(), f.slots():
             best = None
             for eb in (1, 2, 4, 8):
                 for fc in (4, 8, 16, 32):
+                    if eb * hl.H * fc * hl.W.shape[1] > 8192:                     # register tile limit (larger tiles
+                        continue                                                 # take minutes to compile)
                     for w in (2, 4, 8):
                         try:
                             run = lambda: HF.layer(X.reshape(hl.N, -1), hl.hn, hl.a, hl.b, hl.deg, hl.W,
