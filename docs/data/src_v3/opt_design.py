@@ -488,6 +488,8 @@ def analyse_fast(cases, positions, h, wait=None):
         Chat = float((F * X).sum()); Ur = float((X * rho).sum())
         tres = float(rho.norm() / F.norm())
     T['solve_s'] = time.perf_counter() - t
+    if r.get('lanczos') is not None:                                              # src_v3 diagnostic (Ritz values)
+        T['lanczos'] = r['lanczos']
     import cellgraph as CG
     if CG.ON:                                                                     # src_v3 S26: graph counters; the
         T['graph'] = CG.summary()                                                 # pools freed before the sensitivities

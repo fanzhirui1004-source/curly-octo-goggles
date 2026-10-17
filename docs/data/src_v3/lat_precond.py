@@ -465,6 +465,7 @@ def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=Tr
     sync(dev); t = time.perf_counter(); it = 0
     hist = []
     todo = sorted(snaps or [], reverse=True); got = []
+    lz = [] if LANCZOS else None                                        # src_v3 (diagnostic): CG coefficients
     for it in range(1, maxit + 1):
         AP = lat.matvec(ops, P, batch=batch)
         alpha = rz / (P * AP).sum(0)
@@ -473,12 +474,45 @@ def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=Tr
         while todo and rel < todo[0]:
             got.append(dict(level=todo.pop(0), iterations=it, X=X.clone()))
         if rel < tol or (max_seconds and time.perf_counter() - t > max_seconds):
+            if lz is not None:
+                lz.append((alpha.clone(), None))
             break
         Z = prec(R)
         rz_new = (R * Z).sum(0)
+        if lz is not None:
+            lz.append((alpha.clone(), rz_new / rz))
         P = Z + (rz_new / rz) * P; rz = rz_new
     sync(dev)
-    return dict(X=X, iterations=it, seconds=time.perf_counter() - t, residual=hist[-1] if hist else 0.0, history=hist, snaps=got)
+    out = dict(X=X, iterations=it, seconds=time.perf_counter() - t, residual=hist[-1] if hist else 0.0, history=hist, snaps=got)
+    if lz:
+        out['lanczos'] = ritz_summary(lz)
+    return out
+
+
+LANCZOS = os.environ.get('OPL_V3_PCG_LANCZOS', '0') == '1'
+
+
+def ritz_summary(lz, n_small=40, n_large=5):
+    """src_v3 diagnostic (OPL_V3_PCG_LANCZOS=1): the Ritz values of the preconditioned operator from the CG coefficients
+    (Lanczos tridiagonal T: T_kk = 1/alpha_k + beta_{k-1}/alpha_{k-1}, T_k,k+1 = sqrt(beta_k)/alpha_k), per column: the
+    smallest and largest ones and their ratio (an estimate of the effective condition number seen by this solve)."""
+    al = torch.stack([a for a, _ in lz]).double().cpu().numpy()          # its x cols
+    be = np.array([b.double().cpu().numpy() if b is not None else np.full(al.shape[1], np.nan) for _, b in lz])
+    res = []
+    for col in range(al.shape[1]):
+        a, b = al[:, col], be[:, col]
+        k = len(a)
+        d = np.empty(k); e = np.empty(max(k - 1, 0))
+        for i in range(k):
+            d[i] = 1 / a[i] + (b[i - 1] / a[i - 1] if i > 0 else 0.0)
+            if i < k - 1:
+                e[i] = np.sqrt(b[i]) / a[i]
+        T = np.diag(d) + np.diag(e, 1) + np.diag(e, -1)
+        w = np.linalg.eigvalsh(T)
+        res.append(dict(steps=k, smallest=[float(x) for x in w[:n_small]], largest=[float(x) for x in w[-n_large:]],
+                        cond=float(w[-1] / w[0]) if w[0] > 0 else None,
+                        below_1pct_of_max=int((w < 1e-2 * w[-1]).sum()), below_10pct_of_max=int((w < 1e-1 * w[-1]).sum())))
+    return res
 
 
 def dpcg(lat, ops, defl, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=True):

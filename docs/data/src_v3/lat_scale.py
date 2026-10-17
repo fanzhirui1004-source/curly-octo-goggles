@@ -255,7 +255,7 @@ def main(argv=None):
         if CG.ON:                                                                  # src_v3 S26: graph counters
             rec['graph'] = CG.summary()
         X = r['X']
-        rec['solve'] = dict(iterations=r['iterations'], residual=r['residual'], warm=X_prev is not None,
+        rec['solve'] = dict(iterations=r['iterations'], residual=r['residual'], warm=X_prev is not None, lanczos=r.get('lanczos'),
                             levels=[dict(level=s['level'], iterations=s['iterations']) for s in r['snaps']],
                             start_residual=r['history'][0] if r['history'] else None)
         comp = (lat.F * X).sum(0)
