@@ -256,6 +256,7 @@ def main(argv=None):
             rec['graph'] = CG.summary()
         X = r['X']
         rec['solve'] = dict(iterations=r['iterations'], residual=r['residual'], warm=X_prev is not None, lanczos=r.get('lanczos'), prof=r.get('prof'),
+                            block=r.get('block_widths'), ritz=r.get('ritz'),
                             levels=[dict(level=s['level'], iterations=s['iterations']) for s in r['snaps']],
                             start_residual=r['history'][0] if r['history'] else None)
         comp = (lat.F * X).sum(0)

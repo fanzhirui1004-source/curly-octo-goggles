@@ -511,6 +511,9 @@ def analyse_fast(cases, positions, h, wait=None):
         T['lanczos'] = r['lanczos']
     if r.get('prof') is not None:                                                 # src_v3 diagnostic (gpuprof)
         T['prof'] = r['prof']
+    for k_ in ('block_widths', 'ritz'):                                           # src_v3 P1 solvers (opt-in)
+        if r.get(k_) is not None:
+            T[k_] = r[k_]
     import cellgraph as CG
     if CG.ON:                                                                     # src_v3 S26: graph counters; the
         T['graph'] = CG.summary()                                                 # pools freed before the sensitivities

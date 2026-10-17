@@ -456,6 +456,10 @@ def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=Tr
     """PCG on the retained system. X0: initial guess (default zero; one extra operator application); snaps: descending
     relative-residual levels at which a copy of X and the iteration count are recorded (returned as 'snaps')."""
     F = lat.F if F is None else F
+    if BLOCK and F.shape[1] > 1:                                         # src_v3 P1 (category B): block PCG
+        return bpcg(lat, ops, prec, F=F, tol=tol, maxit=maxit, max_seconds=max_seconds, batch=batch, X0=X0, snaps=snaps)
+    if RITZ and isinstance(prec, BNN):                                   # src_v3 P1 (category B): Ritz-deflated restart
+        return rpcg(lat, ops, prec, F=F, tol=tol, maxit=maxit, max_seconds=max_seconds, batch=batch, X0=X0, snaps=snaps)
     dev = F.device
     if X0 is None:
         X = torch.zeros_like(F); R = F.clone()
@@ -499,6 +503,180 @@ def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=Tr
 
 
 LANCZOS = os.environ.get('OPL_V3_PCG_LANCZOS', '0') == '1'
+BLOCK = os.environ.get('OPL_V3_PCG_BLOCK', '0') == '1'
+BLOCK_DROP = float(os.environ.get('OPL_V3_PCG_BLOCK_DROP', '1e-12'))
+
+
+def _orth(V, drop):
+    """Orthonormal basis of the numerically independent part of span(V) (n x s, s small): eigen-decomposition of the
+    Gram matrix of the column-normalised V; directions with eigenvalue below drop (relative to s) are left out."""
+    nv = V.norm(dim=0)
+    ok = nv > 0
+    V = V[:, ok] / nv[ok][None, :]
+    G = V.T @ V
+    lam, U = torch.linalg.eigh((G + G.T) / 2)
+    keep = lam > drop * max(float(lam.max()), 1.0)
+    return V @ (U[:, keep] / torch.sqrt(lam[keep])[None, :])
+
+
+_RZ = os.environ.get('OPL_V3_PCG_RITZ', '')                           # "m,k": restart after m steps with k Ritz vectors
+RITZ = tuple(int(v) for v in _RZ.split(',')) if _RZ else None
+
+
+class Augmented:
+    """Coarse space W = [W_c, W_r] with W^T A W = I: the lattice coarse space plus extra A-orthonormal columns W_r
+    (A-orthogonal to W_c), A W_r stored; the same methods as Coarse / SparseCoarse."""
+
+    def __init__(self, c, Wr, AWr):
+        self.c, self.Wr, self.AWr = c, Wr, AWr
+        self.k = c.WT(Wr[:, :1]).shape[0]
+
+    def WT(self, R):
+        return torch.cat([self.c.WT(R), self.Wr.T @ R], 0)
+
+    def Wm(self, a):
+        return self.c.Wm(a[:self.k]) + self.Wr @ a[self.k:]
+
+    def AWm(self, a):
+        return self.c.AWm(a[:self.k]) + self.AWr @ a[self.k:]
+
+    def AWT(self, y):
+        return torch.cat([self.c.AWT(y), self.AWr.T @ y], 0)
+
+    def Q(self, R):
+        return self.Wm(self.WT(R))
+
+    def proj_T(self, Zr):
+        return Zr - self.Wm(self.AWT(Zr))
+
+
+def ritz_vectors(Ps, APs, al, be, rz, k, coarse, rcond=1e-10):
+    """k smallest Ritz pairs of the preconditioned operator per column from m CG steps (Ps / APs: the m search blocks
+    p_j and A p_j; al, be, rz: alpha_j, beta_j = rz_{j+1} / rz_j, rz_j per column), pooled over the columns, made
+    A-orthogonal to the coarse space and A-orthonormal: -> (W_r, A W_r, Ritz values used).
+    Lanczos vectors v_j = (-1)^j z_j / sqrt(rz_j), z_j = p_j - beta_{j-1} p_{j-1}; a Ritz vector sum_j s_j v_j is
+    sum_j (c_j - beta_j c_{j+1}) p_j with c_j = (-1)^j s_j / sqrt(rz_j): no operator application."""
+    m = len(Ps)
+    ncol = Ps[0].shape[1]
+    Ws, AWs, th = [], [], []
+    for col in range(ncol):
+        a = np.array([float(x[col]) for x in al]); b = np.array([float(x[col]) for x in be]); r = np.array([float(x[col]) for x in rz])
+        d = np.empty(m); e = np.empty(max(m - 1, 0))
+        for i in range(m):
+            d[i] = 1 / a[i] + (b[i - 1] / a[i - 1] if i > 0 else 0.0)
+            if i < m - 1:
+                e[i] = np.sqrt(b[i]) / a[i]
+        w, S = np.linalg.eigh(np.diag(d) + np.diag(e, 1) + np.diag(e, -1))
+        S = S[:, :k]
+        c = ((-1.0) ** np.arange(m))[:, None] * S / np.sqrt(r)[:, None]
+        cn = np.vstack([c[1:], np.zeros((1, c.shape[1]))])
+        D = torch.as_tensor(c - b[:, None] * cn, dtype=Ps[0].dtype, device=Ps[0].device)          # m x k
+        Ws.append(sum(Ps[j][:, col:col + 1] * D[j][None, :] for j in range(m)))
+        AWs.append(sum(APs[j][:, col:col + 1] * D[j][None, :] for j in range(m)))
+        th += [float(x) for x in w[:k]]
+    W, AW = torch.cat(Ws, 1), torch.cat(AWs, 1)
+    h = coarse.AWT(W)                                                   # A-orthogonal to the coarse space
+    W, AW = W - coarse.Wm(h), AW - coarse.AWm(h)
+    G = W.T @ AW
+    s_ = 1 / torch.sqrt(torch.clamp(torch.diagonal(G), min=1e-300))
+    lam, V = torch.linalg.eigh(s_[:, None] * ((G + G.T) / 2) * s_[None, :])
+    ok = lam > rcond * lam.max()
+    T = s_[:, None] * V[:, ok] / torch.sqrt(lam[ok])[None, :]
+    return W @ T, AW @ T, th
+
+
+def rpcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=True, X0=None, snaps=None):
+    """src_v3 P1 (OPL_V3_PCG_RITZ=m,k, default off; a different solver, results agree to the tolerance only): PCG with
+    the BNN preconditioner for m steps, then the k smallest Ritz vectors of the preconditioned operator (per column,
+    from the stored search directions, no operator application) are added to the coarse space (deflation of the
+    slowest modes) and PCG restarts from the current iterate and residual with the augmented BNN preconditioner.
+    Costs: 2 m stored vectors per column during the first phase; k more coarse columns per column afterwards."""
+    F = lat.F if F is None else F
+    m_, k_ = RITZ
+    dev = F.device
+    if X0 is None:
+        X = torch.zeros_like(F); R = F.clone()
+    else:
+        X = X0.clone(); R = F - lat.matvec(ops, X, batch=batch)
+    r0 = F.norm(dim=0)
+    sync(dev); t = time.perf_counter(); it = 0
+    hist = []
+    todo = sorted(snaps or [], reverse=True); got = []
+    M = prec
+    Z = M(R); P = Z.clone(); rz = (R * Z).sum(0)
+    Ps, APs, al, be, rzs = [], [], [], [], []
+    info = dict(m=m_, k=k_)
+    for it in range(1, maxit + 1):
+        AP = lat.matvec(ops, P, batch=batch)
+        alpha = rz / (P * AP).sum(0)
+        if Ps is not None:
+            Ps.append(P); APs.append(AP); al.append(alpha); rzs.append(rz)
+        X += alpha * P; R -= alpha * AP
+        rel = float((R.norm(dim=0) / r0).max()); hist.append(rel)
+        while todo and rel < todo[0]:
+            got.append(dict(level=todo.pop(0), iterations=it, X=X.clone()))
+        if rel < tol or (max_seconds and time.perf_counter() - t > max_seconds):
+            break
+        if Ps is not None and it == m_:                                 # deflate and restart
+            Zt = M(R)
+            be.append((R * Zt).sum(0) / rz)
+            sync(dev); t1 = time.perf_counter()
+            Wr, AWr, th = ritz_vectors(Ps, APs, al, be, rzs, k_, prec.coarse)
+            Ps = APs = None
+            M = BNN(Augmented(prec.coarse, Wr, AWr), prec.fine)
+            Z = M(R); P = Z.clone(); rz = (R * Z).sum(0)
+            sync(dev)
+            info.update(added=int(Wr.shape[1]), ritz=[round(x, 5) for x in sorted(th)[:12]], setup_s=time.perf_counter() - t1,
+                        restart_at=it)
+            continue
+        Z = M(R)
+        rz_new = (R * Z).sum(0)
+        if Ps is not None:
+            be.append(rz_new / rz)
+        P = Z + (rz_new / rz) * P; rz = rz_new
+    sync(dev)
+    return dict(X=X, iterations=it, seconds=time.perf_counter() - t, residual=hist[-1] if hist else 0.0, history=hist,
+                snaps=got, ritz=info)
+
+
+def bpcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=True, X0=None, snaps=None):
+    """src_v3 P1 (OPL_V3_PCG_BLOCK=1, default off; a different solver, results agree to the tolerance only): block PCG
+    for several right-hand sides (breakdown-free form, Ji & Li 2017): the columns share one block Krylov space instead of
+    running independent recurrences (pcg). Per iteration one operator application to the search block P (at most as
+    many columns as F; fewer once directions become dependent), one preconditioner application to R:
+        Q = A P, alpha = (P^T Q)^-1 P^T R, X += P alpha, R -= Q alpha, Z = M R,
+        beta = -(P^T Q)^-1 Q^T Z, P = orth(Z + P beta).
+    Convergence test, snapshots and result as pcg (relative residual per column, the largest one)."""
+    F = lat.F if F is None else F
+    dev = F.device
+    if X0 is None:
+        X = torch.zeros_like(F); R = F.clone()
+    else:
+        X = X0.clone(); R = F - lat.matvec(ops, X, batch=batch)
+    r0 = F.norm(dim=0)
+    P = _orth(prec(R), BLOCK_DROP)
+    sync(dev); t = time.perf_counter(); it = 0
+    hist, widths = [], []
+    todo = sorted(snaps or [], reverse=True); got = []
+    for it in range(1, maxit + 1):
+        Q = lat.matvec(ops, P, batch=batch)
+        PQ = P.T @ Q
+        L = torch.linalg.cholesky((PQ + PQ.T) / 2)
+        alpha = torch.cholesky_solve(P.T @ R, L)
+        X += P @ alpha; R -= Q @ alpha
+        widths.append(int(P.shape[1]))
+        rel = float((R.norm(dim=0) / r0).max()); hist.append(rel)
+        while todo and rel < todo[0]:
+            got.append(dict(level=todo.pop(0), iterations=it, X=X.clone()))
+        if rel < tol or (max_seconds and time.perf_counter() - t > max_seconds):
+            break
+        Z = prec(R)
+        beta = -torch.cholesky_solve(Q.T @ Z, L)
+        P = _orth(Z + P @ beta, BLOCK_DROP)
+    sync(dev)
+    return dict(X=X, iterations=it, seconds=time.perf_counter() - t, residual=hist[-1] if hist else 0.0, history=hist,
+                snaps=got, block_widths=dict(min=min(widths) if widths else 0, max=max(widths) if widths else 0,
+                                             mean=float(np.mean(widths)) if widths else 0.0))
 
 
 def ritz_summary(lz, n_small=40, n_large=5):
