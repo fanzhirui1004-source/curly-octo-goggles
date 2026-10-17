@@ -53,6 +53,7 @@ SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 GC_YOUNG = os.environ.get('OPL_V3_GC', 'young') == 'young'                # src_v3 S17: 'full' = src_v2's collections
 KE64 = os.environ.get('OPL_V3_KE64', 'auto')                           # src_v3: 'auto' | 'store' | 'form' (Cell.store64)
 GF_CAT = os.environ.get('OPL_V3_GFCAT', '0') == '1'                    # src_v3: concatenated ghost-face DOF lists
+GF_BMM = os.environ.get('OPL_V3_GFBMM', '0') == '1'                    # src_v3 S20: padded templates, two bmm per product
 _SHARED = {}
 
 
@@ -178,7 +179,12 @@ class GhostFaces:
         if like is not None:                                                    # same faces, other precision
             self.idxT, self.faces = like.idxT, like.faces
             self.iTc, self.cuts = getattr(like, 'iTc', None), getattr(like, 'cuts', None)
+            self.iP, self.fk = getattr(like, 'iP', None), getattr(like, 'fk', None)
             self.B = [B.to(dtype) for B in like.B]
+            if self.iP is not None:
+                self.Bs = like.Bs.to(dtype)
+                self.BsT = self.Bs.transpose(1, 2).contiguous()
+                self.B = [self.Bs[k] for k in range(self.Bs.shape[0])]
             return
         d = Path(C._body_dir) / C.case
         faces = np.load(d / 'GP_FACES.npy').astype(np.int64)
@@ -193,7 +199,21 @@ class GhostFaces:
         # src_v3: the face DOF lists are stored transposed (135 x faces, contiguous), so the template products gather and
         # scatter in GEMM layout directly (src_v2 permuted and copied both ways in every product); `idx` is the
         # faces x 135 view used by the setup code
-        self.iTc = self.cuts = None
+        self.iTc = self.cuts = self.iP = None
+        if GF_BMM:                                                              # src_v3 S20: (templates, 135, Fmax) DOFs,
+            parts = [dofs[faces[:, 2] == k] for k in range(len(offs))]          # -1 padded
+            fm = max(1, max(len(p_) for p_ in parts))
+            iP = np.full((len(offs), dofs.shape[1], fm), -1, np.int32)
+            for k, p_ in enumerate(parts):
+                iP[k, :, :len(p_)] = p_.T
+            self.iP = torch.as_tensor(iP, device=dev)
+            self.fk = [len(p_) for p_ in parts]
+            self.idxT = None                                                    # views of iP on demand (_idxT)
+            self.Bs = torch.as_tensor(np.stack([tpl['canonical'][k] for k in range(len(offs))]), dtype=dtype, device=dev)
+            self.BsT = self.Bs.transpose(1, 2).contiguous()
+            self.B = [self.Bs[k] for k in range(len(offs))]
+            self.faces = len(faces)
+            return
         if GF_CAT:                                                              # src_v3: one 135 x faces array, templates
             parts = [dofs[faces[:, 2] == k] for k in range(len(offs))]          # in order; idxT are column views of it
             cuts = np.cumsum([0] + [len(p_) for p_ in parts])
@@ -205,13 +225,25 @@ class GhostFaces:
         self.B = [torch.as_tensor(tpl['canonical'][k], dtype=dtype, device=dev) for k in range(len(offs))]
         self.faces = len(faces)
 
+    def _idxT(self):
+        """The per-template 135 x faces DOF arrays (views of iP with OPL_V3_GFBMM, not kept as tensors of their own:
+        stream_ops would store each view separately)."""
+        return self.idxT if self.idxT is not None else [self.iP[k, :, :f] for k, f in enumerate(self.fk)]
+
     @property
     def idx(self):
-        return [t.t() for t in self.idxT]
+        return [t.t() for t in self._idxT()]
 
     def matvec(self, x, y):
         """y += G x (x, y: nb x b, self.dtype)."""
         b = x.shape[1]
+        if self.iP is not None and x.is_cuda and x.is_contiguous() and y.is_contiguous():   # src_v3 S20: four kernels
+            import gfbmm as GB
+            nT, nd, fm = self.iP.shape
+            X = GB.gather(x, self.iP).view(nT, nd, fm * b)                      # masked row gather (padding: 0)
+            Y = torch.bmm(self.BsT, torch.bmm(self.Bs, X))                      # B_d^T (B_d X_d), every template at once
+            GB.scatter_add(y, self.iP, Y)                                       # padding skipped
+            return y
         if FI.ON and self.iTc is not None and x.is_contiguous():               # src_v3 (GF_CAT): one gather, the template
             iT = self.iTc                                                       # GEMMs on column blocks (leading dimension,
             F = iT.shape[1]                                                     # no copies), one index_add
@@ -224,7 +256,7 @@ class GhostFaces:
             y.index_add_(0, iT.reshape(-1), Y.reshape(-1, b))
             return y
         if FI.ON:                                                               # one block per face template
-            for iT, B in zip(self.idxT, self.B):
+            for iT, B in zip(self._idxT(), self.B):
                 X = FI.rows(x, iT) if b > 1 else x[iT]                          # 135 x faces x b (GEMM layout)
                 Y = B.t() @ (B @ X.reshape(iT.shape[0], -1))
                 y.index_add_(0, iT.reshape(-1), Y.reshape(-1, b))
