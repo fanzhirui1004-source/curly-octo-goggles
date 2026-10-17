@@ -41,9 +41,9 @@ def _gf(x_ptr, y_ptr, iT_ptr, B_ptr, nf, ldT, c0, LD, FB: tl.constexpr, KC: tl.c
         tl.atomic_add(y_ptr + d * LD + c, Y, mask=mf[:, None] & mj[None, :])
 
 
-FB = int(os.environ.get('OPL_V3_GFFUSE_FB', '32'))
-KC = int(os.environ.get('OPL_V3_GFFUSE_KC', '32'))
-WARPS = int(os.environ.get('OPL_V3_GFFUSE_WARPS', '4'))
+FB = int(os.environ.get('OPL_V3_GFFUSE_FB', '16'))
+KC = int(os.environ.get('OPL_V3_GFFUSE_KC', '16'))
+WARPS = int(os.environ.get('OPL_V3_GFFUSE_WARPS', '2'))
 
 
 def matvec(gf, x, y, fb=None, kc=None, warps=None):
