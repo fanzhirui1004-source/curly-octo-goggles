@@ -912,7 +912,7 @@ class Cell:
         """Bytes store64 would keep (8 x 3321 per partial element; none with the matrix-free product, P14)."""
         if not (FI.ON and FK.ON and getattr(self, '_deploy', False)) or getattr(self, 'M', None) is None:
             return 0
-        if KMF.ON64 and KMF.kind() == 'cuda':
+        if KMF.ON64 and KMF.cuda_ok():
             return 0
         return int(FK.setup(self)['f64']['n_part']) * 3321 * 8
 
@@ -927,7 +927,7 @@ class Cell:
         if KE64 == 'form' or (KE64 == 'auto' and not allow) or not (FI.ON and FK.ON and getattr(self, '_deploy', False)) \
                 or getattr(self, '_k64_part', None) is not None or getattr(self, 'M', None) is None:
             return False
-        if KMF.ON64 and KMF.kind() == 'cuda':                               # src_v3 P14: nothing to store
+        if KMF.ON64 and KMF.cuda_ok():                               # src_v3 P14: nothing to store
             return False
         self._form64_part()
         return True
@@ -943,7 +943,7 @@ class Cell:
         def ctx():
             own = FI.ON and getattr(me, '_deploy', False) and getattr(me, '_ke64_tmp', None) is None \
                 and getattr(me, '_kp64_tmp', None) is None and getattr(me, '_k64_part', None) is None \
-                and not (KMF.ON64 and FK.ON and KMF.kind() == 'cuda')               # (src_v3 P14: nothing to form)
+                and not (KMF.ON64 and FK.ON and KMF.cuda_ok())                      # (src_v3 P14: nothing to form)
             if own and FK.ON:                                               # src_v3 (fullke): partial elements only
                 me._form64_part()
                 try:

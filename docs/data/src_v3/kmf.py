@@ -33,10 +33,10 @@ import triton.language as tl
 
 ON = os.environ.get('OPL_V3_KMF', '0') == '1'
 CUDA = os.environ.get('OPL_V3_KMF_CUDA', '1') == '1'
-MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '4'))
+MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '16'))
 EPB = int(os.environ.get('OPL_V3_KMF_EPB', '4'))                       # CUDA kernel: elements per block (2, 4, 8)
 GF = int(os.environ.get('OPL_V3_KMF_GF', '1') or 0)                   # CUDA: the ghost faces matrix-free too
-ON64 = os.environ.get('OPL_V3_KMF64', '0') == '1'                      # src_v3 P14: the float64 K product as well
+ON64 = os.environ.get('OPL_V3_KMF64', '1') == '1'                      # src_v3 P14: the float64 K product as well
 PTS = os.environ.get('OPL_V3_KMF_PTS', 'equi')                          # quadrature points: 'equi' | 'gauss'
 
 
@@ -50,7 +50,8 @@ def points():
 FPB = int(os.environ.get('OPL_V3_KMF_FPB', '8'))                       # faces per group (4, 8)
 GF_BLOCKS = int(os.environ.get('OPL_V3_KMF_GFBLK', '0') or 0)          # blocks of the face kernel (0: 8 per SM)
 NB = int(os.environ.get('OPL_V3_KMF_NB', '0') or 0)                    # columns per block (1, 2, 4; 0: by B)
-GF2 = os.environ.get('OPL_V3_KMF_GF2', '0') == '1'                     # ghost faces: DOF-parallel kernel (gf2)
+GF2 = os.environ.get('OPL_V3_KMF_GF2', 'auto')                         # ghost faces: DOF-parallel kernel (gf2): '1' always,
+                                                                        # 'auto' from 2 columns on (faster there), '0' never
 FPB2 = int(os.environ.get('OPL_V3_KMF_FPB2', '4'))                     # gf2: faces per group (2, 4)
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
@@ -359,6 +360,12 @@ def _gf_int(C, nd):
 _SMS = {}
 
 
+def _use_gf2(gf2, B):
+    if gf2 is not None:
+        return bool(gf2)
+    return GF2 in (True, 1, '1') or (GF2 == 'auto' and B >= 2)
+
+
 def _blocks(dev):
     if dev not in _SMS:
         _SMS[dev] = torch.cuda.get_device_properties(dev).multi_processor_count
@@ -370,7 +377,7 @@ def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None, gf2=None):
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
     if blocks is None:
         blocks = _blocks(x.device)
-    if GF2 if gf2 is None else gf2:
+    if _use_gf2(gf2, x.shape[1]):
         rc = _lib().gf2_launch(x.data_ptr(), y.data_ptr(), gst['fnode'].data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'],
                                gst['c2'], x.shape[1], int(fpb or FPB2), int(NB if nb is None else nb), int(blocks),
                                torch.cuda.current_stream(x.device).cuda_stream)
@@ -417,7 +424,7 @@ def gf_apply64_(y, gst, x, blocks=None, nb=None, gf2=None):
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float64 and y.dtype == torch.float64
     if blocks is None:
         blocks = _blocks(x.device)
-    if GF2 if gf2 is None else gf2:
+    if _use_gf2(gf2, x.shape[1]):
         rc = _lib().gf2_launch64(x.data_ptr(), y.data_ptr(), gst['fnode'].data_ptr(), gst['G'].data_ptr(), gst['nf'],
                                  gst['c1'], gst['c2'], x.shape[1], int(nb or 0), int(blocks),
                                  torch.cuda.current_stream(x.device).cuda_stream)
