@@ -9,9 +9,12 @@ separator) split the others into 8 octants that do not couple. Block elimination
     x_s = S^-1 (z_s - sum_o A_so y_o)                   S = A_ss - sum_o A_so A_oo^-1 A_os (Schur complement)
     x_o = A_oo^-1 (z_o - A_os x_s)
 The octant inverses and S^-1 are formed in float64 (Cholesky) and stored in float32 as packed symmetric tiles (the
-octants as one block-diagonal tile list), A_os as a float32 CSR matrix: ~20 MB per full cell instead of 168. The solve is
+octants as one block-diagonal tile list), A_os as a float32 CSR matrix. On the full plate cells (nc = 9324, coupling width
+2 through the ghost-penalty faces, separator 2664 columns): 29 MiB instead of 168, error against the float64 solve 1.7e-7
+instead of 2.9e-7 (the blocks are formed in float64), coarse solve 0.26 ms instead of 0.39 (B = 1). The solve is
 algebraically the same as the explicit inverse; only its float32 rounding differs. trainlib checks it against the
-float64 solve like the packed inverse (OPL_COARSE_INV_TOL) and otherwise uses the packed inverse."""
+float64 solve like the packed inverse (OPL_COARSE_INV_TOL) and otherwise uses the packed inverse; small cells, where
+the blocks do not save at least half of the tiles (OPL_COARSE_BLK_MAXFRAC), keep the packed inverse."""
 import os
 import numpy as np
 import torch

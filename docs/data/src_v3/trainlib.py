@@ -431,7 +431,7 @@ def _coarse_mf_meta(C, vc, slot, nc, ne):
 
 
 COARSE_INV_TOL = float(os.environ.get('OPL_COARSE_INV_TOL', '1e-4'))
-COARSE_BLK = os.environ.get('OPL_COARSE_BLK', '0') == '1'
+COARSE_BLK = os.environ.get('OPL_COARSE_BLK', '1') == '1'
 
 
 def _coarse_pack(C):

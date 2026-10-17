@@ -3,13 +3,14 @@
 The streamed cells live in page-locked host memory, so the number of cells an analysis can hold is bounded by the host
 memory the process may use: on the AutoDL container that is the cgroup limit (memory.max, 90 GiB), not the machine's RAM.
 Two per-cell items trade memory for time (both give the same results):
-  - the float64 partial-element matrices (teacher.Cell.store64, S9): ~0.1 GB per full plate cell, saves ~4 ms per S_hat;
-  - the hyperedge slot weights (fastnet slots, S5): ~0.27 GB per full plate cell; without them they are recomputed in
-    every application (bitwise the same, ~+9 ms per S_hat).
+  - the float64 partial-element matrices (teacher.Cell.store64, S9): ~0.09 GB per full plate cell, saves ~4.1 ms per S_hat;
+  - the hyperedge slot weights (fastnet slots, S5): ~0.29 GB per full plate cell; without them they are recomputed in
+    every application (bitwise the same, ~+9.7 ms per S_hat).
 Budget.decide (one call per cell, in front-end order, after the cell's warm-up) keeps both while the projected host use
 of the whole analysis (the current RSS plus, for this and every remaining cell, its bare state plus the two items) stays
-below the target; otherwise it drops the float64 matrices, then the slot weights. The plan is redone for every cell (the
-cells processed first get the items).
+below the target; otherwise it drops the slot weights, then the float64 matrices (S14c: the float64 matrices save more
+time per byte; OPL_V3_BUDGET_ORDER=slots: the S14 order). The plan is redone for every cell (the cells processed first
+get the items).
 Target (src_v3 S14b): OPL_V3_HOST_TOP (0.95) of the limit minus a reserve for the host peak of the K_PP factorisation
 that follows the front end: OPL_V3_HOST_TRANSIENT (3) x the cells' K_PP triplet bytes on the host (projected from the
 cells so far). Measured on the 135- and 162-cell plates: the peak is ~71 bytes per assembled K_PP nonzero (~55 per stored
@@ -18,6 +19,9 @@ plans, S16) are 16. OPL_V3_HOST_FRAC (S14, if set): the earlier rule, a fixed fr
 import os
 
 GiB = 2 ** 30
+# S14c: which item the budget gives out first. Time saved per byte, full plate cell (results/shat/prof1_v3h, prof1_rc):
+# float64 matrices 4.1 ms per S_hat for 90 MB (46 ms/GB), slot weights 9.7 ms for 286 MB (34 ms/GB).
+ORDER = os.environ.get('OPL_V3_BUDGET_ORDER', 'ke64')
 
 
 def limit_bytes():
@@ -59,9 +63,9 @@ class Budget:
     def decide(self, ke64_bytes, slot_bytes, cell_bytes=None, kpp_bytes=0):
         """(keep the slot weights, keep the float64 matrices) for the next cell. The remaining host budget (the target
         minus the current RSS minus the bare state of this and every remaining cell, cell_bytes each: this cell's device
-        footprint without the two items, or the average host growth per cell so far) is planned anew for every cell: slot
-        weights first (they save more time per byte), for as many of the remaining cells as fit, then the float64
-        matrices; the cells processed first get them. kpp_bytes: this cell's K_PP triplets on the host (the reserve)."""
+        footprint without the two items, or the average host growth per cell so far) is planned anew for every cell: the
+        item that saves more time per byte first (ORDER), for as many of the remaining cells as fit, then the other; the
+        cells processed first get them. kpp_bytes: this cell's K_PP triplets on the host (the reserve)."""
         rss = rss_bytes()
         n_rest = self.n - self.done                                      # this cell and the ones after it
         if cell_bytes is not None:
@@ -76,12 +80,15 @@ class Budget:
             self.reserve = self.tx * kpp_avg * self.n                    # cell's are in the RSS) and the reserve
             target = self.top * self.limit - self.reserve - (n_rest - 1) * kpp_avg
         free = target - rss - n_rest * other
-        ns = n_rest if slot_bytes <= 0 else max(0, min(n_rest, int(free // slot_bytes)))
-        free -= ns * max(slot_bytes, 0)
-        if ns < n_rest:                                                  # slot weights for every remaining cell first
-            nk = 0
-        else:
-            nk = n_rest if ke64_bytes <= 0 else max(0, min(n_rest, int(free // ke64_bytes)))
+
+        def fit(nbytes, avail):
+            return n_rest if nbytes <= 0 else max(0, min(n_rest, int(avail // nbytes)))
+        if ORDER == 'slots':                                             # S14: slot weights first
+            ns = fit(slot_bytes, free)
+            nk = fit(ke64_bytes, free - ns * max(slot_bytes, 0)) if ns == n_rest else 0
+        else:                                                            # S14c: the float64 matrices first
+            nk = fit(ke64_bytes, free)
+            ns = fit(slot_bytes, free - nk * max(ke64_bytes, 0)) if nk == n_rest else 0
         keep = (ns >= 1, nk >= 1)
         self.log.append((self.done, keep, round(rss / GiB, 2)))
         return keep
