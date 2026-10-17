@@ -13,4 +13,5 @@ TST_ENV="OPL_COARSE_BLK=1" bash $S/tst.sh prep_blk t_prep.py $SPEC $CASES --top 
 # S_hat kernel profiles of the current code (B = 1 and B = 16, the coarse A Z width), float64 matrices kept as in the plates
 bash $S/shat.sh prof1_v3h $W/plate/body_S24:plateS24_040_o000 --B 1,3 --rep 10 --profile --segments --store64
 bash $S/shat.sh prof16_v3h $W/plate/body_S24:plateS24_040_o000 --B 16 --rep 5 --profile --segments --store64
+SHAT_ENV="OPL_V3_SLOTS=recompute" bash $S/shat.sh prof1_rc $W/plate/body_S24:plateS24_040_o000 --B 1,3 --rep 10 --profile --segments --store64
 echo "$(date +%F_%T) TESTS10_DONE" >> $W/status.txt
