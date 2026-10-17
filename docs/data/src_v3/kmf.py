@@ -54,7 +54,7 @@ GF2 = os.environ.get('OPL_V3_KMF_GF2', 'auto')                         # ghost f
                                                                         # 'auto' from 2 columns on (faster there), '0' never
 FPB2 = int(os.environ.get('OPL_V3_KMF_FPB2', '4'))                     # gf2: faces per group (2, 4)
 EF = os.environ.get('OPL_V3_KMF_EF', '0') == '1'                        # P13b: elements and faces in one kernel (kef)
-GK = os.environ.get('OPL_V3_KMF_GK', '0') == '1'                        # P15: ghost faces as A (x) m (x) m (gk)
+GK = os.environ.get('OPL_V3_KMF_GK', '1') == '1'                        # P15: ghost faces as A (x) m (x) m (gk)
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
 WARPS = int(os.environ.get('OPL_V3_KMF_WARPS', '4'))
@@ -402,8 +402,22 @@ def _gf_int(C, nd):
         A, mt, perm = fac
         gk64 = torch.as_tensor(np.concatenate([A.reshape(-1), mt.reshape(-1)]), dtype=torch.float64, device=dev)
         fsuv = fnode.gather(1, torch.as_tensor(perm, device=dev)[dd]).contiguous()
+        if GK:                                                              # (gf2's node table rebuilt on demand)
+            fnode = None
     return dict(fe=fe, fn=fn, c1=int(cuts[1]), c2=int(cuts[2]), nf=nf, fmap=fm, nd=nd, fnode=fnode,
                 G64=torch.as_tensor(G, dtype=torch.float64, device=dev), gk64=gk64, fsuv=fsuv)
+
+
+def _fnode(gst):
+    """gf2's face node table (faces x 45 int32, template order), rebuilt when gf_state dropped it (P15 on)."""
+    if gst.get('fnode') is None:
+        fe, fn, fm, nd = gst['fe'], gst['fn'], gst['fmap'], gst['nd']
+        nf = gst['nf']
+        dd = (torch.arange(nf, device=fe.device) >= gst['c1']).long() + (torch.arange(nf, device=fe.device) >= gst['c2']).long()
+        m = fm.long()[dd]
+        el = torch.where(m >= 32, fn.long()[:, None], fe.long()[:, None])
+        gst['fnode'] = nd.long()[el, m & 31].to(torch.int32).contiguous()
+    return gst['fnode']
 
 
 _SMS = {}
@@ -428,10 +442,12 @@ def _use_gk(gk, gst):
 def gk_apply_(y, gst, x, blocks=None, nb=None):
     """y += gamma G x (ghost faces) in the Kronecker form (P15; gf_state with 'gk'; float32 or float64)."""
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == y.dtype == gst['gk'].dtype
-    f = _lib().gk_launch64 if x.dtype == torch.float64 else _lib().gk_launch
-    rc = f(x.data_ptr(), y.data_ptr(), gst['fsuv'].data_ptr(), gst['gk'].data_ptr(), gst['nf'], x.shape[1],
-           int(NB if nb is None else nb), int(_blocks(x.device) if blocks is None else blocks),
-           torch.cuda.current_stream(x.device).cuda_stream)
+    f64 = x.dtype == torch.float64
+    f = _lib().gk_launch64 if f64 else _lib().gk_launch
+    if nb is None:                                                          # float64: one column per block (registers)
+        nb = 1 if f64 else NB
+    rc = f(x.data_ptr(), y.data_ptr(), gst['fsuv'].data_ptr(), gst['gk'].data_ptr(), gst['nf'], x.shape[1], int(nb),
+           int(_blocks(x.device) if blocks is None else blocks), torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'GK_LAUNCH:{rc}')
     return y
@@ -445,7 +461,7 @@ def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None, gf2=None, gk=None):
     if blocks is None:
         blocks = _blocks(x.device)
     if _use_gf2(gf2, x.shape[1]):
-        rc = _lib().gf2_launch(x.data_ptr(), y.data_ptr(), gst['fnode'].data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'],
+        rc = _lib().gf2_launch(x.data_ptr(), y.data_ptr(), _fnode(gst).data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'],
                                gst['c2'], x.shape[1], int(fpb or FPB2), int(NB if nb is None else nb), int(blocks),
                                torch.cuda.current_stream(x.device).cuda_stream)
         if rc != 0:
@@ -494,7 +510,7 @@ def gf_apply64_(y, gst, x, blocks=None, nb=None, gf2=None, gk=None):
     if blocks is None:
         blocks = _blocks(x.device)
     if _use_gf2(gf2, x.shape[1]):
-        rc = _lib().gf2_launch64(x.data_ptr(), y.data_ptr(), gst['fnode'].data_ptr(), gst['G'].data_ptr(), gst['nf'],
+        rc = _lib().gf2_launch64(x.data_ptr(), y.data_ptr(), _fnode(gst).data_ptr(), gst['G'].data_ptr(), gst['nf'],
                                  gst['c1'], gst['c2'], x.shape[1], int(nb or 0), int(blocks),
                                  torch.cuda.current_stream(x.device).cuda_stream)
         if rc != 0:
