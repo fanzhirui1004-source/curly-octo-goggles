@@ -55,6 +55,7 @@ GF2 = os.environ.get('OPL_V3_KMF_GF2', 'auto')                         # ghost f
 FPB2 = int(os.environ.get('OPL_V3_KMF_FPB2', '4'))                     # gf2: faces per group (2, 4)
 EF = os.environ.get('OPL_V3_KMF_EF', '0') == '1'                        # P13b: elements and faces in one kernel (kef)
 GK = os.environ.get('OPL_V3_KMF_GK', '1') == '1'                        # P15: ghost faces as A (x) m (x) m (gk)
+GKW = os.environ.get('OPL_V3_KMF_GKW', '1') == '1'                      # P15b: lanes over the columns from 8 columns on
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
 WARPS = int(os.environ.get('OPL_V3_KMF_WARPS', '4'))
@@ -446,6 +447,8 @@ def gk_apply_(y, gst, x, blocks=None, nb=None):
     f = _lib().gk_launch64 if f64 else _lib().gk_launch
     if nb is None:                                                          # float64: one column per block (registers)
         nb = 1 if f64 else NB
+        if not f64 and not GKW and nb <= 0 and x.shape[1] >= 8:            # (P15b off: gk_kernel's 4-column blocks)
+            nb = 4
     rc = f(x.data_ptr(), y.data_ptr(), gst['fsuv'].data_ptr(), gst['gk'].data_ptr(), gst['nf'], x.shape[1], int(nb),
            int(_blocks(x.device) if blocks is None else blocks), torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:

@@ -50,9 +50,9 @@ with torch.no_grad():
         res['m'] = [float(v) for v in t[25:]]
         res['state_MB'] = dict(fsuv=round(g32['fsuv'].numel() * 4 / 2 ** 20, 2), fnode=round(g32['fnode'].numel() * 4 / 2 ** 20, 2))
     print(json.dumps(res), flush=True)
-    X = torch.randn((C.nb, 16), dtype=torch.float64, device=dev, generator=g)
-    Y64 = C.GF64.matvec(X, torch.zeros_like(X)).mul_(C.gamma)           # float64 reference (template GEMMs), 16 columns
-    for B in (1, 2, 4, 16):
+    X = torch.randn((C.nb, 32), dtype=torch.float64, device=dev, generator=g)
+    Y64 = C.GF64.matvec(X, torch.zeros_like(X)).mul_(C.gamma)           # float64 reference (template GEMMs), 32 columns
+    for B in (1, 2, 4, 16, 32):
         r = {}
         for dt, gst in ((torch.float32, g32), (torch.float64, g64)):
             x = X[:, :B].to(dt).contiguous()

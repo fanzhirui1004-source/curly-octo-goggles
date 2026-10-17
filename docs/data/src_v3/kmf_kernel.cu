@@ -522,6 +522,60 @@ gk_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ fs
     }
 }
 
+// Ghost faces, Kronecker form for wide products (src_v3 P15b, gkw): lanes over the columns. A group of GW lanes (GW = B
+// rounded up to a power of two, at most 32) takes one (face, component c) and GW consecutive columns: each lane gathers
+// its column's 45 face values (coalesced across the group), applies m along u and v and A along s in registers (the
+// same 495 multiply-adds per face, component and column as gk_kernel, in the same order), and adds the 45 results
+// atomically. Float32; for B >= 8 (gk_kernel's column blocks re-read the face for every 4 columns).
+template <int GW>
+__global__ void __launch_bounds__(128)
+gkw_kernel(const float* __restrict__ x, float* __restrict__ y, const int* __restrict__ fsuv, const float* __restrict__ tab,
+           int nf, int LD)
+{
+    const int lane = threadIdx.x & 31, g = lane / GW, l = lane - GW * g;
+    const int task = (blockIdx.x * 4 + (threadIdx.x >> 5)) * (32 / GW) + g;   // (face, component)
+    if (task >= 3 * nf) return;
+    const int f = task / 3, c = task - 3 * f;
+    float A[25], m[9];
+#pragma unroll
+    for (int i = 0; i < 25; i++) A[i] = __ldg(tab + i);
+#pragma unroll
+    for (int i = 0; i < 9; i++) m[i] = __ldg(tab + 25 + i);
+    const int* nf45 = fsuv + (int64_t)f * 45;
+    for (int j0 = 0; j0 < LD; j0 += GW) {
+        const int col = j0 + l;
+        const bool ok = col < LD;
+        float v[45];
+#pragma unroll
+        for (int q = 0; q < 45; q++) v[q] = ok ? x[(3 * (int64_t)__ldg(nf45 + q) + c) * LD + col] : 0.f;
+        float z[45];
+#pragma unroll
+        for (int s = 0; s < 5; s++) {                             // tangential: m along u, then along v (gk_kernel's order)
+            float w[9];
+#pragma unroll
+            for (int u = 0; u < 3; u++)
+#pragma unroll
+                for (int vv = 0; vv < 3; vv++)
+                    w[3 * u + vv] = m[3 * u] * v[9 * s + vv] + m[3 * u + 1] * v[9 * s + 3 + vv] + m[3 * u + 2] * v[9 * s + 6 + vv];
+#pragma unroll
+            for (int u = 0; u < 3; u++)
+#pragma unroll
+                for (int vv = 0; vv < 3; vv++)
+                    z[9 * s + 3 * u + vv] = m[3 * vv] * w[3 * u] + m[3 * vv + 1] * w[3 * u + 1] + m[3 * vv + 2] * w[3 * u + 2];
+        }
+        if (ok) {
+#pragma unroll
+            for (int s = 0; s < 5; s++)
+#pragma unroll
+                for (int q = 0; q < 9; q++) {
+                    const float acc = A[5 * s] * z[q] + A[5 * s + 1] * z[9 + q] + A[5 * s + 2] * z[18 + q] + A[5 * s + 3] * z[27 + q]
+                                      + A[5 * s + 4] * z[36 + q];
+                    atomicAdd(y + (3 * (int64_t)__ldg(nf45 + 9 * s + q) + c) * LD + col, acc);
+                }
+        }
+    }
+}
+
 template <typename T>
 static void gk_go(const T* x, T* y, const int* fsuv, const T* tab, int nf, int B, int nb, int blocks, cudaStream_t s)
 {
@@ -570,6 +624,9 @@ static void gf_go(const T* x, T* y, const int* nd, const int* fe, const int* fn,
 }
 
 static int auto_nb(int B) { return B == 1 ? 1 : (B == 2 ? 2 : 4); }
+#ifndef GKW_MIN
+#define GKW_MIN 8                                                 // gk_launch: gkw_kernel from this many columns
+#endif
 
 extern "C" {
 
@@ -604,6 +661,7 @@ int kmf_init(const float* tabL, const float* tabD, const double* tabL64, const d
     cudaFuncGetAttributes(&at, gk_kernel<float, 1>); cudaFuncGetAttributes(&at, gk_kernel<float, 2>);
     cudaFuncGetAttributes(&at, gk_kernel<float, 4>); cudaFuncGetAttributes(&at, gk_kernel<double, 1>);
     cudaFuncGetAttributes(&at, gk_kernel<double, 2>); cudaFuncGetAttributes(&at, gk_kernel<double, 4>);
+    cudaFuncGetAttributes(&at, gkw_kernel<8>); cudaFuncGetAttributes(&at, gkw_kernel<16>); cudaFuncGetAttributes(&at, gkw_kernel<32>);
     return (int)cudaDeviceSynchronize();
 }
 
@@ -713,6 +771,16 @@ int gf_launch64(const double* x, double* y, const int* nd, const int* fe, const 
 int gk_launch(const float* x, float* y, const int* fsuv, const float* tab, int nf, int B, int nb, int blocks, void* stream)
 {
     if (nf <= 0 || B <= 0) return 0;
+    if (B >= GKW_MIN && nb <= 0) {                                // P15b: lanes over the columns
+        cudaStream_t s = (cudaStream_t)stream;
+        const int gw = B >= 32 ? 32 : (B > 8 ? 16 : 8);
+        const int tasks = 3 * nf, per_block = 4 * (32 / gw);
+        const int gx = (tasks + per_block - 1) / per_block;
+        if (gw == 32) gkw_kernel<32><<<gx, 128, 0, s>>>(x, y, fsuv, tab, nf, B);
+        else if (gw == 16) gkw_kernel<16><<<gx, 128, 0, s>>>(x, y, fsuv, tab, nf, B);
+        else gkw_kernel<8><<<gx, 128, 0, s>>>(x, y, fsuv, tab, nf, B);
+        return (int)cudaGetLastError();
+    }
     if (nb <= 0) nb = auto_nb(B);
     gk_go<float>(x, y, fsuv, tab, nf, B, nb, blocks, (cudaStream_t)stream);
     return (int)cudaGetLastError();
