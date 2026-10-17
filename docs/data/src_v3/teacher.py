@@ -58,6 +58,7 @@ GF_CAT = os.environ.get('OPL_V3_GFCAT', '1') == '1'                    # src_v3 
 GF_BMM = os.environ.get('OPL_V3_GFBMM', '0') == '1'                    # src_v3 S20: padded templates, two bmm per product
 FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '1') == '1'                 # src_v3 S21: K_PP CSR released after factorising
 KMAP = os.environ.get('OPL_V3_KMAP', '0') == '1'                       # src_v3 P2b: shared rows in the float32 product
+KC64 = os.environ.get('OPL_V3_KC64', '0') == '1'                       # src_v3 check: correction K product in float64
 #   (finds none on plate cells: each full element's float32 moment row is distinct; results/tests28/kdedupe.log)
 _SHARED = {}
 
@@ -362,6 +363,9 @@ class _Kfp32:
         """K x32 in float32 (input and output float32; __matmul__ converts around it). src_v3: also called directly by
         chebfused with a float32 iterate it keeps up to date."""
         C, f32, x = self.C, torch.float32, x32
+        if KC64 and getattr(C, '_deploy', False) and x32.dim() == 2 \
+                and not (torch.is_grad_enabled() and x32.requires_grad):         # src_v3 check only: the float64 product,
+            return C._Kx_lean(x32.to(torch.float64)).to(f32)                     # rounded (reference for P13)
         if KMF.ON and KMF.GF and self.symv and self.gf is not None and x32.shape[1] <= KMF.MAXB and KMF.kind() == 'cuda' \
                 and not (torch.is_grad_enabled() and x32.requires_grad) and not self._v3(x32):
             st = self.mf_state()                                                # src_v3 P13: ghost faces and elements
