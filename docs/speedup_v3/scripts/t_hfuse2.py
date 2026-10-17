@@ -64,11 +64,11 @@ with torch.no_grad(), f.slots():
             y0b = hl.fwd_res(X).clone()
             r = dict(us_cur=round(cold(lambda: hl.fwd_res(X), a.rep), 1), rel_rerun=rel(y0b, y0))
             best = None
-            for eb in (1, 2, 4, 8):
-                for fc in (4, 8, 16, 32):
+            for eb in (2, 4, 8):
+                for fc in (8, 16):
                     if eb * hl.H * fc * hl.W.shape[1] > 8192:                     # register tile limit (larger tiles
                         continue                                                 # take minutes to compile)
-                    for w in (2, 4, 8):
+                    for w in (4, 8):
                         try:
                             run = lambda: HF.layer(X.reshape(hl.N, -1), hl.hn, hl.a, hl.b, hl.deg, hl.W,
                                                    X.reshape(hl.N, -1).clone(), False, True, eb=eb, fc=fc, warps=w)

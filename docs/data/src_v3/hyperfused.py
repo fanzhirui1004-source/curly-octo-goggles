@@ -29,7 +29,7 @@ def _layer(X, hn, ga, sb, deg, W, out, rmask, Eh, BF, F: tl.constexpr, H: tl.con
     for fc in tl.static_range(F // FC):
         f = fc * FC + tl.arange(0, FC)
         acc = tl.zeros((EB, H, FC), dtype=tl.float32)
-        for s in tl.static_range(S):
+        for s in range(S):                                                  # runtime loop (compile time)
             n = tl.load(hn + e * S + s, mask=me, other=0).to(tl.int64)
             w = tl.load(ga + (e[:, None] * S + s) * H + hh[None, :], mask=me[:, None], other=0.0)
             if GDEG:
@@ -38,7 +38,7 @@ def _layer(X, hn, ga, sb, deg, W, out, rmask, Eh, BF, F: tl.constexpr, H: tl.con
             acc += w[:, :, None] * x[:, None, :]
         Wc = tl.load(W + (hh[:, None, None] * F + f[None, :, None]) * F + g[None, None, :])          # [H, FC, F]
         mixed += tl.sum(acc[:, :, :, None] * Wc[None, :, :, :], axis=2)
-    for s in tl.static_range(S):
+    for s in range(S):
         n = tl.load(hn + e * S + s, mask=me, other=0).to(tl.int64)
         w = tl.load(sb + (e[:, None] * S + s) * H + hh[None, :], mask=me[:, None], other=0.0)
         if SDEG:
