@@ -17,7 +17,7 @@ export OPL_BENCH_TMP=$W/bench_tmp
 for kv in "$@"; do export "$kv"; done
 export SRC=${SRC:-$P/src_v3}
 cd $SRC
-nvidia-smi --query-gpu=timestamp,memory.used --format=csv,noheader,nounits -lms 100 > $R/gpu.csv 2>&1 & SMP=$!
+nvidia-smi --query-gpu=timestamp,memory.used,clocks.sm,clocks.mem,power.draw,utilization.gpu,temperature.gpu,clocks_throttle_reasons.active --format=csv,noheader,nounits -lms 100 > $R/gpu.csv 2>&1 & SMP=$!
 echo "$(date +%F_%T) START plate $TAG S$N src=$SRC env=[$*]" >> $W/status.txt
 timeout ${TMO:-14400} $PY -u $W/scripts/v3_plate.py $R/census.json $R ${LAYOUT:-$SC/layouts/plateS$N.json} --model A3=$P/S1/V2/A3_2grid/best.pt \
   --clamp x,min --load x,max --load-dir y --vfrac 0.8 --maxit 60 --stop-after 1 --fast --table5 --workers 14 --sens ad --ad-batch 2048 \

@@ -15,7 +15,7 @@ for kv in "$@"; do export "$kv"; done
 SRC=${SRC:-$P/src_v3}
 cd $SRC
 ARGS="--fastidx --coarse-tpl --tet-triton --sparse-coarse --resident-gb 4 --tol 1e-6 --levels 1e-2,3e-3,1e-3,1e-4 --iters 1 --sens ad --sens-obj sum --ad-batch 2048"
-nvidia-smi --query-gpu=timestamp,memory.used --format=csv,noheader,nounits -lms 100 > $O/gpu_$LAT.csv 2>&1 & SMP=$!
+nvidia-smi --query-gpu=timestamp,memory.used,clocks.sm,clocks.mem,power.draw,utilization.gpu,temperature.gpu,clocks_throttle_reasons.active --format=csv,noheader,nounits -lms 100 > $O/gpu_$LAT.csv 2>&1 & SMP=$!
 echo "$(date +%F_%T) START $TAG $LAT src=$SRC env=[$*] extra=[$EXTRA_ARGS]" >> $W/status.txt
 timeout ${TMO:-3600} $PY -u lat_scale.py $O/learned_$LAT.json $P/S4/$LAT.json $ARGS --save-sens $O/sens_$LAT.npz $EXTRA_ARGS > $O/learned_$LAT.log 2>&1; r=$?
 sleep 2; kill $SMP

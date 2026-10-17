@@ -11,5 +11,7 @@ export SRC=${SRC:-$P/src_v3}
 for kv in $TST_ENV; do export "$kv"; done
 cd $SRC
 echo "$(date +%F_%T) START tst $TAG $SCR src=$SRC env=[$TST_ENV] [$*]" >> $W/status.txt
+nvidia-smi --query-gpu=timestamp,memory.used,clocks.sm,clocks.mem,power.draw,utilization.gpu,temperature.gpu,clocks_throttle_reasons.active --format=csv,noheader,nounits -lms 200 > $O/$TAG.gpu.csv 2>&1 & SMP=$!
 timeout ${TST_TIMEOUT:-1800} $PY -u $W/scripts/$SCR "$@" > $O/$TAG.log 2>&1; r=$?
+kill $SMP 2>/dev/null
 echo "$(date +%F_%T) END tst $TAG rc=$r" >> $W/status.txt

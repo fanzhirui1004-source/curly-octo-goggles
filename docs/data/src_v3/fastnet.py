@@ -77,6 +77,7 @@ SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                        
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
 HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
 CONV3 = os.environ.get('OPL_V3_CONV3', '0') == '1'                               # src_v3 P10: U-Net convolutions in Triton
+CLAMPFREE = os.environ.get('OPL_V3_CLAMPFREE', '0') == '1'                       # src_v3 P11: no where() in clamped layers
 CONVT = os.environ.get('OPL_V3_CONVT', '1') == '1'                               # src_v3 S27: transposed convolutions as
 # forward convolutions with the flipped, channel-swapped weight (stride 1, padding 1: the same sums; cuDNN's transposed
 # 3-D convolution is ~3.5x slower than its forward one here, and not reproducible run to run)
@@ -149,17 +150,23 @@ class _Hyper:
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
         return FH.scatter(Z, self.hn, self.b, self.deg, N, FH.BLK, True, init=X).view(N, B, F)
 
-    def fwd_clamped(self, X, X0, pmask, pm8):
+    def fwd_clamped(self, X, X0, pmask, pm8, own=False):
         """src_v3 S24: where(port, X0, X + fwd(X)) as fwd_res + FastNet._clamp, in two launches fewer: the scatter adds
-        onto where(port, X0, X) and skips the port rows (their result is X0 either way)."""
+        onto where(port, X0, X) and skips the port rows (their result is X0 either way).
+        src_v3 P11 (OPL_V3_CLAMPFREE=1): X's port rows already are X0's (the forward starts from X0 and every clamped
+        layer leaves the port rows alone), so where(port, X0, X) is X: the scatter adds onto a copy of X, or onto X
+        itself when own (X is a fresh tensor of the caller, not X0); the same values without the where pass."""
         N, B, F = X.shape
         if HFUSE:
-            return self._hf(X, self.a, self.b, self.W, False, True, out=torch.where(pmask, X0, X).reshape(N, B * F),
-                            rmask=pm8)
+            init = X.reshape(N, B * F).clone() if CLAMPFREE else torch.where(pmask, X0, X).reshape(N, B * F)
+            return self._hf(X, self.a, self.b, self.W, False, True, out=init, rmask=pm8)
         import fused_hyper as FH
         Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
-        out = torch.where(pmask, X0, X)
+        if CLAMPFREE:
+            out = X if (own and X.is_contiguous()) else X.contiguous().clone()
+        else:
+            out = torch.where(pmask, X0, X)
         return FH.scatter(Z, self.hn, self.b, self.deg, N, FH.BLK, True, init=out, inplace=True, rmask=pm8).view(N, B, F)
 
     def adj_inplace(self, A):
@@ -490,7 +497,8 @@ class FastNet:
         X = X0
         res = lambda h, X_: h.fwd_res(X_) if (FI.ON and h.fused) else X_ + h.fwd(X_)
         if self.pm8 is not None and FI.ON:                                              # src_v3 S24
-            layer = lambda h, X_: h.fwd_clamped(X_, X0, self.pmask, self.pm8) if h.fused else self._clamp(res(h, X_), X0)
+            layer = lambda h, X_: h.fwd_clamped(X_, X0, self.pmask, self.pm8, own=X_ is not X0) if h.fused \
+                else self._clamp(res(h, X_), X0)
         else:
             layer = lambda h, X_: self._clamp(res(h, X_), X0)
         for h in pre:
