@@ -1,0 +1,268 @@
+{
+ "cells": 51,
+ "C": 89.1189258065096,
+ "pcg": 168,
+ "true_residual": 0.0004569853272046505,
+ "Ut_rho_rel": -3.65242749166214e-10,
+ "times": {
+  "resident_gb": 4.0,
+  "prep_s": 43.17539032921195,
+  "host_budget": {
+   "limit_GiB": 90.0,
+   "frac": null,
+   "top": 0.95,
+   "transient_x": 4.0,
+   "reserve_GiB": 2.91,
+   "cells": 51,
+   "slots_kept": 51,
+   "float64_kept": 51
+  },
+  "setup_s": 0.3705270513892174,
+  "precond_s": 32.03302013967186,
+  "solve_s": 146.63419331796467,
+  "prof": {
+   "wall_ms": 1310.07,
+   "window_ms": 1307.45,
+   "kernels": 49928,
+   "kernel_sum_ms": 935.7,
+   "kernel_busy_ms": 932.11,
+   "concurrency": 1.004,
+   "memcpy_n": 503,
+   "memcpy_sum_ms": 441.19,
+   "memcpy_busy_ms": 440.9,
+   "h2d_GB": 24.134,
+   "memset_sum_ms": 4.6,
+   "kernel_and_memcpy_overlap_ms": 249.6,
+   "idle_ms": 183.29,
+   "per_stream": {
+    "7": {
+     "kernels": 48742,
+     "kernel_ms": 930.76,
+     "memcpy_ms": 1.18,
+     "busy_ms": 936.53
+    },
+    "13": {
+     "kernels": 1186,
+     "kernel_ms": 4.94,
+     "memcpy_ms": 440.01,
+     "busy_ms": 444.94
+    }
+   },
+   "top_kernels": [
+    [
+     "_symv_up",
+     302.942,
+     1836
+    ],
+    [
+     "void implicit_convolveNd_sgemm<float, 3, 1024, 5, 5, 3, 3, 3, 1, false, false, t",
+     110.663,
+     1224
+    ],
+    [
+     "_scatter_t",
+     82.319,
+     2448
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x32_8x5_nn_align1>(cutlass_80_sim",
+     49.427,
+     5448
+    ],
+    [
+     "_gather_t",
+     46.057,
+     2448
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_simt_sgemm_64x64_8x5_nt_align1>(cutlass_80_simt",
+     34.632,
+     4680
+    ],
+    [
+     "void at::native::indexFuncLargeIndex<float, int, unsigned int, 2, 2, -2, true, a",
+     29.166,
+     816
+    ],
+    [
+     "void at::native::indexFuncLargeIndex<float, int, unsigned int, 1, 1, -2, true, a",
+     28.796,
+     1020
+    ],
+    [
+     "void magma_sgemmEx_kernel<float, float, float, false, false, 6, 3, 5, 3, 3>(int,",
+     23.591,
+     2493
+    ],
+    [
+     "_gather_flat",
+     23.186,
+     816
+    ],
+    [
+     "_symv",
+     19.551,
+     96
+    ],
+    [
+     "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda",
+     17.549,
+     2257
+    ],
+    [
+     "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<a",
+     16.241,
+     1071
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nt_align1>(cutlass",
+     14.972,
+     144
+    ],
+    [
+     "void dgemm_largek<false, false, 4, 4, 4, 3, 3, 16>(double*, double const*, doubl",
+     11.443,
+     135
+    ],
+    [
+     "_cheb_step",
+     10.716,
+     816
+    ],
+    [
+     "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<a",
+     9.828,
+     1275
+    ],
+    [
+     "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x64_8x5_nn_align1>(cutlass_80_sim",
+     9.503,
+     144
+    ],
+    [
+     "_tail_step",
+     7.28,
+     816
+    ],
+    [
+     "_mask_split",
+     6.87,
+     1275
+    ],
+    [
+     "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<a",
+     6.193,
+     1224
+    ],
+    [
+     "_restrict",
+     5.852,
+     102
+    ],
+    [
+     "std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, float, fl",
+     5.67,
+     96
+    ],
+    [
+     "void cusparse::csrmm_alg2_kernel<false, false, false, int, int, int, int, float,",
+     5.344,
+     612
+    ],
+    [
+     "_symm_map",
+     4.937,
+     192
+    ]
+   ],
+   "cpu_api": {
+    "cudaLaunchKernel": [
+     87.68,
+     24812
+    ],
+    "cuLaunchKernelEx": [
+     45.2,
+     13689
+    ],
+    "cuLaunchKernel": [
+     35.34,
+     11427
+    ],
+    "cudaMemsetAsync": [
+     8.49,
+     2664
+    ],
+    "cudaMemcpyAsync": [
+     6.01,
+     503
+    ],
+    "cudaDeviceGetAttribute": [
+     2.16,
+     11427
+    ],
+    "cudaEventRecordWithFlags": [
+     0.72,
+     277
+    ],
+    "cudaEventRecord": [
+     0.7,
+     1203
+    ],
+    "cudaEventQuery": [
+     0.57,
+     1626
+    ],
+    "cudaStreamIsCapturing": [
+     0.12,
+     320
+    ],
+    "cudaDeviceSynchronize": [
+     0.12,
+     5
+    ],
+    "cudaStreamWaitEvent": [
+     0.09,
+     43
+    ]
+   }
+  },
+  "graph": {
+   "on": true,
+   "maxb": 4,
+   "pools": 3,
+   "captures": 102,
+   "recaptures": 0,
+   "replays": 8517,
+   "failed": 0,
+   "capture_s": 2.36,
+   "errors": []
+  },
+  "sens_s": 27.19757991284132,
+  "bodies_s": 0.0010096682235598564,
+  "analysis_wall_s": 250.8670048462227
+ },
+ "bodies_new": 0,
+ "streamed": 43,
+ "gpu_peak_gb": 8.991053581237793,
+ "host_peak_gb": 27.24832534790039,
+ "env": {
+  "OPL_V3_PROF_OUT": "/root/autodl-tmp/OPL/V3W/plate/v3Q_S51/prof20.json",
+  "OPL_V3_PIPE_BODIES": "0",
+  "OPL_BENCH_TMP": "/root/autodl-tmp/OPL/V3W/bench_tmp",
+  "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+  "OPL_CONV_FP32": "1",
+  "OPL_V3_PROF_ITER": "20",
+  "OPL_STREAM_PACK": "1",
+  "OPL_GP_CACHE": "0",
+  "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/V3W/plate/v3Q_S51/packets:/root/autodl-tmp/OPL/V3W/plate/v3Q_S51/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets:/root/autodl-tmp/OPL/V3W/plate_packets",
+  "OPL_V3_PROF_TRACE": "1",
+  "OPL_KE_SYMV": "1",
+  "OPL_KE_SYMV64": "1",
+  "OPL_TAILT_FUSED": "1",
+  "OPL_COARSE_FP32": "1",
+  "OPL_COARSE_ELEM": "1",
+  "OPL_TET_TRITON": "1",
+  "OPL_COARSE_SPARSE": "1",
+  "OPL_COARSE_PIVOT_FLOOR": "1e-7"
+ }
+}

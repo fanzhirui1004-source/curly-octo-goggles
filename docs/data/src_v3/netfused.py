@@ -45,6 +45,31 @@ def mask_split(Xb, X0b, pm8):
 
 
 @triton.jit
+def _mask_split_ip(xb, x0b, pidx, total, C: tl.constexpr, BLOCK: tl.constexpr):
+    """src_v3 P12: over the port rows only: x0b[r] += xb[r]; xb[r] = 0 (xb is then imk(xb), in place)."""
+    k = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
+    m = k < total
+    q = k // C
+    r = tl.load(pidx + q, mask=m, other=0).to(tl.int64)
+    o = r * C + (k - q * C)
+    x = tl.load(xb + o, mask=m, other=0.0)
+    y0 = tl.load(x0b + o, mask=m, other=0.0)
+    tl.store(x0b + o, y0 + x, mask=m)
+    tl.store(xb + o, tl.zeros_like(x), mask=m)
+
+
+def mask_split_inplace(Xb, X0b, pidx):
+    """mask_split for an Xb the caller does not read again: X0b += pmk(Xb) and Xb's port rows zeroed in place (the same
+    values as the copy mask_split returns), touching the port rows only (pidx: int32 port-row indices)."""
+    N = Xb.shape[0]
+    C = Xb.numel() // N
+    total = len(pidx) * C
+    if total:
+        _mask_split_ip[(triton.cdiv(total, 1024),)](Xb, X0b, pidx, total, C=C, BLOCK=1024, num_warps=4)
+    return Xb
+
+
+@triton.jit
 def _conv_in(xc, inv, g, dense, total, sg, B: tl.constexpr, F: tl.constexpr, GATE: tl.constexpr, BLOCK: tl.constexpr):
     """dense[j, b, f] = xc[inv[j], b, f] (* g[inv[j], f] with GATE; g rows sg apart), 0 where inv[j] < 0."""
     k = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)

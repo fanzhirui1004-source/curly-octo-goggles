@@ -78,6 +78,7 @@ NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                          
 HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
 CONV3 = os.environ.get('OPL_V3_CONV3', '0') == '1'                               # src_v3 P10: U-Net convolutions in Triton
 CLAMPFREE = os.environ.get('OPL_V3_CLAMPFREE', '1') == '1'                       # src_v3 P11: no where() in clamped layers
+MSPLIT_IP = os.environ.get('OPL_V3_MSPLIT_IP', '0') == '1'                       # src_v3 P12: adjoint mask split in place
 CONVT = os.environ.get('OPL_V3_CONVT', '1') == '1'                               # src_v3 S27: transposed convolutions as
 # forward convolutions with the flipped, channel-swapped weight (stride 1, padding 1: the same sums; cuDNN's transposed
 # 3-D convolution is ~3.5x slower than its forward one here, and not reproducible run to run)
@@ -260,6 +261,7 @@ class FastNet:
         self.pm8, self._cinv = None, None
         if NETFUSE:                                                                     # src_v3 S24
             self.pm8 = c.is_port.to(torch.uint8).contiguous()
+            self._pidx = torch.nonzero(self.pm8).squeeze(1).to(torch.int32).contiguous()    # src_v3 P12
             self._cinv = []
             for t in c.trans:
                 if 'e_src' in t or 'dense_idx' not in t:
@@ -534,7 +536,10 @@ class FastNet:
         fuse = self.pm8 is not None and FI.ON and Xb.is_contiguous()                   # src_v3 S24
         if fuse:
             import netfused as NF
-            split = lambda X_: NF.mask_split(X_, X0b, self.pm8)                         # X0b += pmk(X_); imk(X_)
+            if MSPLIT_IP:                                                               # src_v3 P12: port rows only,
+                split = lambda X_: NF.mask_split_inplace(X_, X0b, self._pidx)           # X_ itself becomes imk(X_)
+            else:
+                split = lambda X_: NF.mask_split(X_, X0b, self.pm8)                     # X0b += pmk(X_); imk(X_)
             astep = lambda h, A_: h.adj_inplace(A_) if h.fused else ares(h, A_)
         else:
             def split(X_):
