@@ -114,6 +114,13 @@ with torch.no_grad():
                             rel_f64=float((gk.double() - g64).abs().max() / gn),
                             warm=round(ev(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk, nb=nbk), a.rep), 1),
                             cold=round(cold(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk, nb=nbk), a.rep), 1))
+            for fpb in (2, 4):                                          # gf2: DOF-parallel face kernel
+                for blk in (4 * sms, 8 * sms, 16 * sms):
+                    gk = KMF.gf_apply_(torch.zeros_like(x), gst, x, fpb=fpb, blocks=blk, gf2=True)
+                    r['gf'][f'gf2_fpb{fpb}_blk{blk}'] = dict(
+                        rel_f64=float((gk.double() - g64).abs().max() / gn),
+                        warm=round(ev(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk, gf2=True), a.rep), 1),
+                        cold=round(cold(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk, gf2=True), a.rep), 1))
         res[f'B{B}'] = r
         print(json.dumps({f'B{B}': r}), flush=True)
 print(json.dumps(res), flush=True)

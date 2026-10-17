@@ -50,6 +50,8 @@ def points():
 FPB = int(os.environ.get('OPL_V3_KMF_FPB', '8'))                       # faces per group (4, 8)
 GF_BLOCKS = int(os.environ.get('OPL_V3_KMF_GFBLK', '0') or 0)          # blocks of the face kernel (0: 8 per SM)
 NB = int(os.environ.get('OPL_V3_KMF_NB', '0') or 0)                    # columns per block (1, 2, 4; 0: by B)
+GF2 = os.environ.get('OPL_V3_KMF_GF2', '0') == '1'                     # ghost faces: DOF-parallel kernel (gf2)
+FPB2 = int(os.environ.get('OPL_V3_KMF_FPB2', '4'))                     # gf2: faces per group (2, 4)
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
 WARPS = int(os.environ.get('OPL_V3_KMF_WARPS', '4'))
@@ -212,6 +214,8 @@ def _lib():
     lib.kmf_launch64.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
     lib.gf_launch64.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
+    lib.gf2_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
+    lib.gf2_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     _init_tables(lib)
     _LIB = lib
     return lib
@@ -242,6 +246,17 @@ def cuda_ok():
         return False
 
 
+def nodes_tensor(C):
+    """Element node indices in tensor order (E x 27 int32), cached on the cell (C._kmf_nd; reset with the design)."""
+    nd = getattr(C, '_kmf_nd', None)
+    if nd is None:
+        xi = np.asarray(C._kmf_spec[0]).reshape(27, 3)
+        t = (9 * (xi[:, 0] + 1) + 3 * (xi[:, 1] + 1) + (xi[:, 2] + 1)).astype(np.int64)
+        inv = np.empty(27, np.int64); inv[t] = np.arange(27)                 # tensor slot t <- element node inv[t]
+        nd = C._kmf_nd = nodes(C.dofs)[:, torch.as_tensor(inv, device=C.dofs.device)].contiguous()
+    return nd
+
+
 def state(C):
     """Per-cell data of the product for the current implementation (float64 moments C.M, element DOFs C.dofs,
     C._kmf_spec = (node ordering, lam, mu)): dict(kind='cuda': nd in tensor order (E x 27 int32), w (E x 125 float32,
@@ -249,10 +264,7 @@ def state(C):
     xi, lam, mu = C._kmf_spec
     DN, Vi = tables(xi, C.n, C.M.device)
     if cuda_ok():
-        xi = np.asarray(xi).reshape(27, 3)
-        t = (9 * (xi[:, 0] + 1) + 3 * (xi[:, 1] + 1) + (xi[:, 2] + 1)).astype(np.int64)
-        inv = np.empty(27, np.int64); inv[t] = np.arange(27)                 # tensor slot t <- element node inv[t]
-        nd = nodes(C.dofs)[:, torch.as_tensor(inv, device=C.dofs.device)].contiguous()
+        nd = nodes_tensor(C)
         wl, wm = _weights_lm(C, Vi, torch.arange(C.M.shape[0], device=C.M.device), lam, mu, torch.float32)
         return dict(kind='cuda', nd=nd, wl=wl, wm=wm, lam=lam, mu=mu, pts=PTS)
     return dict(kind='triton', nd=nodes(C.dofs), WT=weights(C.M, Vi), DN=DN, lam=lam, mu=mu)
@@ -293,7 +305,16 @@ def apply_(y, st, x, epb=None, nb=None):
 def gf_state(C, nd, dtype=torch.float32):
     """Ghost faces of the cell for gf_kernel (CUDA path): fe, fn (element and +1 neighbour along the face direction,
     int32, faces grouped by direction), cuts c1, c2, fmap (3 x 45 int32: face node -> 32 * neighbour + tensor slot),
-    G (3 x 45 x 45 float32: gamma b_d^T b_d from the float64 templates, b_d the scalar block of B_d = b_d (x) I_3)."""
+    G (3 x 45 x 45 float32: gamma b_d^T b_d from the float64 templates, b_d the scalar block of B_d = b_d (x) I_3);
+    fnode (faces x 45 int32: the face nodes, for gf2_kernel). The integer parts are kept once per cell (C._kmf_gfi,
+    shared by the float32 and float64 states; reset with the design)."""
+    gi = getattr(C, '_kmf_gfi', None)
+    if gi is None:
+        gi = C._kmf_gfi = _gf_int(C, nd)
+    return dict(gi, G=gi['G64'].to(dtype), G64=None)
+
+
+def _gf_int(C, nd):
     from pathlib import Path
     d = Path(C._body_dir) / C.case
     faces = np.load(d / 'GP_FACES.npy').astype(np.int64)
@@ -325,20 +346,37 @@ def gf_state(C, nd, dtype=torch.float32):
         G[k] = C.gamma * (b.T @ b)
     dev = C.M.device
     t = lambda a, dt_=torch.int32: torch.as_tensor(np.ascontiguousarray(a), dtype=dt_, device=dev)
-    return dict(fe=t(faces[order, 0]), fn=t(faces[order, 1]), c1=int(cuts[1]), c2=int(cuts[2]), nf=int(cuts[3]),
-                fmap=t(fmap), G=t(G, dtype), nd=nd)
+    fe, fn, fm = t(faces[order, 0]), t(faces[order, 1]), t(fmap)
+    nf = int(cuts[3])
+    dd = (torch.arange(nf, device=dev) >= int(cuts[1])).long() + (torch.arange(nf, device=dev) >= int(cuts[2])).long()
+    m = fm.long()[dd]                                                       # nf x 45
+    el = torch.where(m >= 32, fn.long()[:, None], fe.long()[:, None])
+    fnode = nd.long()[el, m & 31].to(torch.int32).contiguous()
+    return dict(fe=fe, fn=fn, c1=int(cuts[1]), c2=int(cuts[2]), nf=nf, fmap=fm, nd=nd, fnode=fnode,
+                G64=torch.as_tensor(G, dtype=torch.float64, device=dev))
 
 
 _SMS = {}
 
 
-def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None):
+def _blocks(dev):
+    if dev not in _SMS:
+        _SMS[dev] = torch.cuda.get_device_properties(dev).multi_processor_count
+    return GF_BLOCKS or 8 * _SMS[dev]
+
+
+def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None, gf2=None):
     """y += gamma G x (ghost faces, float32) through gf_state (x, y: nb x B float32 contiguous)."""
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
     if blocks is None:
-        if x.device not in _SMS:
-            _SMS[x.device] = torch.cuda.get_device_properties(x.device).multi_processor_count
-        blocks = GF_BLOCKS or 8 * _SMS[x.device]
+        blocks = _blocks(x.device)
+    if GF2 if gf2 is None else gf2:
+        rc = _lib().gf2_launch(x.data_ptr(), y.data_ptr(), gst['fnode'].data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'],
+                               gst['c2'], x.shape[1], int(fpb or FPB2), int(NB if nb is None else nb), int(blocks),
+                               torch.cuda.current_stream(x.device).cuda_stream)
+        if rc != 0:
+            raise RuntimeError(f'GF2_LAUNCH:{rc}')
+        return y
     rc = _lib().gf_launch(x.data_ptr(), y.data_ptr(), gst['nd'].data_ptr(), gst['fe'].data_ptr(), gst['fn'].data_ptr(),
                           gst['fmap'].data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'], gst['c2'], x.shape[1],
                           int(fpb or FPB), int(NB if nb is None else nb), int(blocks),
@@ -355,11 +393,7 @@ def state64(C, elements):
     faces (float64 Gram matrices, all faces; nd of all elements for their node lists)."""
     xi, lam, mu = C._kmf_spec
     _, Vi = tables(xi, C.n, C.M.device)
-    xi = np.asarray(xi).reshape(27, 3)
-    t = (9 * (xi[:, 0] + 1) + 3 * (xi[:, 1] + 1) + (xi[:, 2] + 1)).astype(np.int64)
-    inv = np.empty(27, np.int64); inv[t] = np.arange(27)
-    inv = torch.as_tensor(inv, device=C.dofs.device)
-    nd_all = nodes(C.dofs)[:, inv].contiguous()
+    nd_all = nodes_tensor(C)
     nd = nd_all[elements].contiguous()
     wl, wm = _weights_lm(C, Vi, elements, lam, mu, torch.float64)
     return dict(kind='cuda64', nd=nd, wl=wl, wm=wm, lam=float(lam), mu=float(mu), pts=PTS,
@@ -378,13 +412,18 @@ def apply64_(y, st, x, epb=None, nb=None):
     return y
 
 
-def gf_apply64_(y, gst, x, blocks=None, nb=None):
+def gf_apply64_(y, gst, x, blocks=None, nb=None, gf2=None):
     """y += gamma G x (ghost faces, float64) through gf_state(..., float64)."""
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float64 and y.dtype == torch.float64
     if blocks is None:
-        if x.device not in _SMS:
-            _SMS[x.device] = torch.cuda.get_device_properties(x.device).multi_processor_count
-        blocks = GF_BLOCKS or 8 * _SMS[x.device]
+        blocks = _blocks(x.device)
+    if GF2 if gf2 is None else gf2:
+        rc = _lib().gf2_launch64(x.data_ptr(), y.data_ptr(), gst['fnode'].data_ptr(), gst['G'].data_ptr(), gst['nf'],
+                                 gst['c1'], gst['c2'], x.shape[1], int(nb or 0), int(blocks),
+                                 torch.cuda.current_stream(x.device).cuda_stream)
+        if rc != 0:
+            raise RuntimeError(f'GF2_LAUNCH64:{rc}')
+        return y
     rc = _lib().gf_launch64(x.data_ptr(), y.data_ptr(), gst['nd'].data_ptr(), gst['fe'].data_ptr(), gst['fn'].data_ptr(),
                             gst['fmap'].data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'], gst['c2'], x.shape[1],
                             int(nb or 0), int(blocks), torch.cuda.current_stream(x.device).cuda_stream)

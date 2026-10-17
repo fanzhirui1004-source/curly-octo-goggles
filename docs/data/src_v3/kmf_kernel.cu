@@ -225,6 +225,69 @@ gf_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ nd
     }
 }
 
+// Ghost faces, DOF-parallel form (gf2): 135 threads per face, thread (j, c) = face node j, component c, so a warp's
+// gathers and atomic adds cover consecutive DOFs (the three components of a node, and node runs along the fastest grid
+// axis); the face's 45 node indices are precomputed (fnode: nf x 45, int32), so no index chain through the elements.
+template <typename T, int FPB, int NB>
+__global__ void __launch_bounds__(135 * FPB)
+gf2_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ fnode, const T* __restrict__ G, int nf,
+           int c1, int c2, int LD)
+{
+    __shared__ T sG[2 * 2025];
+    __shared__ T sX[FPB][NB][135];                                // face vectors [col][3 j + c]
+    const int per = (nf + gridDim.x - 1) / gridDim.x;
+    const int lo = blockIdx.x * per, hi = min(nf, lo + per);
+    if (lo >= hi) return;                                         // (uniform in the block)
+    const int d0 = (lo >= c1) + (lo >= c2), d1 = (hi - 1 >= c1) + (hi - 1 >= c2);
+    for (int i = threadIdx.x; i < (d1 - d0 + 1) * 2025; i += blockDim.x) sG[i] = G[2025 * d0 + i];
+    const int lf = threadIdx.x / 135, k = threadIdx.x - 135 * (threadIdx.x / 135), j = k / 3, c = k - 3 * j;
+    const int col0 = blockIdx.y * NB;
+    const int ncol = min(NB, LD - col0);
+    for (int f0 = lo; f0 < hi; f0 += FPB) {
+        const int f = f0 + lf;
+        const bool ok = (lf < FPB) && (f < hi);
+        int d = 0;
+        int64_t dof = 0;
+        __syncthreads();                                          // sG loaded / previous group's sX consumed
+        if (ok) {
+            d = (f >= c1) + (f >= c2);
+            dof = 3 * (int64_t)fnode[(int64_t)f * 45 + j] + c;
+            for (int q = 0; q < ncol; q++) sX[lf][q][k] = x[dof * LD + col0 + q];
+        }
+        __syncthreads();
+        if (ok) {
+            const T* g = sG + 2025 * (d - d0) + 45 * j;
+            T a[NB];
+#pragma unroll
+            for (int q = 0; q < NB; q++) a[q] = 0;
+#pragma unroll 5
+            for (int jj = 0; jj < 45; jj++) {
+                const T gv = g[jj];
+#pragma unroll
+                for (int q = 0; q < NB; q++)
+                    if (q < ncol) a[q] += gv * sX[lf][q][3 * jj + c];
+            }
+#pragma unroll
+            for (int q = 0; q < NB; q++)
+                if (q < ncol) atomicAdd(y + dof * LD + col0 + q, a[q]);
+        }
+    }
+}
+
+template <typename T, int FPB, int NB>
+static void gf2_go(const T* x, T* y, const int* fnode, const T* G, int nf, int c1, int c2, int B, int blocks,
+                   cudaStream_t s)
+{
+    int gx = (nf + FPB - 1) / FPB;
+    if (blocks > 0 && gx > blocks) gx = blocks;
+    int minc = nf;
+    const int cnt[3] = {c1, c2 - c1, nf - c2};
+    for (int d = 0; d < 3; d++) if (cnt[d] > 0 && cnt[d] < minc) minc = cnt[d];
+    const int need = (nf + minc - 1) / minc;
+    if (gx < need) gx = need;
+    gf2_kernel<T, FPB, NB><<<dim3(gx, (B + NB - 1) / NB), 135 * FPB, 0, s>>>(x, y, fnode, G, nf, c1, c2, B);
+}
+
 template <typename T, int EPB>
 static void kmf_go(const T* x, T* y, const int* nd, const T* wl, const T* wm, int E, int B, int nb, cudaStream_t s)
 {
@@ -273,6 +336,11 @@ int kmf_init(const float* tabL, const float* tabD, const double* tabL64, const d
     cudaFuncGetAttributes(&at, gf_kernel<float, 8, 2>); cudaFuncGetAttributes(&at, gf_kernel<float, 8, 4>);
     cudaFuncGetAttributes(&at, gf_kernel<double, 4, 1>); cudaFuncGetAttributes(&at, gf_kernel<double, 4, 2>);
     cudaFuncGetAttributes(&at, gf_kernel<double, 2, 4>);
+    cudaFuncGetAttributes(&at, gf2_kernel<float, 2, 1>); cudaFuncGetAttributes(&at, gf2_kernel<float, 2, 2>);
+    cudaFuncGetAttributes(&at, gf2_kernel<float, 2, 4>); cudaFuncGetAttributes(&at, gf2_kernel<float, 4, 1>);
+    cudaFuncGetAttributes(&at, gf2_kernel<float, 4, 2>); cudaFuncGetAttributes(&at, gf2_kernel<float, 4, 4>);
+    cudaFuncGetAttributes(&at, gf2_kernel<double, 2, 1>); cudaFuncGetAttributes(&at, gf2_kernel<double, 2, 2>);
+    cudaFuncGetAttributes(&at, gf2_kernel<double, 2, 4>);
     return (int)cudaDeviceSynchronize();
 }
 
@@ -315,6 +383,36 @@ int gf_launch(const float* x, float* y, const int* nd, const int* fe, const int*
         else if (nb == 2) gf_go<float, 8, 2>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);
         else gf_go<float, 8, 4>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);
     }
+    return (int)cudaGetLastError();
+}
+
+int gf2_launch(const float* x, float* y, const int* fnode, const float* G, int nf, int c1, int c2, int B, int fpb, int nb,
+               int blocks, void* stream)
+{
+    if (nf <= 0 || B <= 0) return 0;
+    cudaStream_t s = (cudaStream_t)stream;
+    if (nb <= 0) nb = auto_nb(B);
+    if (fpb == 2) {
+        if (nb == 1) gf2_go<float, 2, 1>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+        else if (nb == 2) gf2_go<float, 2, 2>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+        else gf2_go<float, 2, 4>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+    } else {
+        if (nb == 1) gf2_go<float, 4, 1>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+        else if (nb == 2) gf2_go<float, 4, 2>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+        else gf2_go<float, 4, 4>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+    }
+    return (int)cudaGetLastError();
+}
+
+int gf2_launch64(const double* x, double* y, const int* fnode, const double* G, int nf, int c1, int c2, int B, int nb,
+                 int blocks, void* stream)
+{
+    if (nf <= 0 || B <= 0) return 0;
+    cudaStream_t s = (cudaStream_t)stream;
+    if (nb <= 0) nb = auto_nb(B);
+    if (nb == 1) gf2_go<double, 2, 1>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+    else if (nb == 2) gf2_go<double, 2, 2>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
+    else gf2_go<double, 2, 4>(x, y, fnode, G, nf, c1, c2, B, blocks, s);
     return (int)cudaGetLastError();
 }
 
