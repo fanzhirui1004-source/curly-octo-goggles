@@ -28,6 +28,7 @@ from polyref_torch_fast import _clip
 
 dt = torch.float64
 E0_FAST = os.environ.get('OPL_V3_E0FAST', '1') == '1'              # src_v3: reduced kernel for the volume column
+NOFWD = os.environ.get('OPL_V3_SENS_NOFWD', '1') == '1'             # src_v3 P6: no tetrahedron moments when discarded
 CHECKPOINT = True                                                   # recompute _quad in the backward (memory); False: keep
 
 
@@ -152,22 +153,33 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
     return torch.cat(outs) * (1 / (2 * n)) ** 3
 
 
-def moments_vjp(cells, n, taus, nrm, off, G, s=4, levels=1, batch=512, rule_order=4, surface='P', e0_cols=()):
+def moments_vjp(cells, n, taus, nrm, off, G, s=4, levels=1, batch=512, rule_order=4, surface='P', e0_cols=(), need_m=True):
     """Moments M (E,125) and the per-row vector-Jacobian products
         V[e, c, k] = sum_m (dM_em / dtau_{e,c}) G[e, m, k]        (G: (E,125,K) float64)
     Each row's moments depend only on its own tau row, so summing V over the rows of one lattice cell gives
     d/dtau_c sum_{e,m} M_em G_emk for that cell. One forward (with graph) and K backward passes per row batch.
     e0_cols (src_v3): columns k whose G[:, :, k] is the unit vector at m = 0 (the volume); their backward pass uses the
-    reduced tetrahedron kernel fast_tet2._bwd2_e0 (same values; with OPL_TET_TRITON=1)."""
+    reduced tetrahedron kernel fast_tet2._bwd2_e0 (same values; with OPL_TET_TRITON=1).
+    need_m=False (src_v3 P6, OPL_V3_SENS_NOFWD; cell_sens): M is not returned (None), and the clipped tetrahedra's 125
+    moments are not computed in the forward pass (fast_tet2.SKIP_FWD): the vector-Jacobian products do not use them
+    (the loss is linear in M, the tetrahedron VJP reads only the vertices), so V is bitwise the same."""
     E, K = len(cells), G.shape[2]
-    M = torch.empty((E, 125), dtype=dt, device=taus.device)
+    M = torch.empty((E, 125), dtype=dt, device=taus.device) if need_m else None
     V = torch.zeros((E, 8, K), dtype=dt, device=taus.device)
+    skip = (not need_m) and NOFWD and os.environ.get('OPL_TET_TRITON') == '1'
     for b0 in range(0, E, batch):
         b1 = min(E, b0 + batch)
         tb = taus[b0:b1].detach().clone().requires_grad_(True)
         with torch.enable_grad():
-            Mb = moments_rows(cells[b0:b1], n, tb, nrm[b0:b1], off[b0:b1], s=s, levels=levels, rule_order=rule_order, surface=surface,
-                              batch=b1 - b0)
+            if skip:
+                import fast_tet2 as FT2
+                FT2.SKIP_FWD[0] = True
+            try:
+                Mb = moments_rows(cells[b0:b1], n, tb, nrm[b0:b1], off[b0:b1], s=s, levels=levels, rule_order=rule_order,
+                                  surface=surface, batch=b1 - b0)
+            finally:
+                if skip:
+                    FT2.SKIP_FWD[0] = False
             for k in range(K):
                 hint = k in e0_cols and os.environ.get('OPL_TET_TRITON') == '1' and E0_FAST
                 if hint:
@@ -180,7 +192,8 @@ def moments_vjp(cells, n, taus, nrm, off, G, s=4, levels=1, batch=512, rule_orde
                         FT2.E0_HINT[0] = False
                 if gk is not None:
                     V[b0:b1, :, k] = gk
-        M[b0:b1] = Mb.detach()
+        if need_m:
+            M[b0:b1] = Mb.detach()
         del Mb, tb
     return M, V
 
@@ -231,8 +244,8 @@ def cell_sens(cell, g, batch=512, skip_full=False, e0_cols=None):
         keep = torch.nonzero(~full_rows(cells, cell.n, taus, nrm, off, s=cell.s, surface=sf)).squeeze(1)
         kc = keep.cpu().numpy()
         _, V = moments_vjp(np.asarray(cells)[kc], cell.n, taus[keep], nrm[keep], off[keep], g[keep], s=cell.s,
-                           levels=cell.levels, batch=batch, surface=sf, e0_cols=e0_cols)
+                           levels=cell.levels, batch=batch, surface=sf, e0_cols=e0_cols, need_m=False)
         return -V.sum(0)
     _, V = moments_vjp(cells, cell.n, taus, nrm, off, g, s=cell.s, levels=cell.levels, batch=batch,
-                       surface=getattr(cell, 'surface', 'P'), e0_cols=e0_cols)
+                       surface=getattr(cell, 'surface', 'P'), e0_cols=e0_cols, need_m=False)
     return -V.sum(0)

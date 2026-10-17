@@ -684,6 +684,8 @@ def _bwd2_e0(tets_ptr, tref_ptr, tw_ptr, g_ptr, gt_ptr, T, Q: tl.constexpr, BLOC
 
 
 E0_HINT = [False]          # set by moments_ad.moments_vjp while it back-propagates a volume (unit m = 0) column
+SKIP_FWD = [False]         # src_v3 P6: set by moments_ad.moments_vjp when its caller discards the moments (cell_sens):
+                           # the forward returns zeros instead of running _fwd2; the backward reads only the vertices
 
 
 def tet_moments2(tets, tref, tw, block=128, warps=4):
@@ -708,6 +710,8 @@ class TetMoments2(torch.autograd.Function):
     @staticmethod
     def forward(ctx, tets, tref, tw):
         ctx.save_for_backward(tets, tref, tw)
+        if SKIP_FWD[0]:                                                # the values are not used (moments_vjp need_m=False)
+            return torch.zeros((tets.shape[0], 125), dtype=torch.float64, device=tets.device)
         return tet_moments2(tets, tref, tw)
 
     @staticmethod
