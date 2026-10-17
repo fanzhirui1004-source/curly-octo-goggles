@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/root/autodl-tmp/OPL/V3W/scripts/t_gk.py", line 51, in <module>
+    res['state_MB'] = dict(fsuv=round(g32['fsuv'].numel() * 4 / 2 ** 20, 2), fnode=round(g32['fnode'].numel() * 4 / 2 ** 20, 2))
+                                                                                         ^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'numel'

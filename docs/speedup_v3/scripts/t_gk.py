@@ -48,7 +48,7 @@ with torch.no_grad():
         t = g64['gk'].cpu()
         res['A'] = [round(float(v), 8) for v in t[:25]]
         res['m'] = [float(v) for v in t[25:]]
-        res['state_MB'] = dict(fsuv=round(g32['fsuv'].numel() * 4 / 2 ** 20, 2), fnode=round(g32['fnode'].numel() * 4 / 2 ** 20, 2))
+        res['state_MB'] = dict(fsuv=round(g32['fsuv'].numel() * 4 / 2 ** 20, 2), fnode=round(KMF._fnode(g32).numel() * 4 / 2 ** 20, 2))
     print(json.dumps(res), flush=True)
     X = torch.randn((C.nb, 32), dtype=torch.float64, device=dev, generator=g)
     Y64 = C.GF64.matvec(X, torch.zeros_like(X)).mul_(C.gamma)           # float64 reference (template GEMMs), 32 columns
