@@ -438,6 +438,8 @@ def analyse_fast(cases, positions, h, wait=None):
     la = A.load.split(',')
     lat = LM.MultiLattice(lay, clamp=CLAMP, load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
                           max_cols=A.max_cols, log=lambda s_: None)
+    if TE.SLIM:                                                                # src_v3: host triplets freed once assembled
+        lat.kpp_release = lambda: LS.kpp_release(kpp_host, Cs)
     order = [g.case for g in lat.geoms]
     olist = [ops[c] for c in order]
     SO.link([o for o in olist if isinstance(o, SO.StreamedOp)])

@@ -351,7 +351,7 @@ def coarse_setup(C, space, reach=4, chunk=None):
         Vt = torch.sparse_coo_tensor(np.stack([Vc.row, Vc.col]), Vc.data, V.shape, dtype=dt, device=dvc).coalesce()
         with (C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()):
             A = coarse_galerkin_tpl(C, space, vc, slot, nc)
-        _coarse_finish(C, space, A, Vt, dvc, t0)
+        _coarse_finish(C, space, A, Vt, dvc, t0, vc)
         return _coarse_mf_meta(C, vc, slot, nc, ne)
     h = (2 * C.n) / ne
     R = 2 + int(math.ceil(reach / h))
@@ -383,15 +383,20 @@ def coarse_setup(C, space, reach=4, chunk=None):
         A[r0:r1] = torch.where(near, Y[r0:r1][:, cix], torch.zeros((), dtype=dt, device=dvc))
         del near
     del Y
-    _coarse_finish(C, space, A, Vt, dvc, t0)
+    _coarse_finish(C, space, A, Vt, dvc, t0, vc)
     return _coarse_mf_meta(C, vc, slot, nc, ne)
 
 
-def _coarse_finish(C, space, A, Vt, dvc, t0):
-    """Jacobi scaling, Cholesky with jitter, scaled prolongation; stores the coarse caches on C."""
+def _coarse_finish(C, space, A, Vt, dvc, t0, vc=None):
+    """Jacobi scaling, Cholesky with jitter, scaled prolongation; stores the coarse caches on C. src_v3
+    (OPL_COARSE_BLK=1, packed deployment cells): also the block-structured inverse of coarse_blk (checked in _coarse_pack)."""
     d = torch.sqrt(torch.diagonal(A).clamp_min(1e-300))                          # symmetric up to rounding; Cholesky reads
     A.div_(d[:, None]).div_(d[None, :])                                           # the lower triangle only
     L, shift = _chol_jitter(A)
+    C._cBlk = C._c_blk_info = None
+    if COARSE_BLK and vc is not None and _coarse_pack_on(C):
+        import coarse_blk as CB
+        C._cBlk, C._c_blk_info = CB.build(A, vc, shift)
     del A
     if dvc.type == 'cuda':
         torch.cuda.empty_cache()
@@ -426,6 +431,7 @@ def _coarse_mf_meta(C, vc, slot, nc, ne):
 
 
 COARSE_INV_TOL = float(os.environ.get('OPL_COARSE_INV_TOL', '1e-4'))
+COARSE_BLK = os.environ.get('OPL_COARSE_BLK', '0') == '1'
 
 
 def _coarse_pack(C):
@@ -437,6 +443,22 @@ def _coarse_pack(C):
     import symtile as ST
     f32 = torch.float32
     L64 = C._cL
+    if getattr(C, '_cBlk', None) is not None:                                  # src_v3 S15: block-structured inverse
+        import coarse_blk as CB
+        g = torch.Generator(device=L64.device); g.manual_seed(0)
+        X = torch.randn((L64.shape[0], 4), dtype=f32, device=L64.device, generator=g)
+        y64 = torch.cholesky_solve(X.to(dt), L64)
+        err_blk = float((CB.solve(C._cBlk, X).to(dt) - y64).norm() / y64.norm())
+        C._c_blk_info['err'] = err_blk
+        if err_blk <= COARSE_INV_TOL:
+            C._c_inv_err, C._c_tri_err = err_blk, None
+            C._cL = C._cV = None
+            C._cAp32 = C._cLd32 = None
+            C._cL32 = C._cV32 = C._cV32t = C._cAi32 = None
+            if L64.is_cuda:
+                torch.cuda.empty_cache()
+            return
+        C._cBlk = None                                                          # not accurate enough: packed inverse
     L32 = L64.to(f32)
     Ai = torch.cholesky_inverse(L32)
     g = torch.Generator(device=L64.device); g.manual_seed(0)
@@ -467,7 +489,11 @@ def _coarse_solve(C, r):
         import coarse_mf as CM
         import symtile as ST
         z = CM.restrict(C, r.to(torch.float32))
-        s = ST.matmul(C._cAp32, C._c_nc, z) if C._cAp32 is not None else torch.cholesky_solve(z, C._cLd32)
+        if getattr(C, '_cBlk', None) is not None:
+            import coarse_blk as CB
+            s = CB.solve(C._cBlk, z)
+        else:
+            s = ST.matmul(C._cAp32, C._c_nc, z) if C._cAp32 is not None else torch.cholesky_solve(z, C._cLd32)
         return CM.prolong(C, s).to(r.dtype)
     if os.environ.get('OPL_COARSE_FP32') == '1' and getattr(C, '_Kc', None) is not None:
         if getattr(C, '_cL', None) is not None:                             # a fresh float64 factor from coarse_setup

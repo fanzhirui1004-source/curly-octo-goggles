@@ -83,13 +83,23 @@ def _tile_index(nt, device):
 
 def matmul(P, n, X):
     """A X for packed tiles P of the symmetric n x n float32 matrix A; X (n, B) float32 (any B; blocks of 16 columns)."""
+    nt, ntl = ntiles(n)
+    if ntl == 0:
+        return torch.zeros((n, X.shape[1]), dtype=torch.float32, device=X.device)
+    TI, TJ = _tile_index(nt, X.device)
+    return matmul_tiles(P, TI, TJ, n, X)
+
+
+def matmul_tiles(P, TI, TJ, n, X):
+    """A X for the symmetric n x n float32 matrix A given by its stored tiles P at the tile positions (TI, TJ) (int32,
+    TI >= TJ, X's device), e.g. only the diagonal blocks' tiles of a block-diagonal matrix (coarse_blk); matmul is the
+    full lower-triangle list."""
     X = X.contiguous()
     B = X.shape[1]
     Y = torch.zeros((n, B), dtype=torch.float32, device=X.device)
-    nt, ntl = ntiles(n)
+    ntl = len(TI)
     if ntl == 0 or B == 0:
         return Y
-    TI, TJ = _tile_index(nt, X.device)
     for c0 in range(0, B, 16):
         nb = min(16, B - c0)
         Xc = X[:, c0:c0 + nb].contiguous() if B > 16 else X

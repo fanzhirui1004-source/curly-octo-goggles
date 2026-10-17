@@ -61,6 +61,15 @@ class _Resident:
         self.op = None
 
 
+def kpp_release(kpp_host, Cs):
+    """src_v3: the per-cell K_PP triplets kept on the host (int32 rows / cols, float64 values; ~10 MB per full plate cell)
+    are dropped once the lattice's K_PP is assembled from them (MultiLattice._assemble_kpp_lean), before cuDSS plans
+    and factorises (the host-memory peak of an analysis); the next design's front end stores new ones."""
+    kpp_host.clear()
+    for C in Cs.values():
+        C._kpp_cache = None
+
+
 def _free_prec(fac, pcnd):
     fac.free()
     for v in fac.shared.values():                                              # K_PP factor and triplets
@@ -195,6 +204,8 @@ def main(argv=None):
                 lay[tuple(c['position'])] = g
             lat = LM.MultiLattice(lay, clamp=('y', 'min'), load=('y', 'max'), loads='consistent', n_random=0, device=dev,
                                   max_cols=a.max_cols, log=lambda s_: None)
+            if TE.SLIM:                                                            # src_v3: host triplets freed once assembled
+                lat.kpp_release = lambda: kpp_release(kpp_host, Cs)
             res['lattice'] = {k: v for k, v in lat.info().items() if k not in ('positions', 'cases', 'distinct_cases')}
             ph['lattice_setup'] = T() - t; t = T()
         order = [g.case for g in lat.geoms]

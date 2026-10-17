@@ -321,6 +321,9 @@ class MultiLattice:
             ok = (fr >= 0) & (fc >= 0)
             K.append((torch.minimum(fr, fc) * self.nfree + torch.maximum(fr, fc))[ok]); V.append(v[ok].to(dt))
             del r, c, v, fr, fc, ok
+        rel = getattr(self, 'kpp_release', None)
+        if rel is not None:                                                     # src_v3: the drivers' host copies of the
+            rel()                                                               # per-cell triplets (before cuDSS plans)
         key = torch.cat(K); K.clear()
         val = torch.cat(V); V.clear()
         key, perm = torch.sort(key)

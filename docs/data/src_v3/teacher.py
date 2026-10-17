@@ -610,7 +610,7 @@ class Cell:
         self.taus = list(taus)
         self._free()
         for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cAi32', '_cV32', '_cV32t', '_cL32_keep', '_Kc', 'GF64', 'M', 'dM',
-                  '_kpp_cache', 'diag3', '_c_mf', '_c_nc', '_c_invd', '_cAp32', '_cLd32', '_c_inv_err', '_c_tri_err',
+                  '_kpp_cache', 'diag3', '_c_mf', '_c_nc', '_c_invd', '_cAp32', '_cLd32', '_c_inv_err', '_c_tri_err', '_cBlk', '_c_blk_info',
                   '_fk', '_k64_part', '_dp64_part'):                         # + src_v3 coarse, fullke                                       # state of the previous design (if any)
             setattr(self, k, None)
         gc.collect(); torch.cuda.empty_cache()
