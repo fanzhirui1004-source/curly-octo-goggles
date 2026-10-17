@@ -484,7 +484,9 @@ def slim_deploy(op, geo, C, model=None, budget=None, cell_bytes=None):
         kb = C.ke64_bytes() if hasattr(C, 'ke64_bytes') and TE_.KE64 == 'auto' else 0
         sb = fast.slot_bytes() if SLOTS == 'auto' and fast._rc_src is not None else 0
         other = None if cell_bytes is None else max(0, cell_bytes - sb)
-        keep_slots, keep_ke = budget.decide(kb, sb, other)
+        kp = getattr(C, '_kpp_cache', None)
+        kpb = sum(t.numel() * t.element_size() for t in kp) if kp is not None and not torch.is_tensor(kp) else 0
+        keep_slots, keep_ke = budget.decide(kb, sb, other, kpp_bytes=kpb)
         kept = 0
         if sb:
             if keep_slots:

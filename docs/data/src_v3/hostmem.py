@@ -3,15 +3,18 @@
 The streamed cells live in page-locked host memory, so the number of cells an analysis can hold is bounded by the host
 memory the process may use: on the AutoDL container that is the cgroup limit (memory.max, 90 GiB), not the machine's RAM.
 Two per-cell items trade memory for time (both give the same results):
-  - the float64 partial-element matrices (teacher.Cell.store64, S9): ~0.2 GB per full plate cell, saves ~4 ms per S_hat;
-  - the hyperedge slot weights (fastnet slots, S5): ~0.24 GB per full plate cell; without them they are recomputed in
+  - the float64 partial-element matrices (teacher.Cell.store64, S9): ~0.1 GB per full plate cell, saves ~4 ms per S_hat;
+  - the hyperedge slot weights (fastnet slots, S5): ~0.27 GB per full plate cell; without them they are recomputed in
     every application (bitwise the same, ~+9 ms per S_hat).
 Budget.decide (one call per cell, in front-end order, after the cell's warm-up) keeps both while the projected host use
-of the whole analysis (the current RSS plus, for this and every remaining cell, the average state per cell so far plus
-the two items) stays below OPL_V3_HOST_FRAC (0.85) of the limit; otherwise it drops the float64 matrices, then the slot
-weights. The plan is redone for every cell (the cells processed first get the items). 0.85: the RSS peak of an analysis
-is ~1.1 x the RSS at the end of its front end (the K_PP assembly, the lattice, cuDSS, the sensitivities; measured on the
-51-162-cell plates), so the peak stays below ~0.94 of the limit."""
+of the whole analysis (the current RSS plus, for this and every remaining cell, its bare state plus the two items) stays
+below the target; otherwise it drops the float64 matrices, then the slot weights. The plan is redone for every cell (the
+cells processed first get the items).
+Target (src_v3 S14b): OPL_V3_HOST_TOP (0.95) of the limit minus a reserve for the host peak of the K_PP factorisation
+that follows the front end: OPL_V3_HOST_TRANSIENT (3) x the cells' K_PP triplet bytes on the host (projected from the
+cells so far). Measured on the 135- and 162-cell plates: the peak is ~71 bytes per assembled K_PP nonzero (~55 per stored
+triplet entry, 16 bytes) above the RSS at the end of the front end, of which the triplets themselves (freed before cuDSS
+plans, S16) are 16. OPL_V3_HOST_FRAC (S14, if set): the earlier rule, a fixed fraction of the limit for the front end."""
 import os
 
 GiB = 2 ** 30
@@ -41,27 +44,38 @@ def rss_bytes():
 
 
 class Budget:
-    def __init__(self, n_cells, frac=None, first_cell_bytes=0.55 * GiB):
-        self.n, self.done, self.extra = int(n_cells), 0, 0
-        self.frac = float(os.environ.get('OPL_V3_HOST_FRAC', '0.85')) if frac is None else frac
+    def __init__(self, n_cells, frac=None, first_cell_bytes=0.55 * GiB, top=None, transient=None):
+        self.n, self.done, self.extra, self.kpp = int(n_cells), 0, 0, 0
+        f = os.environ.get('OPL_V3_HOST_FRAC')
+        self.frac = (float(f) if f else None) if frac is None else frac
+        self.top = float(os.environ.get('OPL_V3_HOST_TOP', '0.95')) if top is None else top
+        self.tx = float(os.environ.get('OPL_V3_HOST_TRANSIENT', '3')) if transient is None else transient
         self.limit = limit_bytes()
         self.rss0 = rss_bytes()
         self.first = first_cell_bytes
+        self.reserve = 0.0
         self.log = []
 
-    def decide(self, ke64_bytes, slot_bytes, cell_bytes=None):
-        """(keep the slot weights, keep the float64 matrices) for the next cell. The remaining host budget (the limit's
-        fraction minus the current RSS minus the bare state of this and every remaining cell, cell_bytes each: this cell's
-        device footprint without the two items, or the average host growth per cell so far) is planned anew for every
-        cell: slot weights first (they save more time per byte), for as many of the remaining cells as fit, then the
-        float64 matrices; the cells processed first get them."""
+    def decide(self, ke64_bytes, slot_bytes, cell_bytes=None, kpp_bytes=0):
+        """(keep the slot weights, keep the float64 matrices) for the next cell. The remaining host budget (the target
+        minus the current RSS minus the bare state of this and every remaining cell, cell_bytes each: this cell's device
+        footprint without the two items, or the average host growth per cell so far) is planned anew for every cell: slot
+        weights first (they save more time per byte), for as many of the remaining cells as fit, then the float64
+        matrices; the cells processed first get them. kpp_bytes: this cell's K_PP triplets on the host (the reserve)."""
         rss = rss_bytes()
         n_rest = self.n - self.done                                      # this cell and the ones after it
         if cell_bytes is not None:
             other = cell_bytes
         else:
             other = (rss - self.rss0 - self.extra) / self.done if self.done else self.first
-        free = self.frac * self.limit - rss - n_rest * other
+        self.kpp += kpp_bytes
+        kpp_avg = self.kpp / (self.done + 1)
+        if self.frac is not None:                                        # S14 rule
+            target = self.frac * self.limit
+        else:                                                            # the remaining cells' host triplets (this
+            self.reserve = self.tx * kpp_avg * self.n                    # cell's are in the RSS) and the reserve
+            target = self.top * self.limit - self.reserve - (n_rest - 1) * kpp_avg
+        free = target - rss - n_rest * other
         ns = n_rest if slot_bytes <= 0 else max(0, min(n_rest, int(free // slot_bytes)))
         free -= ns * max(slot_bytes, 0)
         if ns < n_rest:                                                  # slot weights for every remaining cell first
@@ -78,5 +92,6 @@ class Budget:
 
     def summary(self):
         ks = [k for _, k, _ in self.log]
-        return dict(limit_GiB=round(self.limit / GiB, 1), frac=self.frac, cells=len(ks),
+        return dict(limit_GiB=round(self.limit / GiB, 1), frac=self.frac, top=self.top, transient_x=self.tx,
+                    reserve_GiB=round(self.reserve / GiB, 2), cells=len(ks),
                     slots_kept=sum(k[0] for k in ks), float64_kept=sum(k[1] for k in ks))
