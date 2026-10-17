@@ -9,7 +9,7 @@ separator) split the others into 8 octants that do not couple. Block elimination
     x_s = S^-1 (z_s - sum_o A_so y_o)                   S = A_ss - sum_o A_so A_oo^-1 A_os (Schur complement)
     x_o = A_oo^-1 (z_o - A_os x_s)
 The octant inverses and S^-1 are formed in float64 (Cholesky) and stored in float32 as packed symmetric tiles (the
-octants as one block-diagonal tile list), A_os as a float32 CSR matrix. On the full plate cells (nc = 9324, coupling width
+octants as one block-diagonal tile list), A_os as float32 COO triplets. On the full plate cells (nc = 9324, coupling width
 2 through the ghost-penalty faces, separator 2664 columns): 29 MiB instead of 168, error against the float64 solve 1.7e-7
 instead of 2.9e-7 (the blocks are formed in float64), coarse solve 0.26 ms instead of 0.39 (B = 1). The solve is
 algebraically the same as the explicit inverse; only its float32 rounding differs. trainlib checks it against the
@@ -122,32 +122,30 @@ def build(A, vc, shift=0.0):
         idx, val = torch.stack([torch.cat(rows), torch.cat(cols)]), torch.cat(vals)
     else:                                                                # no octant couples to the separator
         idx, val = torch.zeros((2, 0), dtype=torch.long, device=dvc), torch.zeros(0, dtype=f32, device=dvc)
-    G = torch.sparse_coo_tensor(idx, val, (Np, len(sep)), dtype=f32, device=dvc).coalesce()
     inv = torch.empty(nc, dtype=torch.long, device=dvc)                  # coarse column -> row of cat([x_o, x_s])
     pv = torch.nonzero(perm < nc).squeeze(1)
     inv[perm[pv]] = pv
     inv[si] = Np + torch.arange(len(sep), device=dvc)
     blk = dict(D=torch.cat(D), TI=torch.cat(TI).to(torch.int32), TJ=torch.cat(TJ).to(torch.int32),
-               S=ST.pack(torch.cholesky_inverse(Ls).to(f32)), G=G.to_sparse_csr(), Gt=G.t().coalesce().to_sparse_csr(),
+               S=ST.pack(torch.cholesky_inverse(Ls).to(f32)), Gi=idx.contiguous(), Gv=val.contiguous(),
                perm=perm, sep=si, inv=inv, dims=(int(nc), int(len(sep)), int(Np)))
     info['MiB'] = round(nbytes(blk) / 2 ** 20, 2)
     return blk, info
 
 
 def nbytes(blk):
-    n = 0
-    for v in blk.values():
-        if torch.is_tensor(v):
-            parts = [v.crow_indices(), v.col_indices(), v.values()] if v.layout == torch.sparse_csr else [v]
-            n += sum(p.numel() * p.element_size() for p in parts)
-    return n
+    return sum(v.numel() * v.element_size() for v in blk.values() if torch.is_tensor(v))
 
 
 def solve(blk, z):
-    """A^-1 z: z (nc, B) float32 in the coarse column order -> (nc, B) float32."""
+    """A^-1 z: z (nc, B) float32 in the coarse column order -> (nc, B) float32. The couplings A_os (COO: Gi rows in the
+    octants' padded order, columns in the separator's order; Gv values) are applied by gathers and index_add (float32
+    products, atomic sums), with no sparse-matrix objects: a streamed cell rebuilds nothing, and cuSPARSE, whose calls
+    made the two-stream PCG matvec of the 51-cell plate 2-10% slower and irregular, is not used."""
     nc, ns, Np = blk['dims']
+    gi, gv = blk['Gi'], blk['Gv'][:, None]
     zp = F.pad(z, (0, 0, 0, 1))[blk['perm']]                              # octant rows (zero rows: tile padding)
     y = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp)
-    xs = ST.matmul(blk['S'], ns, z[blk['sep']] - torch.sparse.mm(blk['Gt'], y))
-    xo = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp - torch.sparse.mm(blk['G'], xs))
+    xs = ST.matmul(blk['S'], ns, z[blk['sep']].index_add(0, gi[1], gv * y[gi[0]], alpha=-1))
+    xo = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp.index_add(0, gi[0], gv * xs[gi[1]], alpha=-1))
     return torch.cat([xo, xs])[blk['inv']]
