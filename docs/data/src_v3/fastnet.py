@@ -78,7 +78,7 @@ NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                          
 HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
 CONV3 = os.environ.get('OPL_V3_CONV3', '0') == '1'                               # src_v3 P10: U-Net convolutions in Triton
 CLAMPFREE = os.environ.get('OPL_V3_CLAMPFREE', '1') == '1'                       # src_v3 P11: no where() in clamped layers
-MSPLIT_IP = os.environ.get('OPL_V3_MSPLIT_IP', '0') == '1'                       # src_v3 P12: adjoint mask split in place
+MSPLIT_IP = os.environ.get('OPL_V3_MSPLIT_IP', '1') == '1'                       # src_v3 P12: adjoint mask split in place
 CONVT = os.environ.get('OPL_V3_CONVT', '1') == '1'                               # src_v3 S27: transposed convolutions as
 # forward convolutions with the flipped, channel-swapped weight (stride 1, padding 1: the same sums; cuDNN's transposed
 # 3-D convolution is ~3.5x slower than its forward one here, and not reproducible run to run)

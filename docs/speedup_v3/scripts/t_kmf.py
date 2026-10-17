@@ -1,8 +1,9 @@
-"""P13 (OPL_V3_KMF): the matrix-free float32 element product (kmf.py: 125 Gauss points with fitted weights) against
-the formed-matrix product (ke_symv on the packed float32 matrices of _Kfp32.hold) on a full plate cell, B = 1, 2, 4:
-  - accuracy: both against the float64 template product sum_e P_e^T (M_e T) P_e x (float64 moments and templates);
-  - device time per product alone (warm, back to back; and cold: a 256 MB buffer rewritten before each call), for
-    a sweep of tiles (EB elements, PB points, warps); the formed-matrix product with its formation GEMM separately.
+"""P13 (OPL_V3_KMF): the matrix-free float32 element product (kmf.py: 125 Gauss points with fitted weights; CUDA C++
+sum-factorised kernel kmf_kernel.cu, and the Triton dot form) against the formed-matrix product (ke_symv on the packed
+float32 matrices of _Kfp32.hold) on a full plate cell, B = 1, 2, 4:
+  - accuracy: all against the float64 template product sum_e P_e^T (M_e T) P_e x (float64 moments and templates);
+  - device time per product alone (warm, back to back; and cold: a 256 MB buffer rewritten before each call): the CUDA
+    kernel with 2 / 4 / 8 elements per block, the Triton form with its default tiles; the formation GEMM separately.
 usage: python t_kmf.py BODY_DIR:CASE [--rep 30]"""
 import os, sys, json, argparse
 SRC = os.environ.get('SRC', '/root/autodl-tmp/OPL/src_v3'); sys.path.insert(0, SRC)
@@ -48,13 +49,18 @@ Kc = C._Kc
 E = len(C.M)
 res = dict(case=case, elements=E, nb=int(C.nb))
 with torch.no_grad():
-    nd, WT, DN, lam, mu = Kc.mf_state()
-    res['state_MB'] = dict(nodes=round(nd.numel() * 4 / 2 ** 20, 2), weights=round(WT.numel() * 4 / 2 ** 20, 2),
-                           packed=round(E * 3321 * 4 / 2 ** 20, 1))
-    W = WT[:125].t().double()
+    KMF.CUDA = False
+    stT = KMF.state(C)
+    KMF.CUDA = True
+    stC = KMF.state(C)
+    res['cuda'] = dict(kind=stC['kind'], lib_error=KMF._LIB_ERR)
+    res['state_MB'] = dict(nodes=round(stC['nd'].numel() * 4 / 2 ** 20, 2), weights=round(stC['w'].numel() * 4 / 2 ** 20, 2)
+                           if stC['kind'] == 'cuda' else None, packed=round(E * 3321 * 4 / 2 ** 20, 1))
+    W = stT['WT'][:125].t().double()
     res['weights'] = dict(neg_frac=float((W < 0).double().mean()),
                           abs_over_sum_median=float((W.abs().sum(1) / W.sum(1).abs().clamp_min(1e-300)).median()),
                           abs_over_sum_max=float((W.abs().sum(1) / W.sum(1).abs().clamp_min(1e-300)).max()))
+    print(json.dumps(res), flush=True)
     Kc._form_p()
     P = Kc._kp_tmp
     dofs = C.dofs.contiguous()
@@ -74,29 +80,20 @@ with torch.no_grad():
         y64 = Y64[:, :B]
         nrm = y64.abs().max()
         yP = torch.zeros_like(x); KS.symv_(yP, P, dofs, x)
-        yM = torch.zeros_like(x); KMF.matvec_(yM, nd, WT, DN, x, lam, mu)
-        yM2 = torch.zeros_like(x); KMF.matvec_(yM2, nd, WT, DN, x, lam, mu)
-        r = dict(rel_packed_f64=float((yP.double() - y64).abs().max() / nrm), rel_mf_f64=float((yM.double() - y64).abs().max() / nrm),
-                 rel_mf_rerun=float((yM2 - yM).abs().max() / yM.abs().max()),
-                 l2_packed_f64=float((yP.double() - y64).norm() / y64.norm()), l2_mf_f64=float((yM.double() - y64).norm() / y64.norm()))
+        yT = torch.zeros_like(x); KMF.apply_(yT, stT, x)
+        r = dict(rel_packed_f64=float((yP.double() - y64).abs().max() / nrm), rel_triton_f64=float((yT.double() - y64).abs().max() / nrm),
+                 l2_packed_f64=float((yP.double() - y64).norm() / y64.norm()), l2_triton_f64=float((yT.double() - y64).norm() / y64.norm()))
         y = torch.zeros_like(x)
         r['packed_us'] = dict(warm=round(ev(lambda: KS.symv_(y, P, dofs, x), a.rep), 1), cold=round(cold(lambda: KS.symv_(y, P, dofs, x), a.rep), 1))
-        r['mf_default_us'] = dict(warm=round(ev(lambda: KMF.matvec_(y, nd, WT, DN, x, lam, mu), a.rep), 1),
-                                  cold=round(cold(lambda: KMF.matvec_(y, nd, WT, DN, x, lam, mu), a.rep), 1))
-        sweep = []
-        for eb in (16, 32, 64):
-            for pb in (16, 32):
-                for w in (2, 4, 8):
-                    try:
-                        yy = torch.zeros_like(x); KMF.matvec_(yy, nd, WT, DN, x, lam, mu, eb=eb, pb=pb, warps=w)
-                        err = float((yy.double() - y64).abs().max() / nrm)
-                        us = cold(lambda: KMF.matvec_(y, nd, WT, DN, x, lam, mu, eb=eb, pb=pb, warps=w), a.rep)
-                        sweep.append((round(us, 1), eb, pb, w, err))
-                    except Exception as ex:                                  # noqa: BLE001
-                        sweep.append((None, eb, pb, w, repr(ex)[:120]))
-                print(json.dumps({f'B{B}_sweep_eb{eb}': [s_ for s_ in sweep if s_[1] == eb]}), flush=True)
-        ok = sorted([s_ for s_ in sweep if s_[0] is not None])
-        r['mf_best'] = ok[:4]
+        r['triton_us'] = dict(warm=round(ev(lambda: KMF.apply_(y, stT, x), a.rep), 1), cold=round(cold(lambda: KMF.apply_(y, stT, x), a.rep), 1))
+        if stC['kind'] == 'cuda':
+            for epb in (2, 4, 8):
+                yC = torch.zeros_like(x); KMF.apply_(yC, stC, x, epb=epb)
+                yC2 = torch.zeros_like(x); KMF.apply_(yC2, stC, x, epb=epb)
+                r[f'cuda{epb}'] = dict(rel_f64=float((yC.double() - y64).abs().max() / nrm), l2_f64=float((yC.double() - y64).norm() / y64.norm()),
+                                       rel_rerun=float((yC2 - yC).abs().max() / yC.abs().max()),
+                                       warm_us=round(ev(lambda: KMF.apply_(y, stC, x, epb=epb), a.rep), 1),
+                                       cold_us=round(cold(lambda: KMF.apply_(y, stC, x, epb=epb), a.rep), 1))
         res[f'B{B}'] = r
         print(json.dumps({f'B{B}': r}), flush=True)
 print(json.dumps(res), flush=True)

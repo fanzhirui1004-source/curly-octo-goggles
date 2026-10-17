@@ -373,8 +373,7 @@ class _Kfp32:
             import ke_symv as KS
             y, x32 = y.contiguous(), x32.contiguous()
             if KMF.ON and x32.shape[1] <= KMF.MAXB:                             # src_v3 P13: matrix-free narrow product
-                nd, WT, DN, lam, mu = self.mf_state()
-                return KMF.matvec_(y, nd, WT, DN, x32, lam, mu)
+                return KMF.apply_(y, self.mf_state(), x32)
             if KMF.ON and self._hold > 0 and self._kp_tmp is None:              # src_v3 P13: wide product inside a hold:
                 self._form_p()                                                  # the matrices now, released with the hold
             if self._kp_tmp is not None:
@@ -397,14 +396,11 @@ class _Kfp32:
         return y
 
     def mf_state(self):
-        """src_v3 P13: (element nodes int32, float32 quadrature weights 128 x E, derivative table, lam, mu) of the
-        matrix-free product, built on first use from the float64 moments (kept with this object: reset with the design)."""
-        C = self.C
-        xi, lam, mu = C._kmf_spec
-        DN, Vi = KMF.tables(xi, C.n, C.M.device)
-        if self._mf is None:
-            self._mf = (KMF.nodes(C.dofs), KMF.weights(C.M, Vi))
-        return self._mf + (DN, lam, mu)
+        """src_v3 P13: the matrix-free product's per-cell data (kmf.state: element nodes, float32 quadrature weights),
+        built on first use from the float64 moments (kept with this object: reset with the design)."""
+        if self._mf is None or self._mf['kind'] != KMF.kind():
+            self._mf = KMF.state(self.C)
+        return self._mf
 
     def _form_p(self):
         """The float32 packed upper element matrices of every element (the chunked GEMM of hold())."""

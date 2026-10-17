@@ -15,15 +15,26 @@ dots (input_precision 'ieee': no TF32) of the shared derivative table (3 x 128 x
 element displacements, the stress, the weighted back projection as nine more dots; atomic adds into y as before.
 Rounding differs from the formed-matrix product (float32 error against float64 of the same order, 3e-7 median on
 random cut boxes, see scripts/t_kmf.py); the flop count grows with the number of columns while the formed-matrix
-product reads the matrices once for all columns, so it is used for narrow products only (B <= MAXB)."""
+product reads the matrices once for all columns, so it is used for narrow products only (B <= MAXB).
+Two implementations: the CUDA C++ kernel kmf_kernel.cu (default, OPL_V3_KMF_CUDA=1: sum factorisation, ~12.4k
+multiply-adds per element; compiled once with nvcc into a cached shared library, launched through ctypes on torch's
+current stream), and the Triton kernel below (OPL_V3_KMF_CUDA=0, or no nvcc: dense 125 x 27 derivative tables as fp32
+dots, ~74k multiply-adds per element; measured 413 us per product on the plate cell, slower than the formed-matrix
+product's 183 us, so not useful by itself)."""
 import os
+import ctypes
+import hashlib
+import shutil
+import subprocess
 import numpy as np
 import torch
 import triton
 import triton.language as tl
 
 ON = os.environ.get('OPL_V3_KMF', '0') == '1'
+CUDA = os.environ.get('OPL_V3_KMF_CUDA', '1') == '1'
 MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '2'))
+EPB = int(os.environ.get('OPL_V3_KMF_EPB', '4'))                       # CUDA kernel: elements per block (2, 4, 8)
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
 WARPS = int(os.environ.get('OPL_V3_KMF_WARPS', '4'))
@@ -143,4 +154,92 @@ def matvec_(y, nd, WT, DN, x, lam, mu, eb=None, pb=None, warps=None):
     B = x.shape[1]
     eb, pb, warps = eb or EB, pb or PB, warps or WARPS
     _kmf[(triton.cdiv(E, eb), B)](x, y, nd, WT, DN, E, B, float(lam), float(mu), EB=eb, PB=pb, num_warps=warps)
+    return y
+
+
+# ---------------------------------------------------------------------- CUDA C++ kernel (sum factorisation)
+_LIB = None
+_LIB_ERR = None
+
+
+def kind():
+    """'cuda' (switch on, library not known to fail) or 'triton'."""
+    return 'cuda' if CUDA and _LIB_ERR is None else 'triton'
+
+
+def _lib():
+    """The compiled kmf_kernel.cu (cached by source hash and architecture), initialised with the 1-D tables."""
+    global _LIB
+    if _LIB is not None:
+        return _LIB
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kmf_kernel.cu')
+    code = open(src, 'rb').read()
+    maj, mnr = torch.cuda.get_device_capability()
+    arch = f'sm_{maj}{mnr}'
+    tag = hashlib.sha1(code + arch.encode()).hexdigest()[:16]
+    d = os.environ.get('OPL_V3_KMF_DIR') or os.path.join(os.path.expanduser('~'), '.cache', 'opl_v3_kmf')
+    os.makedirs(d, exist_ok=True)
+    so = os.path.join(d, f'libkmf_{tag}.so')
+    if not os.path.exists(so):
+        nvcc = os.environ.get('OPL_V3_NVCC') or shutil.which('nvcc') or '/usr/local/cuda/bin/nvcc'
+        tmp = f'{so}.{os.getpid()}.tmp'
+        subprocess.run([nvcc, '-O3', '-std=c++17', f'-arch={arch}', '-Xcompiler', '-fPIC', '-shared', '-o', tmp, src],
+                       check=True, capture_output=True)
+        os.replace(tmp, so)
+    lib = ctypes.CDLL(so)
+    lib.kmf_init.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    lib.kmf_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_float,
+                                                        ctypes.c_int, ctypes.c_void_p]
+    g, _ = np.polynomial.legendre.leggauss(5)
+    L = np.array([[_lag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float32)
+    D = np.array([[_dlag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float32)
+    rc = lib.kmf_init(L.ctypes.data, D.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f'KMF_INIT:{rc}')
+    _LIB = lib
+    return lib
+
+
+def cuda_ok():
+    """CUDA path usable (switch on and the library builds; a failure is remembered: the Triton path then)."""
+    global _LIB_ERR
+    if kind() != 'cuda':
+        return False
+    try:
+        _lib()
+        return True
+    except Exception as ex:                                                 # noqa: BLE001 (no nvcc: Triton path)
+        _LIB_ERR = repr(ex)[:300]
+        return False
+
+
+def state(C):
+    """Per-cell data of the product for the current implementation (float64 moments C.M, element DOFs C.dofs,
+    C._kmf_spec = (node ordering, lam, mu)): dict(kind='cuda': nd in tensor order (E x 27 int32), w (E x 125 float32,
+    times (2n)^2); kind='triton': nd (E x 27), WT (128 x E), DN (3 x 128 x 32))."""
+    xi, lam, mu = C._kmf_spec
+    DN, Vi = tables(xi, C.n, C.M.device)
+    if cuda_ok():
+        xi = np.asarray(xi).reshape(27, 3)
+        t = (9 * (xi[:, 0] + 1) + 3 * (xi[:, 1] + 1) + (xi[:, 2] + 1)).astype(np.int64)
+        inv = np.empty(27, np.int64); inv[t] = np.arange(27)                 # tensor slot t <- element node inv[t]
+        nd = nodes(C.dofs)[:, torch.as_tensor(inv, device=C.dofs.device)].contiguous()
+        E = C.M.shape[0]
+        w = torch.empty((E, 125), dtype=torch.float32, device=C.M.device)
+        for lo in range(0, E, 8192):
+            w[lo:lo + 8192] = ((C.M[lo:lo + 8192] @ Vi) * (2.0 * C.n) ** 2).to(torch.float32)
+        return dict(kind='cuda', nd=nd, w=w, lam=lam, mu=mu)
+    return dict(kind='triton', nd=nodes(C.dofs), WT=weights(C.M, Vi), DN=DN, lam=lam, mu=mu)
+
+
+def apply_(y, st, x, epb=None):
+    """y += K x through state(C) (x, y: nb x B float32 contiguous)."""
+    if st['kind'] == 'triton':
+        return matvec_(y, st['nd'], st['WT'], st['DN'], x, st['lam'], st['mu'])
+    assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
+    E, B = st['nd'].shape[0], x.shape[1]
+    rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), E, B, float(st['lam']),
+                           float(st['mu']), int(epb or EPB), torch.cuda.current_stream(x.device).cuda_stream)
+    if rc != 0:
+        raise RuntimeError(f'KMF_LAUNCH:{rc}')
     return y
