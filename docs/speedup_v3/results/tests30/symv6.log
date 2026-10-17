@@ -1,0 +1,9 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:73: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"back_to_back": {"kernel_ms": 19.546, "symv_ms": 7.033, "symv_calls": 38, "us_per_symv": 185.1, "wall_ms": 19.91}}
+{"spaced_100ms": {"kernel_ms": 19.534, "symv_ms": 7.02, "symv_calls": 38, "us_per_symv": 184.7, "wall_ms": 120.4}}
+{"after_20s_load": {"kernel_ms": 19.628, "symv_ms": 7.062, "symv_calls": 38, "us_per_symv": 185.9, "wall_ms": 20.0}}
+{"alone_back_to_back": {"kernel_ms": 0.117, "symv_ms": 0.117, "symv_calls": 0, "us_per_symv": 117.3, "wall_ms": 0.13}}
+{"alone_flush": {"kernel_ms": 0.452, "symv_ms": 0.138, "symv_calls": 0, "us_per_symv": 137.8, "wall_ms": 0.46}}
+{"alone_spaced": {"kernel_ms": 0.121, "symv_ms": 0.121, "symv_calls": 0, "us_per_symv": 121.3, "wall_ms": 100.47}}
+{"case": "plateS24_040_o000", "back_to_back": {"kernel_ms": 19.546, "symv_ms": 7.033, "symv_calls": 38, "us_per_symv": 185.1, "wall_ms": 19.91}, "spaced_100ms": {"kernel_ms": 19.534, "symv_ms": 7.02, "symv_calls": 38, "us_per_symv": 184.7, "wall_ms": 120.4}, "after_20s_load": {"kernel_ms": 19.628, "symv_ms": 7.062, "symv_calls": 38, "us_per_symv": 185.9, "wall_ms": 20.0}, "alone_back_to_back": {"kernel_ms": 0.117, "symv_ms": 0.117, "symv_calls": 0, "us_per_symv": 117.3, "wall_ms": 0.13}, "alone_flush": {"kernel_ms": 0.452, "symv_ms": 0.138, "symv_calls": 0, "us_per_symv": 137.8, "wall_ms": 0.46}, "alone_spaced": {"kernel_ms": 0.121, "symv_ms": 0.121, "symv_calls": 0, "us_per_symv": 121.3, "wall_ms": 100.47}}
