@@ -1,0 +1,75 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:63: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"case": "plateS24_040_o000", "elements": 11392, "ctor": 0.2949, "assemble_deploy": 1.1096, "netdata": 0.0865, "geo": 0.0678, "model_add": 0.2571, "fastnet": 0.1381, "warmup": 0.7721, "kpp_host": 0.0006, "slim_deploy": 0.0001, "stream_op": 0.1474, "gc_empty": 0.0723, "total": 2.946}
+{"case": "plateS24_030_o000", "elements": 11392, "ctor": 0.0311, "assemble_deploy": 0.4469, "netdata": 0.0341, "geo": 0.0315, "model_add": 0.0241, "fastnet": 0.0204, "warmup": 0.6058, "kpp_host": 0.0007, "slim_deploy": 0.0001, "stream_op": 0.1437, "gc_empty": 0.0642, "total": 1.403}
+{"case": "plateS24_050_o000", "elements": 11392, "ctor": 0.03, "assemble_deploy": 0.432, "netdata": 0.0363, "geo": 0.031, "model_add": 0.0222, "fastnet": 0.0202, "warmup": 0.6129, "kpp_host": 0.0007, "slim_deploy": 0.0001, "stream_op": 0.1367, "gc_empty": 0.0634, "total": 1.385}
+{"case": "plateS24_060_o000", "elements": 10820, "ctor": 0.0264, "assemble_deploy": 0.5996, "netdata": 0.0826, "geo": 0.0384, "model_add": 0.0235, "fastnet": 0.0198, "warmup": 0.5451, "kpp_host": 0.0017, "slim_deploy": 0.0001, "stream_op": 0.1273, "gc_empty": 0.0449, "total": 1.509}
+{"case": "plateS24_100_o000", "elements": 11392, "ctor": 0.0354, "assemble_deploy": 0.3712, "netdata": 0.0289, "geo": 0.0294, "model_add": 0.0196, "fastnet": 0.0198, "warmup": 0.5857, "kpp_host": 0.0008, "slim_deploy": 0.0001, "stream_op": 0.1325, "gc_empty": 0.0432, "total": 1.267}
+         261949 function calls (258066 primitive calls) in 5.554 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1015 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     44/8    0.000    0.000    2.424    0.303 /root/miniconda3/lib/python3.12/site-packages/torch/utils/_contextlib.py:117(decorate_context)
+        4    0.000    0.000    2.344    0.586 /root/autodl-tmp/OPL/src_v3/evalnet.py:30(apply)
+        4    0.000    0.000    2.344    0.586 /root/autodl-tmp/OPL/src_v3/fastnet.py:461(s_hat)
+        4    0.000    0.000    2.344    0.586 /root/autodl-tmp/OPL/src_v3/fastnet.py:466(_s_hat)
+        4    0.000    0.000    2.279    0.570 /root/autodl-tmp/OPL/src_v3/fastnet.py:428(field)
+        4    0.000    0.000    2.278    0.570 /root/autodl-tmp/OPL/src_v3/fastnet.py:433(_field)
+        4    0.010    0.003    2.257    0.564 /root/autodl-tmp/OPL/src_v3/trainlib.py:531(wrap)
+        4    0.021    0.005    1.849    0.462 /root/autodl-tmp/OPL/src_v3/teacher.py:611(assemble_deploy)
+        8    0.000    0.000    1.700    0.212 /root/autodl-tmp/OPL/src_v3/trainlib.py:333(coarse_setup)
+       16    0.000    0.000    1.093    0.068 /root/autodl-tmp/OPL/src_v3/teacher.py:85(_collect)
+       16    0.881    0.055    0.881    0.055 {built-in method gc.collect}
+        4    0.001    0.000    0.751    0.188 /root/autodl-tmp/OPL/src_v3/trainlib.py:390(_coarse_finish)
+        4    0.715    0.179    0.716    0.179 /root/autodl-tmp/OPL/src_v3/trainlib.py:187(_chol_jitter)
+        4    0.000    0.000    0.688    0.172 /root/autodl-tmp/OPL/src_v3/teacher.py:512(moments)
+        4    0.410    0.102    0.684    0.171 /root/autodl-tmp/OPL/src_v3/polyref_torch_fast.py:70(cell_moments)
+        4    0.004    0.001    0.540    0.135 /root/autodl-tmp/OPL/src_v3/stream_ops.py:156(__init__)
+        4    0.132    0.033    0.522    0.131 /root/autodl-tmp/OPL/src_v3/trainlib.py:147(coarse_prolong)
+        4    0.449    0.112    0.449    0.112 {built-in method torch._C._cudart.cudaHostRegister}
+       28    0.000    0.000    0.292    0.010 /root/miniconda3/lib/python3.12/site-packages/torch/cuda/memory.py:212(empty_cache)
+       28    0.291    0.010    0.291    0.010 {built-in method torch._C._cuda_emptyCache}
+        8    0.000    0.000    0.277    0.035 /root/autodl-tmp/OPL/src_v3/trainlib.py:564(smooth_tail)
+        4    0.000    0.000    0.270    0.067 /root/autodl-tmp/OPL/src_v3/trainlib.py:410(coarse_correct)
+        8    0.000    0.000    0.267    0.033 /root/autodl-tmp/OPL/src_v3/trainlib.py:482(_coarse_solve)
+        4    0.216    0.054    0.264    0.066 /root/autodl-tmp/OPL/src_v3/trainlib.py:437(_coarse_pack)
+       16    0.161    0.010    0.257    0.016 /root/autodl-tmp/OPL/src_v3/trainlib.py:65(tail_bounds)
+
+
+
+         261949 function calls (258066 primitive calls) in 5.554 seconds
+
+   Ordered by: internal time
+   List reduced from 1015 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       16    0.881    0.055    0.881    0.055 {built-in method gc.collect}
+        4    0.715    0.179    0.716    0.179 /root/autodl-tmp/OPL/src_v3/trainlib.py:187(_chol_jitter)
+        4    0.449    0.112    0.449    0.112 {built-in method torch._C._cudart.cudaHostRegister}
+        4    0.410    0.102    0.684    0.171 /root/autodl-tmp/OPL/src_v3/polyref_torch_fast.py:70(cell_moments)
+       28    0.291    0.010    0.291    0.010 {built-in method torch._C._cuda_emptyCache}
+        4    0.216    0.054    0.264    0.066 /root/autodl-tmp/OPL/src_v3/trainlib.py:437(_coarse_pack)
+        4    0.175    0.044    0.216    0.054 /root/autodl-tmp/OPL/src_v3/trainlib.py:259(coarse_galerkin_tpl)
+        4    0.173    0.043    0.173    0.043 {built-in method scipy.sparse._sparsetools.coo_tocsr}
+       16    0.161    0.010    0.257    0.016 /root/autodl-tmp/OPL/src_v3/trainlib.py:65(tail_bounds)
+        8    0.149    0.019    0.251    0.031 /root/autodl-tmp/OPL/src_v3/teacher.py:176(__init__)
+        4    0.147    0.037    0.156    0.039 /root/autodl-tmp/OPL/src_v3/coarse_mf.py:84(meta)
+        4    0.132    0.033    0.522    0.131 /root/autodl-tmp/OPL/src_v3/trainlib.py:147(coarse_prolong)
+       72    0.131    0.002    0.188    0.003 /root/autodl-tmp/OPL/src_v3/polyref_torch_fast.py:23(_clip)
+        4    0.068    0.017    0.068    0.017 {method 'searchsorted' of 'numpy.ndarray' objects}
+        4    0.061    0.015    0.061    0.015 {built-in method scipy.sparse._sparsetools.csr_tocsc}
+      256    0.059    0.000    0.059    0.000 {built-in method torch.as_tensor}
+       40    0.050    0.001    0.050    0.001 {method 'cpu' of 'torch._C.TensorBase' objects}
+        4    0.049    0.012    0.049    0.012 {method 'close' of '_io.BufferedRandom' objects}
+      721    0.044    0.000    0.044    0.000 {built-in method zlib.crc32}
+        4    0.044    0.011    0.077    0.019 /root/autodl-tmp/OPL/src_v3/element_moments.py:50(local_coordinates)
+      540    0.043    0.000    0.043    0.000 {method 'copy_' of 'torch._C.TensorBase' objects}
+      488    0.043    0.000    0.043    0.000 {method 'write' of '_io.BufferedRandom' objects}
+      510    0.036    0.000    0.036    0.000 /root/autodl-tmp/OPL/src_v3/polyref_torch_fast.py:33(edge)
+      177    0.036    0.000    0.036    0.000 {built-in method numpy.array}
+      902    0.036    0.000    0.036    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+
+
+
