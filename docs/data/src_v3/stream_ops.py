@@ -24,6 +24,7 @@ import weakref
 import numpy as np
 import contextlib
 import torch
+import cellgraph as CG
 
 MIN_BYTES = int(os.environ.get('OPL_STREAM_MIN', '0'))                # src_v3: 0 (src_v2: 1 MiB; smaller tensors stayed on the
                                                                         # device for every streamed cell, ~15-30 MB per cell)
@@ -352,8 +353,31 @@ class StreamedOp:
             self._exit()
 
     def apply(self, q):
+        if CG.ON and self.depth == 0 and self.registered and self.buf is not None:   # src_v3 S26: CUDA graph
+            y = CG.apply(self, q, self._graph_body, fp=(self.buf.data_ptr(), self.total))
+            if y is not None:
+                return y
         with self.active():
             return self.op.apply(q)
+
+    def _graph_body(self, qs):
+        """src_v3 S26: the apply as cellgraph captures it: the state copied from the page-locked buffer into the graph's
+        memory pool and decoded (as prefetch does), bound, the operator applied, the placeholders put back."""
+        dbuf = torch.empty(self.total, dtype=torch.uint8, device=dev)
+        dbuf.copy_(self.buf, non_blocking=True)
+        p = {k: self._view(dbuf, k) for k in self.layout}
+        for k, (mode, odt, shp) in self.enc.items():
+            p[k] = _unpack_tril(p[k], shp[0], mode == 'sym') if mode in ('tril', 'sym') else p[k].to(odt)
+        built = {}
+        for o, k, s in self.slots:
+            if id(s) not in built:
+                built[id(s)] = s.build(p)
+            _set(o, k, built[id(s)])
+        try:
+            return self.op.apply(qs)
+        finally:
+            for o, k, s in self.slots:
+                _set(o, k, s)
 
     def field(self, q):
         with self.active():
@@ -380,6 +404,7 @@ class StreamedOp:
         self.loaded = self.dbuf = None
         _LIVE.discard(self)
         self._unregister()
+        CG.drop(self)
         self.pinned, self.slots, self.buf = {}, [], None
         self.nxt = self.op = self.C = None                              # the prefetch ring must not keep released ops alive
 
@@ -394,6 +419,7 @@ def drop(op):
     op.loaded = op.dbuf = None
     _LIVE.discard(op)
     op._unregister()
+    CG.drop(op)
     op.pinned, op.slots, op.buf = {}, [], None
     op.nxt = op.op = op.C = None
 

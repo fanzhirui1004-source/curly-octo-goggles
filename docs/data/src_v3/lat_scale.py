@@ -52,12 +52,19 @@ class _Resident:
         return contextlib.nullcontext()
 
     def apply(self, q):
+        import cellgraph as CG
+        if CG.ON:                                                       # src_v3 S26: CUDA graph of the narrow apply
+            y = CG.apply(self, q, self.op.apply)
+            if y is not None:
+                return y
         return self.op.apply(q)
 
     def field(self, q):
         return self.op.field(q)
 
     def release(self, to=None):
+        import cellgraph as CG
+        CG.drop(self)
         self.op = None
 
 
@@ -244,6 +251,9 @@ def main(argv=None):
         rec['prec_rebuilt'] = rebuild
         r = PR.pcg(lat, olist, pcnd, tol=a.tol, maxit=a.maxit, X0=X_prev, snaps=levels)
         ph['solve'] = T() - t; t = T()
+        import cellgraph as CG
+        if CG.ON:                                                                  # src_v3 S26: graph counters
+            rec['graph'] = CG.summary()
         X = r['X']
         rec['solve'] = dict(iterations=r['iterations'], residual=r['residual'], warm=X_prev is not None,
                             levels=[dict(level=s['level'], iterations=s['iterations']) for s in r['snaps']],

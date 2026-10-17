@@ -1,0 +1,7 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:63: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"stored_B1": {"ms_eager": 19.65, "rel_eager_rerun": 3.659443073741011e-08, "ms_graph": 19.47, "rel_graph": 3.7025610652427066e-08, "capture_s": 0.067, "pool_MiB": 266.0, "rss_MiB": 0.0, "rel_graph_q2": 3.7055620480801e-08}}
+{"stored_B3": {"ms_eager": 37.21, "rel_eager_rerun": 3.8071790548437373e-08, "ms_graph": 36.87, "rel_graph": 3.902717947667355e-08, "capture_s": 0.079, "pool_MiB": 464.0, "rss_MiB": 0.0, "rel_graph_q2": 3.7426268886041825e-08}}
+{"recompute_B1": {"ms_eager": 24.04, "rel_eager_rerun": 3.702753817773423e-08, "ms_graph": 23.58, "rel_graph": 3.7735585820283684e-08, "capture_s": 0.075, "pool_MiB": 1246.0, "rss_MiB": 0.0, "rel_graph_q2": 3.740521740052179e-08}}
+{"recompute_B3": {"ms_eager": 41.75, "rel_eager_rerun": 3.7758039913434086e-08, "ms_graph": 41.0, "rel_graph": 3.8005628748830075e-08, "capture_s": 0.081, "pool_MiB": 1244.0, "rss_MiB": 0.0, "rel_graph_q2": 3.809689213220364e-08}}
+{"streams_1": {"cells": 4, "ms_eager_all": 65.01, "ms_graph_all": 60.27, "rel_graph": 3.715732723299628e-08, "pools_MiB": 268.0}}

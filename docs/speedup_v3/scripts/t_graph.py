@@ -18,7 +18,7 @@ import teacher as TE, trainlib as TL, fastnet as FN, bench_deploy as BD, fastidx
 
 dev = 'cuda'
 ap = argparse.ArgumentParser(); ap.add_argument('spec'); ap.add_argument('--rep', type=int, default=20)
-ap.add_argument('--streams', default='1,2,3,4')
+ap.add_argument('--streams', default='1,2,3,4'); ap.add_argument('--hang-s', type=float, default=120)
 a = ap.parse_args()
 FN.FUSED = True; FI.ON = True
 body, cases = a.spec.split(':')
@@ -57,10 +57,16 @@ def timed(fn, rep):
     torch.cuda.synchronize(); return out, 1000 * (time.perf_counter() - t) / rep
 
 
-class Graphed:
-    """s_hat of one FastNet as a CUDA graph for a fixed width B (static input qs, static output out)."""
+_CAPS = {}
 
-    def __init__(self, f, np_, B, pool=None):
+
+class Graphed:
+    """s_hat of one FastNet as a CUDA graph for a fixed width B (static input qs, static output out). Graphs that may be
+    replayed at the same time are captured on different capture streams (cap): cuBLAS keeps one workspace per (handle,
+    stream), and a graph keeps the capture stream's workspace; two concurrent replays sharing it can deadlock (stream-K
+    GEMMs synchronise through it)."""
+
+    def __init__(self, f, np_, B, pool=None, cap=0):
         self.qs = torch.zeros((np_, B), dtype=torch.float64, device=dev)
         s = torch.cuda.Stream()
         s.wait_stream(torch.cuda.current_stream())
@@ -71,7 +77,9 @@ class Graphed:
         torch.cuda.synchronize(); torch.cuda.empty_cache()                # (graph() empties the cache itself)
         r0, m0, t = rss_gib(), torch.cuda.memory_reserved(), time.perf_counter()
         self.g = torch.cuda.CUDAGraph()
-        with torch.no_grad(), torch.cuda.graph(self.g, pool=pool):
+        if cap not in _CAPS:
+            _CAPS[cap] = torch.cuda.Stream()
+        with torch.no_grad(), torch.cuda.graph(self.g, pool=pool, stream=_CAPS[cap]):
             self.out = f.s_hat(self.qs)
         torch.cuda.synchronize()
         self.capture_s = time.perf_counter() - t
@@ -84,6 +92,24 @@ class Graphed:
         return self.out
 
 
+import threading
+_PH = ['start', time.time()]
+
+
+def phase(name):
+    _PH[0], _PH[1] = name, time.time()
+    print(json.dumps(dict(phase=name)), flush=True)
+
+
+def _watchdog():                                                     # a GPU deadlock cannot be interrupted otherwise
+    while True:
+        time.sleep(5)
+        if time.time() - _PH[1] > a.hang_s:
+            print(json.dumps(dict(hang=_PH[0], seconds=round(time.time() - _PH[1]))), flush=True)
+            os._exit(3)
+
+
+threading.Thread(target=_watchdog, daemon=True).start()
 res = dict(cases=cases)
 with torch.no_grad():
     C, f = cells[0]
@@ -100,6 +126,7 @@ with torch.no_grad():
             s0b = f.s_hat(q).clone()
             r = dict(ms_eager=round(t0, 2), rel_eager_rerun=float(((s0b - s0).norm(dim=0) / s0.norm(dim=0)).max()))
             try:
+                phase(f'{mode} B={B}')
                 G = Graphed(f, C.np_, B)
                 s1, t1 = timed(lambda: G(q), a.rep)
                 r.update(ms_graph=round(t1, 2), rel_graph=float(((s1 - s0).norm(dim=0) / s0.norm(dim=0)).max()),
@@ -136,7 +163,8 @@ with torch.no_grad():
                 pools = [None] * ns
                 Gs = []
                 for j, (C_, f_) in enumerate(cells):                     # one shared pool per stream
-                    G = Graphed(f_, C_.np_, 1, pool=pools[j % ns])
+                    phase(f'capture ns={ns} cell {j}')
+                    G = Graphed(f_, C_.np_, 1, pool=pools[j % ns], cap=100 + j % ns)
                     pools[j % ns] = G.g.pool()
                     Gs.append(G)
 
@@ -151,8 +179,10 @@ with torch.no_grad():
                     for s_ in st:
                         cur.wait_stream(s_)
                     return ys
+                phase(f'eager ns={ns}')
                 ye, te = timed(eager_all, a.rep)
                 ye = [y.clone() for y in ye]
+                phase(f'graphs ns={ns}')
                 yg, tg = timed(graph_all, a.rep)
                 r.update(ms_eager_all=round(te, 2), ms_graph_all=round(tg, 2),
                          rel_graph=max(float(((g_ - e_).norm(dim=0) / e_.norm(dim=0)).max()) for g_, e_ in zip(yg, ye)),

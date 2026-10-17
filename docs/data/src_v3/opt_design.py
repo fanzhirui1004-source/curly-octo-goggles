@@ -488,6 +488,9 @@ def analyse_fast(cases, positions, h, wait=None):
         Chat = float((F * X).sum()); Ur = float((X * rho).sum())
         tres = float(rho.norm() / F.norm())
     T['solve_s'] = time.perf_counter() - t
+    import cellgraph as CG
+    if CG.ON:                                                                     # src_v3 S26: graph counters
+        T['graph'] = CG.summary()
     t = time.perf_counter()
     S = np.zeros((len(order), 8)); vol = np.zeros(len(order)); dvol = np.zeros((len(order), 8))
     for i, c in enumerate(order):
