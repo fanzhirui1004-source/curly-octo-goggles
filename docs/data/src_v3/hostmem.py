@@ -12,10 +12,10 @@ below the target; otherwise it drops the slot weights, then the float64 matrices
 time per byte; OPL_V3_BUDGET_ORDER=slots: the S14 order). The plan is redone for every cell (the cells processed first
 get the items).
 Target (src_v3 S14b): OPL_V3_HOST_TOP (0.95) of the limit minus a reserve for the host peak of the K_PP factorisation
-that follows the front end: OPL_V3_HOST_TRANSIENT (3) x the cells' K_PP triplet bytes on the host (projected from the
-cells so far). Measured on the 135- and 162-cell plates: the peak is ~71 bytes per assembled K_PP nonzero (~55 per stored
-triplet entry, 16 bytes) above the RSS at the end of the front end, of which the triplets themselves (freed before cuDSS
-plans, S16) are 16. OPL_V3_HOST_FRAC (S14, if set): the earlier rule, a fixed fraction of the limit for the front end."""
+that follows the front end: OPL_V3_HOST_TRANSIENT (4) x the cells' K_PP triplet bytes on the host (projected from the
+cells so far). Measured: the peak is ~71 bytes per assembled K_PP nonzero above the RSS at the end of the front end on the
+135-, 162- and 192-cell plates (3.4-3.7 x the triplet bytes; the 192-cell run of S14b with 3 x reached 87.3 of 90 GiB,
+since the triplets freed before cuDSS plans (S16) stayed in the heap; S16 now also trims the heap). OPL_V3_HOST_FRAC (S14, if set): the earlier rule, a fixed fraction of the limit for the front end."""
 import os
 
 GiB = 2 ** 30
@@ -38,6 +38,16 @@ def limit_bytes():
     return ram
 
 
+def trim():
+    """glibc malloc_trim(0): return the free pages of the heap to the system (freed host tensors below the mmap
+    threshold otherwise stay in the process's RSS). No-op elsewhere."""
+    try:
+        import ctypes
+        ctypes.CDLL('libc.so.6').malloc_trim(0)
+    except (OSError, AttributeError):
+        pass
+
+
 def rss_bytes():
     try:
         for line in open('/proc/self/status'):
@@ -54,7 +64,7 @@ class Budget:
         f = os.environ.get('OPL_V3_HOST_FRAC')
         self.frac = (float(f) if f else None) if frac is None else frac
         self.top = float(os.environ.get('OPL_V3_HOST_TOP', '0.95')) if top is None else top
-        self.tx = float(os.environ.get('OPL_V3_HOST_TRANSIENT', '3')) if transient is None else transient
+        self.tx = float(os.environ.get('OPL_V3_HOST_TRANSIENT', '4')) if transient is None else transient
         self.limit = limit_bytes()
         self.rss0 = rss_bytes()
         self.first = first_cell_bytes

@@ -31,7 +31,7 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | OPL_V3_GFCAT | 0 | one concatenated ghost-face DOF array (experimental) |
 | OPL_V3_SLOTFUSE | 1 | recomputed slot weights: the heads' scale and soft clip in one Triton pass, bitwise the same (S19) |
 | OPL_V3_BUDGET_ORDER | ke64 | budget priority: float64 matrices first (more time saved per byte; `slots`: S14 order) (S14c) |
-| OPL_V3_HOST_TOP / OPL_V3_HOST_TRANSIENT | 0.95 / 3 | host budget target: fraction of the limit, minus a reserve of 3 x the cells' K_PP host triplets for the factorisation peak (S14b); OPL_V3_HOST_FRAC: S14's fixed fraction instead |
+| OPL_V3_HOST_TOP / OPL_V3_HOST_TRANSIENT | 0.95 / 4 | host budget target: fraction of the limit, minus a reserve of 4 x the cells' K_PP host triplets for the factorisation peak (S14b); OPL_V3_HOST_FRAC: S14's fixed fraction instead |
 | OPL_COARSE_BLK / OPL_COARSE_BLK_MAXFRAC | 1 / 0.5 | block-structured cell coarse inverse: octants + separator Schur complement, 168 -> 29 MiB per full plate cell, more accurate than the packed inverse (S15) |
 | (no switch) | | the drivers' per-cell K_PP host triplets are freed once the lattice K_PP is assembled (S16, with OPL_V3_SLIM) |
 | OPL_V3_GC | young | per-cell garbage collections of the front end: young generations only, one full collection after it (`full`: as src_v2) (S17) |

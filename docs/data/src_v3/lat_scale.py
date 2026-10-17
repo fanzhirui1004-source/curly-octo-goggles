@@ -68,6 +68,10 @@ def kpp_release(kpp_host, Cs):
     kpp_host.clear()
     for C in Cs.values():
         C._kpp_cache = None
+    import gc
+    import hostmem as HM
+    gc.collect()
+    HM.trim()                                                                    # freed heap pages back to the system
 
 
 def _free_prec(fac, pcnd):
