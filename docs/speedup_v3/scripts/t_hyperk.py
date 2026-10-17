@@ -100,7 +100,7 @@ with torch.no_grad():
                                            triton=with_hk(False, lambda: both(lambda: FH.scatter(Zs, L.hn, w, L.deg, N, FH.BLK, dg, rmask=rm), a.rep)),
                                            cuda=with_hk(True, lambda: both(lambda: FH.scatter(Zs, L.hn, w, L.deg, N, FH.BLK, dg, rmask=rm), a.rep)))
             c0 = with_hk(False, lambda: FH.scatter(Zcf, hn_cf, b_cf, L.deg, N, FH.BLK, True))
-            for hs in (0, 1, 2):
+            for hs in (0, 1, 2, 3):
                 old_hs, HK.HS = HK.HS, hs
                 c1 = with_hk(True, lambda: FH.scatter(Zcf, hn_cf, b_cf, L.deg, N, FH.BLK, True))
                 HK.HS = old_hs

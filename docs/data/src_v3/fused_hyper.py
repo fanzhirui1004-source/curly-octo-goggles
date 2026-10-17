@@ -144,7 +144,7 @@ def gather(src, hn, w, deg, H, blk, use_deg):
     out = torch.empty((H, Eh, BF), dtype=torch.float32, device=src.device)
     if Eh == 0 or BF == 0:                                                  # empty hyperedge set (e.g. no fringe)
         return out
-    if HK.usable(H, S, BF, w, hn) and src.is_contiguous():                 # src_v3 P16: CUDA kernel
+    if HK.usable(H, S, BF, w, hn, maxbf=HK.GMAXBF) and src.is_contiguous():   # src_v3 P16: CUDA kernel
         return HK.gather(src, hn, w, deg, out, use_deg)
     t = _tile(_TILE_G, BF) if TILED else None
     if t is not None:

@@ -17,11 +17,15 @@ __device__ __forceinline__ float div_full(float a, float b)
     return r;
 }
 
-// head sum of a slot's row: 0 fused chain, 1 products then left to right, 2 products then pairwise
+// head sum of a slot's row: 0 fused chain, 1 products then left to right, 2 products then pairwise, 3 products then
+// butterfly over lanes (h with h ^ 2 first: (p0 + p2) + (p1 + p3))
 template <int HS>
 __device__ __forceinline__ float hsum(const float4 w, float z0, float z1, float z2, float z3)
 {
-    if (HS == 1) {
+    if (HS == 3) {
+        const float p0 = __fmul_rn(w.x, z0), p1 = __fmul_rn(w.y, z1), p2 = __fmul_rn(w.z, z2), p3 = __fmul_rn(w.w, z3);
+        return __fadd_rn(__fadd_rn(p0, p2), __fadd_rn(p1, p3));
+    } else if (HS == 1) {
         const float p0 = __fmul_rn(w.x, z0), p1 = __fmul_rn(w.y, z1), p2 = __fmul_rn(w.z, z2), p3 = __fmul_rn(w.w, z3);
         return __fadd_rn(__fadd_rn(__fadd_rn(p0, p1), p2), p3);
     } else if (HS == 2) {
@@ -188,6 +192,14 @@ int hk_init()
     cudaFuncGetAttributes(&at, hs_kernel<4, false, true, 1>); cudaFuncGetAttributes(&at, hs_kernel<4, true, true, 1>);
     cudaFuncGetAttributes(&at, hs_kernel<4, false, false, 2>); cudaFuncGetAttributes(&at, hs_kernel<4, true, false, 2>);
     cudaFuncGetAttributes(&at, hs_kernel<4, false, true, 2>); cudaFuncGetAttributes(&at, hs_kernel<4, true, true, 2>);
+    cudaFuncGetAttributes(&at, hs_kernel<1, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<1, true, false, 3>);
+    cudaFuncGetAttributes(&at, hs_kernel<1, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<1, true, true, 3>);
+    cudaFuncGetAttributes(&at, hs_kernel<2, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<2, true, false, 3>);
+    cudaFuncGetAttributes(&at, hs_kernel<2, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<2, true, true, 3>);
+    cudaFuncGetAttributes(&at, hs_kernel<3, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<3, true, false, 3>);
+    cudaFuncGetAttributes(&at, hs_kernel<3, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<3, true, true, 3>);
+    cudaFuncGetAttributes(&at, hs_kernel<4, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<4, true, false, 3>);
+    cudaFuncGetAttributes(&at, hs_kernel<4, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<4, true, true, 3>);
     return (int)cudaDeviceSynchronize();
 }
 
@@ -211,7 +223,8 @@ int hk_scatter(const float* src, const int64_t* hn, const float* w, const float*
 {
     if (Eh <= 0 || BF <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
-    if (hs == 1) hs_nc<1>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    if (hs == 3) hs_nc<3>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    else if (hs == 1) hs_nc<1>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
     else if (hs == 2) hs_nc<2>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
     else hs_nc<0>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
     return (int)cudaGetLastError();

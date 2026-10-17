@@ -13,7 +13,9 @@ import torch
 
 ON = os.environ.get('OPL_V3_HCUDA', '0') == '1'
 MAXBF = int(os.environ.get('OPL_V3_HCUDA_MAXBF', '0') or 0)          # widest B F for the CUDA kernels (0: any)
-HS = int(os.environ.get('OPL_V3_HCUDA_HS', '0') or 0)                # scatter head sum: 0 fused, 1 left to right, 2 pairwise
+HS = int(os.environ.get('OPL_V3_HCUDA_HS', '0') or 0)                # scatter head sum: 0 fused, 1 left to right, 2 pairwise,
+                                                                        # 3 butterfly
+GMAXBF = int(os.environ.get('OPL_V3_HCUDA_GMAXBF', '128') or 0)      # gather: widest B F (beyond: Triton's, faster there)
 _LIB = None
 _ERR = None
 
@@ -48,11 +50,12 @@ def _lib():
     return lib
 
 
-def usable(H, S, BF, w, hn, on=None):
-    """The CUDA kernels apply: switch on, library built (a failure is remembered), 27 slots, 4 heads, B F <= MAXBF
-    (when set), int64 node indices, 16-byte aligned contiguous float32 weights."""
+def usable(H, S, BF, w, hn, on=None, maxbf=None):
+    """The CUDA kernels apply: switch on, library built (a failure is remembered), 27 slots, 4 heads, B F <= maxbf
+    (MAXBF; when set), int64 node indices, 16-byte aligned contiguous float32 weights."""
     global _ERR
-    if not (ON if on is None else on) or _ERR is not None or H != 4 or S != 27 or (MAXBF and BF > MAXBF):
+    lim = MAXBF if maxbf is None else maxbf
+    if not (ON if on is None else on) or _ERR is not None or H != 4 or S != 27 or (lim and BF > lim):
         return False
     if hn.dtype != torch.int64 or w.dtype != torch.float32 or not w.is_contiguous() or w.data_ptr() % 16:
         return False
