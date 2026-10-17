@@ -61,6 +61,10 @@ class _T:
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 KPP_FP32 = os.environ.get('OPL_V3_KPP_FP32', '0') == '1'                # category B: K_PP factor in float32 (half the memory)
 KPP_CSR = os.environ.get('OPL_V3_KPP_CSR', '1') == '1'                  # src_v3: K_PP assembled in row blocks as CSR
+TRIM_IT = int(os.environ.get('OPL_V3_PCG_TRIM', '2'))                   # src_v3 item 2c: PCG step after which the allocator
+# cache is returned to the device once: every cell's first narrow apply runs eagerly (CUDA graphs capture on the second),
+# and its temporaries stay cached per stream (~0.8 GiB a stream for a full plate cell) though the graphs use their own
+# pools afterwards (0: never)
 
 
 def _has_nvmath():
@@ -305,7 +309,7 @@ def _csr32(A):
 
 
 BLOCKS = os.environ.get('OPL_COARSE_BLOCKS', '1') == '1'                     # src_v3: SparseCoarse A Z per cell
-TT_KEEP = os.environ.get('OPL_V3_COARSE_TT', '1') == '1'                     # src_v3 item 2c: T^T as its own copy (0: view)
+TT_KEEP = os.environ.get('OPL_V3_COARSE_TT', '0') == '1'                     # src_v3 item 2c: T^T a view of T (1: own copy)
 ZT_KEEP = os.environ.get('OPL_V3_COARSE_ZT', '1') == '1'                     # src_v3 item 2c: Z^T as its own CSR (0: none)
 
 
@@ -551,6 +555,8 @@ def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=Tr
             prof = pr_.summary
         else:
             AP = lat.matvec(ops, P, batch=batch)
+        if it == TRIM_IT and dev.type == 'cuda':                       # src_v3 item 2c: the eager first applies'
+            torch.cuda.empty_cache()                                     # temporaries cached per stream, back to the device
         alpha = rz / (P * AP).sum(0)
         X += alpha * P; R -= alpha * AP
         rel = float((R.norm(dim=0) / r0).max()); hist.append(rel)
@@ -655,6 +661,84 @@ def ritz_vectors(Ps, APs, al, be, rz, k, coarse, rcond=1e-10):
     ok = lam > rcond * lam.max()
     T = s_[:, None] * V[:, ok] / torch.sqrt(lam[ok])[None, :]
     return W @ T, AW @ T, th
+
+
+_RC = os.environ.get('OPL_V3_PCG_RECYCLE', '')                         # "m,k[,kmax]" (src_v3 item 4, category B)
+RECYCLE = tuple(int(v) for v in _RC.split(',')) if _RC else None
+
+
+def _a_orthonormal(coarse, W, AW, rcond=1e-10):
+    """W, A W made A-orthogonal to the coarse space and A-orthonormal (the tail of ritz_vectors)."""
+    h = coarse.AWT(W)
+    W, AW = W - coarse.Wm(h), AW - coarse.AWm(h)
+    G = W.T @ AW
+    s_ = 1 / torch.sqrt(torch.clamp(torch.diagonal(G), min=1e-300))
+    lam, V = torch.linalg.eigh(s_[:, None] * ((G + G.T) / 2) * s_[None, :])
+    ok = lam > rcond * lam.max()
+    T = s_[:, None] * V[:, ok] / torch.sqrt(lam[ok])[None, :]
+    return W @ T, AW @ T
+
+
+def pcg_recycle(lat, ops, prec, F=None, tol=1e-8, maxit=3000, batch=True, X0=None, W0=None):
+    """src_v3 item 4 (OPL_V3_PCG_RECYCLE=m,k[,kmax], default off; category B: another preconditioner, the results agree
+    to the tolerance only): PCG across a sequence of systems (design iterations) with Krylov subspace recycling. W0
+    (n x j, this system's DOFs; e.g. the previous solve's vectors matched DOF by DOF) is applied to the operator once
+    (j applications, in max_cols chunks), made A-orthonormal to the coarse space and added to it (BNN with the augmented
+    space: those directions are deflated from the first step). During the first m steps the search directions are kept;
+    at the end the k smallest Ritz vectors of this solve (rpcg's Lanczos relation, no operator application) are
+    returned in out['recycle'] together with the augmented W0 (at most kmax columns) for the next system."""
+    m_, k_ = RECYCLE[0], RECYCLE[1]
+    kmax = RECYCLE[2] if len(RECYCLE) > 2 else 2 * k_
+    F = lat.F if F is None else F
+    dev = F.device
+    info = dict(m=m_, k=k_, kmax=kmax, w0=0)
+    M, Wa = prec, None
+    if W0 is not None and W0.shape[1] > 0 and isinstance(prec, BNN):
+        sync(dev); t1 = time.perf_counter()
+        W0 = W0.to(F.dtype).contiguous()
+        AW0 = lat.matvec(ops, W0, batch=batch)
+        Wa, AWa = _a_orthonormal(prec.coarse, W0, AW0)
+        del AW0, W0
+        M = BNN(Augmented(prec.coarse, Wa, AWa), prec.fine)
+        sync(dev); info.update(w0=int(Wa.shape[1]), aug_s=round(time.perf_counter() - t1, 3))
+    if X0 is None:
+        X = torch.zeros_like(F); R = F.clone()
+    else:
+        X = X0.clone(); R = F - lat.matvec(ops, X, batch=batch)
+    r0 = F.norm(dim=0)
+    Z = M(R); P = Z.clone(); rz = (R * Z).sum(0)
+    Ps, APs, al, be, rzs = [], [], [], [], []
+    sync(dev); t = time.perf_counter(); it = 0
+    hist = []
+    for it in range(1, maxit + 1):
+        AP = lat.matvec(ops, P, batch=batch)
+        if it == TRIM_IT and dev.type == 'cuda':
+            torch.cuda.empty_cache()
+        alpha = rz / (P * AP).sum(0)
+        keep = len(Ps) < m_
+        if keep:
+            Ps.append(P); APs.append(AP); al.append(alpha); rzs.append(rz)
+        X += alpha * P; R -= alpha * AP
+        rel = float((R.norm(dim=0) / r0).max()); hist.append(rel)
+        if rel < tol:
+            break
+        Z = M(R)
+        rz_new = (R * Z).sum(0)
+        if keep:
+            be.append(rz_new / rz)
+        P = Z + (rz_new / rz) * P; rz = rz_new
+    sync(dev)
+    secs = time.perf_counter() - t
+    nst = len(be)
+    Wn = None
+    if nst >= 2 * k_:
+        t1 = time.perf_counter()
+        Wr, _, th = ritz_vectors(Ps[:nst], APs[:nst], al[:nst], be[:nst], rzs[:nst], k_, M.coarse)
+        Wn = Wr if Wa is None else torch.cat([Wr, Wa], 1)[:, :kmax]
+        info.update(ritz=[round(x, 5) for x in sorted(th)[:8]], ritz_s=round(time.perf_counter() - t1, 3))
+    del Ps, APs
+    return dict(X=X, iterations=it, seconds=secs, residual=hist[-1] if hist else 0.0, history=hist, snaps=[],
+                recycle=Wn, ritz=info)
 
 
 def rpcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=True, X0=None, snaps=None):

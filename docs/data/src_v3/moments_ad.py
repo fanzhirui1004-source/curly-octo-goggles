@@ -30,6 +30,17 @@ dt = torch.float64
 E0_FAST = os.environ.get('OPL_V3_E0FAST', '1') == '1'              # src_v3: reduced kernel for the volume column
 NOFWD = os.environ.get('OPL_V3_SENS_NOFWD', '1') == '1'             # src_v3 P6: no tetrahedron moments when discarded
 CHECKPOINT = True                                                   # recompute _quad in the backward (memory); False: keep
+NOCUT = os.environ.get('OPL_V3_SENS_NOCUT', '1') == '1'             # src_v3 item 3: sensitivity pass without uncut tets
+
+
+def _drop_uncut():
+    """src_v3 item 3 (OPL_V3_SENS_NOCUT, default on): in the sensitivity pass (P6's SKIP_FWD: the moments themselves are
+    not formed) the tetrahedra that no clip cut are left out: their vertices are sub-cube corners, constants, so their
+    vector-Jacobian products reach no tau (exactly no contribution), while they were half of the fp64 VJP kernel's work."""
+    if not NOCUT or os.environ.get('OPL_TET_TRITON') != '1':
+        return False
+    import fast_tet2 as FT2
+    return bool(FT2.SKIP_FWD[0])
 
 
 class _Rule:
@@ -135,8 +146,14 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
             tets = cx[part][:, kuhn].reshape(-1, 4, 3)
             attr = cp[part][:, kuhn].reshape(-1, 4, 3)
             town = owner[part].repeat_interleave(6)
+            fl = torch.zeros(len(tets), dtype=torch.bool, device=device) if _drop_uncut() else None
             for k in range(3):
-                tets, attr, town = _clip(tets, attr, town, k)
+                if fl is None:
+                    tets, attr, town = _clip(tets, attr, town, k)
+                else:
+                    tets, attr, town, fl = _clip(tets, attr, town, k, flag=fl)
+            if fl is not None:                                   # src_v3 item 3: uncut tetrahedra (no tau dependence)
+                tets, town = tets[fl], town[fl]
             if len(tets):
                 with torch.no_grad():
                     keep = _jac(tets) > 0

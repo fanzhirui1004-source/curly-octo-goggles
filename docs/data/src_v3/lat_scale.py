@@ -116,6 +116,8 @@ def main(argv=None):
     ap.add_argument('--tet-triton', action='store_true', help='OPL_TET_TRITON=1: fused per-tetrahedron moment kernels (forward and written-out VJP)')
     ap.add_argument('--limit', type=int, default=0, help='first N cells of the layout only (smoke tests)')
     ap.add_argument('--save-sens', default='', help='write the per-cell sensitivities and compliances of every iteration to this .npz')
+    ap.add_argument('--clamp', default='y,min', help='clamped lattice face (axis,side; src_v3: plates use x,min)')
+    ap.add_argument('--load', default='y,max', help='loaded lattice face (axis,side; src_v3: plates use x,max)')
     a = ap.parse_args(argv)
     os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'
     if a.coarse_tpl:
@@ -220,7 +222,7 @@ def main(argv=None):
                 g = LM.from_teacher(Cs[c['case']])
                 g._kpp_fn = (lambda cs: (lambda: KS.to_device(kpp_host[cs], dev)))(c['case'])
                 lay[tuple(c['position'])] = g
-            lat = LM.MultiLattice(lay, clamp=('y', 'min'), load=('y', 'max'), loads='consistent', n_random=0, device=dev,
+            lat = LM.MultiLattice(lay, clamp=tuple(a.clamp.split(',')), load=tuple(a.load.split(',')), loads='consistent', n_random=0, device=dev,
                                   max_cols=a.max_cols, log=lambda s_: None)
             if TE.SLIM:                                                            # src_v3: host triplets freed once assembled
                 lat.kpp_release = lambda: kpp_release(kpp_host, Cs)

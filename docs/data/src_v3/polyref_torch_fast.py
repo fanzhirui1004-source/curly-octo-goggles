@@ -20,7 +20,11 @@ from element_polyref import KUHN, CUBE, tet_rule, cube_rule
 import surfaces as SF
 
 
-def _clip(tets, attr, owner, k):
+def _clip(tets, attr, owner, k, flag=None):
+    """Clip by psi_k >= 0. flag (src_v3, optional): one bool per tetrahedron, returned as a fourth value: a piece cut by
+    psi1 / psi2 (k = 0, 1: tau - f, tau + f) gets True (vertices moved by tau), a piece cut by psi3 (the fixed plane)
+    inherits its parent's flag, an uncut one keeps its own. Pieces that end with False have vertices that do not depend
+    on tau, so their moments do not either (moments_ad drops them in the sensitivity pass)."""
     v = attr[:, :, k]
     inside = v >= 0
     nin = inside.sum(1)
@@ -29,34 +33,40 @@ def _clip(tets, attr, owner, k):
     A = torch.gather(attr, 1, order[:, :, None].expand(-1, -1, 3))
     vv = torch.gather(v, 1, order)
     out_t, out_a, out_o = [T[nin == 4]], [A[nin == 4]], [owner[nin == 4]]
+    out_f = [flag[nin == 4]] if flag is not None else None
 
     def edge(Ts, As, vs, i, j):
         t = (vs[:, i] / (vs[:, i] - vs[:, j]))[:, None]
         return Ts[:, i] + t * (Ts[:, j] - Ts[:, i]), As[:, i] + t * (As[:, j] - As[:, i])
 
-    def emit(pts, o):
+    def emit(pts, o, f):
         out_t.append(torch.stack([p[0] for p in pts], 1)); out_a.append(torch.stack([p[1] for p in pts], 1)); out_o.append(o)
+        if out_f is not None:
+            out_f.append(f if k == 2 else torch.ones_like(f))
 
-    def prism(p, q, o):
+    def prism(p, q, o, f):
         (p0, p1, p2), (q0, q1, q2) = p, q
         for quad in ((p0, p1, p2, q0), (p1, p2, q0, q1), (p2, q0, q1, q2)):
-            emit(quad, o)
+            emit(quad, o, f)
 
     s = nin == 1
     if s.any():
         Ts, As, vs, o = T[s], A[s], vv[s], owner[s]
-        emit([(Ts[:, 0], As[:, 0])] + [edge(Ts, As, vs, 0, j) for j in (1, 2, 3)], o)
+        emit([(Ts[:, 0], As[:, 0])] + [edge(Ts, As, vs, 0, j) for j in (1, 2, 3)], o, flag[s] if flag is not None else None)
     s = nin == 2
     if s.any():
         Ts, As, vs, o = T[s], A[s], vv[s], owner[s]
         prism(((Ts[:, 0], As[:, 0]), edge(Ts, As, vs, 0, 2), edge(Ts, As, vs, 0, 3)),
-              ((Ts[:, 1], As[:, 1]), edge(Ts, As, vs, 1, 2), edge(Ts, As, vs, 1, 3)), o)
+              ((Ts[:, 1], As[:, 1]), edge(Ts, As, vs, 1, 2), edge(Ts, As, vs, 1, 3)), o, flag[s] if flag is not None else None)
     s = nin == 3
     if s.any():
         Ts, As, vs, o = T[s], A[s], vv[s], owner[s]
         prism(((Ts[:, 0], As[:, 0]), (Ts[:, 1], As[:, 1]), (Ts[:, 2], As[:, 2])),
-              (edge(Ts, As, vs, 0, 3), edge(Ts, As, vs, 1, 3), edge(Ts, As, vs, 2, 3)), o)
-    return torch.cat(out_t), torch.cat(out_a), torch.cat(out_o)
+              (edge(Ts, As, vs, 0, 3), edge(Ts, As, vs, 1, 3), edge(Ts, As, vs, 2, 3)), o, flag[s] if flag is not None else None)
+    res = (torch.cat(out_t), torch.cat(out_a), torch.cat(out_o))
+    if flag is None:
+        return res
+    return res + (torch.cat(out_f),)
 
 
 def _accumulate(M, P, W, owner, chunk=1 << 20):

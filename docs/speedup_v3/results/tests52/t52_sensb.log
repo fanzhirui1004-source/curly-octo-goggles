@@ -1,0 +1,8 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:80: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"batch_1024": {"s": 0.512, "peak_MiB": 1830.2, "rel_vs_2048": 0.0}}
+{"batch_2048": {"s": 0.522, "peak_MiB": 3758.1, "rel_vs_2048": 0.0}}
+{"batch_4096": {"s": 0.513, "peak_MiB": 7467.8, "rel_vs_2048": 0.0}}
+{"batch_8192": {"s": 0.611, "peak_MiB": 14083.0, "rel_vs_2048": 0.0}}
+{"batch_1048576": {"s": 0.607, "peak_MiB": 14083.0, "rel_vs_2048": 0.0}}
+{"case": "plateS24_000_o000", "elements": 11392, "batch_1024": {"s": 0.512, "peak_MiB": 1830.2, "rel_vs_2048": 0.0}, "batch_2048": {"s": 0.522, "peak_MiB": 3758.1, "rel_vs_2048": 0.0}, "batch_4096": {"s": 0.513, "peak_MiB": 7467.8, "rel_vs_2048": 0.0}, "batch_8192": {"s": 0.611, "peak_MiB": 14083.0, "rel_vs_2048": 0.0}, "batch_1048576": {"s": 0.607, "peak_MiB": 14083.0, "rel_vs_2048": 0.0}, "split_2048": {"forward_s": 0.022, "backward_energy_s": 0.083, "backward_volume_s": 0.022}, "two_cells": {"sequential_s": 0.963, "threads_streams_s": 0.989, "peak_MiB": 6904.9, "rel": 0.0}}

@@ -78,6 +78,11 @@ ap.add_argument('--warm', action='store_true',
                 help='--fast: start PCG from the previous design iteration\'s solution, matched DOF by DOF on (absolute grid '
                      'position, component, cut-port flag) and scaled by the energy-optimal factor; unmatched DOFs start at 0 '
                      '(the stopping rule, relative to |f|, is unchanged)')
+ap.add_argument('--reuse-prec', type=int, default=0,
+                help='--fast, src_v3 item 4 (category B): N > 0: build the preconditioner (coarse space, K_PP factor) every N '
+                     'design iterations; in between the last one is applied on the DOFs matched by grid position, component '
+                     'and cut-port flag, the others take the diagonal of the current K_PP (Jacobi): an SPD preconditioner; '
+                     'the PCG tolerance on the current system is unchanged')
 ap.add_argument('--table5', action='store_true', help='--fast: OPL_COARSE_ELEM, OPL_TET_TRITON, OPL_COARSE_SPARSE, fastidx.ON '
                 '(the implementation options of the timed route of Table 5, as lat_scale.py)')
 ap.add_argument('--check', default='', help='comma list of iterations of an existing run to verify with the exact model')
@@ -366,6 +371,56 @@ def analyse(cases, positions, h):
 
 
 _WARM = {}
+_REC = {}                                                                     # src_v3 item 4: recycled vectors
+_PREC = {}                                                                    # src_v3 item 4: kept preconditioner
+
+
+class _MappedPrec:
+    """src_v3 item 4 (--reuse-prec): the previous design's preconditioner pc on this design's DOFs: the DOFs matched by
+    key (new_idx -> old_idx) through pc, the others scaled by dinv (Jacobi on the current K_PP's diagonal).
+    E^T pc E + D^-1 with E the 0/1 selection: symmetric positive definite when pc is."""
+
+    def __init__(self, pc, n_old, new_idx, old_idx, um, dinv):
+        self.pc, self.n_old, self.new_idx, self.old_idx, self.um, self.dinv = pc, n_old, new_idx, old_idx, um, dinv
+
+    def __call__(self, R):
+        Ro = torch.zeros((self.n_old, R.shape[1]), dtype=R.dtype, device=R.device)
+        Ro[self.old_idx] = R[self.new_idx]
+        Zo = self.pc(Ro)
+        Z = torch.empty_like(R)
+        Z[self.new_idx] = Zo[self.old_idx]
+        if len(self.um):
+            Z[self.um] = self.dinv[:, None] * R[self.um]
+        return Z
+
+
+def _mapped_prec(lat, kpp_host, Cs, order):
+    """The kept preconditioner (_PREC) mapped onto lat's DOFs; the diagonal of the current K_PP for the unmatched DOFs is
+    summed from the cells' K_PP triplets (whose host copies / files are then released, as after an assembly)."""
+    import lat_scale as LS
+    import kppstore as KS
+    keys = _dof_keys(lat)
+    pk, po = _PREC['keys'], _PREC['perm']
+    pos = np.clip(np.searchsorted(pk, keys), 0, len(pk) - 1)
+    hit = pk[pos] == keys
+    new_idx = torch.as_tensor(np.flatnonzero(hit), device=dev)
+    old_idx = torch.as_tensor(po[pos[hit]], device=dev)
+    um = np.flatnonzero(~hit)
+    dg = torch.zeros(lat.nfree, dtype=dt, device=dev)
+    if len(um):
+        for i, cs in enumerate(order):
+            r, c, v = KS.to_device(kpp_host[cs], dev)
+            d = r == c
+            f = lat.gather_idx[i]
+            fr = f[r[d].long()]
+            ok = fr >= 0
+            dg.index_add_(0, fr[ok], v[d][ok].to(dt))
+    LS.kpp_release(kpp_host, Cs)
+    um_t = torch.as_tensor(um, device=dev)
+    dinv = 1 / dg[um_t] if len(um) else dg[:0]
+    _PREC['age'] += 1
+    _PREC['last_hit'] = float(hit.mean())
+    return _MappedPrec(_PREC['pc'], _PREC['n'], new_idx, old_idx, um_t, dinv)
 
 
 def _dof_keys(lat):
@@ -486,9 +541,21 @@ def analyse_fast(cases, positions, h, wait=None):
         g._kpp = None
     T['setup_s'] = time.perf_counter() - t
     t = time.perf_counter()
-    fac = PR.Factory(lat, olist, shared=shared, kpp_backend='auto', log=lambda d: None)
-    del shared
-    pc, _, _ = fac.build(A.prec)
+    if A.reuse_prec > 1 and _PREC.get('pc') is not None and _PREC['age'] < A.reuse_prec - 1:
+        fac, pc = None, _mapped_prec(lat, kpp_host, Cs, order)                 # src_v3 item 4 (category B)
+        del shared
+        T['prec_reused'] = dict(age=_PREC['age'], matched=round(_PREC['last_hit'], 6))
+    else:
+        if _PREC.get('fac') is not None:                                      # the kept one is replaced
+            LS._free_prec(_PREC['fac'], _PREC['pc']); _PREC.clear()
+        fac = PR.Factory(lat, olist, shared=shared, kpp_backend='auto', log=lambda d: None)
+        del shared
+        pc, _, _ = fac.build(A.prec)
+        if A.reuse_prec > 1:                                                  # kept: without the lattice and the cell
+            fac.ops = fac.lat = None                                          # operators (their states are dropped)
+            kk = _dof_keys(lat)
+            o_ = np.argsort(kk)
+            _PREC.update(fac=fac, pc=pc, keys=kk[o_], perm=o_, n=len(kk), age=0)
     T['precond_s'] = time.perf_counter() - t
     t = time.perf_counter()
     X0 = None
@@ -505,8 +572,27 @@ def analyse_fast(cases, positions, h, wait=None):
                 scale = float((F * X0).sum()) / den if den > 0 else 0.0
             X0 *= scale
             T['warm_hit'] = float(hit.mean()); T['warm_scale'] = scale
-    r = PR.pcg(lat, olist, pc, F=F, tol=A.tol, maxit=A.maxit_pcg, X0=X0)
-    LS._free_prec(fac, pc); del fac, pc
+    if PR.RECYCLE:                                                              # src_v3 item 4 (category B): the
+        keys_r = keys if A.warm else _dof_keys(lat)                             # previous solve's Ritz vectors,
+        W0 = None                                                               # matched DOF by DOF (0 elsewhere)
+        if 'keys' in _REC:
+            pk, pw = _REC['keys'], _REC['W']
+            pos = np.clip(np.searchsorted(pk, keys_r), 0, len(pk) - 1)
+            hit = np.flatnonzero(pk[pos] == keys_r)
+            W0 = torch.zeros((len(keys_r), pw.shape[1]), dtype=dt, device=dev)
+            W0[torch.as_tensor(hit, device=dev)] = pw[torch.as_tensor(pos[hit])].to(dev, dt)
+        r = PR.pcg_recycle(lat, olist, pc, F=F, tol=A.tol, maxit=A.maxit_pcg, X0=X0, W0=W0)
+        del W0
+        if r.get('recycle') is not None:                                        # kept on the host, float32 (a basis
+            o_ = np.argsort(keys_r)                                             # of directions; re-orthonormalised
+            _REC['keys'] = keys_r[o_]                                           # in float64 at the next solve)
+            _REC['W'] = r['recycle'][torch.as_tensor(o_, device=dev)].float().cpu()
+        r['recycle'] = None
+    else:
+        r = PR.pcg(lat, olist, pc, F=F, tol=A.tol, maxit=A.maxit_pcg, X0=X0)
+    if fac is not None and _PREC.get('fac') is not fac:                       # (kept for --reuse-prec)
+        LS._free_prec(fac, pc)
+    del fac, pc
     X = r['X']
     if A.warm:
         o_ = np.argsort(keys)
