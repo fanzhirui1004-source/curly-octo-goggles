@@ -68,14 +68,14 @@ with torch.no_grad():
                     for lo in range(0, E, C._lean_chunk)]
     res['form_us'] = round(ev(form, 10), 1)
     Tf = C.Tm.reshape(125, 81 * 81)
-    X4 = torch.randn((C.nb, 4), dtype=f32, device=dev, generator=g).contiguous()
+    X4 = torch.randn((C.nb, 4), dtype=f32, device=dev, generator=g).contiguous()                # B = 1..4 use its first B columns
     Y64 = torch.zeros((C.nb, 4), dtype=f64, device=dev)
     for lo in range(0, E, 2048):                                          # float64 reference, all four columns
         de = C.dofs[lo:lo + 2048]
         Ke = (C.M[lo:lo + 2048] @ Tf).reshape(-1, 81, 81)
         Y64.index_add_(0, de.reshape(-1), torch.bmm(Ke, X4.double()[de]).reshape(-1, 4))
         del Ke
-    for B in (1, 2, 4):
+    for B in (1, 2, 3, 4):
         x = X4[:, :B].contiguous()
         y64 = Y64[:, :B]
         nrm = y64.abs().max()
@@ -88,12 +88,14 @@ with torch.no_grad():
         r['triton_us'] = dict(warm=round(ev(lambda: KMF.apply_(y, stT, x), a.rep), 1), cold=round(cold(lambda: KMF.apply_(y, stT, x), a.rep), 1))
         if stC['kind'] == 'cuda':
             for epb in (2, 4, 8):
-                yC = torch.zeros_like(x); KMF.apply_(yC, stC, x, epb=epb)
-                yC2 = torch.zeros_like(x); KMF.apply_(yC2, stC, x, epb=epb)
-                r[f'cuda{epb}'] = dict(rel_f64=float((yC.double() - y64).abs().max() / nrm), l2_f64=float((yC.double() - y64).norm() / y64.norm()),
-                                       rel_rerun=float((yC2 - yC).abs().max() / yC.abs().max()),
-                                       warm_us=round(ev(lambda: KMF.apply_(y, stC, x, epb=epb), a.rep), 1),
-                                       cold_us=round(cold(lambda: KMF.apply_(y, stC, x, epb=epb), a.rep), 1))
+                for nbk in ((0, 1) if B > 1 else (0,)):                 # columns per block: by B (0), one (1)
+                    yC = torch.zeros_like(x); KMF.apply_(yC, stC, x, epb=epb, nb=nbk)
+                    yC2 = torch.zeros_like(x); KMF.apply_(yC2, stC, x, epb=epb, nb=nbk)
+                    r[f'cuda{epb}_nb{nbk}'] = dict(rel_f64=float((yC.double() - y64).abs().max() / nrm),
+                                                   l2_f64=float((yC.double() - y64).norm() / y64.norm()),
+                                                   rel_rerun=float((yC2 - yC).abs().max() / yC.abs().max()),
+                                                   warm_us=round(ev(lambda: KMF.apply_(y, stC, x, epb=epb, nb=nbk), a.rep), 1),
+                                                   cold_us=round(cold(lambda: KMF.apply_(y, stC, x, epb=epb, nb=nbk), a.rep), 1))
         if stC['kind'] == 'cuda' and Kc.gf is not None:                   # ghost faces: kernel vs current float32 path
             gst = KMF.gf_state(C, stC['nd'])
             x64 = x.double()
@@ -104,12 +106,14 @@ with torch.no_grad():
                            cur_us=dict(warm=round(ev(lambda: Kc.gf.matvec(x, torch.zeros_like(x)).mul_(Kc.gamma), a.rep), 1),
                                        cold=round(cold(lambda: Kc.gf.matvec(x, torch.zeros_like(x)).mul_(Kc.gamma), a.rep), 1)))
             sms = torch.cuda.get_device_properties(0).multi_processor_count
-            for fpb in (2, 4, 8):
-                for blk in (2 * sms, 4 * sms, 8 * sms, 0):
-                    gk = KMF.gf_apply_(torch.zeros_like(x), gst, x, fpb=fpb, blocks=blk)
-                    r['gf'][f'fpb{fpb}_blk{blk}'] = dict(rel_f64=float((gk.double() - g64).abs().max() / gn),
-                                                         warm=round(ev(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk), a.rep), 1),
-                                                         cold=round(cold(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk), a.rep), 1))
+            for fpb in (4, 8):
+                for blk in (4 * sms, 8 * sms, 16 * sms):
+                    for nbk in ((0, 1) if B > 1 else (0,)):
+                        gk = KMF.gf_apply_(torch.zeros_like(x), gst, x, fpb=fpb, blocks=blk, nb=nbk)
+                        r['gf'][f'fpb{fpb}_blk{blk}_nb{nbk}'] = dict(
+                            rel_f64=float((gk.double() - g64).abs().max() / gn),
+                            warm=round(ev(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk, nb=nbk), a.rep), 1),
+                            cold=round(cold(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk, nb=nbk), a.rep), 1))
         res[f'B{B}'] = r
         print(json.dumps({f'B{B}': r}), flush=True)
 print(json.dumps(res), flush=True)

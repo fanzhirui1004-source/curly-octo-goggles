@@ -33,11 +33,12 @@ import triton.language as tl
 
 ON = os.environ.get('OPL_V3_KMF', '0') == '1'
 CUDA = os.environ.get('OPL_V3_KMF_CUDA', '1') == '1'
-MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '2'))
+MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '4'))
 EPB = int(os.environ.get('OPL_V3_KMF_EPB', '4'))                       # CUDA kernel: elements per block (2, 4, 8)
 GF = int(os.environ.get('OPL_V3_KMF_GF', '1') or 0)                   # CUDA: the ghost faces matrix-free too
-FPB = int(os.environ.get('OPL_V3_KMF_FPB', '4'))                       # faces per group (2, 4, 8)
-GF_BLOCKS = int(os.environ.get('OPL_V3_KMF_GFBLK', '0') or 0)          # blocks of the face kernel (0: 4 per SM)
+FPB = int(os.environ.get('OPL_V3_KMF_FPB', '8'))                       # faces per group (4, 8)
+GF_BLOCKS = int(os.environ.get('OPL_V3_KMF_GFBLK', '0') or 0)          # blocks of the face kernel (0: 8 per SM)
+NB = int(os.environ.get('OPL_V3_KMF_NB', '0') or 0)                    # columns per block (1, 2, 4; 0: by B)
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
 PB = int(os.environ.get('OPL_V3_KMF_PB', '16'))
 WARPS = int(os.environ.get('OPL_V3_KMF_WARPS', '4'))
@@ -192,8 +193,8 @@ def _lib():
     lib = ctypes.CDLL(so)
     lib.kmf_init.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
     lib.kmf_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_float,
-                                                        ctypes.c_int, ctypes.c_void_p]
-    lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
+                                                        ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+    lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
     g, _ = np.polynomial.legendre.leggauss(5)
     L = np.array([[_lag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float32)
     D = np.array([[_dlag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float32)
@@ -236,14 +237,15 @@ def state(C):
     return dict(kind='triton', nd=nodes(C.dofs), WT=weights(C.M, Vi), DN=DN, lam=lam, mu=mu)
 
 
-def apply_(y, st, x, epb=None):
+def apply_(y, st, x, epb=None, nb=None):
     """y += K x through state(C) (x, y: nb x B float32 contiguous)."""
     if st['kind'] == 'triton':
         return matvec_(y, st['nd'], st['WT'], st['DN'], x, st['lam'], st['mu'])
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
     E, B = st['nd'].shape[0], x.shape[1]
     rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), E, B, float(st['lam']),
-                           float(st['mu']), int(epb or EPB), torch.cuda.current_stream(x.device).cuda_stream)
+                           float(st['mu']), int(epb or EPB), int(NB if nb is None else nb),
+                           torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'KMF_LAUNCH:{rc}')
     return y
@@ -288,14 +290,20 @@ def gf_state(C, nd):
                 fmap=t(fmap), G=t(G, torch.float32), nd=nd)
 
 
-def gf_apply_(y, gst, x, fpb=None, blocks=None):
+_SMS = {}
+
+
+def gf_apply_(y, gst, x, fpb=None, blocks=None, nb=None):
     """y += gamma G x (ghost faces, float32) through gf_state (x, y: nb x B float32 contiguous)."""
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
     if blocks is None:
-        blocks = GF_BLOCKS or 4 * torch.cuda.get_device_properties(x.device).multi_processor_count
+        if x.device not in _SMS:
+            _SMS[x.device] = torch.cuda.get_device_properties(x.device).multi_processor_count
+        blocks = GF_BLOCKS or 8 * _SMS[x.device]
     rc = _lib().gf_launch(x.data_ptr(), y.data_ptr(), gst['nd'].data_ptr(), gst['fe'].data_ptr(), gst['fn'].data_ptr(),
                           gst['fmap'].data_ptr(), gst['G'].data_ptr(), gst['nf'], gst['c1'], gst['c2'], x.shape[1],
-                          int(fpb or FPB), int(blocks), torch.cuda.current_stream(x.device).cuda_stream)
+                          int(fpb or FPB), int(NB if nb is None else nb), int(blocks),
+                          torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'GF_LAUNCH:{rc}')
     return y
