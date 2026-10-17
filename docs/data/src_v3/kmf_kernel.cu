@@ -5,9 +5,11 @@
 // Up to NB columns per block (one after another, sharing the element's indices and weights; gathers and atomic
 // scatters of a node's 3 x ncol values adjacent).
 // Element data: nd (E x 27) node indices in tensor order t = 9 i0 + 3 i1 + i2 (i_d = local coordinate + 1),
-// wl, wm (E x 125): the weights at the points p = 25 q0 + 5 q1 + q2 times lam and mu (each rounded per element, no
-// common rounding of the Lame constants), scaled by (2n)^2 so that the reference-coordinate derivative tables serve
-// (points: the 5-point Gauss rule, or equispaced -1, -1/2, 0, 1/2, 1 whose Q2 tables are exact in float32); x, y (nb x LD) row-major (float32, or float64 for P14). Node-major DOFs: dof = 3 node + component.
+// weights at the points p = 25 q0 + 5 q1 + q2 (float64 rows w, scaled by (2n)^2 so that the reference-coordinate
+// derivative tables serve; one store per cell for both precisions, kmf.wstore: the partial elements' rows, the full
+// elements' (one shared row where bitwise equal)), times lam and mu formed in float64 per element and rounded to the product's precision (points:
+// the 5-point Gauss rule, or equispaced -1, -1/2, 0, 1/2, 1 whose Q2 tables are exact in float32); x, y (nb x LD)
+// row-major (float32, or float64 for P14). Node-major DOFs: dof = 3 node + component.
 #include <cuda_runtime.h>
 #include <stdint.h>
 
@@ -28,10 +30,13 @@ template <> struct Tab<double> {
 #define cL(i) Tab<T>::L(i)
 #define cD(i) Tab<T>::D(i)
 
+// Weights (src_v3, shared by the float32 and float64 products): w (rows x 125 float64, times (2n)^2, no Lame constants),
+// element e's row widx[e] (null: e itself; -1: wfull, the one row of the full elements); lam w and mu w are formed
+// here in float64 and rounded to T, exactly as the stored lam w / mu w of before (bitwise the same weights).
 template <typename T, int EPB, int NB>
 __global__ void __launch_bounds__(25 * EPB)
-kmf_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ nd,
-           const T* __restrict__ wl, const T* __restrict__ wm, int E, int LD)
+kmf_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ nd, const double* __restrict__ w,
+           const int* __restrict__ widx, const double* __restrict__ wfull, double lam, double mu, int E, int LD)
 {
     __shared__ T sX[EPB][NB][81];     // X[col][c][t] (27 c + t); after column col is done, its result Y[col][c][t]
     __shared__ T sA[EPB][270];        // A_L, A_D [c][q0][i1 i2]  (45 c + 9 q0 + 3 i1 + i2; A_D at +135); reused for Rb
@@ -50,10 +55,15 @@ kmf_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ n
     }
     const int q0 = qq / 5, q1 = qq - 5 * (qq / 5);
     T wlq[5], wmq[5];                                             // lam w, mu w at this thread's 5 points
+    {
+        const int64_t row = ok ? (widx ? (int64_t)widx[e] : (int64_t)e) : 0;
+        const double* wr = row >= 0 ? w + row * 125 : wfull;
 #pragma unroll
-    for (int q2 = 0; q2 < 5; q2++) {
-        wlq[q2] = ok ? wl[(int64_t)e * 125 + 25 * q0 + 5 * q1 + q2] : T(0);
-        wmq[q2] = ok ? wm[(int64_t)e * 125 + 25 * q0 + 5 * q1 + q2] : T(0);
+        for (int q2 = 0; q2 < 5; q2++) {
+            const double wv = ok ? wr[25 * q0 + 5 * q1 + q2] : 0.0;
+            wlq[q2] = T(lam * wv);
+            wmq[q2] = T(mu * wv);
+        }
     }
     for (int j = 0; j < ncol; j++) {
         __syncthreads();                                          // sX[j] loaded; sA free (previous column done)
@@ -154,185 +164,6 @@ kmf_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ n
             const int tc = k / ncol, j = k - ncol * tc, t = tc / 3, c = tc - 3 * t;
             const int64_t node = nd[(int64_t)e * 27 + t];
             atomicAdd(y + (3 * node + c) * LD + col0 + j, sX[le][j][27 * c + t]);
-        }
-    }
-}
-
-// Elements and ghost faces in one kernel (src_v3 P13b, kef): the element of a face (fe) handles it: the face vector
-// is the element's own 27 nodes (already gathered) and its neighbour's 18 further nodes (efn[e][d]: the neighbour along
-// axis d, -1 without a face); the face product's rows at the element's own nodes are added to the element result in
-// shared memory before the element's one atomic scatter, the 18 others go to y atomically. Gathers and atomic adds
-// per element and face: 81 + 54 instead of 81 + 135. Blocks loop over element groups (the three Gram matrices are
-// loaded once per block).
-template <int EPB, int NB>
-__global__ void __launch_bounds__(25 * EPB)
-kef_kernel(const float* __restrict__ x, float* __restrict__ y, const int* __restrict__ nd, const float* __restrict__ wl,
-           const float* __restrict__ wm, const int* __restrict__ efn, const int* __restrict__ fmap,
-           const float* __restrict__ G, int E, int LD)
-{
-    typedef float T;
-    __shared__ float sG[3 * 2025];
-    __shared__ float sX[EPB][NB][81];
-    __shared__ float sF[EPB][NB][81];                             // face rows at the element's own nodes
-    __shared__ float sN[EPB][NB][81];                             // the neighbour's node values (one direction)
-    __shared__ float sA[EPB][270];
-    __shared__ float sR[EPB][675];
-    __shared__ int sM[135];                                       // fmap
-    for (int i = threadIdx.x; i < 3 * 2025; i += blockDim.x) sG[i] = G[i];
-    for (int i = threadIdx.x; i < 135; i += blockDim.x) sM[i] = fmap[i];
-    const int le = threadIdx.x / 25, qq = threadIdx.x - 25 * (threadIdx.x / 25);
-    const int col0 = blockIdx.y * NB;
-    const int ncol = min(NB, LD - col0);
-    const int q0 = qq / 5, q1 = qq - 5 * (qq / 5);
-    for (int eb = blockIdx.x * EPB; eb < E; eb += gridDim.x * EPB) {
-        const int e = eb + le;
-        const bool ok = (le < EPB) && (e < E);
-        __syncthreads();                                          // tables loaded / previous group done
-        if (ok) {
-            for (int k = qq; k < 81 * ncol; k += 25) {
-                const int tc = k / ncol, j = k - ncol * tc, t = tc / 3, c = tc - 3 * t;
-                const int64_t node = nd[(int64_t)e * 27 + t];
-                sX[le][j][27 * c + t] = x[(3 * node + c) * LD + col0 + j];
-                sF[le][j][27 * c + t] = 0.f;
-            }
-        }
-        for (int d = 0; d < 3; d++) {                             // the element's faces
-            const int nb = ok ? efn[(int64_t)e * 3 + d] : -1;
-            __syncthreads();
-            if (nb >= 0) {
-                for (int k = qq; k < 54 * ncol; k += 25) {      // neighbour slots with i_d = 1, 2 (18 nodes)
-                    const int tc = k / ncol, j = k - ncol * tc, r = tc / 3, c = tc - 3 * r;
-                    const int a = r / 9, b = r - 9 * a;           // a: i_d - 1; b: the other two local indices
-                    const int u = b / 3, v = b - 3 * (b / 3);
-                    const int slot = d == 0 ? 9 * (a + 1) + 3 * u + v : (d == 1 ? 9 * u + 3 * (a + 1) + v : 9 * u + 3 * v + (a + 1));
-                    const int64_t node = nd[(int64_t)nb * 27 + slot];
-                    sN[le][j][27 * c + slot] = x[(3 * node + c) * LD + col0 + j];
-                }
-            }
-            __syncthreads();
-            if (nb >= 0) {
-                const float* g = sG + 2025 * d;
-                for (int r = qq; r < 45; r += 25) {
-                    const int mr = sM[45 * d + r];
-                    for (int j = 0; j < ncol; j++) {
-                        float a0 = 0.f, a1 = 0.f, a2 = 0.f;
-#pragma unroll 5
-                        for (int jj = 0; jj < 45; jj++) {
-                            const int m = sM[45 * d + jj];
-                            const float gv = g[45 * r + jj];
-                            const float* src = m < 32 ? &sX[le][j][m] : &sN[le][j][m & 31];
-                            a0 += gv * src[0]; a1 += gv * src[27]; a2 += gv * src[54];
-                        }
-                        if (mr < 32) {
-                            sF[le][j][mr] += a0; sF[le][j][27 + mr] += a1; sF[le][j][54 + mr] += a2;
-                        } else {
-                            const int64_t node = nd[(int64_t)nb * 27 + (mr & 31)];
-                            atomicAdd(y + (3 * node) * LD + col0 + j, a0);
-                            atomicAdd(y + (3 * node + 1) * LD + col0 + j, a1);
-                            atomicAdd(y + (3 * node + 2) * LD + col0 + j, a2);
-                        }
-                    }
-                }
-            }
-        }
-        float wlq[5], wmq[5];
-#pragma unroll
-        for (int q2 = 0; q2 < 5; q2++) {
-            wlq[q2] = ok ? wl[(int64_t)e * 125 + 25 * q0 + 5 * q1 + q2] : 0.f;
-            wmq[q2] = ok ? wm[(int64_t)e * 125 + 25 * q0 + 5 * q1 + q2] : 0.f;
-        }
-        for (int j = 0; j < ncol; j++) {
-            __syncthreads();
-            if (ok) {
-                for (int k = qq; k < 135; k += 25) {
-                    const int c = k / 45, r = k - 45 * c, p0 = r / 9, m = r - 9 * p0;
-                    const T x0 = sX[le][j][27 * c + m], x1 = sX[le][j][27 * c + 9 + m], x2 = sX[le][j][27 * c + 18 + m];
-                    sA[le][k] = cL(3 * p0) * x0 + cL(3 * p0 + 1) * x1 + cL(3 * p0 + 2) * x2;
-                    sA[le][135 + k] = cD(3 * p0) * x0 + cD(3 * p0 + 1) * x1 + cD(3 * p0 + 2) * x2;
-                }
-            }
-            __syncthreads();
-            if (ok) {
-                T BLL[3][3], BDL[3][3], BLD[3][3], RDL[3][3], RLD[3][3], RLL[3][3];
-#pragma unroll
-                for (int c = 0; c < 3; c++)
-#pragma unroll
-                    for (int i2 = 0; i2 < 3; i2++) {
-                        T sll = 0, sdl = 0, sld = 0;
-#pragma unroll
-                        for (int i1 = 0; i1 < 3; i1++) {
-                            const T aL = sA[le][45 * c + 9 * q0 + 3 * i1 + i2];
-                            const T aD = sA[le][135 + 45 * c + 9 * q0 + 3 * i1 + i2];
-                            sll += cL(3 * q1 + i1) * aL; sdl += cL(3 * q1 + i1) * aD; sld += cD(3 * q1 + i1) * aL;
-                        }
-                        BLL[c][i2] = sll; BDL[c][i2] = sdl; BLD[c][i2] = sld;
-                        RDL[c][i2] = RLD[c][i2] = RLL[c][i2] = 0;
-                    }
-#pragma unroll
-                for (int q2 = 0; q2 < 5; q2++) {
-                    T g0[3], g1[3], g2[3];
-#pragma unroll
-                    for (int c = 0; c < 3; c++) {
-                        g0[c] = cL(3 * q2) * BDL[c][0] + cL(3 * q2 + 1) * BDL[c][1] + cL(3 * q2 + 2) * BDL[c][2];
-                        g1[c] = cL(3 * q2) * BLD[c][0] + cL(3 * q2 + 1) * BLD[c][1] + cL(3 * q2 + 2) * BLD[c][2];
-                        g2[c] = cD(3 * q2) * BLL[c][0] + cD(3 * q2 + 1) * BLL[c][1] + cD(3 * q2 + 2) * BLL[c][2];
-                    }
-                    const T ld = wlq[q2] * (g0[0] + g1[1] + g2[2]);
-                    const T m2 = T(2) * wmq[q2];
-                    const T sc[3][3] = {{ld + m2 * g0[0], wmq[q2] * (g1[0] + g0[1]), wmq[q2] * (g2[0] + g0[2])},
-                                        {wmq[q2] * (g1[0] + g0[1]), ld + m2 * g1[1], wmq[q2] * (g2[1] + g1[2])},
-                                        {wmq[q2] * (g2[0] + g0[2]), wmq[q2] * (g2[1] + g1[2]), ld + m2 * g2[2]}};
-#pragma unroll
-                    for (int c = 0; c < 3; c++)
-#pragma unroll
-                        for (int i2 = 0; i2 < 3; i2++) {
-                            RDL[c][i2] += cL(3 * q2 + i2) * sc[c][0];
-                            RLD[c][i2] += cL(3 * q2 + i2) * sc[c][1];
-                            RLL[c][i2] += cD(3 * q2 + i2) * sc[c][2];
-                        }
-                }
-#pragma unroll
-                for (int c = 0; c < 3; c++)
-#pragma unroll
-                    for (int i2 = 0; i2 < 3; i2++) {
-                        sR[le][(0 + c) * 75 + 3 * qq + i2] = RDL[c][i2];
-                        sR[le][(3 + c) * 75 + 3 * qq + i2] = RLD[c][i2];
-                        sR[le][(6 + c) * 75 + 3 * qq + i2] = RLL[c][i2];
-                    }
-            }
-            __syncthreads();
-            if (ok) {
-                for (int k = qq; k < 135; k += 25) {
-                    const int c = k / 45, r = k - 45 * c, p0 = r / 9, m = r - 9 * p0, i1 = m / 3, i2 = m - 3 * i1;
-                    T bD = 0, bL = 0;
-#pragma unroll
-                    for (int p1 = 0; p1 < 5; p1++) {
-                        const int idx = 3 * (5 * p0 + p1) + i2;
-                        bD += cL(3 * p1 + i1) * sR[le][c * 75 + idx];
-                        bL += cD(3 * p1 + i1) * sR[le][(3 + c) * 75 + idx] + cL(3 * p1 + i1) * sR[le][(6 + c) * 75 + idx];
-                    }
-                    sA[le][k] = bD; sA[le][135 + k] = bL;
-                }
-            }
-            __syncthreads();
-            if (ok) {
-                for (int k = qq; k < 81; k += 25) {
-                    const int c = k / 27, t = k - 27 * c, i0 = t / 9, m = t - 9 * i0;
-                    T acc = 0;
-#pragma unroll
-                    for (int p0 = 0; p0 < 5; p0++)
-                        acc += cD(3 * p0 + i0) * sA[le][45 * c + 9 * p0 + m] + cL(3 * p0 + i0) * sA[le][135 + 45 * c + 9 * p0 + m];
-                    sX[le][j][27 * c + t] = acc;
-                }
-            }
-        }
-        __syncthreads();
-        if (ok) {
-            for (int k = qq; k < 81 * ncol; k += 25) {
-                const int tc = k / ncol, j = k - ncol * tc, t = tc / 3, c = tc - 3 * t;
-                const int64_t node = nd[(int64_t)e * 27 + t];
-                atomicAdd(y + (3 * node + c) * LD + col0 + j, sX[le][j][27 * c + t] + sF[le][j][27 * c + t]);
-            }
         }
     }
 }
@@ -601,12 +432,13 @@ static void gf2_go(const T* x, T* y, const int* fnode, const T* G, int nf, int c
 }
 
 template <typename T, int EPB>
-static void kmf_go(const T* x, T* y, const int* nd, const T* wl, const T* wm, int E, int B, int nb, cudaStream_t s)
+static void kmf_go(const T* x, T* y, const int* nd, const double* w, const int* widx, const double* wfull, double lam,
+                   double mu, int E, int B, int nb, cudaStream_t s)
 {
     const int gx = (E + EPB - 1) / EPB;
-    if (nb == 1) kmf_kernel<T, EPB, 1><<<dim3(gx, B), 25 * EPB, 0, s>>>(x, y, nd, wl, wm, E, B);
-    else if (nb == 2) kmf_kernel<T, EPB, 2><<<dim3(gx, (B + 1) / 2), 25 * EPB, 0, s>>>(x, y, nd, wl, wm, E, B);
-    else kmf_kernel<T, EPB, 4><<<dim3(gx, (B + 3) / 4), 25 * EPB, 0, s>>>(x, y, nd, wl, wm, E, B);
+    if (nb == 1) kmf_kernel<T, EPB, 1><<<dim3(gx, B), 25 * EPB, 0, s>>>(x, y, nd, w, widx, wfull, lam, mu, E, B);
+    else if (nb == 2) kmf_kernel<T, EPB, 2><<<dim3(gx, (B + 1) / 2), 25 * EPB, 0, s>>>(x, y, nd, w, widx, wfull, lam, mu, E, B);
+    else kmf_kernel<T, EPB, 4><<<dim3(gx, (B + 3) / 4), 25 * EPB, 0, s>>>(x, y, nd, w, widx, wfull, lam, mu, E, B);
 }
 
 template <typename T, int FPB, int NB>
@@ -656,8 +488,6 @@ int kmf_init(const float* tabL, const float* tabD, const double* tabL64, const d
     cudaFuncGetAttributes(&at, gf2_kernel<float, 4, 2>); cudaFuncGetAttributes(&at, gf2_kernel<float, 4, 4>);
     cudaFuncGetAttributes(&at, gf2_kernel<double, 2, 1>); cudaFuncGetAttributes(&at, gf2_kernel<double, 2, 2>);
     cudaFuncGetAttributes(&at, gf2_kernel<double, 2, 4>);
-    cudaFuncGetAttributes(&at, kef_kernel<4, 1>); cudaFuncGetAttributes(&at, kef_kernel<4, 2>);
-    cudaFuncGetAttributes(&at, kef_kernel<2, 4>);
     cudaFuncGetAttributes(&at, gk_kernel<float, 1>); cudaFuncGetAttributes(&at, gk_kernel<float, 2>);
     cudaFuncGetAttributes(&at, gk_kernel<float, 4>); cudaFuncGetAttributes(&at, gk_kernel<double, 1>);
     cudaFuncGetAttributes(&at, gk_kernel<double, 2>); cudaFuncGetAttributes(&at, gk_kernel<double, 4>);
@@ -666,26 +496,26 @@ int kmf_init(const float* tabL, const float* tabD, const double* tabL64, const d
 }
 
 // nb: columns per block (1, 2 or 4; 0: 1 for one column, 2 for two, else 4)
-int kmf_launch(const float* x, float* y, const int* nd, const float* wl, const float* wm, int E, int B, int epb, int nb,
-               void* stream)
+int kmf_launch(const float* x, float* y, const int* nd, const double* w, const int* widx, const double* wfull, double lam,
+               double mu, int E, int B, int epb, int nb, void* stream)
 {
     if (E <= 0 || B <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
     if (nb <= 0) nb = auto_nb(B);
-    if (epb == 2) kmf_go<float, 2>(x, y, nd, wl, wm, E, B, nb, s);
-    else if (epb == 8) kmf_go<float, 8>(x, y, nd, wl, wm, E, B, nb, s);
-    else kmf_go<float, 4>(x, y, nd, wl, wm, E, B, nb, s);
+    if (epb == 2) kmf_go<float, 2>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
+    else if (epb == 8) kmf_go<float, 8>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
+    else kmf_go<float, 4>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
     return (int)cudaGetLastError();
 }
 
-int kmf_launch64(const double* x, double* y, const int* nd, const double* wl, const double* wm, int E, int B, int epb,
-                 int nb, void* stream)
+int kmf_launch64(const double* x, double* y, const int* nd, const double* w, const int* widx, const double* wfull,
+                 double lam, double mu, int E, int B, int epb, int nb, void* stream)
 {
     if (E <= 0 || B <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
     if (nb <= 0) nb = auto_nb(B);
-    if (epb == 2) kmf_go<double, 2>(x, y, nd, wl, wm, E, B, nb, s);
-    else kmf_go<double, 4>(x, y, nd, wl, wm, E, B, nb, s);
+    if (epb == 2) kmf_go<double, 2>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
+    else kmf_go<double, 4>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
     return (int)cudaGetLastError();
 }
 
@@ -703,25 +533,6 @@ int gf_launch(const float* x, float* y, const int* nd, const int* fe, const int*
         if (nb == 1) gf_go<float, 8, 1>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);
         else if (nb == 2) gf_go<float, 8, 2>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);
         else gf_go<float, 8, 4>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B, blocks, s);
-    }
-    return (int)cudaGetLastError();
-}
-
-int kef_launch(const float* x, float* y, const int* nd, const float* wl, const float* wm, const int* efn,
-               const int* fmap, const float* G, int E, int B, int nb, int blocks, void* stream)
-{
-    if (E <= 0 || B <= 0) return 0;
-    cudaStream_t s = (cudaStream_t)stream;
-    if (nb <= 0) nb = auto_nb(B);
-    if (nb == 1) {
-        int gx = (E + 3) / 4; if (blocks > 0 && gx > blocks) gx = blocks;
-        kef_kernel<4, 1><<<dim3(gx, B), 100, 0, s>>>(x, y, nd, wl, wm, efn, fmap, G, E, B);
-    } else if (nb == 2) {
-        int gx = (E + 3) / 4; if (blocks > 0 && gx > blocks) gx = blocks;
-        kef_kernel<4, 2><<<dim3(gx, (B + 1) / 2), 100, 0, s>>>(x, y, nd, wl, wm, efn, fmap, G, E, B);
-    } else {
-        int gx = (E + 1) / 2; if (blocks > 0 && gx > blocks) gx = blocks;
-        kef_kernel<2, 4><<<dim3(gx, (B + 3) / 4), 50, 0, s>>>(x, y, nd, wl, wm, efn, fmap, G, E, B);
     }
     return (int)cudaGetLastError();
 }

@@ -1,0 +1,1 @@
+{"case": "plateS24_040_o000", "E": 11392, "npart": 7796, "nextra": 3595, "nfull": 1, "f32_bitwise": true, "f32_mismatch": 0, "f64_lam_w_rel_max": 0.0, "f64_bitwise": true, "MiB": {"before": 25.73, "after": 10.91}, "f32_product_rel_f64": 1.0727765471416102e-07, "f64_product_rel": 2.4309233515646424e-15}

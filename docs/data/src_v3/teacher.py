@@ -369,10 +369,8 @@ class _Kfp32:
         if self.symv and self.gf is not None and x32.shape[1] <= KMF.MAXB and KMF.GF and KMF.use() \
                 and not (torch.is_grad_enabled() and x32.requires_grad) and not self._v3(x32):
             st = self.mf_state()                                                # src_v3 P13: ghost faces and elements
-            if 'gf' in st:                                                      # matrix-free (two CUDA kernels; P13b:
-                x32 = x32.contiguous()                                          # one)
-                if KMF.EF:
-                    return KMF.apply_ef_(torch.zeros_like(x32), st, x32)
+            if 'gf' in st:                                                      # matrix-free (two CUDA kernels)
+                x32 = x32.contiguous()
                 y = KMF.gf_apply_(torch.zeros_like(x32), st['gf'], x32)
                 return KMF.apply_(y, st, x32)
         if self.gf is not None:
@@ -744,7 +742,7 @@ class Cell:
         self._free()
         for k in ('_cV', '_cL', '_c_space', '_tail_bounds', '_cL32', '_cAi32', '_cV32', '_cV32t', '_cL32_keep', '_Kc', 'GF64', 'M', 'dM',
                   '_kpp_cache', 'diag3', '_c_mf', '_c_nc', '_c_invd', '_cAp32', '_cLd32', '_c_inv_err', '_c_tri_err', '_cBlk', '_c_blk_info',
-                  '_fk', '_k64_part', '_dp64_part', '_mf64', '_kmf_nd', '_kmf_gfi'):   # + src_v3 coarse, fullke, P13/P14                                       # state of the previous design (if any)
+                  '_fk', '_k64_part', '_dp64_part', '_mf64', '_kmf_nd', '_kmf_gfi', '_kmf_w'):   # + src_v3 coarse, fullke, P13/P14                                       # state of the previous design (if any)
             setattr(self, k, None)
         _collect()
         self.M = self.moments(taus)

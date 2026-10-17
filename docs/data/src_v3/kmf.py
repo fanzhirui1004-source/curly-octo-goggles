@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import numpy as np
 import torch
+import fullke as FK
 import triton
 import triton.language as tl
 
@@ -53,7 +54,6 @@ NB = int(os.environ.get('OPL_V3_KMF_NB', '0') or 0)                    # columns
 GF2 = os.environ.get('OPL_V3_KMF_GF2', 'auto')                         # ghost faces: DOF-parallel kernel (gf2): '1' always,
                                                                         # 'auto' from 2 columns on (faster there), '0' never
 FPB2 = int(os.environ.get('OPL_V3_KMF_FPB2', '4'))                     # gf2: faces per group (2, 4)
-EF = os.environ.get('OPL_V3_KMF_EF', '0') == '1'                        # P13b: elements and faces in one kernel (kef)
 GK = os.environ.get('OPL_V3_KMF_GK', '1') == '1'                        # P15: ghost faces as A (x) m (x) m (gk)
 GKW = os.environ.get('OPL_V3_KMF_GKW', '1') == '1'                      # P15b: lanes over the columns from 8 columns on
 EB = int(os.environ.get('OPL_V3_KMF_EB', '32'))
@@ -214,12 +214,11 @@ def _lib():
         os.replace(tmp, so)
     lib = ctypes.CDLL(so)
     lib.kmf_init.argtypes = [ctypes.c_void_p] * 4
-    lib.kmf_launch.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
-    lib.kmf_launch64.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.kmf_launch.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_double] * 2 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.kmf_launch64.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_double] * 2 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
     lib.gf_launch64.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     lib.gf2_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
-    lib.kef_launch.argtypes = [ctypes.c_void_p] * 8 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gk_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gk_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gf2_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
@@ -277,22 +276,66 @@ def state(C):
     xi, lam, mu = C._kmf_spec
     DN, Vi = tables(xi, C.n, C.M.device)
     if cuda_ok():
-        nd = nodes_tensor(C)
-        wl, wm = _weights_lm(C, Vi, torch.arange(C.M.shape[0], device=C.M.device), lam, mu, torch.float32)
-        return dict(kind='cuda', nd=nd, wl=wl, wm=wm, lam=lam, mu=mu, pts=PTS)
+        W = wstore(C)
+        return dict(kind='cuda', nd=nodes_tensor(C), w=W['w'], widx=W['widx'], wfull=W['wfull'], lam=W['lam'], mu=W['mu'],
+                    pts=PTS)
     return dict(kind='triton', nd=nodes(C.dofs), WT=weights(C.M, Vi), DN=DN, lam=lam, mu=mu)
 
 
-def _weights_lm(C, Vi, elements, lam, mu, dtype, chunk=8192):
-    """(lam w, mu w) of the given elements, w = M Vi (2n)^2 in float64, then rounded to dtype (E x 125 each)."""
-    E = len(elements)
-    wl = torch.empty((E, 125), dtype=dtype, device=C.M.device)
-    wm = torch.empty((E, 125), dtype=dtype, device=C.M.device)
+def wstore(C, chunk=8192):
+    """The weights of both matrix-free products, kept once per cell (C._kmf_w; reset with the design): w (float64,
+    times (2n)^2, without the Lame constants) with fullke's float64 partial elements first (the float64 product's
+    elements, in order; all elements without OPL_FULL_KE), then any full element whose row is not bitwise wfull's;
+    wfull the one row of the full elements; widx (E int32: an element's row of w, -1 for wfull); lam, mu. w is the same
+    chunked GEMM over all elements as the float32 weights were (so float32 lam w, mu w are bitwise the stored ones of
+    before); the kernels form lam w, mu w in float64 and round them to their precision. Two float32 and two float64
+    (E x 125) arrays per cell become one float64 array (plate cell 25.7 -> 10.9 MiB; most full elements keep their own
+    row: their moment rows are bitwise equal, but cuBLAS rounds a row differently at different positions of a chunk)."""
+    W = getattr(C, '_kmf_w', None)
+    if W is not None and W['pts'] == PTS:
+        return W
+    xi, lam, mu = C._kmf_spec
+    _, Vi = tables(xi, C.n, C.M.device)
+    dev, E = C.M.device, C.M.shape[0]
+    sc = (2.0 * C.n) ** 2
+    if FK.ON:
+        fs = FK.setup(C)['f64']
+        part, full = fs['part'], fs['full']
+    else:
+        part, full = torch.arange(E, device=dev), torch.arange(0, device=dev, dtype=torch.long)
+    npart = len(part)
+    pos = torch.full((E,), -1, dtype=torch.long, device=dev)
+    pos[part] = torch.arange(npart, device=dev)
+    isfull = torch.zeros(E, dtype=torch.bool, device=dev)
+    isfull[full] = True
+    wp = torch.empty((npart, 125), dtype=torch.float64, device=dev)
+    wfull, extra_e, extra_w = None, [], []
     for lo in range(0, E, chunk):
-        w = (C.M[elements[lo:lo + chunk]] @ Vi) * (2.0 * C.n) ** 2
-        wl[lo:lo + chunk] = (w * lam).to(dtype)
-        wm[lo:lo + chunk] = (w * mu).to(dtype)
-    return wl, wm
+        wc = (C.M[lo:lo + chunk] @ Vi) * sc                             # (the float32 weights' GEMM, as before)
+        ids = torch.arange(lo, lo + wc.shape[0], device=dev)
+        pp = pos[ids]
+        m = pp >= 0
+        wp[pp[m]] = wc[m]
+        fm = isfull[ids]
+        if bool(fm.any()):
+            wf = wc[fm]
+            if wfull is None:
+                wfull = wf[0].clone()
+            ne = ~(wf == wfull).all(1)
+            if bool(ne.any()):
+                extra_e.append(ids[fm][ne]); extra_w.append(wf[ne])
+    if wfull is None:
+        wfull = torch.zeros(125, dtype=torch.float64, device=dev)
+    widx = torch.full((E,), -1, dtype=torch.int32, device=dev)
+    widx[part] = torch.arange(npart, dtype=torch.int32, device=dev)
+    w = wp
+    if extra_e:
+        ee, ew = torch.cat(extra_e), torch.cat(extra_w)
+        widx[ee] = torch.arange(npart, npart + len(ee), dtype=torch.int32, device=dev)
+        w = torch.cat([wp, ew], 0)
+    W = C._kmf_w = dict(w=w.contiguous(), widx=widx, wfull=wfull.contiguous(), part=part, npart=npart,
+                        nextra=len(w) - npart, lam=float(lam), mu=float(mu), pts=PTS)
+    return W
 
 
 def _check_pts(st):
@@ -308,8 +351,9 @@ def apply_(y, st, x, epb=None, nb=None):
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
     _check_pts(st)
     E, B = st['nd'].shape[0], x.shape[1]
-    rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['wl'].data_ptr(), st['wm'].data_ptr(), E, B,
-                           int(epb or EPB), int(NB if nb is None else nb), torch.cuda.current_stream(x.device).cuda_stream)
+    rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), st['widx'].data_ptr(),
+                           st['wfull'].data_ptr(), st['lam'], st['mu'], E, B, int(epb or EPB), int(NB if nb is None else nb),
+                           torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'KMF_LAUNCH:{rc}')
     return y
@@ -484,12 +528,17 @@ def state64(C, elements):
     """Float64 data of the matrix-free product over the given elements (int64 indices; the partial elements when the
     full ones keep fullke's shared-matrix GEMM): nd (tensor order) and w (float64 weights times (2n)^2), plus the ghost
     faces (float64 Gram matrices, all faces; nd of all elements for their node lists)."""
-    xi, lam, mu = C._kmf_spec
-    _, Vi = tables(xi, C.n, C.M.device)
     nd_all = nodes_tensor(C)
     nd = nd_all[elements].contiguous()
-    wl, wm = _weights_lm(C, Vi, elements, lam, mu, torch.float64)
-    return dict(kind='cuda64', nd=nd, wl=wl, wm=wm, lam=float(lam), mu=float(mu), pts=PTS,
+    W = wstore(C)
+    if len(elements) == len(W['part']) and torch.equal(elements, W['part']):
+        w = W['w'][:W['npart']]                                             # (the store's first rows: the float32 product's
+                                                                            # too)
+    else:
+        xi, _, _ = C._kmf_spec
+        _, Vi = tables(xi, C.n, C.M.device)
+        w = ((C.M[elements] @ Vi) * (2.0 * C.n) ** 2).contiguous()
+    return dict(kind='cuda64', nd=nd, w=w, wfull=W['wfull'], lam=W['lam'], mu=W['mu'], pts=PTS,
                 gf=gf_state(C, nd_all, torch.float64))
 
 
@@ -498,8 +547,9 @@ def apply64_(y, st, x, epb=None, nb=None):
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float64 and y.dtype == torch.float64
     _check_pts(st)
     E, B = st['nd'].shape[0], x.shape[1]
-    rc = _lib().kmf_launch64(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['wl'].data_ptr(), st['wm'].data_ptr(),
-                             E, B, int(epb or 4), int(nb or 0), torch.cuda.current_stream(x.device).cuda_stream)
+    rc = _lib().kmf_launch64(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), None,
+                             st['wfull'].data_ptr(), st['lam'], st['mu'], E, B, int(epb or 4), int(nb or 0),
+                             torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'KMF64_LAUNCH:{rc}')
     return y
@@ -524,37 +574,4 @@ def gf_apply64_(y, gst, x, blocks=None, nb=None, gf2=None, gk=None):
                             int(nb or 0), int(blocks), torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'GF64_LAUNCH:{rc}')
-    return y
-
-
-# ---------------------------------------------------------------------- src_v3 P13b: elements and faces in one kernel
-def efn_table(gst, E):
-    """(E x 3 int32) the neighbour element of each element's ghost face along axis d (-1: none), from gf_state."""
-    efn = gst.get('efn')
-    if efn is None:
-        nf, c1, c2 = gst['nf'], gst['c1'], gst['c2']
-        dev = gst['fe'].device
-        d = (torch.arange(nf, device=dev) >= c1).long() + (torch.arange(nf, device=dev) >= c2).long()
-        efn = torch.full((E * 3,), -1, dtype=torch.int32, device=dev)
-        key = gst['fe'].long() * 3 + d
-        if len(torch.unique(key)) != nf:
-            raise ValueError('EF_FACE_TWICE')
-        efn[key] = gst['fn']
-        efn = gst['efn'] = efn.view(E, 3).contiguous()
-    return efn
-
-
-def apply_ef_(y, st, x, nb=None, blocks=None):
-    """y += (K_elements + gamma G_faces) x in one kernel (state(C) with its 'gf' tables; x, y float32 contiguous)."""
-    assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
-    _check_pts(st)
-    gst = st['gf']
-    E, B = st['nd'].shape[0], x.shape[1]
-    efn = efn_table(gst, E)
-    rc = _lib().kef_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['wl'].data_ptr(), st['wm'].data_ptr(),
-                           efn.data_ptr(), gst['fmap'].data_ptr(), gst['G'].data_ptr(), E, B, int(NB if nb is None else nb),
-                           int(blocks if blocks is not None else _blocks(x.device)),
-                           torch.cuda.current_stream(x.device).cuda_stream)
-    if rc != 0:
-        raise RuntimeError(f'KEF_LAUNCH:{rc}')
     return y
