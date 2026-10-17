@@ -311,6 +311,9 @@ def _csr32(A):
 BLOCKS = os.environ.get('OPL_COARSE_BLOCKS', '1') == '1'                     # src_v3: SparseCoarse A Z per cell
 TT_KEEP = os.environ.get('OPL_V3_COARSE_TT', '0') == '1'                     # src_v3 item 2c: T^T a view of T (1: own copy)
 ZT_KEEP = os.environ.get('OPL_V3_COARSE_ZT', '1') == '1'                     # src_v3 item 2c: Z^T as its own CSR (0: none)
+AZB32 = os.environ.get('OPL_V3_AZB_FP32', '0') == '1'                         # src_v3 item 2 (category B): A Z blocks kept
+# in float32 (half the device memory of the coarse space's largest part); both BNN terms read the same rounded blocks
+# (in float64 arithmetic), so the preconditioner stays symmetric; the coarse matrix and T come from the float64 blocks
 
 
 def coarse_z(lat, kind):
@@ -393,7 +396,7 @@ class SparseCoarse:
                 zb, yb = q[kp], y[kp].to(dt)
                 Ac.index_put_((J[:, None], J[None, :]), zb.T @ yb, accumulate=True)
                 if BLOCKS:                                                   # src_v3: (A Z) as per-cell dense blocks
-                    self.azb.append((fk, J, yb.contiguous()))
+                    self.azb.append((fk, J, yb.contiguous().float() if AZB32 else yb.contiguous()))
                     continue
                 AR.append(fk[:, None].expand(-1, len(J)).reshape(-1)); AC.append(J[None, :].expand(len(fk), -1).reshape(-1))
                 AV.append(yb.reshape(-1))
@@ -433,7 +436,7 @@ class SparseCoarse:
             ta = self.T @ a
             out = torch.zeros((self.Z.shape[0], a.shape[1]), dtype=ta.dtype, device=ta.device)
             for fk, J, Y in self.azb:
-                out.index_add_(0, fk, Y @ ta[J])
+                out.index_add_(0, fk, Y.to(ta.dtype) @ ta[J])
             return out
         return torch.sparse.mm(self.AZ, self.T @ a)
 
@@ -441,7 +444,7 @@ class SparseCoarse:
         if self.azb is not None:                                             # T^T sum over cells of (A Z)_i^T y[fk_i]
             z = torch.zeros((self.T.shape[0], y.shape[1]), dtype=y.dtype, device=y.device)
             for fk, J, Y in self.azb:
-                z.index_add_(0, J, Y.T @ y[fk])
+                z.index_add_(0, J, Y.to(y.dtype).T @ y[fk])
             return self.TT @ z
         return self.TT @ torch.sparse.mm(self.AZT, y)
 

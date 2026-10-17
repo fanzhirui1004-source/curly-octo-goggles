@@ -167,6 +167,10 @@ class SPDSolver:
         solver = DirectSolver(self.U, b, options=opts, **kw)
         if lib:
             solver.plan_config.host_nthreads = threads
+        ro = os.environ.get('OPL_V3_CUDSS_REORDER')                        # src_v3 (test option): cuDSS reordering
+        if ro:                                                             # algorithm (DEFAULT, NESTED_DISSECTION, AMD, ...)
+            from nvmath.sparse.advanced import DirectSolverReorderingAlg
+            solver.plan_config.reordering_algorithm = getattr(DirectSolverReorderingAlg, ro)
         return solver
 
     def _estimates(self):

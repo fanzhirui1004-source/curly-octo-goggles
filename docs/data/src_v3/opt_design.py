@@ -79,10 +79,11 @@ ap.add_argument('--warm', action='store_true',
                      'position, component, cut-port flag) and scaled by the energy-optimal factor; unmatched DOFs start at 0 '
                      '(the stopping rule, relative to |f|, is unchanged)')
 ap.add_argument('--reuse-prec', type=int, default=0,
-                help='--fast, src_v3 item 4 (category B): N > 0: build the preconditioner (coarse space, K_PP factor) every N '
-                     'design iterations; in between the last one is applied on the DOFs matched by grid position, component '
-                     'and cut-port flag, the others take the diagonal of the current K_PP (Jacobi): an SPD preconditioner; '
-                     'the PCG tolerance on the current system is unchanged')
+                help='--fast, src_v3 item 4 (category B): N > 1: factorise K_PP (the fine level of the BNN preconditioner) every '
+                     'N design iterations; in between the last factor is applied on the DOFs matched by grid position, '
+                     'component and cut-port flag, the others take the diagonal of the current K_PP (Jacobi). The coarse '
+                     'space (A Z with the current operator) is built every iteration: with a kept coarse space the 24-cell '
+                     'lattice needed 1360 instead of 155 PCG steps. The PCG tolerance on the current system is unchanged')
 ap.add_argument('--table5', action='store_true', help='--fast: OPL_COARSE_ELEM, OPL_TET_TRITON, OPL_COARSE_SPARSE, fastidx.ON '
                 '(the implementation options of the timed route of Table 5, as lat_scale.py)')
 ap.add_argument('--check', default='', help='comma list of iterations of an existing run to verify with the exact model')
@@ -375,13 +376,17 @@ _REC = {}                                                                     # 
 _PREC = {}                                                                    # src_v3 item 4: kept preconditioner
 
 
-class _MappedPrec:
-    """src_v3 item 4 (--reuse-prec): the previous design's preconditioner pc on this design's DOFs: the DOFs matched by
-    key (new_idx -> old_idx) through pc, the others scaled by dinv (Jacobi on the current K_PP's diagonal).
-    E^T pc E + D^-1 with E the 0/1 selection: symmetric positive definite when pc is."""
+class _MappedFine:
+    """src_v3 item 4 (--reuse-prec): a kept K_PP factor (KppFine of an earlier design) as the fine level on this design's
+    DOFs: the DOFs matched by key (new_idx -> old_idx) through it, the others scaled by dinv (Jacobi on the current K_PP's
+    diagonal). E^T pc E + D^-1 with E the 0/1 selection: symmetric positive definite. free() leaves the factor (kept)."""
 
     def __init__(self, pc, n_old, new_idx, old_idx, um, dinv):
         self.pc, self.n_old, self.new_idx, self.old_idx, self.um, self.dinv = pc, n_old, new_idx, old_idx, um, dinv
+        self.setup = dict(kpp_reused=True)
+
+    def free(self):
+        pass
 
     def __call__(self, R):
         Ro = torch.zeros((self.n_old, R.shape[1]), dtype=R.dtype, device=R.device)
@@ -394,8 +399,8 @@ class _MappedPrec:
         return Z
 
 
-def _mapped_prec(lat, kpp_host, Cs, order):
-    """The kept preconditioner (_PREC) mapped onto lat's DOFs; the diagonal of the current K_PP for the unmatched DOFs is
+def _mapped_fine(lat, kpp_host, Cs, order):
+    """The kept K_PP factor (_PREC) mapped onto lat's DOFs; the diagonal of the current K_PP for the unmatched DOFs is
     summed from the cells' K_PP triplets (whose host copies / files are then released, as after an assembly)."""
     import lat_scale as LS
     import kppstore as KS
@@ -420,7 +425,7 @@ def _mapped_prec(lat, kpp_host, Cs, order):
     dinv = 1 / dg[um_t] if len(um) else dg[:0]
     _PREC['age'] += 1
     _PREC['last_hit'] = float(hit.mean())
-    return _MappedPrec(_PREC['pc'], _PREC['n'], new_idx, old_idx, um_t, dinv)
+    return _MappedFine(_PREC['fine'], _PREC['n'], new_idx, old_idx, um_t, dinv)
 
 
 def _dof_keys(lat):
@@ -541,21 +546,19 @@ def analyse_fast(cases, positions, h, wait=None):
         g._kpp = None
     T['setup_s'] = time.perf_counter() - t
     t = time.perf_counter()
-    if A.reuse_prec > 1 and _PREC.get('pc') is not None and _PREC['age'] < A.reuse_prec - 1:
-        fac, pc = None, _mapped_prec(lat, kpp_host, Cs, order)                 # src_v3 item 4 (category B)
-        del shared
-        T['prec_reused'] = dict(age=_PREC['age'], matched=round(_PREC['last_hit'], 6))
-    else:
-        if _PREC.get('fac') is not None:                                      # the kept one is replaced
-            LS._free_prec(_PREC['fac'], _PREC['pc']); _PREC.clear()
-        fac = PR.Factory(lat, olist, shared=shared, kpp_backend='auto', log=lambda d: None)
-        del shared
-        pc, _, _ = fac.build(A.prec)
-        if A.reuse_prec > 1:                                                  # kept: without the lattice and the cell
-            fac.ops = fac.lat = None                                          # operators (their states are dropped)
-            kk = _dof_keys(lat)
-            o_ = np.argsort(kk)
-            _PREC.update(fac=fac, pc=pc, keys=kk[o_], perm=o_, n=len(kk), age=0)
+    reused = A.reuse_prec > 1 and _PREC.get('fine') is not None and _PREC['age'] < A.reuse_prec - 1
+    if reused:                                                                # src_v3 item 4 (category B): the kept
+        shared['kpp'] = _mapped_fine(lat, kpp_host, Cs, order)                # K_PP factor on this design's DOFs
+        T['kpp_reused'] = dict(age=_PREC['age'], matched=round(_PREC['last_hit'], 6))
+    elif _PREC.get('fine') is not None:                                       # the kept factor is replaced
+        _PREC['fine'].free(); _PREC.clear()
+    fac = PR.Factory(lat, olist, shared=shared, kpp_backend='auto', log=lambda d: None)
+    del shared
+    pc, _, _ = fac.build(A.prec)
+    if A.reuse_prec > 1 and not reused:                                       # keep this factor (not freed below)
+        kk = _dof_keys(lat)
+        o_ = np.argsort(kk)
+        _PREC.update(fine=fac.shared.pop('kpp'), keys=kk[o_], perm=o_, n=len(kk), age=0)
     T['precond_s'] = time.perf_counter() - t
     t = time.perf_counter()
     X0 = None
@@ -590,8 +593,7 @@ def analyse_fast(cases, positions, h, wait=None):
         r['recycle'] = None
     else:
         r = PR.pcg(lat, olist, pc, F=F, tol=A.tol, maxit=A.maxit_pcg, X0=X0)
-    if fac is not None and _PREC.get('fac') is not fac:                       # (kept for --reuse-prec)
-        LS._free_prec(fac, pc)
+    LS._free_prec(fac, pc)                                                    # (a kept K_PP factor is not in fac.shared)
     del fac, pc
     X = r['X']
     if A.warm:
