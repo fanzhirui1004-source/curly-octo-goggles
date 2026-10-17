@@ -21,6 +21,7 @@ import numpy as np
 import torch
 import fastidx as FI
 import fullke as FK
+import kmf as KMF
 
 HERE = Path(__file__).resolve().parent
 if os.environ.get('OPL_V3_SWITCHES', '1') == '1':                      # src_v3 defaults: the packed element products
@@ -323,6 +324,7 @@ class _Kfp32:
         self._ke_tmp, self._kp_tmp, self._hold = None, None, 0
         self._kp_part = self._ke_part = self._dp_part = None                # src_v3 (fullke): held partial elements
         self._kmap = None                                                   # src_v3 P2b: element -> row of the held P
+        self._mf = None                                                     # src_v3 P13: (element nodes, weights)
         self.symv = ke_moments and os.environ.get('OPL_KE_SYMV') == '1'      # packed upper Ke, fused Triton product
         if ke_moments and SLIM:                                             # src_v3: shared float32 T; the float32
             self.Ke, self.M32 = None, None                                      # moments are rounded per chunk (same values)
@@ -370,6 +372,11 @@ class _Kfp32:
         if self.symv and not (torch.is_grad_enabled() and x.requires_grad):
             import ke_symv as KS
             y, x32 = y.contiguous(), x32.contiguous()
+            if KMF.ON and x32.shape[1] <= KMF.MAXB:                             # src_v3 P13: matrix-free narrow product
+                nd, WT, DN, lam, mu = self.mf_state()
+                return KMF.matvec_(y, nd, WT, DN, x32, lam, mu)
+            if KMF.ON and self._hold > 0 and self._kp_tmp is None:              # src_v3 P13: wide product inside a hold:
+                self._form_p()                                                  # the matrices now, released with the hold
             if self._kp_tmp is not None:
                 KS.symv_(y, self._kp_tmp, C.dofs, x32, kmap=self._kmap if torch.is_tensor(self._kmap) else None)
             else:
@@ -388,6 +395,23 @@ class _Kfp32:
             xe = Xe[lo:lo + ch] if Xe is not None else FI.rows(x32, de)
             y.index_add_(0, de.reshape(-1), torch.bmm(Ke, xe).reshape(-1, x.shape[1]))
         return y
+
+    def mf_state(self):
+        """src_v3 P13: (element nodes int32, float32 quadrature weights 128 x E, derivative table, lam, mu) of the
+        matrix-free product, built on first use from the float64 moments (kept with this object: reset with the design)."""
+        C = self.C
+        xi, lam, mu = C._kmf_spec
+        DN, Vi = KMF.tables(xi, C.n, C.M.device)
+        if self._mf is None:
+            self._mf = (KMF.nodes(C.dofs), KMF.weights(C.M, Vi))
+        return self._mf + (DN, lam, mu)
+
+    def _form_p(self):
+        """The float32 packed upper element matrices of every element (the chunked GEMM of hold())."""
+        E, ch = len(self.C.M), self.C._lean_chunk
+        self._kp_tmp = torch.empty((E, self.Tup32.shape[1]), dtype=torch.float32, device=self.Tup32.device)
+        for lo in range(0, E, ch):
+            torch.matmul(self.m32(lo, lo + ch), self.Tup32, out=self._kp_tmp[lo:lo + ch])
 
     def _v3(self, x):
         """src_v3 element products (fullke): deployment cells with element matrices from the moments."""
@@ -470,11 +494,10 @@ class _Kfp32:
                         me._kp_part = me._ke_part = me._dp_part = None
                 return
             E = len(me.C.M)
-            if me.symv and me._hold == 0:
-                ch = me.C._lean_chunk
-                me._kp_tmp = torch.empty((E, me.Tup32.shape[1]), dtype=torch.float32, device=me.Tup32.device)
-                for lo in range(0, E, ch):
-                    torch.matmul(me.m32(lo, lo + ch), me.Tup32, out=me._kp_tmp[lo:lo + ch])
+            if me.symv and me._hold == 0 and KMF.ON:                            # src_v3 P13: narrow products matrix-free,
+                me.mf_state()                                                   # wide ones form the matrices on first use
+            elif me.symv and me._hold == 0:
+                me._form_p()
                 if KMAP and me._kmap is None and not torch.cuda.is_current_stream_capturing():
                     me._kmap = me._shared_rows(me._kp_tmp)
             elif me.ke_moments and FI.ON and me._hold == 0:
@@ -521,6 +544,7 @@ class Cell:
             keys = np.unique(xr, axis=0)
         if len(keys) != 1:
             raise ValueError('ONE_NODE_ORDERING_EXPECTED')
+        self._kmf_spec = (keys[0].reshape(27, 3).copy(), lam, mu)             # src_v3 P13: node ordering, Lame constants
         pkey = ('Tm', keys[0].tobytes(), lam, mu, self.n, str(dev))
         if SLIM:                                                            # src_v3: one shared copy per pattern
             self.Tm = shared(pkey, lambda: torch.tensor(EM.pattern_operators(keys[0].reshape(27, 3), lam, mu, self.n)[1], dtype=dt,
