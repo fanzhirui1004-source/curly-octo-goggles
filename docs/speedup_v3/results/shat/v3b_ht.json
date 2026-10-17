@@ -1,0 +1,51 @@
+{
+ "case": "plateS24_040_o000",
+ "nb": 327252,
+ "ni": 307380,
+ "ports": 19872,
+ "elements": 11392,
+ "setup_s": 3.027232326567173,
+ "env": {
+  "OPL_COARSE_PIVOT_FLOOR": "1e-7",
+  "OPL_BENCH_TMP": "/root/autodl-tmp/OPL/V3W/bench_tmp",
+  "OPL_CONV_FP32": "1",
+  "OPL_GP_CACHE": "0",
+  "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/V3W/plate/base_S24/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets",
+  "OPL_TAILT_FUSED": "1",
+  "OPL_COARSE_FP32": "1",
+  "OPL_COARSE_ELEM": "1",
+  "OPL_TET_TRITON": "1",
+  "OPL_KE_SYMV": "1",
+  "OPL_KE_SYMV64": "1"
+ },
+ "ms": {
+  "1": 25.26804246008396,
+  "3": 45.34376300871372,
+  "16": 216.75265226513147
+ },
+ "peak_extra_MiB": {
+  "1": 257.154296875,
+  "3": 443.82373046875,
+  "16": 1741.666015625
+ },
+ "vs_ref": {
+  "1": 7.693202470933542e-08,
+  "3": 7.693201879079945e-08,
+  "16": 8.745918389211735e-08
+ },
+ "vs_ref_norm": {
+  "1": 3.743071638831588e-08,
+  "3": 3.714268576865716e-08,
+  "16": 3.762339636754694e-08
+ },
+ "segments_ms": {
+  "net_fwd": 3.400589432567358,
+  "wrap": 5.709913000464439,
+  "wrap_nohold": 5.918752122670412,
+  "K64": 5.28146643191576,
+  "wrap_T": 6.822157558053732,
+  "net_T": 3.9960852824151516,
+  "Kc_B_held": 0.3161599859595299,
+  "coarse_solve": 0.39143720641732216
+ }
+}

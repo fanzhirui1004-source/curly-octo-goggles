@@ -1,0 +1,10 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:63: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+=== SYNC: Synchronization debug mode is a prototype feature and does not yet detect all synchronizing operations (Triggered internally at /pytorch/torch/csrc/cuda/Module.cpp:976.)
+  File "/root/autodl-tmp/OPL/V3W/scripts/t_sync.py", line 31, in <module>
+    torch.cuda.set_sync_debug_mode('warn')
+  File "/root/miniconda3/lib/python3.12/site-packages/torch/cuda/__init__.py", line 1193, in set_sync_debug_mode
+    torch._C._cuda_set_sync_debug_mode(debug_mode)
+
+{"n_sync_warnings": 1}
+{"cpu_issue_ms": [697.2, 697.0, 697.2]}
