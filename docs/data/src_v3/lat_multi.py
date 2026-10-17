@@ -30,7 +30,8 @@ import fastidx as FI
 dt = torch.float64
 AXES = {'x': 0, 'y': 1, 'z': 2}
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
-NSTREAMS = int(os.environ.get('OPL_V3_STREAMS', '1'))                  # src_v3: compute streams for apply_blocks
+NSTREAMS = int(os.environ.get('OPL_V3_STREAMS', '2'))                  # src_v3: compute streams for apply_blocks
+STREAM_MAXCOLS = int(os.environ.get('OPL_V3_STREAM_MAXCOLS', '4'))      # only for narrow applies (the PCG matvec)
 _STREAMS = []
 
 
@@ -220,9 +221,12 @@ class MultiLattice:
     def apply_blocks(self, ops, blocks, batch=True, max_cols=None):
         """blocks[i]: (nport_i, k_i) port matrix of cell i (k_i may differ, 0 = skip) -> [S_i blocks[i]], one apply per
         operator object (columns concatenated, chunks of max_cols).
-        src_v3 (OPL_V3_STREAMS=n > 1): the applies are issued round robin on n CUDA streams, so that one cell's kernels
-        (many small, latency-bound ones at one column) run alongside the next cell's; every apply is the same sequence of
-        operations as before and the results are combined by the caller in cell order."""
+        src_v3 (OPL_V3_STREAMS=n, default 2): applies of at most OPL_V3_STREAM_MAXCOLS (4) columns (the PCG matvec) are
+        issued round robin on n CUDA streams, so that one cell's kernels (many small, latency-bound ones at one column)
+        run alongside the next cell's; every apply is the same sequence of operations as before and the results are
+        combined by the caller in cell order. Measured on the 51-cell plate: solve -12%, +1.3 GiB device memory in the
+        PCG phase (two applies' temporaries and one more streamed cell in flight); wide applies (coarse A Z, 16-column
+        chunks) stay on one stream (two at once would add ~2.3 GiB for little gain). OPL_V3_STREAMS=1: one stream."""
         mc = max_cols or self.max_cols
         outs = [None] * len(blocks)
         groups = []
@@ -230,7 +234,8 @@ class MultiLattice:
             cells = [i for i in cells if blocks[i] is not None and blocks[i].shape[1] > 0]
             if cells:
                 groups.append((op, cells))
-        ms = NSTREAMS > 1 and len(groups) > 1 and any(blocks[c[0]].is_cuda for _, c in groups)
+        ms = NSTREAMS > 1 and len(groups) > 1 and any(blocks[c[0]].is_cuda for _, c in groups) \
+            and max(sum(blocks[i].shape[1] for i in c) for _, c in groups) <= STREAM_MAXCOLS
         if ms:
             main = torch.cuda.current_stream()
             ready = torch.cuda.Event(); ready.record(main)
