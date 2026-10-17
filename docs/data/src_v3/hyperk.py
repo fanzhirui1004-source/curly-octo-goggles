@@ -1,9 +1,9 @@
 """src_v3 P16 (OPL_V3_HCUDA): fastnet's hyperedge gather and scatter (fused_hyper.gather / scatter) as CUDA kernels
-(hyper_kernel.cu, built with nvcc on first use and cached like kmf's library): one warp per hyperedge, lanes over the
-B F columns, the 27 slots' nodes and weights staged once per hyperedge, all slot rows loaded (or atomically added) at
-once. For 27 slots, H = 4 heads and B F <= 128; otherwise, or without nvcc, fused_hyper's Triton kernels. The gather
-sums in slot order with fused multiply-adds like the Triton kernel; the scatter's atomic row adds are in data-dependent
-order either way (rounding level)."""
+(hyper_kernel.cu, built with nvcc on first use and cached like kmf's library): one warp per hyperedge and column slice
+of 128, lanes over the columns, the 27 slots' nodes and weights staged once per hyperedge, all slot rows loaded (or
+atomically added) at once. For 27 slots and H = 4 heads; otherwise, or without nvcc, fused_hyper's Triton kernels. The
+gather is bitwise the Triton kernels' (slot order, fused multiply-adds, the same division instruction for w / deg); the
+scatter's atomic row adds are in data-dependent order either way (rounding level; HS: the head-sum order per slot)."""
 import os
 import ctypes
 import hashlib
@@ -12,6 +12,8 @@ import subprocess
 import torch
 
 ON = os.environ.get('OPL_V3_HCUDA', '0') == '1'
+MAXBF = int(os.environ.get('OPL_V3_HCUDA_MAXBF', '0') or 0)          # widest B F for the CUDA kernels (0: any)
+HS = int(os.environ.get('OPL_V3_HCUDA_HS', '0') or 0)                # scatter head sum: 0 fused, 1 left to right, 2 pairwise
 _LIB = None
 _ERR = None
 
@@ -38,7 +40,7 @@ def _lib():
         os.replace(tmp, so)
     lib = ctypes.CDLL(so)
     lib.hk_gather.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
-    lib.hk_scatter.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
+    lib.hk_scatter.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     rc = lib.hk_init()
     if rc != 0:
         raise RuntimeError(f'HK_INIT:{rc}')
@@ -47,10 +49,10 @@ def _lib():
 
 
 def usable(H, S, BF, w, hn, on=None):
-    """The CUDA kernels apply: switch on, library built (a failure is remembered), 27 slots, 4 heads, B F <= 128,
-    int64 node indices, 16-byte aligned contiguous float32 weights."""
+    """The CUDA kernels apply: switch on, library built (a failure is remembered), 27 slots, 4 heads, B F <= MAXBF
+    (when set), int64 node indices, 16-byte aligned contiguous float32 weights."""
     global _ERR
-    if not (ON if on is None else on) or _ERR is not None or H != 4 or S != 27 or BF > 128:
+    if not (ON if on is None else on) or _ERR is not None or H != 4 or S != 27 or (MAXBF and BF > MAXBF):
         return False
     if hn.dtype != torch.int64 or w.dtype != torch.float32 or not w.is_contiguous() or w.data_ptr() % 16:
         return False
@@ -72,12 +74,12 @@ def gather(src, hn, w, deg, out, use_deg):
     return out
 
 
-def scatter(src, hn, w, deg, out, rmask, use_deg):
+def scatter(src, hn, w, deg, out, rmask, use_deg, hs=None):
     """out (N x BF) += sum_h w[e, s, h] src[h, e] at row hn[e, s] (rows with rmask != 0 skipped)."""
     Eh, BF = hn.shape[0], src.shape[2]
     rc = _lib().hk_scatter(src.data_ptr(), hn.data_ptr(), w.data_ptr(), deg.data_ptr(), out.data_ptr(),
                            rmask.data_ptr() if rmask is not None else None, Eh, BF, int(bool(use_deg)),
-                           torch.cuda.current_stream(src.device).cuda_stream)
+                           int(HS if hs is None else hs), torch.cuda.current_stream(src.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'HK_SCATTER:{rc}')
     return out

@@ -1,9 +1,11 @@
 """P16 (OPL_V3_HCUDA): fastnet's hyperedge gather / scatter as CUDA kernels (hyperk.py, hyper_kernel.cu: one warp per
-hyperedge) against fused_hyper's Triton kernels (S10 tiles) on a full plate cell's element, face and fringe layers,
-B = 1, 2, 3, 4: gather bitwise (forward weights a, and b / deg as in the adjoint), scatter to rounding (b / deg with the
-port mask as in the forward; a as in the adjoint) and on a collision-free subset (one atomic add per row), device time
-per call (CUDA events; warm, back to back, and cold: a 256 MB buffer rewritten before each call).
-usage: python t_hyperk.py BODY_DIR:CASE [--B 1,2,3,4] [--rep 50]"""
+hyperedge and column slice) against fused_hyper's Triton kernels (S10 tiles up to B F = 128, the original kernels
+beyond) on a full plate cell's element, face and fringe layers, B = 1, 2, 3, 4, 8, 16: gather bitwise (forward weights
+a, and b / deg as in the adjoint), scatter to rounding (b / deg with the port mask as in the forward; a as in the
+adjoint) and on a collision-free subset (one atomic add per row: bitwise for the head-sum order that matches the
+Triton kernel's, HS = 0 / 1 / 2), device time per call (CUDA events; warm, back to back, and cold: a 256 MB buffer
+rewritten before each call).
+usage: python t_hyperk.py BODY_DIR:CASE [--B 1,2,3,4,8,16] [--rep 50]"""
 import os, sys, json, argparse
 SRC = os.environ.get('SRC', '/root/autodl-tmp/OPL/src_v3'); sys.path.insert(0, SRC)
 os.environ.setdefault('OPL_TAILT_FUSED', '1'); os.environ.setdefault('OPL_COARSE_FP32', '1')
@@ -13,7 +15,7 @@ import torch
 import teacher as TE, trainlib as TL, fastnet as FN, bench_deploy as BD, fastidx as FI
 import fused_hyper as FH, hyperk as HK
 
-ap = argparse.ArgumentParser(); ap.add_argument('spec'); ap.add_argument('--B', default='1,2,3,4')
+ap = argparse.ArgumentParser(); ap.add_argument('spec'); ap.add_argument('--B', default='1,2,3,4,8,16')
 ap.add_argument('--rep', type=int, default=50)
 a = ap.parse_args()
 FN.FUSED = True; FI.ON = True
@@ -98,9 +100,12 @@ with torch.no_grad():
                                            triton=with_hk(False, lambda: both(lambda: FH.scatter(Zs, L.hn, w, L.deg, N, FH.BLK, dg, rmask=rm), a.rep)),
                                            cuda=with_hk(True, lambda: both(lambda: FH.scatter(Zs, L.hn, w, L.deg, N, FH.BLK, dg, rmask=rm), a.rep)))
             c0 = with_hk(False, lambda: FH.scatter(Zcf, hn_cf, b_cf, L.deg, N, FH.BLK, True))
-            c1 = with_hk(True, lambda: FH.scatter(Zcf, hn_cf, b_cf, L.deg, N, FH.BLK, True))
-            r['scatter_cf'] = dict(bit=bool(torch.equal(c0, c1)), rel=float((c1 - c0).abs().max() / c0.abs().max()),
-                                   ulp_rows=int((c1 != c0).any(1).sum()))
+            for hs in (0, 1, 2):
+                old_hs, HK.HS = HK.HS, hs
+                c1 = with_hk(True, lambda: FH.scatter(Zcf, hn_cf, b_cf, L.deg, N, FH.BLK, True))
+                HK.HS = old_hs
+                r[f'scatter_cf_hs{hs}'] = dict(bit=bool(torch.equal(c0, c1)), rel=float((c1 - c0).abs().max() / c0.abs().max()),
+                                               rows_diff=int((c1 != c0).any(1).sum()))
             res[f'{name}_B{B}'] = r
             print(json.dumps({f'{name}_B{B}': r}), flush=True)
 print(json.dumps(res), flush=True)
