@@ -75,6 +75,7 @@ def _csr(rows, cols, vals, shape):
 
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
+HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
 CONVT = os.environ.get('OPL_V3_CONVT', '1') == '1'                               # src_v3 S27: transposed convolutions as
 # forward convolutions with the flipped, channel-swapped weight (stride 1, padding 1: the same sums; cuDNN's transposed
 # 3-D convolution is ~3.5x slower than its forward one here, and not reproducible run to run)
@@ -111,11 +112,23 @@ class _Hyper:
     def set_ab(self, a, b):
         self.a, self.b = a.detach().to(f32).contiguous(), b.detach().to(f32).contiguous()
 
+    def _hf(self, X, ga, sb, W, gdeg, sdeg, out=None, rmask=None):
+        """src_v3 P8 (OPL_V3_HFUSE=1): gather, channel mix and scatter in one kernel (hyperfused.layer), adding onto out
+        (a fresh tensor: the kernel reads X while it scatters, so out must not alias X) or onto zeros."""
+        import hyperfused as HF
+        N, B, F = X.shape
+        if out is None:
+            out = torch.zeros((N, B * F), dtype=torch.float32, device=X.device)
+        HF.layer(X.reshape(N, B * F).contiguous(), self.hn, ga, sb, self.deg, W, out, gdeg, sdeg, rmask=rmask)
+        return out.view(N, B, F)
+
     def drop_ab(self):
         self.a = self.b = None
 
     def fwd(self, X):
         N, B, F = X.shape
+        if self.fused and HFUSE:
+            return self._hf(X, self.a, self.b, self.W, False, True)
         if self.fused:
             import fused_hyper as FH
             Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
@@ -128,6 +141,8 @@ class _Hyper:
     def fwd_res(self, X):
         """X + fwd(X) with the residual folded into the scatter (fused path only)."""
         N, B, F = X.shape
+        if HFUSE:
+            return self._hf(X, self.a, self.b, self.W, False, True, out=X.reshape(N, B * F).clone())
         import fused_hyper as FH
         Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
@@ -137,6 +152,9 @@ class _Hyper:
         """src_v3 S24: where(port, X0, X + fwd(X)) as fwd_res + FastNet._clamp, in two launches fewer: the scatter adds
         onto where(port, X0, X) and skips the port rows (their result is X0 either way)."""
         N, B, F = X.shape
+        if HFUSE:
+            return self._hf(X, self.a, self.b, self.W, False, True, out=torch.where(pmask, X0, X).reshape(N, B * F),
+                            rmask=pm8)
         import fused_hyper as FH
         Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
@@ -146,6 +164,8 @@ class _Hyper:
     def adj_inplace(self, A):
         """src_v3 S24: adj_res(A) adding onto A itself (a fresh tensor of the caller) instead of a copy."""
         N, B, F = A.shape
+        if HFUSE:                                                                       # (the fused kernel reads A)
+            return self._hf(A, self.b, self.a, self.Wt, True, False, out=A.reshape(N, B * F).clone())
         import fused_hyper as FH
         Z = FH.gather(A.reshape(N, B * F), self.hn, self.b, self.deg, self.H, FH.BLK, True)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.Wt).view(self.H, self.Eh, B * F)
@@ -154,6 +174,8 @@ class _Hyper:
     def adj_res(self, Y):
         """Y + adj(Y) with the residual folded into the scatter (fused path only)."""
         N, B, F = Y.shape
+        if HFUSE:
+            return self._hf(Y, self.b, self.a, self.Wt, True, False, out=Y.reshape(N, B * F).clone())
         import fused_hyper as FH
         Z = FH.gather(Y.reshape(N, B * F).contiguous(), self.hn, self.b, self.deg, self.H, FH.BLK, True)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.Wt).view(self.H, self.Eh, B * F)
@@ -161,6 +183,8 @@ class _Hyper:
 
     def adj(self, Y):
         N, B, F = Y.shape
+        if self.fused and HFUSE:
+            return self._hf(Y, self.b, self.a, self.Wt, True, False)
         if self.fused:
             import fused_hyper as FH
             Z = FH.gather(Y.reshape(N, B * F).contiguous(), self.hn, self.b, self.deg, self.H, FH.BLK, True)
