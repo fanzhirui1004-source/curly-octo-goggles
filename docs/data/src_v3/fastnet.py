@@ -63,6 +63,9 @@ def _csr(rows, cols, vals, shape):
     return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
 
 
+SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '0') == '1'                         # src_v3 S19 (slotfused.clip_scale)
+
+
 class _Hyper:
     """One hyperedge layer: nodes hn (Eh x 27), slot weights a, b (Eh x 27 x H), channel mixes W (H x F x F)."""
 
@@ -251,22 +254,31 @@ class FastNet:
             if st == 'off':
                 return x
             return MD._SoftClip.apply(x, getattr(m, 'bnd_' + name).view(shape), st == 'mixed', m.bound_knee)
+        def fused(name):                                                 # src_v3 S19: one Triton pass for * 0.2 + clip
+            st = m._bst[name] if m.bounded else 'off'
+            return SLOTFUSE and (st == 'off' or m.bound_knee > 0), st
+
+        def head(mod, x, name, shape):
+            on, st = fused(name)
+            if on:
+                import slotfused as SF
+                raw = mod(x)
+                A = getattr(m, 'bnd_' + name) if st != 'off' else None
+                return SF.clip_scale(raw.reshape(-1, raw.shape[-1]), A, st, m.bound_knee, 0.2, m.H).reshape(shape)
+            y = mod(x).reshape(shape) * 0.2
+            return clip(name, y, (1, 1) + shape[2:4] + (1,)) if m.bounded else y
         L = m.L_pre + m.L_post
         z = torch.cat([ge[:, None, :].expand(E, 27, -1), gn[c.en], m.slot[None].expand(E, -1, -1)], 2)
-        ab = m.slot_head(z).reshape(E, 27, 2, L, m.H) * 0.2
-        xab = m.slot_head_x(z).reshape(E, 27, 2, max(m.n_fringe, 1), m.H) * 0.2
+        ab = head(m.slot_head, z, 'ab', (E, 27, 2, L, m.H))
+        xab = head(m.slot_head_x, z, 'xab', (E, 27, 2, max(m.n_fringe, 1), m.H))
         del z
         nf = len(c.gp_owner)
         ax = torch.nn.functional.one_hot(c.gp_axis, 3).to(f32)
         gf = m.face_in(torch.cat([ge[c.gp_owner], ge[c.gp_nbr], ax], 1))
         zf = torch.cat([gf[:, None, :].expand(nf, 27, -1), gn[c.fn], m.fslot[None].expand(nf, -1, -1)], 2)
         Lg = L + m.n_fringe
-        fab = m.fslot_head(zf).reshape(nf, 27, 2, Lg, m.H) * 0.2
+        fab = head(m.fslot_head, zf, 'fab', (nf, 27, 2, Lg, m.H))
         del zf, gf
-        if m.bounded:
-            ab = clip('ab', ab, (1, 1, 2, L, 1))
-            fab = clip('fab', fab, (1, 1, 2, Lg, 1))
-            xab = clip('xab', xab, (1, 1, 2, max(m.n_fringe, 1), 1))
         return ab, fab, xab
 
     def _assign_slots(self, ab, fab, xab):
