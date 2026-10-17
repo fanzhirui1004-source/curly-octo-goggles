@@ -62,3 +62,49 @@ def symv_(y, P, dofs, x, BI=None, warps=None, onehot=True, cols=16):
         _symv_up[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=bi, NBLK=nblk, ONEHOT=onehot,
                        num_warps=warps or (2 if BP <= 4 else 4))
     return y
+
+
+@triton.jit
+def _symv_up_p(P_ptr, dofs_ptr, x_ptr, y_ptr, B, LD, kmap_ptr, BP: tl.constexpr, BI: tl.constexpr, NBLK: tl.constexpr,
+               STAGES: tl.constexpr, MAP: tl.constexpr):
+    """_symv_up with the row-block loop software-pipelined (tl.range, STAGES tiles of P in flight per program; the
+    product reads P once from DRAM per call, so its speed is bandwidth / memory-level parallelism); row results folded
+    into the column accumulator (one-hot), one atomic scatter per element. Same products and sums as _symv_up."""
+    e = tl.program_id(0).to(tl.int64)
+    if MAP:
+        ke = tl.load(kmap_ptr + e).to(tl.int64)
+    else:
+        ke = e
+    j = tl.arange(0, 128)
+    mj = j < 81
+    c = tl.arange(0, BP)
+    mc = c < B
+    dj = tl.load(dofs_ptr + e * 81 + j, mask=mj, other=0).to(tl.int64)
+    X = tl.load(x_ptr + dj[:, None] * LD + c[None, :], mask=mj[:, None] & mc[None, :], other=0.0)          # [128, BP]
+    acc = tl.zeros([128, BP], dtype=tl.float32)
+    for blk in tl.range(0, NBLK, num_stages=STAGES):
+        i = blk * BI + tl.arange(0, BI)
+        mi = i < 81
+        off = i * 81 - (i * (i - 1)) // 2
+        up = (j[None, :] >= i[:, None]) & mi[:, None] & mj[None, :]
+        K = tl.load(P_ptr + ke * 3321 + off[:, None] + (j[None, :] - i[:, None]), mask=up, other=0.0)      # [BI, 128]
+        Yr = tl.sum(K[:, :, None] * X[None, :, :], axis=1)                   # [BI, BP]
+        di = tl.load(dofs_ptr + e * 81 + i, mask=mi, other=0).to(tl.int64)
+        Xi = tl.load(x_ptr + di[:, None] * LD + c[None, :], mask=mi[:, None] & mc[None, :], other=0.0)     # [BI, BP]
+        Ks = tl.where(j[None, :] > i[:, None], K, 0.0)
+        acc += tl.sum(Ks[:, :, None] * Xi[:, None, :], axis=0)
+        oh = j[None, :] == i[:, None]
+        acc += tl.sum(tl.where(oh[:, :, None], Yr[:, None, :], 0.0), axis=0)
+    tl.atomic_add(y_ptr + dj[:, None] * LD + c[None, :], acc, mask=mj[:, None] & mc[None, :])
+
+
+def symv_p(y, P, dofs, x, BI=16, warps=2, stages=2, kmap=None):
+    """y += Ke(P) x via _symv_up_p, at most 2 columns per launch (test entry point)."""
+    E = dofs.shape[0]
+    B = x.shape[1]
+    for j in range(0, B, 2):
+        nbc = min(2, B - j)
+        _symv_up_p[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, kmap if kmap is not None else dofs,
+                         BP=triton.next_power_of_2(nbc), BI=BI, NBLK=(81 + BI - 1) // BI, STAGES=stages,
+                         MAP=kmap is not None, num_warps=warps)
+    return y
