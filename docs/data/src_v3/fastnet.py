@@ -53,6 +53,16 @@ def _shared_t(W):
     return t
 
 
+def _shared_flipT(W):
+    """src_v3 S27: the forward-convolution weight equal to conv_transpose3d with W (stride 1): W' = W with the in / out
+    channels swapped and the kernel flipped, one per parameter storage (shared by all cells)."""
+    key = ('flipT', W.data_ptr(), tuple(W.shape), tuple(W.stride()))
+    t = _SHARED.get(key)
+    if t is None:
+        t = _SHARED[key] = _share(W.transpose(-5, -4).flip(-3, -2, -1).contiguous())
+    return t
+
+
 def _csr(rows, cols, vals, shape):
     """CSR from (unsorted, duplicate-free) triplets."""
     key = rows * shape[1] + cols
@@ -65,6 +75,9 @@ def _csr(rows, cols, vals, shape):
 
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
+CONVT = os.environ.get('OPL_V3_CONVT', '0') == '1'                               # src_v3 S27: transposed convolutions as
+# forward convolutions with the flipped, channel-swapped weight (stride 1, padding 1: the same sums; cuDNN's transposed
+# 3-D convolution is ~3.5x slower than its forward one here, and not reproducible run to run)
 
 
 class _Hyper:
@@ -391,7 +404,7 @@ class FastNet:
             g = self.gates[l][:, k]
             if transpose:
                 dense = NF.conv_in(Xc, self._cinv[l], m_ ** 3, g)
-                v = Fn.conv_transpose3d(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), self.convs[l][k], padding=1)
+                v = self._convt(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), l, k)
                 return NF.conv_out(Xc, v.reshape(B, F, m_ ** 3), t['dense_idx'])
             dense = NF.conv_in(Xc, self._cinv[l], m_ ** 3)
             v = Fn.conv3d(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), self.convs[l][k], padding=1)
@@ -399,11 +412,17 @@ class FastNet:
         dense = torch.zeros((m_ ** 3, B, F), device=dev)
         if transpose:
             dense.index_copy_(0, t['dense_idx'], Xc * self.gates[l][:, k][:, None, :])
-            v = Fn.conv_transpose3d(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), self.convs[l][k], padding=1)
+            v = self._convt(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), l, k)
             return Xc + v.reshape(B, F, m_ ** 3).permute(2, 0, 1)[t['dense_idx']]
         dense.index_copy_(0, t['dense_idx'], Xc)
         v = Fn.conv3d(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), self.convs[l][k], padding=1)
         return Xc + v.reshape(B, F, m_ ** 3).permute(2, 0, 1)[t['dense_idx']] * self.gates[l][:, k][:, None, :]
+
+    def _convt(self, x, l, k):
+        """conv_transpose3d(x, convs[l][k], padding=1), or with OPL_V3_CONVT=1 (S27) the equal forward convolution."""
+        if CONVT:
+            return Fn.conv3d(x, _shared_flipT(self.convs[l])[k], padding=1)
+        return Fn.conv_transpose3d(x, self.convs[l][k], padding=1)
 
     def _sp(self, A, X):
         n, B, F = X.shape
