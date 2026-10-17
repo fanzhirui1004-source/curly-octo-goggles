@@ -6,6 +6,7 @@
 W=/root/autodl-tmp/OPL/V3W; S=$W/scripts; SP=$W/plate/body_S24:plateS24_040_o000
 bash $S/tst.sh gemmsites t_gemmsites.py $SP
 bash $S/tst.sh symv6 t_symv6.py $SP
+bash $S/tst.sh color t_color.py $SP
 bash $S/tst.sh clampfree t_clampfree.py $SP
 bash $S/tst.sh sw_clampfree t_switch.py $SP --sw fastnet.CLAMPFREE
 bash $S/tst.sh hfuse2 t_hfuse2.py $SP
