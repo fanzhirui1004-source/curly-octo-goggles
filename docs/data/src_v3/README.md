@@ -65,3 +65,17 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | OPL_V3_KC64 | 0 | check only: the float32 correction's K products in float64 (rounded), the reference for P13 |
 | OPL_V3_PCG_BLOCK | 0 | category B: block PCG for several right-hand sides (lat_precond.bpcg) (P1) |
 | OPL_V3_PCG_RITZ | (off) | category B: "m,k": after m steps the k smallest Ritz vectors join the coarse space, PCG restarts (lat_precond.rpcg) (P1) |
+| OPL_V3_KPP_DISK / OPL_V3_KPP_DIR | 1 / TMP/kpp_<pid> | round 4, 1a: every cell's K_PP upper triplets written to a scratch file after its front end, read back at the lattice assembly (kppstore.py); bitwise the same |
+| OPL_V3_KPP_CSR | 1 | round 4, 2a: lattice K_PP assembled in row blocks straight to CSR (int32 columns), Jacobi scaling in place per row block: device transient 2549 -> 673 MiB on the 51-cell plate, bitwise the same |
+| OPL_V3_DROP | 1 | round 4, 1b: after the setup (slim_deploy) the moments M and the ghost-face DOF arrays are dropped (the volume kept; fallbacks rebuild them) |
+| OPL_V3_HN32 / OPL_V3_TSHARE | 1 / 1 | round 4, 1c: int32 hyperedge node lists with one copy of the fringe subsets; transfer matrices R^T / P and P^T / R share their index arrays |
+| OPL_V3_GRAPH_MAIN | 0 | round 4, 2c: no CUDA graphs captured on the default stream (they were never replayed; one memory pool fewer) |
+| OPL_V3_COARSE_TT / OPL_V3_COARSE_ZT | 0 / 1 | round 4, 2c: T^T as a view of T (rounding level); Z^T kept as its own CSR (without it each product is 33x slower) |
+| OPL_V3_PCG_TRIM | 2 | round 4, 2c: the allocator cache returned to the device once after this PCG step (0: never): PCG-phase device use 7.62 -> 6.70 GiB on the 51-cell plate |
+| OPL_V3_AZB_FP32 | 0 | category B: the coarse space's A Z blocks stored in float32, upcast per use |
+| OPL_V3_SENS_NOCUT | 1 | round 4, 3: the sensitivity pass leaves out the tetrahedra no tau-dependent clip cut (their vertices are constants): bitwise the same, 8-17% fewer tetrahedra |
+| OPL_V3_SENS_ROWS | 0 | sensitivity pass: one row-indexed tetrahedron VJP per row batch (fast_tet2.TetMomentsRows: no (T, 125) zero output or gradient copy); same values (batch-size study, scripts/t_sensd.py) |
+| --ad-batch | 512 (lat_scale, opt_design) | element rows per reverse pass of the sensitivities; the plate / loop runners pass ADB (see CHANGES_CN round 4, item 3b) |
+| OPL_V3_PCG_RECYCLE | (off) | category B: "m,k[,kmax]": opt_design carries the k slowest Ritz directions of a design iteration's PCG to the next one (lat_precond.pcg_recycle); fewer PCG steps, no time saved (round 4, item 4) |
+| --reuse-prec N | 0 | opt_design, category B: keep the K_PP factor for N design iterations (matched DOFs, Jacobi elsewhere); not useful: 218-628 instead of 138-168 PCG steps (round 4, item 4) |
+| OPL_V3_CUDSS_REORDER | (cuDSS default) | test option: cuDSS reordering algorithm of the K_PP factor (DEFAULT, NESTED_DISSECTION, AMD, ...) |
