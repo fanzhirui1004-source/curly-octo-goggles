@@ -50,6 +50,7 @@ def sync():
 # src_v3: per-pattern constants (T_m, its upper triangle, float32 copies, index maps) are the same for every cell with the
 # same node ordering, material and grid; one device copy is shared and flagged so that stream_ops never streams it.
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
+GC_YOUNG = os.environ.get('OPL_V3_GC', 'young') == 'young'                # src_v3 S17: 'full' = src_v2's collections
 KE64 = os.environ.get('OPL_V3_KE64', 'auto')                           # src_v3: 'auto' | 'store' | 'form' (Cell.store64)
 GF_CAT = os.environ.get('OPL_V3_GFCAT', '0') == '1'                    # src_v3: concatenated ghost-face DOF lists
 _SHARED = {}
@@ -85,7 +86,7 @@ def _collect():
     """gc.collect + empty_cache between deployment steps. src_v3 (OPL_V3_SLIM=1): the young generations only (the per-cell
     temporaries are freed by reference counting; a full collection traverses every live object, ~40 ms a call, four
     calls per cell); the drivers collect fully once after their front end."""
-    gc.collect(1 if SLIM else 2)
+    gc.collect(1 if SLIM and GC_YOUNG else 2)
     torch.cuda.empty_cache()
 
 

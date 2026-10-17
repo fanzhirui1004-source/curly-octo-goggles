@@ -43,7 +43,7 @@ for j, case in enumerate(a.cases.split(',')):
     t = mark('kpp_host', t)
     FN.slim_deploy(op, geo, C, model); t = mark('slim_deploy', t)
     so = SO.StreamedOp(op, C, [op.fast, geo, C]); t = mark('stream_op', t)
-    gc.collect(); torch.cuda.empty_cache(); t = mark('gc_empty', t)
+    TE._collect() if hasattr(TE, '_collect') else (gc.collect(), torch.cuda.empty_cache()); t = mark('gc_empty', t)   # as the drivers
     st['total'] = round(sum(v for v in st.values()), 3)
     rows.append(dict(case=case, elements=int(len(C.cells)), **st))
     print(json.dumps(rows[-1]), flush=True)

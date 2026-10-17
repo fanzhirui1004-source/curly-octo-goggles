@@ -32,3 +32,4 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | OPL_V3_HOST_TOP / OPL_V3_HOST_TRANSIENT | 0.95 / 3 | host budget target: fraction of the limit, minus a reserve of 3 x the cells' K_PP host triplets for the factorisation peak (S14b); OPL_V3_HOST_FRAC: S14's fixed fraction instead |
 | OPL_COARSE_BLK / OPL_COARSE_BLK_MAXFRAC | 0 / 0.5 | block-structured cell coarse inverse: octants + separator Schur complement, ~7x less memory than the packed inverse (S15) |
 | (no switch) | | the drivers' per-cell K_PP host triplets are freed once the lattice K_PP is assembled (S16, with OPL_V3_SLIM) |
+| OPL_V3_GC | young | per-cell garbage collections of the front end: young generations only, one full collection after it (`full`: as src_v2) (S17) |
