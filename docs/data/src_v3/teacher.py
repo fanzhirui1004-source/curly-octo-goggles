@@ -51,6 +51,7 @@ def sync():
 # same node ordering, material and grid; one device copy is shared and flagged so that stream_ops never streams it.
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 KE64 = os.environ.get('OPL_V3_KE64', 'store')                          # src_v3: 'store' | 'form' (Cell.store64)
+GF_CAT = os.environ.get('OPL_V3_GFCAT', '0') == '1'                    # src_v3: concatenated ghost-face DOF lists
 _SHARED = {}
 
 
@@ -167,6 +168,7 @@ class GhostFaces:
         self.chunk, self.dtype = chunk, dtype
         if like is not None:                                                    # same faces, other precision
             self.idxT, self.faces = like.idxT, like.faces
+            self.iTc, self.cuts = getattr(like, 'iTc', None), getattr(like, 'cuts', None)
             self.B = [B.to(dtype) for B in like.B]
             return
         d = Path(C._body_dir) / C.case
@@ -182,7 +184,15 @@ class GhostFaces:
         # src_v3: the face DOF lists are stored transposed (135 x faces, contiguous), so the template products gather and
         # scatter in GEMM layout directly (src_v2 permuted and copied both ways in every product); `idx` is the
         # faces x 135 view used by the setup code
-        self.idxT = [torch.as_tensor(dofs[faces[:, 2] == k].T.copy(), dtype=torch.int32, device=dev) for k in range(len(offs))]
+        self.iTc = self.cuts = None
+        if GF_CAT:                                                              # src_v3: one 135 x faces array, templates
+            parts = [dofs[faces[:, 2] == k] for k in range(len(offs))]          # in order; idxT are column views of it
+            cuts = np.cumsum([0] + [len(p_) for p_ in parts])
+            self.iTc = torch.as_tensor(np.concatenate(parts, 0).T.copy(), dtype=torch.int32, device=dev)
+            self.cuts = [int(c_) for c_ in cuts]
+            self.idxT = [self.iTc[:, self.cuts[k]:self.cuts[k + 1]] for k in range(len(offs))]
+        else:
+            self.idxT = [torch.as_tensor(dofs[faces[:, 2] == k].T.copy(), dtype=torch.int32, device=dev) for k in range(len(offs))]
         self.B = [torch.as_tensor(tpl['canonical'][k], dtype=dtype, device=dev) for k in range(len(offs))]
         self.faces = len(faces)
 
@@ -193,6 +203,17 @@ class GhostFaces:
     def matvec(self, x, y):
         """y += G x (x, y: nb x b, self.dtype)."""
         b = x.shape[1]
+        if FI.ON and self.iTc is not None and x.is_contiguous():               # src_v3 (GF_CAT): one gather, the template
+            iT = self.iTc                                                       # GEMMs on column blocks (leading dimension,
+            F = iT.shape[1]                                                     # no copies), one index_add
+            X = (FI.rows(x, iT) if b > 1 else x[iT]).reshape(iT.shape[0], F * b)
+            Y = torch.empty_like(X)
+            for k, B in enumerate(self.B):
+                lo, hi = self.cuts[k] * b, self.cuts[k + 1] * b
+                if hi > lo:
+                    torch.mm(B.t(), B @ X[:, lo:hi], out=Y[:, lo:hi])
+            y.index_add_(0, iT.reshape(-1), Y.reshape(-1, b))
+            return y
         if FI.ON:                                                               # one block per face template
             for iT, B in zip(self.idxT, self.B):
                 X = FI.rows(x, iT) if b > 1 else x[iT]                          # 135 x faces x b (GEMM layout)
