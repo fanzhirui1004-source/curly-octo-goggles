@@ -159,6 +159,71 @@ static void hs_nc(const float* src, const int64_t* hn, const float* w, const flo
     else hs_go<4, HS>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
 }
 
+// src_v3 P18: one hyperedge layer in one kernel (hyperfused.layer, fastnet with OPL_V3_HFUSE): for hyperedge e and right-
+// hand side b (F = 32 channels, lane f): Z[h] = sum_s ga[e, s, h] X[hn[e, s], b, f] (ga / deg with GDEG; slot order,
+// fused multiply-adds: hg_kernel's Z bitwise), the channel mix Z'[h, g] = sum_f Z[h, f] W[h, f, g] (lane g; Z[h, f] by
+// warp shuffles, W in shared memory; f in order: cuBLAS sums in another order, rounding level), then out[hn[e, s], b, g] +=
+// sum_h sb[e, s, h] Z'[h, g] (sb / deg with SDEG; rows with rmask != 0 skipped; hs_kernel's fused head sum). Z and Z'
+// stay in registers. Warps loop over hyperedges (W staged once per block).
+template <bool GDEG, bool SDEG, bool RMASK>
+__global__ void __launch_bounds__(32 * HK_WARPS)
+hl_kernel(const float* __restrict__ X, const int64_t* __restrict__ hn, const float* __restrict__ ga,
+          const float* __restrict__ sb, const float* __restrict__ deg, const float* __restrict__ W, float* __restrict__ out,
+          const uint8_t* __restrict__ rmask, int Eh, int BF)
+{
+    __shared__ float sW[4 * 32 * 32];
+    __shared__ int64_t sN[HK_WARPS][27];
+    __shared__ float4 sA[HK_WARPS][27], sB[HK_WARPS][27];
+    __shared__ unsigned int sK[HK_WARPS];                         // skip bits (rmask) of the 27 slots
+    for (int i = threadIdx.x; i < 4 * 32 * 32; i += 32 * HK_WARPS) sW[i] = W[i];
+    __syncthreads();
+    const int wid = threadIdx.x >> 5, lane = threadIdx.x & 31;
+    const int c0 = blockIdx.y * 32;
+    for (int e = blockIdx.x * HK_WARPS + wid; e < Eh; e += gridDim.x * HK_WARPS) {   // (whole warps)
+        bool skip = false;
+        if (lane < 27) {
+            const int64_t n = hn[(int64_t)e * 27 + lane];
+            float4 a = reinterpret_cast<const float4*>(ga)[(int64_t)e * 27 + lane];
+            float4 b = reinterpret_cast<const float4*>(sb)[(int64_t)e * 27 + lane];
+            if (GDEG || SDEG) {
+                const float d = deg[n];
+                if (GDEG) { a.x = div_full(a.x, d); a.y = div_full(a.y, d); a.z = div_full(a.z, d); a.w = div_full(a.w, d); }
+                if (SDEG) { b.x = div_full(b.x, d); b.y = div_full(b.y, d); b.z = div_full(b.z, d); b.w = div_full(b.w, d); }
+            }
+            if (RMASK) skip = rmask[n] != 0;
+            sN[wid][lane] = n; sA[wid][lane] = a; sB[wid][lane] = b;
+        }
+        const unsigned int kb = __ballot_sync(0xffffffffu, skip);
+        if (lane == 0) sK[wid] = kb;
+        __syncwarp();
+        float z0 = 0.f, z1 = 0.f, z2 = 0.f, z3 = 0.f;
+#pragma unroll
+        for (int s = 0; s < 27; s++) {
+            const float x = X[sN[wid][s] * BF + c0 + lane];
+            const float4 a = sA[wid][s];
+            z0 = fmaf(a.x, x, z0); z1 = fmaf(a.y, x, z1); z2 = fmaf(a.z, x, z2); z3 = fmaf(a.w, x, z3);
+        }
+        float p0 = 0.f, p1 = 0.f, p2 = 0.f, p3 = 0.f;
+#pragma unroll 8
+        for (int f = 0; f < 32; f++) {
+            const float y0 = __shfl_sync(0xffffffffu, z0, f), y1 = __shfl_sync(0xffffffffu, z1, f);
+            const float y2 = __shfl_sync(0xffffffffu, z2, f), y3 = __shfl_sync(0xffffffffu, z3, f);
+            p0 = fmaf(y0, sW[f * 32 + lane], p0);
+            p1 = fmaf(y1, sW[1024 + f * 32 + lane], p1);
+            p2 = fmaf(y2, sW[2048 + f * 32 + lane], p2);
+            p3 = fmaf(y3, sW[3072 + f * 32 + lane], p3);
+        }
+        const unsigned int sk = sK[wid];
+#pragma unroll
+        for (int s = 0; s < 27; s++) {
+            if (RMASK && ((sk >> s) & 1u)) continue;              // (uniform in the warp)
+            const float4 b = sB[wid][s];
+            atomicAdd(out + sN[wid][s] * BF + c0 + lane, hsum<0>(b, p0, p1, p2, p3));
+        }
+        __syncwarp();                                             // (the slot tables are reused by the next hyperedge)
+    }
+}
+
 // src_v3 P17: one slot head of fastnet's slot weights (slotdec): for rows r = 27 e' + s of a hyperedge set (e = emap[e']
 // when given), u = (P[e] + Q[idx[27 e + s]]) + R[s] (64 channels), h = GELU(u) (erf), then for the OS selected output
 // columns o = cols[j] of the head ((2, LH, 4) layout: o = (ab LH + l) 4 + hh): y = 0.2 (h . W2[o] + b2[o]), soft clip
@@ -263,6 +328,9 @@ int hk_init()
 {
     cudaFuncAttributes at;                                        // load the kernels now (not during a graph capture)
     cudaFuncGetAttributes(&at, sd_head_kernel<32>); cudaFuncGetAttributes(&at, sd_head_kernel<64>);
+    cudaFuncGetAttributes(&at, hl_kernel<false, true, false>); cudaFuncGetAttributes(&at, hl_kernel<false, true, true>);
+    cudaFuncGetAttributes(&at, hl_kernel<true, false, false>); cudaFuncGetAttributes(&at, hl_kernel<true, false, true>);
+    cudaFuncGetAttributes(&at, hl_kernel<false, false, false>); cudaFuncGetAttributes(&at, hl_kernel<true, true, false>);
     cudaFuncGetAttributes(&at, hg_kernel<1, false>); cudaFuncGetAttributes(&at, hg_kernel<1, true>);
     cudaFuncGetAttributes(&at, hg_kernel<2, false>); cudaFuncGetAttributes(&at, hg_kernel<2, true>);
     cudaFuncGetAttributes(&at, hg_kernel<3, false>); cudaFuncGetAttributes(&at, hg_kernel<3, true>);
@@ -345,6 +413,30 @@ int sd_head(const float* P, const float* Q, int q_ld, const float* R, const int6
                                               LH, knee, clip, b3);
     else
         return -1;
+    return (int)cudaGetLastError();
+}
+
+// P18: out (N x BF) += one hyperedge layer applied to X (N x BF), BF = 32 B; W (4, 32, 32); rmask may be null
+int hk_layer(const float* X, const int64_t* hn, const float* ga, const float* sb, const float* deg, const float* W,
+             float* out, const uint8_t* rmask, int Eh, int BF, int gdeg, int sdeg, int blocks, void* stream)
+{
+    if (Eh <= 0 || BF <= 0) return 0;
+    if (BF % 32) return -1;
+    cudaStream_t s = (cudaStream_t)stream;
+    int gx = (Eh + HK_WARPS - 1) / HK_WARPS;
+    if (blocks > 0 && gx > blocks) gx = blocks;
+    const dim3 grid(gx, BF / 32);
+    if (gdeg && !sdeg) {
+        if (rmask) hl_kernel<true, false, true><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+        else hl_kernel<true, false, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    } else if (!gdeg && sdeg) {
+        if (rmask) hl_kernel<false, true, true><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+        else hl_kernel<false, true, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    } else if (gdeg && sdeg) {
+        hl_kernel<true, true, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    } else {
+        hl_kernel<false, false, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    }
     return (int)cudaGetLastError();
 }
 

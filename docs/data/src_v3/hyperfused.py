@@ -16,6 +16,8 @@ import triton.language as tl
 
 ON = os.environ.get('OPL_V3_HFUSE', '0') == '1'
 V4 = os.environ.get('OPL_V3_HFUSE_V4', '1') == '1'
+CUDA = os.environ.get('OPL_V3_HFUSE_CUDA', '1') == '1'                  # src_v3 P18: hyper_kernel.cu's hl_kernel
+import hyperk as HK
 
 
 @triton.jit
@@ -61,6 +63,10 @@ def layer(X, hn, ga, sb, deg, W, out, gdeg, sdeg, rmask=None, eb=None, fc=None, 
     Four heads (the model's H): the 2-D dot form layer4 (V4, default); OPL_V3_HFUSE_V4=0: the first form."""
     N, BF = X.shape
     H, F = W.shape[0], W.shape[1]
+    if CUDA and H == 4 and F == 32 and fc is None and eb is None and X.is_contiguous() and out.is_contiguous() \
+            and W.is_contiguous() and HK.usable(H, hn.shape[1], BF, ga, hn, on=True) \
+            and HK.usable(H, hn.shape[1], BF, sb, hn, on=True):                    # src_v3 P18: the CUDA layer
+        return HK.layer(X, hn, ga, sb, deg, W, out, gdeg, sdeg, rmask=rmask)
     if V4 and H == 4 and fc is None:
         return layer4(X, hn, ga, sb, deg, W, out, gdeg, sdeg, rmask=rmask)
     Eh, S = hn.shape

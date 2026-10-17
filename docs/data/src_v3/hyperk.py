@@ -43,6 +43,7 @@ def _lib():
     lib = ctypes.CDLL(so)
     lib.hk_gather.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
     lib.hk_scatter.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.hk_layer.argtypes = [ctypes.c_void_p] * 8 + [ctypes.c_int] * 5 + [ctypes.c_void_p]
     lib.sd_head.argtypes = ([ctypes.c_void_p] * 2 + [ctypes.c_int] + [ctypes.c_void_p] * 6 + [ctypes.c_int]
                             + [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_float] + [ctypes.c_int] * 2
                             + [ctypes.c_void_p])
@@ -88,4 +89,22 @@ def scatter(src, hn, w, deg, out, rmask, use_deg, hs=None):
                            int(HS if hs is None else hs), torch.cuda.current_stream(src.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'HK_SCATTER:{rc}')
+    return out
+
+
+_SMS = {}
+
+
+def layer(X, hn, ga, sb, deg, W, out, gdeg, sdeg, rmask=None, blocks=None):
+    """src_v3 P18: out (N x B F) += one hyperedge layer applied to X (hyperfused.layer's contract; F = 32, 4 heads)."""
+    dev = X.device
+    if blocks is None:
+        if dev not in _SMS:
+            _SMS[dev] = torch.cuda.get_device_properties(dev).multi_processor_count
+        blocks = 8 * _SMS[dev]
+    rc = _lib().hk_layer(X.data_ptr(), hn.data_ptr(), ga.data_ptr(), sb.data_ptr(), deg.data_ptr(), W.data_ptr(),
+                         out.data_ptr(), rmask.data_ptr() if rmask is not None else None, hn.shape[0], X.shape[1],
+                         int(bool(gdeg)), int(bool(sdeg)), int(blocks), torch.cuda.current_stream(dev).cuda_stream)
+    if rc != 0:
+        raise RuntimeError(f'HK_LAYER:{rc}')
     return out
