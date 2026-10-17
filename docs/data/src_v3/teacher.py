@@ -409,7 +409,7 @@ class _Kfp32:
     def mf_state(self):
         """src_v3 P13: the matrix-free product's per-cell data (kmf.state: element nodes, float32 quadrature weights),
         built on first use from the float64 moments (kept with this object: reset with the design)."""
-        if self._mf is None or self._mf['kind'] != KMF.kind():
+        if self._mf is None or self._mf['kind'] != KMF.kind() or self._mf.get('pts', KMF.PTS) != KMF.PTS:
             self._mf = KMF.state(self.C)
             if self._mf['kind'] == 'cuda' and self.gf is not None:
                 self._mf['gf'] = KMF.gf_state(self.C, self._mf['nd'])
@@ -812,7 +812,7 @@ class Cell:
     def mf64_state(self):
         """src_v3 P14: the float64 matrix-free product's data (kmf.state64 over fullke's partial elements; ghost faces
         with float64 Gram matrices), built on first use (reset with the design)."""
-        if getattr(self, '_mf64', None) is None:
+        if getattr(self, '_mf64', None) is None or self._mf64['pts'] != KMF.PTS:
             self._mf64 = KMF.state64(self, FK.setup(self)['f64']['part'])
         return self._mf64
 

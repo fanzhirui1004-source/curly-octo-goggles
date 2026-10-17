@@ -53,8 +53,8 @@ with torch.no_grad():
     stT = KMF.state(C)
     KMF.CUDA = True
     stC = KMF.state(C)
-    res['cuda'] = dict(kind=stC['kind'], lib_error=KMF._LIB_ERR)
-    res['state_MB'] = dict(nodes=round(stC['nd'].numel() * 4 / 2 ** 20, 2), weights=round(stC['w'].numel() * 4 / 2 ** 20, 2)
+    res['cuda'] = dict(kind=stC['kind'], lib_error=KMF._LIB_ERR, points=KMF.PTS)
+    res['state_MB'] = dict(nodes=round(stC['nd'].numel() * 4 / 2 ** 20, 2), weights=round((stC['wl'].numel() + stC['wm'].numel()) * 4 / 2 ** 20, 2)
                            if stC['kind'] == 'cuda' else None, packed=round(E * 3321 * 4 / 2 ** 20, 1))
     W = stT['WT'][:125].t().double()
     res['weights'] = dict(neg_frac=float((W < 0).double().mean()),

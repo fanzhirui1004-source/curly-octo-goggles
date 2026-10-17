@@ -46,7 +46,7 @@ with torch.no_grad():
     KMF.ON64 = True
     st = C.mf64_state()
     res['cuda'] = dict(kind=KMF.kind(), lib_error=KMF._LIB_ERR)
-    res['mf64_MB'] = round(nbytes([st['nd'], st['w'], st['gf']['fe'], st['gf']['fn'], st['gf']['G'], st['gf']['nd']]) / 2 ** 20, 2)
+    res['mf64_MB'] = round(nbytes([st['nd'], st['wl'], st['wm'], st['gf']['fe'], st['gf']['fn'], st['gf']['G'], st['gf']['nd']]) / 2 ** 20, 2)
     print(json.dumps(res), flush=True)
     for B in (1, 3, 16):
         x = torch.randn((C.nb, B), dtype=torch.float64, device=dev, generator=g)

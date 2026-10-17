@@ -37,6 +37,16 @@ MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '4'))
 EPB = int(os.environ.get('OPL_V3_KMF_EPB', '4'))                       # CUDA kernel: elements per block (2, 4, 8)
 GF = int(os.environ.get('OPL_V3_KMF_GF', '1') or 0)                   # CUDA: the ghost faces matrix-free too
 ON64 = os.environ.get('OPL_V3_KMF64', '0') == '1'                      # src_v3 P14: the float64 K product as well
+PTS = os.environ.get('OPL_V3_KMF_PTS', 'equi')                          # quadrature points: 'equi' | 'gauss'
+
+
+def points():
+    """The 5 points per axis of the fitted rule: equispaced (-1, -1/2, 0, 1/2, 1: the Q2 shape function values and
+    derivatives there are dyadic, exact in float32, so the tables carry no rounding common to all elements) or the
+    Gauss-Legendre points. Any 5 distinct points integrate the element's integrands exactly with the fitted weights."""
+    if PTS == 'gauss':
+        return np.polynomial.legendre.leggauss(5)[0]
+    return np.array([-1.0, -0.5, 0.0, 0.5, 1.0])
 FPB = int(os.environ.get('OPL_V3_KMF_FPB', '8'))                       # faces per group (4, 8)
 GF_BLOCKS = int(os.environ.get('OPL_V3_KMF_GFBLK', '0') or 0)          # blocks of the face kernel (0: 8 per SM)
 NB = int(os.environ.get('OPL_V3_KMF_NB', '0') or 0)                    # columns per block (1, 2, 4; 0: by B)
@@ -58,10 +68,10 @@ def tables(xi_nodes, n, device):
     """(DN, Vinv3T) for one node ordering xi_nodes (27 x 3 local coordinates in {-1, 0, 1}, the ordering the templates
     use) and grid parameter n: DN (3, 128, 32) float32, DN[d, q, i] = dN_i/dx_d at Gauss point q (physical: 2n d/dxi);
     Vinv3T (125, 125) float64 with w = M @ Vinv3T."""
-    key = (np.asarray(xi_nodes, np.int64).tobytes(), int(n), str(device))
+    key = (np.asarray(xi_nodes, np.int64).tobytes(), int(n), str(device), PTS)
     t = _TAB.get(key)
     if t is None:
-        g, _ = np.polynomial.legendre.leggauss(5)
+        g = points()
         V1i = np.linalg.inv(np.vander(g, 5, increasing=True).T)               # w1 = V1i m1 (V1[a, p] = g_p^a)
         Vinv3 = np.kron(np.kron(V1i, V1i), V1i)                               # [(p, q, r), (a, b, c)], row-major
         xi = np.asarray(xi_nodes).reshape(27, 3)
@@ -165,6 +175,7 @@ def matvec_(y, nd, WT, DN, x, lam, mu, eb=None, pb=None, warps=None):
 # ---------------------------------------------------------------------- CUDA C++ kernel (sum factorisation)
 _LIB = None
 _LIB_ERR = None
+_TABLES = [None]                                                        # the point set in the library's constant memory
 
 
 def kind():
@@ -176,6 +187,8 @@ def _lib():
     """The compiled kmf_kernel.cu (cached by source hash and architecture), initialised with the 1-D tables."""
     global _LIB
     if _LIB is not None:
+        if _TABLES[0] != PTS:                                               # (a test switched the points)
+            _init_tables(_LIB)
         return _LIB
     src = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kmf_kernel.cu')
     code = open(src, 'rb').read()
@@ -195,21 +208,25 @@ def _lib():
         os.replace(tmp, so)
     lib = ctypes.CDLL(so)
     lib.kmf_init.argtypes = [ctypes.c_void_p] * 4
-    lib.kmf_launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_float,
-                                                        ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
-    lib.kmf_launch64.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_double,
-                                                          ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+    lib.kmf_launch.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.kmf_launch64.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
     lib.gf_launch64.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
-    g, _ = np.polynomial.legendre.leggauss(5)
+    _init_tables(lib)
+    _LIB = lib
+    return lib
+
+
+def _init_tables(lib):
+    """The 1-D shape function tables at points() into the library's constant memory (float32 and float64)."""
+    g = points()
     L64 = np.array([[_lag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float64)
     D64 = np.array([[_dlag(k, gq) for k in (-1, 0, 1)] for gq in g], dtype=np.float64)
     L, D = L64.astype(np.float32), D64.astype(np.float32)
     rc = lib.kmf_init(L.ctypes.data, D.ctypes.data, L64.ctypes.data, D64.ctypes.data)
     if rc != 0:
         raise RuntimeError(f'KMF_INIT:{rc}')
-    _LIB = lib
-    return lib
+    _TABLES[0] = PTS                                                        # the tables it holds (constant memory)
 
 
 def cuda_ok():
@@ -236,12 +253,27 @@ def state(C):
         t = (9 * (xi[:, 0] + 1) + 3 * (xi[:, 1] + 1) + (xi[:, 2] + 1)).astype(np.int64)
         inv = np.empty(27, np.int64); inv[t] = np.arange(27)                 # tensor slot t <- element node inv[t]
         nd = nodes(C.dofs)[:, torch.as_tensor(inv, device=C.dofs.device)].contiguous()
-        E = C.M.shape[0]
-        w = torch.empty((E, 125), dtype=torch.float32, device=C.M.device)
-        for lo in range(0, E, 8192):
-            w[lo:lo + 8192] = ((C.M[lo:lo + 8192] @ Vi) * (2.0 * C.n) ** 2).to(torch.float32)
-        return dict(kind='cuda', nd=nd, w=w, lam=lam, mu=mu)
+        wl, wm = _weights_lm(C, Vi, torch.arange(C.M.shape[0], device=C.M.device), lam, mu, torch.float32)
+        return dict(kind='cuda', nd=nd, wl=wl, wm=wm, lam=lam, mu=mu, pts=PTS)
     return dict(kind='triton', nd=nodes(C.dofs), WT=weights(C.M, Vi), DN=DN, lam=lam, mu=mu)
+
+
+def _weights_lm(C, Vi, elements, lam, mu, dtype, chunk=8192):
+    """(lam w, mu w) of the given elements, w = M Vi (2n)^2 in float64, then rounded to dtype (E x 125 each)."""
+    E = len(elements)
+    wl = torch.empty((E, 125), dtype=dtype, device=C.M.device)
+    wm = torch.empty((E, 125), dtype=dtype, device=C.M.device)
+    for lo in range(0, E, chunk):
+        w = (C.M[elements[lo:lo + chunk]] @ Vi) * (2.0 * C.n) ** 2
+        wl[lo:lo + chunk] = (w * lam).to(dtype)
+        wm[lo:lo + chunk] = (w * mu).to(dtype)
+    return wl, wm
+
+
+def _check_pts(st):
+    _lib()
+    if _TABLES[0] != st['pts']:
+        raise RuntimeError('KMF_PTS: the library tables and the cell weights use other points')
 
 
 def apply_(y, st, x, epb=None, nb=None):
@@ -249,10 +281,10 @@ def apply_(y, st, x, epb=None, nb=None):
     if st['kind'] == 'triton':
         return matvec_(y, st['nd'], st['WT'], st['DN'], x, st['lam'], st['mu'])
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
+    _check_pts(st)
     E, B = st['nd'].shape[0], x.shape[1]
-    rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), E, B, float(st['lam']),
-                           float(st['mu']), int(epb or EPB), int(NB if nb is None else nb),
-                           torch.cuda.current_stream(x.device).cuda_stream)
+    rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['wl'].data_ptr(), st['wm'].data_ptr(), E, B,
+                           int(epb or EPB), int(NB if nb is None else nb), torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'KMF_LAUNCH:{rc}')
     return y
@@ -329,19 +361,18 @@ def state64(C, elements):
     inv = torch.as_tensor(inv, device=C.dofs.device)
     nd_all = nodes(C.dofs)[:, inv].contiguous()
     nd = nd_all[elements].contiguous()
-    E = len(elements)
-    w = torch.empty((E, 125), dtype=torch.float64, device=C.M.device)
-    for lo in range(0, E, 8192):
-        w[lo:lo + 8192] = (C.M[elements[lo:lo + 8192]] @ Vi) * (2.0 * C.n) ** 2
-    return dict(kind='cuda64', nd=nd, w=w, lam=float(lam), mu=float(mu), gf=gf_state(C, nd_all, torch.float64))
+    wl, wm = _weights_lm(C, Vi, elements, lam, mu, torch.float64)
+    return dict(kind='cuda64', nd=nd, wl=wl, wm=wm, lam=float(lam), mu=float(mu), pts=PTS,
+                gf=gf_state(C, nd_all, torch.float64))
 
 
 def apply64_(y, st, x, epb=None, nb=None):
     """y += K_e x over state64's elements, float64 (x, y: nb x B float64 contiguous)."""
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float64 and y.dtype == torch.float64
+    _check_pts(st)
     E, B = st['nd'].shape[0], x.shape[1]
-    rc = _lib().kmf_launch64(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), E, B, st['lam'],
-                             st['mu'], int(epb or 4), int(nb or 0), torch.cuda.current_stream(x.device).cuda_stream)
+    rc = _lib().kmf_launch64(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['wl'].data_ptr(), st['wm'].data_ptr(),
+                             E, B, int(epb or 4), int(nb or 0), torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'KMF64_LAUNCH:{rc}')
     return y
