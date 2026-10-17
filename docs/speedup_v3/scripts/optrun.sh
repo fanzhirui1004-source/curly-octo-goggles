@@ -18,6 +18,6 @@ nvidia-smi --query-gpu=timestamp,memory.used --format=csv,noheader,nounits -lms 
 echo "$(date +%F_%T) START opt $TAG [$*]" >> $W/status.txt
 timeout ${TMO:-14400} $PY -u $SRC/opt_design.py $R $SC/layouts/plateS$N.json --model A3=$P/S1/V2/A3_2grid/best.pt \
   --clamp x,min --load x,max --load-dir y --vfrac 0.8 --maxit 60 --stop-after $K --fast --table5 --workers 14 --sens ad \
-  --ad-batch ${ADB:-1024} --resident-gb 0 --body-retry 6 "$@" > $R/run.log 2>&1; r=$?
+  --ad-batch ${ADB:-2048} --resident-gb 0 --body-retry 6 "$@" > $R/run.log 2>&1; r=$?
 kill $SMP
 echo "$(date +%F_%T) END opt $TAG rc=$r gpu_max_MiB=$(cut -d, -f2 $R/gpu.csv | sort -n | tail -1)" >> $W/status.txt

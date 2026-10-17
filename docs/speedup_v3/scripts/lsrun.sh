@@ -14,7 +14,7 @@ cd $SRC
 nvidia-smi --query-gpu=timestamp,memory.used --format=csv,noheader,nounits -lms 200 > $R/gpu.csv 2>&1 & SMP=$!
 echo "$(date +%F_%T) START ls $TAG [$*]" >> $W/status.txt
 timeout ${TMO:-7200} $PY -u $SRC/lat_scale.py $R/out.json $LAY --body $W/plate/body_S24 --model $P/S1/V2/A3_2grid/best.pt \
-  --prec bnn:kpp:q1r --tol 1e-6 --sens ad --ad-batch ${ADB:-1024} --sens-obj sum --fastidx --coarse-tpl --tet-triton --sparse-coarse \
+  --prec bnn:kpp:q1r --tol 1e-6 --sens ad --ad-batch ${ADB:-2048} --sens-obj sum --fastidx --coarse-tpl --tet-triton --sparse-coarse \
   --resident-gb 0 "$@" > $R/run.log 2>&1; r=$?
 kill $SMP
 echo "$(date +%F_%T) END ls $TAG rc=$r gpu_max_MiB=$(cut -d, -f2 $R/gpu.csv | sort -n | tail -1)" >> $W/status.txt
