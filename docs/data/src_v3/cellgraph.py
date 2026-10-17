@@ -20,7 +20,7 @@ once as a CUDA graph (torch.cuda.CUDAGraph) and replayed: one launch per cell, t
     host buffer moves (S25 spill / unspill) the graph is captured again.
   - A resident cell (_Resident): the graph reads the cell's device tensors in place (they do not move after the front
     end).
-  - Not graphed (eager as before): applies inside autograd, wider than OPL_V3_GRAPH_MAXB (4) columns (the coarse A Z:
+  - Not graphed (eager as before): inputs that require gradients, wider than OPL_V3_GRAPH_MAXB (4) columns (the coarse A Z:
     16-column chunks, bound by the GPU), a cell whose capture failed (STATS['failed'], logged once)."""
 import os
 import time
@@ -49,7 +49,9 @@ def _cap_stream(cur):
 
 
 def eligible(q):
-    return ON and q.is_cuda and q.dim() == 2 and q.shape[1] <= MAXB and not torch.is_grad_enabled()
+    """A narrow apply whose input needs no gradient (PCG runs with autograd enabled, on tensors without gradients; the
+    cells' weights are detached copies)."""
+    return ON and q.is_cuda and q.dim() == 2 and q.shape[1] <= MAXB and not q.requires_grad
 
 
 def apply(owner, q, body, fp=None):
@@ -94,7 +96,7 @@ def _capture(q, body, cur, fp):
     cap = _cap_stream(cur)
     cap.wait_stream(cur)
     try:
-        with torch.cuda.stream(cap):
+        with torch.cuda.stream(cap), torch.no_grad():
             g.capture_begin(pool=pool)
             try:
                 out = body(qs)
