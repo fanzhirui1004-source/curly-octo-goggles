@@ -1,5 +1,7 @@
 """Check of the fused network paths (src_v3 S24, OPL_V3_NETFUSE=1; netfused.py) on a full plate cell:
-  - every U-Net convolution (forward and transposed) against the original path: bitwise (no atomics involved);
+  - every U-Net convolution (forward and transposed) against the original path: bitwise, and the original against itself
+    (cuDNN may choose a non-deterministic algorithm, e.g. for the transposed convolution), and both with
+    torch.backends.cudnn.deterministic = True;
   - one forward hyperedge layer with the port clamp, one adjoint layer with the masks: against the original (the
     scatters' atomic order differs run to run, so the difference is compared with the original against itself);
   - S_hat (B = 1, 3) against the original path, and the time of each.
@@ -50,7 +52,7 @@ def original(fn):
 
 
 with torch.no_grad():
-    conv = []
+    conv, rerun, det, bad = [], [], [], []
     for l in range(f.levels):
         t = f.c.trans[l]
         n_l = len(t['dense_idx']) if 'dense_idx' in t else 0
@@ -60,8 +62,20 @@ with torch.no_grad():
                 for tr in (False, True):
                     y1 = f._conv(X, l, k, transpose=tr)
                     y0 = original(lambda: f._conv(X, l, k, transpose=tr))
-                    conv.append(bool(torch.equal(y0, y1)))
+                    y0b = original(lambda: f._conv(X, l, k, transpose=tr))   # the original against itself
+                    conv.append(bool(torch.equal(y0, y1))); rerun.append(bool(torch.equal(y0, y0b)))
+                    torch.backends.cudnn.deterministic = True                   # deterministic cuDNN algorithms
+                    d1 = f._conv(X, l, k, transpose=tr)
+                    d0 = original(lambda: f._conv(X, l, k, transpose=tr))
+                    torch.backends.cudnn.deterministic = False
+                    det.append(bool(torch.equal(d0, d1)))
+                    if not conv[-1]:
+                        bad.append(dict(l=l, B=B, k=k, tr=tr, rel=float((y1 - y0).abs().max() / y0.abs().max()),
+                                        rerun_rel=float((y0b - y0).abs().max() / y0.abs().max()), det_equal=det[-1]))
     r['conv_bitwise'] = f'{sum(conv)}/{len(conv)}'
+    r['conv_orig_rerun_bitwise'] = f'{sum(rerun)}/{len(rerun)}'
+    r['conv_bitwise_cudnn_deterministic'] = f'{sum(det)}/{len(det)}'
+    r['conv_not_equal'] = bad[:12]
     h0 = f.elem[0]
     N, F = f.N, f.W_in.shape[1]
     for B in (1, 3):

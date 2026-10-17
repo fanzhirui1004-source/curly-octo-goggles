@@ -1,0 +1,10 @@
+#!/bin/bash
+# tests15.sh: repeat checks with their own references (S21: the cuDSS solve against itself, and after the freed blocks were
+# overwritten with NaN; S24: each convolution against its own rerun and with deterministic cuDNN); S19b (fused slot
+# assignment) per layer bitwise; the wide S_hat op profile with S24 on (by launch count).
+W=/root/autodl-tmp/OPL/V3W; S=$W/scripts; SPEC=$W/plate/body_S24:plateS24_040_o000
+GF=${GF:-OPL_V3_GFCAT=1}
+bash $S/tst.sh kppfree2 t_kppfree.py
+bash $S/tst.sh netfuse2 t_netfuse.py $SPEC
+bash $S/tst.sh slotfuse2 t_slotfuse.py $SPEC
+echo "$(date +%F_%T) TESTS15_DONE" >> $W/status.txt

@@ -1,7 +1,9 @@
 """Check of teacher.SPDSolver._release_matrix (src_v3 S21, OPL_V3_KPP_FREEA): after the factorisation the CSR operand's
 storages are released; the solutions of the same right-hand sides before and after must be bitwise equal (the solve
 phase reads only the factors). Synthetic SPD matrix: 3-D 7-point Laplacian plus a diagonal shift, Jacobi scaled, upper
-CSR, as lat_precond.SparseSPD hands it over. Also: device memory released, and the float32 factor's relative difference.
+CSR, as lat_precond.SparseSPD hands it over. Also: the solve against itself without the release (cuDSS's solve may not be
+bitwise reproducible), the solve after every cached free block was overwritten with NaN, device memory released, and the
+float32 factor's relative difference.
 usage: python t_kppfree.py [--m 80]"""
 import os, sys, json, argparse, time
 SRC = os.environ.get('SRC', '/root/autodl-tmp/OPL/src_v3'); sys.path.insert(0, SRC)
@@ -31,12 +33,27 @@ res = dict(n=n, nnz_upper=int(len(v)))
 TE.FREE_A = False
 sol = TE.SPDSolver(crow.clone(), c.clone(), v.clone(), n)
 y0 = sol.solve(R); y0b = sol.solve(R[:, :1])
+yr = sol.solve(R); yrb = sol.solve(R[:, :1])                                # the solve against itself (no release)
 torch.cuda.synchronize(); a0 = torch.cuda.memory_allocated()
 sol._release_matrix()
 torch.cuda.synchronize(); a1 = torch.cuda.memory_allocated()
 y1 = sol.solve(R); y1b = sol.solve(R[:, :1])
 res.update(released_MiB=round((a0 - a1) / 2 ** 20, 1), equal_B3=bool(torch.equal(y0, y1)), equal_B1=bool(torch.equal(y0b, y1b)),
-           max_abs_diff=float((y0 - y1).abs().max()))
+           max_abs_diff=float((y0 - y1).abs().max()), rerun_equal_B3=bool(torch.equal(y0, yr)),
+           rerun_equal_B1=bool(torch.equal(y0b, yrb)), rerun_max_abs_diff=float((y0 - yr).abs().max()),
+           y_max=float(y0.abs().max()))
+# the released blocks (and every other cached free block) overwritten with NaN: a solve that still read the matrix would
+# return NaN or garbage
+free = torch.cuda.memory_reserved() - torch.cuda.memory_allocated()
+junk = [torch.full((2 ** 18,), float('nan'), dtype=torch.float32, device=dev) for _ in range(max(free // 2 ** 20, 0) + 8)]
+for sz in (len(v), len(c), n + 1):
+    junk.append(torch.full((sz,), float('nan'), dtype=torch.float64, device=dev))
+torch.cuda.synchronize()
+y2 = sol.solve(R)
+res.update(after_nan_fill=dict(junk_MiB=round(sum(j.numel() * j.element_size() for j in junk) / 2 ** 20, 1),
+                               finite=bool(torch.isfinite(y2).all()), max_abs_diff=float((y0 - y2).abs().max())))
+del junk
+res['fp64_mem_est'] = sol.mem_est.get('permanent_device_memory') if isinstance(sol.mem_est, dict) else None
 sol.free(); del sol
 sol32 = TE.SPDSolver(crow.clone(), c.clone(), v.clone(), n, fdt=torch.float32)
 y32 = sol32.solve(R)

@@ -63,3 +63,43 @@ def clip_scale(raw, A, state, knee, scale=0.2, H=4):
     _clip_scale[(triton.cdiv(rows, BR),)](raw, Af, out, rows, float(scale), float(knee), C=C, H=H, BR=BR, BC=BC, MODE=mode,
                                           num_warps=4, enable_fp_fusion=False)
     return out
+
+
+ASSIGN = os.environ.get('OPL_V3_SLOTASSIGN', '0') == '1'
+
+
+@triton.jit
+def _assign(ab, fac, lam, A, Bo, R, LT: tl.constexpr, L: tl.constexpr, H: tl.constexpr, B3: tl.constexpr,
+            BLOCK: tl.constexpr):
+    """A[l, r, h] = ab[r, 0, l, h], Bo[l, r, h] = ab[r, 1, l, h] (* (1 + lam[l] fac[r]) with B3) for l < L, ab rows r of
+    (2, LT, H) values: the per-layer slot weights of fastnet._assign_slots, the B3 fold in the same float32 operations."""
+    k = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
+    m = k < L * R * H
+    l = k // (R * H)
+    rem = k - l * (R * H)
+    r = (rem // H).to(tl.int64)
+    h = rem - (rem // H) * H
+    a = tl.load(ab + (r * 2 * LT + l) * H + h, mask=m, other=0.0)
+    b = tl.load(ab + (r * 2 * LT + LT + l) * H + h, mask=m, other=0.0)
+    if B3:
+        u = 1.0 + tl.load(lam + l, mask=m, other=0.0) * tl.load(fac + r, mask=m, other=0.0)
+        b = b * u
+    tl.store(A + k, a, mask=m)
+    tl.store(Bo + k, b, mask=m)
+
+
+def assign(ab, L, lam=None, fac=None):
+    """ab (rows, 27, 2, LT, H) contiguous -> (A, B), each (L, rows, 27, H): layer l's a = A[l], b = B[l] (contiguous)."""
+    E, S, two, LT, H = ab.shape
+    R = E * S
+    A = torch.empty((L, E, S, H), dtype=ab.dtype, device=ab.device)
+    Bo = torch.empty_like(A)
+    n = L * R * H
+    if n:
+        b3 = lam is not None
+        if b3:                                                     # torch's b * (1 + lam * fac) runs in float32
+            fac, lam = fac.reshape(-1).to(ab.dtype).contiguous(), lam.to(ab.dtype).contiguous()
+            assert fac.numel() == R and lam.numel() >= L
+        _assign[(triton.cdiv(n, 1024),)](ab, fac if b3 else ab, lam if b3 else ab, A, Bo, R, LT=LT, L=L, H=H,
+                                         B3=b3, BLOCK=1024, num_warps=4, enable_fp_fusion=False)
+    return A, Bo

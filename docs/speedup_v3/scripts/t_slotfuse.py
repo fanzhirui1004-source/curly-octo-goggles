@@ -1,6 +1,7 @@
 """Check of slotfused.clip_scale (S19) against the PyTorch path of fastnet._slot_tensors on a real cell: the three head
 outputs (ab, fab, xab) bitwise (torch.equal) and the time of the recompute (fastnet._slot_tensors + _assign_slots) with
-and without the fused tail.
+and without the fused tail. S19b (slotfused.assign, OPL_V3_SLOTASSIGN): every hyperedge layer's a, b after
+_assign_slots with and without it, bitwise, and the time of _assign_slots alone.
 usage: python t_slotfuse.py BODY_DIR:CASE [--rep 20]"""
 import os, sys, json, time, argparse
 SRC = os.environ.get('SRC', '/root/autodl-tmp/OPL/src_v3'); sys.path.insert(0, SRC)
@@ -45,4 +46,16 @@ with torch.no_grad():
     _, r['ms_assign_torch'] = timed(lambda: f._assign_slots(*f._slot_tensors()), a.rep)
     FN.SLOTFUSE = True
     _, r['ms_assign_fused'] = timed(lambda: f._assign_slots(*f._slot_tensors()), a.rep)
+    T = f._slot_tensors()
+    hs = f._hypers()
+    SF.ASSIGN = False
+    _, t0 = timed(lambda: f._assign_slots(*T), a.rep)
+    ref = [(h.a.clone(), h.b.clone()) for h in hs]
+    SF.ASSIGN = True
+    _, t1 = timed(lambda: f._assign_slots(*T), a.rep)
+    eq = [bool(torch.equal(h.a, x) and torch.equal(h.b, y)) for h, (x, y) in zip(hs, ref)]
+    r['assign'] = dict(layers=len(hs), equal=f'{sum(eq)}/{len(eq)}', ms_torch=round(t0, 3), ms_kernel=round(t1, 3),
+                       contiguous=all(h.a.is_contiguous() and h.b.is_contiguous() for h in hs),
+                       max_abs_diff=max(float(max((h.a - x).abs().max(), (h.b - y).abs().max())) for h, (x, y) in zip(hs, ref)))
+    _, r['ms_recompute_all_fused'] = timed(lambda: f._assign_slots(*f._slot_tensors()), a.rep)
 print(json.dumps(r), flush=True)

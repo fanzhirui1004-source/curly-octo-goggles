@@ -312,15 +312,28 @@ class FastNet:
         return ab, fab, xab
 
     def _assign_slots(self, ab, fab, xab):
-        """The _Hyper slot weights from ab / fab / xab, as __init__ derives them."""
+        """The _Hyper slot weights from ab / fab / xab, as __init__ derives them. src_v3 S19b (OPL_V3_SLOTASSIGN): the
+        element layers and the ghost-face layers g < L in one kernel per set (slotfused.assign), the same values."""
         m, c = self.model, self.c
         L = m.L_pre + m.L_post
         b3 = MD.MGNO._b3
         arg = (lambda kind, i: m._b3arg(c, kind, i) if getattr(m, 'b3', False) else None)
-        for l, h in enumerate(self.elem):
-            h.set_ab(ab[:, :, 0, l], b3(ab[:, :, 1, l], arg('le', l)))
+        import slotfused as SF
+        fast = SF.ASSIGN and ab.is_contiguous() and fab.is_contiguous()
+        if fast:
+            on = getattr(m, 'b3', False)
+            Ae, Be = SF.assign(ab, len(self.elem), m.b3_le.detach() if on else None, c.b3_el if on else None)
+            Af, Bf = SF.assign(fab, min(L, len(self.face)), m.b3_lf.detach() if on else None, c.b3_gp if on else None)
+            for l, h in enumerate(self.elem):
+                h.set_ab(Ae[l], Be[l])
+        else:
+            for l, h in enumerate(self.elem):
+                h.set_ab(ab[:, :, 0, l], b3(ab[:, :, 1, l], arg('le', l)))
         fe, ff = (c.el_fade, c.gp_fade) if getattr(m, 'fringe_soft', False) else (None, None)
         for g, h in enumerate(self.face):
+            if fast and g < L:
+                h.set_ab(Af[g], Bf[g])
+                continue
             a, b = fab[:, :, 0, g], b3(fab[:, :, 1, g], arg('lf', g))
             if g >= L:
                 a, b = a[c.gp_fringe], b[c.gp_fringe]
