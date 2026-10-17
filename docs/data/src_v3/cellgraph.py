@@ -14,10 +14,12 @@ once as a CUDA graph (torch.cuda.CUDAGraph) and replayed: one launch per cell, t
     after each replay, so sequential replays may reuse the same memory. The pool is as large as the largest cell's
     temporaries (with a streamed cell: its state too). They are also captured on one capture stream per replay stream
     (_cap_stream: the cuBLAS workspace a captured GEMM uses belongs to the capture stream).
-  - A streamed cell (StreamedOp, page-locked host state): the graph begins with the host-to-device copy of the state
-    from its page-locked buffer into the pool, then the decoding (stream_ops' packed forms) and S_hat, so a replay needs
-    no device buffer at a fixed address; the copy of one cell runs alongside the other streams' computation. If the
-    host buffer moves (S25 spill / unspill) the graph is captured again.
+  - A streamed cell (StreamedOp, page-locked host state), OPL_V3_GRAPH_STAGES = K > 0 (default 4): the raw state is
+    copied on stream_ops' copy stream into one of K fixed device stage buffers (cell i of the prefetch ring: stage
+    i mod K), after that stage's previous replay has finished, and the graph decodes it (stream_ops' packed forms) and
+    applies S_hat; so the copies run ahead of the computation as with the eager prefetch. K = 0: the graph begins with
+    the host-to-device copy into its pool itself (copy and computation then alternate on each stream: the 51-cell plate
+    was slower than eager, 159 vs 148-154 s). If the host buffer moves (S25 spill / unspill) the graph is captured again.
   - A resident cell (_Resident): the graph reads the cell's device tensors in place (they do not move after the front
     end).
   - Not graphed (eager as before): inputs that require gradients, wider than OPL_V3_GRAPH_MAXB (4) columns (the coarse A Z:
@@ -54,10 +56,11 @@ def eligible(q):
     return ON and q.is_cuda and q.dim() == 2 and q.shape[1] <= MAXB and not q.requires_grad
 
 
-def apply(owner, q, body, fp=None):
+def apply(owner, q, body, fp=None, pre=None, post=None):
     """S_hat q through owner's graph for (width, dtype, current stream), or None (the caller applies eagerly).
     body(qs) -> output: the computation to capture (reads qs, a static input); fp: what the graph's addresses depend on
-    besides the owner (a changed fp: capture again)."""
+    besides the owner (a changed fp: capture again); pre() / post(): called on the current stream right before / after
+    each replay (e.g. a streamed cell's copy into its stage buffer, the stage's release)."""
     if not eligible(q):
         return None
     cur = torch.cuda.current_stream()
@@ -81,7 +84,11 @@ def apply(owner, q, body, fp=None):
         if G is None:
             return None
     G.qs.copy_(q)
+    if pre is not None:
+        pre()
     G.g.replay()
+    if post is not None:
+        post()
     STATS['replays'] += 1
     return G.out.clone()
 
@@ -123,19 +130,26 @@ def drop(owner):
 
 
 def release(owners):
-    """All graphs of owners dropped and their pools' memory returned to the device (after a solve: the sensitivity
-    phase that follows applies the cells eagerly)."""
+    """All graphs of owners dropped and their pools' memory (and stream_ops' stage buffers) returned to the device
+    (after a solve: the sensitivity phase that follows applies the cells eagerly)."""
     for o in owners:
         drop(o)
     _POOLS.clear()
+    import stream_ops as SO
+    SO.free_stages()
     torch.cuda.synchronize()
     torch.cuda.empty_cache()
 
 
 def pool_reserve_gib(nstreams):
-    """Device memory to keep free for the graph pools (hostmem.resident_auto): OPL_V3_RGB_GRAPH GiB (1.75: a full plate
-    cell's streamed state with its decoded parts plus S_hat's temporaries with recomputed slot weights) per stream."""
-    return float(os.environ.get('OPL_V3_RGB_GRAPH', '1.75')) * nstreams if ON else 0.0
+    """Device memory to keep free for the graphs (hostmem.resident_auto): per stream OPL_V3_RGB_GRAPH GiB (1.3: S_hat's
+    temporaries of a full plate cell with recomputed slot weights and its decoded parts; with OPL_V3_GRAPH_STAGES=0 the
+    pool also holds the cell's state: 2.0), plus the stage buffers of stream_ops (0.65 GiB each: a full cell's state)."""
+    if not ON:
+        return 0.0
+    import stream_ops as SO
+    per = float(os.environ.get('OPL_V3_RGB_GRAPH', '1.3' if SO.GSTAGES else '2.0'))
+    return per * nstreams + 0.65 * SO.GSTAGES
 
 
 def summary():

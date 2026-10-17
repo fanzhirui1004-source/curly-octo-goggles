@@ -39,6 +39,8 @@ SPILL_DIR = os.environ.get('OPL_V3_SPILL_DIR', '')
 SPILL_BPNZ = float(os.environ.get('OPL_V3_SPILL_BPNZ', '80'))          # host peak per K_PP (upper) nonzero, bytes
 SPILL_FORCE = float(os.environ.get('OPL_V3_SPILL_FORCE_GB', '0')) * 2 ** 30   # check only: spill at least this much
 _ALL = weakref.WeakSet()                                                # every StreamedOp (spill_guard)
+GSTAGES = int(os.environ.get('OPL_V3_GRAPH_STAGES', '4'))              # S26: device stage buffers of graphed streamed cells
+_GST = []                                                               # stage dicts {'buf': uint8 tensor, 'free': Event}
 PACK_MIN = 1 << 24                                                      # square matrices of at least 16 MB
 _PB = 512                                                               # rows per (un)packing block
 
@@ -354,7 +356,8 @@ class StreamedOp:
 
     def apply(self, q):
         if CG.ON and self.depth == 0 and self.registered and self.buf is not None:   # src_v3 S26: CUDA graph
-            y = CG.apply(self, q, self._graph_body, fp=(self.buf.data_ptr(), self.total))
+            y = self._apply_staged(q) if GSTAGES > 0 else \
+                CG.apply(self, q, self._graph_body, fp=(self.buf.data_ptr(), self.total))
             if y is not None:
                 if self.loaded is not None:                             # a state prefetched for an eager use is
                     self._park()                                        # not read by the graph
@@ -362,12 +365,41 @@ class StreamedOp:
         with self.active():
             return self.op.apply(q)
 
-    def _graph_body(self, qs):
-        """src_v3 S26: the apply as cellgraph captures it: the state copied from the page-locked buffer into the graph's
-        memory pool and decoded (as prefetch does), bound, the operator applied, the placeholders put back."""
-        dbuf = torch.empty(self.total, dtype=torch.uint8, device=dev)
-        dbuf.copy_(self.buf, non_blocking=True)
-        p = {k: self._view(dbuf, k) for k in self.layout}
+    def _apply_staged(self, q):
+        """src_v3 S26 (OPL_V3_GRAPH_STAGES = K > 0): the graph reads the raw state from stage buffer gstage mod K; before
+        each replay the state is copied there on the copy stream once the stage's previous replay has finished."""
+        if not CG.eligible(q):
+            return None
+        st = _stage(getattr(self, 'gstage', 0) % GSTAGES, self.total)
+        raw = st['buf'][:self.total]
+        cur = torch.cuda.current_stream()
+        init()
+        cs = _STREAM[0]
+
+        def pre():
+            with torch.cuda.stream(cs):
+                if st['free'] is not None:
+                    cs.wait_event(st['free'])
+                raw.copy_(self.buf, non_blocking=True)
+                ev = torch.cuda.Event()
+                ev.record(cs)
+            cur.wait_event(ev)
+
+        def post():
+            ev = torch.cuda.Event()
+            ev.record(cur)
+            st['free'] = ev
+        return CG.apply(self, q, lambda qs: self._graph_body(qs, raw), fp=(self.buf.data_ptr(), self.total, raw.data_ptr()),
+                        pre=pre, post=post)
+
+    def _graph_body(self, qs, raw=None):
+        """src_v3 S26: the apply as cellgraph captures it: the raw state (raw: a stage buffer; None: copied from the
+        page-locked buffer into the graph's memory pool) decoded (as prefetch does), bound, the operator applied, the
+        placeholders put back."""
+        if raw is None:
+            raw = torch.empty(self.total, dtype=torch.uint8, device=dev)
+            raw.copy_(self.buf, non_blocking=True)
+        p = {k: self._view(raw, k) for k in self.layout}
         for k, (mode, odt, shp) in self.enc.items():
             p[k] = _unpack_tril(p[k], shp[0], mode == 'sym') if mode in ('tril', 'sym') else p[k].to(odt)
         built = {}
@@ -427,12 +459,34 @@ def drop(op):
 
 
 def link(ops):
-    """Prefetch ring in list order."""
+    """Prefetch ring in list order (S26: ring position i -> graph stage buffer i mod OPL_V3_GRAPH_STAGES)."""
     if _STREAM[0] is None:
         _STREAM[0] = torch.cuda.Stream()
-    for a, b in zip(ops, ops[1:] + ops[:1]):
+    for i, (a, b) in enumerate(zip(ops, ops[1:] + ops[:1])):
         a.nxt = b
+        a.gstage = i
     return ops
+
+
+def _stage(j, nbytes):
+    """S26: stage buffer j (as large as the largest streamed state; grown if needed: graphs reading the old one are
+    captured again, their fingerprint holds its address)."""
+    while len(_GST) <= j:
+        _GST.append({'buf': None, 'free': None})
+    st = _GST[j]
+    if st['buf'] is None or st['buf'].numel() < nbytes:
+        need = max([nbytes] + [o.total for o in list(_ALL) if o.buf is not None])
+        if st['buf'] is not None:
+            torch.cuda.synchronize()
+        st['buf'], st['free'] = torch.empty(need, dtype=torch.uint8, device=dev), None
+    return st
+
+
+def free_stages():
+    """S26: the stage buffers back to the allocator (after a solve)."""
+    if _GST:
+        torch.cuda.synchronize()
+    _GST.clear()
 
 
 def park_all():
