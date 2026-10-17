@@ -1,7 +1,7 @@
 """Two-stream S_hat throughput with the block coarse inverse (S15) against the packed inverse (S2), as the PCG matvec
 issues it (lat_multi.apply_blocks: B = 1, cells round robin on two CUDA streams): time per cell for packed / block
-(cuSPARSE CSR couplings, coarse_blk.solve) / block with gather + index_add couplings (no cuSPARSE), plus the CPU time
-to issue one S_hat (no synchronisation, short queue) and one coarse solve.
+(coarse_blk.solve) / block by torch operations (coarse_blk.solve_ref), plus the CPU time to issue one S_hat (short
+queue) and one coarse solve.
 usage: python t_cblk2.py BODY_DIR:CASE1,CASE2 [--rep 40]"""
 import os, sys, json, time, argparse
 SRC = os.environ.get('SRC', '/root/autodl-tmp/OPL/src_v3'); sys.path.insert(0, SRC)
@@ -43,19 +43,7 @@ def build(case, blk):
 
 def solve_ia(blk, z):
     """coarse_blk.solve with the couplings as gather + index_add (COO from the CSR arrays) instead of cuSPARSE."""
-    nc, ns, Np = blk['dims']
-    if '_coo' not in blk:
-        G, Gt = blk['G'], blk['Gt']
-        rg = torch.repeat_interleave(torch.arange(Np, device=dev), G.crow_indices().diff())
-        rt = torch.repeat_interleave(torch.arange(ns, device=dev), Gt.crow_indices().diff())
-        blk['_coo'] = (rg, G.col_indices(), G.values(), rt, Gt.col_indices(), Gt.values())
-    rg, cg, vg, rt, ct, vt = blk['_coo']
-    zp = Fn.pad(z, (0, 0, 0, 1))[blk['perm']]
-    y = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp)
-    t = z[blk['sep']].index_add(0, rt, vt[:, None] * y[ct], alpha=-1)
-    xs = ST.matmul(blk['S'], ns, t)
-    xo = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp.index_add(0, rg, vg[:, None] * xs[cg], alpha=-1))
-    return torch.cat([xo, xs])[blk['inv']]
+    return CB.solve_ref(blk, z)
 
 
 def pair_time(cells, rep):
