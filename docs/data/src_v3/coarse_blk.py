@@ -20,6 +20,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import triton
+import triton.language as tl
 import symtile as ST
 
 f32 = torch.float32
@@ -122,30 +123,135 @@ def build(A, vc, shift=0.0):
         idx, val = torch.stack([torch.cat(rows), torch.cat(cols)]), torch.cat(vals)
     else:                                                                # no octant couples to the separator
         idx, val = torch.zeros((2, 0), dtype=torch.long, device=dvc), torch.zeros(0, dtype=f32, device=dvc)
-    inv = torch.empty(nc, dtype=torch.long, device=dvc)                  # coarse column -> row of cat([x_o, x_s])
-    pv = torch.nonzero(perm < nc).squeeze(1)
-    inv[perm[pv]] = pv
-    inv[si] = Np + torch.arange(len(sep), device=dvc)
+    pmap = torch.where(perm < nc, perm, torch.full_like(perm, -1)).to(torch.int32)   # padded octant row -> column (-1)
     blk = dict(D=torch.cat(D), TI=torch.cat(TI).to(torch.int32), TJ=torch.cat(TJ).to(torch.int32),
-               S=ST.pack(torch.cholesky_inverse(Ls).to(f32)), Gi=idx.contiguous(), Gv=val.contiguous(),
-               perm=perm, sep=si, inv=inv, dims=(int(nc), int(len(sep)), int(Np)))
+               S=ST.pack(torch.cholesky_inverse(Ls).to(f32)), pmap=pmap, sep=si,
+               dims=(int(nc), int(len(sep)), int(Np)))
+    blk['Gc'], blk['Gj'], blk['Gv'] = _csr(idx[0], idx[1], val, Np)                  # A_os by octant rows
+    blk['Tc'], blk['Tj'], blk['Tv'] = _csr(idx[1], idx[0], val, len(sep))             # A_so by separator rows
+    lg = int((blk['Gc'][1:] - blk['Gc'][:-1]).max()) if Np else 0                    # longest rows (chunks of 32)
+    lt = int((blk['Tc'][1:] - blk['Tc'][:-1]).max()) if len(sep) else 0
+    blk['dims'] = blk['dims'] + (max(1, triton.cdiv(lg, 32)), max(1, triton.cdiv(lt, 32)))
     info['MiB'] = round(nbytes(blk) / 2 ** 20, 2)
     return blk, info
+
+
+def _csr(r, c, v, n):
+    """CSR (int32 row pointers, int32 columns sorted within a row, float32 values) of the triplets (r, c, v), n rows."""
+    o = torch.argsort(r * (int(c.max()) + 1 if len(c) else 1) + c)
+    crow = torch.zeros(n + 1, dtype=torch.int64, device=v.device)
+    crow[1:] = torch.cumsum(torch.bincount(r, minlength=n), 0)
+    return crow.to(torch.int32), c[o].to(torch.int32).contiguous(), v[o].contiguous()
 
 
 def nbytes(blk):
     return sum(v.numel() * v.element_size() for v in blk.values() if torch.is_tensor(v))
 
 
+@triton.jit
+def _symm_map(P_ptr, X_ptr, Y_ptr, n, B, TI_ptr, TJ_ptr, map_ptr, TT: tl.constexpr, BB: tl.constexpr,
+              XMAP: tl.constexpr, YMAP: tl.constexpr):
+    """symtile._symm with the rows of X (XMAP) or of Y (YMAP) addressed through map (-1: none): the same tile products and
+    atomic sums, so the octants' block-diagonal product reads the coarse vector in its own order or writes into it."""
+    k = tl.program_id(0)
+    I = tl.load(TI_ptr + k)
+    J = tl.load(TJ_ptr + k)
+    t = tl.arange(0, TT)
+    c = tl.arange(0, BB)
+    mc = c < B
+    A = tl.load(P_ptr + k.to(tl.int64) * TT * TT + t[:, None] * TT + t[None, :])
+    rI = I * TT + t
+    rJ = J * TT + t
+    mI = rI < n
+    mJ = rJ < n
+    if XMAP:
+        xI = tl.load(map_ptr + rI, mask=mI, other=-1)
+        xJ = tl.load(map_ptr + rJ, mask=mJ, other=-1)
+    else:
+        xI = tl.where(mI, rI, -1)
+        xJ = tl.where(mJ, rJ, -1)
+    if YMAP:
+        yI = tl.load(map_ptr + rI, mask=mI, other=-1)
+        yJ = tl.load(map_ptr + rJ, mask=mJ, other=-1)
+    else:
+        yI = tl.where(mI, rI, -1)
+        yJ = tl.where(mJ, rJ, -1)
+    XJ = tl.load(X_ptr + xJ[:, None].to(tl.int64) * B + c[None, :], mask=(xJ >= 0)[:, None] & mc[None, :], other=0.0)
+    YI = tl.dot(A, XJ, input_precision="ieee")
+    tl.atomic_add(Y_ptr + yI[:, None].to(tl.int64) * B + c[None, :], YI, mask=(yI >= 0)[:, None] & mc[None, :])
+    if I != J:
+        XI = tl.load(X_ptr + xI[:, None].to(tl.int64) * B + c[None, :], mask=(xI >= 0)[:, None] & mc[None, :], other=0.0)
+        YJ = tl.dot(tl.trans(A), XI, input_precision="ieee")
+        tl.atomic_add(Y_ptr + yJ[:, None].to(tl.int64) * B + c[None, :], YJ, mask=(yJ >= 0)[:, None] & mc[None, :])
+
+
+@triton.jit
+def _csr_sub(crow, col, val, x, base, bmap, out, B, BB: tl.constexpr, KB: tl.constexpr, NCH: tl.constexpr):
+    """out[i] = base[bmap[i]] - sum_k val[k] x[col[k]] over row i's entries (bmap -1: base 0); one program per row, the
+    entries in NCH chunks of KB (NCH * KB >= the longest row) summed in a fixed order (deterministic)."""
+    i = tl.program_id(0)
+    s0 = tl.load(crow + i)
+    s1 = tl.load(crow + i + 1)
+    c = tl.arange(0, BB)
+    mc = c < B
+    acc = tl.zeros((BB,), dtype=tl.float32)
+    for ch in tl.static_range(NCH):
+        k = s0 + ch * KB + tl.arange(0, KB)
+        mk = k < s1
+        j = tl.load(col + k, mask=mk, other=0)
+        v = tl.load(val + k, mask=mk, other=0.0)
+        xv = tl.load(x + j[:, None].to(tl.int64) * B + c[None, :], mask=mk[:, None] & mc[None, :], other=0.0)
+        acc += tl.sum(v[:, None] * xv, axis=0)
+    b = tl.load(bmap + i)
+    bv = tl.load(base + b.to(tl.int64) * B + c, mask=mc & (b >= 0), other=0.0)
+    tl.store(out + i.to(tl.int64) * B + c, bv - acc, mask=mc)
+
+
+def _solve16(blk, z):
+    nc, ns, Np, chG, chT = blk['dims']
+    B = z.shape[1]
+    dv = z.device
+    ntD = len(blk['TI'])
+    y = torch.zeros((Np, B), dtype=f32, device=dv)                      # y_o = A_oo^-1 z_o (padded octant order)
+    _symm_map[(ntD,)](blk['D'], z, y, Np, B, blk['TI'], blk['TJ'], blk['pmap'], TT=ST.T, BB=16, XMAP=True, YMAP=False,
+                      num_warps=4)
+    t = torch.empty((ns, B), dtype=f32, device=dv)                      # z_s - A_so y
+    _csr_sub[(ns,)](blk['Tc'], blk['Tj'], blk['Tv'], y, z, blk['sep'], t, B, BB=16, KB=32, NCH=chT, num_warps=1)
+    xs = ST.matmul(blk['S'], ns, t)                                      # x_s = S^-1 (z_s - A_so y)
+    r = torch.empty((Np, B), dtype=f32, device=dv)                      # z_o - A_os x_s
+    _csr_sub[(Np,)](blk['Gc'], blk['Gj'], blk['Gv'], xs, z, blk['pmap'], r, B, BB=16, KB=32, NCH=chG, num_warps=1)
+    s = torch.zeros((nc, B), dtype=f32, device=dv)                      # x_o = A_oo^-1 r, written in the coarse order
+    _symm_map[(ntD,)](blk['D'], r, s, Np, B, blk['TI'], blk['TJ'], blk['pmap'], TT=ST.T, BB=16, XMAP=False, YMAP=True,
+                      num_warps=4)
+    s.index_copy_(0, blk['sep'], xs)
+    return s
+
+
 def solve(blk, z):
-    """A^-1 z: z (nc, B) float32 in the coarse column order -> (nc, B) float32. The couplings A_os (COO: Gi rows in the
-    octants' padded order, columns in the separator's order; Gv values) are applied by gathers and index_add (float32
-    products, atomic sums), with no sparse-matrix objects: a streamed cell rebuilds nothing, and cuSPARSE, whose calls
-    made the two-stream PCG matvec of the 51-cell plate 2-10% slower and irregular, is not used."""
-    nc, ns, Np = blk['dims']
-    gi, gv = blk['Gi'], blk['Gv'][:, None]
-    zp = F.pad(z, (0, 0, 0, 1))[blk['perm']]                              # octant rows (zero rows: tile padding)
+    """A^-1 z: z (nc, B) float32 in the coarse column order -> (nc, B) float32 (S15b): nine kernels per block of 16
+    columns. The octant rows are read and written through the column map inside the tile products, the couplings A_os
+    / A_so are CSR row sums (deterministic), so neither the permuted copies nor sparse-matrix objects (cuSPARSE made
+    the two-stream PCG matvec of the 51-cell plate 2-10 % slower and irregular) are needed; the CPU issues nine kernels
+    instead of about twenty (the two-stream PCG matvec is bound by the CPU's kernel launches)."""
+    z = z.contiguous()
+    B = z.shape[1]
+    if B <= 16:
+        return _solve16(blk, z)
+    return torch.cat([_solve16(blk, z[:, c0:c0 + 16].contiguous()) for c0 in range(0, B, 16)], 1)
+
+
+def solve_ref(blk, z):
+    """The same solve by torch operations (tests): permuted copies, index_add couplings."""
+    nc, ns, Np = blk['dims'][:3]
+    pm, sep = blk['pmap'].long(), blk['sep'].long()
+    zp = torch.where((pm >= 0)[:, None], z[pm.clamp_min(0)], torch.zeros((), dtype=z.dtype, device=z.device))
     y = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp)
-    xs = ST.matmul(blk['S'], ns, z[blk['sep']].index_add(0, gi[1], gv * y[gi[0]], alpha=-1))
-    xo = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp.index_add(0, gi[0], gv * xs[gi[1]], alpha=-1))
-    return torch.cat([xo, xs])[blk['inv']]
+    gr = torch.repeat_interleave(torch.arange(Np, device=z.device), (blk['Gc'][1:] - blk['Gc'][:-1]).long())
+    gj, gv = blk['Gj'].long(), blk['Gv'][:, None]
+    xs = ST.matmul(blk['S'], ns, z[sep].index_add(0, gj, gv * y[gr], alpha=-1))
+    xo = ST.matmul_tiles(blk['D'], blk['TI'], blk['TJ'], Np, zp.index_add(0, gr, gv * xs[gj], alpha=-1))
+    s = torch.zeros_like(z)
+    ok = pm >= 0
+    s[pm[ok]] = xo[ok]
+    s[sep] = xs
+    return s
