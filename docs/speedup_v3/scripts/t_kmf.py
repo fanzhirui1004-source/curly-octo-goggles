@@ -94,6 +94,22 @@ with torch.no_grad():
                                        rel_rerun=float((yC2 - yC).abs().max() / yC.abs().max()),
                                        warm_us=round(ev(lambda: KMF.apply_(y, stC, x, epb=epb), a.rep), 1),
                                        cold_us=round(cold(lambda: KMF.apply_(y, stC, x, epb=epb), a.rep), 1))
+        if stC['kind'] == 'cuda' and Kc.gf is not None:                   # ghost faces: kernel vs current float32 path
+            gst = KMF.gf_state(C, stC['nd'])
+            x64 = x.double()
+            g64 = C.GF64.matvec(x64, torch.zeros_like(x64)) * C.gamma
+            gn = g64.abs().max()
+            gcur = Kc.gf.matvec(x, torch.zeros_like(x)).mul_(Kc.gamma)
+            r['gf'] = dict(faces=gst['nf'], rel_cur_f64=float((gcur.double() - g64).abs().max() / gn),
+                           cur_us=dict(warm=round(ev(lambda: Kc.gf.matvec(x, torch.zeros_like(x)).mul_(Kc.gamma), a.rep), 1),
+                                       cold=round(cold(lambda: Kc.gf.matvec(x, torch.zeros_like(x)).mul_(Kc.gamma), a.rep), 1)))
+            sms = torch.cuda.get_device_properties(0).multi_processor_count
+            for fpb in (2, 4, 8):
+                for blk in (2 * sms, 4 * sms, 8 * sms, 0):
+                    gk = KMF.gf_apply_(torch.zeros_like(x), gst, x, fpb=fpb, blocks=blk)
+                    r['gf'][f'fpb{fpb}_blk{blk}'] = dict(rel_f64=float((gk.double() - g64).abs().max() / gn),
+                                                         warm=round(ev(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk), a.rep), 1),
+                                                         cold=round(cold(lambda: KMF.gf_apply_(y, gst, x, fpb=fpb, blocks=blk), a.rep), 1))
         res[f'B{B}'] = r
         print(json.dumps({f'B{B}': r}), flush=True)
 print(json.dumps(res), flush=True)

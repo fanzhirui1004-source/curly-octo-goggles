@@ -132,6 +132,60 @@ kmf_kernel(const float* __restrict__ x, float* __restrict__ y, const int* __rest
     }
 }
 
+// Ghost-penalty faces (teacher.GhostFaces: y += gamma sum_f P_f^T (b_d (x) I_3)^T (b_d (x) I_3) P_f x): face f joins
+// element fe[f] and its neighbour fn[f] one cell further along axis d (faces grouped by d: [0, c1), [c1, c2), [c2, nf));
+// its 45 nodes are the two elements' 27 (tensor order, nd) through fmap[45 d + j] = 32 * (neighbour) + t, and the
+// product per component is the 45 x 45 Gram matrix G_d = gamma b_d^T b_d (float32, G: 3 x 45 x 45). 45 threads per
+// face (one per face node: gather, row of G_d times the face vector, three atomic adds); each block takes a contiguous
+// range of faces (so it loads the Gram matrices of one or two directions only) in groups of FPB faces.
+template <int FPB>
+__global__ void __launch_bounds__(45 * FPB)
+gf_kernel(const float* __restrict__ x, float* __restrict__ y, const int* __restrict__ nd, const int* __restrict__ fe,
+          const int* __restrict__ fn, const int* __restrict__ fmap, const float* __restrict__ G, int nf, int c1, int c2,
+          int LD)
+{
+    __shared__ float sG[3 * 2025];
+    __shared__ float sX[FPB][135];                                // face vector [c][j] (45 c + j)
+    const int per = (nf + gridDim.x - 1) / gridDim.x;
+    const int lo = blockIdx.x * per, hi = min(nf, lo + per);
+    if (lo >= hi) return;                                         // (uniform in the block)
+    const int d0 = (lo >= c1) + (lo >= c2), d1 = (hi - 1 >= c1) + (hi - 1 >= c2);
+    for (int i = threadIdx.x; i < (d1 - d0 + 1) * 2025; i += blockDim.x) sG[2025 * d0 + i] = G[2025 * d0 + i];
+    const int lf = threadIdx.x / 45, j = threadIdx.x - 45 * (threadIdx.x / 45);
+    const int col = blockIdx.y;
+    for (int f0 = lo; f0 < hi; f0 += FPB) {
+        const int f = f0 + lf;
+        const bool ok = (lf < FPB) && (f < hi);
+        int d = 0;
+        int64_t node = 0;
+        __syncthreads();                                          // sG loaded / previous group's sX consumed
+        if (ok) {
+            d = (f >= c1) + (f >= c2);
+            const int m = fmap[45 * d + j];
+            const int el = (m >= 32) ? fn[f] : fe[f];
+            node = nd[(int64_t)el * 27 + (m & 31)];
+            sX[lf][j] = x[(3 * node) * LD + col];
+            sX[lf][45 + j] = x[(3 * node + 1) * LD + col];
+            sX[lf][90 + j] = x[(3 * node + 2) * LD + col];
+        }
+        __syncthreads();
+        if (ok) {
+            const float* g = sG + 2025 * d + 45 * j;
+            float a0 = 0.f, a1 = 0.f, a2 = 0.f;
+#pragma unroll 5
+            for (int jj = 0; jj < 45; jj++) {
+                const float gv = g[jj];
+                a0 += gv * sX[lf][jj];
+                a1 += gv * sX[lf][45 + jj];
+                a2 += gv * sX[lf][90 + jj];
+            }
+            atomicAdd(y + (3 * node) * LD + col, a0);
+            atomicAdd(y + (3 * node + 1) * LD + col, a1);
+            atomicAdd(y + (3 * node + 2) * LD + col, a2);
+        }
+    }
+}
+
 extern "C" {
 
 int kmf_init(const float* tabL, const float* tabD)
@@ -144,7 +198,24 @@ int kmf_init(const float* tabL, const float* tabD)
     cudaFuncGetAttributes(&at, kmf_kernel<2>);
     cudaFuncGetAttributes(&at, kmf_kernel<4>);
     cudaFuncGetAttributes(&at, kmf_kernel<8>);
+    cudaFuncGetAttributes(&at, gf_kernel<2>);
+    cudaFuncGetAttributes(&at, gf_kernel<4>);
+    cudaFuncGetAttributes(&at, gf_kernel<8>);
     return (int)cudaDeviceSynchronize();
+}
+
+int gf_launch(const float* x, float* y, const int* nd, const int* fe, const int* fn, const int* fmap, const float* G,
+              int nf, int c1, int c2, int B, int fpb, int blocks, void* stream)
+{
+    if (nf <= 0 || B <= 0) return 0;
+    cudaStream_t s = (cudaStream_t)stream;
+    const int f = (fpb == 2 || fpb == 8) ? fpb : 4;
+    int nb = (nf + f - 1) / f;
+    if (blocks > 0 && nb > blocks) nb = blocks;
+    if (f == 2) gf_kernel<2><<<dim3(nb, B), 90, 0, s>>>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B);
+    else if (f == 8) gf_kernel<8><<<dim3(nb, B), 360, 0, s>>>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B);
+    else gf_kernel<4><<<dim3(nb, B), 180, 0, s>>>(x, y, nd, fe, fn, fmap, G, nf, c1, c2, B);
+    return (int)cudaGetLastError();
 }
 
 int kmf_launch(const float* x, float* y, const int* nd, const float* w, int E, int B, float lam, float mu, int epb,

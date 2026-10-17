@@ -362,6 +362,13 @@ class _Kfp32:
         """K x32 in float32 (input and output float32; __matmul__ converts around it). src_v3: also called directly by
         chebfused with a float32 iterate it keeps up to date."""
         C, f32, x = self.C, torch.float32, x32
+        if KMF.ON and KMF.GF and self.symv and self.gf is not None and x32.shape[1] <= KMF.MAXB and KMF.kind() == 'cuda' \
+                and not (torch.is_grad_enabled() and x32.requires_grad) and not self._v3(x32):
+            st = self.mf_state()                                                # src_v3 P13: ghost faces and elements
+            if 'gf' in st:                                                      # matrix-free (two CUDA kernels)
+                x32 = x32.contiguous()
+                y = KMF.gf_apply_(torch.zeros_like(x32), st['gf'], x32)
+                return KMF.apply_(y, st, x32)
         if self.gf is not None:
             y = self.gf.matvec(x32, torch.zeros_like(x32)).mul_(self.gamma)
         else:
@@ -400,6 +407,8 @@ class _Kfp32:
         built on first use from the float64 moments (kept with this object: reset with the design)."""
         if self._mf is None or self._mf['kind'] != KMF.kind():
             self._mf = KMF.state(self.C)
+            if self._mf['kind'] == 'cuda' and self.gf is not None:
+                self._mf['gf'] = KMF.gf_state(self.C, self._mf['nd'])
         return self._mf
 
     def _form_p(self):
