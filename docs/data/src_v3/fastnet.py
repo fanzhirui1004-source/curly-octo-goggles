@@ -75,7 +75,7 @@ def _csr(rows, cols, vals, shape):
 
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
-CONVT = os.environ.get('OPL_V3_CONVT', '0') == '1'                               # src_v3 S27: transposed convolutions as
+CONVT = os.environ.get('OPL_V3_CONVT', '1') == '1'                               # src_v3 S27: transposed convolutions as
 # forward convolutions with the flipped, channel-swapped weight (stride 1, padding 1: the same sums; cuDNN's transposed
 # 3-D convolution is ~3.5x slower than its forward one here, and not reproducible run to run)
 

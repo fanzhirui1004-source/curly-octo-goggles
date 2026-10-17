@@ -43,5 +43,6 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | --resident-gb auto | (4) | lat_scale / opt_design: the resident-cell device budget from the card's memory and the cell count (hostmem.resident_auto; OPL_V3_RGB_FIXED / _PERCELL / _MARGIN) (S23) |
 | OPL_V3_NETFUSE | 1 | fused network paths (netfused.py): port clamp in the forward scatter, adjoint masks in one kernel, U-Net convolution input / output in one kernel each (S24) |
 | OPL_V3_SPILL / OPL_V3_SPILL_DIR | 0 / V3W/spill | around the K_PP planning peak, write parked cells' page-locked states to disk and read them back; the budget then needs no reserve (S25) |
-| OPL_V3_GRAPH / OPL_V3_GRAPH_MAXB | 0 / 4 | CUDA graph per cell for applies of at most 4 columns (the PCG matvec), replayed on the cell's stream (cellgraph.py) (S26) |
+| OPL_V3_GRAPH / OPL_V3_GRAPH_MAXB / OPL_V3_GRAPH_STAGES | 1 / 4 / 4 | CUDA graph per cell for applies of at most 4 columns (the PCG matvec), replayed on the cell's stream; streamed cells' states copied ahead into 4 device stage buffers (cellgraph.py; 51-cell plate solve -6%) (S26) |
+| OPL_V3_CONVT | 1 | transposed U-Net convolutions as forward convolutions with the flipped, channel-swapped weight: 2.8x faster, deterministic; rounding of each convolution differs (S27) |
 | OPL_V3_KPP_FP32 | 0 | category B (not bitwise): K_PP factor and solves in float32 (S21b) |

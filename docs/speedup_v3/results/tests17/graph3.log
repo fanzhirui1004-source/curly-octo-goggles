@@ -1,0 +1,39 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:73: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"phase": "stored B=1"}
+{"stored_B1": {"ms_eager": 19.67, "rel_eager_rerun": 3.853569437079275e-08, "ms_graph": 19.48, "rel_graph": 3.680313536654873e-08, "capture_s": 0.069, "pool_MiB": 266.0, "rss_MiB": 0.2, "rel_graph_q2": 3.536345566455008e-08}}
+{"phase": "stored B=3"}
+{"stored_B3": {"ms_eager": 37.24, "rel_eager_rerun": 3.799093025525736e-08, "ms_graph": 36.9, "rel_graph": 3.800599804922696e-08, "capture_s": 0.087, "pool_MiB": 464.0, "rss_MiB": 0.0, "rel_graph_q2": 3.77724407051998e-08}}
+{"phase": "recompute B=1"}
+{"recompute_B1": {"ms_eager": 24.03, "rel_eager_rerun": 3.6955963098855874e-08, "ms_graph": 23.58, "rel_graph": 3.8673821362693855e-08, "capture_s": 0.09, "pool_MiB": 1246.0, "rss_MiB": 0.0, "rel_graph_q2": 3.6295390758901115e-08}}
+{"phase": "recompute B=3"}
+{"recompute_B3": {"ms_eager": 41.76, "rel_eager_rerun": 3.779453076177095e-08, "ms_graph": 40.96, "rel_graph": 3.8140490191034305e-08, "capture_s": 0.084, "pool_MiB": 1244.0, "rss_MiB": 0.0, "rel_graph_q2": 3.763593391257393e-08}}
+{"phase": "capture ns=1 cell 0"}
+{"phase": "capture ns=1 cell 1"}
+{"phase": "capture ns=1 cell 2"}
+{"phase": "capture ns=1 cell 3"}
+{"phase": "eager ns=1"}
+{"phase": "graphs ns=1"}
+{"streams_1": {"cells": 4, "ms_eager_all": 67.16, "ms_graph_all": 61.53, "rel_graph": 3.769613339212296e-08, "pools_MiB": 268.0}}
+{"phase": "capture ns=2 cell 0"}
+{"phase": "capture ns=2 cell 1"}
+{"phase": "capture ns=2 cell 2"}
+{"phase": "capture ns=2 cell 3"}
+{"phase": "eager ns=2"}
+{"phase": "graphs ns=2"}
+{"streams_2": {"cells": 4, "ms_eager_all": 63.22, "ms_graph_all": 51.79, "rel_graph": 3.7781509848100843e-08, "pools_MiB": 530.0}}
+{"phase": "capture ns=3 cell 0"}
+{"phase": "capture ns=3 cell 1"}
+{"phase": "capture ns=3 cell 2"}
+{"phase": "capture ns=3 cell 3"}
+{"phase": "eager ns=3"}
+{"phase": "graphs ns=3"}
+{"streams_3": {"cells": 4, "ms_eager_all": 63.1, "ms_graph_all": 52.1, "rel_graph": 3.845320415188007e-08, "pools_MiB": 694.0}}
+{"phase": "capture ns=4 cell 0"}
+{"phase": "capture ns=4 cell 1"}
+{"phase": "capture ns=4 cell 2"}
+{"phase": "capture ns=4 cell 3"}
+{"phase": "eager ns=4"}
+{"phase": "graphs ns=4"}
+{"streams_4": {"cells": 4, "ms_eager_all": 61.69, "ms_graph_all": 47.3, "rel_graph": 3.700699471909734e-08, "pools_MiB": 738.0}}
+{"cases": "plateS24_040_o000,plateS24_060_o000,plateS24_150_o000,plateS24_160_o000", "stored_B1": {"ms_eager": 19.67, "rel_eager_rerun": 3.853569437079275e-08, "ms_graph": 19.48, "rel_graph": 3.680313536654873e-08, "capture_s": 0.069, "pool_MiB": 266.0, "rss_MiB": 0.2, "rel_graph_q2": 3.536345566455008e-08}, "stored_B3": {"ms_eager": 37.24, "rel_eager_rerun": 3.799093025525736e-08, "ms_graph": 36.9, "rel_graph": 3.800599804922696e-08, "capture_s": 0.087, "pool_MiB": 464.0, "rss_MiB": 0.0, "rel_graph_q2": 3.77724407051998e-08}, "recompute_B1": {"ms_eager": 24.03, "rel_eager_rerun": 3.6955963098855874e-08, "ms_graph": 23.58, "rel_graph": 3.8673821362693855e-08, "capture_s": 0.09, "pool_MiB": 1246.0, "rss_MiB": 0.0, "rel_graph_q2": 3.6295390758901115e-08}, "recompute_B3": {"ms_eager": 41.76, "rel_eager_rerun": 3.779453076177095e-08, "ms_graph": 40.96, "rel_graph": 3.8140490191034305e-08, "capture_s": 0.084, "pool_MiB": 1244.0, "rss_MiB": 0.0, "rel_graph_q2": 3.763593391257393e-08}, "streams_1": {"cells": 4, "ms_eager_all": 67.16, "ms_graph_all": 61.53, "rel_graph": 3.769613339212296e-08, "pools_MiB": 268.0}, "streams_2": {"cells": 4, "ms_eager_all": 63.22, "ms_graph_all": 51.79, "rel_graph": 3.7781509848100843e-08, "pools_MiB": 530.0}, "streams_3": {"cells": 4, "ms_eager_all": 63.1, "ms_graph_all": 52.1, "rel_graph": 3.845320415188007e-08, "pools_MiB": 694.0}, "streams_4": {"cells": 4, "ms_eager_all": 61.69, "ms_graph_all": 47.3, "rel_graph": 3.700699471909734e-08, "pools_MiB": 738.0}, "ms_eager_single": [19.9, 19.42, 16.34, 16.12]}

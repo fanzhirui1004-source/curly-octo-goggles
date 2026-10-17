@@ -1,0 +1,7 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:73: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"n": 36, "max_rel_new": 1.648486318117648e-06, "max_rel_orig_rerun": 3.527780734202679e-07, "new_deterministic": true, "ms_convT": 21.74, "ms_conv": 7.82}
+{"s_hat_B1": {"ms_orig": 19.73, "ms_convt": 19.6, "rel_new": 3.8004830514874185e-08, "rel_orig_rerun": 3.795003718848802e-08}}
+{"s_hat_B3": {"ms_orig": 37.19, "ms_convt": 35.5, "rel_new": 3.8631670392355394e-08, "rel_orig_rerun": 3.8478921032614436e-08}}
+{"s_hat_B16": {"ms_orig": 181.69, "ms_convt": 169.58, "rel_new": 3.767791748306683e-08, "rel_orig_rerun": 3.77020803346844e-08}}
+{"case": "plateS24_040_o000", "conv_summary": {"n": 36, "max_rel_new": 1.648486318117648e-06, "max_rel_orig_rerun": 3.527780734202679e-07, "new_deterministic": true, "ms_convT": 21.74, "ms_conv": 7.82}, "s_hat_B1": {"ms_orig": 19.73, "ms_convt": 19.6, "rel_new": 3.8004830514874185e-08, "rel_orig_rerun": 3.795003718848802e-08}, "s_hat_B3": {"ms_orig": 37.19, "ms_convt": 35.5, "rel_new": 3.8631670392355394e-08, "rel_orig_rerun": 3.8478921032614436e-08}, "s_hat_B16": {"ms_orig": 181.69, "ms_convt": 169.58, "rel_new": 3.767791748306683e-08, "rel_orig_rerun": 3.77020803346844e-08}}

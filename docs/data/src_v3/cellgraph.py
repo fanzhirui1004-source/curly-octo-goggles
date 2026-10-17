@@ -1,5 +1,7 @@
-"""CUDA graphs for the narrow cell applications (src_v3 S26, OPL_V3_GRAPH=1; stream_ops.StreamedOp.apply,
-lat_scale._Resident.apply).
+"""CUDA graphs for the narrow cell applications (src_v3 S26, default on, OPL_V3_GRAPH=0: off; stream_ops.StreamedOp.apply,
+lat_scale._Resident.apply). Measured on the 51-cell plate (results/v3z_S51, v3z4_S51): solve ~148-154 -> 141.1 s (two
+streams), 138.6 s (four), PCG 168, compliance within the run-to-run noise; hlat222 unchanged (eight resident cells,
+bound by the GPU).
 
 The PCG matvec applies every cell's S_hat to one column. A full plate cell's S_hat is ~1400 kernel launches with ~20 ms
 of GPU work; lat_multi issues the cells round robin on two streams so that one cell's small kernels run alongside the
@@ -28,7 +30,7 @@ import os
 import time
 import torch
 
-ON = os.environ.get('OPL_V3_GRAPH', '0') == '1'
+ON = os.environ.get('OPL_V3_GRAPH', '1') == '1'
 MAXB = int(os.environ.get('OPL_V3_GRAPH_MAXB', '4'))
 WARM = int(os.environ.get('OPL_V3_GRAPH_WARM', '1'))
 _POOLS = {}                                                             # stream handle -> graph pool handle
