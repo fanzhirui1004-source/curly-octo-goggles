@@ -34,9 +34,24 @@ def rss():
             return int(l.split()[1]) * 1024 / GiB
 
 
+def pools():
+    """Reserved / allocated GiB per allocator pool (the default pool and each CUDA-graph pool), from the allocator's
+    snapshot (OPL_V3_CENSUS_POOLS=1)."""
+    out = {}
+    for seg in torch.cuda.memory_snapshot():
+        key = str(tuple(seg.get('segment_pool_id', (0, 0))))
+        d = out.setdefault(key, dict(reserved=0.0, allocated=0.0, segments=0))
+        d['reserved'] += seg['total_size'] / GiB
+        d['allocated'] += seg.get('allocated_size', 0) / GiB
+        d['segments'] += 1
+    return {k: {kk: (round(vv, 3) if isinstance(vv, float) else vv) for kk, vv in v.items()} for k, v in out.items()}
+
+
 def point(name, **kw):
     torch.cuda.synchronize()
     free, total = torch.cuda.mem_get_info()
+    if os.environ.get('OPL_V3_CENSUS_POOLS') == '1':
+        kw['pools'] = pools()
     REC['points'].append(dict(name=name, alloc=torch.cuda.memory_allocated() / GiB, reserved=torch.cuda.memory_reserved() / GiB,
                               peak=torch.cuda.max_memory_allocated() / GiB, device_used=(total - free) / GiB, rss=rss(), **kw))
 
