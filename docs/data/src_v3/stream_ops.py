@@ -356,6 +356,8 @@ class StreamedOp:
         if CG.ON and self.depth == 0 and self.registered and self.buf is not None:   # src_v3 S26: CUDA graph
             y = CG.apply(self, q, self._graph_body, fp=(self.buf.data_ptr(), self.total))
             if y is not None:
+                if self.loaded is not None:                             # a state prefetched for an eager use is
+                    self._park()                                        # not read by the graph
                 return y
         with self.active():
             return self.op.apply(q)
