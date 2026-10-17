@@ -45,7 +45,7 @@ def ev(fn, rep):
     for _ in range(rep):
         fn()
     e.record(); torch.cuda.synchronize()
-    return 1000 * s.elapsed_time(e) / rep
+    return s.elapsed_time(e) / rep                                  # ms
 
 
 _CAPS = {}

@@ -49,11 +49,11 @@ def ev(fn, rep):
     for _ in range(rep):
         fn()
     e.record(); torch.cuda.synchronize()
-    return 1000 * s.elapsed_time(e) / rep
+    return s.elapsed_time(e) / rep                                  # ms
 
 
-def cold(fn, rep):
-    return ev(lambda: (buf.add_(1.0), fn()), rep) - ev(lambda: buf.add_(1.0), rep)
+def cold(fn, rep):                                                  # us
+    return 1000 * (ev(lambda: (buf.add_(1.0), fn()), rep) - ev(lambda: buf.add_(1.0), rep))
 
 
 class Graphed:

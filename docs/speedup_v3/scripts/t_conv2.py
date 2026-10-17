@@ -77,6 +77,18 @@ with torch.no_grad():
                      det_bench_ncdhw=bool(torch.equal(y, Fn.conv3d(xc, W, padding=1))))
             torch.backends.cudnn.benchmark = False
             r['us_contig_copy'] = round(timed(lambda: xv.contiguous(), a.rep), 1)
+            import conv3 as C3                                                   # src_v3 P10: Triton implicit GEMM
+            dn = dense.contiguous()
+            for bm in (32, 64, 128):
+                for w in (2, 4, 8):
+                    try:
+                        y = C3.conv3d(dn, W, m_, bm=bm, warps=w)
+                        us = timed(lambda: C3.conv3d(dn, W, m_, bm=bm, warps=w), a.rep)
+                        rr = rel(y.permute(1, 2, 0).reshape(B, F_, m_, m_, m_), y0)
+                        if 'us_triton' not in r or us < r['us_triton']:
+                            r.update(us_triton=round(us, 1), triton_cfg=(bm, w), rel_triton=rr)
+                    except Exception as ex:                              # noqa: BLE001
+                        r.setdefault('triton_errors', []).append(repr(ex)[:80])
             row[f'B{B}'] = r
         res['levels'].append(row)
         print(json.dumps(row), flush=True)

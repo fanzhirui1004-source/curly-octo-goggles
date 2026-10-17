@@ -76,6 +76,7 @@ def _csr(rows, cols, vals, shape):
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
 HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
+CONV3 = os.environ.get('OPL_V3_CONV3', '0') == '1'                               # src_v3 P10: U-Net convolutions in Triton
 CONVT = os.environ.get('OPL_V3_CONVT', '1') == '1'                               # src_v3 S27: transposed convolutions as
 # forward convolutions with the flipped, channel-swapped weight (stride 1, padding 1: the same sums; cuDNN's transposed
 # 3-D convolution is ~3.5x slower than its forward one here, and not reproducible run to run)
@@ -426,6 +427,13 @@ class FastNet:
         if self._cinv is not None and self._cinv[l] is not None and Xc.is_contiguous():   # src_v3 S24: 2 + conv launches
             import netfused as NF
             g = self.gates[l][:, k]
+            if CONV3 and Xc.dtype == torch.float32:                              # src_v3 P10: Triton implicit GEMM
+                import conv3 as C3
+                Wk = _shared_flipT(self.convs[l])[k] if transpose else self.convs[l][k]   # (S27: transposed = flipped)
+                if C3.ready(Wk):
+                    dense = NF.conv_in(Xc, self._cinv[l], m_ ** 3, g if transpose else None)
+                    v3 = C3.conv3d(dense, Wk, m_).permute(1, 2, 0)              # (B, F, m^3) view of (m^3, B, F)
+                    return NF.conv_out(Xc, v3, t['dense_idx'], None if transpose else g)
             if transpose:
                 dense = NF.conv_in(Xc, self._cinv[l], m_ ** 3, g)
                 v = self._convt(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), l, k)
