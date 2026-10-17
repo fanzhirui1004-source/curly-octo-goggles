@@ -11,7 +11,8 @@ Summary (recorded in the solve record as 'prof'):
   per_stream          per CUDA stream: kernels, kernel ms (sum), copies ms, busy ms
   top_kernels         name, ms, count
   cpu_api             CUDA runtime / driver calls on the host: name -> ms, count (graph launches, waits, syncs)
-OPL_V3_PROF_TRACE=1 also keeps the chrome trace (gzip) next to OPL_V3_PROF_OUT."""
+OPL_V3_PROF_TRACE=1 also keeps the chrome trace (gzip) next to OPL_V3_PROF_OUT.
+OPL_V3_PROF_FE=k (opt_design.analyse_fast): the same summary for front-end cells k..k+2 (OPL_V3_PROF_FE_OUT)."""
 import os, json, time, tempfile, gzip, shutil
 import torch
 
@@ -89,7 +90,10 @@ def summarize(trace_path, wall_s, top=25):
 
 
 class Probe:
-    """with Probe() as p: <device work>  ->  p.summary (dict)."""
+    """with Probe() as p: <device work>  ->  p.summary (dict). out: summary JSON path (default OPL_V3_PROF_OUT)."""
+
+    def __init__(self, out=None):
+        self.out = out or OUT
 
     def __enter__(self):
         from torch.profiler import profile, ProfilerActivity
@@ -111,11 +115,11 @@ class Probe:
                 self.summary = summarize(tp, wall)
             except Exception as e:                                          # noqa: BLE001 (diagnostic only)
                 self.summary = dict(wall_ms=round(1e3 * wall, 2), error=repr(e)[:300])
-            if OUT:
-                with open(OUT, 'w') as f_:
+            if self.out:
+                with open(self.out, 'w') as f_:
                     json.dump(self.summary, f_, indent=1)
                 if TRACE:
-                    with open(tp, 'rb') as fi, gzip.open(OUT + '.trace.json.gz', 'wb') as fo:
+                    with open(tp, 'rb') as fi, gzip.open(self.out + '.trace.json.gz', 'wb') as fo:
                         shutil.copyfileobj(fi, fo)
         finally:
             shutil.rmtree(d, ignore_errors=True)

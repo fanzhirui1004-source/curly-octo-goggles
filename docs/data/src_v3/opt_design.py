@@ -186,6 +186,7 @@ def start_bodies(cases):
 
 PIPE_BODIES = os.environ.get('OPL_V3_PIPE_BODIES', '1') == '1'          # src_v3: default on (=0: generate, then analyse)
 FE_THREAD = os.environ.get('OPL_V3_FE_THREAD', '1') == '1'              # src_v3 P5: next cell's setup in a worker thread
+PROF_FE = int(os.environ.get('OPL_V3_PROF_FE', '-1'))                    # src_v3 diagnostic: profile front-end cells k..k+2
 
 
 _PIPE_FAULT = [int(os.environ.get('OPL_V3_PIPE_FAULT', '-1'))]      # test hook: fail the k-th waited cell once
@@ -405,7 +406,11 @@ def analyse_fast(cases, positions, h, wait=None):
     import concurrent.futures as CF
     ex = CF.ThreadPoolExecutor(1) if FE_THREAD and len(cases) > 2 else None
     fut = None
+    probe = None
     for k_, case in enumerate(cases):
+        if k_ == PROF_FE:                                                      # src_v3 diagnostic (gpuprof)
+            import gpuprof as GP
+            probe = GP.Probe(os.environ.get('OPL_V3_PROF_FE_OUT')); probe.__enter__()
         try:
             if fut is not None:
                 C, geo, a0 = fut.result()
@@ -446,6 +451,9 @@ def analyse_fast(cases, positions, h, wait=None):
         Cs[case] = C
         del geo, op
         TE._collect()
+        if probe is not None and (k_ == PROF_FE + 2 or k_ == len(cases) - 1):
+            probe.__exit__(None, None, None)
+            T['prof_fe'] = dict(cells=k_ - PROF_FE + 1, **probe.summary); probe = None
     if ex is not None:
         ex.shutdown(wait=True)
     gc.collect()                                                               # src_v3: one full collection
