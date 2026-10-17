@@ -1,0 +1,103 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:73: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"B1": {"kernel_ms": 19.79, "attributed_to_aten_ops_ms": 8.29}}
+      2.800 ms  234  aten::mm                     ?
+      2.148 ms   24  aten::cudnn_convolution      ?
+      1.309 ms   38  aten::index_add_             ?
+      0.619 ms   50  aten::bmm                    ?
+      0.493 ms   81  aten::copy_                  ?
+      0.208 ms   12  aten::addmm                  ?
+      0.207 ms   25  aten::where                  ?
+      0.159 ms    9  cuLaunchKernelEx             ?
+      0.086 ms   67  aten::fill_                  ?
+      0.071 ms   17  aten::index                  ?
+      0.048 ms   37  aten::mul_                   ?
+      0.032 ms   10  aten::_index_put_impl_       ?
+      0.023 ms    9  aten::add                    ?
+      0.021 ms    4  aten::cat                    ?
+      0.013 ms    4  aten::reciprocal             ?
+      0.013 ms    2  aten::div                    ?
+      0.012 ms    6  aten::mul                    ?
+      0.010 ms    1  aten::add_                   ?
+      0.009 ms    5  aten::sub                    ?
+      0.005 ms    2  aten::index_copy_            ?
+      0.002 ms    1  aten::index_fill_            ?
+      0.002 ms    1  aten::neg                    ?
+      0.001 ms    0  Activity Buffer Request      ?
+   -- kernels by name
+      6.740 ms   36  _symv_up
+      2.148 ms   24  void implicit_convolveNd_sgemm<float, 3, 1024, 5, 5, 3, 3, 3, 1, false
+      1.680 ms   48  _scatter_t
+      1.043 ms  108  void cutlass::Kernel2<cutlass_80_simt_sgemm_128x32_8x5_nn_align1>(cutl
+      0.936 ms   48  _gather_t
+      0.797 ms  108  void cutlass::Kernel2<cutlass_80_simt_sgemm_64x64_8x5_nt_align1>(cutla
+      0.635 ms   16  void at::native::indexFuncLargeIndex<float, int, unsigned int, 2, 2, -
+      0.631 ms   20  void at::native::indexFuncLargeIndex<float, int, unsigned int, 1, 1, -
+      0.497 ms   16  _gather_flat
+      0.496 ms   49  void magma_sgemmEx_kernel<float, float, float, false, false, 6, 3, 5, 
+      0.427 ms    2  _symv
+      0.359 ms   21  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_inde
+      0.325 ms    3  void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nt_align
+      0.267 ms   21  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_k
+      0.259 ms    3  void dgemm_largek<false, false, 4, 4, 4, 3, 3, 16>(double*, double con
+      0.232 ms   16  _cheb_step
+      0.210 ms    3  void cutlass::Kernel2<cutlass_80_simt_sgemm_128x64_8x5_nn_align1>(cutl
+      0.207 ms   25  void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp
+      0.152 ms   16  _tail_step
+      0.146 ms   25  _mask_split
+      0.125 ms    2  std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int,
+      0.121 ms   24  void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp
+      0.117 ms    2  _restrict
+      0.111 ms   12  void cusparse::csrmm_alg2_kernel<false, false, false, int, int, int, i
+      0.109 ms    4  _symm_map
+{"B16": {"kernel_ms": 165.87, "attributed_to_aten_ops_ms": 81.97}}
+     23.740 ms  175  aten::mm                     ?
+     23.480 ms  187  Command Buffer Full          ?
+      8.787 ms   21  aten::where                  ?
+      8.773 ms   24  aten::index_add_             ?
+      6.324 ms   14  aten::cudnn_convolution      ?
+      5.946 ms   39  aten::bmm                    ?
+      1.548 ms   40  aten::copy_                  ?
+      0.846 ms   48  aten::fill_                  ?
+      0.810 ms    7  aten::addmm                  ?
+      0.449 ms    5  aten::add                    ?
+      0.409 ms    1  aten::add_                   ?
+      0.295 ms   25  aten::mul_                   ?
+      0.205 ms    2  aten::cat                    ?
+      0.107 ms    4  aten::_index_put_impl_       ?
+      0.096 ms    4  aten::mul                    ?
+      0.064 ms    1  aten::div                    ?
+      0.046 ms    5  aten::index                  ?
+      0.019 ms    2  aten::sub                    ?
+      0.018 ms    1  aten::neg                    ?
+      0.008 ms    2  aten::reciprocal             ?
+      0.002 ms    1  aten::index_copy_            ?
+      0.001 ms    0  Activity Buffer Request      ?
+      0.001 ms    0  aten::index_fill_            ?
+   -- kernels by name
+     27.053 ms   54  _symv
+     22.339 ms   48  _scatter
+     14.113 ms   36  void at::native::indexFuncLargeIndex<float, int, unsigned int, 2, 2, -
+     10.688 ms   24  void implicit_convolveNd_sgemm<float, 3, 1024, 5, 5, 3, 3, 3, 1, false
+     10.435 ms   25  void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp
+     10.156 ms   48  _gather
+      9.985 ms   47  _gather_flat
+      9.473 ms  113  void cutlass::Kernel2<cutlass_80_simt_sgemm_128x64_8x5_nn_align1>(cutl
+      9.242 ms  108  void cutlass::Kernel2<cutlass_80_simt_sgemm_128x64_8x5_nt_align1>(cutl
+      7.417 ms   25  _mask_split
+      7.004 ms   49  void magma_sgemmEx_kernel<float, float, float, false, false, 6, 3, 5, 
+      5.702 ms    3  void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_128x64_16x3_nt_alig
+      4.474 ms    3  void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_128x64_16x3_nn_alig
+      4.341 ms   16  _cheb_step
+      1.688 ms   26  void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp
+      1.562 ms   16  _tail_step
+      1.302 ms   12  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunc
+      1.028 ms   61  void at::native::vectorized_elementwise_kernel<4, at::native::FillFunc
+      0.931 ms   12  void cusparse::csrmm_alg2_kernel<false, false, false, int, int, int, i
+      0.789 ms   24  _conv_out
+      0.651 ms    1  void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align
+      0.611 ms    2  void sgemm_largek_lds64<false, true, 6, 3, 4, 5, 2, 64>(float*, float 
+      0.429 ms   36  void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFu
+      0.410 ms    4  void at::native::(anonymous namespace)::CatArrayBatchedCopy_alignedK_c
+      0.386 ms    8  Memcpy DtoD (Device -> Device)
+{"case": "plateS24_040_o000", "B1": {"kernel_ms": 19.79, "attributed_ms": 8.29, "top": [{"op": "aten::mm", "site": "?", "ms": 2.8, "n": 234}, {"op": "aten::cudnn_convolution", "site": "?", "ms": 2.148, "n": 24}, {"op": "aten::index_add_", "site": "?", "ms": 1.309, "n": 38}, {"op": "aten::bmm", "site": "?", "ms": 0.619, "n": 50}, {"op": "aten::copy_", "site": "?", "ms": 0.493, "n": 81}, {"op": "aten::addmm", "site": "?", "ms": 0.208, "n": 12}, {"op": "aten::where", "site": "?", "ms": 0.207, "n": 25}, {"op": "cuLaunchKernelEx", "site": "?", "ms": 0.159, "n": 9}, {"op": "aten::fill_", "site": "?", "ms": 0.086, "n": 67}, {"op": "aten::index", "site": "?", "ms": 0.071, "n": 17}, {"op": "aten::mul_", "site": "?", "ms": 0.048, "n": 37}, {"op": "aten::_index_put_impl_", "site": "?", "ms": 0.032, "n": 10}, {"op": "aten::add", "site": "?", "ms": 0.023, "n": 9}, {"op": "aten::cat", "site": "?", "ms": 0.021, "n": 4}, {"op": "aten::reciprocal", "site": "?", "ms": 0.013, "n": 4}, {"op": "aten::div", "site": "?", "ms": 0.013, "n": 2}, {"op": "aten::mul", "site": "?", "ms": 0.012, "n": 6}, {"op": "aten::add_", "site": "?", "ms": 0.01, "n": 1}, {"op": "aten::sub", "site": "?", "ms": 0.009, "n": 5}, {"op": "aten::index_copy_", "site": "?", "ms": 0.005, "n": 2}, {"op": "aten::index_fill_", "site": "?", "ms": 0.002, "n": 1}, {"op": "aten::neg", "site": "?", "ms": 0.002, "n": 1}, {"op": "Activity Buffer Request", "site": "?", "ms": 0.001, "n": 0}], "kernels": [{"k": "_symv_up", "ms": 6.74, "n": 36}, {"k": "void implicit_convolveNd_sgemm<float, 3, 1024, 5, 5, 3, 3, 3, 1, false", "ms": 2.148, "n": 24}, {"k": "_scatter_t", "ms": 1.68, "n": 48}, {"k": "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x32_8x5_nn_align1>(cutl", "ms": 1.043, "n": 108}, {"k": "_gather_t", "ms": 0.936, "n": 48}, {"k": "void cutlass::Kernel2<cutlass_80_simt_sgemm_64x64_8x5_nt_align1>(cutla", "ms": 0.797, "n": 108}, {"k": "void at::native::indexFuncLargeIndex<float, int, unsigned int, 2, 2, -", "ms": 0.635, "n": 16}, {"k": "void at::native::indexFuncLargeIndex<float, int, unsigned int, 1, 1, -", "ms": 0.631, "n": 20}, {"k": "_gather_flat", "ms": 0.497, "n": 16}, {"k": "void magma_sgemmEx_kernel<float, float, float, false, false, 6, 3, 5, ", "ms": 0.496, "n": 49}, {"k": "_symv", "ms": 0.427, "n": 2}, {"k": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_inde", "ms": 0.359, "n": 21}, {"k": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nt_align", "ms": 0.325, "n": 3}, {"k": "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_k", "ms": 0.267, "n": 21}, {"k": "void dgemm_largek<false, false, 4, 4, 4, 3, 3, 16>(double*, double con", "ms": 0.259, "n": 3}, {"k": "_cheb_step", "ms": 0.232, "n": 16}, {"k": "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x64_8x5_nn_align1>(cutl", "ms": 0.21, "n": 3}, {"k": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp", "ms": 0.207, "n": 25}, {"k": "_tail_step", "ms": 0.152, "n": 16}, {"k": "_mask_split", "ms": 0.146, "n": 25}, {"k": "std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int,", "ms": 0.125, "n": 2}, {"k": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp", "ms": 0.121, "n": 24}, {"k": "_restrict", "ms": 0.117, "n": 2}, {"k": "void cusparse::csrmm_alg2_kernel<false, false, false, int, int, int, i", "ms": 0.111, "n": 12}, {"k": "_symm_map", "ms": 0.109, "n": 4}, {"k": "_prolong", "ms": 0.087, "n": 2}, {"k": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_inde", "ms": 0.086, "n": 16}, {"k": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align", "ms": 0.081, "n": 1}, {"k": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunc", "ms": 0.078, "n": 61}, {"k": "_symm", "ms": 0.057, "n": 2}, {"k": "void cusparse::(anonymous namespace)::csr_partition_kernel<int, int>(i", "ms": 0.054, "n": 12}, {"k": "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_k", "ms": 0.053, "n": 18}, {"k": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFu", "ms": 0.047, "n": 36}, {"k": "void cusparse::matrix_scalar_multiply_kernel<cusparse::MatrixWiseMulPo", "ms": 0.043, "n": 12}, {"k": "_conv_out", "ms": 0.043, "n": 24}, {"k": "void at::native::indexFuncLargeIndex<double, int, unsigned int, 1, 1, ", "ms": 0.038, "n": 1}, {"k": "_conv_in", "ms": 0.038, "n": 24}, {"k": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunc", "ms": 0.035, "n": 12}, {"k": "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_k", "ms": 0.027, "n": 11}, {"k": "Memcpy DtoD (Device -> Device)", "ms": 0.025, "n": 8}]}, "B16": {"kernel_ms": 165.87, "attributed_ms": 81.97, "top": [{"op": "aten::mm", "site": "?", "ms": 23.74, "n": 175}, {"op": "Command Buffer Full", "site": "?", "ms": 23.48, "n": 187}, {"op": "aten::where", "site": "?", "ms": 8.787, "n": 21}, {"op": "aten::index_add_", "site": "?", "ms": 8.773, "n": 24}, {"op": "aten::cudnn_convolution", "site": "?", "ms": 6.324, "n": 14}, {"op": "aten::bmm", "site": "?", "ms": 5.946, "n": 39}, {"op": "aten::copy_", "site": "?", "ms": 1.548, "n": 40}, {"op": "aten::fill_", "site": "?", "ms": 0.846, "n": 48}, {"op": "aten::addmm", "site": "?", "ms": 0.81, "n": 7}, {"op": "aten::add", "site": "?", "ms": 0.449, "n": 5}, {"op": "aten::add_", "site": "?", "ms": 0.409, "n": 1}, {"op": "aten::mul_", "site": "?", "ms": 0.295, "n": 25}, {"op": "aten::cat", "site": "?", "ms": 0.205, "n": 2}, {"op": "aten::_index_put_impl_", "site": "?", "ms": 0.107, "n": 4}, {"op": "aten::mul", "site": "?", "ms": 0.096, "n": 4}, {"op": "aten::div", "site": "?", "ms": 0.064, "n": 1}, {"op": "aten::index", "site": "?", "ms": 0.046, "n": 5}, {"op": "aten::sub", "site": "?", "ms": 0.019, "n": 2}, {"op": "aten::neg", "site": "?", "ms": 0.018, "n": 1}, {"op": "aten::reciprocal", "site": "?", "ms": 0.008, "n": 2}, {"op": "aten::index_copy_", "site": "?", "ms": 0.002, "n": 1}, {"op": "Activity Buffer Request", "site": "?", "ms": 0.001, "n": 0}, {"op": "aten::index_fill_", "site": "?", "ms": 0.001, "n": 0}], "kernels": [{"k": "_symv", "ms": 27.053, "n": 54}, {"k": "_scatter", "ms": 22.339, "n": 48}, {"k": "void at::native::indexFuncLargeIndex<float, int, unsigned int, 2, 2, -", "ms": 14.113, "n": 36}, {"k": "void implicit_convolveNd_sgemm<float, 3, 1024, 5, 5, 3, 3, 3, 1, false", "ms": 10.688, "n": 24}, {"k": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp", "ms": 10.435, "n": 25}, {"k": "_gather", "ms": 10.156, "n": 48}, {"k": "_gather_flat", "ms": 9.985, "n": 47}, {"k": "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x64_8x5_nn_align1>(cutl", "ms": 9.473, "n": 113}, {"k": "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x64_8x5_nt_align1>(cutl", "ms": 9.242, "n": 108}, {"k": "_mask_split", "ms": 7.417, "n": 25}, {"k": "void magma_sgemmEx_kernel<float, float, float, false, false, 6, 3, 5, ", "ms": 7.004, "n": 49}, {"k": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_128x64_16x3_nt_alig", "ms": 5.702, "n": 3}, {"k": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_128x64_16x3_nn_alig", "ms": 4.474, "n": 3}, {"k": "_cheb_step", "ms": 4.341, "n": 16}, {"k": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp", "ms": 1.688, "n": 26}, {"k": "_tail_step", "ms": 1.562, "n": 16}, {"k": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunc", "ms": 1.302, "n": 12}, {"k": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunc", "ms": 1.028, "n": 61}, {"k": "void cusparse::csrmm_alg2_kernel<false, false, false, int, int, int, i", "ms": 0.931, "n": 12}, {"k": "_conv_out", "ms": 0.789, "n": 24}, {"k": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align", "ms": 0.651, "n": 1}, {"k": "void sgemm_largek_lds64<false, true, 6, 3, 4, 5, 2, 64>(float*, float ", "ms": 0.611, "n": 2}, {"k": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFu", "ms": 0.429, "n": 36}, {"k": "void at::native::(anonymous namespace)::CatArrayBatchedCopy_alignedK_c", "ms": 0.41, "n": 4}, {"k": "Memcpy DtoD (Device -> Device)", "ms": 0.386, "n": 8}, {"k": "void at::native::indexFuncLargeIndex<double, int, unsigned int, 2, 2, ", "ms": 0.381, "n": 1}, {"k": "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_k", "ms": 0.367, "n": 18}, {"k": "void cusparse::matrix_scalar_multiply_kernel<cusparse::MatrixWiseMulPo", "ms": 0.329, "n": 12}, {"k": "_conv_in", "ms": 0.329, "n": 24}, {"k": "_restrict", "ms": 0.265, "n": 2}, {"k": "_prolong", "ms": 0.258, "n": 2}, {"k": "void magma_sgemmEx_kernel<float, float, float, true, true, 6, 3, 6, 3,", "ms": 0.23, "n": 2}, {"k": "void at::native::unrolled_elementwise_kernel<at::native::direct_copy_k", "ms": 0.174, "n": 11}, {"k": "void gemmSN_NN_kernel<float, 256, 4, 2, 8, 3, 4, false, cublasGemvTens", "ms": 0.17, "n": 1}, {"k": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_inde", "ms": 0.162, "n": 7}, {"k": "void cutlass::Kernel2<cutlass_80_simt_sgemm_64x128_8x5_nn_align1>(cutl", "ms": 0.122, "n": 1}, {"k": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_inde", "ms": 0.101, "n": 3}, {"k": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp", "ms": 0.094, "n": 2}, {"k": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_imp", "ms": 0.092, "n": 2}, {"k": "void at::native::vectorized_elementwise_kernel<2, at::native::FillFunc", "ms": 0.091, "n": 6}]}}

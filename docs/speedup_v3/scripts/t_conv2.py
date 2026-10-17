@@ -78,6 +78,20 @@ with torch.no_grad():
             torch.backends.cudnn.benchmark = False
             r['us_contig_copy'] = round(timed(lambda: xv.contiguous(), a.rep), 1)
             import conv3 as C3                                                   # src_v3 P10: Triton implicit GEMM
+            act = t['dense_idx']; inv = f._cinv[l] if f._cinv is not None else None
+            if inv is not None:                                                  # P10b: active voxels only, fused
+                Xa = dense[act].contiguous()                                     # (in / out of the dense grid)
+                for bm in (16, 32, 64):
+                    for w in (2, 4, 8):
+                        try:
+                            ys = C3.conv_sparse(Xa, inv, act, W, m_, bm=bm, warps=w)
+                            us = timed(lambda: C3.conv_sparse(Xa, inv, act, W, m_, bm=bm, warps=w), a.rep)
+                            ref = Xa + y0.reshape(B, F_, m_ ** 3).permute(2, 0, 1)[act]
+                            rr = float((ys - ref).abs().max() / ref.abs().max())
+                            if 'us_sparse' not in r or us < r['us_sparse']:
+                                r.update(us_sparse=round(us, 1), sparse_cfg=(bm, w), rel_sparse=rr)
+                        except Exception as ex:                          # noqa: BLE001
+                            r.setdefault('sparse_errors', []).append(repr(ex)[:80])
             dn = dense.contiguous()
             for bm in (32, 64, 128):
                 for w in (2, 4, 8):
