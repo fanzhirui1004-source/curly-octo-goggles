@@ -79,6 +79,19 @@ with torch.no_grad(), f.slots():
                         except Exception as ex:                          # noqa: BLE001 (register limits)
                             pass
             r['best_fused'] = best
+            best4 = None                                                         # the 4-head dot form (layer4)
+            for eb in (16, 32):
+                for w in (2, 4, 8):
+                    try:
+                        run = lambda: HF.layer4(X.reshape(hl.N, -1), hl.hn, hl.a, hl.b, hl.deg, hl.W,
+                                                X.reshape(hl.N, -1).clone(), False, True, eb=eb, warps=w)
+                        yy = run()
+                        us = cold(run, a.rep)
+                        if best4 is None or us < best4[0]:
+                            best4 = (round(us, 1), eb, w, rel(yy.view_as(y0), y0))
+                    except Exception as ex:                              # noqa: BLE001
+                        r.setdefault('errors4', []).append(repr(ex)[:100])
+            r['best_fused4'] = best4
             row[f'B{B}'] = r
         res['layers'].append(row)
         print(json.dumps(row), flush=True)
