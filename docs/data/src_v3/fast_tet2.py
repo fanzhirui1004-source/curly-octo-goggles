@@ -683,6 +683,348 @@ def _bwd2_e0(tets_ptr, tref_ptr, tw_ptr, g_ptr, gt_ptr, T, Q: tl.constexpr, BLOC
     tl.store(gt_ptr + o + 2, J * z0 - S * (d1z + d2z + d3z), mask=mask)
 
 
+@triton.jit
+def _bwd2r(tets_ptr, tref_ptr, tw_ptr, g_ptr, own_ptr, gt_ptr, T, Q: tl.constexpr, BLOCK_T: tl.constexpr):
+    """src_v3: _bwd2 with the gradient read per row: tetrahedron t uses g[own[t]] (G has one row per owning element
+    row, not one per tetrahedron); the same values, the same arithmetic."""
+    pid = tl.program_id(0)
+    offs = pid * BLOCK_T + tl.arange(0, BLOCK_T)
+    mask = offs < T
+    grow = tl.load(own_ptr + offs, mask=mask, other=0).to(tl.int64)
+    v0x, v0y, v0z, e1x, e1y, e1z, e2x, e2y, e2z, e3x, e3y, e3z = _geom(tets_ptr, offs, mask)
+    det = e1x * (e2y * e3z - e2z * e3y) - e1y * (e2x * e3z - e2z * e3x) + e1z * (e2x * e3y - e2y * e3x)
+    J = tl.abs(det)
+    sg = tl.where(det >= 0, 1.0, -1.0)
+    S = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g0x = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g0y = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g0z = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g1x = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g1y = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g1z = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g2x = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g2y = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g2z = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g3x = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g3y = tl.zeros([BLOCK_T], dtype=tl.float64)
+    g3z = tl.zeros([BLOCK_T], dtype=tl.float64)
+    G00 = tl.load(g_ptr + grow * 125 + 0, mask=mask, other=0.0)
+    G01 = tl.load(g_ptr + grow * 125 + 1, mask=mask, other=0.0)
+    G02 = tl.load(g_ptr + grow * 125 + 2, mask=mask, other=0.0)
+    G03 = tl.load(g_ptr + grow * 125 + 3, mask=mask, other=0.0)
+    G04 = tl.load(g_ptr + grow * 125 + 4, mask=mask, other=0.0)
+    G10 = tl.load(g_ptr + grow * 125 + 5, mask=mask, other=0.0)
+    G11 = tl.load(g_ptr + grow * 125 + 6, mask=mask, other=0.0)
+    G12 = tl.load(g_ptr + grow * 125 + 7, mask=mask, other=0.0)
+    G13 = tl.load(g_ptr + grow * 125 + 8, mask=mask, other=0.0)
+    G14 = tl.load(g_ptr + grow * 125 + 9, mask=mask, other=0.0)
+    G20 = tl.load(g_ptr + grow * 125 + 10, mask=mask, other=0.0)
+    G21 = tl.load(g_ptr + grow * 125 + 11, mask=mask, other=0.0)
+    G22 = tl.load(g_ptr + grow * 125 + 12, mask=mask, other=0.0)
+    G23 = tl.load(g_ptr + grow * 125 + 13, mask=mask, other=0.0)
+    G24 = tl.load(g_ptr + grow * 125 + 14, mask=mask, other=0.0)
+    G30 = tl.load(g_ptr + grow * 125 + 15, mask=mask, other=0.0)
+    G31 = tl.load(g_ptr + grow * 125 + 16, mask=mask, other=0.0)
+    G32 = tl.load(g_ptr + grow * 125 + 17, mask=mask, other=0.0)
+    G33 = tl.load(g_ptr + grow * 125 + 18, mask=mask, other=0.0)
+    G34 = tl.load(g_ptr + grow * 125 + 19, mask=mask, other=0.0)
+    G40 = tl.load(g_ptr + grow * 125 + 20, mask=mask, other=0.0)
+    G41 = tl.load(g_ptr + grow * 125 + 21, mask=mask, other=0.0)
+    G42 = tl.load(g_ptr + grow * 125 + 22, mask=mask, other=0.0)
+    G43 = tl.load(g_ptr + grow * 125 + 23, mask=mask, other=0.0)
+    G44 = tl.load(g_ptr + grow * 125 + 24, mask=mask, other=0.0)
+    for q in range(Q):
+        r1 = tl.load(tref_ptr + 3 * q + 0); r2 = tl.load(tref_ptr + 3 * q + 1); r3 = tl.load(tref_ptr + 3 * q + 2)
+        w = tl.load(tw_ptr + q)
+        x = v0x + r1 * e1x + r2 * e2x + r3 * e3x
+        y = v0y + r1 * e1y + r2 * e2y + r3 * e3y
+        z = v0z + r1 * e1z + r2 * e2z + r3 * e3z
+        y2 = y * y; y3 = y2 * y; y4 = y2 * y2; z2 = z * z; z3 = z2 * z; z4 = z2 * z2
+        u0 = G00 + G01 * z + G02 * z2 + G03 * z3 + G04 * z4
+        du0 = G01 + 2.0 * G02 * z + 3.0 * G03 * z2 + 4.0 * G04 * z3
+        u1 = G10 + G11 * z + G12 * z2 + G13 * z3 + G14 * z4
+        du1 = G11 + 2.0 * G12 * z + 3.0 * G13 * z2 + 4.0 * G14 * z3
+        u2 = G20 + G21 * z + G22 * z2 + G23 * z3 + G24 * z4
+        du2 = G21 + 2.0 * G22 * z + 3.0 * G23 * z2 + 4.0 * G24 * z3
+        u3 = G30 + G31 * z + G32 * z2 + G33 * z3 + G34 * z4
+        du3 = G31 + 2.0 * G32 * z + 3.0 * G33 * z2 + 4.0 * G34 * z3
+        u4 = G40 + G41 * z + G42 * z2 + G43 * z3 + G44 * z4
+        du4 = G41 + 2.0 * G42 * z + 3.0 * G43 * z2 + 4.0 * G44 * z3
+        t = u0 + u1 * y + u2 * y2 + u3 * y3 + u4 * y4
+        ty = u1 + 2.0 * u2 * y + 3.0 * u3 * y2 + 4.0 * u4 * y3
+        tz = du0 + du1 * y + du2 * y2 + du3 * y3 + du4 * y4
+        xa = 1.0
+        dxa = 0.0
+        p = xa * t; px = dxa * t; py = xa * ty; pz = xa * tz
+        S += w * p
+        c0 = w * (1.0 - r1 - r2 - r3); c1 = w * r1; c2 = w * r2; c3 = w * r3
+        g0x += c0 * px; g0y += c0 * py; g0z += c0 * pz
+        g1x += c1 * px; g1y += c1 * py; g1z += c1 * pz
+        g2x += c2 * px; g2y += c2 * py; g2z += c2 * pz
+        g3x += c3 * px; g3y += c3 * py; g3z += c3 * pz
+    G00 = tl.load(g_ptr + grow * 125 + 25, mask=mask, other=0.0)
+    G01 = tl.load(g_ptr + grow * 125 + 26, mask=mask, other=0.0)
+    G02 = tl.load(g_ptr + grow * 125 + 27, mask=mask, other=0.0)
+    G03 = tl.load(g_ptr + grow * 125 + 28, mask=mask, other=0.0)
+    G04 = tl.load(g_ptr + grow * 125 + 29, mask=mask, other=0.0)
+    G10 = tl.load(g_ptr + grow * 125 + 30, mask=mask, other=0.0)
+    G11 = tl.load(g_ptr + grow * 125 + 31, mask=mask, other=0.0)
+    G12 = tl.load(g_ptr + grow * 125 + 32, mask=mask, other=0.0)
+    G13 = tl.load(g_ptr + grow * 125 + 33, mask=mask, other=0.0)
+    G14 = tl.load(g_ptr + grow * 125 + 34, mask=mask, other=0.0)
+    G20 = tl.load(g_ptr + grow * 125 + 35, mask=mask, other=0.0)
+    G21 = tl.load(g_ptr + grow * 125 + 36, mask=mask, other=0.0)
+    G22 = tl.load(g_ptr + grow * 125 + 37, mask=mask, other=0.0)
+    G23 = tl.load(g_ptr + grow * 125 + 38, mask=mask, other=0.0)
+    G24 = tl.load(g_ptr + grow * 125 + 39, mask=mask, other=0.0)
+    G30 = tl.load(g_ptr + grow * 125 + 40, mask=mask, other=0.0)
+    G31 = tl.load(g_ptr + grow * 125 + 41, mask=mask, other=0.0)
+    G32 = tl.load(g_ptr + grow * 125 + 42, mask=mask, other=0.0)
+    G33 = tl.load(g_ptr + grow * 125 + 43, mask=mask, other=0.0)
+    G34 = tl.load(g_ptr + grow * 125 + 44, mask=mask, other=0.0)
+    G40 = tl.load(g_ptr + grow * 125 + 45, mask=mask, other=0.0)
+    G41 = tl.load(g_ptr + grow * 125 + 46, mask=mask, other=0.0)
+    G42 = tl.load(g_ptr + grow * 125 + 47, mask=mask, other=0.0)
+    G43 = tl.load(g_ptr + grow * 125 + 48, mask=mask, other=0.0)
+    G44 = tl.load(g_ptr + grow * 125 + 49, mask=mask, other=0.0)
+    for q in range(Q):
+        r1 = tl.load(tref_ptr + 3 * q + 0); r2 = tl.load(tref_ptr + 3 * q + 1); r3 = tl.load(tref_ptr + 3 * q + 2)
+        w = tl.load(tw_ptr + q)
+        x = v0x + r1 * e1x + r2 * e2x + r3 * e3x
+        y = v0y + r1 * e1y + r2 * e2y + r3 * e3y
+        z = v0z + r1 * e1z + r2 * e2z + r3 * e3z
+        y2 = y * y; y3 = y2 * y; y4 = y2 * y2; z2 = z * z; z3 = z2 * z; z4 = z2 * z2
+        u0 = G00 + G01 * z + G02 * z2 + G03 * z3 + G04 * z4
+        du0 = G01 + 2.0 * G02 * z + 3.0 * G03 * z2 + 4.0 * G04 * z3
+        u1 = G10 + G11 * z + G12 * z2 + G13 * z3 + G14 * z4
+        du1 = G11 + 2.0 * G12 * z + 3.0 * G13 * z2 + 4.0 * G14 * z3
+        u2 = G20 + G21 * z + G22 * z2 + G23 * z3 + G24 * z4
+        du2 = G21 + 2.0 * G22 * z + 3.0 * G23 * z2 + 4.0 * G24 * z3
+        u3 = G30 + G31 * z + G32 * z2 + G33 * z3 + G34 * z4
+        du3 = G31 + 2.0 * G32 * z + 3.0 * G33 * z2 + 4.0 * G34 * z3
+        u4 = G40 + G41 * z + G42 * z2 + G43 * z3 + G44 * z4
+        du4 = G41 + 2.0 * G42 * z + 3.0 * G43 * z2 + 4.0 * G44 * z3
+        t = u0 + u1 * y + u2 * y2 + u3 * y3 + u4 * y4
+        ty = u1 + 2.0 * u2 * y + 3.0 * u3 * y2 + 4.0 * u4 * y3
+        tz = du0 + du1 * y + du2 * y2 + du3 * y3 + du4 * y4
+        xa = x
+        dxa = 1.0
+        p = xa * t; px = dxa * t; py = xa * ty; pz = xa * tz
+        S += w * p
+        c0 = w * (1.0 - r1 - r2 - r3); c1 = w * r1; c2 = w * r2; c3 = w * r3
+        g0x += c0 * px; g0y += c0 * py; g0z += c0 * pz
+        g1x += c1 * px; g1y += c1 * py; g1z += c1 * pz
+        g2x += c2 * px; g2y += c2 * py; g2z += c2 * pz
+        g3x += c3 * px; g3y += c3 * py; g3z += c3 * pz
+    G00 = tl.load(g_ptr + grow * 125 + 50, mask=mask, other=0.0)
+    G01 = tl.load(g_ptr + grow * 125 + 51, mask=mask, other=0.0)
+    G02 = tl.load(g_ptr + grow * 125 + 52, mask=mask, other=0.0)
+    G03 = tl.load(g_ptr + grow * 125 + 53, mask=mask, other=0.0)
+    G04 = tl.load(g_ptr + grow * 125 + 54, mask=mask, other=0.0)
+    G10 = tl.load(g_ptr + grow * 125 + 55, mask=mask, other=0.0)
+    G11 = tl.load(g_ptr + grow * 125 + 56, mask=mask, other=0.0)
+    G12 = tl.load(g_ptr + grow * 125 + 57, mask=mask, other=0.0)
+    G13 = tl.load(g_ptr + grow * 125 + 58, mask=mask, other=0.0)
+    G14 = tl.load(g_ptr + grow * 125 + 59, mask=mask, other=0.0)
+    G20 = tl.load(g_ptr + grow * 125 + 60, mask=mask, other=0.0)
+    G21 = tl.load(g_ptr + grow * 125 + 61, mask=mask, other=0.0)
+    G22 = tl.load(g_ptr + grow * 125 + 62, mask=mask, other=0.0)
+    G23 = tl.load(g_ptr + grow * 125 + 63, mask=mask, other=0.0)
+    G24 = tl.load(g_ptr + grow * 125 + 64, mask=mask, other=0.0)
+    G30 = tl.load(g_ptr + grow * 125 + 65, mask=mask, other=0.0)
+    G31 = tl.load(g_ptr + grow * 125 + 66, mask=mask, other=0.0)
+    G32 = tl.load(g_ptr + grow * 125 + 67, mask=mask, other=0.0)
+    G33 = tl.load(g_ptr + grow * 125 + 68, mask=mask, other=0.0)
+    G34 = tl.load(g_ptr + grow * 125 + 69, mask=mask, other=0.0)
+    G40 = tl.load(g_ptr + grow * 125 + 70, mask=mask, other=0.0)
+    G41 = tl.load(g_ptr + grow * 125 + 71, mask=mask, other=0.0)
+    G42 = tl.load(g_ptr + grow * 125 + 72, mask=mask, other=0.0)
+    G43 = tl.load(g_ptr + grow * 125 + 73, mask=mask, other=0.0)
+    G44 = tl.load(g_ptr + grow * 125 + 74, mask=mask, other=0.0)
+    for q in range(Q):
+        r1 = tl.load(tref_ptr + 3 * q + 0); r2 = tl.load(tref_ptr + 3 * q + 1); r3 = tl.load(tref_ptr + 3 * q + 2)
+        w = tl.load(tw_ptr + q)
+        x = v0x + r1 * e1x + r2 * e2x + r3 * e3x
+        y = v0y + r1 * e1y + r2 * e2y + r3 * e3y
+        z = v0z + r1 * e1z + r2 * e2z + r3 * e3z
+        y2 = y * y; y3 = y2 * y; y4 = y2 * y2; z2 = z * z; z3 = z2 * z; z4 = z2 * z2
+        u0 = G00 + G01 * z + G02 * z2 + G03 * z3 + G04 * z4
+        du0 = G01 + 2.0 * G02 * z + 3.0 * G03 * z2 + 4.0 * G04 * z3
+        u1 = G10 + G11 * z + G12 * z2 + G13 * z3 + G14 * z4
+        du1 = G11 + 2.0 * G12 * z + 3.0 * G13 * z2 + 4.0 * G14 * z3
+        u2 = G20 + G21 * z + G22 * z2 + G23 * z3 + G24 * z4
+        du2 = G21 + 2.0 * G22 * z + 3.0 * G23 * z2 + 4.0 * G24 * z3
+        u3 = G30 + G31 * z + G32 * z2 + G33 * z3 + G34 * z4
+        du3 = G31 + 2.0 * G32 * z + 3.0 * G33 * z2 + 4.0 * G34 * z3
+        u4 = G40 + G41 * z + G42 * z2 + G43 * z3 + G44 * z4
+        du4 = G41 + 2.0 * G42 * z + 3.0 * G43 * z2 + 4.0 * G44 * z3
+        t = u0 + u1 * y + u2 * y2 + u3 * y3 + u4 * y4
+        ty = u1 + 2.0 * u2 * y + 3.0 * u3 * y2 + 4.0 * u4 * y3
+        tz = du0 + du1 * y + du2 * y2 + du3 * y3 + du4 * y4
+        xa = x * x
+        dxa = 2.0 * x
+        p = xa * t; px = dxa * t; py = xa * ty; pz = xa * tz
+        S += w * p
+        c0 = w * (1.0 - r1 - r2 - r3); c1 = w * r1; c2 = w * r2; c3 = w * r3
+        g0x += c0 * px; g0y += c0 * py; g0z += c0 * pz
+        g1x += c1 * px; g1y += c1 * py; g1z += c1 * pz
+        g2x += c2 * px; g2y += c2 * py; g2z += c2 * pz
+        g3x += c3 * px; g3y += c3 * py; g3z += c3 * pz
+    G00 = tl.load(g_ptr + grow * 125 + 75, mask=mask, other=0.0)
+    G01 = tl.load(g_ptr + grow * 125 + 76, mask=mask, other=0.0)
+    G02 = tl.load(g_ptr + grow * 125 + 77, mask=mask, other=0.0)
+    G03 = tl.load(g_ptr + grow * 125 + 78, mask=mask, other=0.0)
+    G04 = tl.load(g_ptr + grow * 125 + 79, mask=mask, other=0.0)
+    G10 = tl.load(g_ptr + grow * 125 + 80, mask=mask, other=0.0)
+    G11 = tl.load(g_ptr + grow * 125 + 81, mask=mask, other=0.0)
+    G12 = tl.load(g_ptr + grow * 125 + 82, mask=mask, other=0.0)
+    G13 = tl.load(g_ptr + grow * 125 + 83, mask=mask, other=0.0)
+    G14 = tl.load(g_ptr + grow * 125 + 84, mask=mask, other=0.0)
+    G20 = tl.load(g_ptr + grow * 125 + 85, mask=mask, other=0.0)
+    G21 = tl.load(g_ptr + grow * 125 + 86, mask=mask, other=0.0)
+    G22 = tl.load(g_ptr + grow * 125 + 87, mask=mask, other=0.0)
+    G23 = tl.load(g_ptr + grow * 125 + 88, mask=mask, other=0.0)
+    G24 = tl.load(g_ptr + grow * 125 + 89, mask=mask, other=0.0)
+    G30 = tl.load(g_ptr + grow * 125 + 90, mask=mask, other=0.0)
+    G31 = tl.load(g_ptr + grow * 125 + 91, mask=mask, other=0.0)
+    G32 = tl.load(g_ptr + grow * 125 + 92, mask=mask, other=0.0)
+    G33 = tl.load(g_ptr + grow * 125 + 93, mask=mask, other=0.0)
+    G34 = tl.load(g_ptr + grow * 125 + 94, mask=mask, other=0.0)
+    G40 = tl.load(g_ptr + grow * 125 + 95, mask=mask, other=0.0)
+    G41 = tl.load(g_ptr + grow * 125 + 96, mask=mask, other=0.0)
+    G42 = tl.load(g_ptr + grow * 125 + 97, mask=mask, other=0.0)
+    G43 = tl.load(g_ptr + grow * 125 + 98, mask=mask, other=0.0)
+    G44 = tl.load(g_ptr + grow * 125 + 99, mask=mask, other=0.0)
+    for q in range(Q):
+        r1 = tl.load(tref_ptr + 3 * q + 0); r2 = tl.load(tref_ptr + 3 * q + 1); r3 = tl.load(tref_ptr + 3 * q + 2)
+        w = tl.load(tw_ptr + q)
+        x = v0x + r1 * e1x + r2 * e2x + r3 * e3x
+        y = v0y + r1 * e1y + r2 * e2y + r3 * e3y
+        z = v0z + r1 * e1z + r2 * e2z + r3 * e3z
+        y2 = y * y; y3 = y2 * y; y4 = y2 * y2; z2 = z * z; z3 = z2 * z; z4 = z2 * z2
+        u0 = G00 + G01 * z + G02 * z2 + G03 * z3 + G04 * z4
+        du0 = G01 + 2.0 * G02 * z + 3.0 * G03 * z2 + 4.0 * G04 * z3
+        u1 = G10 + G11 * z + G12 * z2 + G13 * z3 + G14 * z4
+        du1 = G11 + 2.0 * G12 * z + 3.0 * G13 * z2 + 4.0 * G14 * z3
+        u2 = G20 + G21 * z + G22 * z2 + G23 * z3 + G24 * z4
+        du2 = G21 + 2.0 * G22 * z + 3.0 * G23 * z2 + 4.0 * G24 * z3
+        u3 = G30 + G31 * z + G32 * z2 + G33 * z3 + G34 * z4
+        du3 = G31 + 2.0 * G32 * z + 3.0 * G33 * z2 + 4.0 * G34 * z3
+        u4 = G40 + G41 * z + G42 * z2 + G43 * z3 + G44 * z4
+        du4 = G41 + 2.0 * G42 * z + 3.0 * G43 * z2 + 4.0 * G44 * z3
+        t = u0 + u1 * y + u2 * y2 + u3 * y3 + u4 * y4
+        ty = u1 + 2.0 * u2 * y + 3.0 * u3 * y2 + 4.0 * u4 * y3
+        tz = du0 + du1 * y + du2 * y2 + du3 * y3 + du4 * y4
+        xa = x * x * x
+        dxa = 3.0 * x * x
+        p = xa * t; px = dxa * t; py = xa * ty; pz = xa * tz
+        S += w * p
+        c0 = w * (1.0 - r1 - r2 - r3); c1 = w * r1; c2 = w * r2; c3 = w * r3
+        g0x += c0 * px; g0y += c0 * py; g0z += c0 * pz
+        g1x += c1 * px; g1y += c1 * py; g1z += c1 * pz
+        g2x += c2 * px; g2y += c2 * py; g2z += c2 * pz
+        g3x += c3 * px; g3y += c3 * py; g3z += c3 * pz
+    G00 = tl.load(g_ptr + grow * 125 + 100, mask=mask, other=0.0)
+    G01 = tl.load(g_ptr + grow * 125 + 101, mask=mask, other=0.0)
+    G02 = tl.load(g_ptr + grow * 125 + 102, mask=mask, other=0.0)
+    G03 = tl.load(g_ptr + grow * 125 + 103, mask=mask, other=0.0)
+    G04 = tl.load(g_ptr + grow * 125 + 104, mask=mask, other=0.0)
+    G10 = tl.load(g_ptr + grow * 125 + 105, mask=mask, other=0.0)
+    G11 = tl.load(g_ptr + grow * 125 + 106, mask=mask, other=0.0)
+    G12 = tl.load(g_ptr + grow * 125 + 107, mask=mask, other=0.0)
+    G13 = tl.load(g_ptr + grow * 125 + 108, mask=mask, other=0.0)
+    G14 = tl.load(g_ptr + grow * 125 + 109, mask=mask, other=0.0)
+    G20 = tl.load(g_ptr + grow * 125 + 110, mask=mask, other=0.0)
+    G21 = tl.load(g_ptr + grow * 125 + 111, mask=mask, other=0.0)
+    G22 = tl.load(g_ptr + grow * 125 + 112, mask=mask, other=0.0)
+    G23 = tl.load(g_ptr + grow * 125 + 113, mask=mask, other=0.0)
+    G24 = tl.load(g_ptr + grow * 125 + 114, mask=mask, other=0.0)
+    G30 = tl.load(g_ptr + grow * 125 + 115, mask=mask, other=0.0)
+    G31 = tl.load(g_ptr + grow * 125 + 116, mask=mask, other=0.0)
+    G32 = tl.load(g_ptr + grow * 125 + 117, mask=mask, other=0.0)
+    G33 = tl.load(g_ptr + grow * 125 + 118, mask=mask, other=0.0)
+    G34 = tl.load(g_ptr + grow * 125 + 119, mask=mask, other=0.0)
+    G40 = tl.load(g_ptr + grow * 125 + 120, mask=mask, other=0.0)
+    G41 = tl.load(g_ptr + grow * 125 + 121, mask=mask, other=0.0)
+    G42 = tl.load(g_ptr + grow * 125 + 122, mask=mask, other=0.0)
+    G43 = tl.load(g_ptr + grow * 125 + 123, mask=mask, other=0.0)
+    G44 = tl.load(g_ptr + grow * 125 + 124, mask=mask, other=0.0)
+    for q in range(Q):
+        r1 = tl.load(tref_ptr + 3 * q + 0); r2 = tl.load(tref_ptr + 3 * q + 1); r3 = tl.load(tref_ptr + 3 * q + 2)
+        w = tl.load(tw_ptr + q)
+        x = v0x + r1 * e1x + r2 * e2x + r3 * e3x
+        y = v0y + r1 * e1y + r2 * e2y + r3 * e3y
+        z = v0z + r1 * e1z + r2 * e2z + r3 * e3z
+        y2 = y * y; y3 = y2 * y; y4 = y2 * y2; z2 = z * z; z3 = z2 * z; z4 = z2 * z2
+        u0 = G00 + G01 * z + G02 * z2 + G03 * z3 + G04 * z4
+        du0 = G01 + 2.0 * G02 * z + 3.0 * G03 * z2 + 4.0 * G04 * z3
+        u1 = G10 + G11 * z + G12 * z2 + G13 * z3 + G14 * z4
+        du1 = G11 + 2.0 * G12 * z + 3.0 * G13 * z2 + 4.0 * G14 * z3
+        u2 = G20 + G21 * z + G22 * z2 + G23 * z3 + G24 * z4
+        du2 = G21 + 2.0 * G22 * z + 3.0 * G23 * z2 + 4.0 * G24 * z3
+        u3 = G30 + G31 * z + G32 * z2 + G33 * z3 + G34 * z4
+        du3 = G31 + 2.0 * G32 * z + 3.0 * G33 * z2 + 4.0 * G34 * z3
+        u4 = G40 + G41 * z + G42 * z2 + G43 * z3 + G44 * z4
+        du4 = G41 + 2.0 * G42 * z + 3.0 * G43 * z2 + 4.0 * G44 * z3
+        t = u0 + u1 * y + u2 * y2 + u3 * y3 + u4 * y4
+        ty = u1 + 2.0 * u2 * y + 3.0 * u3 * y2 + 4.0 * u4 * y3
+        tz = du0 + du1 * y + du2 * y2 + du3 * y3 + du4 * y4
+        xa = x * x * x * x
+        dxa = 4.0 * x * x * x
+        p = xa * t; px = dxa * t; py = xa * ty; pz = xa * tz
+        S += w * p
+        c0 = w * (1.0 - r1 - r2 - r3); c1 = w * r1; c2 = w * r2; c3 = w * r3
+        g0x += c0 * px; g0y += c0 * py; g0z += c0 * pz
+        g1x += c1 * px; g1y += c1 * py; g1z += c1 * pz
+        g2x += c2 * px; g2y += c2 * py; g2z += c2 * pz
+        g3x += c3 * px; g3y += c3 * py; g3z += c3 * pz
+    d1x = sg * (e2y * e3z - e2z * e3y); d1y = sg * (e2z * e3x - e2x * e3z); d1z = sg * (e2x * e3y - e2y * e3x)
+    d2x = sg * (e3y * e1z - e3z * e1y); d2y = sg * (e3z * e1x - e3x * e1z); d2z = sg * (e3x * e1y - e3y * e1x)
+    d3x = sg * (e1y * e2z - e1z * e2y); d3y = sg * (e1z * e2x - e1x * e2z); d3z = sg * (e1x * e2y - e1y * e2x)
+    o = offs * 12
+    tl.store(gt_ptr + o + 3, J * g1x + S * d1x, mask=mask); tl.store(gt_ptr + o + 4, J * g1y + S * d1y, mask=mask)
+    tl.store(gt_ptr + o + 5, J * g1z + S * d1z, mask=mask)
+    tl.store(gt_ptr + o + 6, J * g2x + S * d2x, mask=mask); tl.store(gt_ptr + o + 7, J * g2y + S * d2y, mask=mask)
+    tl.store(gt_ptr + o + 8, J * g2z + S * d2z, mask=mask)
+    tl.store(gt_ptr + o + 9, J * g3x + S * d3x, mask=mask); tl.store(gt_ptr + o + 10, J * g3y + S * d3y, mask=mask)
+    tl.store(gt_ptr + o + 11, J * g3z + S * d3z, mask=mask)
+    tl.store(gt_ptr + o + 0, J * g0x - S * (d1x + d2x + d3x), mask=mask)
+    tl.store(gt_ptr + o + 1, J * g0y - S * (d1y + d2y + d3y), mask=mask)
+    tl.store(gt_ptr + o + 2, J * g0z - S * (d1z + d2z + d3z), mask=mask)
+
+
+@triton.jit
+def _bwd2r_e0(tets_ptr, tref_ptr, tw_ptr, g_ptr, own_ptr, gt_ptr, T, Q: tl.constexpr, BLOCK_T: tl.constexpr):
+    """src_v3: _bwd2_e0 with the gradient read per row (as _bwd2r)."""
+    pid = tl.program_id(0)
+    offs = pid * BLOCK_T + tl.arange(0, BLOCK_T)
+    mask = offs < T
+    grow = tl.load(own_ptr + offs, mask=mask, other=0).to(tl.int64)
+    v0x, v0y, v0z, e1x, e1y, e1z, e2x, e2y, e2z, e3x, e3y, e3z = _geom(tets_ptr, offs, mask)
+    det = e1x * (e2y * e3z - e2z * e3y) - e1y * (e2x * e3z - e2z * e3x) + e1z * (e2x * e3y - e2y * e3x)
+    J = tl.abs(det)
+    sg = tl.where(det >= 0, 1.0, -1.0)
+    S = tl.zeros([BLOCK_T], dtype=tl.float64)
+    z0 = tl.zeros([BLOCK_T], dtype=tl.float64)
+    G00 = tl.load(g_ptr + grow * 125 + 0, mask=mask, other=0.0)
+    for q in range(Q):
+        w = tl.load(tw_ptr + q)
+        S += w * G00
+    d1x = sg * (e2y * e3z - e2z * e3y); d1y = sg * (e2z * e3x - e2x * e3z); d1z = sg * (e2x * e3y - e2y * e3x)
+    d2x = sg * (e3y * e1z - e3z * e1y); d2y = sg * (e3z * e1x - e3x * e1z); d2z = sg * (e3x * e1y - e3y * e1x)
+    d3x = sg * (e1y * e2z - e1z * e2y); d3y = sg * (e1z * e2x - e1x * e2z); d3z = sg * (e1x * e2y - e1y * e2x)
+    o = offs * 12
+    tl.store(gt_ptr + o + 3, J * z0 + S * d1x, mask=mask); tl.store(gt_ptr + o + 4, J * z0 + S * d1y, mask=mask)
+    tl.store(gt_ptr + o + 5, J * z0 + S * d1z, mask=mask)
+    tl.store(gt_ptr + o + 6, J * z0 + S * d2x, mask=mask); tl.store(gt_ptr + o + 7, J * z0 + S * d2y, mask=mask)
+    tl.store(gt_ptr + o + 8, J * z0 + S * d2z, mask=mask)
+    tl.store(gt_ptr + o + 9, J * z0 + S * d3x, mask=mask); tl.store(gt_ptr + o + 10, J * z0 + S * d3y, mask=mask)
+    tl.store(gt_ptr + o + 11, J * z0 + S * d3z, mask=mask)
+    tl.store(gt_ptr + o + 0, J * z0 - S * (d1x + d2x + d3x), mask=mask)
+    tl.store(gt_ptr + o + 1, J * z0 - S * (d1y + d2y + d3y), mask=mask)
+    tl.store(gt_ptr + o + 2, J * z0 - S * (d1z + d2z + d3z), mask=mask)
+
+
 E0_HINT = [False]          # set by moments_ad.moments_vjp while it back-propagates a volume (unit m = 0) column
 SKIP_FWD = [False]         # src_v3 P6: set by moments_ad.moments_vjp when its caller discards the moments (cell_sens):
                            # the forward returns zeros instead of running _fwd2; the backward reads only the vertices
@@ -703,6 +1045,34 @@ def tet_moments_vjp2(tets, tref, tw, G, block=128, warps=4, e0=False):
         (_bwd2_e0 if e0 else _bwd2)[(triton.cdiv(T, block),)](tets, tref.contiguous(), tw.contiguous(), G.contiguous(), gt, T,
                                                              Q=tref.shape[0], BLOCK_T=block, num_warps=warps)
     return gt
+
+
+def tet_moments_vjp2_rows(tets, own, tref, tw, G, block=128, warps=4, e0=False):
+    """src_v3: the vertex VJP with G given per row ((n_rows, 125)) and the owning row of every tetrahedron (own)."""
+    tets = tets.contiguous(); T = tets.shape[0]
+    gt = torch.empty_like(tets)
+    if T:
+        (_bwd2r_e0 if e0 else _bwd2r)[(triton.cdiv(T, block),)](tets, tref.contiguous(), tw.contiguous(), G.contiguous(),
+                                                               own.contiguous(), gt, T, Q=tref.shape[0], BLOCK_T=block,
+                                                               num_warps=warps)
+    return gt
+
+
+class TetMomentsRows(torch.autograd.Function):
+    """src_v3 (moments_ad's sensitivity pass, SKIP_FWD): tetrahedra (T, 4, 3) owned by rows own (T,) -> their rows'
+    moment sums (n_rows, 125), returned as zeros (the caller discards the moments; the loss is linear in them); the
+    backward is the vertex VJP with the rows' gradient read in the kernel (_bwd2r: G[own[t]]). TetMoments2 + index_add
+    formed a (T, 125) zero output and a (T, 125) copy of the gradient (2 kB per tetrahedron, most of the pass's device
+    memory) and two more kernels; the VJP values are the same."""
+    @staticmethod
+    def forward(ctx, tets, own, n_rows, tref, tw):
+        ctx.save_for_backward(tets, own, tref, tw)
+        return torch.zeros((n_rows, 125), dtype=torch.float64, device=tets.device)
+
+    @staticmethod
+    def backward(ctx, G):
+        tets, own, tref, tw = ctx.saved_tensors
+        return tet_moments_vjp2_rows(tets, own, tref, tw, G, e0=E0_HINT[0]), None, None, None, None
 
 
 class TetMoments2(torch.autograd.Function):

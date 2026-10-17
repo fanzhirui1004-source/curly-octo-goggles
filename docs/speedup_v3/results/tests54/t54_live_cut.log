@@ -1,0 +1,85 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:80: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+/root/miniconda3/lib/python3.12/site-packages/torch/__init__.py:1125: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+  return isinstance(obj, torch.Tensor)
+/root/autodl-tmp/OPL/V3W/scripts/t_live.py:77: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+  elif isinstance(v, SKIP):
+/root/autodl-tmp/OPL/V3W/scripts/t_live.py:79: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+  elif isinstance(v, (dict, list, tuple)) or hasattr(v, '__dict__'):
+/root/autodl-tmp/OPL/V3W/scripts/t_live.py:58: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+  if isinstance(o, dict):
+/root/autodl-tmp/OPL/V3W/scripts/t_live.py:60: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+  elif isinstance(o, (list, tuple)):
+/root/autodl-tmp/OPL/V3W/scripts/t_live.py:64: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+  kv = [(f'{path}.{k}', v) for k, v in vars(o).items()]
+{"path": "net.geo.C.Tm", "dtype": "float64", "MiB": 6.26, "shat": false, "field": true}
+{"path": "net.geo.C.Tm_up", "dtype": "float64", "MiB": 3.17, "shat": false, "field": false}
+{"path": "net.geo.C.dofs", "dtype": "int64", "MiB": 2.71, "shat": false, "field": true}
+{"path": "net.geo.C.P", "dtype": "int64", "MiB": 0.19, "shat": true, "field": true}
+{"path": "net.geo.C.I", "dtype": "int64", "MiB": 0.79, "shat": true, "field": true}
+{"path": "net.geo.C.Q", "dtype": "float64", "MiB": 1.13, "shat": false, "field": false}
+{"path": "net.geo.C._Kc._mf[nd]", "dtype": "int32", "MiB": 0.45, "shat": true, "field": true}
+{"path": "net.geo.C._Kc._mf[w]", "dtype": "float64", "MiB": 2.96, "shat": true, "field": true}
+{"path": "net.geo.C._Kc._mf[wx]", "dtype": "float64", "MiB": 1.23, "shat": true, "field": true}
+{"path": "net.geo.C._Kc._mf[gf][fsuv]", "dtype": "int32", "MiB": 1.51, "shat": true, "field": true}
+{"path": "net.geo.C._Kc.Tf32", "dtype": "float32", "MiB": 3.13, "shat": false, "field": false}
+{"path": "net.geo.C._Kc.Tup32", "dtype": "float32", "MiB": 1.58, "shat": false, "field": false}
+{"path": "net.geo.C._kpp_cache[0]", "dtype": "int64", "MiB": 16.4, "shat": false, "field": false}
+{"path": "net.geo.C._kpp_cache[1]", "dtype": "int64", "MiB": 16.4, "shat": false, "field": false}
+{"path": "net.geo.C._kpp_cache[2]", "dtype": "float64", "MiB": 16.4, "shat": false, "field": false}
+{"path": "net.geo.C.diag3", "dtype": "float64", "MiB": 2.95, "shat": false, "field": false}
+{"path": "net.geo.C._c_mf[nodes]", "dtype": "int32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.geo.C._cBlk[D]", "dtype": "float32", "MiB": 2.06, "shat": true, "field": true}
+{"path": "net.geo.C._cBlk[S]", "dtype": "float32", "MiB": 4.69, "shat": true, "field": true}
+{"path": "net.geo.C._cBlk[Gj]", "dtype": "int32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.geo.C._cBlk[Gv]", "dtype": "float32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.geo.C._cBlk[Tj]", "dtype": "int32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.geo.C._cBlk[Tv]", "dtype": "float32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.geo.C._fk[f64][dft]", "dtype": "int64", "MiB": 0.8, "shat": true, "field": false}
+{"path": "net.geo.C._fk[f32][dft]", "dtype": "int64", "MiB": 0.8, "shat": false, "field": false}
+{"path": "net.geo.C._mf64[nd]", "dtype": "int32", "MiB": 0.32, "shat": true, "field": false}
+{"path": "net.geo.C.dK", "dtype": "float64", "MiB": 0.98, "shat": true, "field": true}
+{"path": "net.c.port_nodes", "dtype": "int64", "MiB": 0.06, "shat": true, "field": true}
+{"path": "net.c.trans[0][dense_idx]", "dtype": "int64", "MiB": 1.04, "shat": true, "field": true}
+{"path": "net.c.trans[1][dense_idx]", "dtype": "int64", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.c.en", "dtype": "int32", "MiB": 0.45, "shat": true, "field": true}
+{"path": "net.c.fn", "dtype": "int32", "MiB": 0.91, "shat": true, "field": true}
+{"path": "net.c.gp_owner", "dtype": "int64", "MiB": 0.2, "shat": false, "field": false}
+{"path": "net.c.b3_el", "dtype": "float32", "MiB": 0.45, "shat": true, "field": true}
+{"path": "net.c.b3_gp", "dtype": "float32", "MiB": 0.91, "shat": true, "field": true}
+{"path": "net.pm", "dtype": "float32", "MiB": 0.16, "shat": false, "field": false}
+{"path": "net.elem[0].deg", "dtype": "float32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.elem[0].W", "dtype": "float32", "MiB": 0.12, "shat": true, "field": true}
+{"path": "net.face[0].deg", "dtype": "float32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.face[0].W", "dtype": "float32", "MiB": 0.19, "shat": true, "field": true}
+{"path": "net.face[8].hn", "dtype": "int32", "MiB": 0.4, "shat": true, "field": true}
+{"path": "net.fringe[0].hn", "dtype": "int32", "MiB": 0.19, "shat": true, "field": true}
+{"path": "net.fringe[0].W", "dtype": "float32", "MiB": 0.06, "shat": true, "field": true}
+{"path": "net.R[0].values", "dtype": "float32", "MiB": 0.52, "shat": true, "field": true}
+{"path": "net.R[0].col", "dtype": "int32", "MiB": 0.52, "shat": true, "field": true}
+{"path": "net.R[1].values", "dtype": "float32", "MiB": 0.08, "shat": true, "field": true}
+{"path": "net.R[1].col", "dtype": "int32", "MiB": 0.08, "shat": true, "field": true}
+{"path": "net.Rt[0].values", "dtype": "float32", "MiB": 0.52, "shat": true, "field": false}
+{"path": "net.Rt[0].col", "dtype": "int32", "MiB": 0.52, "shat": true, "field": true}
+{"path": "net.Rt[0].crow", "dtype": "int32", "MiB": 0.16, "shat": true, "field": true}
+{"path": "net.Rt[1].values", "dtype": "float32", "MiB": 0.08, "shat": true, "field": false}
+{"path": "net.Rt[1].col", "dtype": "int32", "MiB": 0.08, "shat": true, "field": true}
+{"path": "net.P[0].values", "dtype": "float32", "MiB": 0.52, "shat": true, "field": true}
+{"path": "net.P[1].values", "dtype": "float32", "MiB": 0.08, "shat": true, "field": true}
+{"path": "net.Pt[0].values", "dtype": "float32", "MiB": 0.52, "shat": true, "field": false}
+{"path": "net.Pt[1].values", "dtype": "float32", "MiB": 0.08, "shat": true, "field": false}
+{"path": "net.gates[0]", "dtype": "float32", "MiB": 3.12, "shat": true, "field": true}
+{"path": "net.gates[1]", "dtype": "float32", "MiB": 0.65, "shat": true, "field": true}
+{"path": "net.gates[2]", "dtype": "float32", "MiB": 0.14, "shat": true, "field": true}
+{"path": "net._cinv[0]", "dtype": "int32", "MiB": 0.14, "shat": true, "field": true}
+{"path": "net.convs[0]", "dtype": "float32", "MiB": 0.42, "shat": false, "field": false}
+{"path": "net.convs[1]", "dtype": "float32", "MiB": 0.42, "shat": false, "field": false}
+{"path": "net.convs[2]", "dtype": "float32", "MiB": 0.42, "shat": false, "field": false}
+{"path": "net._sd[gn]", "dtype": "float32", "MiB": 10.47, "shat": true, "field": true}
+{"path": "net._sd[Pab]", "dtype": "float32", "MiB": 1.07, "shat": true, "field": true}
+{"path": "net._sd[Px]", "dtype": "float32", "MiB": 1.07, "shat": true, "field": true}
+{"path": "net._sd[Pf]", "dtype": "float32", "MiB": 2.15, "shat": true, "field": true}
+{"path": "net.RP", "dtype": "float32", "MiB": 0.57, "shat": true, "field": true}
+{"path": "net.RA", "dtype": "float32", "MiB": 2.95, "shat": true, "field": true}
+{"path": "net.RPpinv", "dtype": "float32", "MiB": 0.57, "shat": true, "field": true}
+{"case": "plateS24_070_o000", "noise_shat": 4.6501388949986545e-08, "noise_field": 2.354984904466621e-07, "tensors": 70, "MiB_total": 121.2, "MiB_unread": 63.6, "unread": [["net.geo.C.Tm_up", 3.17], ["net.geo.C.Q", 1.13], ["net.geo.C._Kc.Tf32", 3.13], ["net.geo.C._Kc.Tup32", 1.58], ["net.geo.C._kpp_cache[0]", 16.4], ["net.geo.C._kpp_cache[1]", 16.4], ["net.geo.C._kpp_cache[2]", 16.4], ["net.geo.C.diag3", 2.95], ["net.geo.C._fk[f32][dft]", 0.8], ["net.c.gp_owner", 0.2], ["net.pm", 0.16], ["net.convs[0]", 0.42], ["net.convs[1]", 0.42], ["net.convs[2]", 0.42]]}

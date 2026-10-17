@@ -31,6 +31,7 @@ E0_FAST = os.environ.get('OPL_V3_E0FAST', '1') == '1'              # src_v3: red
 NOFWD = os.environ.get('OPL_V3_SENS_NOFWD', '1') == '1'             # src_v3 P6: no tetrahedron moments when discarded
 CHECKPOINT = True                                                   # recompute _quad in the backward (memory); False: keep
 NOCUT = os.environ.get('OPL_V3_SENS_NOCUT', '1') == '1'             # src_v3 item 3: sensitivity pass without uncut tets
+ROWS = os.environ.get('OPL_V3_SENS_ROWS', '0') == '1'               # src_v3: tetrahedron VJP reads the gradient per row
 
 
 def _drop_uncut():
@@ -38,6 +39,18 @@ def _drop_uncut():
     not formed) the tetrahedra that no clip cut are left out: their vertices are sub-cube corners, constants, so their
     vector-Jacobian products reach no tau (exactly no contribution), while they were half of the fp64 VJP kernel's work."""
     if not NOCUT or os.environ.get('OPL_TET_TRITON') != '1':
+        return False
+    import fast_tet2 as FT2
+    return bool(FT2.SKIP_FWD[0])
+
+
+def _rows_mode():
+    """src_v3 (OPL_V3_SENS_ROWS) in the sensitivity pass (SKIP_FWD): the clipped tetrahedra go through one
+    fast_tet2.TetMomentsRows call per row batch (the VJP kernel reads each tetrahedron's gradient row G[owner] itself)
+    instead of TetMoments2 in chunks of 65536 + index_add: no (T, 125) zero output and no (T, 125) copy of the gradient
+    (2 kB per tetrahedron); the full sub-cubes' closed-form moments, which do not depend on tau, are not formed. The
+    vector-Jacobian products are the same values."""
+    if not ROWS or os.environ.get('OPL_TET_TRITON') != '1':
         return False
     import fast_tet2 as FT2
     return bool(FT2.SKIP_FWD[0])
@@ -105,6 +118,7 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
     cells_t = torch.as_tensor(np.asarray(cells), dtype=dt, device=device)
     idx = torch.tensor(list(product(range(s), repeat=3)), dtype=dt, device=device)
     cmask = cube.bool().view(8, 1, 1, 3)
+    rows = _rows_mode()
     outs = []
     for b0 in range(0, len(cells_t), batch):
         cb = cells_t[b0:b0 + batch]; nb = len(cb)
@@ -131,7 +145,7 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
             cpd = cp.detach()
             full = (cpd >= 0).all(-1).all(-1); empty = (cpd < 0).all(1).any(-1)
             part = ~full & ~empty
-            if full.any():
+            if not rows and full.any():
                 lf = lo[full]; hf = lf + h
                 m1 = (hf[:, :, None] ** kp1 - lf[:, :, None] ** kp1) / kp1
                 mono = (m1[:, 0, :, None, None] * m1[:, 1, None, :, None] * m1[:, 2, None, None, :]).reshape(-1, 125)
@@ -158,6 +172,10 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
                 with torch.no_grad():
                     keep = _jac(tets) > 0
                 tets, town = tets[keep], town[keep]
+            if len(tets) and rows:
+                import fast_tet2 as FT2
+                parts.append((None, FT2.TetMomentsRows.apply(tets, town, nb, tref, tw)))
+            elif len(tets):
                 ck = CHECKPOINT and torch.is_grad_enabled() and tets.requires_grad and os.environ.get('OPL_TET_TRITON') != '1'
                 for lo_t in range(0, len(tets), 65536):
                     tc = tets[lo_t:lo_t + 65536]
@@ -165,7 +183,7 @@ def moments_rows(cells, n, taus, nrm, off, s=4, levels=1, rule_order=4, batch=20
                     parts.append((town[lo_t:lo_t + 65536], mom))
         M = torch.zeros((nb, 125), dtype=dt, device=device)
         for o, v in parts:
-            M = M.index_add(0, o, v)
+            M = M.index_add(0, o, v) if o is not None else M + v
         outs.append(M)
     return torch.cat(outs) * (1 / (2 * n)) ** 3
 
@@ -197,7 +215,7 @@ def moments_vjp(cells, n, taus, nrm, off, G, s=4, levels=1, batch=512, rule_orde
             finally:
                 if skip:
                     FT2.SKIP_FWD[0] = False
-            for k in range(K):
+            for k in range(K if Mb.requires_grad else 0):               # (no tau-dependent piece: V stays 0)
                 hint = k in e0_cols and os.environ.get('OPL_TET_TRITON') == '1' and E0_FAST
                 if hint:
                     import fast_tet2 as FT2
