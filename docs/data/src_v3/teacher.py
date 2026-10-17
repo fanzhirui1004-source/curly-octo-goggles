@@ -274,6 +274,8 @@ class GhostFaces:
             import gffused as GFF                                               # src_v3 P9 (OPL_V3_GFFUSE=1): one kernel
             if GFF.ON:                                                          # per template (gather, B, B^T, scatter)
                 return GFF.matvec(self, x, y)
+            if GFF.MODE == 2:                                                   # P9b: face rows, then one sum per DOF
+                return GFF.matvec2(self, x, y)
         if FI.ON and self.iTc is not None and x.is_contiguous():               # src_v3 (GF_CAT): one gather, the template
             iT = self.iTc                                                       # GEMMs on column blocks (leading dimension,
             F = iT.shape[1]                                                     # no copies), one index_add

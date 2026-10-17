@@ -18,14 +18,16 @@ a = ap.parse_args()
 FN.FUSED = True; FI.ON = True
 body, case = a.spec.split(':')
 SW = []
-for s_ in a.sw.split(','):
+for s_ in a.sw.split(','):                                             # MODULE.ATTR (on: True) or MODULE.ATTR=VALUE
+    s_, _, val = s_.partition('=')
     mod, attr = s_.rsplit('.', 1)
-    SW.append((importlib.import_module(mod), attr))
+    m_ = importlib.import_module(mod)
+    SW.append((m_, attr, getattr(m_, attr), int(val) if val else True))
 
 
 def set_sw(on):
-    for m, at in SW:
-        setattr(m, at, on)
+    for m, at, off_v, on_v in SW:
+        setattr(m, at, on_v if on else off_v)
 
 
 h = BD.ModelHolder('/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt'); BD.TMP.mkdir(parents=True, exist_ok=True)
@@ -97,6 +99,13 @@ with torch.no_grad():
                         except Exception as ex:                          # noqa: BLE001
                             r.setdefault('errors', []).append(repr(ex)[:100])
             r['best_fused'] = best
+            try:                                                                 # P9b two-phase (no atomics)
+                y2 = GFF.matvec2(gf, x, torch.zeros_like(x)).clone()
+                r['us_twophase'] = round(cold(lambda: GFF.matvec2(gf, x, torch.zeros_like(x)), a.rep), 1)
+                r['rel_twophase'] = float((y2 - y0).abs().max() / y0.abs().max())
+                r['twophase_maxdeg'] = int(gf._gf_inc['maxd'])
+            except Exception as ex:                                              # noqa: BLE001
+                r['twophase_error'] = repr(ex)[:200]
             res[f'gf_B{B}'] = r
             print(json.dumps({f'gf_B{B}': r}), flush=True)
     for B in (1, 3, 16):
