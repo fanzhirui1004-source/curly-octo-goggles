@@ -1,0 +1,3276 @@
+{
+ "args": {
+  "out": "/root/autodl-tmp/OPL/V3W/ls/ls_S24x_rp0/out.json",
+  "layout": "/root/autodl-tmp/OPL/V3W/layouts/plateS24_o000.json",
+  "body": "/root/autodl-tmp/OPL/V3W/plate/body_S24",
+  "model": "/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt",
+  "prec": "bnn:kpp:q1r",
+  "tol": 1e-06,
+  "levels": "1e-2,3e-3,1e-3,1e-4,1e-6",
+  "maxit": 3000,
+  "iters": 4,
+  "dtau": 0.0255,
+  "sens": "ad",
+  "max_cols": 16,
+  "sens_obj": "sum",
+  "resident_gb": "0",
+  "sparse_coarse": true,
+  "ad_batch": 1024,
+  "fastidx": true,
+  "reuse_prec": 0,
+  "coarse_tpl": true,
+  "tet_triton": true,
+  "limit": 0,
+  "save_sens": "",
+  "clamp": "x,min",
+  "load": "x,max"
+ },
+ "gpu": "NVIDIA GeForce RTX 5090",
+ "layout": "plateS24_o000",
+ "cells": 24,
+ "iterations": [
+  {
+   "iteration": 0,
+   "phases": {
+    "fe_ctor": 0.8680516816675663,
+    "fe_assemble_deploy": 6.220864380709827,
+    "fe_netdata": 0.7927393112331629,
+    "fe_encode": 1.9225728353485465,
+    "fe_warmup": 10.056770786643028,
+    "fe_stream_wrap": 1.183962855488062,
+    "front_end": 21.044961851090193,
+    "lattice_setup": 0.1404145434498787,
+    "kpp_assemble": 3.417301923036575e-05,
+    "prec_setup": 8.62735431175679,
+    "solve": 73.38333912286907,
+    "sens_ad": 10.312622942961752,
+    "sens_total": 10.757131016813219,
+    "iteration_total": 114.08118331525475
+   },
+   "per_cell": [
+    {
+     "case": "plateS24_000_o000",
+     "ctor": 0.33118657395243645,
+     "assemble_deploy": 0.9733547894284129,
+     "netdata": 0.07910582423210144,
+     "encode": 0.46270129177719355,
+     "warmup": 0.6278845984488726,
+     "stream_wrap": 0.05171321239322424,
+     "stream_bytes": 139429652,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 24995940,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_010_o000",
+     "ctor": 0.02546391822397709,
+     "assemble_deploy": 0.26985672395676374,
+     "netdata": 0.03740335814654827,
+     "encode": 0.06987952999770641,
+     "warmup": 0.5547103565186262,
+     "stream_wrap": 0.051723950542509556,
+     "stream_bytes": 139429668,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866552,
+      "torch.bool": 143300,
+      "torch.int32": 24995948,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_020_o000",
+     "ctor": 0.032187387347221375,
+     "assemble_deploy": 0.2658523852005601,
+     "netdata": 0.03846745006740093,
+     "encode": 0.07111629843711853,
+     "warmup": 0.49838441144675016,
+     "stream_wrap": 0.05155534949153662,
+     "stream_bytes": 139429668,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866552,
+      "torch.bool": 143300,
+      "torch.int32": 24995948,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_030_o000",
+     "ctor": 0.026752236299216747,
+     "assemble_deploy": 0.33463060297071934,
+     "netdata": 0.03321370296180248,
+     "encode": 0.07067873794585466,
+     "warmup": 0.5025598015636206,
+     "stream_wrap": 0.05939303804188967,
+     "stream_bytes": 139429588,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866512,
+      "torch.bool": 143300,
+      "torch.int32": 24995908,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_040_o000",
+     "ctor": 0.027036071754992008,
+     "assemble_deploy": 0.26434677466750145,
+     "netdata": 0.03711979277431965,
+     "encode": 0.07656080089509487,
+     "warmup": 0.49880815111100674,
+     "stream_wrap": 0.05665936227887869,
+     "stream_bytes": 139429620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 24995924,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_050_o000",
+     "ctor": 0.025771476328372955,
+     "assemble_deploy": 0.26883645821362734,
+     "netdata": 0.03901408798992634,
+     "encode": 0.07058278564363718,
+     "warmup": 0.49628244154155254,
+     "stream_wrap": 0.050217474810779095,
+     "stream_bytes": 139429668,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866552,
+      "torch.bool": 143300,
+      "torch.int32": 24995948,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_060_o000",
+     "ctor": 0.025324379093945026,
+     "assemble_deploy": 0.2627063309773803,
+     "netdata": 0.033856854774057865,
+     "encode": 0.06413764972239733,
+     "warmup": 0.46205409057438374,
+     "stream_wrap": 0.057060171850025654,
+     "stream_bytes": 133404300,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139856,
+      "torch.bool": 136780,
+      "torch.int32": 23890812,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 14791456
+    },
+    {
+     "case": "plateS24_070_o000",
+     "ctor": 0.014284886419773102,
+     "assemble_deploy": 0.13352051842957735,
+     "netdata": 0.020240340381860733,
+     "encode": 0.04417819809168577,
+     "warmup": 0.15753505565226078,
+     "stream_wrap": 0.034703646786510944,
+     "stream_bytes": 52950071,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071668,
+      "torch.bool": 56093,
+      "torch.int32": 9867060,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 5966104
+    },
+    {
+     "case": "plateS24_100_o000",
+     "ctor": 0.029601690359413624,
+     "assemble_deploy": 0.2641936521977186,
+     "netdata": 0.0341976722702384,
+     "encode": 0.07237438205629587,
+     "warmup": 0.49640548322349787,
+     "stream_wrap": 0.04986763931810856,
+     "stream_bytes": 139429620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 24995924,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_110_o000",
+     "ctor": 0.0247418275102973,
+     "assemble_deploy": 0.25974852684885263,
+     "netdata": 0.03470097482204437,
+     "encode": 0.0724473400041461,
+     "warmup": 0.4968765266239643,
+     "stream_wrap": 0.04905601870268583,
+     "stream_bytes": 139429572,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866504,
+      "torch.bool": 143300,
+      "torch.int32": 24995900,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_120_o000",
+     "ctor": 0.024567656219005585,
+     "assemble_deploy": 0.2596559086814523,
+     "netdata": 0.036345308646559715,
+     "encode": 0.07127619907259941,
+     "warmup": 0.4932705033570528,
+     "stream_wrap": 0.04976238775998354,
+     "stream_bytes": 139429652,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 24995940,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_130_o000",
+     "ctor": 0.025155258364975452,
+     "assemble_deploy": 0.2573753874748945,
+     "netdata": 0.03616609424352646,
+     "encode": 0.07145282533019781,
+     "warmup": 0.49583111237734556,
+     "stream_wrap": 0.0505629600957036,
+     "stream_bytes": 139429652,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 24995940,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_140_o000",
+     "ctor": 0.025044405832886696,
+     "assemble_deploy": 0.2612849110737443,
+     "netdata": 0.03444470185786486,
+     "encode": 0.07047394663095474,
+     "warmup": 0.5015369849279523,
+     "stream_wrap": 0.057157617062330246,
+     "stream_bytes": 139429684,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866560,
+      "torch.bool": 143300,
+      "torch.int32": 24995956,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_150_o000",
+     "ctor": 0.018930597230792046,
+     "assemble_deploy": 0.18408685829490423,
+     "netdata": 0.02868856117129326,
+     "encode": 0.05758992861956358,
+     "warmup": 0.27544843778014183,
+     "stream_wrap": 0.0481006046757102,
+     "stream_bytes": 91717687,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63924088,
+      "torch.bool": 95376,
+      "torch.int32": 16666528,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 10176000
+    },
+    {
+     "case": "plateS24_160_o000",
+     "ctor": 0.008384055458009243,
+     "assemble_deploy": 0.044705236330628395,
+     "netdata": 0.00697402935475111,
+     "encode": 0.030299142003059387,
+     "warmup": 0.049526192247867584,
+     "stream_wrap": 0.016239515505731106,
+     "stream_bytes": 13557784,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2314684,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1262256
+    },
+    {
+     "case": "plateS24_200_o000",
+     "ctor": 0.029600349254906178,
+     "assemble_deploy": 0.268915974535048,
+     "netdata": 0.04096983186900616,
+     "encode": 0.07024265360087156,
+     "warmup": 0.4998334236443043,
+     "stream_wrap": 0.08711219299584627,
+     "stream_bytes": 139429620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 24995924,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_210_o000",
+     "ctor": 0.027846243232488632,
+     "assemble_deploy": 0.2550800209864974,
+     "netdata": 0.03542045224457979,
+     "encode": 0.07312798965722322,
+     "warmup": 0.4936769437044859,
+     "stream_wrap": 0.052106693387031555,
+     "stream_bytes": 139429604,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866520,
+      "torch.bool": 143300,
+      "torch.int32": 24995916,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_220_o000",
+     "ctor": 0.03317174222320318,
+     "assemble_deploy": 0.2599233202636242,
+     "netdata": 0.03305781073868275,
+     "encode": 0.06819985061883926,
+     "warmup": 0.4924673978239298,
+     "stream_wrap": 0.048887526616454124,
+     "stream_bytes": 139429604,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866520,
+      "torch.bool": 143300,
+      "torch.int32": 24995916,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_230_o000",
+     "ctor": 0.024639785289764404,
+     "assemble_deploy": 0.25741838850080967,
+     "netdata": 0.03312408924102783,
+     "encode": 0.06380582228302956,
+     "warmup": 0.453164572827518,
+     "stream_wrap": 0.0558260977268219,
+     "stream_bytes": 133404300,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139856,
+      "torch.bool": 136780,
+      "torch.int32": 23890812,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 14791456
+    },
+    {
+     "case": "plateS24_240_o000",
+     "ctor": 0.012303916737437248,
+     "assemble_deploy": 0.12579926662147045,
+     "netdata": 0.01898973621428013,
+     "encode": 0.04277435410767794,
+     "warmup": 0.14632684644311666,
+     "stream_wrap": 0.034137108363211155,
+     "stream_bytes": 52950071,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071668,
+      "torch.bool": 56093,
+      "torch.int32": 9867060,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 5966104
+    },
+    {
+     "case": "plateS24_300_o000",
+     "ctor": 0.024526515044271946,
+     "assemble_deploy": 0.25732041615992785,
+     "netdata": 0.03506148140877485,
+     "encode": 0.07096429634839296,
+     "warmup": 0.4958754042163491,
+     "stream_wrap": 0.051492417231202126,
+     "stream_bytes": 139429620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 24995924,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_310_o000",
+     "ctor": 0.02624676562845707,
+     "assemble_deploy": 0.2583291996270418,
+     "netdata": 0.032611144706606865,
+     "encode": 0.06933127902448177,
+     "warmup": 0.5522494083270431,
+     "stream_wrap": 0.059029096737504005,
+     "stream_bytes": 139429636,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866536,
+      "torch.bool": 143300,
+      "torch.int32": 24995932,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15621760
+    },
+    {
+     "case": "plateS24_320_o000",
+     "ctor": 0.01874688919633627,
+     "assemble_deploy": 0.18949595745652914,
+     "netdata": 0.026449762284755707,
+     "encode": 0.05677532497793436,
+     "warmup": 0.27092532347887754,
+     "stream_wrap": 0.044133465737104416,
+     "stream_bytes": 91717671,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63924080,
+      "torch.bool": 95376,
+      "torch.int32": 16666520,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 10176000
+    },
+    {
+     "case": "plateS24_330_o000",
+     "ctor": 0.006537054665386677,
+     "assemble_deploy": 0.04442677181214094,
+     "netdata": 0.007116248831152916,
+     "encode": 0.031602208502590656,
+     "warmup": 0.04513731878250837,
+     "stream_wrap": 0.017465307377278805,
+     "stream_bytes": 13557784,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2314684,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1262256
+    }
+   ],
+   "resident_gb": 0.0,
+   "host_budget": {
+    "limit_GiB": 90.0,
+    "frac": null,
+    "top": 0.95,
+    "transient_x": 4.0,
+    "reserve_GiB": 1.57,
+    "cells": 24,
+    "slots_kept": 24,
+    "float64_kept": 24
+   },
+   "device_GB_after_front_end": 0.035280384,
+   "census_after_front_end": [
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0027,
+     24,
+     "('torch.float32', (27, 32, 32))"
+    ],
+    [
+     0.0017,
+     1,
+     "('torch.float32', (125, 3321))"
+    ],
+    [
+     0.0007,
+     42,
+     "('torch.float32', (64, 64))"
+    ],
+    [
+     0.0006,
+     3,
+     "('torch.float32', (12, 4, 32, 32))"
+    ],
+    [
+     0.0004,
+     24,
+     "('torch.float32', (4, 32, 32))"
+    ],
+    [
+     0.0004,
+     12,
+     "('torch.float32', (64, 128))"
+    ],
+    [
+     0.0004,
+     3,
+     "('torch.float32', (8, 4, 32, 32))"
+    ],
+    [
+     0.0003,
+     9,
+     "('torch.float32', (64, 136))"
+    ]
+   ],
+   "stream_GB_total": 2.814133796,
+   "stream_store_fp32": false,
+   "stream_store_pack": true,
+   "host_rss_GB_after_front_end": 5.190644,
+   "resident_cells": 0,
+   "prec": {
+    "kpp_assemble_s": 0.0,
+    "kpp_factor_s": 2.6825217874720693,
+    "kpp_triplets_s": 0.37802435364574194,
+    "coarse_basis_s": 0.038771326653659344,
+    "coarse_AZ_s": 5.499326751567423,
+    "coarse_factor_s": 0.028187260031700134,
+    "total_s": 8.626831479370594
+   },
+   "prec_rebuilt": true,
+   "graph": {
+    "on": true,
+    "maxb": 4,
+    "pools": 2,
+    "captures": 24,
+    "recaptures": 0,
+    "replays": 4368,
+    "failed": 0,
+    "capture_s": 0.37,
+    "errors": [
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')"
+    ]
+   },
+   "solve": {
+    "iterations": 183,
+    "residual": 9.64893795344059e-07,
+    "warm": false,
+    "lanczos": null,
+    "prof": null,
+    "block": null,
+    "ritz": null,
+    "levels": [
+     {
+      "level": 0.01,
+      "iterations": 81
+     },
+     {
+      "level": 0.003,
+      "iterations": 90
+     },
+     {
+      "level": 0.001,
+      "iterations": 99
+     },
+     {
+      "level": 0.0001,
+      "iterations": 126
+     },
+     {
+      "level": 1e-06,
+      "iterations": 183
+     }
+    ],
+    "start_residual": 22.62921826508164
+   },
+   "compliance": [
+    43.32804419892348,
+    94.3413188958383,
+    1467.9425414317511
+   ],
+   "peak_device_GB": 2.687787008,
+   "stream_copies": 74,
+   "device_GB_end": 0.697658368,
+   "census_end": [
+    [
+     0.5578,
+     4,
+     "('torch.uint8', (139459072,))"
+    ],
+    [
+     0.0275,
+     3,
+     "('torch.float64', (381348, 3))"
+    ],
+    [
+     0.0153,
+     32,
+     "('torch.float64', (19872, 3))"
+    ],
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0041,
+     26,
+     "('torch.int64', (19872,))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.int64', (381348,))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.float64', (381348,))"
+    ],
+    [
+     0.0029,
+     4,
+     "('torch.float64', (30573, 3))"
+    ],
+    [
+     0.0028,
+     4,
+     "('torch.float64', (29022, 3))"
+    ]
+   ]
+  },
+  {
+   "iteration": 1,
+   "phases": {
+    "fe_restore": 0.39261424634605646,
+    "fe_assemble_deploy": 5.771992274560034,
+    "fe_netdata": 0.7840929860249162,
+    "fe_encode": 1.6059700157493353,
+    "fe_warmup": 9.907958912663162,
+    "fe_stream_wrap": 1.1526654474437237,
+    "front_end": 19.615293882787228,
+    "kpp_assemble": 2.8932467103004456e-05,
+    "prec_setup": 8.223625004291534,
+    "solve": 62.41502363793552,
+    "sens_ad": 9.678980607539415,
+    "sens_total": 10.083312363363802,
+    "iteration_total": 100.47732037398964
+   },
+   "per_cell": [
+    {
+     "case": "plateS24_000_o000",
+     "restore": 0.021682634949684143,
+     "assemble_deploy": 0.2736352561041713,
+     "netdata": 0.0434105321764946,
+     "encode": 0.0726463571190834,
+     "warmup": 0.5481399865821004,
+     "stream_wrap": 0.059170858934521675,
+     "stream_bytes": 139617604,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866536,
+      "torch.bool": 143300,
+      "torch.int32": 25183900,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_010_o000",
+     "restore": 0.0177268385887146,
+     "assemble_deploy": 0.2789395395666361,
+     "netdata": 0.049925485625863075,
+     "encode": 0.07484726142138243,
+     "warmup": 0.5226525701582432,
+     "stream_wrap": 0.052333748899400234,
+     "stream_bytes": 139617556,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866512,
+      "torch.bool": 143300,
+      "torch.int32": 25183876,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_020_o000",
+     "restore": 0.01825788337737322,
+     "assemble_deploy": 0.2639717301353812,
+     "netdata": 0.03302119020372629,
+     "encode": 0.06995291449129581,
+     "warmup": 0.5045528570190072,
+     "stream_wrap": 0.051394796930253506,
+     "stream_bytes": 139617620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 25183908,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_030_o000",
+     "restore": 0.0173658337444067,
+     "assemble_deploy": 0.2769613163545728,
+     "netdata": 0.03324853628873825,
+     "encode": 0.06947362888604403,
+     "warmup": 0.49157604947686195,
+     "stream_wrap": 0.052112532779574394,
+     "stream_bytes": 139617588,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25183892,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_040_o000",
+     "restore": 0.01722953747957945,
+     "assemble_deploy": 0.2501105908304453,
+     "netdata": 0.032803745940327644,
+     "encode": 0.06915021780878305,
+     "warmup": 0.4899840150028467,
+     "stream_wrap": 0.05133133661001921,
+     "stream_bytes": 139617636,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866552,
+      "torch.bool": 143300,
+      "torch.int32": 25183916,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_050_o000",
+     "restore": 0.023116210475564003,
+     "assemble_deploy": 0.27051699440926313,
+     "netdata": 0.033979497849941254,
+     "encode": 0.10790139716118574,
+     "warmup": 0.5377483926713467,
+     "stream_wrap": 0.05247014760971069,
+     "stream_bytes": 139617588,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25183892,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_060_o000",
+     "restore": 0.022627785801887512,
+     "assemble_deploy": 0.38993297703564167,
+     "netdata": 0.03866734076291323,
+     "encode": 0.06902297679334879,
+     "warmup": 0.46003024745732546,
+     "stream_wrap": 0.05758377257734537,
+     "stream_bytes": 133544276,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139856,
+      "torch.bool": 136780,
+      "torch.int32": 24030788,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15504256
+    },
+    {
+     "case": "plateS24_070_o000",
+     "restore": 0.008230233564972878,
+     "assemble_deploy": 0.1271772813051939,
+     "netdata": 0.01927629765123129,
+     "encode": 0.04410071298480034,
+     "warmup": 0.1475594686344266,
+     "stream_wrap": 0.03738443739712238,
+     "stream_bytes": 52986199,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071660,
+      "torch.bool": 56093,
+      "torch.int32": 9903196,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 6251224
+    },
+    {
+     "case": "plateS24_100_o000",
+     "restore": 0.01631047483533621,
+     "assemble_deploy": 0.25937799271196127,
+     "netdata": 0.03495935257524252,
+     "encode": 0.06899148784577847,
+     "warmup": 0.49351771362125874,
+     "stream_wrap": 0.04894454777240753,
+     "stream_bytes": 139617604,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866536,
+      "torch.bool": 143300,
+      "torch.int32": 25183900,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_110_o000",
+     "restore": 0.01898379996418953,
+     "assemble_deploy": 0.2665085308253765,
+     "netdata": 0.033841051161289215,
+     "encode": 0.06977918092161417,
+     "warmup": 0.4932168936356902,
+     "stream_wrap": 0.04882465675473213,
+     "stream_bytes": 139617636,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866552,
+      "torch.bool": 143300,
+      "torch.int32": 25183916,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_120_o000",
+     "restore": 0.019431625492870808,
+     "assemble_deploy": 0.2746077161282301,
+     "netdata": 0.03492074832320213,
+     "encode": 0.07118871994316578,
+     "warmup": 0.49187952373176813,
+     "stream_wrap": 0.05554056540131569,
+     "stream_bytes": 139617620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 25183908,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_130_o000",
+     "restore": 0.01886290218681097,
+     "assemble_deploy": 0.27906570490449667,
+     "netdata": 0.03437849413603544,
+     "encode": 0.06851198989897966,
+     "warmup": 0.5013092905282974,
+     "stream_wrap": 0.04971790872514248,
+     "stream_bytes": 139617588,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25183892,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_140_o000",
+     "restore": 0.01938744354993105,
+     "assemble_deploy": 0.2827096404507756,
+     "netdata": 0.035756475292146206,
+     "encode": 0.0750542264431715,
+     "warmup": 0.4925568839535117,
+     "stream_wrap": 0.05010906886309385,
+     "stream_bytes": 139617572,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866520,
+      "torch.bool": 143300,
+      "torch.int32": 25183884,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_150_o000",
+     "restore": 0.015892299823462963,
+     "assemble_deploy": 0.20038896054029465,
+     "netdata": 0.02840280532836914,
+     "encode": 0.05853570997714996,
+     "warmup": 0.2718120999634266,
+     "stream_wrap": 0.047300996258854866,
+     "stream_bytes": 91785007,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63924096,
+      "torch.bool": 95376,
+      "torch.int32": 16733840,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 10655520
+    },
+    {
+     "case": "plateS24_160_o000",
+     "restore": 0.0037034982815384865,
+     "assemble_deploy": 0.04894382040947676,
+     "netdata": 0.007715657353401184,
+     "encode": 0.02912400010973215,
+     "warmup": 0.04577983636409044,
+     "stream_wrap": 0.01882414985448122,
+     "stream_bytes": 13574944,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2331844,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1311504
+    },
+    {
+     "case": "plateS24_200_o000",
+     "restore": 0.017016596160829067,
+     "assemble_deploy": 0.26432695891708136,
+     "netdata": 0.03749797213822603,
+     "encode": 0.07127592526376247,
+     "warmup": 0.4916959824040532,
+     "stream_wrap": 0.05116904154419899,
+     "stream_bytes": 139617620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 25183908,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_210_o000",
+     "restore": 0.019205681048333645,
+     "assemble_deploy": 0.28036874905228615,
+     "netdata": 0.03675530478358269,
+     "encode": 0.07184826768934727,
+     "warmup": 0.4928860040381551,
+     "stream_wrap": 0.050488450564444065,
+     "stream_bytes": 139617620,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 25183908,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_220_o000",
+     "restore": 0.018374468199908733,
+     "assemble_deploy": 0.26162728667259216,
+     "netdata": 0.04558919835835695,
+     "encode": 0.07076220773160458,
+     "warmup": 0.4934280728921294,
+     "stream_wrap": 0.048264430835843086,
+     "stream_bytes": 139617588,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25183892,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_230_o000",
+     "restore": 0.015209645964205265,
+     "assemble_deploy": 0.2700743777677417,
+     "netdata": 0.04181027505546808,
+     "encode": 0.08247997891157866,
+     "warmup": 0.465784652158618,
+     "stream_wrap": 0.05699365120381117,
+     "stream_bytes": 133544228,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139832,
+      "torch.bool": 136780,
+      "torch.int32": 24030764,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 15504256
+    },
+    {
+     "case": "plateS24_240_o000",
+     "restore": 0.008144657127559185,
+     "assemble_deploy": 0.13080186303704977,
+     "netdata": 0.01892488542944193,
+     "encode": 0.04502249322831631,
+     "warmup": 0.1474542636424303,
+     "stream_wrap": 0.034863702952861786,
+     "stream_bytes": 52986199,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071660,
+      "torch.bool": 56093,
+      "torch.int32": 9903196,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 6251224
+    },
+    {
+     "case": "plateS24_300_o000",
+     "restore": 0.015437057241797447,
+     "assemble_deploy": 0.27701821830123663,
+     "netdata": 0.03308569546788931,
+     "encode": 0.07646453380584717,
+     "warmup": 0.5054598608985543,
+     "stream_wrap": 0.0544817540794611,
+     "stream_bytes": 139617572,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866520,
+      "torch.bool": 143300,
+      "torch.int32": 25183884,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_310_o000",
+     "restore": 0.018159586004912853,
+     "assemble_deploy": 0.2914353758096695,
+     "netdata": 0.03954167477786541,
+     "encode": 0.0807610210031271,
+     "warmup": 0.49748560786247253,
+     "stream_wrap": 0.0545259453356266,
+     "stream_bytes": 139617588,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25183892,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16388992
+    },
+    {
+     "case": "plateS24_320_o000",
+     "restore": 0.01853271760046482,
+     "assemble_deploy": 0.20312108378857374,
+     "netdata": 0.02958141639828682,
+     "encode": 0.05937440413981676,
+     "warmup": 0.27425740752369165,
+     "stream_wrap": 0.050089312717318535,
+     "stream_bytes": 91784975,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63924080,
+      "torch.bool": 95376,
+      "torch.int32": 16733824,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 10655520
+    },
+    {
+     "case": "plateS24_330_o000",
+     "restore": 0.003724834881722927,
+     "assemble_deploy": 0.05037030950188637,
+     "netdata": 0.0069993529468774796,
+     "encode": 0.029700402170419693,
+     "warmup": 0.047191232442855835,
+     "stream_wrap": 0.018745632842183113,
+     "stream_bytes": 13574944,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2331844,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1311504
+    }
+   ],
+   "resident_gb": 0.0,
+   "host_budget": {
+    "limit_GiB": 90.0,
+    "frac": null,
+    "top": 0.95,
+    "transient_x": 4.0,
+    "reserve_GiB": 1.57,
+    "cells": 24,
+    "slots_kept": 24,
+    "float64_kept": 24
+   },
+   "device_GB_after_front_end": 0.672790016,
+   "census_after_front_end": [
+    [
+     0.5578,
+     4,
+     "('torch.uint8', (139459072,))"
+    ],
+    [
+     0.0275,
+     3,
+     "('torch.float64', (381348, 3))"
+    ],
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0041,
+     26,
+     "('torch.int64', (19872,))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.int64', (381348,))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.float64', (381348,))"
+    ],
+    [
+     0.0027,
+     24,
+     "('torch.float32', (27, 32, 32))"
+    ],
+    [
+     0.0017,
+     1,
+     "('torch.float32', (125, 3321))"
+    ],
+    [
+     0.0016,
+     10,
+     "('torch.int64', (19872, 1))"
+    ]
+   ],
+   "stream_GB_total": 2.817662372,
+   "stream_store_fp32": false,
+   "stream_store_pack": true,
+   "host_rss_GB_after_front_end": 5.676428,
+   "resident_cells": 0,
+   "prec": {
+    "kpp_assemble_s": 0.0,
+    "kpp_factor_s": 2.3826187308877707,
+    "kpp_triplets_s": 0.3555198535323143,
+    "coarse_basis_s": 0.035198768600821495,
+    "coarse_AZ_s": 5.440222144126892,
+    "coarse_factor_s": 0.009631616994738579,
+    "total_s": 8.223191114142537
+   },
+   "prec_rebuilt": true,
+   "graph": {
+    "on": true,
+    "maxb": 4,
+    "pools": 2,
+    "captures": 24,
+    "recaptures": 0,
+    "replays": 4368,
+    "failed": 24,
+    "capture_s": 0.37,
+    "errors": [
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')"
+    ]
+   },
+   "solve": {
+    "iterations": 155,
+    "residual": 9.568217269647857e-07,
+    "warm": true,
+    "lanczos": null,
+    "prof": null,
+    "block": null,
+    "ritz": null,
+    "levels": [
+     {
+      "level": 0.01,
+      "iterations": 61
+     },
+     {
+      "level": 0.003,
+      "iterations": 74
+     },
+     {
+      "level": 0.001,
+      "iterations": 81
+     },
+     {
+      "level": 0.0001,
+      "iterations": 101
+     },
+     {
+      "level": 1e-06,
+      "iterations": 155
+     }
+    ],
+    "start_residual": 3.2713450716240926
+   },
+   "compliance": [
+    38.28489978903461,
+    84.52256046526091,
+    1312.5025009382111
+   ],
+   "peak_device_GB": 3.28671232,
+   "stream_copies": 3793,
+   "device_GB_end": 0.673545728,
+   "census_end": [
+    [
+     0.5586,
+     4,
+     "('torch.uint8', (139648000,))"
+    ],
+    [
+     0.0275,
+     3,
+     "('torch.float64', (381348, 3))"
+    ],
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0041,
+     26,
+     "('torch.int64', (19872,))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.int64', (381348,))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.float64', (381348,))"
+    ],
+    [
+     0.0027,
+     24,
+     "('torch.float32', (27, 32, 32))"
+    ],
+    [
+     0.0017,
+     1,
+     "('torch.float32', (125, 3321))"
+    ],
+    [
+     0.0016,
+     10,
+     "('torch.int64', (19872, 1))"
+    ]
+   ]
+  },
+  {
+   "iteration": 2,
+   "phases": {
+    "fe_restore": 0.36248136684298515,
+    "fe_assemble_deploy": 5.652020808309317,
+    "fe_netdata": 0.8346145329996943,
+    "fe_encode": 1.6043367236852646,
+    "fe_warmup": 9.837962512858212,
+    "fe_stream_wrap": 1.1672104196622968,
+    "front_end": 19.45862636435777,
+    "kpp_assemble": 2.6110559701919556e-05,
+    "prec_setup": 8.1673016063869,
+    "solve": 58.59199533611536,
+    "sens_ad": 9.346408113837242,
+    "sens_total": 9.75171990506351,
+    "iteration_total": 96.1179221868515
+   },
+   "per_cell": [
+    {
+     "case": "plateS24_000_o000",
+     "restore": 0.018102356232702732,
+     "assemble_deploy": 0.29071944393217564,
+     "netdata": 0.03761458117514849,
+     "encode": 0.07509294431656599,
+     "warmup": 0.493769365362823,
+     "stream_wrap": 0.053559920750558376,
+     "stream_bytes": 139671412,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866536,
+      "torch.bool": 143300,
+      "torch.int32": 25237708,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_010_o000",
+     "restore": 0.019618484191596508,
+     "assemble_deploy": 0.2653629193082452,
+     "netdata": 0.03541390411555767,
+     "encode": 0.07991193048655987,
+     "warmup": 0.49598146695643663,
+     "stream_wrap": 0.05216262675821781,
+     "stream_bytes": 139671316,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866488,
+      "torch.bool": 143300,
+      "torch.int32": 25237660,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_020_o000",
+     "restore": 0.0194795373827219,
+     "assemble_deploy": 0.2881219517439604,
+     "netdata": 0.036327311769127846,
+     "encode": 0.0719442879781127,
+     "warmup": 0.4932149425148964,
+     "stream_wrap": 0.05205346643924713,
+     "stream_bytes": 139671396,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25237700,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_030_o000",
+     "restore": 0.019792813807725906,
+     "assemble_deploy": 0.2692821715027094,
+     "netdata": 0.04141923040151596,
+     "encode": 0.07278429716825485,
+     "warmup": 0.4955385299399495,
+     "stream_wrap": 0.05323739070445299,
+     "stream_bytes": 139671316,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866488,
+      "torch.bool": 143300,
+      "torch.int32": 25237660,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_040_o000",
+     "restore": 0.017152381129562855,
+     "assemble_deploy": 0.27056649792939425,
+     "netdata": 0.035571941174566746,
+     "encode": 0.0745233790948987,
+     "warmup": 0.49431065283715725,
+     "stream_wrap": 0.053852057084441185,
+     "stream_bytes": 139671428,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 25237716,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_050_o000",
+     "restore": 0.0248471861705184,
+     "assemble_deploy": 0.2705903872847557,
+     "netdata": 0.04435128904879093,
+     "encode": 0.0757907247170806,
+     "warmup": 0.5106044327840209,
+     "stream_wrap": 0.05384786147624254,
+     "stream_bytes": 139671364,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866512,
+      "torch.bool": 143300,
+      "torch.int32": 25237684,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_060_o000",
+     "restore": 0.016076060011982918,
+     "assemble_deploy": 0.2720405226573348,
+     "netdata": 0.0420214356854558,
+     "encode": 0.06997381709516048,
+     "warmup": 0.4631887450814247,
+     "stream_wrap": 0.06569310184568167,
+     "stream_bytes": 133575540,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139872,
+      "torch.bool": 136780,
+      "torch.int32": 24062036,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16064128
+    },
+    {
+     "case": "plateS24_070_o000",
+     "restore": 0.008664771914482117,
+     "assemble_deploy": 0.1327389208599925,
+     "netdata": 0.02255634032189846,
+     "encode": 0.04587041959166527,
+     "warmup": 0.15228075627237558,
+     "stream_wrap": 0.03944231849163771,
+     "stream_bytes": 52976535,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071660,
+      "torch.bool": 56093,
+      "torch.int32": 9893532,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 6463768
+    },
+    {
+     "case": "plateS24_100_o000",
+     "restore": 0.016220484860241413,
+     "assemble_deploy": 0.2712695812806487,
+     "netdata": 0.03843142930418253,
+     "encode": 0.07794820796698332,
+     "warmup": 0.49861070327460766,
+     "stream_wrap": 0.054220473393797874,
+     "stream_bytes": 139671380,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866520,
+      "torch.bool": 143300,
+      "torch.int32": 25237692,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_110_o000",
+     "restore": 0.019479203037917614,
+     "assemble_deploy": 0.27001766953617334,
+     "netdata": 0.04264967143535614,
+     "encode": 0.0745221832767129,
+     "warmup": 0.4972828021273017,
+     "stream_wrap": 0.0528548713773489,
+     "stream_bytes": 139671412,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866536,
+      "torch.bool": 143300,
+      "torch.int32": 25237708,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_120_o000",
+     "restore": 0.01612428855150938,
+     "assemble_deploy": 0.26368709560483694,
+     "netdata": 0.04206922370940447,
+     "encode": 0.0739710945636034,
+     "warmup": 0.49847463332116604,
+     "stream_wrap": 0.05369959678500891,
+     "stream_bytes": 139671396,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25237700,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_130_o000",
+     "restore": 0.015438564121723175,
+     "assemble_deploy": 0.32992794178426266,
+     "netdata": 0.05168980173766613,
+     "encode": 0.07826482225209475,
+     "warmup": 0.49780876003205776,
+     "stream_wrap": 0.05031347554177046,
+     "stream_bytes": 139671412,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866536,
+      "torch.bool": 143300,
+      "torch.int32": 25237708,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_140_o000",
+     "restore": 0.015466907061636448,
+     "assemble_deploy": 0.26163501664996147,
+     "netdata": 0.034802515991032124,
+     "encode": 0.07225378137081861,
+     "warmup": 0.494770135730505,
+     "stream_wrap": 0.04983100760728121,
+     "stream_bytes": 139671444,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866552,
+      "torch.bool": 143300,
+      "torch.int32": 25237724,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_150_o000",
+     "restore": 0.013625530526041985,
+     "assemble_deploy": 0.18974517285823822,
+     "netdata": 0.026595558039844036,
+     "encode": 0.06831834279000759,
+     "warmup": 0.2724511483684182,
+     "stream_wrap": 0.04941220209002495,
+     "stream_bytes": 91783687,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63924056,
+      "torch.bool": 95376,
+      "torch.int32": 16732560,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 11026176
+    },
+    {
+     "case": "plateS24_160_o000",
+     "restore": 0.0027765370905399323,
+     "assemble_deploy": 0.046274829655885696,
+     "netdata": 0.0074954284355044365,
+     "encode": 0.02952262107282877,
+     "warmup": 0.04635630361735821,
+     "stream_wrap": 0.018836318515241146,
+     "stream_bytes": 13583160,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2340060,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1345200
+    },
+    {
+     "case": "plateS24_200_o000",
+     "restore": 0.019407492130994797,
+     "assemble_deploy": 0.2616882370784879,
+     "netdata": 0.0424396600574255,
+     "encode": 0.07296187430620193,
+     "warmup": 0.5126067427918315,
+     "stream_wrap": 0.05072692036628723,
+     "stream_bytes": 139671396,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866528,
+      "torch.bool": 143300,
+      "torch.int32": 25237700,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_210_o000",
+     "restore": 0.017171040177345276,
+     "assemble_deploy": 0.263682478107512,
+     "netdata": 0.040398115292191505,
+     "encode": 0.07167417742311954,
+     "warmup": 0.4953642953187227,
+     "stream_wrap": 0.05022395960986614,
+     "stream_bytes": 139671444,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866552,
+      "torch.bool": 143300,
+      "torch.int32": 25237724,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_220_o000",
+     "restore": 0.015306178480386734,
+     "assemble_deploy": 0.26256997883319855,
+     "netdata": 0.03652299474924803,
+     "encode": 0.07133414503186941,
+     "warmup": 0.49474853463470936,
+     "stream_wrap": 0.04971110727638006,
+     "stream_bytes": 139671380,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866520,
+      "torch.bool": 143300,
+      "torch.int32": 25237692,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_230_o000",
+     "restore": 0.016804443672299385,
+     "assemble_deploy": 0.27102969214320183,
+     "netdata": 0.03550448175519705,
+     "encode": 0.06584375631064177,
+     "warmup": 0.4634070685133338,
+     "stream_wrap": 0.058036225847899914,
+     "stream_bytes": 133575508,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139856,
+      "torch.bool": 136780,
+      "torch.int32": 24062020,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16064128
+    },
+    {
+     "case": "plateS24_240_o000",
+     "restore": 0.007324220612645149,
+     "assemble_deploy": 0.13255931343883276,
+     "netdata": 0.01771710254251957,
+     "encode": 0.04461845941841602,
+     "warmup": 0.14920915104448795,
+     "stream_wrap": 0.03605125192552805,
+     "stream_bytes": 52976551,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071668,
+      "torch.bool": 56093,
+      "torch.int32": 9893540,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 6463768
+    },
+    {
+     "case": "plateS24_300_o000",
+     "restore": 0.014434823766350746,
+     "assemble_deploy": 0.26300180796533823,
+     "netdata": 0.03993817325681448,
+     "encode": 0.07120798341929913,
+     "warmup": 0.4994313111528754,
+     "stream_wrap": 0.05178192909806967,
+     "stream_bytes": 139671428,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 25237716,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_310_o000",
+     "restore": 0.015283581800758839,
+     "assemble_deploy": 0.2692018337547779,
+     "netdata": 0.04497234523296356,
+     "encode": 0.07395301572978497,
+     "warmup": 0.4995034532621503,
+     "stream_wrap": 0.05003143008798361,
+     "stream_bytes": 139671428,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866544,
+      "torch.bool": 143300,
+      "torch.int32": 25237716,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16995520
+    },
+    {
+     "case": "plateS24_320_o000",
+     "restore": 0.010807782411575317,
+     "assemble_deploy": 0.19023356307297945,
+     "netdata": 0.03008292429149151,
+     "encode": 0.0629527373239398,
+     "warmup": 0.27287438604980707,
+     "stream_wrap": 0.0492290873080492,
+     "stream_bytes": 91783735,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63924080,
+      "torch.bool": 95376,
+      "torch.int32": 16732584,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 11026176
+    },
+    {
+     "case": "plateS24_330_o000",
+     "restore": 0.003076697699725628,
+     "assemble_deploy": 0.046073781326413155,
+     "netdata": 0.008029073476791382,
+     "encode": 0.029097720980644226,
+     "warmup": 0.04617419186979532,
+     "stream_wrap": 0.01840181928128004,
+     "stream_bytes": 13583160,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2340060,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1345200
+    }
+   ],
+   "resident_gb": 0.0,
+   "host_budget": {
+    "limit_GiB": 90.0,
+    "frac": null,
+    "top": 0.95,
+    "transient_x": 4.0,
+    "reserve_GiB": 1.57,
+    "cells": 24,
+    "slots_kept": 24,
+    "float64_kept": 24
+   },
+   "device_GB_after_front_end": 0.673555968,
+   "census_after_front_end": [
+    [
+     0.5586,
+     4,
+     "('torch.uint8', (139648000,))"
+    ],
+    [
+     0.0275,
+     3,
+     "('torch.float64', (381348, 3))"
+    ],
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0041,
+     26,
+     "('torch.int64', (19872,))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.int64', (381348,))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.float64', (381348,))"
+    ],
+    [
+     0.0027,
+     24,
+     "('torch.float32', (27, 32, 32))"
+    ],
+    [
+     0.0017,
+     1,
+     "('torch.float32', (125, 3321))"
+    ],
+    [
+     0.0016,
+     10,
+     "('torch.int64', (19872, 1))"
+    ]
+   ],
+   "stream_GB_total": 2.818580228,
+   "stream_store_fp32": false,
+   "stream_store_pack": true,
+   "host_rss_GB_after_front_end": 5.669268,
+   "resident_cells": 0,
+   "prec": {
+    "kpp_assemble_s": 0.0,
+    "kpp_factor_s": 2.391894033178687,
+    "kpp_triplets_s": 0.34056195989251137,
+    "coarse_basis_s": 0.03511402476578951,
+    "coarse_AZ_s": 5.389782078564167,
+    "coarse_factor_s": 0.009559051133692265,
+    "total_s": 8.166911147534847
+   },
+   "prec_rebuilt": true,
+   "graph": {
+    "on": true,
+    "maxb": 4,
+    "pools": 2,
+    "captures": 24,
+    "recaptures": 0,
+    "replays": 4368,
+    "failed": 48,
+    "capture_s": 0.37,
+    "errors": [
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')"
+    ]
+   },
+   "solve": {
+    "iterations": 147,
+    "residual": 9.974702815567415e-07,
+    "warm": true,
+    "lanczos": null,
+    "prof": null,
+    "block": null,
+    "ritz": null,
+    "levels": [
+     {
+      "level": 0.01,
+      "iterations": 55
+     },
+     {
+      "level": 0.003,
+      "iterations": 69
+     },
+     {
+      "level": 0.001,
+      "iterations": 77
+     },
+     {
+      "level": 0.0001,
+      "iterations": 95
+     },
+     {
+      "level": 1e-06,
+      "iterations": 147
+     }
+    ],
+    "start_residual": 2.918358414580116
+   },
+   "compliance": [
+    34.092627953113954,
+    76.28996801743104,
+    1181.3450046945388
+   ],
+   "peak_device_GB": 3.282658304,
+   "stream_copies": 3601,
+   "device_GB_end": 0.673766912,
+   "census_end": [
+    [
+     0.5588,
+     4,
+     "('torch.uint8', (139700736,))"
+    ],
+    [
+     0.0275,
+     3,
+     "('torch.float64', (381348, 3))"
+    ],
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0041,
+     26,
+     "('torch.int64', (19872,))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.int64', (381348,))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.float64', (381348,))"
+    ],
+    [
+     0.0027,
+     24,
+     "('torch.float32', (27, 32, 32))"
+    ],
+    [
+     0.0017,
+     1,
+     "('torch.float32', (125, 3321))"
+    ],
+    [
+     0.0016,
+     10,
+     "('torch.int64', (19872, 1))"
+    ]
+   ]
+  },
+  {
+   "iteration": 3,
+   "phases": {
+    "fe_restore": 0.33517777640372515,
+    "fe_assemble_deploy": 5.205994164571166,
+    "fe_netdata": 0.8676049690693617,
+    "fe_encode": 1.55473412014544,
+    "fe_warmup": 9.708686815574765,
+    "fe_stream_wrap": 1.1506900554522872,
+    "front_end": 18.822887901216745,
+    "kpp_assemble": 2.5818124413490295e-05,
+    "prec_setup": 8.2594812521711,
+    "solve": 55.68972758483142,
+    "sens_ad": 8.955572023056448,
+    "sens_total": 9.345779065042734,
+    "iteration_total": 92.25932748336345
+   },
+   "per_cell": [
+    {
+     "case": "plateS24_000_o000",
+     "restore": 0.01898326724767685,
+     "assemble_deploy": 0.2630881667137146,
+     "netdata": 0.05355787184089422,
+     "encode": 0.0727894539013505,
+     "warmup": 0.49909397307783365,
+     "stream_wrap": 0.05518554989248514,
+     "stream_bytes": 139706964,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866408,
+      "torch.bool": 143300,
+      "torch.int32": 25273388,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_010_o000",
+     "restore": 0.016168033704161644,
+     "assemble_deploy": 0.25210154615342617,
+     "netdata": 0.04711954668164253,
+     "encode": 0.07149253133684397,
+     "warmup": 0.4924431834369898,
+     "stream_wrap": 0.05338468216359615,
+     "stream_bytes": 139707012,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866432,
+      "torch.bool": 143300,
+      "torch.int32": 25273412,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_020_o000",
+     "restore": 0.016749906353652477,
+     "assemble_deploy": 0.2509143268689513,
+     "netdata": 0.04853004030883312,
+     "encode": 0.07230989262461662,
+     "warmup": 0.4928099671378732,
+     "stream_wrap": 0.05409464240074158,
+     "stream_bytes": 139706980,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866416,
+      "torch.bool": 143300,
+      "torch.int32": 25273396,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_030_o000",
+     "restore": 0.016779528930783272,
+     "assemble_deploy": 0.25560690090060234,
+     "netdata": 0.048102324828505516,
+     "encode": 0.0756049994379282,
+     "warmup": 0.49247665517032146,
+     "stream_wrap": 0.05202410649508238,
+     "stream_bytes": 139707012,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866432,
+      "torch.bool": 143300,
+      "torch.int32": 25273412,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_040_o000",
+     "restore": 0.016766270622611046,
+     "assemble_deploy": 0.2511095115914941,
+     "netdata": 0.049497090280056,
+     "encode": 0.07103913370519876,
+     "warmup": 0.48984392639249563,
+     "stream_wrap": 0.055094391107559204,
+     "stream_bytes": 139707076,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866464,
+      "torch.bool": 143300,
+      "torch.int32": 25273444,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_050_o000",
+     "restore": 0.01541894767433405,
+     "assemble_deploy": 0.2539662541821599,
+     "netdata": 0.049782644957304,
+     "encode": 0.07149067427963018,
+     "warmup": 0.49451782647520304,
+     "stream_wrap": 0.05211753025650978,
+     "stream_bytes": 139707012,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866432,
+      "torch.bool": 143300,
+      "torch.int32": 25273412,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_060_o000",
+     "restore": 0.017863433808088303,
+     "assemble_deploy": 0.25949015468358994,
+     "netdata": 0.03962427470833063,
+     "encode": 0.06749281100928783,
+     "warmup": 0.45916927326470613,
+     "stream_wrap": 0.058972883969545364,
+     "stream_bytes": 133602244,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139752,
+      "torch.bool": 136780,
+      "torch.int32": 24088860,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16618816
+    },
+    {
+     "case": "plateS24_070_o000",
+     "restore": 0.0075113242492079735,
+     "assemble_deploy": 0.12575836200267076,
+     "netdata": 0.019096833653748035,
+     "encode": 0.04405464977025986,
+     "warmup": 0.1487892707809806,
+     "stream_wrap": 0.037381923757493496,
+     "stream_bytes": 53032807,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071652,
+      "torch.bool": 56093,
+      "torch.int32": 9949812,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 6691864
+    },
+    {
+     "case": "plateS24_100_o000",
+     "restore": 0.015402646735310555,
+     "assemble_deploy": 0.2518040258437395,
+     "netdata": 0.036263495683670044,
+     "encode": 0.07551832683384418,
+     "warmup": 0.4987642224878073,
+     "stream_wrap": 0.05094732716679573,
+     "stream_bytes": 139707044,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866448,
+      "torch.bool": 143300,
+      "torch.int32": 25273428,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_110_o000",
+     "restore": 0.015310326591134071,
+     "assemble_deploy": 0.24981395062059164,
+     "netdata": 0.04690864123404026,
+     "encode": 0.07130446005612612,
+     "warmup": 0.49055417627096176,
+     "stream_wrap": 0.05110837519168854,
+     "stream_bytes": 139706948,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866400,
+      "torch.bool": 143300,
+      "torch.int32": 25273380,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_120_o000",
+     "restore": 0.016805293038487434,
+     "assemble_deploy": 0.24993689823895693,
+     "netdata": 0.04775482043623924,
+     "encode": 0.07135668490082026,
+     "warmup": 0.493344790302217,
+     "stream_wrap": 0.050824230536818504,
+     "stream_bytes": 139706996,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866424,
+      "torch.bool": 143300,
+      "torch.int32": 25273404,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_130_o000",
+     "restore": 0.015704586170613766,
+     "assemble_deploy": 0.25272828713059425,
+     "netdata": 0.03548785764724016,
+     "encode": 0.07108396291732788,
+     "warmup": 0.4881111914291978,
+     "stream_wrap": 0.05357903894037008,
+     "stream_bytes": 139706868,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866360,
+      "torch.bool": 143300,
+      "torch.int32": 25273340,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_140_o000",
+     "restore": 0.018702794797718525,
+     "assemble_deploy": 0.2575760157778859,
+     "netdata": 0.04781762510538101,
+     "encode": 0.07930691260844469,
+     "warmup": 0.4915652321651578,
+     "stream_wrap": 0.05051793064922094,
+     "stream_bytes": 139706980,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866416,
+      "torch.bool": 143300,
+      "torch.int32": 25273396,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_150_o000",
+     "restore": 0.011316106654703617,
+     "assemble_deploy": 0.18020630348473787,
+     "netdata": 0.026333644054830074,
+     "encode": 0.05704835895448923,
+     "warmup": 0.2693144781515002,
+     "stream_wrap": 0.04710177332162857,
+     "stream_bytes": 91828879,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63923992,
+      "torch.bool": 95376,
+      "torch.int32": 16777816,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 11391648
+    },
+    {
+     "case": "plateS24_160_o000",
+     "restore": 0.0027990126982331276,
+     "assemble_deploy": 0.05350400507450104,
+     "netdata": 0.0072281332686543465,
+     "encode": 0.02841303776949644,
+     "warmup": 0.04621920268982649,
+     "stream_wrap": 0.01949471514672041,
+     "stream_bytes": 13589696,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2346596,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1378896
+    },
+    {
+     "case": "plateS24_200_o000",
+     "restore": 0.015027591027319431,
+     "assemble_deploy": 0.24301932100206614,
+     "netdata": 0.03623009379953146,
+     "encode": 0.06954616028815508,
+     "warmup": 0.4877511067315936,
+     "stream_wrap": 0.05023089423775673,
+     "stream_bytes": 139707092,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866472,
+      "torch.bool": 143300,
+      "torch.int32": 25273452,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_210_o000",
+     "restore": 0.015191208571195602,
+     "assemble_deploy": 0.2381364582106471,
+     "netdata": 0.035283464938402176,
+     "encode": 0.07535041589289904,
+     "warmup": 0.48927807062864304,
+     "stream_wrap": 0.051426323130726814,
+     "stream_bytes": 139706932,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866392,
+      "torch.bool": 143300,
+      "torch.int32": 25273372,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_220_o000",
+     "restore": 0.014418072067201138,
+     "assemble_deploy": 0.2376093752682209,
+     "netdata": 0.035058422945439816,
+     "encode": 0.06900751497596502,
+     "warmup": 0.4870973341166973,
+     "stream_wrap": 0.05035577900707722,
+     "stream_bytes": 139706900,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866376,
+      "torch.bool": 143300,
+      "torch.int32": 25273356,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_230_o000",
+     "restore": 0.014044166542589664,
+     "assemble_deploy": 0.25121401622891426,
+     "netdata": 0.03506312891840935,
+     "encode": 0.06445030868053436,
+     "warmup": 0.45358844473958015,
+     "stream_wrap": 0.056122370064258575,
+     "stream_bytes": 133602260,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 94139760,
+      "torch.bool": 136780,
+      "torch.int32": 24088868,
+      "torch.uint8": 104068,
+      "torch.float64": 15132784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 16618816
+    },
+    {
+     "case": "plateS24_240_o000",
+     "restore": 0.007028033025562763,
+     "assemble_deploy": 0.12290916033089161,
+     "netdata": 0.0186225650832057,
+     "encode": 0.04392227530479431,
+     "warmup": 0.1484752343967557,
+     "stream_wrap": 0.03564651682972908,
+     "stream_bytes": 53032791,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 36071644,
+      "torch.bool": 56093,
+      "torch.int32": 9949804,
+      "torch.uint8": 42898,
+      "torch.float64": 6912352
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 6691864
+    },
+    {
+     "case": "plateS24_300_o000",
+     "restore": 0.0161247868090868,
+     "assemble_deploy": 0.24285786412656307,
+     "netdata": 0.035343741066753864,
+     "encode": 0.0718207461759448,
+     "warmup": 0.48910641204565763,
+     "stream_wrap": 0.04890963714569807,
+     "stream_bytes": 139707028,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866440,
+      "torch.bool": 143300,
+      "torch.int32": 25273420,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_310_o000",
+     "restore": 0.016097016632556915,
+     "assemble_deploy": 0.23854670114815235,
+     "netdata": 0.03438074793666601,
+     "encode": 0.06951292604207993,
+     "warmup": 0.4885568656027317,
+     "stream_wrap": 0.04913199972361326,
+     "stream_bytes": 139707028,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 98866440,
+      "torch.bool": 143300,
+      "torch.int32": 25273420,
+      "torch.uint8": 109084,
+      "torch.float64": 15314784
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 17607232
+    },
+    {
+     "case": "plateS24_320_o000",
+     "restore": 0.0120012816041708,
+     "assemble_deploy": 0.1770078120753169,
+     "netdata": 0.028038233518600464,
+     "encode": 0.058310022577643394,
+     "warmup": 0.2709699096158147,
+     "stream_wrap": 0.04707996640354395,
+     "stream_bytes": 91828943,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 63924024,
+      "torch.bool": 95376,
+      "torch.int32": 16777848,
+      "torch.uint8": 72631,
+      "torch.float64": 10959064
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 17,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 11391648
+    },
+    {
+     "case": "plateS24_330_o000",
+     "restore": 0.002964140847325325,
+     "assemble_deploy": 0.047088746912777424,
+     "netdata": 0.006479726172983646,
+     "encode": 0.032507860101759434,
+     "warmup": 0.04684606846421957,
+     "stream_wrap": 0.019957467913627625,
+     "stream_bytes": 13589696,
+     "stream_bytes_by_dtype": {
+      "torch.float32": 8958188,
+      "torch.bool": 13123,
+      "torch.int32": 2346596,
+      "torch.uint8": 10141,
+      "torch.float64": 2261648
+     },
+     "stream_bytes_enc_counts": {
+      "f32": 0,
+      "i32": 16,
+      "tril": 0,
+      "sym": 0
+     },
+     "stream_bytes_encoded_unpacked": 1378896
+    }
+   ],
+   "resident_gb": 0.0,
+   "host_budget": {
+    "limit_GiB": 90.0,
+    "frac": null,
+    "top": 0.95,
+    "transient_x": 4.0,
+    "reserve_GiB": 1.57,
+    "cells": 24,
+    "slots_kept": 24,
+    "float64_kept": 24
+   },
+   "device_GB_after_front_end": 0.67377408,
+   "census_after_front_end": [
+    [
+     0.5588,
+     4,
+     "('torch.uint8', (139700736,))"
+    ],
+    [
+     0.0275,
+     3,
+     "('torch.float64', (381348, 3))"
+    ],
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0041,
+     26,
+     "('torch.int64', (19872,))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.int64', (381348,))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.float64', (381348,))"
+    ],
+    [
+     0.0027,
+     24,
+     "('torch.float32', (27, 32, 32))"
+    ],
+    [
+     0.0017,
+     1,
+     "('torch.float32', (125, 3321))"
+    ],
+    [
+     0.0016,
+     10,
+     "('torch.int64', (19872, 1))"
+    ]
+   ],
+   "stream_GB_total": 2.819419188,
+   "stream_store_fp32": false,
+   "stream_store_pack": true,
+   "host_rss_GB_after_front_end": 5.698572,
+   "resident_cells": 0,
+   "prec": {
+    "kpp_assemble_s": 0.0,
+    "kpp_factor_s": 2.4770668344572186,
+    "kpp_triplets_s": 0.3709153709933162,
+    "coarse_basis_s": 0.06455006171017885,
+    "coarse_AZ_s": 5.337195148691535,
+    "coarse_factor_s": 0.009370707906782627,
+    "total_s": 8.259098123759031
+   },
+   "prec_rebuilt": true,
+   "graph": {
+    "on": true,
+    "maxb": 4,
+    "pools": 2,
+    "captures": 24,
+    "recaptures": 0,
+    "replays": 4368,
+    "failed": 72,
+    "capture_s": 0.37,
+    "errors": [
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')",
+     "RuntimeError('it->second->use_count > 0 INTERNAL ASSERT FAILED at \"/pytorch/c10/cuda/CUDACachingAllocator.cpp\":2379, please report a bug to PyTorch. ')"
+    ]
+   },
+   "solve": {
+    "iterations": 141,
+    "residual": 9.378689194828118e-07,
+    "warm": true,
+    "lanczos": null,
+    "prof": null,
+    "block": null,
+    "ritz": null,
+    "levels": [
+     {
+      "level": 0.01,
+      "iterations": 52
+     },
+     {
+      "level": 0.003,
+      "iterations": 66
+     },
+     {
+      "level": 0.001,
+      "iterations": 74
+     },
+     {
+      "level": 0.0001,
+      "iterations": 90
+     },
+     {
+      "level": 1e-06,
+      "iterations": 141
+     }
+    ],
+    "start_residual": 2.5496050794356253
+   },
+   "compliance": [
+    30.66542366492404,
+    69.5173939259304,
+    1073.1408162172042
+   ],
+   "peak_device_GB": 3.2774144,
+   "stream_copies": 3457,
+   "device_GB_end": 0.673921536,
+   "census_end": [
+    [
+     0.559,
+     4,
+     "('torch.uint8', (139737600,))"
+    ],
+    [
+     0.0275,
+     3,
+     "('torch.float64', (381348, 3))"
+    ],
+    [
+     0.0066,
+     1,
+     "('torch.float64', (125, 81, 81))"
+    ],
+    [
+     0.0053,
+     12,
+     "('torch.float32', (4, 32, 32, 3, 3, 3))"
+    ],
+    [
+     0.0041,
+     26,
+     "('torch.int64', (19872,))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float64', (125, 3321))"
+    ],
+    [
+     0.0033,
+     1,
+     "('torch.float32', (125, 6561))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.int64', (381348,))"
+    ],
+    [
+     0.0031,
+     1,
+     "('torch.float64', (381348,))"
+    ],
+    [
+     0.0027,
+     24,
+     "('torch.float32', (27, 32, 32))"
+    ],
+    [
+     0.0017,
+     1,
+     "('torch.float32', (125, 3321))"
+    ],
+    [
+     0.0016,
+     10,
+     "('torch.int64', (19872, 1))"
+    ]
+   ]
+  }
+ ],
+ "lattice": {
+  "cells": 24,
+  "glued_dofs": 407844,
+  "free_dofs": 381348,
+  "private_dofs": 117474,
+  "loads": 3,
+  "labels": [
+   "consistent_xmax_x",
+   "consistent_xmax_y",
+   "consistent_xmax_z"
+  ],
+  "clamp": [
+   "x",
+   "min"
+  ],
+  "load_face": [
+   "x",
+   "max"
+  ],
+  "face_load_outside": [
+   0.0,
+   0.0,
+   1.0,
+   1.0
+  ]
+ }
+}
