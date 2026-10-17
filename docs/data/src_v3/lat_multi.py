@@ -248,8 +248,9 @@ class MultiLattice:
                 X = torch.cat([blocks[i] for i in cells], 1)
                 if mc is None or X.shape[1] <= mc:
                     Y = op.apply(X)
-                else:
-                    Y = torch.cat([op.apply(X[:, c0:c0 + mc]) for c0 in range(0, X.shape[1], mc)], 1)
+                else:                                                   # src_v3: a streamed cell is copied to the device
+                    with (op.active() if hasattr(op, 'active') else contextlib.nullcontext()):   # once for all chunks
+                        Y = torch.cat([op.apply(X[:, c0:c0 + mc]) for c0 in range(0, X.shape[1], mc)], 1)
                 if ms:
                     Y.record_stream(main)                                   # read by the caller on the main stream
             c0 = 0
