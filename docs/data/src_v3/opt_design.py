@@ -279,7 +279,7 @@ def analyse(cases, positions, h):
     for case, p in zip(cases, positions):
         C = TE.Cell(case, str(BODY), log=lambda s_: None); C.assemble()
         C.dmoments()
-        vol.append(float(C.M[:, 0].sum())); dvol.append(C.dM[:, :, 0].sum(1).cpu().numpy())
+        vol.append(C.volume() if hasattr(C, "volume") else float(C.M[:, 0].sum())); dvol.append(C.dM[:, :, 0].sum(1).cpu().numpy())
         Cs.append(C); lay[tuple(p)] = LM.from_teacher(C)
         if A.park:
             LH._move(C, torch.device('cpu')); RC.free()
@@ -381,6 +381,7 @@ def analyse_fast(cases, positions, h, wait=None):
     import gc
     import stream_ops as SO
     import lat_scale as LS
+    import kppstore as KS
     FN.FUSED = True
     if not getattr(analyse_fast, '_init', False):
         SO.init(); analyse_fast._init = True
@@ -436,8 +437,8 @@ def analyse_fast(cases, positions, h, wait=None):
                          shift=float(getattr(C, '_c_shift', 0.0) or 0.0),
                          b=float(C._tail_bounds[2]) if getattr(C, '_tail_bounds', None) else None)
         if TE.SLIM:                                                            # src_v3: int32 indices on the host
-            r_, c_, v_ = C._kpp_cache
-            kpp_host[case] = (r_.int().cpu(), c_.int().cpu(), v_.cpu())
+            r_, c_, v_ = C._kpp_cache                                          # (OPL_V3_KPP_DISK: in a scratch file)
+            kpp_host[case] = KS.host_entry(case, r_, c_, v_)
             del r_, c_, v_
         else:
             kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
@@ -464,7 +465,7 @@ def analyse_fast(cases, positions, h, wait=None):
     lay = {}
     for case, p in zip(cases, positions):
         g = LM.from_teacher(Cs[case])
-        g._kpp_fn = (lambda cs: (lambda: tuple(x.to(dev) for x in kpp_host[cs])))(case)
+        g._kpp_fn = (lambda cs: (lambda: KS.to_device(kpp_host[cs], dev)))(case)
         lay[tuple(p)] = g
     la = A.load.split(',')
     lat = LM.MultiLattice(lay, clamp=CLAMP, load=(la[0], la[1]), loads='consistent', n_random=0, device=dev,
@@ -533,7 +534,7 @@ def analyse_fast(cases, positions, h, wait=None):
         with o.active():
             with torch.no_grad():
                 u = o.field(lat.gather(X, i)).to(dt)
-            vol[i] = float(C.M[:, 0].sum())
+            vol[i] = C.volume() if hasattr(C, 'volume') else float(C.M[:, 0].sum())   # (src_v3 item 1b: kept sum)
             if A.sens == 'ad':
                 import moments_ad as MA
                 with torch.no_grad():
@@ -599,7 +600,7 @@ def analyse_exact(cases, positions):
     for case, p in zip(cases, positions):
         C = TE.Cell(case, str(BODY), log=lambda s_: None); C.assemble()
         C.dmoments()
-        vol.append(float(C.M[:, 0].sum())); dvol.append(C.dM[:, :, 0].sum(1).cpu().numpy())
+        vol.append(C.volume() if hasattr(C, "volume") else float(C.M[:, 0].sum())); dvol.append(C.dM[:, :, 0].sum(1).cpu().numpy())
         Cs.append(C); lay[tuple(p)] = LM.from_teacher(C)
         LH._move(C, torch.device('cpu')); RC.free()
     la = A.load.split(',')

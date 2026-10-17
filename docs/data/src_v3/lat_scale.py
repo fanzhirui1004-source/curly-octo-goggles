@@ -25,6 +25,7 @@ import bench_deploy as BD
 import lat_multi as LM
 import lat_precond as PR
 import stream_ops as SO
+import kppstore as KS
 
 dev, dt = TE.dev, TE.dt
 
@@ -71,7 +72,9 @@ class _Resident:
 def kpp_release(kpp_host, Cs):
     """src_v3: the per-cell K_PP triplets kept on the host (int32 rows / cols, float64 values; ~10 MB per full plate cell)
     are dropped once the lattice's K_PP is assembled from them (MultiLattice._assemble_kpp_lean), before cuDSS plans
-    and factorises (the host-memory peak of an analysis); the next design's front end stores new ones."""
+    and factorises (the host-memory peak of an analysis); the next design's front end stores new ones.
+    OPL_V3_KPP_DISK (kppstore): the triplets are in scratch files, which are removed here."""
+    KS.remove(list(kpp_host.values()))
     kpp_host.clear()
     for C in Cs.values():
         C._kpp_cache = None
@@ -175,8 +178,8 @@ def main(argv=None):
             op.apply(torch.zeros((C.np_, 1), dtype=dt, device=dev))              # correction caches (coarse factor)
             pc['warmup'] = T() - t; t = T()
             if TE.SLIM:                                                            # src_v3: int32 indices on the host
-                r_, c_, v_ = C._kpp_cache
-                kpp_host[case] = (r_.int().cpu(), c_.int().cpu(), v_.cpu())
+                r_, c_, v_ = C._kpp_cache                                          # (OPL_V3_KPP_DISK: in a scratch file)
+                kpp_host[case] = KS.host_entry(case, r_, c_, v_)
                 del r_, c_, v_
             else:
                 kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
@@ -215,7 +218,7 @@ def main(argv=None):
             lay = {}
             for c in cells:
                 g = LM.from_teacher(Cs[c['case']])
-                g._kpp_fn = (lambda cs: (lambda: tuple(x.to(dev) for x in kpp_host[cs])))(c['case'])
+                g._kpp_fn = (lambda cs: (lambda: KS.to_device(kpp_host[cs], dev)))(c['case'])
                 lay[tuple(c['position'])] = g
             lat = LM.MultiLattice(lay, clamp=('y', 'min'), load=('y', 'max'), loads='consistent', n_random=0, device=dev,
                                   max_cols=a.max_cols, log=lambda s_: None)

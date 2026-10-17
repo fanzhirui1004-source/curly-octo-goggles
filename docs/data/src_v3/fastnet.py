@@ -63,6 +63,13 @@ def _shared_flipT(W):
     return t
 
 
+def _same_pattern(A, B):
+    """A with B's crow / col index tensors when the two CSR patterns are equal (src_v3 item 1c), else A."""
+    if A.shape == B.shape and torch.equal(A.crow_indices(), B.crow_indices()) and torch.equal(A.col_indices(), B.col_indices()):
+        return torch.sparse_csr_tensor(B.crow_indices(), B.col_indices(), A.values(), size=A.shape)
+    return A
+
+
 def _csr(rows, cols, vals, shape):
     """CSR from (unsorted, duplicate-free) triplets."""
     key = rows * shape[1] + cols
@@ -76,6 +83,8 @@ def _csr(rows, cols, vals, shape):
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
 SLOTDEC = os.environ.get('OPL_V3_SLOTDEC', '1') == '1'                           # src_v3 P17 (slotdec: fused heads)
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
+HN32 = os.environ.get('OPL_V3_HN32', '1') == '1'                                 # src_v3 item 1c: int32 node lists
+TSHARE = os.environ.get('OPL_V3_TSHARE', '1') == '1'                             # src_v3 item 1c: shared transfer indices
 HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
 CONV3 = os.environ.get('OPL_V3_CONV3', '1') == '1'                               # src_v3 P10: U-Net convolutions in Triton
 CLAMPFREE = os.environ.get('OPL_V3_CLAMPFREE', '1') == '1'                       # src_v3 P11: no where() in clamped layers
@@ -258,6 +267,9 @@ class FastNet:
             denp = torch.zeros(t['n_src'], device=dev).index_add_(0, i, w)
             pv = m.skip[l].detach() * gp['rw'][l][1][i] * w / denp[i]
             self.P.append(_csr(i, v, pv, (t['n_src'], t['n_dst']))); self.Pt.append(_csr(v, i, pv, (t['n_dst'], t['n_src'])))
+            if TSHARE:                                                                  # src_v3 item 1c: R^T and P (R and
+                self.Rt[-1] = _same_pattern(self.Rt[-1], self.P[-1])                   # P^T) have the same pattern: one
+                self.Pt[-1] = _same_pattern(self.Pt[-1], self.R[-1])                   # set of index arrays each
         self.gates = [g_.detach() for g_ in gp['gates']]
         self.pm8, self._cinv = None, None
         if NETFUSE:                                                                     # src_v3 S24
@@ -287,6 +299,34 @@ class FastNet:
         # wrapper (trainlib.Geo.field): rigid split and port overwrite, float32
         self.RP, self.RA, self.RPpinv = geo.RP.to(f32), geo.RA.to(f32), geo.RPpinv.to(f32)
         self.Pidx = geo.P
+        if HN32 and FUSED and self.two:
+            self._hn32()
+
+    def _hn32(self):
+        """src_v3 item 1c (OPL_V3_HN32, default on): the hyperedge node lists as int32 (the model cache's c.en, c.fn and every
+        layer's hn; the fringe layers' subsets c.en[el_fringe], c.fn[gp_fringe] were one copy per layer, now one shared
+        copy each) and the fringe row indices (slotdec's emap). The kernels read the same node numbers (fused_hyper's
+        Triton kernels convert on load; hyper_kernel.cu has int32 instances): bitwise the same results, 4 bytes less per
+        hyperedge slot of the per-cell state. After the network's setup (the model's own geometry code ran with int64)."""
+        c = self.c
+        conv = {}
+
+        def i32(t):
+            k = (t.data_ptr(), tuple(t.shape))
+            if k not in conv:
+                for t2, u in conv.values():                                     # an equal subset of another layer
+                    if t2.shape == t.shape and torch.equal(t2, t):
+                        conv[k] = (t, u)
+                        break
+                else:
+                    conv[k] = (t, t.to(torch.int32).contiguous())
+            return conv[k][1]
+        if c.en.dtype != torch.int64 or c.fn.dtype != torch.int64:
+            return
+        c.en, c.fn = i32(c.en), i32(c.fn)
+        for h in self._hypers():
+            h.hn = i32(h.hn)
+        self._fr_el, self._fr_gp = self._fr_el.to(torch.int32), self._fr_gp.to(torch.int32)
 
     def slot_bytes(self):
         """Bytes of the stored slot weights (a, b of every hyperedge layer)."""
@@ -644,6 +684,7 @@ def slim_deploy(op, geo, C, model=None, budget=None, cell_bytes=None):
     the float64 partial-element matrices (teacher.Cell.store64) and the stored slot weights (else recomputed).
     cell_bytes: the cell's device footprint after the warm-up (the budget's estimate of a cell's state)."""
     import teacher as TE_
+    import kppstore as KS
     fast = op.fast
     if hasattr(C, 'park_faces'):                                          # src_v3: the face DOF arrays off the device
         C.park_faces()
@@ -652,7 +693,7 @@ def slim_deploy(op, geo, C, model=None, budget=None, cell_bytes=None):
         sb = fast.slot_bytes() if SLOTS == 'auto' and fast._rc_src is not None else 0
         other = None if cell_bytes is None else max(0, cell_bytes - sb)
         kp = getattr(C, '_kpp_cache', None)
-        kpb = sum(t.numel() * t.element_size() for t in kp) if kp is not None and not torch.is_tensor(kp) else 0
+        kpb = KS.nbytes(kp)                                              # (a kppstore file counts: the K_PP peak)
         keep_slots, keep_ke = budget.decide(kb, sb, other, kpp_bytes=kpb)
         kept = 0
         if sb:
@@ -675,3 +716,5 @@ def slim_deploy(op, geo, C, model=None, budget=None, cell_bytes=None):
         model.caches.pop(C.case, None)
     geo.RA = geo.RP = geo.RPpinv = None
     geo.nd = None
+    if hasattr(C, 'drop_moments'):                                        # src_v3 item 1b: moments not read by the solve
+        C.drop_moments()

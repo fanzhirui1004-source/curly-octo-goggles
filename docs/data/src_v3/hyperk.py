@@ -41,11 +41,11 @@ def _lib():
             raise RuntimeError('NVCC:' + (r.stderr or r.stdout)[-1500:])
         os.replace(tmp, so)
     lib = ctypes.CDLL(so)
-    lib.hk_gather.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
-    lib.hk_scatter.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
-    lib.hk_layer.argtypes = [ctypes.c_void_p] * 8 + [ctypes.c_int] * 5 + [ctypes.c_void_p]
+    lib.hk_gather.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.hk_scatter.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_int] * 5 + [ctypes.c_void_p]
+    lib.hk_layer.argtypes = [ctypes.c_void_p] * 8 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
     lib.sd_head.argtypes = ([ctypes.c_void_p] * 2 + [ctypes.c_int] + [ctypes.c_void_p] * 6 + [ctypes.c_int]
-                            + [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_float] + [ctypes.c_int] * 2
+                            + [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_float] + [ctypes.c_int] * 3
                             + [ctypes.c_void_p])
     rc = lib.hk_init()
     if rc != 0:
@@ -56,12 +56,12 @@ def _lib():
 
 def usable(H, S, BF, w, hn, on=None, maxbf=None):
     """The CUDA kernels apply: switch on, library built (a failure is remembered), 27 slots, 4 heads, B F <= maxbf
-    (MAXBF; when set), int64 node indices, 16-byte aligned contiguous float32 weights."""
+    (MAXBF; when set), int64 or int32 (src_v3 item 1c) node indices, 16-byte aligned contiguous float32 weights."""
     global _ERR
     lim = MAXBF if maxbf is None else maxbf
     if not (ON if on is None else on) or _ERR is not None or H != 4 or S != 27 or (lim and BF > lim):
         return False
-    if hn.dtype != torch.int64 or w.dtype != torch.float32 or not w.is_contiguous() or w.data_ptr() % 16:
+    if hn.dtype not in (torch.int64, torch.int32) or w.dtype != torch.float32 or not w.is_contiguous() or w.data_ptr() % 16:
         return False
     try:
         _lib()
@@ -75,7 +75,7 @@ def gather(src, hn, w, deg, out, use_deg):
     """out (H x Eh x BF) = sum_s w[e, s, h] src[hn[e, s]] (w / deg[hn] when use_deg); src (N x BF) contiguous."""
     Eh, BF = hn.shape[0], src.shape[1]
     rc = _lib().hk_gather(src.data_ptr(), hn.data_ptr(), w.data_ptr(), deg.data_ptr(), out.data_ptr(), Eh, BF,
-                          int(bool(use_deg)), torch.cuda.current_stream(src.device).cuda_stream)
+                          int(bool(use_deg)), int(hn.dtype == torch.int32), torch.cuda.current_stream(src.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'HK_GATHER:{rc}')
     return out
@@ -86,7 +86,8 @@ def scatter(src, hn, w, deg, out, rmask, use_deg, hs=None):
     Eh, BF = hn.shape[0], src.shape[2]
     rc = _lib().hk_scatter(src.data_ptr(), hn.data_ptr(), w.data_ptr(), deg.data_ptr(), out.data_ptr(),
                            rmask.data_ptr() if rmask is not None else None, Eh, BF, int(bool(use_deg)),
-                           int(HS if hs is None else hs), torch.cuda.current_stream(src.device).cuda_stream)
+                           int(HS if hs is None else hs), int(hn.dtype == torch.int32),
+                           torch.cuda.current_stream(src.device).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'HK_SCATTER:{rc}')
     return out
@@ -104,7 +105,8 @@ def layer(X, hn, ga, sb, deg, W, out, gdeg, sdeg, rmask=None, blocks=None):
         blocks = 8 * _SMS[dev]
     rc = _lib().hk_layer(X.data_ptr(), hn.data_ptr(), ga.data_ptr(), sb.data_ptr(), deg.data_ptr(), W.data_ptr(),
                          out.data_ptr(), rmask.data_ptr() if rmask is not None else None, hn.shape[0], X.shape[1],
-                         int(bool(gdeg)), int(bool(sdeg)), int(blocks), torch.cuda.current_stream(dev).cuda_stream)
+                         int(bool(gdeg)), int(bool(sdeg)), int(blocks), int(hn.dtype == torch.int32),
+                         torch.cuda.current_stream(dev).cuda_stream)
     if rc != 0:
         raise RuntimeError(f'HK_LAYER:{rc}')
     return out

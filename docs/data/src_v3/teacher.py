@@ -59,6 +59,7 @@ GF_BMM = os.environ.get('OPL_V3_GFBMM', '0') == '1'                    # src_v3 
 FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '1') == '1'                 # src_v3 S21: K_PP CSR released after factorising
 KMAP = os.environ.get('OPL_V3_KMAP', '0') == '1'                       # src_v3 P2b: shared rows in the float32 product
 KC64 = os.environ.get('OPL_V3_KC64', '0') == '1'                       # src_v3 check: correction K product in float64
+DROP = os.environ.get('OPL_V3_DROP', '1') == '1'                        # src_v3 items 1b: moments / face arrays dropped
 #   (finds none on plate cells: each full element's float32 moment row is distinct; results/tests28/kdedupe.log)
 _SHARED = {}
 
@@ -193,6 +194,28 @@ class SPDSolver:
         self.solver.free()
 
 
+def _face_dofs(C):
+    """(faces, templates, template offsets, faces x 135 DOFs) of a cell's ghost faces, from its body files."""
+    d = Path(C._body_dir) / C.case
+    faces = np.load(d / 'GP_FACES.npy').astype(np.int64)
+    tpl = np.load(Path(C._body_dir) / f'GP_TEMPLATES_n{C.n}.npz')
+    offs = tpl['offsets'].astype(np.int64)
+    g = 2 * C.cells[faces[:, 0]][:, None, :] + offs[faces[:, 2]]
+    M = 2 * C.n + 1
+    local = np.searchsorted(C.nodes, (g[..., 0] * M + g[..., 1]) * M + g[..., 2])
+    if not np.array_equal(C.nodes[local], (g[..., 0] * M + g[..., 1]) * M + g[..., 2]):
+        raise ValueError('GHOST_FACE_NODE_MISSING')
+    dofs = (3 * local[:, :, None] + np.arange(3)).reshape(len(faces), -1)
+    return faces, tpl, offs, dofs
+
+
+def _face_iTc(C):
+    """The GF_CAT face DOF array (135 x faces int32, templates in order) as GhostFaces.__init__ builds it."""
+    faces, _, offs, dofs = _face_dofs(C)
+    parts = [dofs[faces[:, 2] == k] for k in range(len(offs))]
+    return np.concatenate(parts, 0).T.copy()
+
+
 class GhostFaces:
     """Matrix-free unit ghost-penalty product G x = sum_f P_f^T B_d(f)^T B_d(f) P_f x from the face list (GP_FACES.npy) and
     the three fixed face templates B_d (GP_TEMPLATES_n<n>.npz, 54 x 135): the same sum as box_encode.ghost_faces_gpu,
@@ -210,16 +233,7 @@ class GhostFaces:
                 self.BsT = self.Bs.transpose(1, 2).contiguous()
                 self.B = [self.Bs[k] for k in range(self.Bs.shape[0])]
             return
-        d = Path(C._body_dir) / C.case
-        faces = np.load(d / 'GP_FACES.npy').astype(np.int64)
-        tpl = np.load(Path(C._body_dir) / f'GP_TEMPLATES_n{C.n}.npz')
-        offs = tpl['offsets'].astype(np.int64)
-        g = 2 * C.cells[faces[:, 0]][:, None, :] + offs[faces[:, 2]]
-        M = 2 * C.n + 1
-        local = np.searchsorted(C.nodes, (g[..., 0] * M + g[..., 1]) * M + g[..., 2])
-        if not np.array_equal(C.nodes[local], (g[..., 0] * M + g[..., 1]) * M + g[..., 2]):
-            raise ValueError('GHOST_FACE_NODE_MISSING')
-        dofs = (3 * local[:, :, None] + np.arange(3)).reshape(len(faces), -1)
+        faces, tpl, offs, dofs = _face_dofs(C)
         # src_v3: the face DOF lists are stored transposed (135 x faces, contiguous), so the template products gather and
         # scatter in GEMM layout directly (src_v2 permuted and copied both ways in every product); `idx` is the
         # faces x 135 view used by the setup code
@@ -254,11 +268,28 @@ class GhostFaces:
         t = self.__dict__.get('_iTc')
         if t is not None and not t.is_cuda and self.__dict__.get('_pdev') is not None:
             return t.to(self._pdev)                                             # parked (src_v3): a transient device copy
+        if t is None and self.__dict__.get('_rebuild') is not None:            # dropped (src_v3 item 1b): formed again
+            C = self._rebuild()                                                 # from the cell's body files (the same
+            if C is not None:                                                   # array), transient
+                return torch.as_tensor(_face_iTc(C), dtype=torch.int32, device=self._pdev)
         return t
 
     @iTc.setter
     def iTc(self, v):
         self.__dict__['_iTc'] = v
+
+    def drop(self, C):
+        """src_v3 item 1b (OPL_V3_DROP): as park(), but no host copy is kept either (11.8 MiB per full plate cell, 16 MiB
+        with the pinned allocator's rounding): a fallback that reads iTc gets the array formed again from the cell's
+        body files (GP_FACES.npy, the templates; the same int32 array), on the device, not kept."""
+        import weakref
+        t = self.__dict__.get('_iTc')
+        if t is None or self.cuts is None:
+            return False
+        self.__dict__['_pdev'] = t.device if t.is_cuda else self.__dict__.get('_pdev', dev)
+        self.__dict__['_iTc'] = None
+        self.__dict__['_rebuild'] = weakref.ref(C)
+        return True
 
     def park(self, host=None):
         """src_v3: the face DOF array (135 x faces int32) to page-locked host memory, so it is no longer streamed with
@@ -523,7 +554,7 @@ class _Kfp32:
                     if me._hold == 0:
                         me._kp_part = me._ke_part = me._dp_part = None
                 return
-            E = len(me.C.M)
+            E = len(me.C.dofs)                                                  # (src_v3 item 1b: the element count)
             if me.symv and me._hold == 0 and KMF.use():                         # src_v3 P13: narrow products matrix-free,
                 me.mf_state()                                                   # wide ones form the matrices on first use
             elif me.symv and me._hold == 0:
@@ -544,6 +575,49 @@ class _Kfp32:
 
 
 class Cell:
+    @property
+    def M(self):
+        """The float64 element moments (E x 125). src_v3 item 1b: after drop_moments() they are formed again from the
+        geometry for a fallback that reads them (not kept)."""
+        m = self.__dict__.get('_M')
+        if m is None and self.__dict__.get('_M_gone'):
+            return self.moments(self.taus)
+        return m
+
+    @M.setter
+    def M(self, v):
+        self.__dict__['_M'] = v
+        self.__dict__['_M_gone'] = False
+
+    def _has_M(self):
+        return self.__dict__.get('_M') is not None or bool(self.__dict__.get('_M_gone'))
+
+    def volume(self):
+        """Material volume of the discrete model, sum of the zeroth element moments (kept by drop_moments)."""
+        if self.__dict__.get('_M_gone'):
+            return self._vol
+        return float(self.M[:, 0].sum())
+
+    def drop_moments(self):
+        """src_v3 item 1b (OPL_V3_DROP, default on): with both element products matrix-free (P13 float32 and P14 float64 on
+        the CUDA kernels, a deploy cell, their per-cell states built at the warm-up) no product of the solve reads the
+        float64 moments (the weight store kmf.wstore holds what the kernels read); after the cell's setup
+        (fastnet.slim_deploy) they are dropped: not streamed, not kept on the host (8 x 125 bytes per element, 10.9 MiB
+        per full plate cell). Kept instead: the volume sum M[:, 0] (Cell.volume: the same sum). A fallback that reads M
+        gets it formed again from the geometry (Cell.moments, not kept). Returns True when dropped."""
+        if not (DROP and SLIM and getattr(self, '_deploy', False) and KMF.ON and KMF.ON64 and FK.ON and KMF.use()
+                and KMF.cuda_ok()):
+            return False
+        m = self.__dict__.get('_M')
+        kc = getattr(self, '_Kc', None)
+        if m is None or getattr(self, '_mf64', None) is None or getattr(self, '_kmf_w', None) is None \
+                or kc is None or getattr(kc, '_mf', None) is None or getattr(self, '_k64_part', None) is not None:
+            return False
+        self._vol = float(m[:, 0].sum())
+        self.__dict__['_M'] = None
+        self.__dict__['_M_gone'] = True
+        return True
+
     def __init__(self, case, body_dir, ports=('box', 'cut'), s=4, levels=1, log=print, deploy=False):
         import element_moments as EM
         import polyref_torch_fast as PT
@@ -838,8 +912,12 @@ class Cell:
         gf64 = getattr(self, 'GF64', None)
         if gf64 is None or gf64.__dict__.get('_iTc') is None or getattr(gf64, 'iP', None) is not None:
             return False
-        host = gf64.park()
         kc = getattr(self, '_Kc', None)
+        if DROP:                                                                # src_v3 item 1b: no host copy either
+            if kc is not None and getattr(kc, 'gf', None) is not None and kc.gf.__dict__.get('_iTc') is not None:
+                kc.gf.drop(self)
+            return gf64.drop(self)
+        host = gf64.park()
         if kc is not None and getattr(kc, 'gf', None) is not None and kc.gf.__dict__.get('_iTc') is not None:
             kc.gf.park(host=host)
         return True
@@ -945,7 +1023,7 @@ class Cell:
 
     def ke64_bytes(self):
         """Bytes store64 would keep (8 x 3321 per partial element; none with the matrix-free product, P14)."""
-        if not (FI.ON and FK.ON and getattr(self, '_deploy', False)) or getattr(self, 'M', None) is None:
+        if not (FI.ON and FK.ON and getattr(self, '_deploy', False)) or not self._has_M():
             return 0
         if KMF.ON64 and KMF.cuda_ok():
             return 0
@@ -960,7 +1038,7 @@ class Cell:
         OPL_V3_KE64=auto (default): only when the caller's host-memory budget allows (hostmem.Budget; allow=True);
         =store: always; =form: never (the src_v2 behaviour). Returns True when the matrices were stored."""
         if KE64 == 'form' or (KE64 == 'auto' and not allow) or not (FI.ON and FK.ON and getattr(self, '_deploy', False)) \
-                or getattr(self, '_k64_part', None) is not None or getattr(self, 'M', None) is None:
+                or getattr(self, '_k64_part', None) is not None or not self._has_M():
             return False
         if KMF.ON64 and KMF.cuda_ok():                               # src_v3 P14: nothing to store
             return False

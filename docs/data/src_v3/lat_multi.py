@@ -75,7 +75,8 @@ def from_teacher(C):
     """CellGeom of an assembled teacher.Cell (K_PP from its upper CSR; consistent face weights from lattice3)."""
     def kpp():
         if getattr(C, '_kpp_cache', None) is not None:                                   # teacher.Cell.lean()
-            return C._kpp_cache
+            import kppstore as KS
+            return C._kpp_cache.load() if isinstance(C._kpp_cache, KS.Stored) else C._kpp_cache
         dev = C.vals.device
         pm = torch.zeros(C.nb, dtype=torch.bool, device=dev); pm[C.P.to(dev)] = True
         pnew = torch.full((C.nb,), -1, dtype=torch.long, device=dev); pnew[C.P.to(dev)] = torch.arange(C.np_, device=dev)
@@ -341,6 +342,95 @@ class MultiLattice:
         rows, cols = key // self.nfree, key % self.nfree
         del key
         return rows.to(self.device), cols.to(self.device), vals.to(self.device)
+
+    def _cell_kpp_keys(self, i):
+        """Cell i's K_PP entries on the free DOFs: (row = min, col = max of the free DOF pair, value, kept mask)."""
+        G = self.geoms[i]
+        cached = G._kpp is not None
+        r, c, v = G.kpp()
+        if not cached:
+            G._kpp = None
+        f = self.gather_idx[i].to(r.device)
+        fr, fc = f[r], f[c]
+        ok = (fr >= 0) & (fc >= 0)
+        return torch.minimum(fr, fc), torch.maximum(fr, fc), v, ok
+
+    def assemble_kpp_csr(self, max_entries=None):
+        """src_v3 (OPL_V3_KPP_CSR=1, default on with SLIM): K_PP's upper CSR (crow int32 [nfree + 1], cols int32, vals
+        float64), the same entries in the same order as _assemble_kpp_lean (sorted by row then column, the duplicates of
+        DOF pairs shared by cells summed by the same float64 index_add_), assembled in blocks of rows so that the
+        device holds the sort's temporaries for one block only (_assemble_kpp_lean: ~65 bytes per stored nonzero for the
+        whole matrix at once, the device peak of the K_PP setup) and the output directly as CSR (no int64 row and column
+        arrays: 12 bytes per stored nonzero, plus 12 per merged duplicate, which stay allocated as slack).
+        One pass counts each row's entries and records every cell's row range; each block then reads only the cells
+        whose rows reach into it (the cells' triplets come from the drivers' host copies or kppstore files, once per block
+        they touch). Block size: max_entries cell entries, default OPL_V3_KPP_CHUNK, else (0) a quarter of the free device
+        memory at 64 bytes per entry, at most 2^25 (~2 GiB of temporaries) and at least 2^24."""
+        n, dev = self.nfree, torch.device(self.device)
+        ng = len(self.geoms)
+        cnt = torch.zeros(n, dtype=torch.int64, device=dev)
+        span = []
+        for i in range(ng):
+            rr, cc, v, ok = self._cell_kpp_keys(i)
+            rk = rr[ok]
+            cnt += torch.bincount(rk, minlength=n)
+            span.append((int(rk.min()), int(rk.max())) if len(rk) else (n, -1))
+            del rr, cc, v, ok, rk
+        total = int(cnt.sum())
+        if max_entries is None:
+            max_entries = int(os.environ.get('OPL_V3_KPP_CHUNK', '0'))
+        if max_entries <= 0:
+            free = torch.cuda.mem_get_info(dev)[0] + torch.cuda.memory_reserved(dev) - torch.cuda.memory_allocated(dev) \
+                if dev.type == 'cuda' else 2 ** 36
+            max_entries = max(2 ** 24, min(2 ** 25, int(free // 4 // 64)))
+        cs = torch.cumsum(cnt, 0).cpu().numpy()
+        del cnt
+        bounds = [0]
+        while bounds[-1] < n:
+            base = int(cs[bounds[-1] - 1]) if bounds[-1] > 0 else 0
+            j = int(np.searchsorted(cs, base + max_entries, side='right'))
+            bounds.append(min(max(j, bounds[-1] + 1), n))
+        out_c = torch.empty(total, dtype=torch.int32, device=dev)
+        out_v = torch.empty(total, dtype=dt, device=dev)
+        rc = torch.zeros(n, dtype=torch.int64, device=dev)
+        pos = 0
+        for a, b in zip(bounds[:-1], bounds[1:]):
+            K, V = [], []
+            for i in range(ng):
+                if span[i][1] < a or span[i][0] >= b:
+                    continue
+                rr, cc, v, ok = self._cell_kpp_keys(i)
+                ok &= (rr >= a) & (rr < b)
+                K.append((rr * n + cc)[ok]); V.append(v[ok].to(dt))
+                del rr, cc, v, ok
+            if not K:
+                continue
+            key = torch.cat(K); K.clear()
+            val = torch.cat(V); V.clear()
+            key, perm = torch.sort(key)
+            val = val[perm]
+            del perm
+            new = torch.ones(len(key), dtype=torch.bool, device=key.device)
+            if len(key) > 1:
+                torch.ne(key[1:], key[:-1], out=new[1:])
+            inv = torch.cumsum(new, 0) - 1
+            key = key[new]
+            del new
+            m = len(key)
+            out_v[pos:pos + m].zero_().index_add_(0, inv, val)
+            del inv, val
+            out_c[pos:pos + m] = key % n
+            rc += torch.bincount(key // n, minlength=n)
+            del key
+            pos += m
+        rel = getattr(self, 'kpp_release', None)
+        if rel is not None:                                                     # the drivers' host copies / files
+            rel()
+        crow = torch.zeros(n + 1, dtype=torch.int64, device=dev)
+        crow[1:] = torch.cumsum(rc, 0)
+        del rc
+        self.kpp_csr_info = dict(entries=total, nnz=pos, blocks=len(bounds) - 1, max_entries=max_entries)
+        return crow.int(), out_c[:pos], out_v[:pos]
 
     def kpp_dense(self):
         """Dense symmetric K_PP (tests only)."""

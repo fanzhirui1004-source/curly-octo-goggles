@@ -162,8 +162,10 @@ def cell_census():
             rec['device_bytes'] = sum(dv.values())
             tot['resident_dev'] += rec['device_bytes']
         kp = getattr(C, '_kpp_cache', None)
-        rec['kpp_host_bytes'] = sum(t.numel() * t.element_size() for t in kp) if kp is not None else 0
-        rec['kpp_nnz'] = int(kp[0].numel()) if kp is not None else 0
+        disk = kp is not None and type(kp).__name__ == 'Stored'                 # kppstore (OPL_V3_KPP_DISK): a scratch file
+        rec['kpp_host_bytes'] = 0 if disk else (sum(t.numel() * t.element_size() for t in kp) if kp is not None else 0)
+        rec['kpp_disk_bytes'] = kp.nbytes if disk else 0
+        rec['kpp_nnz'] = (kp.n if disk else int(kp[0].numel())) if kp is not None else 0
         nd = getattr(geo, 'nd', None) or {}
         rec['nd_host_bytes'] = sum(v.nbytes for v in nd.values() if isinstance(v, np.ndarray))
         rec['nd_by_key_MiB'] = {k: round(v.nbytes / 2 ** 20, 3) for k, v in nd.items() if isinstance(v, np.ndarray) and v.nbytes > 2 ** 18}

@@ -155,14 +155,15 @@ def _run(st, name, P, Q, q_ld, idx, emap, n_e, LH, l0, nl, A, lam, fac, knee, cl
     Bo = torch.empty_like(Ao)
     if n_rows:
         b3 = lam is not None
-        if CUDA and br is None and OS in (32, 64) and _cuda_ok():
+        if CUDA and br is None and OS in (32, 64) and _cuda_ok() and (emap is None or emap.dtype == idx.dtype):
             import hyperk as HK
             dummy = t['b2']
             rc = HK._lib().sd_head(P.data_ptr(), Q.data_ptr(), int(q_ld), t['R'].data_ptr(), idx.data_ptr(),
                                    emap.data_ptr() if emap is not None else None, t['W2'].data_ptr(), t['b2'].data_ptr(),
                                    cols.data_ptr(), OS, (A if clip else dummy).data_ptr(), (lam if b3 else dummy).data_ptr(),
                                    (fac if b3 else dummy).data_ptr(), Ao.data_ptr(), Bo.data_ptr(), n_rows, int(l0), int(LH),
-                                   float(knee), int(bool(clip)), int(b3), torch.cuda.current_stream(P.device).cuda_stream)
+                                   float(knee), int(bool(clip)), int(b3), int(idx.dtype == torch.int32),
+                                   torch.cuda.current_stream(P.device).cuda_stream)
             if rc != 0:
                 raise RuntimeError(f'SD_HEAD:{rc}')
             return Ao, Bo

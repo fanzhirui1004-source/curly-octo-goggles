@@ -54,10 +54,17 @@ def _cap_stream(cur):
     return s
 
 
+MAIN = os.environ.get('OPL_V3_GRAPH_MAIN', '0') == '1'
+
+
 def eligible(q):
     """A narrow apply whose input needs no gradient (PCG runs with autograd enabled, on tensors without gradients; the
-    cells' weights are detached copies)."""
-    return ON and q.is_cuda and q.dim() == 2 and q.shape[1] <= MAXB and not q.requires_grad
+    cells' weights are detached copies). src_v3 item 2c (OPL_V3_GRAPH_MAIN=0, default): not on the default stream. The
+    PCG matvec of a lattice runs on lat_multi's side streams; the narrow applies on the default stream (the last <= 4
+    column chunk of a cell's coarse A Z, the warm-up) were captured once and never replayed (51-cell plate: 51 of 102
+    captures), and their graphs held a third memory pool (~0.43 GiB) through the solve."""
+    return ON and q.is_cuda and q.dim() == 2 and q.shape[1] <= MAXB and not q.requires_grad \
+        and (MAIN or torch.cuda.current_stream(q.device).cuda_stream != torch.cuda.default_stream(q.device).cuda_stream)
 
 
 def apply(owner, q, body, fp=None, pre=None, post=None):

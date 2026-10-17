@@ -60,6 +60,15 @@ class _T:
 # ---------------------------------------------------------------------- sparse SPD factorisation (fine level)
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 KPP_FP32 = os.environ.get('OPL_V3_KPP_FP32', '0') == '1'                # category B: K_PP factor in float32 (half the memory)
+KPP_CSR = os.environ.get('OPL_V3_KPP_CSR', '1') == '1'                  # src_v3: K_PP assembled in row blocks as CSR
+
+
+def _has_nvmath():
+    try:
+        import nvmath  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 class SparseSPD:
@@ -68,9 +77,20 @@ class SparseSPD:
     triplets are freed (and the allocator cache returned to the device) before cuDSS plans and factorises."""
 
     def __init__(self, rows, cols=None, vals=None, n=None, backend='auto'):
+        crow = None
         if cols is None:                                                    # holder list [rows, cols, vals]
-            rows, cols, vals = rows.pop(0), rows.pop(0), rows.pop(0)
+            if isinstance(rows[0], str) and rows[0] == 'csr':                # src_v3: ['csr', crow, cols, vals] (upper,
+                _, crow, cols, vals = rows.pop(0), rows.pop(0), rows.pop(0), rows.pop(0)   # MultiLattice.assemble_kpp_csr)
+                rows = None
+            else:
+                rows, cols, vals = rows.pop(0), rows.pop(0), rows.pop(0)
         self.n, self.dev = n, vals.device
+        if crow is not None:
+            if backend == 'cudss' or (backend == 'auto' and vals.is_cuda and _has_nvmath()):
+                self._init_csr(crow, cols, vals, n)
+                return
+            rows = torch.repeat_interleave(torch.arange(n, device=vals.device), (crow[1:] - crow[:-1]).long())
+            cols = cols.long()
         dg = torch.zeros(n, dtype=dt, device=vals.device); d = rows == cols
         dg[rows[d]] = vals[d]
         del d
@@ -121,6 +141,44 @@ class SparseSPD:
                 self.fac = spl.splu(A, permc_spec='MMD_AT_PLUS_A', diag_pivot_thresh=0.0, options=dict(SymmetricMode=True))
                 self._solve = self.fac.solve
             self.nnz_factor = int(self.fac.L.nnz + self.fac.U.nnz) if backend == 'splu' else None
+
+    def _init_csr(self, crow, cols, vals, n):
+        """src_v3 (OPL_V3_KPP_CSR): the cuDSS factor from the upper CSR (crow, cols int32; vals float64, owned: scaled in
+        place). The same Jacobi scaling as the triplet path (vals * s[row] * s[col], in that order: bitwise the same
+        values), done in blocks of rows so that no int64 row or column array of the whole matrix is formed."""
+        import gc
+        import teacher as TE
+        self.backend = 'cudss'
+        nnz = len(vals)
+        first = crow[:-1].long()
+        has = (crow[1:] > crow[:-1]) & (cols[first.clamp(max=max(nnz - 1, 0))].long() == torch.arange(n, device=vals.device))
+        dg = torch.where(has, vals[first.clamp(max=max(nnz - 1, 0))], torch.zeros((), dtype=dt, device=vals.device))
+        del first, has
+        if not bool((dg > 0).all()):
+            raise ValueError('KPP_DIAGONAL_NOT_POSITIVE')
+        self.s = 1 / torch.sqrt(dg)
+        del dg
+        cro = crow.long()
+        step = max(1, n // max(1, (nnz + 2 ** 25 - 1) // 2 ** 25))         # ~32M entries per block
+        for a in range(0, n, step):
+            b = min(n, a + step)
+            lo, hi = int(cro[a]), int(cro[b])
+            if hi <= lo:
+                continue
+            ridx = torch.repeat_interleave(torch.arange(a, b, device=vals.device), cro[a + 1:b + 1] - cro[a:b])
+            seg = vals[lo:hi]
+            seg.mul_(self.s[ridx]).mul_(self.s[cols[lo:hi].long()])
+            del ridx, seg
+        del cro
+        sv = vals
+        del vals
+        if SLIM:
+            gc.collect(); torch.cuda.empty_cache()
+        fdt = torch.float32 if KPP_FP32 else None
+        import stream_ops as SO
+        with SO.spill_guard(SO.SPILL_BPNZ * nnz) as self.spill:
+            self.sol = TE.SPDSolver(crow, cols, sv, n, fdt=fdt)
+        self.mem_est = getattr(self.sol, 'mem_est', None)
 
     def __call__(self, R):
         x = self.s[:, None] * R
@@ -247,6 +305,44 @@ def _csr32(A):
 
 
 BLOCKS = os.environ.get('OPL_COARSE_BLOCKS', '1') == '1'                     # src_v3: SparseCoarse A Z per cell
+TT_KEEP = os.environ.get('OPL_V3_COARSE_TT', '1') == '1'                     # src_v3 item 2c: T^T as its own copy (0: view)
+ZT_KEEP = os.environ.get('OPL_V3_COARSE_ZT', '1') == '1'                     # src_v3 item 2c: Z^T as its own CSR (0: none)
+
+
+def coarse_z(lat, kind):
+    """SparseCoarse's basis: Z (free DOFs x columns, CSR) and Z^T (CSR), the vertex list and the kept-column mask."""
+    dev = lat.device
+    xyz, comp = lat.xyz, lat.comp
+    n = lat.nfree
+    mk = {'q1t': 't', 'q1r': 'r', 'q1a': 'a'}[kind]
+    nm = {'t': 3, 'r': 6, 'a': 12}[mk]
+    offs = np.asarray(lat.positions)
+    verts = sorted({tuple(p + np.asarray(c)) for p in offs for c in np.ndindex(2, 2, 2)})
+    R_, C_, V_ = [], [], []
+    for j, v in enumerate(verts):                                                 # same entries as coarse_basis
+        vv = torch.as_tensor(v, dtype=dt, device=dev)
+        h = torch.clamp(1 - (xyz - vv).abs(), min=0).prod(1)
+        sup = torch.nonzero(h > 0).squeeze(1)
+        if len(sup):
+            blk = h[sup, None] * mode_values(xyz[sup] - vv, comp[sup], mk)
+            R_.append(sup[:, None].expand(-1, nm).reshape(-1))
+            C_.append((nm * j + torch.arange(nm, device=dev))[None].expand(len(sup), -1).reshape(-1))
+            V_.append(blk.reshape(-1))
+    r, c, v = torch.cat(R_), torch.cat(C_), torch.cat(V_)
+    del R_, C_, V_
+    nz = v != 0
+    r, c, v = r[nz], c[nz], v[nz]
+    ncol0 = nm * len(verts)
+    nrm = torch.zeros(ncol0, dtype=dt, device=dev).index_add_(0, c, v * v).sqrt()
+    keep = nrm > 1e-12 * nrm.max()
+    newc = torch.full((ncol0,), -1, dtype=torch.long, device=dev); newc[keep] = torch.arange(int(keep.sum()), device=dev)
+    ok = keep[c]
+    r, c, v = r[ok], newc[c[ok]], v[ok]
+    nc = int(keep.sum())
+    Z = _csr(r, c, v, (n, nc)); ZT = _csr(c, r, v, (nc, n))
+    if BLOCKS:                                                                    # src_v3: int32 index arrays
+        Z, ZT = _csr32(Z), _csr32(ZT)
+    return Z, ZT, verts, keep
 
 
 class SparseCoarse:
@@ -260,38 +356,12 @@ class SparseCoarse:
             raise ValueError(f'SPARSE_COARSE_Q1_ONLY:{kind}')
         dev = lat.device
         self.setup = {}
-        xyz, comp = lat.xyz, lat.comp
         n = lat.nfree
         with _T(dev) as t:
-            mk = {'q1t': 't', 'q1r': 'r', 'q1a': 'a'}[kind]
-            nm = {'t': 3, 'r': 6, 'a': 12}[mk]
-            offs = np.asarray(lat.positions)
-            verts = sorted({tuple(p + np.asarray(c)) for p in offs for c in np.ndindex(2, 2, 2)})
-            R_, C_, V_ = [], [], []
-            for j, v in enumerate(verts):                                                 # same entries as coarse_basis
-                vv = torch.as_tensor(v, dtype=dt, device=dev)
-                h = torch.clamp(1 - (xyz - vv).abs(), min=0).prod(1)
-                sup = torch.nonzero(h > 0).squeeze(1)
-                if len(sup):
-                    blk = h[sup, None] * mode_values(xyz[sup] - vv, comp[sup], mk)
-                    R_.append(sup[:, None].expand(-1, nm).reshape(-1))
-                    C_.append((nm * j + torch.arange(nm, device=dev))[None].expand(len(sup), -1).reshape(-1))
-                    V_.append(blk.reshape(-1))
-            r, c, v = torch.cat(R_), torch.cat(C_), torch.cat(V_)
-            del R_, C_, V_
-            nz = v != 0
-            r, c, v = r[nz], c[nz], v[nz]
-            ncol0 = nm * len(verts)
-            nrm = torch.zeros(ncol0, dtype=dt, device=dev).index_add_(0, c, v * v).sqrt()
-            keep = nrm > 1e-12 * nrm.max()
-            newc = torch.full((ncol0,), -1, dtype=torch.long, device=dev); newc[keep] = torch.arange(int(keep.sum()), device=dev)
-            ok = keep[c]
-            r, c, v = r[ok], newc[c[ok]], v[ok]
-            nc = int(keep.sum())
-            self.Z = _csr(r, c, v, (n, nc)); self.ZT = _csr(c, r, v, (nc, n))
-            if BLOCKS:                                                       # src_v3: int32 index arrays
-                self.Z, self.ZT = _csr32(self.Z), _csr32(self.ZT)
-            del r, c, v
+            self.Z, self.ZT, verts, keep = coarse_z(lat, kind)
+            nc = self.Z.shape[1]
+            if not ZT_KEEP:                                                  # src_v3 item 2c: Z^T R by the transposed
+                self.ZT = None                                               # product of Z (no second copy)
         self.desc = dict(vertices=len(verts), kind=kind, columns=nc, dropped_zero=int((~keep).sum()), sparse=True,
                          Z_nnz=int(self.Z.values().numel()))
         self.setup['basis_s'] = t.s
@@ -341,12 +411,14 @@ class SparseCoarse:
             lam, V = torch.linalg.eigh(s[:, None] * Ac * s[None, :])
             ok = lam > rcond * lam.max()
             self.T = s[:, None] * V[:, ok] / torch.sqrt(lam[ok])[None, :]
-            self.TT = self.T.T.contiguous()
+            self.TT = self.T.T.contiguous() if TT_KEEP else self.T.t()       # src_v3 item 2c: a view (cuBLAS transposes)
         self.setup['factor_s'] = t.s
         self.desc.update(rank=int(ok.sum()), Ac_asym=asym, Ac_cond_scaled=float(lam.max() / lam[ok].min()),
                          negative_eigs=int((lam < 0).sum()), AZ_nnz=az_nnz, AZ_blocks=BLOCKS)
 
     def WT(self, R):
+        if self.ZT is None:
+            return self.TT @ torch.sparse.mm(self.Z.t(), R)
         return self.TT @ torch.sparse.mm(self.ZT, R)
 
     def Wm(self, a):
@@ -399,7 +471,7 @@ class KppFine:
     def __init__(self, lat, kpp=None, backend='auto', holder=None):
         dev = lat.device
         if holder is not None:                                              # src_v3: triplets owned by this call
-            self.nnz_upper = int(len(holder[2]))
+            self.nnz_upper = int(len(holder[3] if isinstance(holder[0], str) else holder[2]))   # (or ['csr', crow, cols, vals])
             with _T(dev) as t2:
                 self.fac = SparseSPD(holder, None, None, lat.nfree, backend)
             self.setup = dict(kpp_assemble_s=0.0, kpp_factor_s=t2.s, **getattr(self.fac, 'spill', {}))
@@ -758,7 +830,13 @@ class Factory:
             if name == 'jac':
                 self.shared[name] = Jacobi(self.lat, self._kpp())
             elif name == 'kpp':
-                if SLIM:                                                    # src_v3: the factor takes the triplets over
+                if SLIM and KPP_CSR and 'kpp_triplets' not in self.shared and hasattr(self.lat, 'assemble_kpp_csr'):
+                    with _T(self.lat.device) as t:                          # src_v3: row blocks straight to CSR
+                        holder = ['csr'] + list(self.lat.assemble_kpp_csr())
+                    self.shared['kpp_triplets_s'] = t.s
+                    self.shared[name] = KppFine(self.lat, backend=self.kpp_backend, holder=holder)
+                    self.shared[name].setup['kpp_csr'] = dict(getattr(self.lat, 'kpp_csr_info', {}))
+                elif SLIM:                                                  # src_v3: the factor takes the triplets over
                     self._kpp()
                     holder = list(self.shared.pop('kpp_triplets'))
                     self.shared[name] = KppFine(self.lat, backend=self.kpp_backend, holder=holder)

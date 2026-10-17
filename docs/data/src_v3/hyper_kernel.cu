@@ -35,9 +35,9 @@ __device__ __forceinline__ float hsum(const float4 w, float z0, float z1, float 
     return fmaf(w.w, z3, fmaf(w.z, z2, fmaf(w.y, z1, w.x * z0)));
 }
 
-template <int NC, bool DEG>
+template <int NC, bool DEG, typename IT>
 __global__ void __launch_bounds__(32 * HK_WARPS)
-hg_kernel(const float* __restrict__ src, const int64_t* __restrict__ hn, const float* __restrict__ wgt,
+hg_kernel(const float* __restrict__ src, const IT* __restrict__ hn, const float* __restrict__ wgt,
           const float* __restrict__ deg, float* __restrict__ out, int Eh, int BF)
 {
     __shared__ int64_t sN[HK_WARPS][27];
@@ -82,9 +82,9 @@ hg_kernel(const float* __restrict__ src, const int64_t* __restrict__ hn, const f
         }
 }
 
-template <int NC, bool DEG, bool RMASK, int HS>
+template <int NC, bool DEG, bool RMASK, int HS, typename IT>
 __global__ void __launch_bounds__(32 * HK_WARPS)
-hs_kernel(const float* __restrict__ src, const int64_t* __restrict__ hn, const float* __restrict__ wgt,
+hs_kernel(const float* __restrict__ src, const IT* __restrict__ hn, const float* __restrict__ wgt,
           const float* __restrict__ deg, float* __restrict__ out, const uint8_t* __restrict__ rmask, int Eh, int BF)
 {
     __shared__ int64_t sN[HK_WARPS][27];
@@ -125,38 +125,38 @@ hs_kernel(const float* __restrict__ src, const int64_t* __restrict__ hn, const f
     }
 }
 
-template <int NC>
-static void hg_go(const float* src, const int64_t* hn, const float* w, const float* deg, float* out, int Eh, int BF,
+template <int NC, typename IT>
+static void hg_go(const float* src, const IT* hn, const float* w, const float* deg, float* out, int Eh, int BF,
                   int use_deg, cudaStream_t s)
 {
     const dim3 grid((Eh + HK_WARPS - 1) / HK_WARPS, (BF + 32 * NC - 1) / (32 * NC));
-    if (use_deg) hg_kernel<NC, true><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, Eh, BF);
-    else hg_kernel<NC, false><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, Eh, BF);
+    if (use_deg) hg_kernel<NC, true, IT><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, Eh, BF);
+    else hg_kernel<NC, false, IT><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, Eh, BF);
 }
 
-template <int NC, int HS>
-static void hs_go(const float* src, const int64_t* hn, const float* w, const float* deg, float* out,
+template <int NC, int HS, typename IT>
+static void hs_go(const float* src, const IT* hn, const float* w, const float* deg, float* out,
                   const uint8_t* rmask, int Eh, int BF, int use_deg, cudaStream_t s)
 {
     const dim3 grid((Eh + HK_WARPS - 1) / HK_WARPS, (BF + 32 * NC - 1) / (32 * NC));
     if (use_deg) {
-        if (rmask) hs_kernel<NC, true, true, HS><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
-        else hs_kernel<NC, true, false, HS><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
+        if (rmask) hs_kernel<NC, true, true, HS, IT><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
+        else hs_kernel<NC, true, false, HS, IT><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
     } else {
-        if (rmask) hs_kernel<NC, false, true, HS><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
-        else hs_kernel<NC, false, false, HS><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
+        if (rmask) hs_kernel<NC, false, true, HS, IT><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
+        else hs_kernel<NC, false, false, HS, IT><<<grid, 32 * HK_WARPS, 0, s>>>(src, hn, w, deg, out, rmask, Eh, BF);
     }
 }
 
-template <int HS>
-static void hs_nc(const float* src, const int64_t* hn, const float* w, const float* deg, float* out,
+template <int HS, typename IT>
+static void hs_nc(const float* src, const IT* hn, const float* w, const float* deg, float* out,
                   const uint8_t* rmask, int Eh, int BF, int use_deg, cudaStream_t s)
 {
     const int nc = BF >= 128 ? 4 : (BF + 31) / 32;
-    if (nc == 1) hs_go<1, HS>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
-    else if (nc == 2) hs_go<2, HS>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
-    else if (nc == 3) hs_go<3, HS>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
-    else hs_go<4, HS>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    if (nc == 1) hs_go<1, HS, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    else if (nc == 2) hs_go<2, HS, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    else if (nc == 3) hs_go<3, HS, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    else hs_go<4, HS, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
 }
 
 // src_v3 P18: one hyperedge layer in one kernel (hyperfused.layer, fastnet with OPL_V3_HFUSE): for hyperedge e and right-
@@ -165,9 +165,9 @@ static void hs_nc(const float* src, const int64_t* hn, const float* w, const flo
 // warp shuffles, W in shared memory; f in order: cuBLAS sums in another order, rounding level), then out[hn[e, s], b, g] +=
 // sum_h sb[e, s, h] Z'[h, g] (sb / deg with SDEG; rows with rmask != 0 skipped; hs_kernel's fused head sum). Z and Z'
 // stay in registers. Warps loop over hyperedges (W staged once per block).
-template <bool GDEG, bool SDEG, bool RMASK>
+template <bool GDEG, bool SDEG, bool RMASK, typename IT>
 __global__ void __launch_bounds__(32 * HK_WARPS)
-hl_kernel(const float* __restrict__ X, const int64_t* __restrict__ hn, const float* __restrict__ ga,
+hl_kernel(const float* __restrict__ X, const IT* __restrict__ hn, const float* __restrict__ ga,
           const float* __restrict__ sb, const float* __restrict__ deg, const float* __restrict__ W, float* __restrict__ out,
           const uint8_t* __restrict__ rmask, int Eh, int BF)
 {
@@ -234,10 +234,10 @@ hl_kernel(const float* __restrict__ X, const int64_t* __restrict__ hn, const flo
 #define SD_CH 64
 #define SD_HP 68                                                  // h row stride (16-byte aligned float4 reads)
 
-template <int OS>
+template <int OS, typename IT>
 __global__ void __launch_bounds__(128)
 sd_head_kernel(const float* __restrict__ P, const float* __restrict__ Q, int q_ld, const float* __restrict__ R,
-               const int64_t* __restrict__ idx, const int64_t* __restrict__ emap, const float* __restrict__ W2,
+               const IT* __restrict__ idx, const IT* __restrict__ emap, const float* __restrict__ W2,
                const float* __restrict__ b2, const int* __restrict__ cols, const float* __restrict__ Abnd,
                const float* __restrict__ lam, const float* __restrict__ fac, float* __restrict__ Ao,
                float* __restrict__ Bo, int n_rows, int l0, int LH, float knee, int clip, int b3)
@@ -322,103 +322,136 @@ sd_head_kernel(const float* __restrict__ P, const float* __restrict__ Q, int q_l
     }
 }
 
+// every kernel instance loaded at hk_init (not during a graph capture)
+template <int NC, typename IT>
+static void touch_nc(cudaFuncAttributes* at)
+{
+    cudaFuncGetAttributes(at, hg_kernel<NC, false, IT>); cudaFuncGetAttributes(at, hg_kernel<NC, true, IT>);
+#define HK_T(HS_) \
+    cudaFuncGetAttributes(at, hs_kernel<NC, false, false, HS_, IT>); cudaFuncGetAttributes(at, hs_kernel<NC, true, false, HS_, IT>); \
+    cudaFuncGetAttributes(at, hs_kernel<NC, false, true, HS_, IT>); cudaFuncGetAttributes(at, hs_kernel<NC, true, true, HS_, IT>);
+    HK_T(0) HK_T(1) HK_T(2) HK_T(3)
+#undef HK_T
+}
+
+template <typename IT>
+static void touch(cudaFuncAttributes* at)
+{
+    cudaFuncGetAttributes(at, sd_head_kernel<32, IT>); cudaFuncGetAttributes(at, sd_head_kernel<64, IT>);
+    cudaFuncGetAttributes(at, hl_kernel<false, true, false, IT>); cudaFuncGetAttributes(at, hl_kernel<false, true, true, IT>);
+    cudaFuncGetAttributes(at, hl_kernel<true, false, false, IT>); cudaFuncGetAttributes(at, hl_kernel<true, false, true, IT>);
+    cudaFuncGetAttributes(at, hl_kernel<false, false, false, IT>); cudaFuncGetAttributes(at, hl_kernel<true, true, false, IT>);
+    touch_nc<1, IT>(at); touch_nc<2, IT>(at); touch_nc<3, IT>(at); touch_nc<4, IT>(at);
+}
+
+template <typename IT>
+static void gather_go(const float* src, const IT* hn, const float* w, const float* deg, float* out, int Eh, int BF,
+                      int use_deg, cudaStream_t s)
+{
+    const int nc = BF >= 128 ? 4 : (BF + 31) / 32;
+    if (nc == 1) hg_go<1, IT>(src, hn, w, deg, out, Eh, BF, use_deg, s);
+    else if (nc == 2) hg_go<2, IT>(src, hn, w, deg, out, Eh, BF, use_deg, s);
+    else if (nc == 3) hg_go<3, IT>(src, hn, w, deg, out, Eh, BF, use_deg, s);
+    else hg_go<4, IT>(src, hn, w, deg, out, Eh, BF, use_deg, s);
+}
+
+template <typename IT>
+static void scatter_go(const float* src, const IT* hn, const float* w, const float* deg, float* out, const uint8_t* rmask,
+                       int Eh, int BF, int use_deg, int hs, cudaStream_t s)
+{
+    if (hs == 3) hs_nc<3, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    else if (hs == 1) hs_nc<1, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    else if (hs == 2) hs_nc<2, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    else hs_nc<0, IT>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+}
+
+template <typename IT>
+static int head_go(const float* P, const float* Q, int q_ld, const float* R, const IT* idx, const IT* emap,
+                   const float* W2, const float* b2, const int* cols, int OS, const float* Abnd, const float* lam,
+                   const float* fac, float* Ao, float* Bo, int n_rows, int l0, int LH, float knee, int clip, int b3,
+                   cudaStream_t s)
+{
+    const int gx = (n_rows + SD_ROWS - 1) / SD_ROWS;
+    if (OS == 64)
+        sd_head_kernel<64, IT><<<gx, 128, 0, s>>>(P, Q, q_ld, R, idx, emap, W2, b2, cols, Abnd, lam, fac, Ao, Bo, n_rows, l0,
+                                                  LH, knee, clip, b3);
+    else if (OS == 32)
+        sd_head_kernel<32, IT><<<gx, 128, 0, s>>>(P, Q, q_ld, R, idx, emap, W2, b2, cols, Abnd, lam, fac, Ao, Bo, n_rows, l0,
+                                                  LH, knee, clip, b3);
+    else
+        return -1;
+    return 0;
+}
+
+template <typename IT>
+static void layer_go(const float* X, const IT* hn, const float* ga, const float* sb, const float* deg, const float* W,
+                     float* out, const uint8_t* rmask, int Eh, int BF, int gdeg, int sdeg, const dim3 grid, cudaStream_t s)
+{
+    if (gdeg && !sdeg) {
+        if (rmask) hl_kernel<true, false, true, IT><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+        else hl_kernel<true, false, false, IT><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    } else if (!gdeg && sdeg) {
+        if (rmask) hl_kernel<false, true, true, IT><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+        else hl_kernel<false, true, false, IT><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    } else if (gdeg && sdeg) {
+        hl_kernel<true, true, false, IT><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    } else {
+        hl_kernel<false, false, false, IT><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
+    }
+}
+
+// The node index arrays (hn, idx, emap) are int64 (i32 = 0) or int32 (i32 = 1, src_v3 item 1c: fastnet's OPL_V3_HN32);
+// the values loaded are the same either way.
 extern "C" {
 
 int hk_init()
 {
-    cudaFuncAttributes at;                                        // load the kernels now (not during a graph capture)
-    cudaFuncGetAttributes(&at, sd_head_kernel<32>); cudaFuncGetAttributes(&at, sd_head_kernel<64>);
-    cudaFuncGetAttributes(&at, hl_kernel<false, true, false>); cudaFuncGetAttributes(&at, hl_kernel<false, true, true>);
-    cudaFuncGetAttributes(&at, hl_kernel<true, false, false>); cudaFuncGetAttributes(&at, hl_kernel<true, false, true>);
-    cudaFuncGetAttributes(&at, hl_kernel<false, false, false>); cudaFuncGetAttributes(&at, hl_kernel<true, true, false>);
-    cudaFuncGetAttributes(&at, hg_kernel<1, false>); cudaFuncGetAttributes(&at, hg_kernel<1, true>);
-    cudaFuncGetAttributes(&at, hg_kernel<2, false>); cudaFuncGetAttributes(&at, hg_kernel<2, true>);
-    cudaFuncGetAttributes(&at, hg_kernel<3, false>); cudaFuncGetAttributes(&at, hg_kernel<3, true>);
-    cudaFuncGetAttributes(&at, hg_kernel<4, false>); cudaFuncGetAttributes(&at, hg_kernel<4, true>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, false, 0>); cudaFuncGetAttributes(&at, hs_kernel<1, true, false, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, true, 0>); cudaFuncGetAttributes(&at, hs_kernel<1, true, true, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, false, 1>); cudaFuncGetAttributes(&at, hs_kernel<1, true, false, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, true, 1>); cudaFuncGetAttributes(&at, hs_kernel<1, true, true, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, false, 2>); cudaFuncGetAttributes(&at, hs_kernel<1, true, false, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, true, 2>); cudaFuncGetAttributes(&at, hs_kernel<1, true, true, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, false, 0>); cudaFuncGetAttributes(&at, hs_kernel<2, true, false, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, true, 0>); cudaFuncGetAttributes(&at, hs_kernel<2, true, true, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, false, 1>); cudaFuncGetAttributes(&at, hs_kernel<2, true, false, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, true, 1>); cudaFuncGetAttributes(&at, hs_kernel<2, true, true, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, false, 2>); cudaFuncGetAttributes(&at, hs_kernel<2, true, false, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, true, 2>); cudaFuncGetAttributes(&at, hs_kernel<2, true, true, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, false, 0>); cudaFuncGetAttributes(&at, hs_kernel<3, true, false, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, true, 0>); cudaFuncGetAttributes(&at, hs_kernel<3, true, true, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, false, 1>); cudaFuncGetAttributes(&at, hs_kernel<3, true, false, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, true, 1>); cudaFuncGetAttributes(&at, hs_kernel<3, true, true, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, false, 2>); cudaFuncGetAttributes(&at, hs_kernel<3, true, false, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, true, 2>); cudaFuncGetAttributes(&at, hs_kernel<3, true, true, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, false, 0>); cudaFuncGetAttributes(&at, hs_kernel<4, true, false, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, true, 0>); cudaFuncGetAttributes(&at, hs_kernel<4, true, true, 0>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, false, 1>); cudaFuncGetAttributes(&at, hs_kernel<4, true, false, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, true, 1>); cudaFuncGetAttributes(&at, hs_kernel<4, true, true, 1>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, false, 2>); cudaFuncGetAttributes(&at, hs_kernel<4, true, false, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, true, 2>); cudaFuncGetAttributes(&at, hs_kernel<4, true, true, 2>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<1, true, false, 3>);
-    cudaFuncGetAttributes(&at, hs_kernel<1, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<1, true, true, 3>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<2, true, false, 3>);
-    cudaFuncGetAttributes(&at, hs_kernel<2, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<2, true, true, 3>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<3, true, false, 3>);
-    cudaFuncGetAttributes(&at, hs_kernel<3, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<3, true, true, 3>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, false, 3>); cudaFuncGetAttributes(&at, hs_kernel<4, true, false, 3>);
-    cudaFuncGetAttributes(&at, hs_kernel<4, false, true, 3>); cudaFuncGetAttributes(&at, hs_kernel<4, true, true, 3>);
+    cudaFuncAttributes at;
+    touch<int64_t>(&at); touch<int>(&at);
     return (int)cudaDeviceSynchronize();
 }
 
 // src (N x BF) -> out (H x Eh x BF), H = 4, 27 slots (column slices of 128)
-int hk_gather(const float* src, const int64_t* hn, const float* w, const float* deg, float* out, int Eh, int BF,
-              int use_deg, void* stream)
+int hk_gather(const float* src, const void* hn, const float* w, const float* deg, float* out, int Eh, int BF,
+              int use_deg, int i32, void* stream)
 {
     if (Eh <= 0 || BF <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
-    const int nc = BF >= 128 ? 4 : (BF + 31) / 32;
-    if (nc == 1) hg_go<1>(src, hn, w, deg, out, Eh, BF, use_deg, s);
-    else if (nc == 2) hg_go<2>(src, hn, w, deg, out, Eh, BF, use_deg, s);
-    else if (nc == 3) hg_go<3>(src, hn, w, deg, out, Eh, BF, use_deg, s);
-    else hg_go<4>(src, hn, w, deg, out, Eh, BF, use_deg, s);
+    if (i32) gather_go<int>(src, (const int*)hn, w, deg, out, Eh, BF, use_deg, s);
+    else gather_go<int64_t>(src, (const int64_t*)hn, w, deg, out, Eh, BF, use_deg, s);
     return (int)cudaGetLastError();
 }
 
 // src (H x Eh x BF) -> out (N x BF) += ..., rows with rmask != 0 skipped (rmask may be null); hs: head-sum order
-int hk_scatter(const float* src, const int64_t* hn, const float* w, const float* deg, float* out, const uint8_t* rmask,
-               int Eh, int BF, int use_deg, int hs, void* stream)
+int hk_scatter(const float* src, const void* hn, const float* w, const float* deg, float* out, const uint8_t* rmask,
+               int Eh, int BF, int use_deg, int hs, int i32, void* stream)
 {
     if (Eh <= 0 || BF <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
-    if (hs == 3) hs_nc<3>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
-    else if (hs == 1) hs_nc<1>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
-    else if (hs == 2) hs_nc<2>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
-    else hs_nc<0>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    if (i32) scatter_go<int>(src, (const int*)hn, w, deg, out, rmask, Eh, BF, use_deg, hs, s);
+    else scatter_go<int64_t>(src, (const int64_t*)hn, w, deg, out, rmask, Eh, BF, use_deg, hs, s);
     return (int)cudaGetLastError();
 }
 
 // P17: one slot head over n_rows rows (OS = 32 or 64 selected columns); emap may be null
-int sd_head(const float* P, const float* Q, int q_ld, const float* R, const int64_t* idx, const int64_t* emap,
+int sd_head(const float* P, const float* Q, int q_ld, const float* R, const void* idx, const void* emap,
             const float* W2, const float* b2, const int* cols, int OS, const float* Abnd, const float* lam,
-            const float* fac, float* Ao, float* Bo, int n_rows, int l0, int LH, float knee, int clip, int b3, void* stream)
+            const float* fac, float* Ao, float* Bo, int n_rows, int l0, int LH, float knee, int clip, int b3, int i32,
+            void* stream)
 {
     if (n_rows <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
-    const int gx = (n_rows + SD_ROWS - 1) / SD_ROWS;
-    if (OS == 64)
-        sd_head_kernel<64><<<gx, 128, 0, s>>>(P, Q, q_ld, R, idx, emap, W2, b2, cols, Abnd, lam, fac, Ao, Bo, n_rows, l0,
-                                              LH, knee, clip, b3);
-    else if (OS == 32)
-        sd_head_kernel<32><<<gx, 128, 0, s>>>(P, Q, q_ld, R, idx, emap, W2, b2, cols, Abnd, lam, fac, Ao, Bo, n_rows, l0,
-                                              LH, knee, clip, b3);
-    else
-        return -1;
+    const int rc = i32 ? head_go<int>(P, Q, q_ld, R, (const int*)idx, (const int*)emap, W2, b2, cols, OS, Abnd, lam, fac,
+                                      Ao, Bo, n_rows, l0, LH, knee, clip, b3, s)
+                       : head_go<int64_t>(P, Q, q_ld, R, (const int64_t*)idx, (const int64_t*)emap, W2, b2, cols, OS, Abnd,
+                                          lam, fac, Ao, Bo, n_rows, l0, LH, knee, clip, b3, s);
+    if (rc != 0) return rc;
     return (int)cudaGetLastError();
 }
 
 // P18: out (N x BF) += one hyperedge layer applied to X (N x BF), BF = 32 B; W (4, 32, 32); rmask may be null
-int hk_layer(const float* X, const int64_t* hn, const float* ga, const float* sb, const float* deg, const float* W,
-             float* out, const uint8_t* rmask, int Eh, int BF, int gdeg, int sdeg, int blocks, void* stream)
+int hk_layer(const float* X, const void* hn, const float* ga, const float* sb, const float* deg, const float* W,
+             float* out, const uint8_t* rmask, int Eh, int BF, int gdeg, int sdeg, int blocks, int i32, void* stream)
 {
     if (Eh <= 0 || BF <= 0) return 0;
     if (BF % 32) return -1;
@@ -426,17 +459,8 @@ int hk_layer(const float* X, const int64_t* hn, const float* ga, const float* sb
     int gx = (Eh + HK_WARPS - 1) / HK_WARPS;
     if (blocks > 0 && gx > blocks) gx = blocks;
     const dim3 grid(gx, BF / 32);
-    if (gdeg && !sdeg) {
-        if (rmask) hl_kernel<true, false, true><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
-        else hl_kernel<true, false, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
-    } else if (!gdeg && sdeg) {
-        if (rmask) hl_kernel<false, true, true><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
-        else hl_kernel<false, true, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
-    } else if (gdeg && sdeg) {
-        hl_kernel<true, true, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
-    } else {
-        hl_kernel<false, false, false><<<grid, 32 * HK_WARPS, 0, s>>>(X, hn, ga, sb, deg, W, out, rmask, Eh, BF);
-    }
+    if (i32) layer_go<int>(X, (const int*)hn, ga, sb, deg, W, out, rmask, Eh, BF, gdeg, sdeg, grid, s);
+    else layer_go<int64_t>(X, (const int64_t*)hn, ga, sb, deg, W, out, rmask, Eh, BF, gdeg, sdeg, grid, s);
     return (int)cudaGetLastError();
 }
 
