@@ -64,6 +64,7 @@ def _csr(rows, cols, vals, shape):
 
 
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
+NETFUSE = os.environ.get('OPL_V3_NETFUSE', '0') == '1'                           # src_v3 S24 (netfused): fewer launches
 
 
 class _Hyper:
@@ -118,6 +119,24 @@ class _Hyper:
         Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
         Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
         return FH.scatter(Z, self.hn, self.b, self.deg, N, FH.BLK, True, init=X).view(N, B, F)
+
+    def fwd_clamped(self, X, X0, pmask, pm8):
+        """src_v3 S24: where(port, X0, X + fwd(X)) as fwd_res + FastNet._clamp, in two launches fewer: the scatter adds
+        onto where(port, X0, X) and skips the port rows (their result is X0 either way)."""
+        N, B, F = X.shape
+        import fused_hyper as FH
+        Z = FH.gather(X.reshape(N, B * F).contiguous(), self.hn, self.a, self.deg, self.H, FH.BLK, False)
+        Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.W).view(self.H, self.Eh, B * F)
+        out = torch.where(pmask, X0, X)
+        return FH.scatter(Z, self.hn, self.b, self.deg, N, FH.BLK, True, init=out, inplace=True, rmask=pm8).view(N, B, F)
+
+    def adj_inplace(self, A):
+        """src_v3 S24: adj_res(A) adding onto A itself (a fresh tensor of the caller) instead of a copy."""
+        N, B, F = A.shape
+        import fused_hyper as FH
+        Z = FH.gather(A.reshape(N, B * F), self.hn, self.b, self.deg, self.H, FH.BLK, True)
+        Z = torch.bmm(Z.view(self.H, self.Eh * B, F), self.Wt).view(self.H, self.Eh, B * F)
+        return FH.scatter(Z, self.hn, self.a, self.deg, N, FH.BLK, False, init=A, inplace=True).view(N, B, F)
 
     def adj_res(self, Y):
         """Y + adj(Y) with the residual folded into the scatter (fused path only)."""
@@ -191,6 +210,17 @@ class FastNet:
             pv = m.skip[l].detach() * gp['rw'][l][1][i] * w / denp[i]
             self.P.append(_csr(i, v, pv, (t['n_src'], t['n_dst']))); self.Pt.append(_csr(v, i, pv, (t['n_dst'], t['n_src'])))
         self.gates = [g_.detach() for g_ in gp['gates']]
+        self.pm8, self._cinv = None, None
+        if NETFUSE:                                                                     # src_v3 S24
+            self.pm8 = c.is_port.to(torch.uint8).contiguous()
+            self._cinv = []
+            for t in c.trans:
+                if 'e_src' in t or 'dense_idx' not in t:
+                    self._cinv.append(None); continue
+                di = t['dense_idx']
+                inv = torch.full((t['m'] ** 3,), -1, dtype=torch.int32, device=dev)
+                inv[di] = torch.arange(len(di), dtype=torch.int32, device=dev)
+                self._cinv.append(inv)
         self.convs = [w_.detach() for w_ in m.convs]
         if SLIM:                                                                        # src_v3: parameters stay shared
             for t_ in self.convs + [self.W_in, self.W_out]:
@@ -338,6 +368,16 @@ class FastNet:
             if transpose:
                 return Xc + MD_.graph_conv(Xc * self.gates[l][:, k][:, None, :], t, self.convs[l][k], transpose=True)
             return Xc + MD_.graph_conv(Xc, t, self.convs[l][k]) * self.gates[l][:, k][:, None, :]
+        if self._cinv is not None and self._cinv[l] is not None and Xc.is_contiguous():   # src_v3 S24: 2 + conv launches
+            import netfused as NF
+            g = self.gates[l][:, k]
+            if transpose:
+                dense = NF.conv_in(Xc, self._cinv[l], m_ ** 3, g)
+                v = Fn.conv_transpose3d(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), self.convs[l][k], padding=1)
+                return NF.conv_out(Xc, v.reshape(B, F, m_ ** 3), t['dense_idx'])
+            dense = NF.conv_in(Xc, self._cinv[l], m_ ** 3)
+            v = Fn.conv3d(dense.permute(1, 2, 0).reshape(B, F, m_, m_, m_), self.convs[l][k], padding=1)
+            return NF.conv_out(Xc, v.reshape(B, F, m_ ** 3), t['dense_idx'], g)
         dense = torch.zeros((m_ ** 3, B, F), device=dev)
         if transpose:
             dense.index_copy_(0, t['dense_idx'], Xc * self.gates[l][:, k][:, None, :])
@@ -380,8 +420,12 @@ class FastNet:
         pre, post = self._layers()
         X = X0
         res = lambda h, X_: h.fwd_res(X_) if (FI.ON and h.fused) else X_ + h.fwd(X_)
+        if self.pm8 is not None and FI.ON:                                              # src_v3 S24
+            layer = lambda h, X_: h.fwd_clamped(X_, X0, self.pmask, self.pm8) if h.fused else self._clamp(res(h, X_), X0)
+        else:
+            layer = lambda h, X_: self._clamp(res(h, X_), X0)
         for h in pre:
-            X = self._clamp(res(h, X), X0)
+            X = layer(h, X)
         skips, Xl = [], X
         for l in range(self.levels):
             skips.append(Xl)
@@ -394,7 +438,7 @@ class FastNet:
             Xl = skips[l] + self._sp(self.P[l], Xl)
         X = self._clamp(Xl, X0)
         for h in post:
-            X = self._clamp(res(h, X), X0)
+            X = layer(h, X)
         return (X @ self.W_out).permute(0, 2, 1).reshape(-1, B)
 
     @torch.no_grad()
@@ -412,12 +456,20 @@ class FastNet:
         pmk = (lambda X: torch.where(self.pmask, X, zero)) if FI.ON else (lambda X: X * self.pm)
         imk = (lambda X: torch.where(self.pmask, zero, X)) if FI.ON else (lambda X: X * (1 - self.pm))
         ares = lambda h, A_: h.adj_res(A_) if (FI.ON and h.fused) else A_ + h.adj(A_)
+        fuse = self.pm8 is not None and FI.ON and Xb.is_contiguous()                   # src_v3 S24
+        if fuse:
+            import netfused as NF
+            split = lambda X_: NF.mask_split(X_, X0b, self.pm8)                         # X0b += pmk(X_); imk(X_)
+            astep = lambda h, A_: h.adj_inplace(A_) if h.fused else ares(h, A_)
+        else:
+            def split(X_):
+                X0b.add_(pmk(X_))
+                return imk(X_)
+            astep = ares
         for h in reversed(post):
-            X0b += pmk(Xb)
-            A = imk(Xb)
-            Xb = ares(h, A)
-        X0b += pmk(Xb)
-        G = imk(Xb)
+            A = split(Xb)
+            Xb = astep(h, A)
+        G = split(Xb)
         gskip = []
         for l in range(self.levels):
             gskip.append(G)
@@ -430,9 +482,8 @@ class FastNet:
             G = self._sp(self.Rt[l], G) + gskip[l]
         Xb = G
         for h in reversed(pre):
-            X0b += pmk(Xb)
-            A = imk(Xb)
-            Xb = ares(h, A)
+            A = split(Xb)
+            Xb = astep(h, A)
         X0b += Xb
         return (X0b[c.port_nodes] @ self.W_in.T).permute(0, 2, 1).reshape(-1, B)
 

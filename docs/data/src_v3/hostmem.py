@@ -113,3 +113,17 @@ class Budget:
         return dict(limit_GiB=round(self.limit / GiB, 1), frac=self.frac, top=self.top, transient_x=self.tx,
                     reserve_GiB=round(self.reserve / GiB, 2), cells=len(ks),
                     slots_kept=sum(k[0] for k in ks), float64_kept=sum(k[1] for k in ks))
+
+
+def resident_auto(n_cells):
+    """src_v3 S23 (--resident-gb auto): device memory (GiB) the front end may fill with resident cells, so that the PCG
+    phase still fits: total - (OPL_V3_RGB_FIXED 3.5 GiB + OPL_V3_RGB_PERCELL 0.054 GiB per cell: coarse A Z blocks,
+    Z, the K_PP factor, lattice vectors; measured on the 51-192-cell plates) - OPL_V3_RGB_MARGIN (3 GiB). Resident cells
+    take no host memory (no pinned copy), so on a host-bound container they leave room for more cells or items; a
+    3-D lattice's K_PP factor is larger per cell than a plate's (set OPL_V3_RGB_PERCELL for it)."""
+    import torch
+    tot = torch.cuda.get_device_properties(0).total_memory / GiB
+    fixed = float(os.environ.get('OPL_V3_RGB_FIXED', '3.5'))
+    per = float(os.environ.get('OPL_V3_RGB_PERCELL', '0.054'))
+    margin = float(os.environ.get('OPL_V3_RGB_MARGIN', '3'))
+    return max(0.0, tot - fixed - per * n_cells - margin)

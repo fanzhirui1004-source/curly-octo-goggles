@@ -184,6 +184,39 @@ def coarse_prolong(C, space, with_meta=False):
     return V, np.stack(np.unravel_index(vid, (nn,) * 3), 1), slot
 
 
+COARSE_COLS = os.environ.get('OPL_V3_COARSE_COLS', '0') == '1'           # src_v3 S22 (coarse_columns)
+
+
+def coarse_columns(C, space):
+    """(vertex coordinates (nc, 3), slot (nc,), nc) of the columns coarse_prolong keeps (Q1 spaces without PU), without
+    forming V: the same hat weights (the same float operations on the same node coordinates), the column sums of |w| over
+    the interior rows by bincount instead of the sparse matrix's column sums. Kept columns have sums >= (1 / R2)^3 (the
+    weights are products of dyadic t), dropped ones exactly or nearly 0 (~1e-16 from xyz * ne - e), far from the 1e-14
+    threshold either way, so the kept set is the same; checked by scripts/t_coarsecols.py."""
+    order, ne, pu = COARSE_SPACES[space]
+    if order != 1 or pu:
+        raise ValueError(f'coarse_columns: Q1 spaces only, not {space}')
+    n2 = 2 * C.n + 1
+    nodes = C.nodes.cpu().numpy() if torch.is_tensor(C.nodes) else np.asarray(C.nodes)
+    xyz = np.stack(np.unravel_index(nodes, (n2,) * 3), 1).astype(float) / (n2 - 1)
+    I = C.I.cpu().numpy()
+    nn = ne + 1
+    e = np.minimum(np.floor(xyz * ne).astype(int), ne - 1); t = xyz * ne - e
+    W = [np.stack([1 - t[:, d], t[:, d]], -1) for d in range(3)]
+    node, comp = I // 3, I % 3
+    en, Wn = e[node], [w_[node] for w_ in W]
+    sums = np.zeros(3 * nn ** 3)
+    for a in range(2):
+        for b in range(2):
+            for c in range(2):
+                vid = ((en[:, 0] + a) * nn + en[:, 1] + b) * nn + en[:, 2] + c
+                w = Wn[0][:, a] * Wn[1][:, b] * Wn[2][:, c]
+                sums += np.bincount(3 * vid + comp, weights=np.abs(w), minlength=3 * nn ** 3)
+    used = np.flatnonzero(sums > 1e-14)
+    vid, slot = used // 3, used % 3
+    return np.stack(np.unravel_index(vid, (nn,) * 3), 1), slot, len(used)
+
+
 def _chol_jitter(A):
     """Cholesky of a symmetric unit-diagonal (Jacobi-scaled) matrix, with a growing diagonal shift when it is only
     semi-definite (coarse columns that are nearly dependent on the interior); returns (L, shift)."""
@@ -344,6 +377,13 @@ def coarse_setup(C, space, reach=4, chunk=None):
         raise ValueError(f'coarse_setup probing supports Q1 / PU spaces, not {space}')
     t0 = time.perf_counter()
     dvc = C.dK.device
+    if COARSE_COLS and os.environ.get('OPL_COARSE_ELEM') == '1' and getattr(C, 'GF64', None) is not None \
+            and _coarse_pack_on(C) and not pu:                              # src_v3 S22: the packed / block solve never
+        vc, slot, nc = coarse_columns(C, space)                              # reads V (matrix-free prolongation): only the
+        with (C.hold64() if hasattr(C, 'hold64') else contextlib.nullcontext()):   # kept columns are needed
+            A = coarse_galerkin_tpl(C, space, vc, slot, nc)
+        _coarse_finish(C, space, A, None, dvc, t0, vc)
+        return _coarse_mf_meta(C, vc, slot, nc, ne)
     V, vc, slot = coarse_prolong(C, space, with_meta=True)
     nc = V.shape[1]
     if os.environ.get('OPL_COARSE_ELEM') == '1' and getattr(C, 'GF64', None) is not None:
@@ -400,8 +440,11 @@ def _coarse_finish(C, space, A, Vt, dvc, t0, vc=None):
     del A
     if dvc.type == 'cuda':
         torch.cuda.empty_cache()
-    dcol = (1 / d)[Vt.indices()[1]]
-    C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, Vt.shape, dtype=dt, device=dvc).coalesce()
+    if Vt is not None:
+        dcol = (1 / d)[Vt.indices()[1]]
+        C._cV = torch.sparse_coo_tensor(Vt.indices(), Vt.values() * dcol, Vt.shape, dtype=dt, device=dvc).coalesce()
+    else:                                                                       # S22: matrix-free prolongation only
+        C._cV = None
     C._c_invd = (1 / d) if _coarse_pack_on(C) else None
     C._cL = L
     C._c_space, C._c_shift, C._c_seconds = space, shift, time.perf_counter() - t0

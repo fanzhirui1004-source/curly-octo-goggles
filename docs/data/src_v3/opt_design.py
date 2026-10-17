@@ -58,7 +58,8 @@ ap.add_argument('--templates', default='/root/autodl-tmp/OPL/S4/body/GP_TEMPLATE
 ap.add_argument('--exact', action='store_true', help='optimise with exact condensation (twin run; no network)')
 ap.add_argument('--fast', action='store_true', help='deployment route of Table 5 (lat_scale.py): deploy cells, fused network, '
                 'single-precision correction, streamed operators; sensitivities by central moment differences')
-ap.add_argument('--resident-gb', type=float, default=12.0, help='--fast: keep cells on the device while allocated memory < this')
+ap.add_argument('--resident-gb', default='12.0', help='--fast: keep cells on the device while allocated memory < this '
+                '(GiB; auto: hostmem.resident_auto, src_v3 S23)')
 ap.add_argument('--sens', default='fd', choices=['fd', 'ad'],
                 help="--fast: 'fd' central-difference moment derivatives (Cell.dmoments); 'ad' reverse mode through the moment "
                      "integrator (moments_ad.cell_sens, as the timed route of Table 5), one pass for compliance and volume")
@@ -386,6 +387,8 @@ def analyse_fast(cases, positions, h, wait=None):
     Cs, ops, kpp_host, fps = {}, {}, {}, {}
     import hostmem as HM
     budget = HM.Budget(len(cases)) if TE.SLIM else None                         # src_v3: host-memory budget per cell
+    rgb = HM.resident_auto(len(cases)) if str(A.resident_gb) == 'auto' else float(A.resident_gb)
+    T['resident_gb'] = round(rgb, 2)
     for case in cases:
         if wait is not None:
             try:
@@ -419,7 +422,7 @@ def analyse_fast(cases, positions, h, wait=None):
             kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
         C._kpp_cache = kpp_host[case]; C.diag3 = None
         FN.slim_deploy(op, geo, C, model, budget=budget, cell_bytes=torch.cuda.memory_allocated() - a0)   # src_v3
-        if torch.cuda.memory_allocated() / 2 ** 30 < A.resident_gb:
+        if torch.cuda.memory_allocated() / 2 ** 30 < rgb:
             ops[case] = LS._Resident(op)
         else:
             ops[case] = SO.StreamedOp(op, C, [op.fast, geo, C])

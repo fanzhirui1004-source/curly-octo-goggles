@@ -58,6 +58,7 @@ class _T:
 
 # ---------------------------------------------------------------------- sparse SPD factorisation (fine level)
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
+KPP_FP32 = os.environ.get('OPL_V3_KPP_FP32', '0') == '1'                # category B: K_PP factor in float32 (half the memory)
 
 
 class SparseSPD:
@@ -100,7 +101,8 @@ class SparseSPD:
                 import gc
                 del rows, vals, dg
                 gc.collect(); torch.cuda.empty_cache()
-            self.sol = TE.SPDSolver(crow, cols, sv.contiguous(), n)
+            fdt = torch.float32 if KPP_FP32 else None                          # category B (OPL_V3_KPP_FP32=1): float32
+            self.sol = TE.SPDSolver(crow, cols, sv.contiguous(), n, fdt=fdt)     # factor and solves (not bitwise)
             self.mem_est = getattr(self.sol, 'mem_est', None)
         else:
             import scipy.sparse as sp

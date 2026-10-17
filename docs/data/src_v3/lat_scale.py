@@ -93,8 +93,9 @@ def main(argv=None):
     ap.add_argument('--sens', default='fd', choices=['fd', 'ad', 'both']); ap.add_argument('--max-cols', type=int, default=16)
     ap.add_argument('--sens-obj', default='cols', choices=['cols', 'sum'],
                     help="'sum': sensitivity of the summed compliance only (one design objective; one reverse pass with 'ad')")
-    ap.add_argument('--resident-gb', type=float, default=0.0,
-                    help='keep cells on the device (not streamed) while the allocated device memory stays below this')
+    ap.add_argument('--resident-gb', default='0',
+                    help='keep cells on the device (not streamed) while the allocated device memory stays below this '
+                         '(GB; auto: hostmem.resident_auto in GiB, src_v3 S23)')
     ap.add_argument('--sparse-coarse', action='store_true', help='OPL_COARSE_SPARSE=1: sparse coarse space (lat_precond.SparseCoarse)')
     ap.add_argument('--ad-batch', type=int, default=512, help='element rows per reverse pass (moments_ad)')
     ap.add_argument('--fastidx', action='store_true', help='fastidx.ON: element gathers, float32 K_e held per application, where() clamps')
@@ -138,6 +139,8 @@ def main(argv=None):
         torch.cuda.reset_peak_memory_stats()
         import hostmem as HM
         budget = HM.Budget(len(cells)) if TE.SLIM else None                     # src_v3: host-memory budget per cell
+        rgb = HM.resident_auto(len(cells)) * 2 ** 30 / 1e9 if str(a.resident_gb) == 'auto' else float(a.resident_gb)
+        rec['resident_gb'] = round(rgb, 2)
         for c in cells:
             case, pc = c['case'], {}
             a0 = torch.cuda.memory_allocated()
@@ -173,7 +176,7 @@ def main(argv=None):
             C._kpp_cache = kpp_host[case]
             C.diag3 = None
             FN.slim_deploy(op, geo, C, h.model, budget=budget, cell_bytes=torch.cuda.memory_allocated() - a0)  # src_v3
-            if torch.cuda.memory_allocated() / 1e9 < a.resident_gb:
+            if torch.cuda.memory_allocated() / 1e9 < rgb:
                 ops[case] = _Resident(op)
             else:
                 ops[case] = SO.StreamedOp(op, C, [op.fast, geo, C])

@@ -33,8 +33,9 @@ def _gather(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr, BL
 
 
 @triton.jit
-def _scatter(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr, BLK: tl.constexpr, DEG: tl.constexpr):
-    """out[hn[e, s], c] += sum_h w[e, s, h] src[h, e, c]."""
+def _scatter(src, hn, wgt, deg, out, Eh, BF, rmask, H: tl.constexpr, S: tl.constexpr, BLK: tl.constexpr,
+             DEG: tl.constexpr, RMASK: tl.constexpr = False):
+    """out[hn[e, s], c] += sum_h w[e, s, h] src[h, e, c]   (RMASK, src_v3 S24: rows with rmask != 0 are skipped)."""
     e = tl.program_id(0)
     cols = tl.program_id(1) * BLK + tl.arange(0, BLK)
     cm = cols < BF
@@ -45,7 +46,10 @@ def _scatter(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr, B
         w = tl.load(wgt + (e * S + s) * H + hh)
         if DEG:
             w = w / tl.load(deg + n)
-        tl.atomic_add(out + n * BF + cols, tl.sum(w[:, None] * z, axis=0), mask=cm)
+        ok = cm
+        if RMASK:
+            ok = cm & (tl.load(rmask + n) == 0)
+        tl.atomic_add(out + n * BF + cols, tl.sum(w[:, None] * z, axis=0), mask=ok)
 
 
 @triton.jit
@@ -92,10 +96,10 @@ def _gather_t(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr, 
 
 
 @triton.jit
-def _scatter_t(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr, EB: tl.constexpr, BC: tl.constexpr,
-               DEG: tl.constexpr):
+def _scatter_t(src, hn, wgt, deg, out, Eh, BF, rmask, H: tl.constexpr, S: tl.constexpr, EB: tl.constexpr,
+               BC: tl.constexpr, DEG: tl.constexpr, RMASK: tl.constexpr = False):
     """_scatter on a tile of EB hyperedges x BC columns (src_v3): the same products and atomic row adds (the head sum of
-    a row may round differently: the atomics already make the order data dependent)."""
+    a row may round differently: the atomics already make the order data dependent); RMASK as in _scatter."""
     e = tl.program_id(0) * EB + tl.arange(0, EB)
     me = e < Eh
     cols = tl.program_id(1) * BC + tl.arange(0, BC)
@@ -108,7 +112,10 @@ def _scatter_t(src, hn, wgt, deg, out, Eh, BF, H: tl.constexpr, S: tl.constexpr,
         w = tl.load(wgt + (e[:, None] * S + s) * H + hh[None, :], mask=me[:, None], other=0.0)
         if DEG:
             w = w / tl.load(deg + n, mask=me, other=1.0)[:, None]
-        tl.atomic_add(out + n[:, None] * BF + cols[None, :], tl.sum(w[:, :, None] * z, axis=1), mask=me[:, None] & cm[None, :])
+        ok = me
+        if RMASK:
+            ok = me & (tl.load(rmask + n, mask=me, other=1) == 0)
+        tl.atomic_add(out + n[:, None] * BF + cols[None, :], tl.sum(w[:, :, None] * z, axis=1), mask=ok[:, None] & cm[None, :])
 
 
 TILED = os.environ.get('OPL_V3_HTILE', '1') == '1'
@@ -146,20 +153,26 @@ def gather(src, hn, w, deg, H, blk, use_deg):
     return out
 
 
-def scatter(src, hn, w, deg, N, blk, use_deg, init=None):
+def scatter(src, hn, w, deg, N, blk, use_deg, init=None, rmask=None, inplace=False):
     """src (H, Eh, BF) -> (N, BF); init (N, BF): the scatter adds onto a copy of init instead of zeros (a fused residual
-    init + S Z, the same sum in another order)."""
+    init + S Z, the same sum in another order). src_v3 S24: inplace (adds onto init itself, a fresh tensor of the caller),
+    rmask (uint8 per row: rows != 0 receive nothing)."""
     H, Eh, BF = src.shape
-    out = torch.zeros((N, BF), dtype=torch.float32, device=src.device) if init is None else init.reshape(N, BF).clone()
+    if init is None:
+        out = torch.zeros((N, BF), dtype=torch.float32, device=src.device)
+    else:
+        out = init.reshape(N, BF) if inplace else init.reshape(N, BF).clone()
     if Eh == 0 or BF == 0:
         return out
+    rm = rmask if rmask is not None else out
     t = _tile(_TILE_S, BF) if TILED else None
     if t is not None:
         EB, BC, nw = t
-        _scatter_t[(triton.cdiv(Eh, EB), triton.cdiv(BF, BC))](src, hn, w, deg, out, Eh, BF, H=H, S=hn.shape[1], EB=EB,
-                                                               BC=BC, DEG=use_deg, num_warps=nw)
+        _scatter_t[(triton.cdiv(Eh, EB), triton.cdiv(BF, BC))](src, hn, w, deg, out, Eh, BF, rm, H=H, S=hn.shape[1], EB=EB,
+                                                               BC=BC, DEG=use_deg, RMASK=rmask is not None, num_warps=nw)
         return out
-    _scatter[_grid(Eh, BF, blk)](src, hn, w, deg, out, Eh, BF, H=H, S=hn.shape[1], BLK=blk, DEG=use_deg)
+    _scatter[_grid(Eh, BF, blk)](src, hn, w, deg, out, Eh, BF, rm, H=H, S=hn.shape[1], BLK=blk, DEG=use_deg,
+                                 RMASK=rmask is not None)
     return out
 
 
