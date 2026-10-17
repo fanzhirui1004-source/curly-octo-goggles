@@ -13,8 +13,13 @@ COLS = 16                                                               # column
 
 
 @triton.jit
-def _symv(P_ptr, dofs_ptr, x_ptr, y_ptr, B, LD, BP: tl.constexpr, BI: tl.constexpr, NBLK: tl.constexpr):
+def _symv(P_ptr, dofs_ptr, x_ptr, y_ptr, B, LD, BP: tl.constexpr, BI: tl.constexpr, NBLK: tl.constexpr,
+          kmap_ptr=None, MAP: tl.constexpr = False):
     e = tl.program_id(0).to(tl.int64)
+    if MAP:                                                                  # src_v3 P2b: row of P holding K_e
+        ke = tl.load(kmap_ptr + e).to(tl.int64)
+    else:
+        ke = e
     j = tl.arange(0, 128)
     mj = j < 81
     c = tl.arange(0, BP)
@@ -27,7 +32,7 @@ def _symv(P_ptr, dofs_ptr, x_ptr, y_ptr, B, LD, BP: tl.constexpr, BI: tl.constex
         a = tl.minimum(i[:, None], j[None, :])
         b = tl.maximum(i[:, None], j[None, :])
         idx = a * 81 - (a * (a - 1)) // 2 + (b - a)
-        K = tl.load(P_ptr + e * 3321 + idx, mask=mi[:, None] & mj[None, :], other=0.0)            # [BI, 128]
+        K = tl.load(P_ptr + ke * 3321 + idx, mask=mi[:, None] & mj[None, :], other=0.0)           # [BI, 128]
         Y = tl.sum(K[:, :, None] * X[None, :, :], axis=1)                                            # [BI, BP]
         di = tl.load(dofs_ptr + e * 81 + i, mask=mi, other=0).to(tl.int64)
         tl.atomic_add(y_ptr + di[:, None] * LD + c[None, :], Y, mask=mi[:, None] & mc[None, :])
@@ -36,14 +41,17 @@ def _symv(P_ptr, dofs_ptr, x_ptr, y_ptr, B, LD, BP: tl.constexpr, BI: tl.constex
 TUNE2 = os.environ.get('OPL_V3_SYMV2', '1') == '1'                     # src_v3 P2: kernel / tile per width (t_symv.py)
 
 
-def symv_(y, P, dofs, x):
+def symv_(y, P, dofs, x, kmap=None):
     """y[(E*81) scatter] += Ke(P) x[dofs] in place; y, x (nb, B) float32 / float64 contiguous, P (E, 3321), dofs (E, 81).
     More than COLS columns are processed in column blocks (the per-block register tile stays at [BI, 128, <=16]).
     src_v3 P2 (OPL_V3_SYMV2=1, float32): one or two columns by the single-read kernel ke_symv2 (each packed row block
     read once: 168.5 -> 120.9 us on a full plate cell), three or four columns with one warp (187.5 -> 162.2 us), wider
     blocks with 8-row tiles (552.6 -> 477.1 us at 16 columns); results/tests24/symv.log. Same products, other summation
-    order (error against a float64 product of the same matrices 1.5-2e-7, as before)."""
-    E = P.shape[0]
+    order (error against a float64 product of the same matrices 1.5-2e-7, as before).
+    src_v3 P2b: kmap (E int32, optional): element e reads its matrix from row kmap[e] of P (elements whose matrix is
+    bitwise equal to another row read that row: the same values, fewer bytes); E = len(dofs)."""
+    E = dofs.shape[0]
+    mp = dict(kmap_ptr=kmap if kmap is not None else dofs, MAP=kmap is not None)
     if E == 0:
         return y
     B = x.shape[1]
@@ -54,14 +62,14 @@ def symv_(y, P, dofs, x):
         BP = triton.next_power_of_2(nbc)
         if tune and BP <= 2:
             import ke_symv2 as K2
-            K2._symv_up[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=16, NBLK=6, ONEHOT=True, num_warps=2)
+            K2._symv_up[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=16, NBLK=6, ONEHOT=True, num_warps=2, **mp)
             continue
         if tune:
             BI, warps = (8, 1) if BP <= 4 else (8, 2)
         else:
             BI, warps = (8 if BP <= 4 else 4), 2                        # tuned on the 5090 (ks_tune.py): 2 warps, small row blocks
         nblk = (81 + BI - 1) // BI
-        _symv[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=BI, NBLK=nblk, num_warps=warps)
+        _symv[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=BI, NBLK=nblk, num_warps=warps, **mp)
     return y
 
 

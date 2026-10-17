@@ -56,6 +56,7 @@ KE64 = os.environ.get('OPL_V3_KE64', 'auto')                           # src_v3:
 GF_CAT = os.environ.get('OPL_V3_GFCAT', '1') == '1'                    # src_v3 S20: concatenated ghost-face DOF lists
 GF_BMM = os.environ.get('OPL_V3_GFBMM', '0') == '1'                    # src_v3 S20: padded templates, two bmm per product
 FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '1') == '1'                 # src_v3 S21: K_PP CSR released after factorising
+KMAP = os.environ.get('OPL_V3_KMAP', '0') == '1'                       # src_v3 P2b: shared rows in the float32 product
 _SHARED = {}
 
 
@@ -314,6 +315,7 @@ class _Kfp32:
         self.C, self.ke_moments, self.gf = C, ke_moments, None
         self._ke_tmp, self._kp_tmp, self._hold = None, None, 0
         self._kp_part = self._ke_part = self._dp_part = None                # src_v3 (fullke): held partial elements
+        self._kmap = None                                                   # src_v3 P2b: element -> row of the held P
         self.symv = ke_moments and os.environ.get('OPL_KE_SYMV') == '1'      # packed upper Ke, fused Triton product
         if ke_moments and SLIM:                                             # src_v3: shared float32 T; the float32
             self.Ke, self.M32 = None, None                                      # moments are rounded per chunk (same values)
@@ -362,7 +364,7 @@ class _Kfp32:
             import ke_symv as KS
             y, x32 = y.contiguous(), x32.contiguous()
             if self._kp_tmp is not None:
-                KS.symv_(y, self._kp_tmp, C.dofs, x32)
+                KS.symv_(y, self._kp_tmp, C.dofs, x32, kmap=self._kmap if torch.is_tensor(self._kmap) else None)
             else:
                 for lo in range(0, len(C.dofs), ch):
                     KS.symv_(y, self.m32(lo, lo + ch) @ self.Tup32, C.dofs[lo:lo + ch], x32)
@@ -410,6 +412,28 @@ class _Kfp32:
             y.index_add_(0, de.reshape(-1), torch.bmm(Ke, FI.rows(x32, de)).reshape(-1, B))
         return y
 
+    def _shared_rows(self, P):
+        """src_v3 P2b (OPL_V3_KMAP=1): element -> row map of the held float32 matrices P (E x 3321, formed by the chunked
+        GEMM): the full elements (moments_ad.full_rows) whose row of P is bitwise equal to the representative's (the
+        first element of the most frequent float32 moment pattern) read that row, every other element its own. The
+        product then reads the same values (bitwise) from fewer bytes. The GEMM is deterministic, so the equality found
+        here holds for every later formation of P with this design. Returns an int32 tensor, or False (nothing shared)."""
+        import moments_ad as MA
+        C = self.C
+        cells, taus, nrm, off = MA.cell_rows(C)
+        full = torch.nonzero(MA.full_rows(cells, C.n, taus, nrm, off, s=C.s, surface=getattr(C, 'surface', 'P'))).squeeze(1)
+        if len(full) < 2:
+            return False
+        _, inv, cnt = torch.unique(C.M[full].to(torch.float32), dim=0, return_inverse=True, return_counts=True)
+        rep = int(full[torch.nonzero(inv == int(torch.argmax(cnt)))[0, 0]])
+        shared = full[(P[full] == P[rep][None]).all(1)]
+        if len(shared) < 2:
+            return False
+        kmap = torch.arange(P.shape[0], dtype=torch.int32, device=P.device)
+        kmap[shared] = rep
+        self.kmap_info = dict(full=int(len(full)), shared=int(len(shared)), elements=int(P.shape[0]))
+        return kmap
+
     def hold(self):
         """Context: with ke_moments and OPL_FASTIDX=1, the float32 element matrices are formed once (same chunks, same
         products) and reused by every product inside the block, then released.
@@ -444,6 +468,8 @@ class _Kfp32:
                 me._kp_tmp = torch.empty((E, me.Tup32.shape[1]), dtype=torch.float32, device=me.Tup32.device)
                 for lo in range(0, E, ch):
                     torch.matmul(me.m32(lo, lo + ch), me.Tup32, out=me._kp_tmp[lo:lo + ch])
+                if KMAP and me._kmap is None and not torch.cuda.is_current_stream_capturing():
+                    me._kmap = me._shared_rows(me._kp_tmp)
             elif me.ke_moments and FI.ON and me._hold == 0:
                 ch = me.C._lean_chunk
                 me._ke_tmp = [(me.m32(lo, lo + ch) @ me.Tf32).reshape(-1, 81, 81) for lo in range(0, E, ch)]

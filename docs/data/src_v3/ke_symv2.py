@@ -15,8 +15,12 @@ import triton.language as tl
 
 @triton.jit
 def _symv_up(P_ptr, dofs_ptr, x_ptr, y_ptr, B, LD, BP: tl.constexpr, BI: tl.constexpr, NBLK: tl.constexpr,
-             ONEHOT: tl.constexpr):
+             ONEHOT: tl.constexpr, kmap_ptr=None, MAP: tl.constexpr = False):
     e = tl.program_id(0).to(tl.int64)
+    if MAP:                                                                  # src_v3 P2b: row of P holding K_e
+        ke = tl.load(kmap_ptr + e).to(tl.int64)
+    else:
+        ke = e
     j = tl.arange(0, 128)
     mj = j < 81
     c = tl.arange(0, BP)
@@ -29,7 +33,7 @@ def _symv_up(P_ptr, dofs_ptr, x_ptr, y_ptr, B, LD, BP: tl.constexpr, BI: tl.cons
         mi = i < 81
         off = i * 81 - (i * (i - 1)) // 2                                    # packed start of row i (entry (i, i))
         up = (j[None, :] >= i[:, None]) & mi[:, None] & mj[None, :]
-        K = tl.load(P_ptr + e * 3321 + off[:, None] + (j[None, :] - i[:, None]), mask=up, other=0.0)       # [BI, 128]
+        K = tl.load(P_ptr + ke * 3321 + off[:, None] + (j[None, :] - i[:, None]), mask=up, other=0.0)      # [BI, 128]
         Yr = tl.sum(K[:, :, None] * X[None, :, :], axis=1)                   # [BI, BP]: sum_{j >= i} K_ij x_j
         di = tl.load(dofs_ptr + e * 81 + i, mask=mi, other=0).to(tl.int64)
         Xi = tl.load(x_ptr + di[:, None] * LD + c[None, :], mask=mi[:, None] & mc[None, :], other=0.0)     # [BI, BP]

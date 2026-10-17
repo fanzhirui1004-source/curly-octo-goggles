@@ -185,7 +185,7 @@ def start_bodies(cases):
 
 
 PIPE_BODIES = os.environ.get('OPL_V3_PIPE_BODIES', '1') == '1'          # src_v3: default on (=0: generate, then analyse)
-FE_THREAD = os.environ.get('OPL_V3_FE_THREAD', '0') == '1'              # src_v3 P5: next cell's setup in a worker thread
+FE_THREAD = os.environ.get('OPL_V3_FE_THREAD', '1') == '1'              # src_v3 P5: next cell's setup in a worker thread
 
 
 _PIPE_FAULT = [int(os.environ.get('OPL_V3_PIPE_FAULT', '-1'))]      # test hook: fail the k-th waited cell once
