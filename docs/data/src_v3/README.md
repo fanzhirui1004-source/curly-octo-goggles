@@ -36,3 +36,12 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | OPL_COARSE_BLK / OPL_COARSE_BLK_MAXFRAC | 1 / 0.5 | block-structured cell coarse inverse: octants + separator Schur complement, 168 -> 29 MiB per full plate cell, more accurate than the packed inverse (S15) |
 | (no switch) | | the drivers' per-cell K_PP host triplets are freed once the lattice K_PP is assembled (S16, with OPL_V3_SLIM) |
 | OPL_V3_GC | young | per-cell garbage collections of the front end: young generations only, one full collection after it (`full`: as src_v2) (S17) |
+| (no switch) | | a streamed cell is copied to the device once for all chunks of a wide apply (S18) |
+| OPL_V3_SLOTASSIGN | 0 | recomputed slot weights assigned to the element / ghost-face layers by one Triton kernel per set, bitwise the same (S19b; saves only 0.07 ms per recompute) |
+| OPL_V3_KPP_FREEA | 1 | the K_PP CSR operand's device storages released after cuDSS factorises (the solve reads only the factors) (S21) |
+| OPL_V3_COARSE_COLS | 1 | the coarse columns kept by coarse_prolong found without forming V (same columns) (S22) |
+| --resident-gb auto | (4) | lat_scale / opt_design: the resident-cell device budget from the card's memory and the cell count (hostmem.resident_auto; OPL_V3_RGB_FIXED / _PERCELL / _MARGIN) (S23) |
+| OPL_V3_NETFUSE | 1 | fused network paths (netfused.py): port clamp in the forward scatter, adjoint masks in one kernel, U-Net convolution input / output in one kernel each (S24) |
+| OPL_V3_SPILL / OPL_V3_SPILL_DIR | 0 / V3W/spill | around the K_PP planning peak, write parked cells' page-locked states to disk and read them back; the budget then needs no reserve (S25) |
+| OPL_V3_GRAPH / OPL_V3_GRAPH_MAXB | 0 / 4 | CUDA graph per cell for applies of at most 4 columns (the PCG matvec), replayed on the cell's stream (cellgraph.py) (S26) |
+| OPL_V3_KPP_FP32 | 0 | category B (not bitwise): K_PP factor and solves in float32 (S21b) |

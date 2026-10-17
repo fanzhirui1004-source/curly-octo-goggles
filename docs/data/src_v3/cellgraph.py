@@ -120,5 +120,21 @@ def drop(owner):
     owner.__dict__.pop('_cg_warm', None)
 
 
+def release(owners):
+    """All graphs of owners dropped and their pools' memory returned to the device (after a solve: the sensitivity
+    phase that follows applies the cells eagerly)."""
+    for o in owners:
+        drop(o)
+    _POOLS.clear()
+    torch.cuda.synchronize()
+    torch.cuda.empty_cache()
+
+
+def pool_reserve_gib(nstreams):
+    """Device memory to keep free for the graph pools (hostmem.resident_auto): OPL_V3_RGB_GRAPH GiB (1.75: a full plate
+    cell's streamed state with its decoded parts plus S_hat's temporaries with recomputed slot weights) per stream."""
+    return float(os.environ.get('OPL_V3_RGB_GRAPH', '1.75')) * nstreams if ON else 0.0
+
+
 def summary():
     return dict(on=ON, maxb=MAXB, pools=len(_POOLS), **{k: (round(v, 2) if isinstance(v, float) else v) for k, v in STATS.items()})
