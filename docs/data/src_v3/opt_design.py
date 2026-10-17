@@ -185,6 +185,7 @@ def start_bodies(cases):
 
 
 PIPE_BODIES = os.environ.get('OPL_V3_PIPE_BODIES', '1') == '1'          # src_v3: default on (=0: generate, then analyse)
+FE_THREAD = os.environ.get('OPL_V3_FE_THREAD', '0') == '1'              # src_v3 P5: next cell's setup in a worker thread
 
 
 _PIPE_FAULT = [int(os.environ.get('OPL_V3_PIPE_FAULT', '-1'))]      # test hook: fail the k-th waited cell once
@@ -389,18 +390,33 @@ def analyse_fast(cases, positions, h, wait=None):
     budget = HM.Budget(len(cases)) if TE.SLIM else None                         # src_v3: host-memory budget per cell
     rgb = HM.resident_auto(len(cases)) if str(A.resident_gb) == 'auto' else float(A.resident_gb)
     T['resident_gb'] = round(rgb, 2)
-    for case in cases:
+
+    def stage_a(case):
+        """The cell's own setup (constructor, assembly, network input files, geometry wrapper): src_v3 P5 runs it for the
+        next cell in a worker thread while this one is warmed up (same CUDA stream; the same operations)."""
         if wait is not None:
-            try:
-                wait(case)
-            except BodyFail:
-                _drop_front_end(ops, h)
-                raise
-        a0 = torch.cuda.memory_allocated()
-        C = TE.Cell(case, str(BODY), log=lambda s_: None, deploy=True)
-        C.assemble_deploy(C.taus0)
-        BD.netdata(C, str(BODY), TMP / case)
-        geo = TL.Geo(case, str(BODY), TMP, neumann=False, log=lambda s_: None, cell=C, load_banks=False)
+            wait(case)
+        a0_ = torch.cuda.memory_allocated()
+        C_ = TE.Cell(case, str(BODY), log=lambda s_: None, deploy=True)
+        C_.assemble_deploy(C_.taus0)
+        BD.netdata(C_, str(BODY), TMP / case)
+        geo_ = TL.Geo(case, str(BODY), TMP, neumann=False, log=lambda s_: None, cell=C_, load_banks=False)
+        return C_, geo_, a0_
+    import concurrent.futures as CF
+    ex = CF.ThreadPoolExecutor(1) if FE_THREAD and len(cases) > 2 else None
+    fut = None
+    for k_, case in enumerate(cases):
+        try:
+            if fut is not None:
+                C, geo, a0 = fut.result()
+            else:
+                C, geo, a0 = stage_a(case)
+        except BodyFail:
+            _drop_front_end(ops, h)
+            if ex is not None:
+                ex.shutdown(wait=True)
+            raise
+        fut = ex.submit(stage_a, cases[k_ + 1]) if ex is not None and k_ >= 1 and k_ + 1 < len(cases) else None
         if h.model is not None:
             h.model.caches.pop(case, None)
         model = h.add(geo)
@@ -421,7 +437,8 @@ def analyse_fast(cases, positions, h, wait=None):
         else:
             kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
         C._kpp_cache = kpp_host[case]; C.diag3 = None
-        FN.slim_deploy(op, geo, C, model, budget=budget, cell_bytes=torch.cuda.memory_allocated() - a0)   # src_v3
+        cb = SO.state_bytes([op.fast, geo, C]) if ex is not None else torch.cuda.memory_allocated() - a0   # P5: the
+        FN.slim_deploy(op, geo, C, model, budget=budget, cell_bytes=cb)        # allocator counts the next cell's setup too
         if torch.cuda.memory_allocated() / 2 ** 30 < rgb:
             ops[case] = LS._Resident(op)
         else:
@@ -429,6 +446,8 @@ def analyse_fast(cases, positions, h, wait=None):
         Cs[case] = C
         del geo, op
         TE._collect()
+    if ex is not None:
+        ex.shutdown(wait=True)
     gc.collect()                                                               # src_v3: one full collection
     T['prep_s'] = time.perf_counter() - t
     if budget is not None:

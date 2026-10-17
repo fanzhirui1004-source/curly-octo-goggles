@@ -489,6 +489,25 @@ def free_stages():
     _GST.clear()
 
 
+def state_bytes(roots):
+    """src_v3 P5: bytes of the CUDA tensors reachable from roots as StreamedOp collects them (shared ones and tuples' left
+    out, each storage once): a cell's device footprint without reading the allocator's counters (which a concurrent
+    front-end thread changes)."""
+    handles, seen = [], set()
+    for r in roots:
+        _walk(r, handles, seen)
+    tot, st = 0, set()
+    for o, k, t in handles:
+        if isinstance(o, tuple):
+            continue
+        for x in _parts(t):
+            key = (x.untyped_storage().data_ptr(), x.untyped_storage().nbytes())
+            if key not in st:
+                st.add(key)
+                tot += key[1]
+    return tot
+
+
 def park_all():
     """Drop every prefetched (not active) state from the device."""
     for o in list(_LIVE):

@@ -14,6 +14,7 @@ mode on the same port set), sensitivity vs finite differences of the compliance 
 Usage: teacher.py <body_dir> <out_json> <case> [<case> ...]
 """
 import json, sys, time, gc, os
+import threading
 from pathlib import Path
 from fractions import Fraction
 import numpy as np
@@ -58,16 +59,22 @@ FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '1') == '1'                 # src_v3
 _SHARED = {}
 
 
+_SHARED_LOCK = threading.RLock()                                        # src_v3 P5: the front end's worker thread
+
+
 def shared(key, make):
     """One tensor per key (cached), flagged as shared (stream_ops leaves it on the device)."""
     t = _SHARED.get(key)
     if t is None:
-        t = make()
-        try:
-            t._opl_shared = True
-        except (AttributeError, RuntimeError):
-            pass
-        _SHARED[key] = t
+        with _SHARED_LOCK:
+            t = _SHARED.get(key)
+            if t is None:
+                t = make()
+                try:
+                    t._opl_shared = True
+                except (AttributeError, RuntimeError):
+                    pass
+                _SHARED[key] = t
     return t
 
 
