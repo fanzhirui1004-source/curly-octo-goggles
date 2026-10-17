@@ -33,7 +33,7 @@ import triton.language as tl
 
 ON = os.environ.get('OPL_V3_KMF', '1') == '1'                         # P13 (default on: see use())
 CUDA = os.environ.get('OPL_V3_KMF_CUDA', '1') == '1'
-MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '16'))
+MAXB = int(os.environ.get('OPL_V3_KMF_MAXB', '32'))                    # (32: also the 32-column products of a B = 16 S_hat)
 EPB = int(os.environ.get('OPL_V3_KMF_EPB', '4'))                       # CUDA kernel: elements per block (2, 4, 8)
 GF = int(os.environ.get('OPL_V3_KMF_GF', '1') or 0)                   # CUDA: the ghost faces matrix-free too
 ON64 = os.environ.get('OPL_V3_KMF64', '1') == '1'                      # src_v3 P14: the float64 K product as well

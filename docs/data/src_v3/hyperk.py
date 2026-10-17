@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import torch
 
-ON = os.environ.get('OPL_V3_HCUDA', '0') == '1'
+ON = os.environ.get('OPL_V3_HCUDA', '1') == '1'
 MAXBF = int(os.environ.get('OPL_V3_HCUDA_MAXBF', '0') or 0)          # widest B F for the CUDA kernels (0: any)
 HS = int(os.environ.get('OPL_V3_HCUDA_HS', '0') or 0)                # scatter head sum: 0 fused, 1 left to right, 2 pairwise,
                                                                         # 3 butterfly

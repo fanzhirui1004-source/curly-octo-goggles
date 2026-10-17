@@ -1,0 +1,59 @@
+{
+ "cells": 51,
+ "C": 89.1204310415448,
+ "pcg": 168,
+ "true_residual": 0.00045367346432623564,
+ "Ut_rho_rel": 1.8017556614018945e-08,
+ "times": {
+  "resident_gb": 16.9,
+  "prep_s": 34.71401462238282,
+  "host_budget": {
+   "limit_GiB": 90.0,
+   "frac": null,
+   "top": 0.95,
+   "transient_x": 4.0,
+   "reserve_GiB": 2.91,
+   "cells": 51,
+   "slots_kept": 51,
+   "float64_kept": 51
+  },
+  "setup_s": 0.39559634029865265,
+  "precond_s": 22.61560850124806,
+  "solve_s": 46.77867168840021,
+  "graph": {
+   "on": true,
+   "maxb": 4,
+   "pools": 3,
+   "captures": 102,
+   "recaptures": 0,
+   "replays": 8517,
+   "failed": 0,
+   "capture_s": 0.98,
+   "errors": []
+  },
+  "sens_s": 22.879673866555095,
+  "bodies_s": 0.0,
+  "analysis_wall_s": 127.82583010848612
+ },
+ "bodies_new": 0,
+ "streamed": 6,
+ "gpu_peak_gb": 21.499177932739258,
+ "host_peak_gb": 7.4449462890625,
+ "env": {
+  "OPL_BENCH_TMP": "/root/autodl-tmp/OPL/V3W/bench_tmp",
+  "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+  "OPL_CONV_FP32": "1",
+  "OPL_STREAM_PACK": "1",
+  "OPL_GP_CACHE": "0",
+  "OPL_PACKETS_EXTRA": "/root/autodl-tmp/OPL/V3W/plate/v3W_rgba_S51/packets:/root/autodl-tmp/OPL/V3W/plate/v3W_rgba_S51/packets:/root/autodl-tmp/OPL/S4/packets:/root/autodl-tmp/OPL/S3/packets:/root/autodl-tmp/OPL/S1/V2/R1/SCALE/plate_packets:/root/autodl-tmp/OPL/V3W/plate_packets",
+  "OPL_V3_HCUDA": "1",
+  "OPL_KE_SYMV": "1",
+  "OPL_KE_SYMV64": "1",
+  "OPL_TAILT_FUSED": "1",
+  "OPL_COARSE_FP32": "1",
+  "OPL_COARSE_ELEM": "1",
+  "OPL_TET_TRITON": "1",
+  "OPL_COARSE_SPARSE": "1",
+  "OPL_COARSE_PIVOT_FLOOR": "1e-7"
+ }
+}
