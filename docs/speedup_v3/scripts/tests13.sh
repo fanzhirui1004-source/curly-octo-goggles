@@ -4,6 +4,7 @@
 # launches per K product) and the padded batched one (S20, OPL_V3_GFBMM=1, 4 launches). Cell checks, single-cell S_hat
 # against a saved reference, then hlat222 and the 51-cell plate for each.
 W=/root/autodl-tmp/OPL/V3W; S=$W/scripts; SPEC=$W/plate/body_S24:plateS24_040_o000
+bash $S/tst.sh launch t_launch.py
 bash $S/tst.sh cblk4 t_cblk.py $W/plate/body_S24:plateS24_040_o000,plateS24_060_o000,plateS24_150_o000,plateS24_160_o000
 bash $S/tst.sh cblk2b t_cblk2.py $W/plate/body_S24:plateS24_040_o000,plateS24_050_o000
 bash $S/shat.sh gf_ref $SPEC --B 1,3 --rep 10 --save $W/shat/gf_ref.npz
