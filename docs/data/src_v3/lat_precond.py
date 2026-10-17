@@ -36,6 +36,7 @@ import os
 import time
 import numpy as np
 import torch
+import gpuprof as GP
 
 dt = torch.float64
 
@@ -466,8 +467,14 @@ def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=Tr
     hist = []
     todo = sorted(snaps or [], reverse=True); got = []
     lz = [] if LANCZOS else None                                        # src_v3 (diagnostic): CG coefficients
+    prof = None
     for it in range(1, maxit + 1):
-        AP = lat.matvec(ops, P, batch=batch)
+        if GP.ITER and it == GP.ITER:                                   # src_v3 diagnostic: device-level profile
+            with GP.Probe() as pr_:
+                AP = lat.matvec(ops, P, batch=batch)
+            prof = pr_.summary
+        else:
+            AP = lat.matvec(ops, P, batch=batch)
         alpha = rz / (P * AP).sum(0)
         X += alpha * P; R -= alpha * AP
         rel = float((R.norm(dim=0) / r0).max()); hist.append(rel)
@@ -486,6 +493,8 @@ def pcg(lat, ops, prec, F=None, tol=1e-8, maxit=3000, max_seconds=None, batch=Tr
     out = dict(X=X, iterations=it, seconds=time.perf_counter() - t, residual=hist[-1] if hist else 0.0, history=hist, snaps=got)
     if lz:
         out['lanczos'] = ritz_summary(lz)
+    if prof is not None:
+        out['prof'] = prof
     return out
 
 
