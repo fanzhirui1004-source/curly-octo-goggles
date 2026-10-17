@@ -30,13 +30,14 @@ template <> struct Tab<double> {
 #define cL(i) Tab<T>::L(i)
 #define cD(i) Tab<T>::D(i)
 
-// Weights (src_v3, shared by the float32 and float64 products): w (rows x 125 float64, times (2n)^2, no Lame constants),
-// element e's row widx[e] (null: e itself; -1: wfull, the one row of the full elements); lam w and mu w are formed
+// Weights (src_v3, shared by the float32 and float64 products): rows of 125 float64 (times (2n)^2, no Lame constants),
+// w (nw rows) then wx; element e's row widx[e] (null: e itself; -1: wfull, the full elements' row); lam w and mu w are formed
 // here in float64 and rounded to T, exactly as the stored lam w / mu w of before (bitwise the same weights).
 template <typename T, int EPB, int NB>
 __global__ void __launch_bounds__(25 * EPB)
 kmf_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ nd, const double* __restrict__ w,
-           const int* __restrict__ widx, const double* __restrict__ wfull, double lam, double mu, int E, int LD)
+           const double* __restrict__ wx, int nw, const int* __restrict__ widx, const double* __restrict__ wfull, double lam,
+           double mu, int E, int LD)
 {
     __shared__ T sX[EPB][NB][81];     // X[col][c][t] (27 c + t); after column col is done, its result Y[col][c][t]
     __shared__ T sA[EPB][270];        // A_L, A_D [c][q0][i1 i2]  (45 c + 9 q0 + 3 i1 + i2; A_D at +135); reused for Rb
@@ -57,7 +58,7 @@ kmf_kernel(const T* __restrict__ x, T* __restrict__ y, const int* __restrict__ n
     T wlq[5], wmq[5];                                             // lam w, mu w at this thread's 5 points
     {
         const int64_t row = ok ? (widx ? (int64_t)widx[e] : (int64_t)e) : 0;
-        const double* wr = row >= 0 ? w + row * 125 : wfull;
+        const double* wr = row < 0 ? wfull : (row < nw ? w + row * 125 : wx + (row - nw) * 125);
 #pragma unroll
         for (int q2 = 0; q2 < 5; q2++) {
             const double wv = ok ? wr[25 * q0 + 5 * q1 + q2] : 0.0;
@@ -432,13 +433,14 @@ static void gf2_go(const T* x, T* y, const int* fnode, const T* G, int nf, int c
 }
 
 template <typename T, int EPB>
-static void kmf_go(const T* x, T* y, const int* nd, const double* w, const int* widx, const double* wfull, double lam,
-                   double mu, int E, int B, int nb, cudaStream_t s)
+static void kmf_go(const T* x, T* y, const int* nd, const double* w, const double* wx, int nw, const int* widx,
+                   const double* wfull, double lam, double mu, int E, int B, int nb, cudaStream_t s)
 {
     const int gx = (E + EPB - 1) / EPB;
-    if (nb == 1) kmf_kernel<T, EPB, 1><<<dim3(gx, B), 25 * EPB, 0, s>>>(x, y, nd, w, widx, wfull, lam, mu, E, B);
-    else if (nb == 2) kmf_kernel<T, EPB, 2><<<dim3(gx, (B + 1) / 2), 25 * EPB, 0, s>>>(x, y, nd, w, widx, wfull, lam, mu, E, B);
-    else kmf_kernel<T, EPB, 4><<<dim3(gx, (B + 3) / 4), 25 * EPB, 0, s>>>(x, y, nd, w, widx, wfull, lam, mu, E, B);
+    if (nb == 1) kmf_kernel<T, EPB, 1><<<dim3(gx, B), 25 * EPB, 0, s>>>(x, y, nd, w, wx, nw, widx, wfull, lam, mu, E, B);
+    else if (nb == 2)
+        kmf_kernel<T, EPB, 2><<<dim3(gx, (B + 1) / 2), 25 * EPB, 0, s>>>(x, y, nd, w, wx, nw, widx, wfull, lam, mu, E, B);
+    else kmf_kernel<T, EPB, 4><<<dim3(gx, (B + 3) / 4), 25 * EPB, 0, s>>>(x, y, nd, w, wx, nw, widx, wfull, lam, mu, E, B);
 }
 
 template <typename T, int FPB, int NB>
@@ -496,15 +498,15 @@ int kmf_init(const float* tabL, const float* tabD, const double* tabL64, const d
 }
 
 // nb: columns per block (1, 2 or 4; 0: 1 for one column, 2 for two, else 4)
-int kmf_launch(const float* x, float* y, const int* nd, const double* w, const int* widx, const double* wfull, double lam,
-               double mu, int E, int B, int epb, int nb, void* stream)
+int kmf_launch(const float* x, float* y, const int* nd, const double* w, const double* wx, int nw, const int* widx,
+               const double* wfull, double lam, double mu, int E, int B, int epb, int nb, void* stream)
 {
     if (E <= 0 || B <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
     if (nb <= 0) nb = auto_nb(B);
-    if (epb == 2) kmf_go<float, 2>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
-    else if (epb == 8) kmf_go<float, 8>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
-    else kmf_go<float, 4>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
+    if (epb == 2) kmf_go<float, 2>(x, y, nd, w, wx, nw, widx, wfull, lam, mu, E, B, nb, s);
+    else if (epb == 8) kmf_go<float, 8>(x, y, nd, w, wx, nw, widx, wfull, lam, mu, E, B, nb, s);
+    else kmf_go<float, 4>(x, y, nd, w, wx, nw, widx, wfull, lam, mu, E, B, nb, s);
     return (int)cudaGetLastError();
 }
 
@@ -514,8 +516,8 @@ int kmf_launch64(const double* x, double* y, const int* nd, const double* w, con
     if (E <= 0 || B <= 0) return 0;
     cudaStream_t s = (cudaStream_t)stream;
     if (nb <= 0) nb = auto_nb(B);
-    if (epb == 2) kmf_go<double, 2>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
-    else kmf_go<double, 4>(x, y, nd, w, widx, wfull, lam, mu, E, B, nb, s);
+    if (epb == 2) kmf_go<double, 2>(x, y, nd, w, nullptr, E, widx, wfull, lam, mu, E, B, nb, s);
+    else kmf_go<double, 4>(x, y, nd, w, nullptr, E, widx, wfull, lam, mu, E, B, nb, s);
     return (int)cudaGetLastError();
 }
 

@@ -31,7 +31,8 @@ with torch.no_grad():
         old32l[lo:lo + 8192] = (w * lam).to(f32)
         old32m[lo:lo + 8192] = (w * mu).to(f32)
     rows = W['widx'].long()
-    wv = torch.where((rows >= 0)[:, None], W['w'][rows.clamp_min(0)], W['wfull'][None, :])
+    wall = W['w'] if W['wx'] is None else torch.cat([W['w'], W['wx']], 0)
+    wv = torch.where((rows >= 0)[:, None], wall[rows.clamp_min(0)], W['wfull'][None, :])
     new32l, new32m = (W['lam'] * wv).to(f32), (W['mu'] * wv).to(f32)
     res['f32_bitwise'] = bool(torch.equal(new32l, old32l) and torch.equal(new32m, old32m))
     res['f32_mismatch'] = int((new32l != old32l).sum() + (new32m != old32m).sum())
@@ -39,11 +40,11 @@ with torch.no_grad():
     old64 = torch.empty((len(part), 125), dtype=f64, device=dev)
     for lo in range(0, len(part), 8192):                                  # the float64 weights as stored before
         old64[lo:lo + 8192] = (C.M[part[lo:lo + 8192]] @ Vi) * sc
-    new64 = W['w'][:W['npart']]
+    new64 = W['w']
     res['f64_lam_w_rel_max'] = float(((W['lam'] * new64) - (old64 * lam)).abs().max() / (old64 * lam).abs().max())
     res['f64_bitwise'] = bool(torch.equal(W['lam'] * new64, old64 * lam) and torch.equal(W['mu'] * new64, old64 * mu))
     res['MiB'] = dict(before=round((2 * E * 125 * 4 + 2 * len(part) * 125 * 8) / 2 ** 20, 2),
-                      after=round((W['w'].numel() * 8 + 125 * 8 + E * 4) / 2 ** 20, 2))
+                      after=round((wall.numel() * 8 + 125 * 8 + E * 4) / 2 ** 20, 2))
     # products
     st = KMF.state(C)
     g = torch.Generator(device=dev); g.manual_seed(0)

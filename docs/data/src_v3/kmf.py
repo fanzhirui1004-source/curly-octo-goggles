@@ -214,7 +214,8 @@ def _lib():
         os.replace(tmp, so)
     lib = ctypes.CDLL(so)
     lib.kmf_init.argtypes = [ctypes.c_void_p] * 4
-    lib.kmf_launch.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_double] * 2 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.kmf_launch.argtypes = ([ctypes.c_void_p] * 5 + [ctypes.c_int] + [ctypes.c_void_p] * 2 + [ctypes.c_double] * 2
+                               + [ctypes.c_int] * 4 + [ctypes.c_void_p])
     lib.kmf_launch64.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_double] * 2 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
     lib.gf_launch.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 7 + [ctypes.c_void_p]
     lib.gf_launch64.argtypes = [ctypes.c_void_p] * 7 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
@@ -277,8 +278,8 @@ def state(C):
     DN, Vi = tables(xi, C.n, C.M.device)
     if cuda_ok():
         W = wstore(C)
-        return dict(kind='cuda', nd=nodes_tensor(C), w=W['w'], widx=W['widx'], wfull=W['wfull'], lam=W['lam'], mu=W['mu'],
-                    pts=PTS)
+        return dict(kind='cuda', nd=nodes_tensor(C), w=W['w'], wx=W['wx'], widx=W['widx'], wfull=W['wfull'], lam=W['lam'],
+                    mu=W['mu'], pts=PTS)
     return dict(kind='triton', nd=nodes(C.dofs), WT=weights(C.M, Vi), DN=DN, lam=lam, mu=mu)
 
 
@@ -328,13 +329,12 @@ def wstore(C, chunk=8192):
         wfull = torch.zeros(125, dtype=torch.float64, device=dev)
     widx = torch.full((E,), -1, dtype=torch.int32, device=dev)
     widx[part] = torch.arange(npart, dtype=torch.int32, device=dev)
-    w = wp
-    if extra_e:
-        ee, ew = torch.cat(extra_e), torch.cat(extra_w)
-        widx[ee] = torch.arange(npart, npart + len(ee), dtype=torch.int32, device=dev)
-        w = torch.cat([wp, ew], 0)
-    W = C._kmf_w = dict(w=w.contiguous(), widx=widx, wfull=wfull.contiguous(), part=part, npart=npart,
-                        nextra=len(w) - npart, lam=float(lam), mu=float(mu), pts=PTS)
+    wx = None
+    if extra_e:                                                             # (a tensor of its own: the float64 state
+        ee, wx = torch.cat(extra_e), torch.cat(extra_w).contiguous()        # shares w itself, and stream_ops copies a
+        widx[ee] = torch.arange(npart, npart + len(ee), dtype=torch.int32, device=dev)   # view of other shape again)
+    W = C._kmf_w = dict(w=wp.contiguous(), wx=wx, widx=widx, wfull=wfull.contiguous(), part=part, npart=npart,
+                        nextra=0 if wx is None else len(wx), lam=float(lam), mu=float(mu), pts=PTS)
     return W
 
 
@@ -351,7 +351,9 @@ def apply_(y, st, x, epb=None, nb=None):
     assert x.is_contiguous() and y.is_contiguous() and x.dtype == torch.float32 and y.dtype == torch.float32
     _check_pts(st)
     E, B = st['nd'].shape[0], x.shape[1]
-    rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(), st['widx'].data_ptr(),
+    wx = st['wx']
+    rc = _lib().kmf_launch(x.data_ptr(), y.data_ptr(), st['nd'].data_ptr(), st['w'].data_ptr(),
+                           wx.data_ptr() if wx is not None else None, st['w'].shape[0], st['widx'].data_ptr(),
                            st['wfull'].data_ptr(), st['lam'], st['mu'], E, B, int(epb or EPB), int(NB if nb is None else nb),
                            torch.cuda.current_stream(x.device).cuda_stream)
     if rc != 0:
@@ -532,8 +534,7 @@ def state64(C, elements):
     nd = nd_all[elements].contiguous()
     W = wstore(C)
     if len(elements) == len(W['part']) and torch.equal(elements, W['part']):
-        w = W['w'][:W['npart']]                                             # (the store's first rows: the float32 product's
-                                                                            # too)
+        w = W['w']                                                          # (the same tensor as the float32 product's)
     else:
         xi, _, _ = C._kmf_spec
         _, Vi = tables(xi, C.n, C.M.device)
