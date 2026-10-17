@@ -184,7 +184,7 @@ def coarse_prolong(C, space, with_meta=False):
     return V, np.stack(np.unravel_index(vid, (nn,) * 3), 1), slot
 
 
-COARSE_COLS = os.environ.get('OPL_V3_COARSE_COLS', '0') == '1'           # src_v3 S22 (coarse_columns)
+COARSE_COLS = os.environ.get('OPL_V3_COARSE_COLS', '1') == '1'           # src_v3 S22 (coarse_columns)
 
 
 def coarse_columns(C, space):
@@ -192,7 +192,8 @@ def coarse_columns(C, space):
     forming V: the same hat weights (the same float operations on the same node coordinates), the column sums of |w| over
     the interior rows by bincount instead of the sparse matrix's column sums. Kept columns have sums >= (1 / R2)^3 (the
     weights are products of dyadic t), dropped ones exactly or nearly 0 (~1e-16 from xyz * ne - e), far from the 1e-14
-    threshold either way, so the kept set is the same; checked by scripts/t_coarsecols.py."""
+    threshold either way, so the kept set is the same; checked by scripts/t_coarsecols.py (results/tests14/coarsecols.log:
+    the same columns on four plate cells, 0.15 -> 0.05 s each). Default on (OPL_V3_COARSE_COLS=0: coarse_prolong)."""
     order, ne, pu = COARSE_SPACES[space]
     if order != 1 or pu:
         raise ValueError(f'coarse_columns: Q1 spaces only, not {space}')

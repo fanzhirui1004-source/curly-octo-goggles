@@ -5,8 +5,9 @@ graph (static input and output, intermediates in the graph's private pool) and r
     host memory of the graph (RSS);
   - replay against eager: relative difference (the scatters' atomics: compared with eager against itself) and the time
     per application, B = 1 and 3, slot weights stored and recomputed in every application;
-  - two cells on two streams: eager (as lat_multi's two-stream matvec issues them) against two graphs.
-usage: python t_graph.py BODY_DIR:CASE[,CASE2] [--rep 20]"""
+  - all given cells on 1-4 streams (round robin, as lat_multi's matvec issues them): eager against one graph per cell
+    (one shared memory pool per stream).
+usage: python t_graph.py BODY_DIR:CASE[,CASE2,...] [--rep 20] [--streams 1,2,3,4]"""
 import os, sys, json, time, argparse, traceback
 SRC = os.environ.get('SRC', '/root/autodl-tmp/OPL/src_v3'); sys.path.insert(0, SRC)
 os.environ['OPL_TAILT_FUSED'] = '1'; os.environ['OPL_COARSE_FP32'] = '1'; os.environ['OPL_COARSE_ELEM'] = '1'
@@ -17,6 +18,7 @@ import teacher as TE, trainlib as TL, fastnet as FN, bench_deploy as BD, fastidx
 
 dev = 'cuda'
 ap = argparse.ArgumentParser(); ap.add_argument('spec'); ap.add_argument('--rep', type=int, default=20)
+ap.add_argument('--streams', default='1,2,3,4')
 a = ap.parse_args()
 FN.FUSED = True; FI.ON = True
 body, cases = a.spec.split(':')
@@ -66,7 +68,7 @@ class Graphed:
             for _ in range(2):
                 f.s_hat(self.qs)
         torch.cuda.current_stream().wait_stream(s)
-        torch.cuda.synchronize()
+        torch.cuda.synchronize(); torch.cuda.empty_cache()                # (graph() empties the cache itself)
         r0, m0, t = rss_gib(), torch.cuda.memory_reserved(), time.perf_counter()
         self.g = torch.cuda.CUDAGraph()
         with torch.no_grad(), torch.cuda.graph(self.g, pool=pool):
@@ -112,42 +114,54 @@ with torch.no_grad():
                 torch.cuda.synchronize()
             res[f'{mode}_B{B}'] = r
             print(json.dumps({f'{mode}_B{B}': r}), flush=True)
-    if len(cells) > 1 and all('error' not in res.get(f'stored_B{B}', {}) for B in (1,)):
-        (C1, f1), (C2, f2) = cells[0], cells[1]                       # (the first cell recomputes its slot weights now)
-        st = [torch.cuda.Stream(), torch.cuda.Stream()]
-        q1, q2 = rhs(C1, 1), rhs(C2, 1)
+    if len(cells) > 1:
+        f._assign_slots(*f._slot_tensors()); f._rc = None                 # the first cell back to stored slot weights
+        for ns in [int(x) for x in a.streams.split(',')]:
+            st = [torch.cuda.Stream() for _ in range(ns)]
+            qs = [rhs(C_, 1) for C_, _ in cells]
 
-        def eager2():
-            cur = torch.cuda.current_stream()
-            for s_ in st:
-                s_.wait_stream(cur)
-            with torch.cuda.stream(st[0]):
-                y1 = f1.s_hat(q1)
-            with torch.cuda.stream(st[1]):
-                y2 = f2.s_hat(q2)
-            for s_ in st:
-                cur.wait_stream(s_)
-            return y1, y2
-        try:
-            G1, G2 = Graphed(f1, C1.np_, 1), Graphed(f2, C2.np_, 1)
-
-            def graph2():
+            def eager_all():
                 cur = torch.cuda.current_stream()
                 for s_ in st:
                     s_.wait_stream(cur)
-                with torch.cuda.stream(st[0]):
-                    y1 = G1(q1)
-                with torch.cuda.stream(st[1]):
-                    y2 = G2(q2)
+                ys = []
+                for j, (C_, f_) in enumerate(cells):
+                    with torch.cuda.stream(st[j % ns]):
+                        ys.append(f_.s_hat(qs[j]))
                 for s_ in st:
                     cur.wait_stream(s_)
-                return y1, y2
-            _, te = timed(eager2, a.rep)
-            _, tg = timed(graph2, a.rep)
-            _, t_1 = timed(lambda: f1.s_hat(q1), a.rep)
-            _, t_2 = timed(lambda: f2.s_hat(q2), a.rep)
-            res['two_streams'] = dict(ms_eager_pair=round(te, 2), ms_graph_pair=round(tg, 2),
-                                      ms_eager_single=[round(t_1, 2), round(t_2, 2)])
-        except Exception as e:                                           # noqa: BLE001
-            res['two_streams'] = dict(error=repr(e)[:400], trace=traceback.format_exc()[-2000:])
+                return ys
+            r = dict(cells=len(cells))
+            try:
+                pools = [None] * ns
+                Gs = []
+                for j, (C_, f_) in enumerate(cells):                     # one shared pool per stream
+                    G = Graphed(f_, C_.np_, 1, pool=pools[j % ns])
+                    pools[j % ns] = G.g.pool()
+                    Gs.append(G)
+
+                def graph_all():
+                    cur = torch.cuda.current_stream()
+                    for s_ in st:
+                        s_.wait_stream(cur)
+                    ys = []
+                    for j, G in enumerate(Gs):
+                        with torch.cuda.stream(st[j % ns]):
+                            ys.append(G(qs[j]))
+                    for s_ in st:
+                        cur.wait_stream(s_)
+                    return ys
+                ye, te = timed(eager_all, a.rep)
+                ye = [y.clone() for y in ye]
+                yg, tg = timed(graph_all, a.rep)
+                r.update(ms_eager_all=round(te, 2), ms_graph_all=round(tg, 2),
+                         rel_graph=max(float(((g_ - e_).norm(dim=0) / e_.norm(dim=0)).max()) for g_, e_ in zip(yg, ye)),
+                         pools_MiB=round(sum(G.pool_MiB for G in Gs), 1))
+                del Gs, pools
+            except Exception as e:                                       # noqa: BLE001
+                r.update(error=repr(e)[:400], trace=traceback.format_exc()[-2000:])
+            torch.cuda.synchronize(); torch.cuda.empty_cache()
+            res[f'streams_{ns}'] = r
+            print(json.dumps({f'streams_{ns}': r}), flush=True)
+        res['ms_eager_single'] = [round(timed(lambda: f_.s_hat(rhs(C_, 1)), a.rep)[1], 2) for C_, f_ in cells]
 print(json.dumps(res), flush=True)

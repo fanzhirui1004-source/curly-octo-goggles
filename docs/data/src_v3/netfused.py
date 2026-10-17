@@ -9,7 +9,12 @@ each with the same float32 operations on the same values (no fused multiply-add)
     scatter adds onto A in place: 1 + 3 launches instead of 3 + 4;
   - U-Net convolutions: the dense grid input written in one kernel (zeros + index_copy_, and the gate product of the
     transposed convolution, before), the output Xc + v[dense_idx] (* gate) in one kernel (index, mul, add before);
-    the cuDNN call is unchanged (same input layout and values): 2 + conv launches instead of 5 + conv."""
+    the cuDNN call is unchanged (same input layout and values): 2 + conv launches instead of 5 + conv.
+Default on (OPL_V3_NETFUSE=0: the original paths). Checked on a full plate cell (scripts/t_netfuse.py, results/tests15/
+netfuse2.log): with torch.backends.cudnn.deterministic every convolution (48) is bitwise equal to the original path (by
+default the transposed convolutions are not reproducible run to run in either path: cuDNN's algorithm); the layers
+with atomics differ from the original as the original from itself; S_hat 20.6 -> 19.7 ms (B = 1), 40.9 -> 37.1 ms
+(B = 3); 51-cell plate with S21, S22 (v3p): 270.8 -> 260.3 s, C within 8e-9."""
 import torch
 import triton
 import triton.language as tl

@@ -64,7 +64,7 @@ def _csr(rows, cols, vals, shape):
 
 
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
-NETFUSE = os.environ.get('OPL_V3_NETFUSE', '0') == '1'                           # src_v3 S24 (netfused): fewer launches
+NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
 
 
 class _Hyper:
@@ -181,6 +181,8 @@ class FastNet:
         if self.two:
             fab, xab = gp['fab'], gp['xab']
             Lg = m.L_pre + m.L_post + m.n_fringe
+            self._fr_el, self._fr_gp = c.el_fringe.nonzero()[:, 0], c.gp_fringe.nonzero()[:, 0]   # src_v3: the slot
+            # recompute selects the fringe rows by these indices (the same rows; a boolean mask synchronises the host)
             fe, ff = (c.el_fade, c.gp_fade) if getattr(m, 'fringe_soft', False) else (None, None)   # models.MGNO2._hyper fade
             self.face = []
             for g in range(Lg):
@@ -336,13 +338,16 @@ class FastNet:
                 continue
             a, b = fab[:, :, 0, g], b3(fab[:, :, 1, g], arg('lf', g))
             if g >= L:
-                a, b = a[c.gp_fringe], b[c.gp_fringe]
+                fi = getattr(self, '_fr_gp', None)
+                a, b = (a[c.gp_fringe], b[c.gp_fringe]) if fi is None else (a.index_select(0, fi), b.index_select(0, fi))
                 if ff is not None:
                     b = b * ff[:, None, None]
             h.set_ab(a, b)
+        xi = getattr(self, '_fr_el', None)
+        sel = (lambda x: x[c.el_fringe]) if xi is None else (lambda x: x.index_select(0, xi))
         for l, h in enumerate(self.fringe):
-            xb = b3(xab[:, :, 1, l], arg('lx', l))[c.el_fringe]
-            h.set_ab(xab[c.el_fringe][:, :, 0, l], xb if fe is None else xb * fe[:, None, None])
+            xb = sel(b3(xab[:, :, 1, l], arg('lx', l)))
+            h.set_ab(sel(xab)[:, :, 0, l], xb if fe is None else xb * fe[:, None, None])
 
     def slots(self):
         """Context: slot weights present inside (recomputed on entry, dropped on exit; no-op in 'store' mode)."""

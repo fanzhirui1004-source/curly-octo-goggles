@@ -54,7 +54,7 @@ GC_YOUNG = os.environ.get('OPL_V3_GC', 'young') == 'young'                # src_
 KE64 = os.environ.get('OPL_V3_KE64', 'auto')                           # src_v3: 'auto' | 'store' | 'form' (Cell.store64)
 GF_CAT = os.environ.get('OPL_V3_GFCAT', '1') == '1'                    # src_v3 S20: concatenated ghost-face DOF lists
 GF_BMM = os.environ.get('OPL_V3_GFBMM', '0') == '1'                    # src_v3 S20: padded templates, two bmm per product
-FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '0') == '1'                 # src_v3 S21: K_PP CSR released after factorising
+FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '1') == '1'                 # src_v3 S21: K_PP CSR released after factorising
 _SHARED = {}
 
 
@@ -136,7 +136,10 @@ class SPDSolver:
     def _release_matrix(self):
         """src_v3 (OPL_V3_KPP_FREEA): the solve phase reads only the factors (no iterative refinement is configured), so
         after the factorisation the CSR operand's storages (int32 row pointers and columns, values: ~12 bytes per stored
-        nonzero, 1.4 GB at 192 plate cells) are released; checked by scripts/t_kppfree.py (solutions bitwise equal)."""
+        nonzero, 1.4 GB at 192 plate cells) are released. Default on: checked by scripts/t_kppfree.py (results/tests15/
+        kppfree2.log): the solutions after the release differ from those before by 3.6e-15 (|y| ~ 10), as two solves
+        without a release differ from each other (4.4e-15: cuDSS's solve is not bitwise reproducible), and stay so after
+        every freed and cached block was overwritten with NaN (the solve does not read the matrix)."""
         for t in (self.U.crow_indices(), self.U.col_indices(), self.U.values()):
             t.untyped_storage().resize_(0)
 
