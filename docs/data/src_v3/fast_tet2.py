@@ -649,6 +649,43 @@ def _bwd2(tets_ptr, tref_ptr, tw_ptr, g_ptr, gt_ptr, T, Q: tl.constexpr, BLOCK_T
     tl.store(gt_ptr + o + 2, J * g0z - S * (d1z + d2z + d3z), mask=mask)
 
 
+@triton.jit
+def _bwd2_e0(tets_ptr, tref_ptr, tw_ptr, g_ptr, gt_ptr, T, Q: tl.constexpr, BLOCK_T: tl.constexpr):
+    """_bwd2 for a gradient whose only nonzero entry is the constant term g[t, 0] (src_v3: the volume column of
+    moments_ad.cell_sens). Every polynomial term of _bwd2 is then an exact zero: t = g0, p = g0 in the first x pass and
+    +-0 after it, all vertex accumulators stay +-0; so S = sum_q w_q g0 in the same order and the stores reduce to the
+    J-derivative terms, the same values (up to the sign of exact zeros) at a small fraction of the float64 work."""
+    pid = tl.program_id(0)
+    offs = pid * BLOCK_T + tl.arange(0, BLOCK_T)
+    mask = offs < T
+    v0x, v0y, v0z, e1x, e1y, e1z, e2x, e2y, e2z, e3x, e3y, e3z = _geom(tets_ptr, offs, mask)
+    det = e1x * (e2y * e3z - e2z * e3y) - e1y * (e2x * e3z - e2z * e3x) + e1z * (e2x * e3y - e2y * e3x)
+    J = tl.abs(det)
+    sg = tl.where(det >= 0, 1.0, -1.0)
+    S = tl.zeros([BLOCK_T], dtype=tl.float64)
+    z0 = tl.zeros([BLOCK_T], dtype=tl.float64)
+    G00 = tl.load(g_ptr + offs * 125 + 0, mask=mask, other=0.0)
+    for q in range(Q):
+        w = tl.load(tw_ptr + q)
+        S += w * G00
+    d1x = sg * (e2y * e3z - e2z * e3y); d1y = sg * (e2z * e3x - e2x * e3z); d1z = sg * (e2x * e3y - e2y * e3x)
+    d2x = sg * (e3y * e1z - e3z * e1y); d2y = sg * (e3z * e1x - e3x * e1z); d2z = sg * (e3x * e1y - e3y * e1x)
+    d3x = sg * (e1y * e2z - e1z * e2y); d3y = sg * (e1z * e2x - e1x * e2z); d3z = sg * (e1x * e2y - e1y * e2x)
+    o = offs * 12
+    tl.store(gt_ptr + o + 3, J * z0 + S * d1x, mask=mask); tl.store(gt_ptr + o + 4, J * z0 + S * d1y, mask=mask)
+    tl.store(gt_ptr + o + 5, J * z0 + S * d1z, mask=mask)
+    tl.store(gt_ptr + o + 6, J * z0 + S * d2x, mask=mask); tl.store(gt_ptr + o + 7, J * z0 + S * d2y, mask=mask)
+    tl.store(gt_ptr + o + 8, J * z0 + S * d2z, mask=mask)
+    tl.store(gt_ptr + o + 9, J * z0 + S * d3x, mask=mask); tl.store(gt_ptr + o + 10, J * z0 + S * d3y, mask=mask)
+    tl.store(gt_ptr + o + 11, J * z0 + S * d3z, mask=mask)
+    tl.store(gt_ptr + o + 0, J * z0 - S * (d1x + d2x + d3x), mask=mask)
+    tl.store(gt_ptr + o + 1, J * z0 - S * (d1y + d2y + d3y), mask=mask)
+    tl.store(gt_ptr + o + 2, J * z0 - S * (d1z + d2z + d3z), mask=mask)
+
+
+E0_HINT = [False]          # set by moments_ad.moments_vjp while it back-propagates a volume (unit m = 0) column
+
+
 def tet_moments2(tets, tref, tw, block=128, warps=4):
     tets = tets.contiguous(); T = tets.shape[0]
     out = torch.empty((T, 125), dtype=torch.float64, device=tets.device)
@@ -657,12 +694,12 @@ def tet_moments2(tets, tref, tw, block=128, warps=4):
     return out
 
 
-def tet_moments_vjp2(tets, tref, tw, G, block=128, warps=4):
+def tet_moments_vjp2(tets, tref, tw, G, block=128, warps=4, e0=False):
     tets = tets.contiguous(); T = tets.shape[0]
     gt = torch.empty_like(tets)
     if T:
-        _bwd2[(triton.cdiv(T, block),)](tets, tref.contiguous(), tw.contiguous(), G.contiguous(), gt, T, Q=tref.shape[0],
-                                        BLOCK_T=block, num_warps=warps)
+        (_bwd2_e0 if e0 else _bwd2)[(triton.cdiv(T, block),)](tets, tref.contiguous(), tw.contiguous(), G.contiguous(), gt, T,
+                                                             Q=tref.shape[0], BLOCK_T=block, num_warps=warps)
     return gt
 
 
@@ -676,4 +713,4 @@ class TetMoments2(torch.autograd.Function):
     @staticmethod
     def backward(ctx, G):
         tets, tref, tw = ctx.saved_tensors
-        return tet_moments_vjp2(tets, tref, tw, G), None, None
+        return tet_moments_vjp2(tets, tref, tw, G, e0=E0_HINT[0]), None, None

@@ -5,6 +5,6 @@
 TAG=$1; SIZES=${2:-"24 51 88 110 135 162 190"}
 W=/root/autodl-tmp/OPL/V3W; S=$W/scripts
 for L in hlat221a hlat221b hlat222 hlat331; do bash $S/t5.sh $TAG $L; done
-bash $S/scale.sh $TAG "$SIZES"
+OPL_V3_PIPE_BODIES=0 bash $S/scale.sh $TAG "$SIZES"                        # analysis time without body generation
 bash $S/t5.sh $TAG hlat554
 echo "$(date +%F_%T) FINAL_${TAG}_DONE" >> $W/status.txt

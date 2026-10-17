@@ -183,7 +183,10 @@ def start_bodies(cases):
                             env=dict(os.environ)), todo
 
 
-PIPE_BODIES = os.environ.get('OPL_V3_PIPE_BODIES', '0') == '1'
+PIPE_BODIES = os.environ.get('OPL_V3_PIPE_BODIES', '1') == '1'          # src_v3: default on (=0: generate, then analyse)
+
+
+_PIPE_FAULT = [int(os.environ.get('OPL_V3_PIPE_FAULT', '-1'))]      # test hook: fail the k-th waited cell once
 
 
 def body_waiter(proc):
@@ -191,13 +194,32 @@ def body_waiter(proc):
     writes PREP.json after every other file) while the remaining bodies are still being generated; BodyFail as soon as a
     cell's body failed (the caller then falls back to make_bodies' retry loop). Only with the face templates already in
     the body directory (else a worker writes them while the front end may read them)."""
+    n = [0]
+
     def wait(case):
         ok, bad = BODY / case / 'PREP.json', BODY / f'{case}.failed'
+        if n[0] == _PIPE_FAULT[0]:
+            _PIPE_FAULT[0] = -1
+            raise BodyFail([case])
+        n[0] += 1
         while not ok.exists():
             if bad.exists() or (proc is not None and proc.poll() is not None and not ok.exists()):
                 raise BodyFail([case])
             time.sleep(0.05)
     return wait
+
+
+def _drop_front_end(ops, h):
+    """Free what analyse_fast's front end built before a BodyFail (pinned stream buffers are registered globally)."""
+    import gc
+    import stream_ops as SO
+    for c, o in ops.items():
+        if isinstance(o, SO.StreamedOp):
+            SO.drop(o)
+        if h.model is not None:
+            h.model.caches.pop(c, None)
+    ops.clear()
+    gc.collect(); torch.cuda.empty_cache()
 
 
 def pipe_ok():
@@ -364,7 +386,11 @@ def analyse_fast(cases, positions, h, wait=None):
     Cs, ops, kpp_host, fps = {}, {}, {}, {}
     for case in cases:
         if wait is not None:
-            wait(case)
+            try:
+                wait(case)
+            except BodyFail:
+                _drop_front_end(ops, h)
+                raise
         C = TE.Cell(case, str(BODY), log=lambda s_: None, deploy=True)
         C.assemble_deploy(C.taus0)
         BD.netdata(C, str(BODY), TMP / case)

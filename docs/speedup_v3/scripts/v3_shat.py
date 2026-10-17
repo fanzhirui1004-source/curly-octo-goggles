@@ -35,6 +35,7 @@ def main():
     ap.add_argument('--ckpt', default='/root/autodl-tmp/OPL/S1/V2/A3_2grid/best.pt')
     ap.add_argument('--save', default=''); ap.add_argument('--ref', default=''); ap.add_argument('--profile', action='store_true')
     ap.add_argument('--segments', action='store_true')
+    ap.add_argument('--store64', action='store_true', help='keep the float64 partial-element matrices (Cell.store64, S9)')
     a = ap.parse_args()
     FN.FUSED = True; FI.ON = True
     body, case = a.spec.split(':')
@@ -46,6 +47,8 @@ def main():
     f = FN.FastNet(h.add(geo), geo); m = f.model
     with torch.no_grad():
         f.s_hat(torch.zeros((C.np_, 1), dtype=dt, device=dev))          # warm-up: correction caches
+    if a.store64 and hasattr(C, 'store64'):
+        C.store64()
     torch.cuda.synchronize()
     r = dict(case=case, nb=int(C.nb), ni=int(C.ni), ports=int(C.np_), elements=int(len(C.M)), setup_s=time.perf_counter() - t0,
              env={k: v for k, v in os.environ.items() if k.startswith('OPL_')})
