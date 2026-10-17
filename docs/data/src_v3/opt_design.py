@@ -384,6 +384,8 @@ def analyse_fast(cases, positions, h, wait=None):
     T = {}
     t = time.perf_counter()
     Cs, ops, kpp_host, fps = {}, {}, {}, {}
+    import hostmem as HM
+    budget = HM.Budget(len(cases)) if TE.SLIM else None                         # src_v3: host-memory budget per cell
     for case in cases:
         if wait is not None:
             try:
@@ -391,6 +393,7 @@ def analyse_fast(cases, positions, h, wait=None):
             except BodyFail:
                 _drop_front_end(ops, h)
                 raise
+        a0 = torch.cuda.memory_allocated()
         C = TE.Cell(case, str(BODY), log=lambda s_: None, deploy=True)
         C.assemble_deploy(C.taus0)
         BD.netdata(C, str(BODY), TMP / case)
@@ -415,7 +418,7 @@ def analyse_fast(cases, positions, h, wait=None):
         else:
             kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
         C._kpp_cache = kpp_host[case]; C.diag3 = None
-        FN.slim_deploy(op, geo, C, model)                                     # src_v3 (OPL_V3_SLIM=1)
+        FN.slim_deploy(op, geo, C, model, budget=budget, cell_bytes=torch.cuda.memory_allocated() - a0)   # src_v3
         if torch.cuda.memory_allocated() / 2 ** 30 < A.resident_gb:
             ops[case] = LS._Resident(op)
         else:
@@ -424,6 +427,8 @@ def analyse_fast(cases, positions, h, wait=None):
         del geo, op
         gc.collect(); torch.cuda.empty_cache()
     T['prep_s'] = time.perf_counter() - t
+    if budget is not None:
+        T['host_budget'] = budget.summary()
     t = time.perf_counter()
     lay = {}
     for case, p in zip(cases, positions):

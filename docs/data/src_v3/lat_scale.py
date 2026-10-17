@@ -123,8 +123,11 @@ def main(argv=None):
         t_it = T()
         ops = {}
         torch.cuda.reset_peak_memory_stats()
+        import hostmem as HM
+        budget = HM.Budget(len(cells)) if TE.SLIM else None                     # src_v3: host-memory budget per cell
         for c in cells:
             case, pc = c['case'], {}
+            a0 = torch.cuda.memory_allocated()
             t = T()
             if case not in Cs:
                 Cs[case] = TE.Cell(case, a.body, log=lambda s_: None, deploy=True)
@@ -156,7 +159,7 @@ def main(argv=None):
                 kpp_host[case] = tuple(x.cpu() for x in C._kpp_cache)
             C._kpp_cache = kpp_host[case]
             C.diag3 = None
-            FN.slim_deploy(op, geo, C, h.model)                                    # src_v3 (OPL_V3_SLIM=1)
+            FN.slim_deploy(op, geo, C, h.model, budget=budget, cell_bytes=torch.cuda.memory_allocated() - a0)  # src_v3
             if torch.cuda.memory_allocated() / 1e9 < a.resident_gb:
                 ops[case] = _Resident(op)
             else:
@@ -174,6 +177,8 @@ def main(argv=None):
             del geo, op
             gc.collect(); torch.cuda.empty_cache()
         add('front_end', sum(v for k, v in ph.items() if k.startswith('fe_')))
+        if budget is not None:
+            rec['host_budget'] = budget.summary()
         rec['device_GB_after_front_end'] = torch.cuda.memory_allocated() / 1e9
         rec['census_after_front_end'] = SO.cuda_census()
         rec['stream_GB_total'] = sum(o.bytes for o in ops.values()) / 1e9

@@ -30,7 +30,7 @@ SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 # about half of its deployed state) are not stored; FastNet keeps the geometry embeddings (ge, gn: ~31 MiB) and
 # recomputes the slot weights once per application (s_hat / field / field_T) with exactly the ops and shapes of
 # models.MGNO2.geometry (bitwise the same values), dropping them afterwards. Default 'store' (src_v2 behaviour).
-SLOTS = os.environ.get('OPL_V3_SLOTS', 'store')
+SLOTS = os.environ.get('OPL_V3_SLOTS', 'auto')                        # 'auto' (host budget) | 'store' | 'recompute'
 _SHARED = {}
 
 
@@ -194,14 +194,32 @@ class FastNet:
                 _share(t_)
         self.cpl, self.levels, self.L_pre, self.L_post = m.cpl, m.levels, m.L_pre, m.L_post
         self.n_fringe = m.n_fringe if self.two else 0
-        self._rc, self._rc_depth = None, 0
-        if SLOTS == 'recompute' and FUSED and self.two:                                 # src_v3: slot weights on demand
-            self._rc = dict(ge=gp['ge'].detach(), gn=gp['gn'].detach())
-            for h in self._hypers():
-                h.drop_ab()
+        self._rc, self._rc_depth, self._rc_src = None, 0, None
+        if SLOTS in ('recompute', 'auto') and FUSED and self.two:                     # src_v3: slot weights on demand
+            self._rc_src = dict(ge=gp['ge'].detach(), gn=gp['gn'].detach())             # (auto: decided after the warm-up,
+            if SLOTS == 'recompute':                                                    # recompute_slots / keep_slots)
+                self.recompute_slots()
         # wrapper (trainlib.Geo.field): rigid split and port overwrite, float32
         self.RP, self.RA, self.RPpinv = geo.RP.to(f32), geo.RA.to(f32), geo.RPpinv.to(f32)
         self.Pidx = geo.P
+
+    def slot_bytes(self):
+        """Bytes of the stored slot weights (a, b of every hyperedge layer)."""
+        return sum(t.numel() * t.element_size() for h in self._hypers() for t in (h.a, h.b) if t is not None)
+
+    def recompute_slots(self):
+        """src_v3: from now on recompute the slot weights in every application (bitwise the same values) instead of
+        keeping them (OPL_V3_SLOTS=recompute, or auto when the host-memory budget is short). Before slim()."""
+        if self._rc is None and self._rc_src is not None:
+            self._rc = self._rc_src
+            for h in self._hypers():
+                h.drop_ab()
+        return self._rc is not None
+
+    def keep_slots(self):
+        """src_v3 (auto): keep the stored slot weights; the recompute inputs are dropped."""
+        if self._rc is None:
+            self._rc_src = None
 
     def slim(self):
         """src_v3: after the freeze, keep only what ext / ext_T read from the per-geometry cache (port nodes, the
@@ -453,13 +471,34 @@ class FastNet:
             return self.field_T((self.geo.C.K @ u).to(f32)).to(f64)
 
 
-def slim_deploy(op, geo, C, model=None):
+def slim_deploy(op, geo, C, model=None, budget=None, cell_bytes=None):
     """src_v3 (OPL_V3_SLIM=1): after the warm-up application of a deployed cell (and any fingerprint that reads the model
     cache or geo.nd), drop what no later use reads: the model's per-geometry cache (FastNet keeps its own slim view),
     the float64 rigid modes of the geometry wrapper (FastNet holds float32 copies), the network input arrays (host).
-    Also the post-warm-up hook for teacher.Cell.store64 (OPL_V3_KE64=store: keep the float64 partial-element matrices)."""
-    if hasattr(C, 'store64'):
-        C.store64()
+    Also the post-warm-up decision on the two optional per-cell items (hostmem.Budget, OPL_V3_KE64 / OPL_V3_SLOTS = auto):
+    the float64 partial-element matrices (teacher.Cell.store64) and the stored slot weights (else recomputed).
+    cell_bytes: the cell's device footprint after the warm-up (the budget's estimate of a cell's state)."""
+    import teacher as TE_
+    fast = op.fast
+    if budget is not None:
+        kb = C.ke64_bytes() if hasattr(C, 'ke64_bytes') and TE_.KE64 == 'auto' else 0
+        sb = fast.slot_bytes() if SLOTS == 'auto' and fast._rc_src is not None else 0
+        other = None if cell_bytes is None else max(0, cell_bytes - sb)
+        keep_slots, keep_ke = budget.decide(kb, sb, other)
+        kept = 0
+        if sb:
+            if keep_slots:
+                fast.keep_slots(); kept += sb
+            else:
+                fast.recompute_slots()
+        if hasattr(C, 'store64') and C.store64(allow=keep_ke):
+            kept += kb
+        budget.account(kept)
+    else:
+        if hasattr(C, 'store64'):
+            C.store64()                                                   # OPL_V3_KE64=store only
+        if SLOTS == 'auto':
+            fast.keep_slots()
     if not SLIM:
         return
     op.fast.slim()

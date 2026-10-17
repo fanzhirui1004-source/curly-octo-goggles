@@ -50,7 +50,7 @@ def sync():
 # src_v3: per-pattern constants (T_m, its upper triangle, float32 copies, index maps) are the same for every cell with the
 # same node ordering, material and grid; one device copy is shared and flagged so that stream_ops never streams it.
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
-KE64 = os.environ.get('OPL_V3_KE64', 'store')                          # src_v3: 'store' | 'form' (Cell.store64)
+KE64 = os.environ.get('OPL_V3_KE64', 'auto')                           # src_v3: 'auto' | 'store' | 'form' (Cell.store64)
 GF_CAT = os.environ.get('OPL_V3_GFCAT', '0') == '1'                    # src_v3: concatenated ghost-face DOF lists
 _SHARED = {}
 
@@ -761,17 +761,25 @@ class Cell:
             sym = shared(('sym81', str(self.M.device)), lambda: _sym81(self.M.device))
             self._k64_part = [(self.M[part[lo:lo + ch]] @ self.Tm_up)[:, sym].reshape(-1, 81, 81) for lo in range(0, npart, ch)]
 
-    def store64(self):
-        """src_v3 (OPL_V3_KE64=store, the default): keep the float64 element matrices of the partial elements for the life
-        of the design (part of the streamed cell state) instead of forming them in every float64 K product. Every S_hat
-        application has one float64 K product, whose GEMM (partial elements x 125 x 3321, float64 at 1/64 of the float32
-        rate on the RTX 5090) is ~4 ms of ~31 ms; the stored matrices are the same GEMM outputs, so the product is the same.
-        Cost: 8 x 3321 bytes per partial element (206 MB for a full plate cell) of host (streamed) or device (resident)
-        memory; OPL_V3_KE64=form keeps the src_v2 behaviour (host memory tight)."""
-        if KE64 != 'store' or not (FI.ON and FK.ON and getattr(self, '_deploy', False)) \
+    def ke64_bytes(self):
+        """Bytes store64 would keep (8 x 3321 per partial element)."""
+        if not (FI.ON and FK.ON and getattr(self, '_deploy', False)) or getattr(self, 'M', None) is None:
+            return 0
+        return int(FK.setup(self)['f64']['n_part']) * 3321 * 8
+
+    def store64(self, allow=None):
+        """src_v3: keep the float64 element matrices of the partial elements for the life of the design (part of the
+        streamed cell state) instead of forming them in every float64 K product. Every S_hat application has one float64
+        K product, whose GEMM (partial elements x 125 x 3321, float64 at 1/64 of the float32 rate on the RTX 5090) is
+        ~4 ms of ~25 ms; the stored matrices are the same GEMM outputs, so the product is the same. Cost: 8 x 3321 bytes
+        per partial element (206 MB for a full plate cell) of host (streamed) or device (resident) memory.
+        OPL_V3_KE64=auto (default): only when the caller's host-memory budget allows (hostmem.Budget; allow=True);
+        =store: always; =form: never (the src_v2 behaviour). Returns True when the matrices were stored."""
+        if KE64 == 'form' or (KE64 == 'auto' and not allow) or not (FI.ON and FK.ON and getattr(self, '_deploy', False)) \
                 or getattr(self, '_k64_part', None) is not None or getattr(self, 'M', None) is None:
-            return
+            return False
         self._form64_part()
+        return True
 
     def hold64(self):
         """Context: in deployment mode with OPL_FASTIDX=1, the float64 element matrices K_e = M_e T are formed once (same
