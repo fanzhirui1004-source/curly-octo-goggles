@@ -18,7 +18,7 @@ import triton
 import triton.language as tl
 from triton.language.extra.cuda import libdevice
 
-ON = os.environ.get('OPL_V3_SLOTDEC', '0') == '1'
+ON = os.environ.get('OPL_V3_SLOTDEC', '1') == '1'
 BR = int(os.environ.get('OPL_V3_SLOTDEC_BR', '64'))                      # rows per program
 
 

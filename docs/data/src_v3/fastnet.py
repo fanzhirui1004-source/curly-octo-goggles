@@ -74,7 +74,7 @@ def _csr(rows, cols, vals, shape):
 
 
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
-SLOTDEC = os.environ.get('OPL_V3_SLOTDEC', '0') == '1'                           # src_v3 P17 (slotdec: fused heads)
+SLOTDEC = os.environ.get('OPL_V3_SLOTDEC', '1') == '1'                           # src_v3 P17 (slotdec: fused heads)
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
 HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
 CONV3 = os.environ.get('OPL_V3_CONV3', '1') == '1'                               # src_v3 P10: U-Net convolutions in Triton
