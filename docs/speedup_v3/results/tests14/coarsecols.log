@@ -1,0 +1,4 @@
+{"case": "plateS24_040_o000", "space": "Q1_17", "nc": 9324, "nc_cols": 9324, "equal": true, "prolong_s": 0.1464, "columns_s": 0.0525}
+{"case": "plateS24_060_o000", "space": "Q1_17", "nc": 8916, "nc_cols": 8916, "equal": true, "prolong_s": 0.1276, "columns_s": 0.0397}
+{"case": "plateS24_150_o000", "space": "Q1_17", "nc": 6318, "nc_cols": 6318, "equal": true, "prolong_s": 0.0831, "columns_s": 0.0266}
+{"case": "plateS24_160_o000", "space": "Q1_17", "nc": 819, "nc_cols": 819, "equal": true, "prolong_s": 0.0076, "columns_s": 0.0018}

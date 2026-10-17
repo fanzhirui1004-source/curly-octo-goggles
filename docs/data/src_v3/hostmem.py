@@ -12,7 +12,8 @@ below the target; otherwise it drops the slot weights, then the float64 matrices
 time per byte; OPL_V3_BUDGET_ORDER=slots: the S14 order). The plan is redone for every cell (the cells processed first
 get the items).
 Target (src_v3 S14b): OPL_V3_HOST_TOP (0.95) of the limit minus a reserve for the host peak of the K_PP factorisation
-that follows the front end: OPL_V3_HOST_TRANSIENT (4) x the cells' K_PP triplet bytes on the host (projected from the
+that follows the front end: OPL_V3_HOST_TRANSIENT (4; 0 with OPL_V3_SPILL=1, S25: parked cells are written to disk
+for that peak instead, stream_ops.spill_guard) x the cells' K_PP triplet bytes on the host (projected from the
 cells so far). Measured: the peak is ~71 bytes per assembled K_PP nonzero above the RSS at the end of the front end on the
 135-, 162- and 192-cell plates (3.4-3.7 x the triplet bytes; the 192-cell run of S14b with 3 x reached 87.3 of 90 GiB,
 since the triplets freed before cuDSS plans (S16) stayed in the heap; S16 now also trims the heap). OPL_V3_HOST_FRAC (S14, if set): the earlier rule, a fixed fraction of the limit for the front end."""
@@ -23,6 +24,11 @@ GiB = 2 ** 30
 # results/tests12/slotfuse.log): float64 matrices 4.1 ms per S_hat for 90 MB (46 ms/GB), slot weights 4.8 ms for 286 MB
 # (17 ms/GB; 9.4 ms, 33 ms/GB, without the fused tail of S19).
 ORDER = os.environ.get('OPL_V3_BUDGET_ORDER', 'ke64')
+SPILL = os.environ.get('OPL_V3_SPILL', '0') == '1'                     # S25: the K_PP peak is met by spilling cells
+
+
+def top_fraction():
+    return float(os.environ.get('OPL_V3_HOST_TOP', '0.95'))
 
 
 def limit_bytes():
@@ -63,8 +69,8 @@ class Budget:
         self.n, self.done, self.extra, self.kpp = int(n_cells), 0, 0, 0
         f = os.environ.get('OPL_V3_HOST_FRAC')
         self.frac = (float(f) if f else None) if frac is None else frac
-        self.top = float(os.environ.get('OPL_V3_HOST_TOP', '0.95')) if top is None else top
-        self.tx = float(os.environ.get('OPL_V3_HOST_TRANSIENT', '4')) if transient is None else transient
+        self.top = top_fraction() if top is None else top
+        self.tx = float(os.environ.get('OPL_V3_HOST_TRANSIENT', '0' if SPILL else '4')) if transient is None else transient
         self.limit = limit_bytes()
         self.rss0 = rss_bytes()
         self.first = first_cell_bytes

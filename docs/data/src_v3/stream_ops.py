@@ -18,7 +18,9 @@ converted back to float64 on the device after each copy, so the arithmetic preci
 but the stored state is rounded to single precision (halves the host memory and copy volume of the float64 parts;
 its effect on the solution must be checked against the float64 store).  bytes_by_dtype reports the stored layout."""
 import os
+import time
 import types
+import weakref
 import numpy as np
 import contextlib
 import torch
@@ -27,6 +29,15 @@ MIN_BYTES = int(os.environ.get('OPL_STREAM_MIN', '0'))                # src_v3: 
                                                                         # device for every streamed cell, ~15-30 MB per cell)
 STORE_FP32 = os.environ.get('OPL_STREAM_FP32', '0') == '1'
 STORE_PACK = os.environ.get('OPL_STREAM_PACK', '0') == '1'
+# src_v3 S25 (OPL_V3_SPILL=1): around the K_PP planning and factorisation (spill_guard) the pinned states of enough parked
+# cells are written to files in OPL_V3_SPILL_DIR and freed, and read back afterwards (the same bytes): the host peak of
+# cuDSS's analysis (~71 bytes per K_PP nonzero for ~15 s, measured: 8.6 GiB on the 192-cell plate) no longer needs a
+# reserve in the front end's budget (hostmem.Budget).
+SPILL = os.environ.get('OPL_V3_SPILL', '0') == '1'
+SPILL_DIR = os.environ.get('OPL_V3_SPILL_DIR', '')
+SPILL_BPNZ = float(os.environ.get('OPL_V3_SPILL_BPNZ', '80'))          # host peak per K_PP (upper) nonzero, bytes
+SPILL_FORCE = float(os.environ.get('OPL_V3_SPILL_FORCE_GB', '0')) * 2 ** 30   # check only: spill at least this much
+_ALL = weakref.WeakSet()                                                # every StreamedOp (spill_guard)
 PACK_MIN = 1 << 24                                                      # square matrices of at least 16 MB
 _PB = 512                                                               # rows per (un)packing block
 
@@ -213,7 +224,8 @@ class StreamedOp:
         self.enc_counts = {m: sum(e[0] == m for e in self.enc.values()) for m in ('f32', 'i32', 'tril', 'sym')}
         self.n_tensors = len(byid)
         self.nxt, self.loaded, self.ev, self.depth = None, None, None, 0
-        self.copies = 0
+        self.copies, self.spilled = 0, None
+        _ALL.add(self)
         del handles, byid
         self._park()
         torch.cuda.empty_cache()
@@ -228,6 +240,56 @@ class StreamedOp:
             self._unregister()
         except Exception:
             pass
+
+    def spill(self, path, chunk=1 << 28):
+        """src_v3 S25: write the pinned host buffer to path and free it (parked op); unspill() reads it back. Returns the
+        bytes freed. The file's pages are dropped from the page cache (charged to the container's memory limit)."""
+        if self.depth or self.buf is None or self.spilled is not None:
+            return 0
+        self._park()
+        mv = memoryview(self.buf.numpy())
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            pos = 0
+            while pos < self.total:
+                pos += os.write(fd, mv[pos:min(self.total, pos + chunk)])
+            os.fsync(fd)
+            if hasattr(os, 'posix_fadvise'):
+                os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+        finally:
+            os.close(fd)
+        del mv
+        self._unregister()
+        self.pinned, self.buf, self.spilled = {}, None, path
+        return self.total
+
+    def unspill(self, chunk=1 << 28):
+        """src_v3 S25: a new page-locked buffer with the spilled bytes; the file is removed."""
+        if self.spilled is None:
+            return 0
+        path = self.spilled
+        buf = torch.empty(self.total, dtype=torch.uint8)
+        if REGISTER:
+            err = torch.cuda.cudart().cudaHostRegister(buf.data_ptr(), self.total, 0)
+            self.registered = int(err) == 0
+        mv = memoryview(buf.numpy())
+        fd = os.open(path, os.O_RDONLY)
+        try:
+            pos = 0
+            while pos < self.total:
+                n = os.readv(fd, [mv[pos:min(self.total, pos + chunk)]])
+                if n <= 0:
+                    raise IOError(f'spill file {path} short: {pos} of {self.total} bytes')
+                pos += n
+            if hasattr(os, 'posix_fadvise'):
+                os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+        finally:
+            os.close(fd)
+        del mv
+        os.remove(path)
+        self.buf, self.spilled = buf, None
+        self.pinned = {key: self._view(buf, key) for key in self.layout}
+        return self.total
 
     def _view(self, buf, key):
         o, nb, dty, shp = self.layout[key]
@@ -350,6 +412,45 @@ def park_all():
     for o in list(_LIVE):
         if o.depth == 0:
             o._park()
+
+
+@contextlib.contextmanager
+def spill_guard(need_bytes):
+    """src_v3 S25 (OPL_V3_SPILL=1): context around a host-memory peak of need_bytes (the K_PP planning and factorisation:
+    SPILL_BPNZ bytes per nonzero). If the RSS plus the peak would pass OPL_V3_HOST_TOP of the host limit, every state
+    is parked (after a device synchronisation: no copy from a pinned buffer in flight) and the largest parked cells are
+    written to OPL_V3_SPILL_DIR and freed until it fits; all of them are read back on exit. Yields a dict of what was done
+    (seconds as *_t: they are part of the timed factorisation). No cell operator may be applied inside."""
+    info = {}
+    spilled = []
+    if SPILL:
+        import hostmem as HM
+        avail = HM.top_fraction() * HM.limit_bytes() - HM.rss_bytes()
+        short = max(need_bytes - avail, SPILL_FORCE)
+        info.update(spill_need_GiB=round(need_bytes / 2 ** 30, 2), spill_avail_GiB=round(avail / 2 ** 30, 2))
+        if short > 0:
+            torch.cuda.synchronize()
+            park_all()
+            d = SPILL_DIR or os.path.join(os.environ.get('OPL_V3W', '/root/autodl-tmp/OPL/V3W'), 'spill')
+            os.makedirs(d, exist_ok=True)
+            t0, done = time.perf_counter(), 0
+            for o in sorted([o for o in _ALL if o.buf is not None and o.depth == 0], key=lambda o: -o.total):
+                if done >= short:
+                    break
+                n = o.spill(os.path.join(d, f'cell_{os.getpid()}_{id(o):x}.bin'))
+                if n:
+                    spilled.append(o); done += n
+            HM.trim()
+            info.update(spill_cells=len(spilled), spill_GiB=round(done / 2 ** 30, 2),
+                        spill_write_t=round(time.perf_counter() - t0, 2), spill_rss_GiB=round(HM.rss_bytes() / 2 ** 30, 2))
+    try:
+        yield info
+    finally:
+        if spilled:
+            t0 = time.perf_counter()
+            for o in spilled:
+                o.unspill()
+            info['spill_read_t'] = round(time.perf_counter() - t0, 2)
 
 
 def cuda_census(top=12):

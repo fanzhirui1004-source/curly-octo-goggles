@@ -102,7 +102,9 @@ class SparseSPD:
                 del rows, vals, dg
                 gc.collect(); torch.cuda.empty_cache()
             fdt = torch.float32 if KPP_FP32 else None                          # category B (OPL_V3_KPP_FP32=1): float32
-            self.sol = TE.SPDSolver(crow, cols, sv.contiguous(), n, fdt=fdt)     # factor and solves (not bitwise)
+            import stream_ops as SO                                             # src_v3 S25: cells spilled to disk
+            with SO.spill_guard(SO.SPILL_BPNZ * len(sv)) as self.spill:          # around the host peak (OPL_V3_SPILL)
+                self.sol = TE.SPDSolver(crow, cols, sv.contiguous(), n, fdt=fdt)  # factor and solves (not bitwise)
             self.mem_est = getattr(self.sol, 'mem_est', None)
         else:
             import scipy.sparse as sp
@@ -399,7 +401,7 @@ class KppFine:
             self.nnz_upper = int(len(holder[2]))
             with _T(dev) as t2:
                 self.fac = SparseSPD(holder, None, None, lat.nfree, backend)
-            self.setup = dict(kpp_assemble_s=0.0, kpp_factor_s=t2.s)
+            self.setup = dict(kpp_assemble_s=0.0, kpp_factor_s=t2.s, **getattr(self.fac, 'spill', {}))
             self.backend = self.fac.backend
             return
         with _T(dev) as t:
@@ -407,7 +409,7 @@ class KppFine:
         self.nnz_upper = int(len(v))
         with _T(dev) as t2:
             self.fac = SparseSPD(r, c, v, lat.nfree, backend)
-        self.setup = dict(kpp_assemble_s=t.s, kpp_factor_s=t2.s)
+        self.setup = dict(kpp_assemble_s=t.s, kpp_factor_s=t2.s, **getattr(self.fac, 'spill', {}))
         self.backend = self.fac.backend
 
     def __call__(self, R):
@@ -559,13 +561,13 @@ class Factory:
         if parts[0] in ('jacobi', 'kpp'):
             f = self.fine('jac' if parts[0] == 'jacobi' else 'kpp')
             st = dict(f.setup)
-            return f, dict(st, total_s=sum(st.values())), dict(fine=parts[0])
+            return f, dict(st, total_s=sum(v for k, v in st.items() if k.endswith('_s'))), dict(fine=parts[0])
         comb, fname, cname = parts
         c = self.coarse_space(cname)                                        # coarse first: its setup temporaries
         f = self.fine(fname)                                                # are freed before the K_PP factor
         pc = dict(add=Additive, bnn=BNN, defl=Deflated)[comb](c, f)
         st = dict(f.setup); st.update({'coarse_' + k: v for k, v in c.setup.items()})
-        return pc, dict(st, total_s=sum(st.values())), dict(fine=fname, coarse=dict(c.desc))
+        return pc, dict(st, total_s=sum(v for k, v in st.items() if k.endswith('_s'))), dict(fine=fname, coarse=dict(c.desc))
 
     def free(self):
         for c in self.coarse.values():
