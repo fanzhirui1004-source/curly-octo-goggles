@@ -49,7 +49,7 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | OPL_V3_SYMV2 | 1 | float32 element product: one / two columns by a single-read kernel (ke_symv2), wider blocks with retuned tiles: 168.5 -> 120.9 us per product at one column; the summation order differs (P2) |
 | OPL_V3_SENS_NOFWD | 1 | cell_sens skips the clipped tetrahedra's forward moments (discarded; the VJP reads only the vertices): bitwise the same, sensitivities -16% (P6a) |
 | OPL_V3_FE_THREAD | 1 | opt_design front end: the next cell's constructor, assembly, network files and geometry in a worker thread on the same CUDA stream while this cell's GPU work runs: front end -16% (51 cells) / -18% (110 cells) (P5) |
-| OPL_V3_KMAP | 0 | float32 element product: full elements whose packed matrix is bitwise equal to one representative read that row (same values, fewer bytes) (P2b, under test) |
+| OPL_V3_KMAP | 0 | float32 element product: full elements whose packed matrix is bitwise equal to one representative read that row (same values, fewer bytes) (P2b). Finds nothing on plate cells: every full element's float32 moment row is distinct (the float64 rows agree to 1e-12 of the largest entry, which is above float32 resolution for the small entries); kept as a no-op switch |
 | OPL_V3_PROF_ITER / _OUT / _TRACE | 0 | diagnostic: device-level profile of PCG iteration k's operator application (gpuprof.py) |
 | OPL_V3_PCG_BLOCK | 0 | category B: block PCG for several right-hand sides (lat_precond.bpcg) (P1) |
 | OPL_V3_PCG_RITZ | (off) | category B: "m,k": after m steps the k smallest Ritz vectors join the coarse space, PCG restarts (lat_precond.rpcg) (P1) |

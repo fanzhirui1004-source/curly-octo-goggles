@@ -57,6 +57,7 @@ GF_CAT = os.environ.get('OPL_V3_GFCAT', '1') == '1'                    # src_v3 
 GF_BMM = os.environ.get('OPL_V3_GFBMM', '0') == '1'                    # src_v3 S20: padded templates, two bmm per product
 FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '1') == '1'                 # src_v3 S21: K_PP CSR released after factorising
 KMAP = os.environ.get('OPL_V3_KMAP', '0') == '1'                       # src_v3 P2b: shared rows in the float32 product
+#   (finds none on plate cells: each full element's float32 moment row is distinct; results/tests28/kdedupe.log)
 _SHARED = {}
 
 
