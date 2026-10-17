@@ -43,6 +43,9 @@ def _lib():
     lib = ctypes.CDLL(so)
     lib.hk_gather.argtypes = [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
     lib.hk_scatter.argtypes = [ctypes.c_void_p] * 6 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    lib.sd_head.argtypes = ([ctypes.c_void_p] * 2 + [ctypes.c_int] + [ctypes.c_void_p] * 6 + [ctypes.c_int]
+                            + [ctypes.c_void_p] * 5 + [ctypes.c_int] * 3 + [ctypes.c_float] + [ctypes.c_int] * 2
+                            + [ctypes.c_void_p])
     rc = lib.hk_init()
     if rc != 0:
         raise RuntimeError(f'HK_INIT:{rc}')

@@ -113,13 +113,33 @@ def prepare(fast):
     return st
 
 
+_CUDA_ERR = []
+
+
+def _cuda_ok():
+    """The CUDA head usable (hyperk's library builds; a failure is remembered: the Triton head then)."""
+    if _CUDA_ERR:
+        return False
+    try:
+        import hyperk as HK
+        HK._lib()
+        return True
+    except Exception as ex:                                                 # noqa: BLE001
+        _CUDA_ERR.append(repr(ex)[:800])
+        return False
+
+
 def _cols(O, H, LH, l0, nl, device):
     """Original output columns of layers [l0, l0 + nl) of a (2, LH, H) head output, in order."""
     cs = [((ab * LH + l) * H + hh) for ab in (0, 1) for l in range(l0, l0 + nl) for hh in range(H)]
     return torch.tensor(cs, dtype=torch.int32, device=device)
 
 
-def _run(st, name, P, Q, q_ld, idx, emap, n_e, LH, l0, nl, A, lam, fac, knee, clip, H):
+NW = int(os.environ.get('OPL_V3_SLOTDEC_NW', '4'))                      # warps per program
+CUDA = os.environ.get('OPL_V3_SLOTDEC_CUDA', '1') == '1'                # the CUDA head (hyper_kernel.cu), else Triton
+
+
+def _run(st, name, P, Q, q_ld, idx, emap, n_e, LH, l0, nl, A, lam, fac, knee, clip, H, br=None, nw=None):
     """Layers [l0, l0 + nl) of head name over n_e hyperedges (emap: their indices in the full set, or None)."""
     t = st['tabs'][name]
     dev = P.device
@@ -135,11 +155,23 @@ def _run(st, name, P, Q, q_ld, idx, emap, n_e, LH, l0, nl, A, lam, fac, knee, cl
     Bo = torch.empty_like(Ao)
     if n_rows:
         b3 = lam is not None
-        _head[(triton.cdiv(n_rows, BR),)](
+        if CUDA and br is None and OS in (32, 64) and _cuda_ok():
+            import hyperk as HK
+            dummy = t['b2']
+            rc = HK._lib().sd_head(P.data_ptr(), Q.data_ptr(), int(q_ld), t['R'].data_ptr(), idx.data_ptr(),
+                                   emap.data_ptr() if emap is not None else None, t['W2'].data_ptr(), t['b2'].data_ptr(),
+                                   cols.data_ptr(), OS, (A if clip else dummy).data_ptr(), (lam if b3 else dummy).data_ptr(),
+                                   (fac if b3 else dummy).data_ptr(), Ao.data_ptr(), Bo.data_ptr(), n_rows, int(l0), int(LH),
+                                   float(knee), int(bool(clip)), int(b3), torch.cuda.current_stream(P.device).cuda_stream)
+            if rc != 0:
+                raise RuntimeError(f'SD_HEAD:{rc}')
+            return Ao, Bo
+        br_ = br or BR
+        _head[(triton.cdiv(n_rows, br_),)](
             P, Q, q_ld, t['R'], idx, emap if emap is not None else idx, t['W2'], t['b2'], cols,
             A if clip else t['b2'], lam if b3 else t['b2'], fac if b3 else t['b2'], Ao, Bo, n_rows, l0, float(knee),
-            CH=P.shape[1], OS=OS, BO=BO, LH=LH, H=H, NL=nl, BR=BR, CLIP=clip, B3=b3, EMAP=emap is not None,
-            num_warps=4)
+            CH=P.shape[1], OS=OS, BO=BO, LH=LH, H=H, NL=nl, BR=br_, CLIP=clip, B3=b3, EMAP=emap is not None,
+            num_warps=nw or NW)
     return Ao, Bo
 
 

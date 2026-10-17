@@ -159,11 +159,110 @@ static void hs_nc(const float* src, const int64_t* hn, const float* w, const flo
     else hs_go<4, HS>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
 }
 
+// src_v3 P17: one slot head of fastnet's slot weights (slotdec): for rows r = 27 e' + s of a hyperedge set (e = emap[e']
+// when given), u = (P[e] + Q[idx[27 e + s]]) + R[s] (64 channels), h = GELU(u) (erf), then for the OS selected output
+// columns o = cols[j] of the head ((2, LH, 4) layout: o = (ab LH + l) 4 + hh): y = 0.2 (h . W2[o] + b2[o]), soft clip
+// (bound Abnd[o / 4], knee), b (ab = 1) times 1 + lam[l] fac[27 e + s] (B3), stored to Ao / Bo[l - l0][r][hh]. 64 rows per
+// block of 128 threads: h staged transposed in shared memory, W2's selected rows transposed beside it, each thread
+// 4 rows x OS / 8 columns of float32 multiply-adds (no tensor cores).
+#define SD_ROWS 64
+#define SD_CH 64
+#define SD_HP 68                                                  // h row stride (16-byte aligned float4 reads)
+
+template <int OS>
+__global__ void __launch_bounds__(128)
+sd_head_kernel(const float* __restrict__ P, const float* __restrict__ Q, int q_ld, const float* __restrict__ R,
+               const int64_t* __restrict__ idx, const int64_t* __restrict__ emap, const float* __restrict__ W2,
+               const float* __restrict__ b2, const int* __restrict__ cols, const float* __restrict__ Abnd,
+               const float* __restrict__ lam, const float* __restrict__ fac, float* __restrict__ Ao,
+               float* __restrict__ Bo, int n_rows, int l0, int LH, float knee, int clip, int b3)
+{
+    constexpr int CPT = OS / 8;                                   // columns per thread (8 or 4)
+    __shared__ __align__(16) float sH[SD_CH][SD_HP];              // h transposed: [channel][row]
+    __shared__ __align__(16) float sW[SD_CH][OS + 4];             // W2 selected rows transposed: [channel][col]
+    __shared__ int64_t sE[SD_ROWS], sN[SD_ROWS], sF[SD_ROWS];
+    __shared__ int sS[SD_ROWS];
+    const int t = threadIdx.x;
+    const int r0 = blockIdx.x * SD_ROWS;
+    if (t < SD_ROWS) {
+        const int r = r0 + t;
+        int64_t e = 0, rf = 0, n = 0; int s = 0;
+        if (r < n_rows) {
+            const int es = r / 27;
+            s = r - 27 * es;
+            e = emap ? emap[es] : (int64_t)es;
+            rf = e * 27 + s;
+            n = idx[rf];
+        }
+        sE[t] = e; sN[t] = n; sF[t] = rf; sS[t] = s;
+    }
+    for (int k = t; k < SD_CH * OS; k += 128) {                   // W2[cols[j]][c] -> sW[c][j]
+        const int j = k / SD_CH, c = k - SD_CH * j;
+        sW[c][j] = W2[(int64_t)cols[j] * SD_CH + c];
+    }
+    __syncthreads();
+    for (int i = 0; i < SD_ROWS * SD_CH / 128; i++) {             // u, GELU: consecutive threads, consecutive channels
+        const int flat = i * 128 + t, row = flat / SD_CH, c = flat - SD_CH * row;
+        float h = 0.f;
+        if (r0 + row < n_rows) {
+            const float u = (P[sE[row] * SD_CH + c] + Q[sN[row] * q_ld + c]) + R[sS[row] * SD_CH + c];
+            h = 0.5f * u * (1.0f + erff(u * 0.7071067811865476f));
+        }
+        sH[c][row] = h;
+    }
+    __syncthreads();
+    const int ty = t >> 3, tx = t & 7;                            // rows 4 ty .. 4 ty + 3, columns CPT tx ..
+    float acc[4][CPT];
+#pragma unroll
+    for (int i = 0; i < 4; i++)
+#pragma unroll
+        for (int j = 0; j < CPT; j++) acc[i][j] = 0.f;
+#pragma unroll 8
+    for (int c = 0; c < SD_CH; c++) {
+        const float4 hv = *reinterpret_cast<const float4*>(&sH[c][4 * ty]);
+        float wv[CPT];
+#pragma unroll
+        for (int j = 0; j < CPT; j++) wv[j] = sW[c][CPT * tx + j];
+#pragma unroll
+        for (int j = 0; j < CPT; j++) {
+            acc[0][j] = fmaf(hv.x, wv[j], acc[0][j]); acc[1][j] = fmaf(hv.y, wv[j], acc[1][j]);
+            acc[2][j] = fmaf(hv.z, wv[j], acc[2][j]); acc[3][j] = fmaf(hv.w, wv[j], acc[3][j]);
+        }
+    }
+#pragma unroll
+    for (int i = 0; i < 4; i++) {
+        const int row = 4 * ty + i, r = r0 + row;
+        if (r >= n_rows) continue;
+        const float fr = b3 ? fac[sF[row]] : 0.f;
+#pragma unroll
+        for (int q = 0; q < CPT / 4; q++) {                       // groups of 4 heads (one (ab, l) each)
+            const int o0 = cols[CPT * tx + 4 * q];
+            const int g = o0 >> 2, ab = g / LH, l = g - LH * ab;
+            float v[4];
+#pragma unroll
+            for (int hh = 0; hh < 4; hh++) {
+                float x = (acc[i][4 * q + hh] + b2[o0 + hh]) * 0.2f;
+                if (clip) {
+                    const float a = Abnd[g], tk = a * knee, ax = fabsf(x), den = a - tk;
+                    const float th = tanhf((ax - tk) / den);
+                    const float w = tk + den * th;
+                    x = ax > tk ? (x > 0.f ? w : (x < 0.f ? -w : 0.f)) : x;
+                }
+                if (ab == 1 && b3) x = x * (1.0f + lam[l] * fr);
+                v[hh] = x;
+            }
+            float* dst = (ab == 0 ? Ao : Bo) + (((int64_t)(l - l0) * n_rows + r) << 2);
+            *reinterpret_cast<float4*>(dst) = make_float4(v[0], v[1], v[2], v[3]);
+        }
+    }
+}
+
 extern "C" {
 
 int hk_init()
 {
     cudaFuncAttributes at;                                        // load the kernels now (not during a graph capture)
+    cudaFuncGetAttributes(&at, sd_head_kernel<32>); cudaFuncGetAttributes(&at, sd_head_kernel<64>);
     cudaFuncGetAttributes(&at, hg_kernel<1, false>); cudaFuncGetAttributes(&at, hg_kernel<1, true>);
     cudaFuncGetAttributes(&at, hg_kernel<2, false>); cudaFuncGetAttributes(&at, hg_kernel<2, true>);
     cudaFuncGetAttributes(&at, hg_kernel<3, false>); cudaFuncGetAttributes(&at, hg_kernel<3, true>);
@@ -227,6 +326,25 @@ int hk_scatter(const float* src, const int64_t* hn, const float* w, const float*
     else if (hs == 1) hs_nc<1>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
     else if (hs == 2) hs_nc<2>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
     else hs_nc<0>(src, hn, w, deg, out, rmask, Eh, BF, use_deg, s);
+    return (int)cudaGetLastError();
+}
+
+// P17: one slot head over n_rows rows (OS = 32 or 64 selected columns); emap may be null
+int sd_head(const float* P, const float* Q, int q_ld, const float* R, const int64_t* idx, const int64_t* emap,
+            const float* W2, const float* b2, const int* cols, int OS, const float* Abnd, const float* lam,
+            const float* fac, float* Ao, float* Bo, int n_rows, int l0, int LH, float knee, int clip, int b3, void* stream)
+{
+    if (n_rows <= 0) return 0;
+    cudaStream_t s = (cudaStream_t)stream;
+    const int gx = (n_rows + SD_ROWS - 1) / SD_ROWS;
+    if (OS == 64)
+        sd_head_kernel<64><<<gx, 128, 0, s>>>(P, Q, q_ld, R, idx, emap, W2, b2, cols, Abnd, lam, fac, Ao, Bo, n_rows, l0,
+                                              LH, knee, clip, b3);
+    else if (OS == 32)
+        sd_head_kernel<32><<<gx, 128, 0, s>>>(P, Q, q_ld, R, idx, emap, W2, b2, cols, Abnd, lam, fac, Ao, Bo, n_rows, l0,
+                                              LH, knee, clip, b3);
+    else
+        return -1;
     return (int)cudaGetLastError();
 }
 
