@@ -24,6 +24,8 @@ once as a CUDA graph (torch.cuda.CUDAGraph) and replayed: one launch per cell, t
     was slower than eager, 159 vs 148-154 s). If the host buffer moves (S25 spill / unspill) the graph is captured again.
   - A resident cell (_Resident): the graph reads the cell's device tensors in place (they do not move after the front
     end).
+  - Before a capture, if less than OPL_V3_GRAPH_LOWMEM_GB (3) GiB of device memory is free, the allocator's cached
+    blocks are returned to the device first (cudaFree is not allowed during a capture).
   - Not graphed (eager as before): inputs that require gradients, wider than OPL_V3_GRAPH_MAXB (4) columns (the coarse A Z:
     16-column chunks, bound by the GPU), a cell whose capture failed (STATS['failed'], logged once)."""
 import os
@@ -95,8 +97,14 @@ def apply(owner, q, body, fp=None, pre=None, post=None):
     return G.out.clone()
 
 
+LOWMEM = float(os.environ.get('OPL_V3_GRAPH_LOWMEM_GB', '3')) * 2 ** 30
+
+
 def _capture(q, body, cur, fp):
     t0 = time.perf_counter()
+    if torch.cuda.mem_get_info()[0] < LOWMEM:                           # the allocator cannot return cached blocks to the
+        torch.cuda.empty_cache()                                        # device during a capture (on the 259-cell plate
+        STATS['emptied'] = STATS.get('emptied', 0) + 1                  # 252 captures ran out of memory without this)
     qs = torch.empty_like(q)                                            # static input (outside the pool)
     pool = _POOLS.get(cur.cuda_stream)
     if pool is None:
