@@ -249,6 +249,27 @@ class GhostFaces:
         self.B = [torch.as_tensor(tpl['canonical'][k], dtype=dtype, device=dev) for k in range(len(offs))]
         self.faces = len(faces)
 
+    @property
+    def iTc(self):
+        t = self.__dict__.get('_iTc')
+        if t is not None and not t.is_cuda and self.__dict__.get('_pdev') is not None:
+            return t.to(self._pdev)                                             # parked (src_v3): a transient device copy
+        return t
+
+    @iTc.setter
+    def iTc(self, v):
+        self.__dict__['_iTc'] = v
+
+    def park(self, host=None):
+        """src_v3: the face DOF array (135 x faces int32) to page-locked host memory, so it is no longer streamed with
+        the cell: after the setup only fallbacks read it (the P14 / P15 products use kmf's own face tables); such a use
+        gets a transient device copy. host: an already parked copy of the same array (shared with the other precision)."""
+        t = self.__dict__.get('_iTc')
+        if t is not None and t.is_cuda:
+            self.__dict__['_pdev'] = t.device
+            self.__dict__['_iTc'] = host if host is not None else t.cpu().pin_memory()
+        return self.__dict__.get('_iTc')
+
     def _idxT(self):
         """The per-template 135 x faces DOF arrays (views of iP with OPL_V3_GFBMM, of iTc with OPL_V3_GFCAT; not kept as
         tensors of their own: stream_ops would store each view separately)."""
@@ -808,6 +829,20 @@ class Cell:
         self.K = self
         _collect()
         return self
+
+    def park_faces(self):
+        """src_v3: park the GhostFaces DOF arrays (float64 and the float32 correction's, one host copy) when the products
+        of the solve do not read them (P14 on, P15 on, the CUDA library built); after the cell's setup (fastnet.slim_deploy)."""
+        if not (KMF.ON64 and FK.ON and KMF.GK and KMF.use() and getattr(self, '_deploy', False)):
+            return False
+        gf64 = getattr(self, 'GF64', None)
+        if gf64 is None or gf64.__dict__.get('_iTc') is None or getattr(gf64, 'iP', None) is not None:
+            return False
+        host = gf64.park()
+        kc = getattr(self, '_Kc', None)
+        if kc is not None and getattr(kc, 'gf', None) is not None and kc.gf.__dict__.get('_iTc') is not None:
+            kc.gf.park(host=host)
+        return True
 
     def mf64_state(self):
         """src_v3 P14: the float64 matrix-free product's data (kmf.state64 over fullke's partial elements; ghost faces

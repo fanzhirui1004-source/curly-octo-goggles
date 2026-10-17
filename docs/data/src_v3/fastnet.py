@@ -645,6 +645,8 @@ def slim_deploy(op, geo, C, model=None, budget=None, cell_bytes=None):
     cell_bytes: the cell's device footprint after the warm-up (the budget's estimate of a cell's state)."""
     import teacher as TE_
     fast = op.fast
+    if hasattr(C, 'park_faces'):                                          # src_v3: the face DOF arrays off the device
+        C.park_faces()
     if budget is not None:
         kb = C.ke64_bytes() if hasattr(C, 'ke64_bytes') and TE_.KE64 == 'auto' else 0
         sb = fast.slot_bytes() if SLOTS == 'auto' and fast._rc_src is not None else 0
