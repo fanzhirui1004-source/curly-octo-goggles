@@ -395,7 +395,11 @@ class Cell:
         dofs = np.load(d / 'dofs.npy')
         arr = {'NODES.npy': self.nodes, 'dofs.npy': dofs, 'CELL_INDICES.npy': self.cells}
         xi = EM.local_coordinates(case, self.n, arr)
-        keys = np.unique(xi.reshape(len(xi), -1), axis=0)
+        xr = xi.reshape(len(xi), -1)
+        if SLIM and len(xr) and (xr == xr[0]).all():                       # src_v3: one ordering (the usual case) without
+            keys = xr[:1]                                                   # sorting the rows (np.unique(axis=0): 0.11 s)
+        else:
+            keys = np.unique(xr, axis=0)
         if len(keys) != 1:
             raise ValueError('ONE_NODE_ORDERING_EXPECTED')
         pkey = ('Tm', keys[0].tobytes(), lam, mu, self.n, str(dev))
