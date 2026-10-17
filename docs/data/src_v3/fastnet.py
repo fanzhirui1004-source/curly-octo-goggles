@@ -74,6 +74,7 @@ def _csr(rows, cols, vals, shape):
 
 
 SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
+SLOTDEC = os.environ.get('OPL_V3_SLOTDEC', '0') == '1'                           # src_v3 P17 (slotdec: fused heads)
 NETFUSE = os.environ.get('OPL_V3_NETFUSE', '1') == '1'                           # src_v3 S24 (netfused): fewer launches
 HFUSE = os.environ.get('OPL_V3_HFUSE', '0') == '1'                               # src_v3 P8: hyperedge layer in one kernel
 CONV3 = os.environ.get('OPL_V3_CONV3', '1') == '1'                               # src_v3 P10: U-Net convolutions in Triton
@@ -276,11 +277,13 @@ class FastNet:
                 _share(t_)
         self.cpl, self.levels, self.L_pre, self.L_post = m.cpl, m.levels, m.L_pre, m.L_post
         self.n_fringe = m.n_fringe if self.two else 0
-        self._rc, self._rc_depth, self._rc_src = None, 0, None
+        self._rc, self._rc_depth, self._rc_src, self._sd = None, 0, None, None
         if SLOTS in ('recompute', 'auto') and FUSED and self.two:                     # src_v3: slot weights on demand
             self._rc_src = dict(ge=gp['ge'].detach(), gn=gp['gn'].detach())             # (auto: decided after the warm-up,
             if SLOTS == 'recompute':                                                    # recompute_slots / keep_slots)
                 self.recompute_slots()
+        if SLOTDEC and self._rc_src is not None:                                       # src_v3 P17: always recomputed,
+            self.use_slotdec()                                                          # by the fused heads (slotdec)
         # wrapper (trainlib.Geo.field): rigid split and port overwrite, float32
         self.RP, self.RA, self.RPpinv = geo.RP.to(f32), geo.RA.to(f32), geo.RPpinv.to(f32)
         self.Pidx = geo.P
@@ -297,6 +300,21 @@ class FastNet:
             for h in self._hypers():
                 h.drop_ab()
         return self._rc is not None
+
+    def use_slotdec(self):
+        """src_v3 P17 (OPL_V3_SLOTDEC): from now on the slot weights are recomputed in every application by slotdec
+        (split first layer, fused heads; rounding level against the stored weights); keeps gn and per-head P only."""
+        import slotdec as SD
+        if self._sd is None:
+            src = self._rc_src if self._rc_src is not None else self._rc
+            if src is None or 'ge' not in src:
+                return False
+            self._rc_src = src
+            self._sd = SD.prepare(self)
+            self._rc, self._rc_src = {'dec': True}, None
+            for h in self._hypers():
+                h.drop_ab()
+        return True
 
     def keep_slots(self):
         """src_v3 (auto): keep the stored slot weights; the recompute inputs are dropped."""
@@ -408,7 +426,11 @@ class FastNet:
                 return
             if me._rc_depth == 0:
                 with torch.no_grad():
-                    me._assign_slots(*me._slot_tensors())
+                    if me._sd is not None:                                              # src_v3 P17
+                        import slotdec as SD
+                        SD.assign(me)
+                    else:
+                        me._assign_slots(*me._slot_tensors())
             me._rc_depth += 1
             try:
                 yield
