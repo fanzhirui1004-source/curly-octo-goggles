@@ -9,7 +9,7 @@ for N in $SIZES; do
   LAY=$P/S1/V2/R1/SCALE/layouts/plateS$N.json
   if [ ! -f $LAY ]; then
     LAY=$W/layouts/plateS$N.json
-    case $N in 162) S=11;; 190) S=12;; 222) S=13;; *) S=0;; esac
+    case $N in 162) S=11;; 190) S=12;; 222) S=13;; 256) S=14;; 296) S=15;; 336) S=16;; 378) S=17;; 424) S=18;; *) S=0;; esac
     if [ ! -f $LAY ] && [ $S != 0 ]; then
       B0=$(python3 -c "import math; t=math.radians(33.690067525979785); print(repr(math.cos(t)+$S*math.sin(t)/2))")
       (cd $P/src_v3 && $PY gen_hlat.py plateS$N --shape $S,$((2*S)),1 --theta-deg 33.690067525979785 --b0 $B0 --t0 0.40 --gx 0 --gy 0 --gz 0 \

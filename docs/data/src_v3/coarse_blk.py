@@ -73,7 +73,7 @@ def build(A, vc, shift=0.0):
     tiles = sum(n * (n + 1) // 2 for n in nto) + ST.ntiles(len(sep))[1]
     info = dict(width=w, octants=[len(o) for o in octs], separator=int(len(sep)), tiles=int(tiles),
                 tiles_packed=int(ST.ntiles(nc)[1]))
-    if tiles > MAX_FRAC * ST.ntiles(nc)[1] or not len(sep):
+    if tiles > MAX_FRAC * ST.ntiles(nc)[1] or not len(sep) or not octs:
         return None, dict(info, reason='size')
     labt = torch.as_tensor(lab, device=dvc)
     for r0 in range(0, nc, 1024):                                        # the octants must not couple (exact zeros)
@@ -115,8 +115,11 @@ def build(A, vc, shift=0.0):
         return None, dict(info, reason='separator')
     Np = t0 * T
     perm = torch.cat(perm)
-    G = torch.sparse_coo_tensor(torch.stack([torch.cat(rows), torch.cat(cols)]), torch.cat(vals), (Np, len(sep)),
-                                dtype=f32, device=dvc).coalesce()
+    if rows:
+        idx, val = torch.stack([torch.cat(rows), torch.cat(cols)]), torch.cat(vals)
+    else:                                                                # no octant couples to the separator
+        idx, val = torch.zeros((2, 0), dtype=torch.long, device=dvc), torch.zeros(0, dtype=f32, device=dvc)
+    G = torch.sparse_coo_tensor(idx, val, (Np, len(sep)), dtype=f32, device=dvc).coalesce()
     inv = torch.empty(nc, dtype=torch.long, device=dvc)                  # coarse column -> row of cat([x_o, x_s])
     pv = torch.nonzero(perm < nc).squeeze(1)
     inv[perm[pv]] = pv
