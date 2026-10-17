@@ -184,7 +184,8 @@ def main(argv=None):
                     add('fe_' + k, v)
             rec['per_cell'].append(dict(case=case, **pc))
             del geo, op
-            gc.collect(); torch.cuda.empty_cache()
+            TE._collect()
+        gc.collect()                                                               # src_v3: one full collection
         add('front_end', sum(v for k, v in ph.items() if k.startswith('fe_')))
         if budget is not None:
             rec['host_budget'] = budget.summary()

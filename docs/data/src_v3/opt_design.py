@@ -425,7 +425,8 @@ def analyse_fast(cases, positions, h, wait=None):
             ops[case] = SO.StreamedOp(op, C, [op.fast, geo, C])
         Cs[case] = C
         del geo, op
-        gc.collect(); torch.cuda.empty_cache()
+        TE._collect()
+    gc.collect()                                                               # src_v3: one full collection
     T['prep_s'] = time.perf_counter() - t
     if budget is not None:
         T['host_budget'] = budget.summary()

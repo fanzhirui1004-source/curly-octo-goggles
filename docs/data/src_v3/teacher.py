@@ -81,6 +81,14 @@ def rigid_basis(node_ids, n):
     return torch.as_tensor(Q, dtype=dt, device=dev)
 
 
+def _collect():
+    """gc.collect + empty_cache between deployment steps. src_v3 (OPL_V3_SLIM=1): the young generations only (the per-cell
+    temporaries are freed by reference counting; a full collection traverses every live object, ~40 ms a call, four
+    calls per cell); the drivers collect fully once after their front end."""
+    gc.collect(1 if SLIM else 2)
+    torch.cuda.empty_cache()
+
+
 def _set_current():
     try:
         from cuda.core.experimental import Device
@@ -613,7 +621,7 @@ class Cell:
                   '_kpp_cache', 'diag3', '_c_mf', '_c_nc', '_c_invd', '_cAp32', '_cLd32', '_c_inv_err', '_c_tri_err', '_cBlk', '_c_blk_info',
                   '_fk', '_k64_part', '_dp64_part'):                         # + src_v3 coarse, fullke                                       # state of the previous design (if any)
             setattr(self, k, None)
-        gc.collect(); torch.cuda.empty_cache()
+        _collect()
         self.M = self.moments(taus)
         nb, N, E = self.nb, len(self.nodes), len(self.M)
         self.GF64 = GF = GhostFaces(self, dt)
@@ -675,7 +683,7 @@ class Cell:
         self._Kc = _Kfp32(self, ke_moments=ke_moments, ghost_faces=True, gf_like=GF)
         self.Ke = None
         self.K = self
-        gc.collect(); torch.cuda.empty_cache()
+        _collect()
         return self
 
     def _Kx_lean(self, x):
@@ -820,7 +828,7 @@ class Cell:
             if s is not None:
                 s.free()
         self.sol_I = self.sol_N = None
-        gc.collect(); torch.cuda.empty_cache()
+        _collect()
 
     # ---------------------------------------------------------------- factorizations
     def factor(self, neumann=True, fp32=False, interior=True, fp32_neumann=False):
