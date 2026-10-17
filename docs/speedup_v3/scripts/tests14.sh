@@ -3,7 +3,7 @@
 # S_hat op profile; then hlat222 and the 51-cell plate with all of them (v3p), the category-B float32 K_PP factor (v3q,
 # reported separately) and the automatic resident budget (v3r).
 W=/root/autodl-tmp/OPL/V3W; S=$W/scripts; SPEC=$W/plate/body_S24:plateS24_040_o000
-GF=${GF:-OPL_V3_GFBMM=1}
+GF=${GF:-OPL_V3_GFCAT=1}
 bash $S/tst.sh kppfree t_kppfree.py
 bash $S/tst.sh coarsecols t_coarsecols.py $W/plate/body_S24:plateS24_040_o000,plateS24_060_o000,plateS24_150_o000,plateS24_160_o000
 bash $S/tst.sh netfuse t_netfuse.py $SPEC

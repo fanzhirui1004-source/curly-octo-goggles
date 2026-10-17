@@ -28,8 +28,8 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | OPL_V3_STREAMS / OPL_V3_STREAM_MAXCOLS | 2 / 4 | cell applies of at most 4 columns on 2 CUDA streams (S11) |
 | OPL_V3_PIPE_BODIES | 1 | opt_design: body generation overlapped with the analysis front end (S12) |
 | OPL_V3_E0FAST | 1 | reduced tetrahedron backward kernel for the volume column of the sensitivities (S13) |
-| OPL_V3_GFCAT | 0 | one concatenated ghost-face DOF array (experimental) |
-| OPL_V3_GFBMM | 0 | ghost-face product as a masked gather, two batched GEMMs over the padded templates and a masked scatter: 4 kernels instead of 12 (S20, experimental) |
+| OPL_V3_GFCAT | 1 | one concatenated ghost-face DOF array: 8 launches per ghost-face product instead of 12 (S20; 51-cell plate solve -7%) |
+| OPL_V3_GFBMM | 0 | ghost-face product as a masked gather, two batched GEMMs over the padded templates and a masked scatter: 4 kernels instead of 12 (S20b; same plate time as GFCAT, slower on hlat222) |
 | OPL_V3_SLOTFUSE | 1 | recomputed slot weights: the heads' scale and soft clip in one Triton pass, bitwise the same (S19) |
 | OPL_V3_BUDGET_ORDER | ke64 | budget priority: float64 matrices first (more time saved per byte; `slots`: S14 order) (S14c) |
 | OPL_V3_HOST_TOP / OPL_V3_HOST_TRANSIENT | 0.95 / 4 | host budget target: fraction of the limit, minus a reserve of 4 x the cells' K_PP host triplets for the factorisation peak (S14b); OPL_V3_HOST_FRAC: S14's fixed fraction instead |

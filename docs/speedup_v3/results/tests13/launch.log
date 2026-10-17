@@ -1,0 +1,1 @@
+{"triton_jit": 13.67, "triton_compiled": "TypeError('function takes exactly 15 arguments (14 given)')", "torch_add_": 5.47, "torch_index": 7.59, "torch_index_add_": 4.97, "torch_mm": 8.98, "torch_bmm": 6.57, "torch_zeros": 5.16}

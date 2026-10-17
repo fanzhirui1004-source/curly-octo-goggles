@@ -52,7 +52,7 @@ def sync():
 SLIM = os.environ.get('OPL_V3_SLIM', '1') == '1'
 GC_YOUNG = os.environ.get('OPL_V3_GC', 'young') == 'young'                # src_v3 S17: 'full' = src_v2's collections
 KE64 = os.environ.get('OPL_V3_KE64', 'auto')                           # src_v3: 'auto' | 'store' | 'form' (Cell.store64)
-GF_CAT = os.environ.get('OPL_V3_GFCAT', '0') == '1'                    # src_v3: concatenated ghost-face DOF lists
+GF_CAT = os.environ.get('OPL_V3_GFCAT', '1') == '1'                    # src_v3 S20: concatenated ghost-face DOF lists
 GF_BMM = os.environ.get('OPL_V3_GFBMM', '0') == '1'                    # src_v3 S20: padded templates, two bmm per product
 FREE_A = os.environ.get('OPL_V3_KPP_FREEA', '0') == '1'                 # src_v3 S21: K_PP CSR released after factorising
 _SHARED = {}
@@ -225,20 +225,24 @@ class GhostFaces:
             self.faces = len(faces)
             return
         if GF_CAT:                                                              # src_v3: one 135 x faces array, templates
-            parts = [dofs[faces[:, 2] == k] for k in range(len(offs))]          # in order; idxT are column views of it
-            cuts = np.cumsum([0] + [len(p_) for p_ in parts])
-            self.iTc = torch.as_tensor(np.concatenate(parts, 0).T.copy(), dtype=torch.int32, device=dev)
-            self.cuts = [int(c_) for c_ in cuts]
-            self.idxT = [self.iTc[:, self.cuts[k]:self.cuts[k + 1]] for k in range(len(offs))]
+            parts = [dofs[faces[:, 2] == k] for k in range(len(offs))]          # in order; the per-template arrays are its
+            cuts = np.cumsum([0] + [len(p_) for p_ in parts])                   # column views, made on demand (_idxT: kept
+            self.iTc = torch.as_tensor(np.concatenate(parts, 0).T.copy(), dtype=torch.int32, device=dev)   # views were
+            self.cuts = [int(c_) for c_ in cuts]                                # stored once more by stream_ops)
+            self.idxT = None
         else:
             self.idxT = [torch.as_tensor(dofs[faces[:, 2] == k].T.copy(), dtype=torch.int32, device=dev) for k in range(len(offs))]
         self.B = [torch.as_tensor(tpl['canonical'][k], dtype=dtype, device=dev) for k in range(len(offs))]
         self.faces = len(faces)
 
     def _idxT(self):
-        """The per-template 135 x faces DOF arrays (views of iP with OPL_V3_GFBMM, not kept as tensors of their own:
-        stream_ops would store each view separately)."""
-        return self.idxT if self.idxT is not None else [self.iP[k, :, :f] for k, f in enumerate(self.fk)]
+        """The per-template 135 x faces DOF arrays (views of iP with OPL_V3_GFBMM, of iTc with OPL_V3_GFCAT; not kept as
+        tensors of their own: stream_ops would store each view separately)."""
+        if self.idxT is not None:
+            return self.idxT
+        if self.iP is not None:
+            return [self.iP[k, :, :f] for k, f in enumerate(self.fk)]
+        return [self.iTc[:, self.cuts[k]:self.cuts[k + 1]] for k in range(len(self.cuts) - 1)]
 
     @property
     def idx(self):

@@ -1,0 +1,6 @@
+/root/autodl-tmp/OPL/src_v3/fastnet.py:63: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at /pytorch/aten/src/ATen/SparseCsrTensorImpl.cpp:53.)
+  return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
+{"packed": {"seq_ms": 21.292123186867684, "pair_ms": 18.87493730755523, "cpu_shat_ms": 16.323223523795605, "cpu_coarse_ms": 0.02988561987876892}}
+{"blk": {"seq_ms": 20.963089755969122, "pair_ms": 18.315067427465692, "cpu_shat_ms": 16.223955107852817, "cpu_coarse_ms": 0.13881342485547066}}
+{"blk_ia": {"cpu_coarse_ms": 0.43448157608509064, "rel_diff_vs_blk": 1.6565137173074618e-07, "seq_ms": 21.796421974431723, "pair_ms": 21.634455677121878, "cpu_shat_ms": 20.45570588670671}}
+{"packed": {"seq_ms": 21.292123186867684, "pair_ms": 18.87493730755523, "cpu_shat_ms": 16.323223523795605, "cpu_coarse_ms": 0.02988561987876892}, "blk": {"seq_ms": 20.963089755969122, "pair_ms": 18.315067427465692, "cpu_shat_ms": 16.223955107852817, "cpu_coarse_ms": 0.13881342485547066}, "blk_ia": {"cpu_coarse_ms": 0.43448157608509064, "rel_diff_vs_blk": 1.6565137173074618e-07, "seq_ms": 21.796421974431723, "pair_ms": 21.634455677121878, "cpu_shat_ms": 20.45570588670671}}
