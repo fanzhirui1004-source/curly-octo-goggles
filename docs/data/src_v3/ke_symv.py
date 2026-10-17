@@ -60,17 +60,32 @@ def symv_(y, P, dofs, x, kmap=None):
     for j in range(0, B, COLS):
         nbc = min(COLS, B - j)
         BP = triton.next_power_of_2(nbc)
-        if tune and BP <= 2:
-            import ke_symv2 as K2
-            K2._symv_up[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=16, NBLK=6, ONEHOT=True, num_warps=2, **mp)
-            continue
-        if tune:
-            BI, warps = (8, 1) if BP <= 4 else (8, 2)
-        else:
-            BI, warps = (8 if BP <= 4 else 4), 2                        # tuned on the 5090 (ks_tune.py): 2 warps, small row blocks
+        cfg = CFG.get(BP) if tune else None
+        if cfg is None:
+            if tune:
+                cfg = ('up', 16, 2, 0) if BP <= 2 else (('old', 8, 1, 0) if BP <= 4 else ('old', 8, 2, 0))
+            else:
+                cfg = ('old', 8 if BP <= 4 else 4, 2, 0)                # tuned on the 5090 (ks_tune.py): 2 warps, small row blocks
+        kind, BI, warps, stages = cfg
         nblk = (81 + BI - 1) // BI
-        _symv[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=BI, NBLK=nblk, num_warps=warps, **mp)
+        if kind == 'up':
+            import ke_symv2 as K2
+            K2._symv_up[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=BI, NBLK=nblk, ONEHOT=True, num_warps=warps, **mp)
+        elif kind == 'upp':
+            import ke_symv2 as K2
+            K2._symv_up_p[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, mp['kmap_ptr'], BP=BP, BI=BI, NBLK=nblk, STAGES=stages,
+                                MAP=mp['MAP'], num_warps=warps)
+        else:
+            _symv[(E,)](P, dofs, x[:, j:], y[:, j:], nbc, B, BP=BP, BI=BI, NBLK=nblk, num_warps=warps, **mp)
     return y
+
+
+CFG = {}                                                                # src_v3 P2: {BP: (kernel 'old' / 'up' / 'upp',
+#   BI, warps, stages)} overriding the float32 defaults above (set by tests; e.g. OPL_V3_SYMV_CFG="1:up,32,1,0;2:upp,8,1,2")
+for _it in filter(None, os.environ.get('OPL_V3_SYMV_CFG', '').split(';')):
+    _bp, _c = _it.split(':')
+    _k, _bi, _w, _st = _c.split(',')
+    CFG[int(_bp)] = (_k, int(_bi), int(_w), int(_st))
 
 
 def pack(Ke):
