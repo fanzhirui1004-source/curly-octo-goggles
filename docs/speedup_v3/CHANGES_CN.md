@@ -303,3 +303,21 @@ B=16 时原核已经不差，不改。
 - 两个流：求解 −12%；PCG 阶段 +1.3 GiB，A Z 阶段（16 列一块）两个胞元同时算再 +2.3 GiB。
 
 **S11：多流默认开（OPL_V3_STREAMS=2），只用于至多 4 列的作用（PCG 矩阵向量积）**，A Z 等宽作用仍是一个流。显存紧张时 OPL_V3_STREAMS=1。
+
+## 前端：锁页先于复制、构造函数（`scripts/t_prep.py`，`results/tests2/prep2.log`）
+
+每胞元（满胞元，稳态）1.65 → 1.30 s：构造 0.14 → 0.03 s（np.unique(axis=0) 改为逐行相等比较，结果相同），建流式缓冲 0.40 → 0.18 s（先 cudaHostRegister 再复制）。
+
+## S12：几何生成与前端重叠（opt_design 默认开，OPL_V3_PIPE_BODIES=0 可关）
+
+opt_design 每轮先用 14 个 CPU 进程生成所有胞元的几何（fast_prep4），再开始分析。现在生成在后台进行，前端每个胞元等到它的 PREP.json（fast_prep4 最后写）出现就开始；某个胞元生成失败时，前端已建的流式状态全部释放，转回原来的重试循环（扰动 τ 再生成）。
+
+- 51 胞元板，新生成几何（`results/v3bn_S51`、`results/v3bp_S51`）：几何 42.2 s + 分析 319.4 s = 361.6 s → 重叠后 330.8 s（−8.5%）；前端因 CPU 争用从 68 s 变为 79 s。柔度差 1.3e-8，PCG 相同。
+- 24 胞元板，opt_design 本身一轮（`scripts/pipe_test.sh`，`results/pipe_*`）：顺序 159 s，重叠 146 s；在第 11 个胞元注入一次生成失败（OPL_V3_PIPE_FAULT=10），记录 BODY_PIPE_FAIL 后按原路径完成，PCG 169，三次柔度互差 ≤ 3e-8。
+- 终测的板（`scripts/final.sh`）设 OPL_V3_PIPE_BODIES=0，分析时间不含几何生成，与 ST20 可比。
+
+## S13：灵敏度中体积列的四面体反向核（默认开，OPL_V3_E0FAST=0 可关）
+
+灵敏度阶段（每满胞元约 0.85 s）是 GPU 受限的（核时间占 89%），其中 54% 是逐四面体矩的 fp64 反向核（fast_tet2._bwd2），每批调用两次：能量列和体积列。体积列的梯度只有常数项（m = 0）非零，此时 _bwd2 的所有多项式项都是精确的零，结果只剩 S = Σ w g0 与雅可比行列式导数的乘积。新核 _bwd2_e0 只算这些（同样的运算顺序）。
+
+核对（`scripts/t_sens2.py`，`results/tests2/sens2.log`）：确定性模式与非确定性模式下 cell_sens 都与原核逐位相同。每胞元 839 → 612 ms（−27%）。
