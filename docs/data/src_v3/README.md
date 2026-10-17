@@ -29,6 +29,7 @@ iteration counts, compliance within 1e-7, sensitivities within the run-to-run no
 | OPL_V3_PIPE_BODIES | 1 | opt_design: body generation overlapped with the analysis front end (S12) |
 | OPL_V3_E0FAST | 1 | reduced tetrahedron backward kernel for the volume column of the sensitivities (S13) |
 | OPL_V3_GFCAT | 0 | one concatenated ghost-face DOF array (experimental) |
+| OPL_V3_SLOTFUSE | 1 | recomputed slot weights: the heads' scale and soft clip in one Triton pass, bitwise the same (S19) |
 | OPL_V3_BUDGET_ORDER | ke64 | budget priority: float64 matrices first (more time saved per byte; `slots`: S14 order) (S14c) |
 | OPL_V3_HOST_TOP / OPL_V3_HOST_TRANSIENT | 0.95 / 3 | host budget target: fraction of the limit, minus a reserve of 3 x the cells' K_PP host triplets for the factorisation peak (S14b); OPL_V3_HOST_FRAC: S14's fixed fraction instead |
 | OPL_COARSE_BLK / OPL_COARSE_BLK_MAXFRAC | 1 / 0.5 | block-structured cell coarse inverse: octants + separator Schur complement, 168 -> 29 MiB per full plate cell, more accurate than the packed inverse (S15) |

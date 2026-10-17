@@ -5,7 +5,7 @@ memory the process may use: on the AutoDL container that is the cgroup limit (me
 Two per-cell items trade memory for time (both give the same results):
   - the float64 partial-element matrices (teacher.Cell.store64, S9): ~0.09 GB per full plate cell, saves ~4.1 ms per S_hat;
   - the hyperedge slot weights (fastnet slots, S5): ~0.29 GB per full plate cell; without them they are recomputed in
-    every application (bitwise the same, ~+9.7 ms per S_hat).
+    every application (bitwise the same, +4.8 ms per S_hat with the fused tail of S19, +9.4 ms without).
 Budget.decide (one call per cell, in front-end order, after the cell's warm-up) keeps both while the projected host use
 of the whole analysis (the current RSS plus, for this and every remaining cell, its bare state plus the two items) stays
 below the target; otherwise it drops the slot weights, then the float64 matrices (S14c: the float64 matrices save more
@@ -19,8 +19,9 @@ plans, S16) are 16. OPL_V3_HOST_FRAC (S14, if set): the earlier rule, a fixed fr
 import os
 
 GiB = 2 ** 30
-# S14c: which item the budget gives out first. Time saved per byte, full plate cell (results/shat/prof1_v3h, prof1_rc):
-# float64 matrices 4.1 ms per S_hat for 90 MB (46 ms/GB), slot weights 9.7 ms for 286 MB (34 ms/GB).
+# S14c: which item the budget gives out first. Time saved per byte, full plate cell (results/shat/prof1_v3h, prof1_rc,
+# results/tests12/slotfuse.log): float64 matrices 4.1 ms per S_hat for 90 MB (46 ms/GB), slot weights 4.8 ms for 286 MB
+# (17 ms/GB; 9.4 ms, 33 ms/GB, without the fused tail of S19).
 ORDER = os.environ.get('OPL_V3_BUDGET_ORDER', 'ke64')
 
 

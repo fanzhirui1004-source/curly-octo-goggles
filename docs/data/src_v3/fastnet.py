@@ -63,7 +63,7 @@ def _csr(rows, cols, vals, shape):
     return torch.sparse_csr_tensor(crow.to(torch.int32), c.to(torch.int32), v.contiguous(), size=shape)
 
 
-SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '0') == '1'                         # src_v3 S19 (slotfused.clip_scale)
+SLOTFUSE = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'                         # src_v3 S19 (slotfused.clip_scale)
 
 
 class _Hyper:

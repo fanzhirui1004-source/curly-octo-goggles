@@ -6,15 +6,16 @@ sign(x) (T + (A - T) tanh((|x| - T) / (A - T)))). PyTorch runs that as ~11 eleme
 (~77 M floats on a full plate cell, ~3.5 ms of the ~9.7 ms recompute). Here one Triton program per row block does the
 same float32 operations in the same order: x = raw * 0.2f, T = A * knee, |x|, |x| - T, A - T, an IEEE division
 (div_rn), tanh (libdevice, as PyTorch's float tanh), (A - T) * tanh, T + ..., the sign, and the selections; no fused
-multiply-add (enable_fp_fusion=False), so every intermediate is rounded as in PyTorch. The result is checked bitwise
-against the PyTorch path (scripts/t_slotfuse.py) before the switch is used."""
+multiply-add (enable_fp_fusion=False), so every intermediate is rounded as in PyTorch. Checked on a full plate cell
+(scripts/t_slotfuse.py, results/tests12/slotfuse.log): ab, fab, xab bitwise equal (torch.equal, ~100 M values);
+_slot_tensors 7.8 -> 3.2 ms, with _assign_slots 9.4 -> 4.8 ms per recompute."""
 import os
 import torch
 import triton
 import triton.language as tl
 from triton.language.extra.cuda import libdevice
 
-ON = os.environ.get('OPL_V3_SLOTFUSE', '0') == '1'
+ON = os.environ.get('OPL_V3_SLOTFUSE', '1') == '1'
 
 
 @triton.jit
